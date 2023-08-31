@@ -2075,16 +2075,16 @@ class Resharder:
                         if name == var_name and op_dist_attr is not None:
                             if op.desc.id() == matched_op.desc.id():
                                 if matched_op.type == "while":
-                                    op.desc._rename_input(
-                                        name, target_tensor.name
-                                    )
                                     old_name = name
                                     new_name = target_tensor.name
                                     assert old_name != new_name
-                                    op_input_dist_attr = (
+                                    op_input_dist_attr = copy.deepcopy(
                                         op_dist_attr.get_input_dist_attr(
                                             old_name
                                         )
+                                    )
+                                    op.desc._rename_input(
+                                        name, target_tensor.name
                                     )
                                     op_dist_attr.set_input_dist_attr(
                                         new_name, op_input_dist_attr
@@ -2098,16 +2098,16 @@ class Resharder:
                                     while_op_X_append.append(new_name)
                                     continue
                                 else:
-                                    op.desc._rename_input(
-                                        name, target_tensor.name
-                                    )
                                     old_name = name
                                     new_name = target_tensor.name
                                     assert old_name != new_name
-                                    op_input_dist_attr = (
+                                    op_input_dist_attr = copy.deepcopy(
                                         op_dist_attr.get_input_dist_attr(
                                             old_name
                                         )
+                                    )
+                                    op.desc._rename_input(
+                                        name, target_tensor.name
                                     )
                                     op_dist_attr.set_input_dist_attr(
                                         new_name, op_input_dist_attr
@@ -2129,13 +2129,13 @@ class Resharder:
                                 op_process_mesh == process_mesh
                                 and op_input_dims_mapping == dims_mapping
                             ):
-                                op.desc._rename_input(name, target_tensor.name)
                                 old_name = name
                                 new_name = target_tensor.name
                                 assert old_name != new_name
-                                op_input_dist_attr = (
+                                op_input_dist_attr = copy.deepcopy(
                                     op_dist_attr.get_input_dist_attr(old_name)
                                 )
+                                op.desc._rename_input(name, target_tensor.name)
                                 op_dist_attr.set_input_dist_attr(
                                     new_name, op_input_dist_attr
                                 )
@@ -2318,7 +2318,6 @@ class Resharder:
                         if target_name is None:
                             continue
                         else:
-                            op.desc._rename_input(var_name, target_name)
                             dist_op = self.dist_context.get_dist_op_for_program(
                                 op
                             )
@@ -2326,9 +2325,10 @@ class Resharder:
                             old_name = var_name
                             new_name = target_name
                             assert old_name != new_name
-                            op_input_dist_attr = (
+                            op_input_dist_attr = copy.deepcopy(
                                 op_dist_attr.get_input_dist_attr(old_name)
                             )
+                            op.desc._rename_input(var_name, target_name)
                             op_dist_attr.set_input_dist_attr(
                                 new_name, op_input_dist_attr
                             )
@@ -2343,15 +2343,15 @@ class Resharder:
                             )
                         target_name = var_reshard_mapping[var_name][0][1]
 
-                        op.desc._rename_output(var_name, target_name)
                         dist_op = self.dist_context.get_dist_op_for_program(op)
                         op_dist_attr = dist_op.dist_attr
                         old_name = var_name
                         new_name = target_name
                         assert old_name != new_name
-                        op_output_dist_attr = op_dist_attr.get_output_dist_attr(
-                            old_name
+                        op_output_dist_attr = copy.deepcopy(
+                            op_dist_attr.get_output_dist_attr(old_name)
                         )
+                        op.desc._rename_output(var_name, target_name)
                         op_dist_attr.set_output_dist_attr(
                             new_name, op_output_dist_attr
                         )

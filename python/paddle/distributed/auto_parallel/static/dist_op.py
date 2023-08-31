@@ -47,7 +47,8 @@ class DistributedOperator:
 
     @property
     def dist_attr(self):
-        return self._dist_attr
+        # return self._dist_attr
+        return self._serial_op.dist_attr
 
     @dist_attr.setter
     def dist_attr(self, dist_attr):

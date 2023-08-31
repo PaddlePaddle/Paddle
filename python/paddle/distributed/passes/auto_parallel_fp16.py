@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 from collections import defaultdict
 
 import paddle
@@ -408,8 +409,8 @@ class FP16State:
                         (cast_name, in_var.name, dst_dtype, src_dtype, in_name)
                     ]
 
-                    in_var_dist_attr = consume_op_attr.get_input_dist_attr(
-                        in_var.name
+                    in_var_dist_attr = copy.deepcopy(
+                        consume_op_attr.get_input_dist_attr(in_var.name)
                     )
                     assert in_var_dist_attr is not None
                     # truly insert cast op
@@ -497,7 +498,9 @@ class FP16State:
                 ), "var: {} not in op's {}. {}".format(
                     src_name, slot_name, str(op)
                 )
-                src_var_dist_attr = grad_op_attr.get_input_dist_attr(src_name)
+                src_var_dist_attr = copy.deepcopy(
+                    grad_op_attr.get_input_dist_attr(src_name)
+                )
                 assert src_var_dist_attr is not None
                 op._rename_input(src_name, cast_name)
                 grad_op_attr.set_input_dist_attr(cast_name, src_var_dist_attr)
@@ -513,7 +516,9 @@ class FP16State:
                 ), f"[{grad_slot_name}], Current Op: {str(op)}"
                 grad_name = op.output(grad_slot_name)[0]
                 grad = block.var(grad_name)
-                grad_dist_attr = grad_op_attr.get_output_dist_attr(grad_name)
+                grad_dist_attr = copy.deepcopy(
+                    grad_op_attr.get_output_dist_attr(grad_name)
+                )
                 assert grad_dist_attr is not None, f"{grad_name}"
                 ref_mesh = grad_dist_attr.process_mesh
                 ref_mapping = grad_dist_attr.dims_mapping

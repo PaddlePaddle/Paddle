@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 from collections import OrderedDict
 
 import paddle
@@ -506,20 +507,20 @@ class DataParallelOptimizationPass(PassBase):
             )
             old_in_name = allreduce_op.input_arg_names[0]
             new_in_name = group.coalesce_var.name
-            allreduce_op._rename_input(old_in_name, new_in_name)
-            input_dist_attr = allreduce_op_dist_attr.get_input_dist_attr(
-                old_in_name
+            input_dist_attr = copy.deepcopy(
+                allreduce_op_dist_attr.get_input_dist_attr(old_in_name)
             )
+            allreduce_op._rename_input(old_in_name, new_in_name)
             allreduce_op_dist_attr.set_input_dist_attr(
                 new_in_name, input_dist_attr
             )
 
             old_out_name = allreduce_op.output_arg_names[0]
             new_out_name = group.coalesce_var.name
-            allreduce_op._rename_output(old_out_name, new_out_name)
-            out_dist_attr = allreduce_op_dist_attr.get_output_dist_attr(
-                old_out_name
+            out_dist_attr = copy.deepcopy(
+                allreduce_op_dist_attr.get_output_dist_attr(old_out_name)
             )
+            allreduce_op._rename_output(old_out_name, new_out_name)
             allreduce_op_dist_attr.set_output_dist_attr(
                 new_out_name, out_dist_attr
             )

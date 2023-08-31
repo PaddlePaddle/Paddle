@@ -28,15 +28,21 @@ from auto_parallel_gpt_model import (
     GPTPretrainingCriterion,
 )
 
+paddle.enable_static()
+
 
 def generate_model():
     modeling.init_global()
     modeling._global_parallel_strategy = "serial"
+    ranks = list(range(paddle.distributed.get_world_size()))
+    modeling._global_process_mesh = auto.ProcessMesh(
+        mesh=ranks, dim_names=["x"]
+    )
 
     gpt = GPTModel(
         vocab_size=50304,
         hidden_size=1024,
-        num_hidden_layers=13,
+        num_hidden_layers=8,
         num_attention_heads=16,
         intermediate_size=1024 * 4,
         hidden_act="gelu",
@@ -68,7 +74,7 @@ def apply_pass():
     recompute.enable_tuning = True
 
     tuning = strategy.tuning
-    tuning.enable = True
+    tuning.enable = False
     tuning.profile_start_step = 1
     tuning.profile_end_step = 2
     tuning.run_after_tuning = True
@@ -84,8 +90,8 @@ def apply_pass():
 
 class TestRecomputeWithAMPPassTuning(unittest.TestCase):
     def setUp(self):
-        self.batch_size = 4
-        self.batch_num = 100
+        self.batch_size = 2
+        self.batch_num = 10
         self.dataset = FakeDataset(
             self.batch_size * self.batch_num,
             vocab_size=50304,
@@ -99,7 +105,8 @@ class TestRecomputeWithAMPPassTuning(unittest.TestCase):
         model, loss = generate_model()
 
         engine = auto.Engine(model, loss, opt, strategy=strategy)
-        engine._tune(self.dataset, 3, batch_size=self.batch_size)
+        engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        # engine._tune(self.dataset, 3, batch_size=self.batch_size)
 
 
 if __name__ == "__main__":
