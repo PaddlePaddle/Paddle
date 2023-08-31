@@ -953,8 +953,37 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
   return ss.str();
 }
 
-std::string OperatorBase::VarInfoString(const Scope* scope) const {
+std::string OperatorBase::OutVarInfoString(const Scope* scope) const {
   std::stringstream ss;
+
+  ss << "Op(" << type_ << "), outputs:{";
+  for (auto it = outputs_.begin(); it != outputs_.end();) {
+    auto& output = *it;
+    ss << output.first << "[";
+    for (size_t i = 0; i < output.second.size(); ++i) {
+      auto var_name = output.second[i];
+      ss << var_name;
+      if (scope) {
+        if (!VarInited(*scope, var_name)) {
+          ss << "[uninited]";
+        } else {
+          std::string dtype = GetDtype(*scope, output.second[i]);
+          ss << ":" << dtype;
+          ss << "(" << GetPlace(*scope, var_name) << ")";
+        }
+      }
+      if (i != output.second.size() - 1) {
+        ss << ", ";
+      }
+    }
+    ss << "]";
+    ++it;
+    if (it != outputs_.end()) {
+      ss << ", ";
+    }
+  }
+  ss << "}.";
+  return ss.str();
 }
 
 OperatorBase::OperatorBase(const std::string& type,

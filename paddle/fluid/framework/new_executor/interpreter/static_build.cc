@@ -95,8 +95,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block,
     if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
       if (in_black_list ||
           (is_operator_base &&
-           !OperatorBasesCanHandledInStaticBuild
-                .count(op_type) ||
+           !OperatorBasesCanHandledInStaticBuild.count(op_type)) ||
           is_custom_op || use_mkldnn) {
         invalid_ops.insert(std::make_pair(op_type, kernel_code));
       }
@@ -373,9 +372,9 @@ void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
       }
     }
   } else if (op_type == "conditional_block") {
-    VLOG(4) << op->DebugStringEx(scope);
-    op->RunPreStaticBuild(*scope, place);
-    VLOG(4) << op->DebugStringEx(scope);
+    VLOG(4) << op.OutVarInfoString(scope);
+    op.RunPreStaticBuild(*scope, place);
+    VLOG(4) << op.OutVarInfoString(scope);
   } else {
     PADDLE_THROW(
         phi::errors::Unimplemented("Can not static build for op: %s", op_type));

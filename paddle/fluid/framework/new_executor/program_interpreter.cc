@@ -67,8 +67,7 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
 
   static_build_ = FLAGS_new_executor_static_build &&
                   !FLAGS_new_executor_use_cuda_graph &&
-                  interpreter::BlockCanBeStaticBuilt(
-                      block, place, &var_scope_, HasLocalScope());
+                  interpreter::BlockCanBeStaticBuilt(block, place);
 
   instruction_scheduling_priority_less = [this](size_t lhs, size_t rhs) {
     SchedulingPriority lhs_scheduling_priority =
