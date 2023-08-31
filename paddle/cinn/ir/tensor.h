@@ -25,6 +25,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/common/graph_utils.h"
 #include "paddle/cinn/ir/buffer.h"
 #include "paddle/cinn/ir/function_base.h"
@@ -36,6 +37,10 @@ namespace cinn {
 namespace ir {
 class Tensor;
 }  // namespace ir
+
+namespace ast_gen_ius {
+class TensorGroup;
+}  // namespace ast_gen_ius
 
 namespace lang {
 template <typename T>
@@ -289,6 +294,8 @@ class _Tensor_ : public ExprNode<_Tensor_> {
   void InitAxis() const;
 
   isl::set GenerateIslDomain() const;
+
+  ir::Tensor InitReduction(ast_gen_ius::TensorGroup* tensor_group) const;
 
   /**
    * Create the initialization tensor.
