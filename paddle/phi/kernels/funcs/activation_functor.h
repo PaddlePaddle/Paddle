@@ -1191,21 +1191,6 @@ struct Expm1 {
   }
 };
 
-template <>
-struct Expm1<dtype::float16> {
-  HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
-    return dtype::float16(exp(static_cast<float>(val)) - static_cast<float>(1));
-  }
-};
-
-template <>
-struct Expm1<dtype::bfloat16> {
-  HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
-    return dtype::bfloat16(exp(static_cast<float>(val)) -
-                           static_cast<float>(1));
-  }
-};
-
 // expm1(x) = e^x - 1
 template <typename T>
 struct Expm1Functor : public BaseActivationFunctor<T> {
@@ -2854,6 +2839,16 @@ struct CudaExpFunctor<double> : public BaseActivationFunctor<double> {
 };
 
 template <typename T>
+struct CudaExpFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  // exp(x) = exp(x)
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> x) const {
+    return static_cast<ComplexType<T>>(exp(x));
+  }
+};
+
+template <typename T>
 struct CudaSeluFunctor : public BaseActivationFunctor<T> {
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"scale", &scale}, {"alpha", &alpha}};
@@ -2980,6 +2975,15 @@ struct CudaExpm1Functor<double> : public BaseActivationFunctor<double> {
   // expm1(x) = expm1(x)
   __device__ __forceinline__ double operator()(const double x) const {
     return ::expm1(x);
+  }
+};
+
+template <typename T>
+struct CudaExpm1Functor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> x) const {
+    return static_cast<ComplexType<T>>(Expm1<ComplexType<T>>()(x));
   }
 };
 
