@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.autograd.backward import grad
+from paddle.autograd.ir_backward import grad
 from paddle.decomposition import decompose
 from paddle.framework import core
 
