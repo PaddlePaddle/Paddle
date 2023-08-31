@@ -6,6 +6,7 @@ if(WITH_TESTING AND WITH_CINN)
     DEPS
     new_ir_compiler
     convert_to_dialect
+    runtime_dialect
     ir
     phi
     gtest
