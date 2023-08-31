@@ -480,20 +480,15 @@ class TestLogSigmoid(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        if self.dtype is np.complex64 or self.dtype is np.complex128:
-            self.check_grad(
-                ['X'], 'Out', max_relative_error=0.008, check_prim=False
-            )
-        else:
-            self.check_grad(['X'], 'Out', max_relative_error=0.008)
+        self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
 
-class TestLogSigmoidComplex64(TestActivation):
+class TestLogSigmoidComplex64(TestLogSigmoid):
     def init_dtype(self):
         self.dtype = np.complex64
 
 
-class TestLogSigmoidComplex128(TestActivation):
+class TestLogSigmoidComplex128(TestLogSigmoid):
     def init_dtype(self):
         self.dtype = np.complex128
 
