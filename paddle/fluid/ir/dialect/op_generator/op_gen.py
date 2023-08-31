@@ -155,7 +155,7 @@ OpInfoTuple {op_name}::GetOpInfo() {{
   return std::make_tuple(inputs, attributes, outputs, run_time_info, "{origin_op_name}");
 }}
 """
-CONSTRUCT_INPUT_INFO_TEMPLATE = """paddle::dialect::OpInputInfo("{name}", "{typename}", {optional}, {no_need_buffer}, {is_mutable_attribute})"""
+CONSTRUCT_INPUT_INFO_TEMPLATE = """paddle::dialect::OpInputInfo("{name}", "{typename}", {optional}, {no_need_buffer}, {is_mutable_attribute}, {with_grad_semantic})"""
 CONSTRUCT_OUTPUT_INFO_TEMPLATE = """paddle::dialect::OpOutputInfo("{name}", "{typename}", {optional}, {intermediate})"""
 CONSTRUCT_ATTRIBUTE_INFO_TEMPLATE = """paddle::dialect::OpAttributeInfo("{name}", "{typename}", "{data_type}")"""
 
@@ -344,6 +344,20 @@ class OpInfoParser:
         # parse has_custom_verify
         self.custom_verify = self.parse_custom_verify()
 
+        # parse forward input name list and attribute name list
+        self.forward_input_name_list = self.parse_forward_input_name()
+
+    def parse_forward_input_name(self):
+        if 'forward' in self.op_yaml_item:
+            forward_input_name_list = []
+            forward_map = self.op_yaml_item['forward']
+            inputs = forward_map['inputs']
+            for input in inputs:
+                forward_input_name_list.append(input['name'])
+            return forward_input_name_list
+        else:
+            return None
+    
     def cross_check(self, name_list, type_list, optional_list=None):
         assert len(name_list) == len(
             type_list
@@ -691,6 +705,58 @@ def to_pascal_case(s):
         return "".join([word.capitalize() for word in words]) + ""
 
 
+def OpInputsGradSemanticCheck(op_info, op_info_items):
+    input_grad_semantic_list = []
+    fwd_input_list = op_info.input_name_list
+    
+    bwd_op_name = op_info.backward_name
+    if (bwd_op_name is None) or (bwd_op_name not in op_info_items.keys()):
+        input_grad_semantic_list = ["false" for i in range(len(fwd_input_list))]
+    else:
+        bwd_op_info = op_info_items[bwd_op_name]
+
+        bwd_output_list = bwd_op_info.output_name_list
+        bwd_output_list_new = []
+        for bwd_output in bwd_output_list:
+            bwd_output_list_new.append(bwd_output[:-5])
+        
+        bwd_fwd_input_list = bwd_op_info.forward_input_name_list
+        if bwd_fwd_input_list is not None:     # set_value, set_value_with_tensor, set_value_grad is not supported
+            assert len(fwd_input_list) == len(bwd_fwd_input_list), "Configuration of forward op and backward op is not match."
+            for i in range(len(bwd_fwd_input_list)):
+                if bwd_fwd_input_list[i] in bwd_output_list_new:
+                    input_grad_semantic_list.append("true")
+                else:
+                    input_grad_semantic_list.append("false")
+        else:
+            input_grad_semantic_list = ["false" for i in range(len(fwd_input_list))]
+
+    return input_grad_semantic_list
+
+def OpMutableAttributeGradSemanticCheck(op_info, op_info_items):
+    mutable_attribute_grad_semantic_list = []
+    fwd_mutable_attribute_list = op_info.mutable_attribute_name_list
+
+    bwd_op_name = op_info.backward_name
+    if (bwd_op_name is None) or (bwd_op_name not in op_info_items.keys()):
+        mutable_attribute_grad_semantic_list = ["false" for i in range(len(fwd_mutable_attribute_list))]
+    else:
+        bwd_op_info = op_info_items[bwd_op_name]
+
+        bwd_output_list = bwd_op_info.output_name_list
+        bwd_output_list_new = []
+        for bwd_output in bwd_output_list:
+            bwd_output_list_new.append(bwd_output[:-5])
+
+        for i in range(len(fwd_mutable_attribute_list)):
+            if fwd_mutable_attribute_list[i] in bwd_output_list_new:
+                mutable_attribute_grad_semantic_list.append("true")
+            else:
+                mutable_attribute_grad_semantic_list.append("false")        
+    
+    return mutable_attribute_grad_semantic_list
+
+
 def OpGenerator(
     op_yaml_files,
     op_compat_yaml_file,
@@ -719,12 +785,15 @@ def OpGenerator(
         op_info_items[op['name']] = OpInfoParser(
             op, op_compat_parser.get_compat(op['name'])
         )
+
+
     # (3) CodeGen: Traverse op_info_items and generate
     ops_name_list = []  # all op class name store in this list
     ops_declare_list = []  # all op class declare store in this list
     ops_defined_list = []  # all op class defined store in this list
     ops_vjp_defined_list = []  # all op vjp static interface defination
     for key, op_info in op_info_items.items():
+
         # get op inputs info
         op_input_name_list = op_info.input_name_list
         op_input_type_list = op_info.input_type_list
@@ -779,6 +848,10 @@ def OpGenerator(
             op_interfaces += ["paddle::dialect::VjpInterface"]
         exclusive_interface_str = gen_exclusive_interface_str(op_info)
 
+        # check op inputs and mutable_attributes grad semantics
+        input_grad_semantic_list = OpInputsGradSemanticCheck(op_info, op_info_items)
+        mutable_attribute_grad_semantic_list = OpMutableAttributeGradSemanticCheck(op_info, op_info_items)
+        
         # If op has inplace info, we will generate inplace op and non-inplace op.
         for op_name in op_info.op_phi_name:
             if op_name in _NO_NEED_GEN_OPS:
@@ -957,6 +1030,7 @@ def OpGenerator(
                         optional=op_input_optional_list[idx],
                         no_need_buffer=op_input_no_need_buffer_list[idx],
                         is_mutable_attribute='false',
+                        with_grad_semantic=input_grad_semantic_list[idx],
                     )
                 )
             for idx in range(len(op_mutable_attribute_name_list)):
@@ -967,6 +1041,7 @@ def OpGenerator(
                         optional='false',
                         no_need_buffer='false',
                         is_mutable_attribute='true',
+                        with_grad_semantic=mutable_attribute_grad_semantic_list[idx],
                     )
                 )
             if len(input_info_list) > 0:
