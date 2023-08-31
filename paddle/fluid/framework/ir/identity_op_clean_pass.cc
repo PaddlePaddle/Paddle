@@ -129,11 +129,8 @@ FindTwoCastOpPattern::FindTwoCastOpPattern(PDPattern* pattern,
                             ->assert_is_op_output("cast", "Out")
                             ->assert_more([](Node* x) {
                               const auto& var_type = x->Var()->GetDataType();
-                              if (var_type == proto::VarType::INT32 ||
-                                  var_type == proto::VarType::INT64) {
-                                return false;
-                              }
-                              return true;
+                              return var_type != proto::VarType::INT32 &&
+                                     var_type != proto::VarType::INT64;
                             });
   auto* cast_op_2 = pattern->NewNode(cast_op_2_repr())->assert_is_op("cast");
   auto* cast_op_2_out = pattern->NewNode(cast_op_2_out_repr())->assert_is_var();
