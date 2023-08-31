@@ -356,13 +356,16 @@ class Converter:
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import numpy as np
+                >>> import paddle
+                >>> from paddle.distributed.auto_parallel.static.converter import Converter
                 >>> partition_tensor_list = [(np.array([[[1.11, 1.12]]]), [[0,1],[0,1],[0,2]])]
                 >>> tensor = np.array([[[1.13, 1.14]]])
                 >>> partition_index = [[0,1],[0,1],[2,4]]
+                >>> complete_shape = [3, 2]
 
-                >>> _merge_tensor(partition_tensor_list, tensor, partition_index)
+                >>> Converter.merge(partition_tensor_list, tensor, partition_index, complete_shape)
                 >>> print(partition_tensor_list)
-                [(np.array([[[1.11, 1.12, 1.13, 1.14]]]), [[0,1],[0,1],[0,4]])]
+                [(array([[[1.11, 1.12, 1.13, 1.14]]]), [[0, 1], [0, 1], [0, 4]])]
         """
         from .reshard import Resharder
 
@@ -412,26 +415,27 @@ class Converter:
     @staticmethod
     def split(complete_tensor, partition_index_list, length):
         """
-        Slice a complete tensor.
+                Slice a complete tensor.
 
-        Returns:
-            sliced_tensor_list(list): sliced tensors with 'partition_index_list'
+                Returns:
+                    sliced_tensor_list(list): sliced tensors with 'partition_index_list'
+        >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                Examples:
+                    .. code-block:: python
 
-        Examples:
-            .. code-block:: python
 
-                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
-                >>> import numpy as np
-                >>> complete_tensor = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
-                >>> rank = 2
-                >>> complete_shape = [1, 1, 6]
-                >>> dims_mapping = [-1, -1, 0]
-                >>> process_shape = [3]
-                >>> process_group = [0, 1, 2]
+                        >>> import numpy as np
+                        >>> from paddle.distributed.auto_parallel.static.converter import Converter
+                        >>> complete_tensor = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
+                        >>> rank = 2
+                        >>> complete_shape = [1, 1, 6]
+                        >>> dims_mapping = [-1, -1, 0]
+                        >>> process_shape = [3]
+                        >>> process_group = [0, 1, 2]
 
-                >>> sliced_tensor_list = split(complete_tensor, [[], [], [2, 4]], 3)
-                >>> print(sliced_tensor_list)
-                [array([[[1.11, 1.12]]]), array([[[1.13, 1.14]]]), array([[[1.15, 1.16]]])]
+                        >>> sliced_tensor_list = Converter.split(complete_tensor, [[], [], [2, 4]], 3)
+                        >>> print(sliced_tensor_list)
+                        [array([[[1.11, 1.12]]]), array([[[1.13, 1.14]]]), array([[[1.15, 1.16]]])]
         """
         sliced_tensor_list = []
         axis = len(complete_tensor.shape) - length
@@ -513,7 +517,7 @@ class Converter:
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import numpy as np
-                >>> from paddle.distributed.auto_parallel.static.utils import _get_sliced_index
+                >>> from paddle.distributed.auto_parallel.static.converter import Converter
                 >>> complete_tensor = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
                 >>> rank = 2
                 >>> complete_shape = [1, 1, 6]
@@ -521,11 +525,7 @@ class Converter:
                 >>> process_shape = [3]
                 >>> process_group = [0, 1, 2]
 
-                >>> slice_tensor = _slice_tensor(complete_tensor, [[], [], [2, 4]], 3)
-                >>> print(slice_tensor)
-                [array([[[1.11, 1.12]]]), array([[[1.13, 1.14]]]), array([[[1.15, 1.16]]])]
-
-                >>> index = _get_sliced_index(rank, complete_shape, dims_mapping,
+                >>> index = Converter._get_sliced_index(rank, complete_shape, dims_mapping,
                 ...                                 process_shape, process_group)
                 >>> print(index)
                 2
