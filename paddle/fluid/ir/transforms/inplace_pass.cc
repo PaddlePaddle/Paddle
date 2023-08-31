@@ -42,6 +42,13 @@ bool ValueCanBeDeleted(ir::Value value) {
          value.type().isa<paddle::dialect::SelectedRowsType>();
 }
 
+bool ValueCanDoInplace(ir::Type input_type, ir::Type output_type) {
+  if (input_type != output_type) {
+    return false;
+  }
+  return true;
+}
+
 bool IsNoNeedBufferValue(ir::Operation* op, ir::Value value) {
   ir::OpInfo op_info = op->info();
   auto yaml_interface =
@@ -211,6 +218,12 @@ std::unordered_map<ir::Operation*, ir::OpInfo> GetInplaceOp(ir::Block* block) {
     for (auto& kv : inplace_out_2_in) {
       int out_slot = kv.first;
       int in_slot = kv.second;
+      if (!ValueCanDoInplace(op->operand_source(in_slot).type(),
+                             op->result(out_slot).type())) {
+        can_do_inplace = false;
+        break;
+      }
+
       if (valid_values.count(op->operand_source(in_slot)) == 0) {
         can_do_inplace = false;
         break;
