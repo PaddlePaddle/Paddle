@@ -15,17 +15,22 @@
 #pragma once
 
 #include <cstdint>
-#include <vector>
+#include <memory>
+#include <string>
 
 namespace phi {
-class DenseTensor;
-class DeviceContext;
-
 namespace distributed {
+class Store;
 
-DenseTensor ReshardAllGatherFunctor(DeviceContext* dev_ctx,
-                                    const DenseTensor& input,
-                                    const std::vector<int64_t>& process_ids);
+int64_t GetCurGlobalRank();
+
+std::string GetMasterAddr();
+
+int64_t GetGlobalWorldSize();
+
+uint16_t GetMasterPort();
+
+std::shared_ptr<Store> CreateOrGetGlobalTCPStore();
 
 }  // namespace distributed
 }  // namespace phi
