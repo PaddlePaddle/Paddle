@@ -1551,22 +1551,26 @@ struct LeakyReluGradGradFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct ThresholdedReluFunctor : public BaseActivationFunctor<T> {
   float threshold;
+  float value;
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
+    return {{"threshold", &threshold}, {"value", &value}};
   }
 
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
     auto th = static_cast<T>(threshold);  // NOLINT
-    out.device(d) = (x > th).template cast<T>() * x;
+    auto v = static_cast<T>(value);
+    out.device(d) =
+      (x > th).template cast<T>() * x + (x <= th).template cast<T>() * v;
   }
 };
 
 template <typename T>
 struct ThresholdedReluGradFunctor : public BaseActivationFunctor<T> {
   float threshold;
+  float value;
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
+    return {{"threshold", &threshold}, {"value", &value}};
   }
 
   template <typename Device,
@@ -3477,16 +3481,16 @@ struct CudaHardTanhGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct CudaThresholdedReluFunctor : public BaseActivationFunctor<T> {
-  T zero = static_cast<T>(0.0f);
   float threshold;
+  float value;
 
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
+    return {{"threshold", &threshold}, {"value", &value}};
   }
 
-  // thresholded_relu(x) = x > threshold ? x : 0
+  // thresholded_relu(x, threshold, value) = x > threshold ? x : value
   __device__ __forceinline__ T operator()(const T x) const {
-    return x > static_cast<T>(threshold) ? x : zero;
+    return x > static_cast<T>(threshold) ? x : static_cast<T>(value);
   }
 };
 
@@ -3494,9 +3498,10 @@ template <typename T>
 struct CudaThresholdedReluGradFunctor : public BaseActivationFunctor<T> {
   T zero = static_cast<T>(0.0f);
   float threshold;
+  float value;
 
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
+    return {{"threshold", &threshold}, {"value", &value}};
   }
 
   // dx = x > threshold ? dout : 0

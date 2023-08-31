@@ -155,9 +155,6 @@ DEFINE_CPU_ACTIVATION_GRAD_KERNEL_NODEP(Ceil, ZeroGradFunctor);
 DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
                                                LeakyReluGradFunctor,
                                                alpha);
-DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(ThresholdedRelu,
-                                               ThresholdedReluGradFunctor,
-                                               threshold);
 DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(SoftShrink,
                                                SoftShrinkGradFunctor,
                                                lambda);
@@ -174,6 +171,11 @@ DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(HardTanh,
                                                HardTanhGradFunctor,
                                                t_min,
                                                t_max);
+
+DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(ThresholdedRelu,
+                                               ThresholdedReluGradFunctor,
+                                               threshold,
+                                               value);
 
 DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(STanh,
                                                STanhGradFunctor,

@@ -1462,7 +1462,7 @@ def tanhshrink(x, name=None):
         return out
 
 
-def thresholded_relu(x, threshold=1.0, name=None):
+def thresholded_relu(x, threshold=1.0, value=0.0, name=None):
     r"""
     thresholded relu activation.
 
@@ -1472,7 +1472,7 @@ def thresholded_relu(x, threshold=1.0, name=None):
             \left\{
                 \begin{array}{rl}
                 x,& \text{if } \ x > threshold \\
-                0,& \text{otherwise}
+                value,& \text{otherwise}
                 \end{array}
             \right.
 
@@ -1480,6 +1480,7 @@ def thresholded_relu(x, threshold=1.0, name=None):
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
         threshold (float, optional): The value of threshold for thresholded_relu. Default is 1.0
+        value (float, optional): The value to replace with when x is less than threshold. Default is 0.0
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1499,7 +1500,7 @@ def thresholded_relu(x, threshold=1.0, name=None):
     """
 
     if in_dynamic_mode():
-        return _C_ops.thresholded_relu(x, threshold)
+        return _C_ops.thresholded_relu(x, threshold, value)
     else:
         check_variable_and_dtype(
             x,
@@ -1513,19 +1514,19 @@ def thresholded_relu(x, threshold=1.0, name=None):
             type='thresholded_relu',
             inputs={'X': x},
             outputs={'Out': out},
-            attrs={'threshold': threshold},
+            attrs={'threshold': threshold, 'value': value},
         )
         return out
 
 
 @inplace_apis_in_dygraph_only
-def thresholded_relu_(x, threshold=1.0, name=None):
+def thresholded_relu_(x, threshold=1.0, value=0.0, name=None):
     r"""
     Inplace version of ``thresholded_relu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`paddle_nn_functional_thresholded_relu`.
     """
     if in_dynamic_mode():
-        return _C_ops.thresholded_relu_(x, threshold)
+        return _C_ops.thresholded_relu_(x, threshold, value)
 
 
 def log_softmax(x, axis=-1, dtype=None, name=None):

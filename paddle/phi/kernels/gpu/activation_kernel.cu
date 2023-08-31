@@ -123,9 +123,6 @@ DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Expm1, CudaExpm1Functor)
 
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, CudaLeakyReluFunctor, alpha)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LogitCUDA, CudaLogitFunctor, eps)
-DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
-                                     CudaThresholdedReluFunctor,
-                                     threshold)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink,
                                      CudaHardShrinkFunctor,
                                      threshold)
@@ -138,6 +135,10 @@ DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(HardTanh,
                                      CudaHardTanhFunctor,
                                      t_min,
                                      t_max)
+DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(ThresholdedRelu,
+                                     CudaThresholdedReluFunctor,
+                                     threshold,
+                                     value)
 DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(Stanh, CudaSTanhFunctor, scale_a, scale_b)
 DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(Softplus,
                                      CudaSoftplusFunctor,
