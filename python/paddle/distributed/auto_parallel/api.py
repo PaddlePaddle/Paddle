@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Callable
+
 import paddle
+import paddle.distributed as dist
+from paddle import nn
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.framework import core
 
@@ -24,7 +28,7 @@ from paddle.framework import core
 class DistAttr(core.TensorDistAttr):
     """
     DistAttr specifies how tensors are distributed or sliced on ProcessMesh.
-        
+
     Args:
         mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
         sharding_specs(list[str|None]): The specification describing how to shard the Tensor.
@@ -125,39 +129,130 @@ def shard_tensor(
             "The `paddle.distributed.shard_tensor` for static mode will be implemented later."
         )
 
-def dtensor_from_fn(
-        fn, dist_attr, *args, **kwargs
-):
+
+def dtensor_from_fn(fn, dist_attr, *args, **kwargs):
     """
     Construct a Distributed Tensor from a function of arguments.
 
     Args:
         fn (callable): A callable function that takes arguments of Distributed Tensor and returns tensor.
-        dist_attr(paddle.distributed.DistAttr): Specify how tensors are distributed or sliced on ProcessMesh.
-        *args: A list of arguments to be passed to the ``fn`` function.
-        **kwargs: A list of arguments to be passed to the ``fn`` function.
+        dist_attr (paddle.distributed.DistAttr): Specify how tensors are distributed or sliced on ProcessMesh.
+        *args (tuple): A tuple of arguments to be passed to the ``fn`` function.
+        **kwargs (dict): A dict of arguments to be passed to the ``fn`` function.
 
     Retruns:
-        Tensor: A Tensor constructed from ``fn`` with distributed attributes.       
+        Tensor: A Tensor constructed from ``fn`` with distributed attributes.
 
     Examples:
 
-    .. code-block:: python     
+    .. code-block:: python
 
-        import paddle
-        import paddle.distribute as dist
-
-        def generate_tensor():
-            return paddle.ones(shape=[2, 3])
-
-        # Create a distributed attribute
-        mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
-        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
-
-        # Call the function dtensor_from_fn with dist_attr parameter
-        d_tensor = dist.dtensor_from_fn(paddle.ones, dist_attr=dist_attr, shape=[2, 3])
-
-        print(d_tensor)
-    """ 
+        >>> import paddle
+        >>> import paddle.distribute as dist
+        >>> # Create a distributed attribute
+        >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        >>> dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None])
+        >>> # Call the function dtensor_from_fn with dist_attr parameter
+        >>> d_tensor = dist.dtensor_from_fn(paddle.ones, dist_attr=dist_attr, shape=[1])
+        >>> print(d_tensor)
+    """
     tensor = fn(*args, **kwargs)
     return shard_tensor(tensor, dist_attr=dist_attr)
+
+
+def shard_layer(
+    model: nn.Layer,
+    process_mesh: dist.ProcessMesh,
+    shard_fn: Callable = None,
+    input_fn: Callable = None,
+    output_fn: Callable = None,
+) -> nn.Layer:
+    """
+    This function converts all model parameters to DistTensor parameters
+    according to the `shard_fn` specified. It could also control the input or
+    output of the module by specifying the `input_fn` and `output_fn`.
+
+    Args:
+        model(nn.Layer): Model constructed by users using paddle.nn.Layer.
+        process_mesh(ProcessMesh): ProcessMesh information to be placed in this model.
+        shard_fn(Callable): Function for splitting model parameters. If not specified, by default we copy all parameters of the model across ProcessMesh.
+        input_fn(Callable): Specify the partition distribution of the input, input_fn will serve for the Layer as forward_pre_hook.
+        ouput_fn(Callable): Specify the partition distribution of the output, output_fn will serve for the Layer as forward_post_hook. By default we do not do any partitioning.
+
+    Returns:
+        model:model with DistTensor parameters
+
+    Examples:
+
+    ..code-block:: python
+
+        >>> import paddle
+        >>> import paddle.distributed as dist
+        >>> mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+
+        >>> class MLP(paddle.nn.Layer):
+        ...     def __init__(self, ):
+        ...         super.__init__()
+        ...         self.fc1 = nn.Linear(8, 8)
+        ...         elf.fc2 = nn.Linear(8, 8)
+
+        ...     def forward(self, input):
+        ...         return self.fc2(self.fc1(input))
+
+        >>> def shard_params_func(model_name, model):
+        ...     dist_attr = dist.TensorDistAttr(shard_spec==['x', 'y'], mesh=mesh)
+        ...     if model_name == 'fc1':
+        ...         model.weight = dist.shard_tensor(model.weight, dist_attr)
+
+        >>> model = MLP()
+        >>> model = dist.shard_layer(model, shard_params_func)
+
+        >>> print(model)
+    """
+    process_mesh = process_mesh or process_mesh.get_current_process_mesh()
+
+    def replicate_model_params_buffers(m: nn.model, mesh: process_mesh) -> None:
+        full_replicate = [paddle.dtensor.Replicate()] * mesh.ndim
+        for key, param in m._parameters.items():
+            if param is not None and not isinstance(
+                param, paddle.dtensor.DTensor
+            ):
+                m.register_parameter(
+                    key,
+                    nn.Parameter(
+                        paddle.dtensor.distribute_tensor(
+                            param.data, mesh, full_replicate
+                        )
+                    ),
+                )
+        for key, buffer in m._buffers.items():
+            if buffer is not None and not isinstance(
+                buffer, paddle.dtensor.DTensor
+            ):
+                m._buffers[key] = paddle.dtensor.distribute_tensor(
+                    buffer, mesh, full_replicate
+                )
+
+    if shard_fn is None:
+        # if shard_fn not specified, by default replicate
+        # all model params
+        for name, submod in model.named_modules():
+            replicate_model_params_buffers(submod, process_mesh)
+    else:
+        # apply shard_fn to submodules
+        for name, submod in model.named_modules():
+            shard_fn(name, submod, process_mesh)
+            replicate_model_params_buffers(submod, process_mesh)
+
+    # register input_fn as model forward pre hook
+    if input_fn is not None:
+        model.register_forward_pre_hook(
+            lambda _, inputs: input_fn(inputs, process_mesh)
+        )
+    # register input_fn as model forward hook
+    if output_fn is not None:
+        model.register_forward_hook(
+            lambda mod, inputs, outputs: output_fn(outputs, process_mesh)
+        )
+
+    return model
