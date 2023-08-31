@@ -59,13 +59,7 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_manual_op.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
 
-namespace paddle {{
-namespace dialect {{
-
-extern std::unordered_map<std::string, std::vector<PdOpSig>> legacy_op_to_pd_ops_map;
-
-}} // namespace dialect
-}} // namespace paddle
+{legacy_op_to_pd_ops_map}
 
 {input}
 
@@ -73,6 +67,15 @@ extern std::unordered_map<std::string, std::vector<PdOpSig>> legacy_op_to_pd_ops
 #endif
 """
 
+LEGACY_OP_TO_PD_OPS_MAP_H = """
+namespace paddle {{
+namespace dialect {{
+
+extern std::unordered_map<std::string, std::vector<PdOpSig>> legacy_op_to_pd_ops_map;
+
+}} // namespace dialect
+}} // namespace paddle
+"""
 GET_OP_LIST_TEMPALTE = """{}
 """
 
@@ -1306,12 +1309,17 @@ def OpGenerator(
 
     head_file_str = ""
     head_file_str += "".join(ops_declare_list)  # Add op class
+    if dialect_name == "pd":
+        legacy_op_to_pd_ops_map = LEGACY_OP_TO_PD_OPS_MAP_H
+    else:
+        legacy_op_to_pd_ops_map = ""
     for name in reversed(namespaces):
         head_file_str = NAMESPACE_GARD_TEMPLATE.format(
             namespace=name, input=head_file_str
         )  # Add namespaces
     head_file_str = H_FILE_TEMPLATE.format(
         op_declare=op_list_str,
+        legacy_op_to_pd_ops_map=legacy_op_to_pd_ops_map,
         input=head_file_str,
         declare_type_id=declare_type_id_str,
     )  # Add head
@@ -1327,9 +1335,13 @@ def OpGenerator(
     for op in ops_name_with_namespace_list:
         define_type_id_str += DEFINE_OP_TYPE_ID.format(op_name=op)
 
-    legacy_op_to_pd_ops_map_str = LEGACY_OP_TO_PD_OPS_MAPS.format(
-        maps=", \r".join(legacy_op_to_pd_ops_list)
-    )
+    if dialect_name == "pd":
+        legacy_op_to_pd_ops_map_str = LEGACY_OP_TO_PD_OPS_MAPS.format(
+            maps=", \r".join(legacy_op_to_pd_ops_list)
+        )
+    else:
+        legacy_op_to_pd_ops_map_str = ""
+
     source_file_str = CC_FILE_TEMPLATE.format(
         legacy_op_to_pd_ops_map=legacy_op_to_pd_ops_map_str,
         h_file=op_def_h_file[:-4],
