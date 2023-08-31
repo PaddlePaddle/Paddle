@@ -2129,77 +2129,11 @@ void MatmulInferMeta(const MetaTensor& x,
   auto ddim_out = phi::make_ddim(new_dims);
 
   out->set_dims(ddim_out);
-  out->set_dtype(x.dtype());
-  out->set_layout(x.layout());
-}
-
-void MatmulInt8InferMeta(const MetaTensor& x,
-                         const MetaTensor& y,
-                         bool trans_x,
-                         bool trans_y,
-                         MetaTensor* out) {
-  std::vector<int64_t> dims_x = phi::vectorize(x.dims());
-  std::vector<int64_t> dims_y = phi::vectorize(y.dims());
-  auto ndims_x = dims_x.size();
-  auto ndims_y = dims_y.size();
-  PADDLE_ENFORCE_GT(ndims_x,
-                    0UL,
-                    phi::errors::InvalidArgument(
-                        "The Input(x) dims size must be greater than 0,"
-                        " but reviced dims size is 0. "));
-  PADDLE_ENFORCE_GT(ndims_y,
-                    0UL,
-                    phi::errors::InvalidArgument(
-                        "The Input(y) dims size must be greater than 0,"
-                        " but reviced dims size is 0. "));
-
-  bool x_broadcasted = false, y_broadcasted = false;
-  if (ndims_x == 1) {
-    dims_x.insert(dims_x.begin(), 1);
-    ndims_x = 2;
-    x_broadcasted = true;
-  }
-
-  if (ndims_y == 1) {
-    dims_y.push_back(1);
-    ndims_y = 2;
-    y_broadcasted = true;
-  }
-
-  size_t M, N;
-  if (trans_x) {
-    M = dims_x[ndims_x - 1];
+  if (x.dtype() == phi::DataType::INT8) {
+    out->set_dtype(phi::DataType::INT32);
   } else {
-    M = dims_x[ndims_x - 2];
+    out->set_dtype(x.dtype());
   }
-  if (trans_y) {
-    N = dims_y[ndims_y - 2];
-  } else {
-    N = dims_y[ndims_y - 1];
-  }
-
-  std::vector<int64_t> new_dims;
-  if (ndims_x > ndims_y) {
-    new_dims.assign(dims_x.begin(), dims_x.end() - 2);
-  } else if (ndims_x < ndims_y) {
-    new_dims.assign(dims_y.begin(), dims_y.end() - 2);
-  } else {
-    new_dims.reserve(ndims_x);
-    for (size_t i = 0; i < ndims_x - 2; ++i) {
-      new_dims.push_back(std::max(dims_x[i], dims_y[i]));
-    }
-  }
-  if (!x_broadcasted) {
-    new_dims.push_back(M);
-  }
-  if (!y_broadcasted) {
-    new_dims.push_back(N);
-  }
-
-  auto ddim_out = phi::make_ddim(new_dims);
-
-  out->set_dims(ddim_out);
-  out->set_dtype(phi::DataType::INT32);
   out->set_layout(x.layout());
 }
 
@@ -2274,82 +2208,11 @@ void MatmulWithFlattenInferMeta(const MetaTensor& x,
   }
 
   out->set_dims(phi::make_ddim(output_dims));
-  out->set_dtype(x.dtype());
-  out->share_lod(x);
-}
-
-void MatmulWithFlattenInt8InferMeta(const MetaTensor& x,
-                                    const MetaTensor& y,
-                                    int x_num_col_dims,
-                                    int y_num_col_dims,
-                                    MetaTensor* out) {
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
-
-  VLOG(3) << "int8 mul operator x.shape=" << x_dims << " y.shape=" << y_dims
-          << " x_num_col_dims=" << x_num_col_dims
-          << " y_num_col_dims=" << y_num_col_dims;
-
-  PADDLE_ENFORCE_NE(phi::product(y_dims),
-                    0,
-                    phi::errors::PreconditionNotMet(
-                        "The Input variable Y has not "
-                        "been initialized. You may need to confirm "
-                        "if you put exe.run(startup_program) "
-                        "after optimizer.minimize function."));
-  PADDLE_ENFORCE_GT(
-      x_dims.size(),
-      x_num_col_dims,
-      phi::errors::InvalidArgument(
-          "The input tensor X's dimensions of int8 MulOp "
-          "should be larger than x_num_col_dims. But received X's "
-          "dimensions = %d, X's shape = [%s], x_num_col_dims = %d.",
-          x_dims.size(),
-          x_dims,
-          x_num_col_dims));
-  PADDLE_ENFORCE_GT(
-      y_dims.size(),
-      y_num_col_dims,
-      phi::errors::InvalidArgument(
-          "The input tensor Y's dimensions of int8 MulOp "
-          "should be larger than y_num_col_dims. But received Y's "
-          "dimensions = %d, Y's shape = [%s], y_num_col_dims = %d.",
-          y_dims.size(),
-          y_dims,
-          y_num_col_dims));
-
-  auto x_mat_dims = phi::flatten_to_2d(x_dims, x_num_col_dims);
-  auto y_mat_dims = phi::flatten_to_2d(y_dims, y_num_col_dims);
-
-  PADDLE_ENFORCE_EQ(
-      x_mat_dims[1],
-      y_mat_dims[0],
-      phi::errors::InvalidArgument(
-          "After flatten the input tensor X and Y to 2-D dimensions matrix "
-          "X1 and Y1, the matrix X1's width must be equal with matrix Y1's "
-          "height. But received X's shape = [%s], X1's shape = [%s], X1's "
-          "width = %s; Y's shape = [%s], Y1's shape = [%s], Y1's height = "
-          "%s.",
-          x_dims,
-          x_mat_dims,
-          x_mat_dims[1],
-          y_dims,
-          y_mat_dims,
-          y_mat_dims[0]));
-  std::vector<int64_t> output_dims;
-  output_dims.reserve(
-      static_cast<size_t>(x_num_col_dims + y_dims.size() - y_num_col_dims));
-
-  for (int i = 0; i < x_num_col_dims; ++i) {
-    output_dims.push_back(x_dims[i]);
+  if (x.dtype() == phi::DataType::INT8) {
+    out->set_dtype(phi::DataType::INT32);
+  } else {
+    out->set_dtype(x.dtype());
   }
-
-  for (int i = y_num_col_dims; i < y_dims.size(); ++i) {
-    output_dims.push_back(y_dims[i]);
-  }
-
-  out->set_dims(phi::make_ddim(output_dims));
-  out->set_dtype(phi::DataType::INT32);
   out->share_lod(x);
 }
 

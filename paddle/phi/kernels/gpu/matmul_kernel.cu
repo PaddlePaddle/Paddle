@@ -30,10 +30,12 @@ PD_REGISTER_KERNEL(matmul,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
-
-PD_REGISTER_KERNEL(
-    matmul_int8, GPU, ALL_LAYOUT, phi::MatmulInt8Kernel, int8_t) {}
+                   phi::dtype::complex<double>,
+                   int8_t) {
+  if (kernel_key.dtype() == phi::DataType::INT8) {
+    kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
+  }
+}
 
 PD_REGISTER_KERNEL(matmul_with_flatten,
                    GPU,
@@ -42,10 +44,9 @@ PD_REGISTER_KERNEL(matmul_with_flatten,
                    float,
                    double,
                    phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
-
-PD_REGISTER_KERNEL(matmul_with_flatten_int8,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::MatmulWithFlattenInt8Kernel,
-                   int8_t) {}
+                   phi::dtype::float16,
+                   int8_t) {
+  if (kernel_key.dtype() == phi::DataType::INT8) {
+    kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
+  }
+}

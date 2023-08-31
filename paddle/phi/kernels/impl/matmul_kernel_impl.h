@@ -971,7 +971,7 @@ void MatMulFunction(const Context& ctx,
 }
 
 template <typename Context>
-void MatMulInt8Function(const Context& ctx,
+bool MatMulInt8Function(const Context& ctx,
                         const DenseTensor& x,
                         const DenseTensor& y,
                         const std::vector<std::int64_t>& x_dims,
@@ -979,24 +979,21 @@ void MatMulInt8Function(const Context& ctx,
                         DenseTensor* out,
                         bool trans_x,
                         bool trans_y) {
-  PADDLE_ENFORCE_EQ(
-      x.dtype(),
-      DataType::INT8,
-      phi::errors::InvalidArgument(
-          "The type of input(x) used in int8 matmul must be (%s) does not "
-          "match the "
-          "type of data (%s) currently contained in the container.",
-          phi::CppTypeToDataType<int8_t>::Type(),
-          x.dtype()));
-  PADDLE_ENFORCE_EQ(
-      y.dtype(),
-      DataType::INT8,
-      phi::errors::InvalidArgument(
-          "The type of input(y) used in int8 matmul must be (%s) does not "
-          "match the "
-          "type of data (%s) currently contained in the container.",
-          phi::CppTypeToDataType<int8_t>::Type(),
-          y.dtype()));
+  return false;
+}
+
+template <>
+bool inline MatMulInt8Function(const phi::GPUContext& ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& y,
+                               const std::vector<std::int64_t>& x_dims,
+                               const std::vector<std::int64_t>& y_dims,
+                               DenseTensor* out,
+                               bool trans_x,
+                               bool trans_y) {
+  if (x.dtype() != DataType::INT8 || y.dtype() != DataType::INT8) {
+    return false;
+  }
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
   const int x_ndim = x_dims.size();
   const int y_ndim = y_dims.size();
@@ -1028,14 +1025,9 @@ void MatMulInt8Function(const Context& ctx,
             "received Y has [%d] elements",
             M,
             N));
-    PADDLE_ENFORCE_EQ(
-        (M % 4 == 0),
-        true,
-        phi::errors::InvalidArgument(
-            "The dimension size K used in int8 matmul must be a multiple of 4 "
-            "does not "
-            "match the size (%d) currently contained in the container.",
-            M));
+    if (!(M % 4 == 0)) {
+      return false;
+    }
 
     out->Resize(phi::make_ddim({}));
     ctx.template Alloc<int32_t>(out);
@@ -1049,7 +1041,7 @@ void MatMulInt8Function(const Context& ctx,
                 false,
                 true,
                 &matmul_planner);
-    return;
+    return true;
   }
   if (x_ndim == 1) {
     const int N = x.numel();
@@ -1064,14 +1056,9 @@ void MatMulInt8Function(const Context& ctx,
                                        N,
                                        y_ndim - 1,
                                        y_dims[y_ndim - 1]));
-      PADDLE_ENFORCE_EQ(
-          (N % 4 == 0),
-          true,
-          phi::errors::InvalidArgument(
-              "The dimension size K used in int8 matmul must be a multiple of "
-              "4 does not "
-              "match the size (%d) currently contained in the container.",
-              N));
+      if (!(N % 4 == 0)) {
+        return false;
+      }
     } else {
       PADDLE_ENFORCE_EQ(
           y_dims[y_ndim - 2],
@@ -1084,14 +1071,9 @@ void MatMulInt8Function(const Context& ctx,
                                        y_ndim - 2,
                                        y_dims[y_ndim - 2]));
       const int M = y.numel() / N;
-      PADDLE_ENFORCE_EQ(
-          (M == 1 || M % 4 == 0),
-          true,
-          phi::errors::InvalidArgument(
-              "The dimension size M used in int8 matmul must be 1 or a "
-              "multiple of 4 does not "
-              "match the size (%d) currently contained in the container.",
-              M));
+      if (!(M == 1 || M % 4 == 0)) {
+        return false;
+      }
     }
     std::vector<std::int64_t> out_dims(y_ndim - 1);
     if (trans_y) {
@@ -1145,7 +1127,7 @@ void MatMulInt8Function(const Context& ctx,
                              &matmul_planner);
       }
     }
-    return;
+    return true;
   }
 
   if (y_ndim == 1) {
@@ -1162,14 +1144,9 @@ void MatMulInt8Function(const Context& ctx,
                                        x_ndim - 2,
                                        x_dims[x_ndim - 2]));
       const int M = x.numel() / N;
-      PADDLE_ENFORCE_EQ(
-          (M == 1 || M % 4 == 0),
-          true,
-          phi::errors::InvalidArgument(
-              "The dimension size M used in int8 matmul must be 1 or a "
-              "multiple of 4 does not "
-              "match the size (%d) currently contained in the container.",
-              M));
+      if (!((M == 1 || M % 4 == 0))) {
+        return false;
+      }
     } else {
       PADDLE_ENFORCE_EQ(
           x_dims[x_ndim - 1],
@@ -1181,14 +1158,9 @@ void MatMulInt8Function(const Context& ctx,
                                        N,
                                        x_ndim - 1,
                                        x_dims[x_ndim - 1]));
-      PADDLE_ENFORCE_EQ(
-          (N % 4 == 0),
-          true,
-          phi::errors::InvalidArgument(
-              "The dimension size K used in int8 matmul must be a multiple of "
-              "4 does not "
-              "match the size (%d) currently contained in the container.",
-              N));
+      if (N % 4 != 0) {
+        return false;
+      }
     }
     std::vector<std::int64_t> out_dims(x_ndim - 1);
     if (trans_x) {
@@ -1243,7 +1215,7 @@ void MatMulInt8Function(const Context& ctx,
                   false,
                   &matmul_planner);
     }
-    return;
+    return true;
   }
 
   const int M = trans_x ? x_dims[x_ndim - 1] : x_dims[x_ndim - 2];
@@ -1311,77 +1283,28 @@ void MatMulInt8Function(const Context& ctx,
                       out_broadcast_dims.cbegin() + batch_dim,
                       1LL,
                       std::multiplies<std::int64_t>());
-  if (out_batch_size == 0) return;
+  if (out_batch_size == 0) return true;
 
   if (x_batch_size == 1 && M == 1 && trans_y) {
-    PADDLE_ENFORCE_EQ(
-        (K % 4 == 0),
-        true,
-        phi::errors::InvalidArgument(
-            "The dimension size K used in int8 matmul must be a multiple of 4 "
-            "does not "
-            "match the size (%d) currently contained in the container.",
-            K));
+    if (!(K % 4 == 0)) {
+      return false;
+    }
   } else if (!trans_x && !trans_y) {
-    PADDLE_ENFORCE_EQ(
-        (N % 4 == 0 || N == 1),
-        true,
-        phi::errors::InvalidArgument(
-            "The dimension size N used in int8 matmul must be 1 or a multiple "
-            "of 4 does not "
-            "match the size (%d) currently contained in the container.",
-            N));
-    PADDLE_ENFORCE_EQ(
-        (K % 4 == 0),
-        true,
-        phi::errors::InvalidArgument(
-            "The dimension size K used in int8 matmul must be a multiple of 4 "
-            "does not "
-            "match the size (%d) currently contained in the container.",
-            K));
+    if (!(N % 4 == 0 || N == 1) || !(K % 4 == 0)) {
+      return false;
+    }
   } else if (!trans_x && trans_y) {
-    PADDLE_ENFORCE_EQ(
-        (K % 4 == 0),
-        true,
-        phi::errors::InvalidArgument(
-            "The dimension size K used in int8 matmul must be a multiple of 4 "
-            "does not "
-            "match the size (%d) currently contained in the container.",
-            K));
+    if (!(K % 4 == 0)) {
+      return false;
+    }
   } else if (trans_x && !trans_y) {
-    PADDLE_ENFORCE_EQ(
-        (M % 4 == 0 || M == 1),
-        true,
-        phi::errors::InvalidArgument(
-            "The dimension size M used in int8 matmul must be 1 or a multiple "
-            "of 4 does not "
-            "match the size (%d) currently contained in the container.",
-            M));
-    PADDLE_ENFORCE_EQ(
-        (N % 4 == 0 || N == 1),
-        true,
-        phi::errors::InvalidArgument(
-            "The dimension size N used in int8 matmul must be 1 or a multiple "
-            "of 4 does not "
-            "match the size (%d) currently contained in the container.",
-            N));
+    if (!(M % 4 == 0 || M == 1) || !(N % 4 == 0 || N == 1)) {
+      return false;
+    }
   } else {
-    PADDLE_ENFORCE_EQ(
-        (M % 4 == 0 || M == 1),
-        true,
-        phi::errors::InvalidArgument(
-            "The dimension size M used in int8 matmul must be 1 or a multiple "
-            "of 4 does not "
-            "match the size (%d) currently contained in the container.",
-            M));
-    PADDLE_ENFORCE_EQ(
-        (K % 4 == 0),
-        true,
-        phi::errors::InvalidArgument(
-            "The dimension size K used in int8 matmul must be a multiple of 4 "
-            "does not "
-            "match the size (%d) currently contained in the container.",
-            K));
+    if (!(M % 4 == 0 || M == 1) || !(K % 4 == 0)) {
+      return false;
+    }
   }
   if (x_batch_size == 1 && y_batch_size == 1) {
     blaslt::Run(ctx,
@@ -1495,10 +1418,9 @@ void MatMulInt8Function(const Context& ctx,
                          out_batch_size,
                          &matmul_planner);
   }
-
+  return true;
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "MatmulInt8 op needs paddle with cuda and cuda version >= 11.6"));
+  return false;
 #endif
 }
 
@@ -1512,6 +1434,11 @@ MatmulJudgeDtypeKernel(const Context& ctx,
                        DenseTensor* out,
                        bool transpose_x,
                        bool transpose_y) {
+  bool try_matmul_int8 = MatMulInt8Function<Context>(
+      ctx, x, y, x_dims, y_dims, out, transpose_x, transpose_y);
+  if (try_matmul_int8) {
+    return;
+  }
   auto x_tmp = phi::Cast<T, Context>(ctx, x, phi::DataType::FLOAT32);
   auto y_tmp = phi::Cast<T, Context>(ctx, y, phi::DataType::FLOAT32);
   DenseTensor out_tmp;
@@ -1558,29 +1485,6 @@ void MatmulKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void MatmulInt8Kernel(const Context& ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& y,
-                      bool transpose_x,
-                      bool transpose_y,
-                      DenseTensor* out) {
-  PADDLE_ENFORCE_NE(
-      phi::product(x.dims()),
-      0,
-      phi::errors::InvalidArgument("The Input(X) dims size must not be equal 0,"
-                                   " but reviced dims size is 0. "));
-  PADDLE_ENFORCE_NE(
-      phi::product(y.dims()),
-      0,
-      phi::errors::InvalidArgument("The Input(Y) dims size must not be equal 0,"
-                                   " but reviced dims size is 0. "));
-  const std::vector<std::int64_t> x_dims = vectorize(x.dims());
-  const std::vector<std::int64_t> y_dims = vectorize(y.dims());
-  MatMulInt8Function<Context>(
-      ctx, x, y, x_dims, y_dims, out, transpose_x, transpose_y);
-}
-
-template <typename T, typename Context>
 void MatmulWithFlattenKernel(const Context& dev_ctx,
                              const DenseTensor& x,
                              const DenseTensor& y,
@@ -1606,18 +1510,19 @@ void MatmulWithFlattenKernel(const Context& dev_ctx,
   }
 }
 
-template <typename T, typename Context>
-void MatmulWithFlattenInt8Kernel(const Context& dev_ctx,
-                                 const DenseTensor& x,
-                                 const DenseTensor& y,
-                                 int x_num_col_dims,
-                                 int y_num_col_dims,
-                                 DenseTensor* out) {
+template <>
+void inline MatmulWithFlattenKernel<int8_t, phi::GPUContext>(
+    const phi::GPUContext& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& y,
+    int x_num_col_dims,
+    int y_num_col_dims,
+    DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
       x.dtype(),
       DataType::INT8,
       phi::errors::InvalidArgument(
-          "The type of input(x) used in int8 matmul_with_flatten must be (%s) "
+          "The type of input(x) used in int8 mul must be (%s) "
           "does not match the "
           "type of data (%s) currently contained in the container.",
           phi::CppTypeToDataType<int8_t>::Type(),
@@ -1626,7 +1531,7 @@ void MatmulWithFlattenInt8Kernel(const Context& dev_ctx,
       y.dtype(),
       DataType::INT8,
       phi::errors::InvalidArgument(
-          "The type of input(y) used in int8 matmul_with_flatten must be (%s) "
+          "The type of input(y) used in int8 mul must be (%s) "
           "does not match the "
           "type of data (%s) currently contained in the container.",
           phi::CppTypeToDataType<int8_t>::Type(),
@@ -1647,22 +1552,20 @@ void MatmulWithFlattenInt8Kernel(const Context& dev_ctx,
           x_matrix.dims()[1],
           y_matrix.dims()[0]));
 
-  PADDLE_ENFORCE_EQ(
-      (y_matrix.dims()[1] % 4 == 0 || y_matrix.dims()[1] == 1),
-      true,
-      phi::errors::InvalidArgument(
-          "The dimension size N used in int8 matmul_with_flatten must be 1 or "
-          "a multiple of 4 does not "
-          "match the size (%d) currently contained in the container.",
-          y_matrix.dims()[1]));
-  PADDLE_ENFORCE_EQ(
-      (x_matrix.dims()[1] % 4 == 0),
-      true,
-      phi::errors::InvalidArgument(
-          "The dimension size K used in int8 matmul_with_flatten must be a "
-          "multiple of 4 does not "
-          "match the size (%d) currently contained in the container.",
-          x_matrix.dims()[1]));
+  PADDLE_ENFORCE_EQ((y_matrix.dims()[1] % 4 == 0 || y_matrix.dims()[1] == 1),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The dimension size N used in int8 mul must be 1"
+                        "or a multiple of 4 does not match the size (%d)"
+                        "currently contained in the container.",
+                        y_matrix.dims()[1]));
+  PADDLE_ENFORCE_EQ((x_matrix.dims()[1] % 4 == 0),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The dimension size K used in int8 mul must be a"
+                        "multiple of 4 does not match the size (%d) currently"
+                        "contained in the container.",
+                        x_matrix.dims()[1]));
 
   dev_ctx.template Alloc<int32_t>(out);
   auto z_dim = out->dims();
