@@ -247,14 +247,14 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
         the same as the number of inputs to ``backward_fn``.
 
         2. If ``backward_fn`` is None, ``stop_gradient`` attr of all Variable in ``inputs`` is expected to be True.
-        Otherwise it might get unexpected results in backward pass.
+        Otherwise it might get unexpected results in backward propagation.
 
         3. This API can only be used under static graph mode.
 
     Args:
-        forward_fn (callable): A callable to be performed in forward pass
+        forward_fn (callable): A callable to be performed in forward propagation
         inputs (list[Variable]): The list of if input Variable to the ``forward_fn``
-        backward_fn (callable, optional): A callable to be performed in backward pass
+        backward_fn (callable, optional): A callable to be performed in backward propagation. Default: None, which means no need to do backward propagation.
         name (str, optional): The default value is ``None`` . Normally users
             don't have to set this parameter.
 
@@ -262,57 +262,48 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
         Variable|list(Variable)|tuple(Variable): returns the output of ``forward_fn(inputs)``
 
     Examples:
-        .. code-block: python
+        .. code-block:: python
 
-            import paddle
-            import numpy as np
+                >>> import paddle
+                >>> import numpy as np
 
-            #
-            # pseudocode:
-            # y = exp(x)
-            # dx = 2 * exp(dy)
-            #
+                >>> paddle.enable_static()
 
-            paddle.enable_static()
+                >>> def forward_fn(x):
+                ...     return paddle.exp(x)
 
-            def forward_fn(x):
-                return paddle.exp(x)
+                >>> def backward_fn(dy):
+                ...     return 2 * paddle.exp(dy)
 
-            def backward_fn(dy):
-                return 2 * paddle.exp(dy)
+                >>> main_program = paddle.static.Program()
+                >>> start_program = paddle.static.Program()
 
-            main_program = paddle.static.Program()
-            start_program = paddle.static.Program()
+                >>> place = paddle.CPUPlace()
+                >>> exe = paddle.static.Executor(place)
+                >>> with paddle.static.program_guard(main_program, start_program):
+                ...     data = paddle.static.data(name="X", shape=[None, 5], dtype="float32")
+                ...     data.stop_gradient = False
+                ...     ret = paddle.static.nn.static_pylayer(forward_fn, [data], backward_fn)
+                ...     data_grad = paddle.static.gradients([ret], data)[0]
 
-            place = paddle.CPUPlace()
-            exe = paddle.static.Executor(place)
-            with paddle.static.program_guard(main_program, start_program):
-                data = paddle.static.data(name="X", shape=[None, 5], dtype="float32")
-                data.stop_gradient = False
-                ret = paddle.static.nn.static_pylayer(forward_fn, [data], backward_fn)
-                data_grad = paddle.static.gradients([ret], data)[0]
-
-            exe = paddle.static.Executor(place)
-            exe.run(start_program)
-            x = np.array([[1.0, 2.0, 3.0, 4.0, 5.0]], dtype=np.float32)
-            x, x_grad, y = exe.run(
-                main_program,
-                feed={"X": x},
-                fetch_list=[
-                    data.name,
-                    data_grad.name,
-                    ret.name
-                ],
-            )
-            # x is Numpy
-            # x.data = [[1.0, 2.0, 3.0, 4.0, 5.0]]
-            # x.shape = [1, 5]
-            # y is Numpy
-            # y.data = [[2.7182817, 7.389056, 20.085537, 54.59815, 148.41316]]
-            # y.shape = [1, 5]
-            # x_grad is Numpy
-            # x_grad.data = [[5.4365635, 5.4365635, 5.4365635, 5.4365635, 5.4365635]]
-            # x_grad.shape = [1, 5]
+                >>> exe.run(start_program)
+                >>> x = np.array([[1.0, 2.0, 3.0, 4.0, 5.0]], dtype=np.float32)
+                >>> x, x_grad, y = exe.run(
+                ...     main_program,
+                ...     feed={"X": x},
+                ...     fetch_list=[
+                ...         data.name,
+                ...         data_grad.name,
+                ...         ret.name
+                ...     ],
+                ... )
+                
+                >>> print(x)
+                [[1. 2. 3. 4. 5.]]
+                >>> print(x_grad)
+                [[5.4365635 5.4365635 5.4365635 5.4365635 5.4365635]]
+                >>> print(y)
+                [[  2.7182817   7.389056   20.085537   54.59815   148.41316  ]]
     """
     assert (
         in_dygraph_mode() is False
