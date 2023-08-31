@@ -32,7 +32,7 @@ namespace distributed {
  * Vector of input tensors and output tensors used as argumnets (for both
  *inferfw & inferbw) to support any kind of op.
  *
- **/
+ */
 SpmdInfo ReplicatedSpmdInferForward(
     const std::vector<const DistMetaTensor*>& ins,
     const std::vector<const DistMetaTensor*>& outs);
