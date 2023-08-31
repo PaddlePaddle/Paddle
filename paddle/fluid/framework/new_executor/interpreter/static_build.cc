@@ -56,8 +56,7 @@ namespace paddle {
 namespace framework {
 namespace interpreter {
 
-bool BlockCanBeStaticBuilt(const framework::BlockDesc& block,
-                           const phi::Place& place) {
+bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
   // in_black_list = (kernelCode >> 7) & 1
   // is_operator_base = (kernelCode >> 6) & 1
   // is_custom_op = (kernelCode >> 5) & 1
