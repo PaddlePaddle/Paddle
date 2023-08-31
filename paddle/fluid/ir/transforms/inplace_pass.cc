@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/ir/transforms/inplace_pass.h"
 
+#include "/ssd2/zhangbo54/Paddle/paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_dialect.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/trait/inplace.h"
@@ -23,43 +24,52 @@
 #include "paddle/ir/pass/pass.h"
 #include "paddle/ir/pass/pass_registry.h"
 
-bool ValueCanBeDeleted(ir::Value value) {
-  bool is_persisable = false;
-  auto* defined_op = value.GetDefiningOp();
-  if (defined_op->HasAttribute(kAttrIsPersisable)) {
-    ir::OpResult result = value.dyn_cast<::ir::OpResult>();
-    is_persisable = defined_op->attribute(kAttrIsPersisable)
-                        .dyn_cast<::ir::ArrayAttribute>()
-                        .AsVector()[result.GetResultIndex()]
-                        .dyn_cast<::ir::BoolAttribute>()
-                        .data();
-  }
-  if (is_persisable) {
+bool CanBeDeleted(ir::Value value) {
+  // NOTE(zhangbo): Which kind of value can be deleted?
+  // (1) Value's type needs to be AllocatedDenseTensorType or
+  // AllocatedSelectedRowsType; (2) Value's is not persisable.
+  if (!value.type().isa<paddle::dialect::AllocatedDenseTensorType>() &&
+      !value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
     return false;
   }
-
-  return value.type().isa<paddle::dialect::DenseTensorType>() ||
-         value.type().isa<paddle::dialect::SelectedRowsType>();
+  if (value.GetDefiningOp()->HasAttribute(kAttrIsPersisable)) {
+    return !(value.GetDefiningOp()
+                 ->attribute(kAttrIsPersisable)
+                 .dyn_cast<::ir::ArrayAttribute>()
+                 .AsVector()[value.dyn_cast<::ir::OpResult>().GetResultIndex()]
+                 .dyn_cast<::ir::BoolAttribute>()
+                 .data());
+  }
+  return true;
 }
 
-bool ValueCanDoInplace(ir::Type input_type, ir::Type output_type) {
-  if (input_type != output_type) {
+bool CanDoInplace(const std::unordered_set<ir::Value>& eager_dels,
+                  ir::Value input,
+                  ir::Value output) {
+  if (input.type() != output.type()) {
+    return false;
+  }
+  if (eager_dels.count(input) == 0 || eager_dels.count(output) == 0) {
     return false;
   }
   return true;
 }
 
-bool IsNoNeedBufferValue(ir::Operation* op, ir::Value value) {
-  ir::OpInfo op_info = op->info();
-  auto yaml_interface =
-      op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
-  if (yaml_interface) {
-    paddle::dialect::OpYamlInfoParser yaml_info_parser(
-        yaml_interface->get_op_info_());
-    auto& no_need_buffer_ids = yaml_info_parser.NoNeedBufferIds();
-    for (size_t id = 0; id < no_need_buffer_ids.size(); id++) {
-      if (value == op->operand_source(no_need_buffer_ids[id])) {
-        return true;
+bool IsNoNeedBuffer(ir::Operation* op, ir::Value value) {
+  auto op_name =
+      op->attributes().at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
+  ir::OpInfo op_info = ir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
+  if (op_info) {
+    auto info_interface =
+        op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
+    if (info_interface) {
+      paddle::dialect::OpYamlInfoParser info_parser(
+          info_interface->get_op_info_());
+      auto& no_need_buffer_ids = info_parser.NoNeedBufferIds();
+      for (size_t id = 0; id < no_need_buffer_ids.size(); id++) {
+        if (value == op->operand_source(no_need_buffer_ids[id])) {
+          return true;
+        }
       }
     }
   }
@@ -67,188 +77,172 @@ bool IsNoNeedBufferValue(ir::Operation* op, ir::Value value) {
 }
 
 std::unordered_set<ir::Value> GetSkipDeletionValues(ir::Block* block) {
-  std::unordered_set<ir::Value> skip_gc_values;
+  std::unordered_set<ir::Value> skip_dels;
   // NOTE(zhangbo): pd.feed's output and pd.fetch's input can not be eager
   // deleted.
   for (auto& op : *block) {
     if (op->name() == "pd.feed" || op->name() == "pd.data") {
-      skip_gc_values.insert(op->result(0));
+      skip_dels.insert(op->result(0));
       continue;
     }
     if (op->name() == "pd.fetch" || op->name() == "pd.shadow_output") {
-      skip_gc_values.insert(op->operand_source(0));
+      skip_dels.insert(op->operand_source(0));
       continue;
     }
   }
-  return skip_gc_values;
+  return skip_dels;
 }
 
+// NOTE(zhangbo): For inplace Pass, currently only the kernel_dialect operator
+// is supported. Therefore, this function only returns the values in the
+// kernel_dialect operator that can be eager deleted.
 std::unordered_map<ir::Operation*, std::unordered_set<ir::Value>>
 GetEagerDeletionValues(ir::Block* block) {
-  std::unordered_set<ir::Value> skip_deletion_values =
-      GetSkipDeletionValues(block);
-  std::unordered_map<ir::Value, ir::Operation*> value_2_op;
+  std::unordered_set<ir::Value> skip_dels = GetSkipDeletionValues(block);
+
+  std::unordered_map<ir::Value, ir::Operation*> del_value_2_op;
   for (auto& op : *block) {
+    if (op->dialect()->name().compare(
+            paddle::dialect::PaddleKernelDialect::name()) != 0) {
+      VLOG(6) << op->name()
+              << "is not a kernel_dialect op, inplace only support "
+                 "kernel_dialect operators";
+      continue;
+    }
+
+    auto op_attrs = op->attributes();
+    PADDLE_ENFORCE(op_attrs.count("op_name") > 0,
+                   paddle::platform::errors::Fatal(
+                       "kernel_dialect op should own an 'op_name' attribute."));
+    auto upper_op_name =
+        op_attrs.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
+
     for (size_t i = 0; i < op->num_operands(); ++i) {
-      auto input_value = op->operand_source(i);
-      if (skip_deletion_values.count(input_value) > 0) {
+      auto input = op->operand_source(i);
+      if (skip_dels.count(input) > 0) {
         VLOG(6) << "The " << i << "-th input value of the Operation("
-                << op->name() << ") can not be deleted.";
+                << upper_op_name << ") can not be deleted.";
         continue;
       }
-      if (!input_value || !ValueCanBeDeleted(input_value)) {
+      if (!input || !CanBeDeleted(input)) {
         VLOG(6) << "The " << i << "-th input value of the Operation("
-                << op->name() << ") can not be deleted.";
+                << upper_op_name << ") can not be deleted.";
         continue;
       }
-      if (IsNoNeedBufferValue(op, input_value)) {
+      if (IsNoNeedBuffer(op, input)) {
         VLOG(6) << "The " << i << "-th input value of the Operation("
-                << op->name() << ") is no need buffer, so can not be deleted.";
+                << upper_op_name
+                << ") is no need buffer, so can not be deleted.";
         continue;
       }
-      value_2_op[input_value] = op;
+      del_value_2_op[input] = op;
     }
 
     for (size_t i = 0; i < op->num_results(); ++i) {
-      ir::Value output_value = op->result(i);
-      if (ValueCanBeDeleted(output_value)) {
-        value_2_op[output_value] = op;
+      ir::Value output = op->result(i);
+      if (CanBeDeleted(output)) {
+        del_value_2_op[output] = op;
       }
     }
   }
 
-  std::unordered_map<ir::Operation*, std::unordered_set<ir::Value>>
-      eager_deletion_values;
-  for (auto& value_op_pair : value_2_op) {
-    ir::Value value = value_op_pair.first;
-    ir::Operation* op = value_op_pair.second;
-    eager_deletion_values[op].insert(value);
+  std::unordered_map<ir::Operation*, std::unordered_set<ir::Value>> eager_dels;
+  for (auto& kv : del_value_2_op) {
+    eager_dels[kv.second].insert(kv.first);
   }
 
-  return eager_deletion_values;
+  return eager_dels;
 }
 
-std::unordered_map<ir::Operation*, ir::OpInfo> GetInplaceOp(ir::Block* block) {
-  const auto eager_deletion_input_values = GetEagerDeletionValues(block);
+std::unordered_map<ir::Operation*, std::string> GetInplaceOps(
+    ir::Block* block) {
+  const auto eager_dels = GetEagerDeletionValues(block);
+
+  std::unordered_map<ir::Operation*, std::string> inplace_ops;
 
   std::unordered_set<ir::Value> visited_values;
   std::unordered_set<ir::Value> reused_input_values;
   std::unordered_set<ir::Value> reused_output_values;
 
-  std::unordered_map<ir::Operation*, ir::OpInfo> inplace_ops;
   for (auto& op : *block) {
     for (size_t i = 0; i < op->num_operands(); ++i) {
       visited_values.insert(op->operand_source(i));
     }
 
-    if (eager_deletion_input_values.count(op) == 0) {
-      VLOG(6)
-          << "Operation " << op->name()
-          << " not in eager_deletion_input_values, so that can not do inplace.";
+    if (op->dialect()->name().compare(
+            paddle::dialect::PaddleKernelDialect::name()) != 0) {
+      VLOG(6) << op->name()
+              << "is not a kernel_dialect op, inplace only support "
+                 "kernel_dialect operators";
       for (size_t i = 0; i < op->num_results(); ++i) {
         visited_values.insert(op->result(i));
       }
       continue;
     }
 
-    if (op->HasTrait<paddle::dialect::InplaceTrait>()) {
-      VLOG(6) << "Operation " << op->name() << " is already an inplace op.";
+    auto upper_op_attrs = op->attributes();
+    auto upper_op_name =
+        upper_op_attrs.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
+    ir::OpInfo upper_op_info =
+        ir::IrContext::Instance()->GetRegisteredOpInfo(upper_op_name);
+    ir::OpInfo upper_inplace_op_info =
+        ir::IrContext::Instance()->GetRegisteredOpInfo(upper_op_name + "_");
+
+    if (eager_dels.count(op) == 0 || (!upper_inplace_op_info)) {
+      VLOG(6) << upper_op_name
+              << "'s value can't delete or doesn't have inplace op, so that "
+                 "can't do inplace.";
       for (size_t i = 0; i < op->num_results(); ++i) {
         visited_values.insert(op->result(i));
       }
+      continue;
+    }
 
+    if (upper_op_attrs.count("is_inplace") != 0 &&
+        upper_op_attrs.at("is_inplace").dyn_cast<ir::BoolAttribute>().data()) {
+      VLOG(6) << upper_op_name << " is already an inplace op.";
       for (size_t i = 0; i < op->num_operands(); ++i) {
         reused_input_values.insert(op->operand_source(i));
       }
       for (size_t i = 0; i < op->num_results(); ++i) {
         reused_output_values.insert(op->result(i));
-      }
-
-      continue;
-    }
-
-    std::string inplace_op_name = op->name() + "_";
-    ir::OpInfo inplace_op_info =
-        ir::IrContext::Instance()->GetRegisteredOpInfo(inplace_op_name);
-    if (!inplace_op_info) {
-      VLOG(6) << "Operation " << op->name()
-              << " doesn't have inplace version, so that can not do inplace.";
-      for (size_t i = 0; i < op->num_results(); ++i) {
         visited_values.insert(op->result(i));
       }
       continue;
     }
 
-    auto inplace_op_yaml_interface =
-        inplace_op_info
+    auto upper_inplace_op_interface =
+        upper_inplace_op_info
             .GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
     PADDLE_ENFORCE_NOT_NULL(
-        inplace_op_yaml_interface,
+        upper_inplace_op_interface,
         phi::errors::PreconditionNotMet(
-            "can not find OpYamlInfoInterface from [%s]", op->name() + "_"));
-    paddle::dialect::OpYamlInfoParser inplace_op_yaml_info_parser(
-        inplace_op_yaml_interface->get_op_info_());
+            "can not find OpYamlInfoInterface from [%s]", upper_op_name + "_"));
+    paddle::dialect::OpYamlInfoParser upper_inplace_op_info_parser(
+        upper_inplace_op_interface->get_op_info_());
     std::unordered_map<int, int> inplace_out_2_in =
-        inplace_op_yaml_info_parser.GetInplaceIdMap();
-
-    std::unordered_set<ir::Value> op_inputs;
-    for (size_t i = 0; i < op->num_operands(); ++i) {
-      op_inputs.insert(op->operand_source(i));
-    }
-    std::unordered_set<ir::Value> op_outputs;
-    for (size_t i = 0; i < op->num_results(); ++i) {
-      op_outputs.insert(op->result(i));
-    }
-    std::unordered_set<ir::Value> valid_values;
-    for (const auto& value : eager_deletion_input_values.at(op)) {
-      if (value && op_inputs.count(value) != 0 &&
-          op_outputs.count(value) == 0) {
-        valid_values.insert(value);
-      }
-    }
-
-    if (valid_values.empty()) {
-      for (size_t i = 0; i < op->num_results(); ++i) {
-        visited_values.insert(op->result(i));
-      }
-      continue;
-    }
+        upper_inplace_op_info_parser.GetInplaceIdMap();
 
     bool can_do_inplace = true;
     for (auto& kv : inplace_out_2_in) {
       int out_slot = kv.first;
       int in_slot = kv.second;
-      if (!ValueCanDoInplace(op->operand_source(in_slot).type(),
-                             op->result(out_slot).type())) {
-        can_do_inplace = false;
-        break;
-      }
-
-      if (valid_values.count(op->operand_source(in_slot)) == 0) {
-        can_do_inplace = false;
-        break;
-      }
-
-      if (visited_values.count(op->result(out_slot)) > 0) {
-        can_do_inplace = false;
-        break;
-      }
-
-      if (!ValueCanBeDeleted(op->result(out_slot))) {
-        can_do_inplace = false;
-        break;
-      }
-
-      if (reused_input_values.count(op->operand_source(in_slot)) > 0 ||
-          reused_output_values.count(op->result(out_slot)) > 0) {
+      if ((!CanDoInplace(eager_dels.at(op),
+                         op->operand_source(in_slot),
+                         op->result(out_slot))) ||
+          (visited_values.count(op->result(out_slot)) > 0) ||
+          (!CanBeDeleted(op->result(out_slot))) ||
+          (reused_input_values.count(op->operand_source(in_slot)) > 0) ||
+          (reused_output_values.count(op->result(out_slot)) > 0)) {
         can_do_inplace = false;
         break;
       }
     }
 
     if (can_do_inplace) {
-      inplace_ops[op] = inplace_op_info;
-      VLOG(6) << op->name() << " has inplace version op: " << inplace_op_name;
+      inplace_ops[op] = upper_op_name + "_";
+      VLOG(6) << upper_op_name
+              << " will change to inplace version op: " << upper_op_name + "_";
       for (auto& kv : inplace_out_2_in) {
         reused_input_values.insert(op->operand_source(kv.second));
         reused_output_values.insert(op->result(kv.first));
@@ -270,39 +264,27 @@ class InplacePass : public ir::Pass {
     auto module_op = op->dyn_cast<ir::ModuleOp>();
     IR_ENFORCE(module_op, "DcePass should run on module op.");
     auto* block = module_op.block();
-    auto inplace_ops = GetInplaceOp(block);
+
+    auto inplace_ops = GetInplaceOps(block);
 
     for (auto kv : inplace_ops) {
-      ir::Operation* origin_op = kv.first;
-      VLOG(6) << "Do inplace for: " << origin_op->name();
-
+      VLOG(6) << "Do inplace for: "
+              << op->attributes()
+                     .at("op_name")
+                     .dyn_cast<::ir::StrAttribute>()
+                     .AsString();
       ir::Block::iterator insert_pos =
-          std::find(block->begin(), block->end(), origin_op);
-
+          std::find(block->begin(), block->end(), kv.first);
       IR_ENFORCE(insert_pos != block->end(),
                  "Operator %s not found in block.",
-                 origin_op->name());
+                 kv.first->name());
 
-      std::vector<ir::OpResult> inputs;
-      for (size_t i = 0; i < origin_op->num_operands(); ++i) {
-        inputs.emplace_back(
-            origin_op->operand_source(i).dyn_cast<::ir::OpResult>());
-      }
-
-      std::vector<ir::Type> outputs;
-      for (size_t i = 0; i < origin_op->num_results(); ++i) {
-        outputs.emplace_back(origin_op->result(i).type());
-      }
-
-      ir::Operation* inplace_op = ir::Operation::Create(
-          inputs, origin_op->attributes(), outputs, kv.second);
-
-      for (size_t i = 0; i < origin_op->num_results(); ++i) {
-        origin_op->result(i).ReplaceAllUsesWith(inplace_op->result(i));
-      }
-
-      block->insert(insert_pos, inplace_op);
-      block->erase(insert_pos);
+      kv.first->set_attribute(
+          "op_name",
+          ir::StrAttribute::get(ir::IrContext::Instance(), kv.second));
+      kv.first->set_attribute(
+          "is_inplace",
+          ir::BoolAttribute::get(ir::IrContext::Instance(), true));
     }
   }
 
