@@ -18,10 +18,10 @@
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_all_gather_functor.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_concat_functor.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_split_functor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/kernels/all_gather_kernel.h"
+#include "paddle/phi/kernels/concat_kernel.h"
+#include "paddle/phi/kernels/split_kernel.h"
 
 namespace phi {
 namespace distributed {
@@ -60,17 +60,22 @@ void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
                                const DistTensor& in,
                                const TensorDistAttr& out_dist_attr,
                                DistTensor* out) {
-  const DenseTensor& in_physical_tensor_cur_rank = in.value();
   const auto& in_dist_attr = in.dist_attr();
   const auto& in_dims_mapping = in_dist_attr.dims_mapping();
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& in_process_ids = in_process_mesh.process_ids();
+  auto dtype = in.dtype();
 
   // Since the precondition ensure the out_process_ids is equal to the
   // in_process_ids, so the participate process ids mush equal to either
   // in_process_ids or out_process_ids.
-  DenseTensor out_all_gather = ReshardAllGatherFunctor(
-      dev_ctx, in_physical_tensor_cur_rank, in_process_ids);
+  RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
+                            AllGather,
+                            dtype,
+                            in_process_ids,
+                            in.value(),
+                            in_process_ids.size(),
+                            GetMutableTensor(out));
 
   std::map<int64_t, int64_t> split_axis_to_mesh_axis =
       GetSplitAxisWithDimsMapping(in_dims_mapping);
@@ -79,7 +84,7 @@ void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
   if (split_axis == 0) {
     // If the input dist tensor is shard(0), the subsequent split
     // and concat is unnecessary.
-    set_dist_props(out, out_all_gather, out_all_gather.dims(), out_dist_attr);
+    SetDistProps(out, in.dims(), out_dist_attr);
   } else {
     // Since the result of all_gather always concat the tensor on axis 0,
     // first we need to split the result on axis 0,
@@ -88,21 +93,30 @@ void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
     int64_t num_of_process = in_process_ids.size();
 
     IntArray sections(std::vector<int64_t>(
-        num_of_process,
-        in_physical_tensor_cur_rank.dims()[default_split_axis]));
-    std::vector<DenseTensor> split_out_vec = ReshardSplitFunctor(
-        *dev_ctx, out_all_gather, sections, default_split_axis);
+        num_of_process, in.value().dims()[default_split_axis]));
+    std::vector<DenseTensor> split_out_vec;
+    RESHARD_FUNCTOR(dev_ctx,
+                    Split,
+                    dtype,
+                    out->value(),
+                    sections,
+                    default_split_axis,
+                    &split_out_vec);
 
     // Concat the result after split on correct axis.
     std::vector<const DenseTensor*> concat_input_vec;
     for (const auto& tensor : split_out_vec) {
       concat_input_vec.emplace_back(&tensor);
     }
-    DenseTensor concat_out_tensor =
-        ReshardConcatFunctor(*dev_ctx, concat_input_vec, split_axis);
 
-    set_dist_props(
-        out, concat_out_tensor, concat_out_tensor.dims(), out_dist_attr);
+    RESHARD_FUNCTOR(dev_ctx,
+                    Concat,
+                    dtype,
+                    concat_input_vec,
+                    split_axis,
+                    GetMutableTensor(out));
+
+    SetDistProps(out, in.dims(), out_dist_attr);
   }
 }
 
