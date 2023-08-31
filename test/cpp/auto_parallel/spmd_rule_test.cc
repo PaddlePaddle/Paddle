@@ -463,6 +463,7 @@ TEST(ReplicatedSPMDRule, Ctor) {
   phi::distributed::DistMetaTensor out(phi::make_ddim(out_shape),
                                        out_dist_attr);
 
+  // Only test function calling now, the result checking need to be added later
   // call in vector arguments format
   auto infered_dist_attrs_st = phi::distributed::ReplicatedSpmdInferBackward(
       {&x, &y}, {&out}, {/*trans_x=*/false, /*trans_x=*/false});

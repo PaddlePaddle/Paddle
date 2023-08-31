@@ -76,12 +76,6 @@ struct ReplicatedSpmdArgumentParser
     }
   }
 
-  // deal with attrs
-  // template <typename AttrType>
-  // void operator()(const AttrType& x) {
-  //   attrs.emplace_back(x);
-  // }
-
   template <typename AttrType>
   void operator()(AttrType x) {
     attrs.emplace_back(x);
