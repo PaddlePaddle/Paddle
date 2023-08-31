@@ -28,7 +28,8 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block);
 
 void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
                                           const platform::Place& place,
-                                          Scope* scope);
+                                          Scope* scope,
+                                          bool is_last_op);
 
 void FakeInitializeOutputsForFunctionKernel(
     const framework::OperatorBase& op,
