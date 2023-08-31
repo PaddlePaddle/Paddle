@@ -14,28 +14,24 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
-namespace paddle {
-namespace operators {
-namespace details {
+namespace phi {
 
 template <typename InT, typename OutT>
 struct CastFunctor {
   HOSTDEVICE OutT operator()(InT x) const { return static_cast<OutT>(x); }
 };
-
 template <typename InT, typename OutT, int VecSize>
 static void VecCastKernel(const phi::GPUContext &ctx,
                           const InT *x,
                           OutT *y,
                           size_t n) {
-  auto config = platform::GetGpuLaunchConfig1D(ctx, n, VecSize);
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, n, VecSize);
   auto block = config.GetGridSize();
   auto thread = config.GetBlockSize();
   auto main_offset = n / (VecSize * thread) * VecSize * thread;
@@ -50,8 +46,6 @@ static void VecCastKernel(const phi::GPUContext &ctx,
           in_arr, out_arr, n, main_offset, VecSize, FunctorT());
 }
 
-}  // namespace details
-
 template <typename InT, typename OutT>
 static void LaunchCastKernel(const phi::GPUContext &ctx,
                              const InT *x,
@@ -61,20 +55,19 @@ static void LaunchCastKernel(const phi::GPUContext &ctx,
   PADDLE_ENFORCE_NE(
       static_cast<const void *>(x),
       static_cast<void *>(y),
-      platform::errors::InvalidArgument("Inplace cast is not supported yet."));
+      errors::InvalidArgument("Inplace cast is not supported yet."));
   int vec_size = std::min(phi::GetVectorizedSize(x), phi::GetVectorizedSize(y));
   switch (vec_size) {
     case 4:
-      return details::VecCastKernel<InT, OutT, 4>(ctx, x, y, n);
+      return VecCastKernel<InT, OutT, 4>(ctx, x, y, n);
     case 2:
-      return details::VecCastKernel<InT, OutT, 2>(ctx, x, y, n);
+      return VecCastKernel<InT, OutT, 2>(ctx, x, y, n);
     case 1:
-      return details::VecCastKernel<InT, OutT, 1>(ctx, x, y, n);
+      return VecCastKernel<InT, OutT, 1>(ctx, x, y, n);
     default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "The vectorized size must be 1, 2 or 4."));
+      PADDLE_THROW(
+          errors::InvalidArgument("The vectorized size must be 1, 2 or 4."));
   }
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi
