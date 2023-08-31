@@ -1392,6 +1392,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
     argument_->SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
     argument_->SetTRTMarkOutput(config_.trt_mark_output_);
+    argument_->SetTRTMarkOutputWithId(config_.trt_mark_output_with_id_);
     argument_->SetTRTOutputTensorNames(config_.trt_output_tensor_names_);
     argument_->SetTensorRtDisabledOPs(config_.trt_disabled_ops_);
     argument_->SetTensorRtUseDLA(config_.trt_use_dla_);
@@ -2938,6 +2939,7 @@ USE_TRT_CONVERTER(cumsum)
 USE_TRT_CONVERTER(assign)
 USE_TRT_CONVERTER(unbind)
 USE_TRT_CONVERTER(flip)
+USE_TRT_CONVERTER(share_data)
 #if IS_TRT_VERSION_GE(8522)
 USE_TRT_CONVERTER(flash_multihead_matmul)
 USE_TRT_CONVERTER(cross_multihead_matmul)

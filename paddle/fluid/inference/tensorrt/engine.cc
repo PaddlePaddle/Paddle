@@ -363,38 +363,30 @@ void TensorRTEngine::FreezeNetwork() {
   }
 #endif
 
-#if IS_TRT_VERSION_LT(8000)
-  infer_engine_.reset(infer_builder_->buildEngineWithConfig(
-      *network(), *infer_builder_config_));
-#else
-  ihost_memory_.reset(infer_builder_->buildSerializedNetwork(
-      *network(), *infer_builder_config_));
-  infer_runtime_.reset(createInferRuntime(&logger_));
-  infer_engine_.reset(infer_runtime_->deserializeCudaEngine(
       ihost_memory_->data(), ihost_memory_->size()));
 #endif
 
-  PADDLE_ENFORCE_NOT_NULL(
-      infer_engine_,
-      platform::errors::Fatal(
-          "Build TensorRT cuda engine failed! Please recheck "
-          "you configurations related to paddle-TensorRT."));
+      PADDLE_ENFORCE_NOT_NULL(
+          infer_engine_,
+          platform::errors::Fatal(
+              "Build TensorRT cuda engine failed! Please recheck "
+              "you configurations related to paddle-TensorRT."));
 
-  binding_num_ = infer_engine_->getNbBindings();
-  // reset status for dynamic shape clone
-  if (max_profile_num_ > 1) {
-    infer_context_.clear();
-    cur_profile_num_ = 0;
-  }
-  // for engine context memory sharing
-  if (params_.context_memory_sharing) {
-    inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-        .UpdateContextMemorySize(infer_engine_->getDeviceMemorySize(),
-                                 predictor_id_per_thread);
-  }
-  if (params_.use_inspector) {
-    GetEngineInfo();
-  }
+      binding_num_ = infer_engine_->getNbBindings();
+      // reset status for dynamic shape clone
+      if (max_profile_num_ > 1) {
+        infer_context_.clear();
+        cur_profile_num_ = 0;
+      }
+      // for engine context memory sharing
+      if (params_.context_memory_sharing) {
+        inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
+            .UpdateContextMemorySize(infer_engine_->getDeviceMemorySize(),
+                                     predictor_id_per_thread);
+      }
+      if (params_.use_inspector) {
+        GetEngineInfo();
+      }
 }
 
 nvinfer1::ITensor *TensorRTEngine::DeclareInput(const std::string &name,
