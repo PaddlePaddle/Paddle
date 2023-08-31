@@ -12,8 +12,5 @@ collect_srcs(
   dist_meta_tensor.cc
   inferspmd_utils.cc
   reshard_function.cc
-  reshard_split_functor.cc
-  reshard_concat_functor.cc
-  reshard_all_gather_functor.cc
   r_to_s_reshard_function.cc
   s_to_r_reshard_function.cc)
