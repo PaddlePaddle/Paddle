@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/flags.h"
-DECLARE_bool(dynamic_static_unified_comm);
+PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/framework/convert_utils.h"

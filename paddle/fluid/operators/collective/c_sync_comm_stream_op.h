@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/flags.h"
-DECLARE_bool(dynamic_static_unified_comm);
+PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 #if defined(PADDLE_WITH_XPU_BKCL)
