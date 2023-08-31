@@ -953,13 +953,13 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
 
         # Helper
         indent = GetIndent(2)
-        # NOTE(Aurelius74): DO NOT use make_shared here. Because some Node contains experimental::Scalar
+        # NOTE(Aurelius84): DO NOT use make_shared here. Because some Node contains experimental::Scalar
         # which contains "complex128" as data. "complex128" is memory-aligned manually. But make_shared
         # request MEMALIGN for allocation (Maybe).
         # See https://stackoverflow.com/questions/31228656/how-can-shared-ptr-disrupt-alignment
         # and https://github.com/MRtrix3/mrtrix3/issues/957
-        node_construction_str = f"{indent}auto grad_node = std::shared_ptr<{grad_node_name}>(new {grad_node_name}({num_backward_inputs}, {num_backward_outputs}));"
-        node_assignment_str = f"{indent}grad_node = std::shared_ptr<{grad_node_name}>(new {grad_node_name}({num_backward_inputs}, {num_backward_outputs}));"
+        node_construction_str = f"{indent}auto grad_node = std::shared_ptr<{grad_node_name}>(new {grad_node_name}({num_backward_inputs}, {num_backward_outputs})); // NOLINT"
+        node_assignment_str = f"{indent}grad_node = std::shared_ptr<{grad_node_name}>(new {grad_node_name}({num_backward_inputs}, {num_backward_outputs})); // NOLINT"
 
         # SetAttributes
         set_attributes_list = []
