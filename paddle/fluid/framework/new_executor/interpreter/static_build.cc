@@ -46,16 +46,11 @@ std::set<std::string> StaticBuildBlackList = {
     "cinn_instruction_run" /*: to handle subgraph infermeta*/,
     "cinn_launch" /*: to handle subgraph infermeta*/,
     "run_program" /*: to handle scope output*/,
-    "sparse_sparse_coo_tensor" /*: to handle sparse output*/};
+    "sparse_sparse_coo_tensor" /*: to handle sparse output*/,
+    "shuffle_batch",
+    "shuffle_batch_grad",
+    "distributed_fused_lamb_init"};
 
-// TODO(lizhiyu): This operator list is only for pipeline strategy temporarily.
-std::set<std::string> SkipCheckForPipelineTempList = {"c_broadcast",
-                                                      "c_allreduce_sum",
-                                                      "c_allgather",
-                                                      "layer_norm",
-                                                      "recv_v2",
-                                                      "reshape2_grad",
-                                                      "c_identity"};
 namespace paddle {
 namespace framework {
 namespace interpreter {
@@ -67,15 +62,10 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
   // use_mkldnn = (kernelCode >> 4) & 1
   // has_fluid_kernel = (kernelCode >> 3) & 1
   // has_structed_kernel = (kernelCode >> 2) & 1
-  // need_move_to_phi = (kernelCode >> 1) & 1
   using KernelCode = int8_t;
   std::set<std::pair<std::string, KernelCode>> invalid_ops;
   for (auto& op : block.AllOps()) {
     auto op_type = op->Type();
-    if (SkipCheckForPipelineTempList.find(op_type) !=
-        SkipCheckForPipelineTempList.end()) {
-      continue;
-    }
     const framework::OpInfo& info = OpInfoMap::Instance().Get(op_type);
     auto op_base =
         info.Creator()(op_type, op->Inputs(), op->Outputs(), op->GetAttrMap());
@@ -94,17 +84,16 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     bool has_fluid_kernel = OperatorWithKernel::AllOpKernels().count(op_type);
     bool has_structured_kernel =
         phi::KernelFactory::Instance().HasStructuredKernel(op_type);
-    bool need_move_to_phi = (has_fluid_kernel || has_structured_kernel);
 
-    KernelCode kernel_code =
-        (in_black_list << 7) + (is_operator_base << 6) + (is_custom_op << 5) +
-        (use_mkldnn << 4) + (has_fluid_kernel << 3) +
-        (has_structured_kernel << 2) + (need_move_to_phi << 1);
+    KernelCode kernel_code = (in_black_list << 7) + (is_operator_base << 6) +
+                             (is_custom_op << 5) + (use_mkldnn << 4) +
+                             (has_fluid_kernel << 3) +
+                             (has_structured_kernel << 2);
     if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
       if (in_black_list ||
           (is_operator_base &&
            !OperatorBasesHandledInStaticBuild.count(op_type)) ||
-          is_custom_op || use_mkldnn || need_move_to_phi) {
+          is_custom_op || use_mkldnn) {
         invalid_ops.insert(std::make_pair(op_type, kernel_code));
       }
     }
@@ -119,8 +108,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
          << ", is_custom_op = " << (item.second >> 5 & 1)
          << ", use_mkldnn = " << (item.second >> 4 & 1)
          << ", has_fluid_kernel = " << (item.second >> 3 & 1)
-         << ", has_structed_kerenl = " << (item.second >> 2 & 1)
-         << ", need_move_to_phi = " << (item.second >> 1 & 1) << "]\n";
+         << ", has_structed_kerenl = " << (item.second >> 2 & 1) << "]\n";
     }
     VLOG(1) << ss.str();
   }
@@ -163,6 +151,27 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
   if (op_type == "distributed_fused_lamb" && parameter_name == "ParamOut") {
     VLOG(2) << "Skip fake initialization for: " << parameter_name;
     return false;
+  }
+
+  if (op_type == "fused_bias_residual_layernorm" &&
+      parameter_name == "residual_out") {
+    if (op.HasInputs("residual")) {
+      bool is_residual_empty = op.Input("residual") == kEmptyVarName;
+      bool is_norm_weight_empty = op.Input("norm_weight") == kEmptyVarName;
+      bool is_norm_bias_empty = op.Input("norm_bias") == kEmptyVarName;
+      if (!is_residual_empty) {
+        if (is_norm_weight_empty && is_norm_bias_empty) {
+          VLOG(2) << "Skip fake initialization for: " << parameter_name;
+          return false;
+        }
+      } else {
+        VLOG(2) << "Skip fake initialization for: " << parameter_name;
+        return false;
+      }
+    } else {
+      VLOG(2) << "Skip fake initialization for: " << parameter_name;
+      return false;
+    }
   }
 
   if (op_type == "fake_quantize_range_abs_max") {
@@ -372,6 +381,15 @@ phi::DataType GetInputDType(const RuntimeContext& runtime_ctx,
   return in_tensor->dtype();
 }
 
+bool InputExisted(const RuntimeContext& runtime_ctx,
+                  const std::string& parameter_name) {
+  auto it = runtime_ctx.inputs.find(parameter_name);
+  if (it == runtime_ctx.inputs.end() || it->second.empty()) {
+    return false;
+  }
+  return true;
+}
+
 phi::DataType InferDTypeFromAttr(const framework::OperatorBase& op,
                                  const RuntimeContext& runtime_ctx,
                                  const std::string& attr_name) {
@@ -493,6 +511,20 @@ void FakeInitializeOutputsForFunctionKernel(
               dtype = DataType::INT32;
             } else {
               dtype = DataType::INT64;
+            }
+          } else if (op_type == "fused_bias_residual_layernorm") {
+            auto in_dtype = GetInputDType(runtime_ctx, "x");
+            float quant_scale = op.Attr<float>("quant_scale");
+            if (InputExisted(runtime_ctx, "residual") &&
+                !InputExisted(runtime_ctx, "norm_weight") &&
+                !InputExisted(runtime_ctx, "norm_bias")) {
+              dtype = in_dtype;
+            } else {
+              if (quant_scale > 0.0f) {
+                dtype = DataType::INT8;
+              } else {
+                dtype = in_dtype;
+              }
             }
           } else {
             VLOG(4) << "Get dtype result from InferMeta";

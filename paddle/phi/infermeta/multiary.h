@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
+
 namespace phi {
 
 // Common InferMeta Functions for multiary operators, The format like:
@@ -306,6 +307,18 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
                            bool normalized,
                            MetaTensor* sequencenum,
                            MetaTensor* out);
+
+void FusedBatchNormActInferMeta(const MetaTensor& x,
+                                const MetaTensor& scale,
+                                const MetaTensor& bias,
+                                const MetaTensor& mean,
+                                const MetaTensor& variance,
+                                MetaTensor* y,
+                                MetaTensor* mean_out,
+                                MetaTensor* variance_out,
+                                MetaTensor* saved_mean,
+                                MetaTensor* saved_variance,
+                                MetaTensor* reserve_space);
 
 void FusedBiasActInferMeta(const MetaTensor& x,
                            const MetaTensor& bias,
@@ -800,6 +813,7 @@ void FusedRopeInferMeta(const MetaTensor& q,
 
 void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        const MetaTensor& cache_kv,
+                                       const MetaTensor& bias,
                                        const MetaTensor& src_mask,
                                        const MetaTensor& cum_offsets,
                                        const MetaTensor& sequence_lengths,
@@ -811,6 +825,7 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        int seq_len,
                                        int rotary_emb_dims,
                                        const bool use_neox_rotary_style,
+                                       const std::string& compute_dtype,
                                        const float out_scale,
                                        const int quant_round_type,
                                        const float quant_max_bound,
@@ -818,5 +833,9 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        MetaTensor* out,
                                        MetaTensor* cache_kv_out,
                                        MetaTensor* beam_cache_offset_out);
+
+void FullWithTensorInferMeta(const MetaTensor& shape,
+                             DataType dtype,
+                             MetaTensor* out);
 
 }  // namespace phi

@@ -33,7 +33,6 @@
 namespace paddle {
 namespace inference {
 namespace analysis {
-using string::PrettyLog;
 using string::PrettyLogEndl;
 using string::Style;
 
@@ -100,6 +99,9 @@ void IRPassManager::CreatePasses(Argument *argument,
     pass->Set(
         "mixed_black_list",
         new std::unordered_set<std::string>(argument->mixed_black_list()));
+    pass->Set(
+        "mixed_white_list",
+        new std::unordered_set<std::string>(argument->mixed_white_list()));
     pass->Set("enable_gpu_mixed", new bool(argument->enable_gpu_mixed()));
     pass->Set("enable_custom_device_mixed",
               new bool(argument->enable_custom_device_mixed()));

@@ -14,6 +14,7 @@
 
 #include "paddle/ir/dialect/shape/ir/shape_op.h"
 #include "paddle/ir/core/builtin_attribute.h"
+#include "paddle/ir/core/builtin_type.h"
 
 namespace ir {
 namespace dialect {
@@ -54,7 +55,7 @@ void SymbolicDim::Build(
   argument.AddAttribute("knownNonSizeZero", attr_knownNonSizeZero);
 }
 
-std::string SymbolicDim::getSymName() {
+const std::string SymbolicDim::getSymName() {
   return attribute<ir::StrAttribute>("sym_name").AsString();
 }
 int64_t SymbolicDim::getValue() {
@@ -103,7 +104,94 @@ void SymbolicDim::updateKnownNonSizeZero(bool attrValue) {
       ir::BoolAttribute::get(ir::IrContext::Instance(), attrValue));
 }
 
+bool SymbolicDim::isDynamic() {
+  return getValue() == -100000;
+}  // TODO(zhangbo): getValue() == ShapedType::kDynamic;
+
+bool SymbolicDim::merge(SymbolicDim other) {
+  if (!isDynamic() && !other.isDynamic() && getValue() != other.getValue())
+    return false;
+  if (isDynamic() && !other.isDynamic()) updateValue(other.getValue());
+
+  bool knownNonNegativeFlag =
+      getKnownNonNegative() || other.getKnownNonNegative();
+  bool knownNegativeOneFlag =
+      getKnownNegativeOne() || other.getKnownNegativeOne();
+  bool knownNonSizeOneFlag = getKnownNonSizeOne() ||
+                             other.getKnownNonSizeOne() || knownNegativeOneFlag;
+  bool knownNonSizeZeroFlag = getKnownNonSizeZero() ||
+                              other.getKnownNonSizeZero() ||
+                              knownNegativeOneFlag;
+
+  if (knownNonNegativeFlag && knownNegativeOneFlag) return false;
+
+  updateKnownNonSizeZero(knownNonSizeZeroFlag);
+  updateKnownNonSizeOne(knownNonSizeOneFlag);
+  updateKnownNegativeOne(knownNegativeOneFlag);
+  updateKnownNonNegative(knownNonNegativeFlag);
+
+  return true;
+}
+
+const char *DimOp::attributes_name[attributes_num] = {"name"};  // NOLINT
+
+void DimOp::Build(Builder &builder,
+                  OperationArgument &argument,
+                  const std::string &name) {
+  ir::Attribute attr_name =
+      ir::StrAttribute::get(ir::IrContext::Instance(), name);
+  argument.AddAttribute("name", attr_name);
+  argument.output_types.emplace_back(
+      ir::IndexType::get(ir::IrContext::Instance()));
+}
+
+const std::string DimOp::getName() {
+  return attribute<ir::StrAttribute>("name").AsString();
+}
+
+void DimOp::setName(std::string attrName) {
+  operation()->set_attribute(
+      "name", ir::StrAttribute::get(ir::IrContext::Instance(), attrName));
+}
+
+const char *TieProductEqualOp::attributes_name[attributes_num] = {
+    "lhs_len", "rhs_len"};  // NOLINT
+
+void TieProductEqualOp::Build(Builder &builder,
+                              OperationArgument &argument,
+                              int64_t lhs_len,
+                              int64_t rhs_len,
+                              const std::vector<ir::OpResult> &inputs) {
+  ir::Attribute attr_lhs_len =
+      ir::Int64Attribute::get(ir::IrContext::Instance(), lhs_len);
+  argument.AddAttribute("lhs_len", attr_lhs_len);
+  ir::Attribute attr_rhs_len =
+      ir::Int64Attribute::get(ir::IrContext::Instance(), rhs_len);
+  argument.AddAttribute("rhs_len", attr_rhs_len);
+  argument.inputs = inputs;
+}
+
+std::vector<ir::Value> TieProductEqualOp::getLhs() {
+  int64_t lhs_len = attribute<ir::Int64Attribute>("lhs_len").data();
+  std::vector<ir::Value> res;
+  for (uint32_t idx = 0; idx < lhs_len; idx++) {
+    res.push_back(operand_source(idx));
+  }
+  return res;
+}
+std::vector<ir::Value> TieProductEqualOp::getRhs() {
+  int64_t lhs_len = attribute<ir::Int64Attribute>("lhs_len").data();
+  int64_t rhs_len = attribute<ir::Int64Attribute>("rhs_len").data();
+  std::vector<ir::Value> res;
+  for (uint32_t idx = 0; idx < rhs_len; idx++) {
+    res.push_back(operand_source(lhs_len + idx));
+  }
+  return res;
+}
+
 }  // namespace dialect
 }  // namespace ir
 
 IR_DEFINE_EXPLICIT_TYPE_ID(ir::dialect::SymbolicDim)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::dialect::DimOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::dialect::TieProductEqualOp)

@@ -19,8 +19,8 @@
 #include "paddle/phi/core/enforce.h"
 
 namespace brpc {
-DECLARE_uint64(max_body_size);
-DECLARE_int64(socket_max_unwritten_bytes);
+PD_DECLARE_uint64(max_body_size);
+PD_DECLARE_int64(socket_max_unwritten_bytes);
 }  // namespace brpc
 
 namespace paddle {
