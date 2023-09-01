@@ -35,8 +35,8 @@ def apply_pass():
 
 
 def reset_prog():
-    paddle.fluid.framework.switch_main_program(paddle.static.Program())
-    paddle.fluid.framework.switch_startup_program(paddle.static.Program())
+    paddle.framework.switch_main_program(paddle.static.Program())
+    paddle.framework.switch_startup_program(paddle.static.Program())
     paddle.utils.unique_name.switch()
 
 
@@ -54,7 +54,7 @@ class Test1F1BPass(unittest.TestCase):
         np.random.seed(2021)
         random.seed(2021)
         paddle.distributed.fleet.init(is_collective=True)
-        place = paddle.fluid.CUDAPlace(ParallelEnv().dev_id)
+        place = paddle.CUDAPlace(ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 
     def get_engine(self, mode):
