@@ -270,6 +270,7 @@ void DeviceWorker::InitRandomDumpConfig(const TrainerDesc& desc) {
   bool is_dump_in_simple_mode = desc.is_dump_in_simple_mode();
   if (is_dump_in_simple_mode) {
     dump_mode_ = 3;
+    dump_num_decimals_ = desc.dump_num_decimals();
     return;
   }
   bool enable_random_dump = desc.enable_random_dump();
@@ -283,7 +284,6 @@ void DeviceWorker::InitRandomDumpConfig(const TrainerDesc& desc) {
     }
   }
   dump_interval_ = desc.dump_interval();
-  dump_num_decimals_ = desc.dump_num_decimals();
 }
 
 void DeviceWorker::DumpField(const Scope& scope,
