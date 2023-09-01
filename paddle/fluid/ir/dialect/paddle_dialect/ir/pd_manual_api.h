@@ -22,6 +22,7 @@
 
 namespace paddle {
 namespace dialect {
+ir::OpResult builtin_combine(std::vector<ir::OpResult> x);
 
 ir::OpResult split_grad(std::vector<ir::OpResult> out_grads, ir::OpResult axis);
 

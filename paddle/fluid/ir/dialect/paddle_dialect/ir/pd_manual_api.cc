@@ -19,6 +19,11 @@
 
 namespace paddle {
 namespace dialect {
+ir::OpResult builtin_combine(std::vector<ir::OpResult> x) {
+  auto combine_op =
+      APIBuilder::Instance().GetBuilder()->Build<ir::CombineOp>(x);
+  return combine_op.out();
+}
 ir::OpResult split_grad(std::vector<ir::OpResult> out_grads,
                         ir::OpResult axis) {
   auto combine_op =
