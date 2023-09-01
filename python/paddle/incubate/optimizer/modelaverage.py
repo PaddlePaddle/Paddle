@@ -71,7 +71,7 @@ class ModelAverage(Optimizer):
 
         .. code-block:: python
 
-            >>> #doctest: +SKIP("Cannot get source code by to_static in REPL")
+            >>> # doctest: +SKIP("Cannot get source code by to_static in REPL")
             >>> import numpy as np
             >>> import paddle
             >>> import paddle.nn as nn
