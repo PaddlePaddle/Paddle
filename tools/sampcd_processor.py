@@ -446,7 +446,8 @@ class Xdoctester(DocTester):
 
         stdout_handler = logging.StreamHandler(stream=sys.stdout)
         logger.addHandler(stdout_handler)
-        logger.info("----------------End of the Check--------------------")
+        logger.info("----------------Check results--------------------")
+
         if whl_error is not None and whl_error:
             logger.info("%s is not in whl.", whl_error)
             logger.info("")
@@ -530,6 +531,7 @@ class Xdoctester(DocTester):
                 log_exit(1)
 
         logger.info("Sample code check is successful!")
+        logger.info("----------------End of the Check--------------------")
 
 
 if __name__ == '__main__':
