@@ -66,6 +66,7 @@ class TestAssertVariable(unittest.TestCase):
             dyfunc_assert_variable, x=numpy.array([True]), with_exception=False
         )
 
+    @test_and_compare_with_new_ir(False)
     def test_int_variable(self):
         self._run_dy_static(
             dyfunc_assert_variable, x=numpy.array([0]), with_exception=True

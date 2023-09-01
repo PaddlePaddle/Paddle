@@ -27,6 +27,7 @@
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/hlir/framework/graph_compiler_util.h"
+#include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/runtime/flags.h"
@@ -124,7 +125,7 @@ void ParallelCompiler::Task::Lowering() {
         context->graph
             ->GetMutableAttrs<absl::flat_hash_map<std::string, shape_t>>(
                 "infershape");
-    OpLowerer op_lowerer(dtype_dict, shape_dict, context->target);
+    auto op_lowerer = CreateOpLowerer(dtype_dict, shape_dict, context->target);
     auto& group = context->graph->fusion_groups[group_id];
     VLOG(4) << "Start Lowering Group " << group_id << " at "
             << std::this_thread::get_id() << " :\n"

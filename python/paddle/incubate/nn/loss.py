@@ -49,10 +49,10 @@ def identity_loss(x, reduction="none"):
 
         .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
-            loss = paddle.static.data(name="loss", shape=[-1, 1], dtype="float32")
-            out = paddle.incubate.identity_loss(loss, reduction=1)
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> loss = paddle.static.data(name="loss", shape=[-1, 1], dtype="float32")
+            >>> out = paddle.incubate.identity_loss(loss, reduction=1)
     """
     if isinstance(reduction, str):
         reduction = {"sum": 0, "mean": 1, "none": 2}.get(reduction.lower())

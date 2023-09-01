@@ -1300,3 +1300,18 @@ PHI_DEFINE_EXPORTED_bool(enable_new_ir_api,
 PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_trace_run,
                          false,
                          "Enable new IR in executor");
+
+PHI_DEFINE_EXPORTED_bool(enable_record_memory, false, "Enable memory recorder");
+
+PHI_DEFINE_EXPORTED_bool(
+    eager_delete_scope,
+    true,
+    "Delete local scope eagerly. It will reduce GPU memory usage but "
+    "slow down the destruction of variables.(around 1% performance harm)");
+
+// Used to filter events, works like glog VLOG(level).
+// RecordEvent will works if host_trace_level >= level.
+PHI_DEFINE_EXPORTED_int64(host_trace_level,
+                          1,
+                          "RecordEvent will works "
+                          "if host_trace_level >= level.");
