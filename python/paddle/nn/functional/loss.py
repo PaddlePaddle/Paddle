@@ -2138,7 +2138,8 @@ def margin_cross_entropy(
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
-            >>> paddle.seed(2023)
+            >>> paddle.seed(2023
+            >>> paddle.device.set_device('gpu')
             >>> m1 = 1.0
             >>> m2 = 0.5
             >>> m3 = 0.0
