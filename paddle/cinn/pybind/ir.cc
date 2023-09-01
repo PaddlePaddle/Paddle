@@ -29,6 +29,7 @@
 #include "paddle/cinn/ir/registry.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/ir/utils/ir_compare.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/lang/packed_func.h"
@@ -275,6 +276,13 @@ void BindNode(py::module *m) {
 
 // empty visitor
 void BindIrVisitor(py::module *m) {
+  py::class_<ir::IrEqualVisitor> ir_compare(*m, "IrCompare");
+  ir_compare.def(py::init<bool>())
+      .def("compare",
+           [](ir::IrEqualVisitor &self,
+              const cinn::ir::Expr &lhs,
+              const cinn::ir::Expr &rhs) { return self.Compare(lhs, rhs); });
+
   py::class_<ir::IRVisitor> ir_visitor(*m, "IRVisitor");
   ir_visitor.def(py::init<>())
       .def("visit", py::overload_cast<const ir::Expr *>(&ir::IRVisitor::Visit));

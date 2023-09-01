@@ -126,6 +126,7 @@ from ..core_api.ir import (  # noqa: F401
     ModuleExpr,
     ScheduleBlock,
     ScheduleBlockRealize,
+    IrCompare,
 )
 
 
