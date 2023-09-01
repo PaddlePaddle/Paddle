@@ -2424,10 +2424,10 @@ def use_new_executor():
 
 
 def use_new_ir():
-    new_executor_micro_batching = os.environ.get(
+    enable_new_ir_in_executor = os.environ.get(
         'FLAGS_enable_new_ir_in_executor', None
     )
-    return new_executor_micro_batching in [
+    return enable_new_ir_in_executor in [
         1,
         '1',
         True,
