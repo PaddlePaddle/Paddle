@@ -375,7 +375,7 @@ void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
       return;
     }
     const std::string out_var_info_before_build = op.OutVarInfoString(scope);
-    op.RunPreStaticBuild(*scope, place);
+    op.PreBuildOpFunc(*scope, place);
     const std::string out_var_info_after_build = op.OutVarInfoString(scope);
     if (out_var_info_before_build != out_var_info_after_build) {
       PADDLE_THROW(
