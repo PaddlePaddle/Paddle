@@ -22,24 +22,24 @@ using EquationIGroupOps = std::unordered_set<FakeOpPlaceHolder>;
 
 std::unordered_set<Variable> InitCandidateIndex(const Graph& graph) {
   std::unordered_set<Variable> variables = graph.GetVariables();
-  std::unordered_set<Variable> candidate_indexes;
-  for (auto iter_val = variables.begin(); iter_val != variables.end();
-       ++iter_val) {
-    *iter_val >> match{[&](const Index& index) {
-      candidate_indexes.insert(Variable(index));
+  std::unordered_set<Variable> candidate_index;
+  for (auto iter = variables.begin(); iter != variables.end(); ++iter) {
+    *iter >> match{[&](const Index& index) {
+      candidate_index.emplace(Variable(index));
     }};
   }
-  return candidate_indexes;
+  return candidate_index;
 }
 
-Variable Pick(const std::unordered_set<Variable>& candidate_indexes) {
+Variable PickAnchorTensor(const std::unordered_set<Variable>& candidate_index) {
   // Heuristic optimization will be added later
   // such as choosing the one with the biggest rank number as the anchor tensor
   // first
-  return *(candidate_indexes.begin());
+  return *(candidate_index.begin());
 }
 
-EquationIGroupOps Walk(const Graph& graph, const Variable& candidate_index) {
+EquationIGroupOps GenerateIGroup(const Graph& graph,
+                                 const Variable& anchor_tensor) {
   EquationIGroupOps igroup;
   EquationGraphTopoWalker<const Variable, const Function*> walker =
       graph.GetWalker();
@@ -49,84 +49,64 @@ EquationIGroupOps Walk(const Graph& graph, const Variable& candidate_index) {
           igroup.emplace(fakeOpPlaceholder);
         }};
       };
-  walker(candidate_index, variableVisitor);
+  walker(anchor_tensor, variableVisitor);
   return igroup;
 }
 
 bool isContain(const EquationIGroupOps& pre_igroup,
                const EquationIGroupOps& igroup) {
-  for (auto iter_pre_igroup = pre_igroup.begin();
-       iter_pre_igroup != pre_igroup.end();
-       ++iter_pre_igroup) {
-    if (igroup.find(*iter_pre_igroup) == igroup.end()) {
+  for (auto iter = pre_igroup.begin(); iter != pre_igroup.end(); ++iter) {
+    if (igroup.find(*iter) == igroup.end()) {
       return false;
     }
   }
   return true;
 }
 
-void CleanAndAddSelectedSet(
+void UpdateIGroupMap(
     const EquationIGroupOps& igroup,
-    const Variable& candidate_index,
-    std::unordered_map<Index, EquationIGroupOps>* index2Igroup) {
-  for (auto iter_index2Igroup = index2Igroup->begin();
-       iter_index2Igroup != index2Igroup->end();
-       ++iter_index2Igroup) {
-    if (iter_index2Igroup->second.size() >= igroup.size()) {
+    const Variable& anchor_tensor,
+    std::unordered_map<Index, EquationIGroupOps>* index2IGroup) {
+  for (auto iter = index2IGroup->begin(); iter != index2IGroup->end(); ++iter) {
+    if (iter->second.size() >= igroup.size()) {
       continue;
     }
-    if (isContain(iter_index2Igroup->second, igroup)) {
-      index2Igroup->erase(iter_index2Igroup);
+    if (isContain(iter->second, igroup)) {
+      index2IGroup->erase(iter);
     }
   }
-  index2Igroup->emplace(candidate_index, igroup);
+  index2IGroup->emplace(anchor_tensor, igroup);
 }
 
-void CleanCandidateSet(const Graph& graph,
-                       const EquationIGroupOps& igroup,
-                       const Variable& candidate_index,
-                       std::unordered_set<Variable>* candidate_indexes) {
+void UpdateCandidateSet(const Graph& graph,
+                        const EquationIGroupOps& igroup,
+                        const Variable& anchor_tensor,
+                        std::unordered_set<Variable>* candidate_index) {
   EquationGraphTopoWalker<const Variable, const Function*> walker =
       graph.GetWalker();
   std::function<void(Variable)> variableVisitor =
       [&](const Variable& variable) {
         variable >> match{[&](const Index& index) {
-          if (candidate_indexes->find(Variable(index)) !=
-              candidate_indexes->end()) {
-            candidate_indexes->erase(Variable(index));
+          if (candidate_index->find(Variable(index)) !=
+              candidate_index->end()) {
+            candidate_index->erase(Variable(index));
           }
         }};
       };
-  walker(candidate_index, variableVisitor);
+  walker(anchor_tensor, variableVisitor);
 }
-/*
-PartitionGraph: [EquationAnchorIndex, EquationIGroupOps] <- EquationGraph
-EquationAnchorIndex = tAnchor Index
-EquationIGroupOps = tGroup [FakeOpPlaceHolder]
-
-1. 对于每一个不重复的候选 tAnchor Variable，执行如下两句：
-  1.1 收集该 tAnchor Variable 所遍历到的所有 tVisited Variable
-  1.2 拿上述信息更新 tAnchor Variable 候选集，对上述 tVisited Variables 集合去重
-
-一个 tAnchor Variable 对应一串 {tVisited Variable}，
-candidate_anchor_tensors 保存候选的 tAnchor Variable
-filtered_anchor_tensor 保存过滤出来的 tAnchor Variable
-*/
-
-// 1. 返回值的数据结构，需要明确，std::unordered_map<Index,
-// std::vector<FakeOpPlaceHolder>>
 
 std::unordered_map<Index, EquationIGroupOps> PartitionGraph(
     const Graph& graph) {
-  std::unordered_set<Variable> candidate_indexes = InitCandidateIndex(graph);
-  std::unordered_map<Index, EquationIGroupOps> index2Igroup;
-  while (!candidate_indexes.empty()) {
-    Variable candidate_index = Pick(candidate_indexes);
-    EquationIGroupOps igroup = Walk(graph, candidate_index);
-    CleanAndAddSelectedSet(igroup, candidate_index, &index2Igroup);
-    CleanCandidateSet(graph, igroup, candidate_index, &candidate_indexes);
+  std::unordered_set<Variable> candidate_index = InitCandidateIndex(graph);
+  std::unordered_map<Index, EquationIGroupOps> index2IGroup;
+  while (!candidate_index.empty()) {
+    Variable anchor_tensor = PickAnchorTensor(candidate_index);
+    EquationIGroupOps igroup = GenerateIGroup(graph, anchor_tensor);
+    UpdateIGroupMap(igroup, anchor_tensor, &index2IGroup);
+    UpdateCandidateSet(graph, igroup, anchor_tensor, &candidate_index);
   }
-  return index2Igroup;
+  return index2IGroup;
 }
 
 }  // namespace cinn::adt::equation

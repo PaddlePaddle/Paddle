@@ -23,64 +23,82 @@ namespace common {
 
 using VT = int;
 using FT = std::string;
+/*
+Graph ex:
+
+  1-> "1->10" -> 10
+  2-> "2->20" -> 20
+*/
 
 TEST(EquationGraphTopoWalker, simple1) {
   auto F4V = [](VT variable, const std::function<void(FT)>& visitor) {
     if (variable == 1) {
-      visitor("b");
-    } else if (variable == 3) {
-      visitor("d");
+      visitor("1->10");
+    } else if (variable == 2) {
+      visitor("2->20");
     }
   };
   auto InV4F = [](FT function, const std::function<void(VT)>& visitor) {
-    if (function == "b") {
+    if (function == "1->10") {
       visitor(1);
-    } else if (function == "d") {
-      visitor(3);
+    } else if (function == "2->20") {
+      visitor(2);
     }
   };
   auto OutV4F = [](FT function, const std::function<void(VT)>& visitor) {
-    if (function == "b" || function == "d") {
-      visitor(567);
-    } else if (function == "e") {
-      visitor(890);
-      visitor(101112);
+    if (function == "1->10") {
+      visitor(10);
+    } else if (function == "2->20") {
+      visitor(20);
     }
   };
   cinn::EquationGraphTopoWalker<VT, FT> walker(F4V, InV4F, OutV4F);
   std::vector<FT> outputs;
   std::function<void(FT)> functionVisitor = [&](FT function) {
-    LOG(ERROR) << function;
     outputs.push_back(function);
   };
   walker(1, functionVisitor);
-  std::vector<FT> expected{"b"};
+  std::vector<FT> expected{"1->10"};
   EXPECT_TRUE((outputs == expected));
 }
 
+/*
+Graph ex:
+
+  1 -> "1->10, 1->11" -> 10
+                      -> 11
+  2 -> "2->20" -> 20
+  3 -> "3->30, 3->31" -> 30
+                      -> 31
+*/
 TEST(EquationGraphTopoWalker, simple2) {
   auto F4V = [](VT variable, const std::function<void(FT)>& visitor) {
     if (variable == 1) {
-      visitor("bcd");
+      visitor("1->10, 1->11");
+    } else if (variable == 2) {
+      visitor("2->20");
     } else if (variable == 3) {
-      visitor("d");
-    } else if (variable == 567) {
-      visitor("jkl");
+      visitor("3->30, 3->31");
     }
   };
   auto InV4F = [](FT function, const std::function<void(VT)>& visitor) {
-    if (function == "bcd") {
+    if (function == "1->10, 1->11") {
       visitor(1);
-    } else if (function == "d") {
+    } else if (function == "2->20") {
+      visitor(2);
+    } else if (function == "3->30, 3->31") {
       visitor(3);
     }
   };
   auto OutV4F = [](FT function, const std::function<void(VT)>& visitor) {
-    if (function == "bcd" || function == "d") {
-      visitor(567);
-    } else if (function == "e") {
-      visitor(890);
-      visitor(101112);
+    if (function == "1->10, 1->11") {
+      visitor(10);
+      visitor(11);
+    } else if (function == "2->20") {
+      visitor(20);
+    } else if (function == "3->30, 3->31") {
+      visitor(30);
+      visitor(31);
     }
   };
   cinn::EquationGraphTopoWalker<VT, FT> walker(F4V, InV4F, OutV4F);
@@ -89,7 +107,7 @@ TEST(EquationGraphTopoWalker, simple2) {
     outputs.push_back(variable);
   };
   walker(1, variableVisitor);
-  std::vector<VT> expected{1, 567};
+  std::vector<VT> expected{1, 10, 11};
   EXPECT_TRUE((outputs == expected));
 }
 
