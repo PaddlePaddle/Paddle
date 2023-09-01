@@ -227,50 +227,29 @@ def shard_layer(
 
         >>> print(model)
     """
-    process_mesh = process_mesh or process_mesh.get_current_process_mesh()
+    # Check the legality of process_mesh
+    if not isinstance(process_mesh, dist.ProcessMesh):
+        raise ValueError("process_mesh 参数必须是 dist.ProcessMesh 类型")
 
-    def replicate_model_params_buffers(m: nn.model, mesh: process_mesh) -> None:
-        full_replicate = [paddle.dtensor.Replicate()] * mesh.ndim
-        for key, param in m._parameters.items():
-            if param is not None and not isinstance(
-                param, paddle.dtensor.DTensor
-            ):
-                m.register_parameter(
-                    key,
-                    nn.Parameter(
-                        paddle.dtensor.distribute_tensor(
-                            param.data, mesh, full_replicate
-                        )
-                    ),
-                )
-        for key, buffer in m._buffers.items():
-            if buffer is not None and not isinstance(
-                buffer, paddle.dtensor.DTensor
-            ):
-                m._buffers[key] = paddle.dtensor.distribute_tensor(
-                    buffer, mesh, full_replicate
-                )
+    # Ensure that process_mesh is not an empty object
+    if process_mesh is None:
+        raise ValueError("process_mesh 参数不能为空")
 
     if shard_fn is None:
         # if shard_fn not specified, by default replicate
         # all model params
-        for name, submod in model.named_modules():
-            replicate_model_params_buffers(submod, process_mesh)
+        for name, submod in model.named_parameters():
+            shard_tensor(submod, process_mesh)
     else:
         # apply shard_fn to submodules
-        for name, submod in model.named_modules():
+        for name, submod in model.named_parameters():
             shard_fn(name, submod, process_mesh)
-            replicate_model_params_buffers(submod, process_mesh)
 
     # register input_fn as model forward pre hook
     if input_fn is not None:
-        model.register_forward_pre_hook(
-            lambda _, inputs: input_fn(inputs, process_mesh)
-        )
+        model.register_forward_pre_hook(input_fn)
     # register input_fn as model forward hook
     if output_fn is not None:
-        model.register_forward_hook(
-            lambda mod, inputs, outputs: output_fn(outputs, process_mesh)
-        )
+        model.register_forward_post_hook(output_fn)
 
     return model
