@@ -162,17 +162,12 @@ FetchList ProgramInterpreter::Run(
   }
 }
 
-void ProgramInterpreter::PreStaticBuild() {
+void ProgramInterpreter::PreBuild() {
   SetDeviceId(place_);
 #ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
   if (!is_build_) {
-    PADDLE_ENFORCE_EQ(static_build_,
-                      true,
-                      phi::errors::InvalidArgument(
-                          "ProgramInterpreter::PreStaticBuild() "
-                          "should be called when static_build_ is true"));
     paddle::framework::interpreter::BuildVariableScope(
         block_, execution_config_, &var_scope_);
 

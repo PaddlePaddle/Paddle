@@ -128,30 +128,7 @@ class ConditionalBlockOp : public ConditionalOp {
   void PreBuildOpFunc(const framework::Scope &scope,
                       const platform::Place &dev_place) const override {
     SetSubBlockCore(scope, dev_place);
-    if (core_->IsStaticBuild()) {
-      core_->PreStaticBuild();
-    } else {
-      bool need_run;
-      if (Attr<bool>("is_scalar_condition")) {
-        // When is_scalar_condition is True, the conditional variable is a
-        // scalar, whether need to execute the operators in sub-block depends on
-        // the conditional variable (Cond).
-        auto xs = InputTensors(scope, ConditionalOp::kCondition);
-        need_run = ScalarCondition(xs);
-      } else {
-        // When is_scalar_condition is False, the conditional variable maybe a
-        // vector or tensor, whether need to execute the operators in sub-block
-        // depends on the input variables (Input).
-        auto xs = InputTensors(scope, ConditionalOp::kInputs);
-        need_run =
-            std::all_of(xs.begin(), xs.end(), [](const phi::DenseTensor *t) {
-              return t->numel() != 0;
-            });
-      }
-      if (need_run) {
-        core_->Run({}, false);
-      }
-    }
+    core_->PreBuild();
   }
 
  private:
