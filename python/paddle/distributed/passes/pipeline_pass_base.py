@@ -12,15 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 
-from paddle.distributed.auto_parallel.static.utils import get_logger
 from paddle.fluid import core
 
 from .pass_base import PassBase
 from .pass_utils import set_skip_gc_vars
-
-_logger = get_logger(logging.INFO)
 
 
 class PipelinePassBase(PassBase):

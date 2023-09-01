@@ -346,7 +346,7 @@ void analyse_event_info_for_two_instructions<Instruction>(
 
   if (has_data_dependency<Instruction, std::string>(
           instructions[cur_instr_id], instructions[next_instr_id]) ||
-      !run_type_info[next_instr_id][DownstreamRunType::kEventRun].empty() ||
+      //! run_type_info[next_instr_id][DownstreamRunType::kEventRun].empty() ||
       instructions[next_instr_id]->OpBase()->Type() == "depend") {
     waiter_instr_ids->insert(next_instr_id);
     return;

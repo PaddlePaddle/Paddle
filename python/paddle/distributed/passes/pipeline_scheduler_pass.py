@@ -19,7 +19,11 @@ from paddle.fluid import core
 
 from ..utils.log_utils import get_logger
 from .pass_base import PassContext, new_pass, register_pass
-from .pass_utils import _program_for_fthenb_and_1f1b, split_program
+from .pass_utils import (
+    AutoParallelStreamType,
+    _program_for_fthenb_and_1f1b,
+    split_program,
+)
 from .pipeline_pass_base import PipelinePassBase
 
 __not_shape_var_type__ = [
@@ -164,7 +168,9 @@ class Pipeline1F1BPass(PipelinePassBase):
         for program in programs:
             last_op = program.global_block().ops[-1]
             if self.is_comm_op(last_op) and last_op.attr("use_calc_stream"):
-                last_op.dist_attr.execution_stream = "allreduce_stream"
+                last_op.dist_attr.execution_stream = (
+                    AutoParallelStreamType.MP_STREAM.value
+                )
 
     def _partial_programs(self, program):
         types = [LR, FORWARD, BACKWARD, OPT]

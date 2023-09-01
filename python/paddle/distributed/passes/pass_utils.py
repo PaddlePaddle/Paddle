@@ -14,6 +14,7 @@
 
 import logging
 from collections import OrderedDict
+from enum import Enum
 
 from paddle.distributed.auto_parallel.static.utils import (
     get_logger,
@@ -539,3 +540,11 @@ def _program_for_fthenb_and_1f1b(program):
 
     # It MUST return in this order
     return [lr_prog, fwd_prog, bwd_prog, opt_prog]
+
+
+# NOTE here stream is just a presentation with different name,
+# it is up to executor to create the exact streams given the name.
+class AutoParallelStreamType(Enum):
+    CALC_STREAM = "default"
+    MP_STREAM = "auto_parallel_mp"
+    SHARDING_STREAM = "auto_parallel_sharding"
