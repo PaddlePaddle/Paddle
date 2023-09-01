@@ -82,8 +82,6 @@ class TestDistTraining(unittest.TestCase):
         }
         strategy.tensor_parallel = True
         strategy.tensor_parallel_configs = {"tensor_parallel_degree": 2}
-        strategy.hybrid_configs["mp_configs"].mp_async_allreduce = False
-        strategy.hybrid_configs["mp_configs"].mp_skip_c_identity = False
         fleet.init(is_collective=True, strategy=strategy)
 
     def get_program(self):
