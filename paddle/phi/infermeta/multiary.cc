@@ -2622,7 +2622,7 @@ void LarsMomentumInferMeta(
                           phi::product(lr_dim)));
   }
 
-  for (int i = 0; i < param_dim.size(); ++i) {
+  for (size_t i = 0; i < param_dim.size(); ++i) {
     PADDLE_ENFORCE_EQ(
         param_dim[i],
         grad_dim[i],
