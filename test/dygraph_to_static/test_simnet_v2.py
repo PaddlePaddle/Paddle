@@ -17,6 +17,7 @@ import random
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 from simnet_dygraph_model_v2 import BOW, HingeLoss
 
 import paddle
@@ -119,6 +120,7 @@ simnet_process = FakeReaderProcessor(
 )
 
 
+@test_and_compare_with_new_ir(True)
 def train(conf_dict, to_static):
     """
     train process
