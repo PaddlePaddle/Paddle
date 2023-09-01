@@ -14,13 +14,18 @@
 
 #include "paddle/fluid/ir/drr/ir_operation_creator.h"
 
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_manual_op.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"
+#include "paddle/fluid/ir/drr/attr_type_uilts.h"
 
 namespace ir {
 namespace drr {
 
 Value GetIrValueByDrrTensor(const Tensor& tensor,
                             const MatchContextImpl& res_match_ctx) {
+  if (tensor.is_none()) {
+    return Value{};
+  }
   return res_match_ctx.GetIrValue(tensor.name()).get();
 }
 
@@ -35,6 +40,34 @@ std::vector<Value> GetIrValuesByDrrTensors(
   return ir_values;
 }
 
+static ir::Attribute CreateIrAttribute(const std::any& obj) {
+  if (obj.type() == typeid(bool)) {
+    return IrAttrbuteCreator<bool>()(std::any_cast<bool>(obj));
+  } else if (obj.type() == typeid(int32_t)) {
+    return IrAttrbuteCreator<int32_t>()(std::any_cast<int32_t>(obj));
+  } else if (obj.type() == typeid(int64_t)) {
+    return IrAttrbuteCreator<int64_t>()(std::any_cast<int64_t>(obj));
+  } else if (obj.type() == typeid(float)) {
+    return IrAttrbuteCreator<float>()(std::any_cast<float>(obj));
+  } else if (obj.type() == typeid(std::string)) {
+    return IrAttrbuteCreator<const std::string&>()(
+        std::any_cast<std::string>(obj));
+  } else if (obj.type() == typeid(const char*)) {
+    return IrAttrbuteCreator<const std::string&>()(
+        std::any_cast<const char*>(obj));
+  } else if (obj.type() == typeid(phi::DataType)) {
+    return IrAttrbuteCreator<phi::DataType>()(
+        std::any_cast<phi::DataType>(obj));
+  } else if (obj.type() == typeid(phi::Place)) {
+    return IrAttrbuteCreator<phi::Place>()(std::any_cast<phi::Place>(obj));
+  } else {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("Type error. CreateIrAttribute for type(%s) "
+                                   "is unimplemented CreateInCurrently.",
+                                   obj.type().name()));
+  }
+}
+
 ir::AttributeMap CreateAttributeMap(const OpCall& op_call,
                                     const MatchContextImpl& src_match_ctx) {
   ir::AttributeMap attr_map;
@@ -44,6 +77,12 @@ ir::AttributeMap CreateAttributeMap(const OpCall& op_call,
           if constexpr (std::is_same_v<std::decay_t<decltype(arg)>,
                                        NormalAttribute>) {
             attr_map[kv.first] = src_match_ctx.GetIrAttr(arg.name());
+          }
+          if constexpr (std::is_same_v<std::decay_t<decltype(arg)>,
+                                       ComputeAttribute>) {
+            MatchContext ctx(std::make_shared<MatchContextImpl>(src_match_ctx));
+            attr_map[kv.first] =
+                CreateIrAttribute(arg.attr_compute_func()(ctx));
           }
         },
         kv.second);
@@ -66,6 +105,21 @@ T GetAttr(const std::string& attr_name,
     IR_THROW("Unknown attrbute type for : %s.", attr_name);
   }
 }
+
+void BindIrOutput(const OpCall& op_call,
+                  Operation* op,
+                  MatchContextImpl* match_ctx) {
+  for (size_t i = 0; i < op_call.outputs().size(); ++i) {
+    std::shared_ptr<IrValue> ir_value = nullptr;
+    if (op->result(i)) {
+      ir_value = std::make_shared<IrValue>(op->result(i));
+    }
+    match_ctx->BindIrValue(op_call.outputs()[i]->name(), ir_value);
+  }
+}
+
+void AutoSetInsertionPoint(const std::vector<Value>& ir_values,
+                           ir::PatternRewriter& rewriter) {}  // NOLINT
 
 Operation* CreateOperation(const OpCall& op_call,
                            const MatchContextImpl& src_match_ctx,
@@ -116,6 +170,30 @@ Operation* CreateOperation(const OpCall& op_call,
     res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
                                std::make_shared<IrValue>(full_op->result(0)));
     return full_op;
+  } else if (op_call.name() == "pd.fused_gemm_epilogue") {
+    const auto& inputs = op_call.inputs();
+    std::vector<Value> ir_values =
+        GetIrValuesByDrrTensors(inputs, *res_match_ctx);
+    Operation* op = rewriter.Build<paddle::dialect::FusedGemmEpilogueOp>(
+        ir_values[0].dyn_cast<ir::OpResult>(),
+        ir_values[1].dyn_cast<ir::OpResult>(),
+        ir_values[2].dyn_cast<ir::OpResult>(),
+        CreateAttributeMap(op_call, src_match_ctx));
+    BindIrOutput(op_call, op, res_match_ctx);
+    return op;
+  } else if (op_call.name() == "pd.fused_gemm_epilogue_grad") {
+    const auto& inputs = op_call.inputs();
+    std::vector<Value> ir_values =
+        GetIrValuesByDrrTensors(inputs, *res_match_ctx);
+    Operation* op = rewriter.Build<paddle::dialect::FusedGemmEpilogueGradOp>(
+        ir_values[0].dyn_cast<ir::OpResult>(),
+        ir_values[1].dyn_cast<ir::OpResult>(),
+        ir_values[2].dyn_cast<ir::OpResult>(),
+        ir_values[3].dyn_cast<ir::OpResult>(),
+        CreateAttributeMap(op_call, src_match_ctx));
+
+    BindIrOutput(op_call, op, res_match_ctx);
+    return op;
   }
 
   PADDLE_THROW(phi::errors::Unavailable("Unknown op : " + op_call.name()));

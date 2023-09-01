@@ -47,6 +47,9 @@ class DrrRewritePattern : public ir::RewritePattern {
         source_pattern_graph_(drr_context.source_pattern_graph()),
         constraints_(drr_context.constraints()),
         result_pattern_graph_(drr_context.result_pattern_graph()) {
+    IR_ENFORCE(source_pattern_graph_->owned_op_call().size(),
+               "source_pattern_graph is empty, please check the drr pattern "
+               "define code.");
     source_pattern_graph_->Print();
     result_pattern_graph_->Print();
   }
@@ -56,7 +59,7 @@ class DrrRewritePattern : public ir::RewritePattern {
     std::shared_ptr<MatchContextImpl> src_match_ctx =
         std::make_shared<MatchContextImpl>();
     if (PatternGraphMatch(op, src_match_ctx)) {
-      VLOG(6) << "DRR pattern (" << ir::get_type_name<DrrPattern>()
+      VLOG(4) << "DRR pattern (" << ir::get_type_name<DrrPattern>()
               << ") is matched in program.";
       PatternGraphRewrite(*src_match_ctx, rewriter);
       return true;
@@ -69,6 +72,7 @@ class DrrRewritePattern : public ir::RewritePattern {
       ir::Operation* op,
       const std::shared_ptr<MatchContextImpl>& source_pattern_match_ctx) const {
     // Match
+    VLOG(6) << "PatternGraphMatch Start: op(" << op->name() << ")";
     const auto* anchor = source_pattern_graph_->AnchorNode();
     IR_ENFORCE(anchor);
     std::unordered_set<const OpCall*> drr_visited;
@@ -90,6 +94,8 @@ class DrrRewritePattern : public ir::RewritePattern {
       auto* ir_node = ir_q.front();
       drr_q.pop();
       ir_q.pop();
+      VLOG(9) << "drr_node name : " << drr_node->name()
+              << ", ir_node name: " << ir_node->name();
       if (drr_node->name() != ir_node->name()) {
         matched = false;
         VLOG(6) << " --- match false: " << drr_node->name();
@@ -167,8 +173,8 @@ class DrrRewritePattern : public ir::RewritePattern {
         if (drr_ancestor_op->name() != ir_ancestor_op->name()) {
           matched = false;
           break;
-          VLOG(6) << " --- match false: " << drr_node->name();
         }
+
         if (drr_visited.count(drr_ancestor_op) == 0) {
           drr_q.push(drr_ancestor_op);
           ir_q.push(ir_ancestor_op);
@@ -289,9 +295,11 @@ class DrrRewritePattern : public ir::RewritePattern {
     MatchContextImpl res_match_ctx;
     // add input tensors info for res_match_ctx
     for (const auto& in_tensor : result_pattern_graph.input_tensors()) {
-      res_match_ctx.BindIrValue(
-          in_tensor,
-          std::make_shared<IrValue>(src_match_ctx.GetIrValue(in_tensor)));
+      if (!result_pattern_graph.id2owend_tensor().at(in_tensor)->is_none()) {
+        res_match_ctx.BindIrValue(
+            in_tensor,
+            std::make_shared<IrValue>(src_match_ctx.GetIrValue(in_tensor)));
+      }
     }
 
     // topo order visit result_pattern_graph

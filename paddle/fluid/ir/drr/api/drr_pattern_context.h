@@ -186,11 +186,15 @@ class Op {
 
 class Tensor {
  public:
+  static const char NONE_TENSOR_NAME[];
+
   const std::string& DebugName() const;
 
   TensorShape shape() const { return TensorShape(name()); }
 
   TensorDataType dtype() const { return TensorDataType(name()); }
+
+  bool is_none() const { return name_ == NONE_TENSOR_NAME; }
 
   void Assign(const Tensor& other);
 
@@ -262,6 +266,17 @@ class ResultPattern {
 
   drr::Tensor& Tensor(const std::string& name) {
     return ctx_->ResultTensorPattern(name);
+  }
+
+  // Represent the input tensor which is none.
+  // Example:
+  // instance_norm has follow input tensor : (x, scale, bias), scale and
+  // bias are optional(means it may be none).
+  // When scale is onoe, we can write a instance_norm op in drr as follow:
+  // res.Op("instance_norm")(res.Tensor("x"), res.NoneTensor,
+  // res.Tensor("bias"));
+  drr::Tensor& NoneTensor() {
+    return ctx_->ResultTensorPattern(Tensor::NONE_TENSOR_NAME);
   }
 
   Attribute Attr(const std::string& attr_name) const {
