@@ -20,7 +20,7 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.device import core
 from paddle.nn.functional.flash_attention import (
     flash_attention,
     scaled_dot_product_attention,
@@ -89,9 +89,6 @@ class TestFlashAttentionAPIFlag(unittest.TestCase):
         self.use_sdp_api = False
 
     def flash_attn_compute(self, query, key, value):
-        print(
-            f"Test case shape {self.shape} dtype {self.dtype} causal {self.causal}"
-        )
         # test dynamic
         paddle.disable_static()
 
