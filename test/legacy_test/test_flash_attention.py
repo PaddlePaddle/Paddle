@@ -451,7 +451,7 @@ class TestSDPAttentionAPITest(TestFlashAttentionAPI):
         self.enable_mem_efficient = False
 
 
-class TestFlashAttrnionWithMaskAPI(TestFlashAttentionWithMaskAPI):
+class TestFlashAttenionWithMaskAPITest(TestFlashAttentionWithMaskAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (8, 1024, 16, 128)
