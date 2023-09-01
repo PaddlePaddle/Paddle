@@ -28,7 +28,7 @@ using phi::distributed::auto_parallel::str_join;
 std::vector<int64_t> InferTargetShape(const std::vector<int64_t>& shape,
                                       int64_t len) {
   int64_t infer_idx = -1;
-  for (int64_t i = 0, n = shape.size(); i < n; i++) {
+  for (int64_t i = 0, n = static_cast<int64_t>(shape.size()); i < n; i++) {
     if (shape[i] == -1) {
       PADDLE_ENFORCE_EQ(
           infer_idx,
@@ -74,8 +74,8 @@ std::vector<DimTrans*> MakeReshapeDimTrans(
   int64_t src_idx = 0, tgt_idx = 0;
   int64_t s, t;
   int64_t src_len, tgt_len;
-  src_len = src_shape.size();
-  tgt_len = inferred_tgt_shape.size();
+  src_len = static_cast<int64_t>(src_shape.size());
+  tgt_len = static_cast<int64_t>(inferred_tgt_shape.size());
   while (src_idx < src_len || tgt_idx < tgt_len) {
     std::vector<int64_t> src_dims, tgt_splitted_shape;
     if (src_idx >= src_len) {
@@ -125,7 +125,9 @@ std::vector<DimTrans*> MakeReshapeDimTrans(
       }
       DimTrans* flatten = make_flatten(input_dims);
 
-      for (int64_t i = 0, n = tgt_splitted_shape.size(); i < n; i++) {
+      for (int64_t i = 0, n = static_cast<int64_t>(tgt_splitted_shape.size());
+           i < n;
+           i++) {
         ret.emplace_back(make_split(flatten, tgt_splitted_shape, i));
       }
     }
@@ -155,7 +157,7 @@ paddle::distributed::auto_parallel::ReshapeSPMDRule::InferForward(
 
   // handle the '0' values in target shape, '0' indicates
   // that the target shape is equal to the source shape
-  for (int64_t i = 0, n = tgt_shape.size(); i < n; i++) {
+  for (int64_t i = 0, n = static_cast<int64_t>(tgt_shape.size()); i < n; i++) {
     if (tgt_shape[i] == 0) {
       tgt_shape[i] = src_shape[i];
     }
@@ -178,7 +180,7 @@ paddle::distributed::auto_parallel::ReshapeSPMDRule::InferForward(
   VLOG(4) << "Reshape: input_shape: [" << str_join(src_shape)
           << "] output_shape: [" << str_join(tgt_shape) << "]";
   VLOG(4) << "Transformation from input to output:";
-  for (int64_t i = 0, n = trans.size(); i < n; i++) {
+  for (int64_t i = 0, n = static_cast<int64_t>(trans.size()); i < n; i++) {
     DimTrans* t = trans[i];
     VLOG(4) << "\tOutput axis " << i << ": " << t->to_string();
   }

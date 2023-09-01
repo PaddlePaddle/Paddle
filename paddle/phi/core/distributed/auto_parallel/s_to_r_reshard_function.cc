@@ -50,8 +50,8 @@ bool SToRReshardFunction::IsSuitable(const DistTensor& in,
       GetSplitAxisWithDimsMapping(in_dims_mapping);
   int64_t split_axis = split_axis_to_mesh_axis.begin()->first;
   int64_t num_of_process = in_process_mesh.size();
-  flag &=
-      (in.local_dims()[split_axis] * num_of_process == in.dims()[split_axis]);
+  flag &= (in.local_dims()[static_cast<int>(split_axis)] * num_of_process ==
+           in.dims()[static_cast<int>(split_axis)]);
 
   return flag;
 }
@@ -90,10 +90,11 @@ void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
     // first we need to split the result on axis 0,
     // then we need to concat the split result on input split axis.
     int64_t default_split_axis = 0;
-    int64_t num_of_process = in_process_ids.size();
+    int64_t num_of_process = static_cast<int64_t>(in_process_ids.size());
 
     IntArray sections(std::vector<int64_t>(
-        num_of_process, in.value().dims()[default_split_axis]));
+        num_of_process,
+        in.value().dims()[static_cast<int>(default_split_axis)]));
     std::vector<DenseTensor> split_out_vec;
     RESHARD_FUNCTOR(dev_ctx,
                     Split,

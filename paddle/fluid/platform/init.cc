@@ -92,7 +92,7 @@ bool InitGflags(std::vector<std::string> args) {
     args.insert(args.begin(), "dummy");
     std::vector<char *> argv;
     std::string line;
-    int argc = args.size();
+    int argc = static_cast<int>(args.size());
     for (auto &arg : args) {
       argv.push_back(const_cast<char *>(arg.data()));
       line += arg;

@@ -23,7 +23,7 @@ std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
 TransposeSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
                                 const paddle::framework::AttributeMap& attrs) {
   // step0: Verify Input Args Based on Transpose Logic
-  int64_t ninputs = input_specs.size();
+  int64_t ninputs = static_cast<int64_t>(input_specs.size());
   PADDLE_ENFORCE_EQ(
       ninputs,
       1,
@@ -38,13 +38,13 @@ TransposeSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
 
   // get einsum notation for input
-  int64_t ndim = input_specs[0].shape().size();
+  int64_t ndim = static_cast<int64_t>(input_specs[0].shape().size());
   std::vector<std::string> input_axes_vec;
   std::string input_axes = alphabet.substr(0, ndim);
   input_axes_vec.emplace_back(input_axes);
 
   // get einsum notation for output
-  for (int64_t i = 0, n = perm_dims.size(); i < n; ++i) {
+  for (int64_t i = 0, n = static_cast<int64_t>(perm_dims.size()); i < n; ++i) {
     // convert the negative dim value to normal dim value
     if (perm_dims[i] < 0) {
       perm_dims[i] = ndim + perm_dims[i];

@@ -28,7 +28,7 @@ void SplitStridedKernel(const Context& dev_ctx,
                         const IntArray& sections UNUSED,
                         const Scalar& axis_scalar,
                         std::vector<DenseTensor*> outs) {
-  int64_t num = outs.size();
+  int64_t num = static_cast<int64_t>(outs.size());
   int64_t start = 0;
 
   int axis = axis_scalar.to<int>();

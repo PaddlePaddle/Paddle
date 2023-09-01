@@ -207,14 +207,14 @@ void Conv1dXPUInferMeta(const MetaTensor& x,
           groups));
 
   std::vector<int64_t> out_shape({in_dims[0], filter_dims[0]});
-  out_shape.push_back(ConvOutSize(in_dims[2],
-                                  filter_dims[2],
+  out_shape.push_back(ConvOutSize(static_cast<int>(in_dims[2]),
+                                  static_cast<int>(filter_dims[2]),
                                   dilations,
                                   paddings[0],
                                   paddings[1],
                                   strides));
   // set output and output max dims
-  out->set_dims(DDim(out_shape.data(), out_shape.size()));
+  out->set_dims(DDim(out_shape.data(), static_cast<int>(out_shape.size())));
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
   out_max->set_dims(phi::make_ddim({6}));
@@ -264,9 +264,9 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
           filter_dims.size()));
 
   const auto input_channels = in_dims[1];
-  int stride_size = strides.size();
+  int stride_size = static_cast<int>(strides.size());
   int in_sub_stride_size = in_dims.size() - stride_size;
-  int dilation_size = dilations.size();
+  int dilation_size = static_cast<int>(dilations.size());
   PADDLE_ENFORCE_EQ(
       in_dims.size(),
       strides.size() + 2U,
@@ -333,16 +333,16 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
                                 ksize);
 
   std::vector<int64_t> out_shape({in_dims[0], filter_dims[0]});
-  for (size_t i = 0; i < strides.size(); ++i) {
-    out_shape.push_back(ConvOutSize(in_dims[i + 2],
-                                    filter_dims[i + 2],
+  for (int i = 0; i < static_cast<int>(strides.size()); ++i) {
+    out_shape.push_back(ConvOutSize(static_cast<int>(in_dims[i + 2]),
+                                    static_cast<int>(filter_dims[i + 2]),
                                     dilations[i],
                                     paddings_vec[i * 2],
                                     paddings_vec[i * 2 + 1],
                                     strides[i]));
   }
   // set output and output max dims
-  out->set_dims(DDim(out_shape.data(), out_shape.size()));
+  out->set_dims(DDim(out_shape.data(), static_cast<int>(out_shape.size())));
   out_max->set_dims(phi::make_ddim({6}));
   out->set_dtype(out_dtype);
 }
@@ -388,10 +388,10 @@ void FcXPUInferMeta(const MetaTensor& x,
                     MetaTensor* out_max) {
   std::vector<int> out_shape(in_num_col_dims + 1);
   for (int i = 0; i < in_num_col_dims; i++) {
-    out_shape[i] = x.dims()[i];
+    out_shape[i] = static_cast<int>(x.dims()[i]);
   }
-  out_shape[in_num_col_dims] = w.dims()[0];
-  out->set_dims(DDim(out_shape.data(), out_shape.size()));
+  out_shape[in_num_col_dims] = static_cast<int>(w.dims()[0]);
+  out->set_dims(DDim(out_shape.data(), static_cast<int>(out_shape.size())));
   out->set_dtype(out_dtype);
   out->set_layout(x.layout());
   out_max->set_dims(phi::make_ddim({6}));
@@ -671,7 +671,7 @@ void ConvTransposeXPUInferMeta(const MetaTensor& x,
           filter_dims,
           filter_dims.size()));
 
-  int stride_size = strides.size();
+  int stride_size = static_cast<int>(strides.size());
   for (int i = 0; i < stride_size; ++i) {
     PADDLE_ENFORCE_GT(
         strides[i],
@@ -744,7 +744,7 @@ void ConvTransposeXPUInferMeta(const MetaTensor& x,
     output_shape.push_back(filter_dims[1] * groups);
   }
   const int offset = (data_format != "NHWC" ? 2 : 1);
-  for (size_t i = 0; i < strides.size(); ++i) {
+  for (int i = 0; i < static_cast<int>(strides.size()); ++i) {
     auto filter_extent = dilations_[i] * (filter_dims[i + 2] - 1) + 1;
     auto infer_shape = (x_dims[i + offset] > 0)
                            ? (x_dims[i + offset] - 1) * strides[i] -
@@ -892,7 +892,7 @@ void FusedScaleBiasReluConvBnstatsInferMeta(
       phi::errors::InvalidArgument("Expect group to be 1, got %d.", groups));
 
   const auto input_channels = in_dims[in_dims.size() - 1];
-  int dilation_size = dilations.size();
+  int dilation_size = static_cast<int>(dilations.size());
   for (int i = 0; i < dilation_size; ++i) {
     PADDLE_ENFORCE_GT(
         dilations[i],
@@ -934,9 +934,9 @@ void FusedScaleBiasReluConvBnstatsInferMeta(
                                 ksize);
 
   std::vector<int64_t> out_shape({in_dims[0]});
-  for (size_t i = 0; i < strides.size(); ++i) {
-    out_shape.push_back(ConvOutSize(in_dims[i + 1],
-                                    filter_dims[i + 2],
+  for (int i = 0; i < static_cast<int>(strides.size()); ++i) {
+    out_shape.push_back(ConvOutSize(static_cast<int>(in_dims[i + 1]),
+                                    static_cast<int>(filter_dims[i + 2]),
                                     dilations[i],
                                     paddings_vec[i * 2],
                                     paddings_vec[i * 2 + 1],
@@ -946,7 +946,7 @@ void FusedScaleBiasReluConvBnstatsInferMeta(
   // make shape for other outputs
   auto c_dims = phi::make_ddim({filter_dims[0]});
   // set output and output max dims
-  out->set_dims(DDim(out_shape.data(), out_shape.size()));
+  out->set_dims(DDim(out_shape.data(), static_cast<int>(out_shape.size())));
   out_running_mean->set_dims(c_dims);
   out_running_var->set_dims(c_dims);
   saved_mean->set_dims(c_dims);
