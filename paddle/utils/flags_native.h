@@ -69,6 +69,12 @@ bool FindFlag(const std::string& name);
  */
 void PrintAllFlagHelp(bool to_file = false,
                       const std::string& file_name = "all_flags.txt");
+
+/**
+ * @brief Get environment variable. If not found, return default value.
+ */
+template <typename T>
+T GetFromEnv(const std::string& name, const T& default_val);
 }  // namespace flags
 }  // namespace paddle
 

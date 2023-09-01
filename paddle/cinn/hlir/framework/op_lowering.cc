@@ -19,7 +19,7 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 
-DECLARE_bool(cinn_use_cuda_vectorize);
+PD_DECLARE_bool(cinn_use_cuda_vectorize);
 
 namespace cinn {
 namespace hlir {
