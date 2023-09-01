@@ -1561,7 +1561,7 @@ struct ThresholdedReluFunctor : public BaseActivationFunctor<T> {
     auto th = static_cast<T>(threshold);  // NOLINT
     auto v = static_cast<T>(value);
     out.device(d) =
-      (x > th).template cast<T>() * x + (x <= th).template cast<T>() * v;
+        (x > th).template cast<T>() * x + (x <= th).template cast<T>() * v;
   }
 };
 
