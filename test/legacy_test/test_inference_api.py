@@ -190,6 +190,7 @@ class TestInferenceBaseAPI(unittest.TestCase):
             predictor.run()
 
         def test_paddle_tensor():
+            paddle.disable_static()
             config = self.get_config(program, params)
             predictor = create_predictor(config)
             in_names = predictor.get_input_names()
