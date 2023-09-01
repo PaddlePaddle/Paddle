@@ -33,13 +33,13 @@ struct UnaryFunctor {
   func_t f;
 };
 
-template <typename T, typename Func>
-__global__ void abs_kernel(const T* x, const int num, Func f, T* out) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx < num) {
-    out[idx] = f(x[idx]);
-  }
-}
+// template <typename T, typename Func>
+// __global__ void abs_kernel(const T* x, const int num, Func f, T* out) {
+//   int idx = blockIdx.x * blockDim.x + threadIdx.x;
+//   if (idx < num) {
+//     out[idx] = f(x[idx]);
+//   }
+// }
 
 struct TensorContainer {
   explicit TensorContainer(const DenseTensor* x, DenseTensor* out)
@@ -50,45 +50,30 @@ struct TensorContainer {
 };
 
 template <int vec_size, typename func_t>
-__device__ inline void single_ele_kernel_impl(int N,
-                                              func_t f,
-                                              void** data,
-                                              int tid) {
+__device__ inline void single_ele_kernel_impl(
+    int N, func_t f, const void* in, void* out_p, int tid) {
   using traits = FunctionTraits<func_t>;
   // using ArgsT = typename traits::ArgsTuple;
   using arg1_t = typename traits::template arg<0>::type;
   using return_t = typename traits::result_type;
 
-  // printf( "tid %d %f\n", tid);
+  auto x = reinterpret_cast<const arg1_t*>(in);
+  auto out = reinterpret_cast<return_t*>(out_p);
 
-  auto x = reinterpret_cast<arg1_t*>(data[0]);
-  auto out = reinterpret_cast<return_t*>(data[1]);
-
-  // printf( "tid %d %f\n", tid, x[tid]);
-  // //out[tid] = f( x[tid] );
-  // arg1_t t(0);
-  // arg1_t t2 = x[0];
-  // f( t);
-  // out[tid] = f(x[tid]);
-  // f (x[tid]);
-  return_t t(1);
-
-  out[tid] = t;
+  out[tid] = f(x[tid]);
 }
 
 template <int vec_size, typename func_t>
-__global__ void single_ele_kernel(int N, func_t f, void** data) {
+__global__ void single_ele_kernel(int N, func_t f, const void* in, void* out) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   if (tid < N) {
-    single_ele_kernel_impl<vec_size, func_t>(N, f, data, tid);
+    single_ele_kernel_impl<vec_size, func_t>(N, f, in, out, tid);
   }
 }
 
 template <int vec_size, typename func_t>
-__device__ void vectorize_kernel_impl(int N,
-                                      func_t f,
-                                      void** data,
-                                      int64_t tid) {
+__device__ void vectorize_kernel_impl(
+    int N, func_t f, const void* in, void* out, int64_t tid) {
   using traits = FunctionTraits<func_t>;
 
   using arg1_t = typename traits::template arg<0>::type;
@@ -105,7 +90,7 @@ __device__ void vectorize_kernel_impl(int N,
   ins_ptr[0] = reinterpret_cast<arg1_t*>(&(ins_vec[0]));
 
   // load
-  const InVecType* in_vec_data = reinterpret_cast<const InVecType*>(data[0]);
+  const InVecType* in_vec_data = reinterpret_cast<const InVecType*>(in);
   ins_vec[0] = in_vec_data[tid];
 
 // compute
@@ -115,42 +100,30 @@ __device__ void vectorize_kernel_impl(int N,
   }
 
   // store
-  OutVecType* out_vec_ptr = reinterpret_cast<OutVecType*>(data[1]);
+  OutVecType* out_vec_ptr = reinterpret_cast<OutVecType*>(out);
 
   out_vec_ptr[tid] = out_vec;
 }
 
 template <int vec_size, typename func_t>
 __global__ void vectorize_kernel(
-    int N, func_t f, void** data, int main_tid, int tail_tid) {
+    int N, func_t f, const void* in, void* out, int main_tid, int tail_tid) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
 
   if (tid < main_tid) {
-    vectorize_kernel_impl<vec_size, func_t>(N, f, data, tid);
+    vectorize_kernel_impl<vec_size, func_t>(N, f, in, out, tid);
   }
 
   if (tid < tail_tid) {
-    single_ele_kernel_impl<vec_size, func_t>(N, f, data, tid);
+    single_ele_kernel_impl<vec_size, func_t>(N, f, in, out, tid);
   }
 }
 
 template <typename func_t>
-static inline void launch_vectorized_kernel(gpuStream_t stream,
-                                            int64_t N,
-                                            const func_t& f,
-                                            void** data) {
+static inline void launch_vectorized_kernel(
+    gpuStream_t stream, int64_t N, const func_t& f, const void* in, void* out) {
   // TORCH_INTERNAL_ASSERT(N > 0 && N <= std::numeric_limits<int32_t>::max());
   // using traits = function_traits<func_t>;
-
-  using traits = FunctionTraits<func_t>;
-  // using ArgsT = typename traits::ArgsTuple;
-  using arg1_t = typename traits::template arg<0>::type;
-  using return_t = typename traits::result_type;
-
-  arg1_t t1;
-  return_t t2;
-  std::cerr << "ins " << typeid(t1).name() << std::endl;
-  std::cerr << "out " << typeid(t2).name() << std::endl;
 
   int vec_size = 1;
   int block_size = 64;
@@ -159,25 +132,20 @@ static inline void launch_vectorized_kernel(gpuStream_t stream,
   int main_tid = N / vec_size;
   int tail_tid = N % vec_size;
 
-  std::cerr << "block size " << grid_size << std::endl;
-  std::cerr << "out ptr 3 " << data[1] << std::endl;
-  std::cerr << "out ptr cast " << reinterpret_cast<float*>(data[1])
-            << std::endl;
   switch (vec_size) {
     case 4: {
       vectorize_kernel<4, func_t><<<grid_size, block_size, 0, stream>>>(
-          N, f, data, main_tid, tail_tid);
+          N, f, in, out, main_tid, tail_tid);
       break;
     }
     case 2: {
       vectorize_kernel<4, func_t><<<grid_size, block_size, 0, stream>>>(
-          N, f, data, main_tid, tail_tid);
+          N, f, in, out, main_tid, tail_tid);
       break;
     }
     case 1: {
-      std::cerr << "sigle ele " << N << std::endl;
       single_ele_kernel<1, func_t>
-          <<<grid_size, block_size, 0, stream>>>(N, f, data);
+          <<<grid_size, block_size, 0, stream>>>(N, f, in, out);
       break;
     }
     default: {
@@ -190,41 +158,29 @@ static inline void launch_vectorized_kernel(gpuStream_t stream,
 
 template <typename func_t>
 void test_func(gpuStream_t stream,
-               TensorContainer& tensor_con,
+               const TensorContainer& tensor_con,
                const func_t& f) {
-  using traits = FunctionTraits<func_t>;
-  // using ArgsT = typename traits::ArgsTuple;
-  // using arg1_t = typename traits::template arg<0>::type;
-  // arg1_t t(0.0);
-  // f( t );
-
-  constexpr int num_inputs = traits::arity;
-  constexpr int array_size = num_inputs + 1;
+  // constexpr int num_inputs = traits::arity;
+  // constexpr int array_size = num_inputs + 1;
 
   // phi::Array<char*, array_size> data;
-  void* data[2];
 
-  void* t1 = const_cast<void*>(tensor_con.x_->data());
-  std::cerr << "out ptr q " << tensor_con.out_->data() << std::endl;
+  const void* t1 = tensor_con.x_->data();
   void* t2 = tensor_con.out_->data();
-  data[0] = t1;
-  data[1] = t2;
-
-  std::cerr << "out ptr 1 " << t2 << std::endl;
-  std::cerr << "out ptr 2 " << data[1] << std::endl;
 
   int num = tensor_con.x_->numel();
 
-  launch_vectorized_kernel(stream, num, f, data);
+  launch_vectorized_kernel(stream, num, f, t1, t2);
 }
 
-template <typename T, typename Func>
-void abs(const DenseTensor& x, DenseTensor* out, Func func) {
-  int numel = phi::product(x.dims());
-  int thread = 256;
-  int block_size = ((numel - 1) / 256) + 1;
-  abs_kernel<<<block_size, thread>>>(x.data<T>(), numel, func, out->data<T>());
-}
+// template <typename T, typename Func>
+// void abs(const DenseTensor& x, DenseTensor* out, Func func) {
+//   int numel = phi::product(x.dims());
+//   int thread = 256;
+//   int block_size = ((numel - 1) / 256) + 1;
+//   abs_kernel<<<block_size, thread>>>(x.data<T>(), numel, func,
+//   out->data<T>());
+// }
 
 // template <typename T, typename Func>
 // void abs_func( const DenseTensor& x, DenseTensor* out, Func func );

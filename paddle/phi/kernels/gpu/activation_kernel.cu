@@ -40,6 +40,9 @@ void ActivationGPUImpl(const Context& dev_ctx,
   // funcs::abs<T>( x, out);
   // auto t = funcs::UnaryFunctor<T, Functor >( functor );
   // funcs::abs<T>(x, out, t);
+
+  funcs::TensorContainer ten_con(&x, out);
+  funcs::test_func(dev_ctx.stream(), ten_con, functor);
 }
 
 #define DEFINE_GPU_ACTIVATION_KERNEL(name, functor_class)               \
