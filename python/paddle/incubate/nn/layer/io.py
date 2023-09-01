@@ -55,30 +55,24 @@ class ListenAndServ:
     Examples:
         .. code-block:: python
 
-            >>> import paddle.base as fluid
+            >>> # doctest: +SKIP('ValueError: Operator "listen_and_serv" has not been registered.')
             >>> from paddle.incubate.nn.layer.io import ListenAndServ
             >>> import paddle
             >>> paddle.enable_static()
-            >>> place = fluid.CPUPlace()
-            >>> main = fluid.Program()
-            >>> with fluid.program_guard(main):
+            >>> place = paddle.CPUPlace()
+            >>> main = paddle.static.Program()
+            >>> with paddle.static.program_guard(main):
             ...     serv = ListenAndServ(
-            ...         "127.0.0.1:6", ["X"], optimizer_mode=False)
+            ...         "127.0.0.1:6170", ["X"], optimizer_mode=False)
             ...     with serv.do():
-            ...         out_var = main.global_block().create_var(
-            ...             name="scale_0.tmp_0",
-            ...             psersistable=True,
-            ...             dtype="float32",
-            ...             shape=[32, 32],
-            ...         )
             ...         x = paddle.static.data(
             ...             shape=[32, 32],
             ...             dtype='float32',
             ...             name="X")
             ...         paddle.nn.initializer.Constant(value=1.0)(x, main.global_block())
-            ...         paddle.scale(x=x, scale=10.0, out=out_var)
+            ...         paddle.scale(x=x, scale=10.0)
 
-            >>> exe = fluid.Executor(place)
+            >>> exe = paddle.static.Executor(place)
             >>> exe.run(main)
     """
 
