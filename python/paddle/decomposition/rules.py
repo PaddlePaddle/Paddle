@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle._ir_ops import add, erf, multiply
+
 from .primitives import *  # noqa: F403
 from .register import register_decomp
 

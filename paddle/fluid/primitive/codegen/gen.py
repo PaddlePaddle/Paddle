@@ -44,8 +44,12 @@ VJPS = [
     'divide_grad',
     'sum_grad',
     'gelu_grad',
-    'erg_grad',
+    'erf_grad',
     'matmul_grad',
+    'multiply_grad',
+    'subtract_grad',
+    'rsqrt_grad',
+    'pow_grad',
 ]
 VJP_COMPS = ['divide_grad', 'sum_grad']
 BACKENDS = [
@@ -70,6 +74,10 @@ BACKENDS = [
     'gelu_grad',
     'erf_grad',
     'matmul_grad',
+    'multiply_grad',
+    'subtract_grad',
+    'rsqrt_grad',
+    'pow_grad',
 ]
 
 

@@ -16,7 +16,7 @@ import numbers
 
 # TODO: define normalization api
 import paddle
-from paddle import _C_ops, fluid, in_dynamic_mode
+from paddle import _C_ops, _ir_ops, fluid, in_dynamic_mode, ir
 from paddle.fluid.framework import in_dygraph_mode
 
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
@@ -341,7 +341,8 @@ def layer_norm(
             + ', but got input shape '
             + str(input_shape)
         )
-
+    if ir.core._use_new_ir_api():
+        return _ir_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
     if in_dygraph_mode():
         out = _C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
         return out
