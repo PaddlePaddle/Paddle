@@ -26,34 +26,25 @@ template <typename T, size_t N>
 __global__ void ContiguousFunc(
     const T* input_data,
     T* out_data,
-    funcs::ValueArray<int64_t, funcs::SegmentedArraySize::kFixed16>
-        input_stride,
-    funcs::ValueArray<int64_t, funcs::SegmentedArraySize::kFixed16> input_dims,
+    phi::Array<int64_t, phi::DDim::kMaxRank + 1> strides,
+    phi::Array<int64_t, phi::DDim::kMaxRank + 1> dims,
     const int64_t numel) {
-  int64_t element_num_each_thread = (numel / (blockDim.x * gridDim.x)) + 1;
-  int64_t thread_index = blockIdx.x * blockDim.x + threadIdx.x;
-  int64_t start_offset = thread_index * element_num_each_thread;
-  int64_t end_offset = start_offset + element_num_each_thread;
+  int64_t start_offset = (blockIdx.x * blockDim.x + threadIdx.x) *
+                         ((numel / (blockDim.x * gridDim.x)) + 1);
+  int64_t end_offset = start_offset + ((numel / (blockDim.x * gridDim.x)) + 1);
   int64_t start_dims[9];
   int64_t end_dims[9];
-  int64_t strides[9];
-  int64_t dims[9];
   int64_t index_tmp_start = start_offset;
-  int64_t index_tmp_end = end_offset;
 #pragma unroll
-  for (int dim = 8; dim >= 0; --dim) {
+  for (int64_t dim = 8; dim >= 0; --dim) {
     if (dim < N - 1) {
       start_dims[dim] = 0;
       end_dims[dim] = 0;
-      strides[dim] = 0;
-      dims[dim] = 0;
     } else {
-      strides[dim] = input_stride.data[dim];
-      dims[dim] = input_dims.data[dim];
-      start_dims[dim] = index_tmp_start % input_dims.data[dim];
-      end_dims[dim] = index_tmp_end % input_dims.data[dim];
-      index_tmp_start = index_tmp_start / input_dims.data[dim];
-      index_tmp_end = index_tmp_end / input_dims.data[dim];
+      start_dims[dim] = index_tmp_start % dims[dim];
+      end_dims[dim] = end_offset % dims[dim];
+      index_tmp_start = index_tmp_start / dims[dim];
+      end_offset = end_offset / dims[dim];
     }
   }
 
@@ -188,15 +179,22 @@ void ContiguousKernel(const Context& dev_ctx,
     return;
   }
 
-  funcs::ValueArray<int64_t, funcs::SegmentedArraySize::kFixed16> input_stride;
-  funcs::ValueArray<int64_t, funcs::SegmentedArraySize::kFixed16> input_dims;
-  input_stride.Set(src_stride.GetMutable(), src_stride.size());
-  input_dims.Set(src_shape.GetMutable(), input.dims().size());
+  phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride;
+  phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_dims;
+  for (int i = 0; i < 9; i++) {
+    if (i < input.dims().size()) {
+      input_dims[i] = input.dims()[i];
+      input_stride[i] = input.strides()[i];
+    } else {
+      input_dims[i] = 0;
+      input_stride[i] = 0;
+    }
+  }
 
   if (rank == 0) {
     rank = 1;
-    input_dims.data[0] = numel;
-    input_stride.data[0] = 1;
+    input_dims[0] = numel;
+    input_stride[0] = 1;
   }
 
   int64_t block = 512;
