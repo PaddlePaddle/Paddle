@@ -74,7 +74,7 @@ def apply_pass():
     recompute.enable_tuning = True
 
     tuning = strategy.tuning
-    tuning.enable = False
+    tuning.enable = True
     tuning.profile_start_step = 1
     tuning.profile_end_step = 2
     tuning.run_after_tuning = True
@@ -105,8 +105,8 @@ class TestRecomputeWithAMPPassTuning(unittest.TestCase):
         model, loss = generate_model()
 
         engine = auto.Engine(model, loss, opt, strategy=strategy)
-        engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        # engine._tune(self.dataset, 3, batch_size=self.batch_size)
+        # engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        engine._tune(self.dataset, 3, batch_size=self.batch_size)
 
 
 if __name__ == "__main__":
