@@ -39,6 +39,7 @@ from sampcd_processor_utils import (
     TEST_TIMEOUT,
     DocTester,
     TestResult,
+    log_exit,
     logger,
     parse_args,
     run_doctest,
@@ -464,8 +465,8 @@ class Xdoctester(DocTester):
                         "In addition, mistakes found in sample codes: %s",
                         test_result.name,
                     )
-            logger.info("----------------------------------------------------")
-            sys.exit(1)
+            log_exit(1)
+
         else:
             for test_result in test_results:
                 if not test_result.nocode:
@@ -526,7 +527,7 @@ class Xdoctester(DocTester):
                 logger.info(
                     "Mistakes found in sample codes. Please recheck the sample codes."
                 )
-                sys.exit(1)
+                log_exit(1)
 
         logger.info("Sample code check is successful!")
 

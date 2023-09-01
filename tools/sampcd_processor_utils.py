@@ -376,6 +376,11 @@ def extract_code_blocks_from_docstr(docstr, google_style=True):
     return code_blocks
 
 
+def log_exit(arg=None):
+    logger.info("----------------End of the Check--------------------")
+    sys.exit(arg)
+
+
 def init_logger(debug=True, log_file=None):
     """
     init logger level and file handler
@@ -409,7 +414,7 @@ def check_test_mode(mode="cpu", gpu_id=0):
         logger.error(
             "Unrecognized argument:%s, 'cpu' or 'gpu' is desired.", mode
         )
-        sys.exit("Invalid arguments")
+        log_exit("Invalid arguments")
 
     return mode
 
@@ -466,7 +471,7 @@ def get_docstring(full_test=False):
 
     if len(docstrings_to_test) == 0 and len(whl_error) == 0:
         logger.info("-----API_PR.spec is the same as API_DEV.spec-----")
-        sys.exit(0)
+        log_exit(0)
     logger.info("API_PR is diff from API_DEV: %s", docstrings_to_test.keys())
     logger.info("Total api: %s", len(docstrings_to_test.keys()))
 
@@ -512,8 +517,7 @@ def check_old_style(docstrings_to_test: typing.Dict[str, str]):
         logger.info(
             "For more information: https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/dev_guides/style_guide_and_references/code_example_writing_specification_cn.html "
         )
-        logger.info("----------------End of the Check--------------------")
-        sys.exit(1)
+        log_exit(1)
 
 
 def exec_gen_doc():
