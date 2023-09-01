@@ -170,11 +170,11 @@ void RoiAlignGradKernel(const Context& dev_ctx,
           T count = roi_bin_grid_h * roi_bin_grid_w;
           for (int iy = 0; iy < roi_bin_grid_h; iy++) {
             const T y = roi_ymin + ph * bin_size_h +
-                        static_cast<T>(iy + .5f) * bin_size_h /
+                        static_cast<T>(iy + .5f) * bin_size_h /  // NOLINT
                             static_cast<T>(roi_bin_grid_h);
             for (int ix = 0; ix < roi_bin_grid_w; ix++) {
               const T x = roi_xmin + pw * bin_size_w +
-                          static_cast<T>(ix + .5f) * bin_size_w /
+                          static_cast<T>(ix + .5f) * bin_size_w /  // NOLINT
                               static_cast<T>(roi_bin_grid_w);
               bilinear_interpolate_gradient(height,
                                             width,
