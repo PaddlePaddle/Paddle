@@ -515,9 +515,9 @@ def edit_distance(
             >>> print(sequence_num)
             Tensor(shape=[4, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [[3.],
-                    [2.],
-                    [4.],
-                    [1.]])
+                     [2.],
+                     [4.],
+                     [1.]])
 
             >>> distance, sequence_num = F.loss.edit_distance(input=input, label=label, input_length=input_len, label_length=label_len, normalized=True)
             >>> print(distance)
@@ -526,9 +526,9 @@ def edit_distance(
             >>> print(sequence_num)
             Tensor(shape=[4, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [[0.75000000],
-                    [0.50000000],
-                    [1.        ],
-                    [0.25000000]])
+                     [0.50000000],
+                     [1.        ],
+                     [0.25000000]])
 
     """
 
@@ -957,25 +957,25 @@ def hsigmoid_loss(
             >>> print(input)
             Tensor(shape=[4, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [[ 0.73167229,  0.04029441, -0.48078126],
-                    [ 0.81050646, -0.15199822, -0.18717426],
-                    [ 0.94041789,  0.48874724,  0.03570259],
-                    [ 0.46585739,  0.95573163, -0.91368192]])
+                     [ 0.81050646, -0.15199822, -0.18717426],
+                     [ 0.94041789,  0.48874724,  0.03570259],
+                     [ 0.46585739,  0.95573163, -0.91368192]])
             >>> label = paddle.to_tensor([0, 1, 4, 5])
             >>> num_classes = 5
             >>> weight = paddle.uniform([num_classes - 1, 3])
             >>> print(weight)
             Tensor(shape=[4, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [[-0.14721161,  0.43916738, -0.58377075],
-                    [-0.60536981, -0.23151302, -0.70793629],
-                    [-0.54572451, -0.10784978, -0.56684279],
-                    [ 0.35370791, -0.07079649,  0.84765708]])
+                     [-0.60536981, -0.23151302, -0.70793629],
+                     [-0.54572451, -0.10784978, -0.56684279],
+                     [ 0.35370791, -0.07079649,  0.84765708]])
             >>> out = F.hsigmoid_loss(input, label, num_classes, weight)
             >>> print(out)
             Tensor(shape=[4, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [[2.23681736],
-                    [1.97140026],
-                    [1.66425037],
-                    [2.54727197]])
+                     [1.97140026],
+                     [1.66425037],
+                     [2.54727197]])
 
     """
     if num_classes < 2:
@@ -1312,7 +1312,7 @@ def l1_loss(input, label, reduction='mean', name=None):
             >>> print(l1_loss)
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
                     [[0.20000005, 0.19999999],
-                    [0.20000000, 0.79999995]])
+                     [0.20000000, 0.79999995]])
 
             >>> l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='sum')
             >>> print(l1_loss)
