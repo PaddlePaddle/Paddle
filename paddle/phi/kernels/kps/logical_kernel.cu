@@ -36,7 +36,7 @@ namespace phi {
       auto x_origin = x;                                            \
       ins.push_back(&x_origin);                                     \
     } else {                                                        \
-      ins.push_back(x);                                             \
+      ins.push_back(&x);                                            \
     }                                                               \
     dev_ctx.template Alloc<bool>(out);                              \
     out->set_type(phi::DataType::BOOL);                             \
@@ -58,12 +58,13 @@ void LogicalNotKernel(const Context& dev_ctx,
   std::vector<const DenseTensor*> ins;
   if (out->IsSharedWith(x)) {
     auto x_origin = x;
-    ins.push_back(&x_origin)
+    ins.push_back(&x_origin);
   } else {
-    ins.push_back(&x)
+    ins.push_back(&x);
   }
   dev_ctx.template Alloc<bool>(out);
   out->set_type(phi::DataType::BOOL);
+  std::vector<DenseTensor*> outs = {out};
   funcs::LogicalNotFunctor<T> unary_func;
   funcs::BroadcastKernel<bool>(dev_ctx, ins, &outs, unary_func);
 }
