@@ -14,7 +14,8 @@
 
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/phi/backends/c_comm_lib.h"
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #endif
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
@@ -34,7 +35,7 @@ namespace detail {
 // and the required members need to be passed in from the eucalyptus tree.
 ccl::CCLComm GetCCLComm(const Place& place, int global_gid) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_CUSTOM_DEVICE)
+    defined(PADDLE_WITH_MCCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
   paddle::distributed::ProcessGroup* pg = nullptr;
   if (paddle::distributed::ProcessGroupMapFromGid::getInstance()->has(
           global_gid)) {
@@ -45,7 +46,8 @@ ccl::CCLComm GetCCLComm(const Place& place, int global_gid) {
   }
 #endif
   if (place.GetType() == phi::AllocationType::GPU) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
     return static_cast<paddle::distributed::ProcessGroupNCCL*>(pg)->NCCLComm(
         place);
 #else

@@ -89,7 +89,9 @@ void BuildStrategyApply(BuildStrategy *build_strategy, ir::Graph *graph) {
   auto places = CreatePlaces(1, false);
   auto device = platform::Place2DeviceType(places[0]);
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
+
   platform::NCCLCommunicator ctxs;
 #elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
   platform::BKCLCommunicator ctxs;
@@ -100,7 +102,9 @@ void BuildStrategyApply(BuildStrategy *build_strategy, ir::Graph *graph) {
                         loss_name,
                         scopes,
                         1,
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
+
                         device,
                         &ctxs);
 #elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)

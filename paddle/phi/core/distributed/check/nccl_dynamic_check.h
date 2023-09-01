@@ -21,6 +21,8 @@
 
 #if defined(PADDLE_WITH_RCCL)
 using gpuStream_t = hipStream_t;
+#elif defined(PADDLE_WITH_MCCL)
+using gpuStream_t = musaStream_t;
 #else
 using gpuStream_t = cudaStream_t;
 #endif

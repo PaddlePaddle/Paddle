@@ -432,14 +432,14 @@ TEST(enforce, musa_success) {
       CheckCudaStatusFailure(MUBLAS_STATUS_INVALID_VALUE, "MUBLAS error"));
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
-  EXPECT_TRUE(CheckCudaStatusSuccess(mcclSuccess));
-  EXPECT_TRUE(CheckCudaStatusFailure(mcclUnhandledMusaError, "MCCL error"));
-  EXPECT_TRUE(CheckCudaStatusFailure(mcclSystemError, "MCCL error"));
-  EXPECT_TRUE(CheckCudaStatusFailure(mcclInternalError,
+  EXPECT_TRUE(CheckCudaStatusSuccess(ncclSuccess));
+  EXPECT_TRUE(CheckCudaStatusFailure(ncclUnhandledCudaError, "MCCL error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(ncclSystemError, "MCCL error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(ncclInternalError,
                                      "An internal check failed. This is either "
                                      "a bug in MCCL or due to memory "
                                      "corruption"));
-  EXPECT_TRUE(CheckCudaStatusFailure(mcclInvalidUsage,
+  EXPECT_TRUE(CheckCudaStatusFailure(ncclInvalidUsage,
                                      "The call to MCCL is incorrect. This is "
                                      "usually reflecting a programming error"));
 #endif

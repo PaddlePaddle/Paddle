@@ -14,7 +14,8 @@
 
 #include "paddle/fluid/imperative/nccl_context.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/imperative/all_reduce.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
@@ -41,7 +42,8 @@ class Variable;
 
 namespace paddle {
 namespace imperative {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 
 void NCCLParallelContext::BcastNCCLId(
     std::vector<ncclUniqueId> &nccl_ids,  // NOLINT
@@ -188,6 +190,9 @@ void NCCLParallelContext::WaitCompute(int ring_id) {
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event, compute_stream));
   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(comm_stream, event, 0));
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_ENFORCE_GPU_SUCCESS(musaEventRecord(event, compute_stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(musaStreamWaitEvent(comm_stream, event, 0));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, compute_stream));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(comm_stream, event, 0));
@@ -218,6 +223,9 @@ void NCCLParallelContext::WaitComm(int ring_id) {
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event, comm_stream));
   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(compute_stream, event, 0));
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_ENFORCE_GPU_SUCCESS(musaEventRecord(event, comm_stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(musaStreamWaitEvent(compute_stream, event, 0));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, comm_stream));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(compute_stream, event, 0));
