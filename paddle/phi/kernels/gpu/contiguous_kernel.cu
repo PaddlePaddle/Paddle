@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/segmented_array.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
@@ -25,21 +26,86 @@ template <typename T, size_t N>
 __global__ void ContiguousFunc(
     const T* input_data,
     T* out_data,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
-    phi::Array<int64_t, phi::DDim::kMaxRank + 1> dims,
+    funcs::ValueArray<int64_t, funcs::SegmentedArraySize::kFixed16>
+        input_stride,
+    funcs::ValueArray<int64_t, funcs::SegmentedArraySize::kFixed16> input_dims,
     const int64_t numel) {
-  int64_t gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t element_num_each_thread = (numel / (blockDim.x * gridDim.x)) + 1;
+  int64_t thread_index = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t start_offset = thread_index * element_num_each_thread;
+  int64_t end_offset = start_offset + element_num_each_thread;
+  int64_t start_dims[9];
+  int64_t end_dims[9];
+  int64_t strides[9];
+  int64_t dims[9];
+  int64_t index_tmp_start = start_offset;
+  int64_t index_tmp_end = end_offset;
 #pragma unroll
-  for (int64_t i = gid; i < numel; i += blockDim.x * gridDim.x) {
-    int64_t input_offset = 0;
-    int64_t index_tmp = i;
-#pragma unroll
-    for (int dim = N - 1; dim >= 0; --dim) {
-      input_offset += index_tmp % dims[dim] * input_stride[dim];
-      index_tmp = index_tmp / dims[dim];
+  for (int dim = 8; dim >= 0; --dim) {
+    if (dim < N - 1) {
+      start_dims[dim] = 0;
+      end_dims[dim] = 0;
+      strides[dim] = 0;
+      dims[dim] = 0;
+    } else {
+      strides[dim] = input_stride.data[dim];
+      dims[dim] = input_dims.data[dim];
+      start_dims[dim] = index_tmp_start % input_dims.data[dim];
+      end_dims[dim] = index_tmp_end % input_dims.data[dim];
+      index_tmp_start = index_tmp_start / input_dims.data[dim];
+      index_tmp_end = index_tmp_end / input_dims.data[dim];
     }
+  }
 
-    out_data[i] = input_data[input_offset];
+  for (int64_t dim8 = start_dims[8]; dim8 >= end_dims[8]; ++dim8) {
+    int64_t offset8 = strides[8] * dim8;
+    int64_t end_dims7 = dim8 == end_dims[8] ? end_dims[7] : dims[7] - 1;
+    for (int64_t dim7 = start_dims[7]; dim7 >= end_dims7; ++dim7) {
+      int64_t offset7 = offset8 + strides[7] * dim7;
+      int64_t end_dims6 = dim7 == end_dims[7] ? end_dims[6] : dims[6] - 1;
+      for (int64_t dim6 = start_dims[6]; dim6 >= end_dims6; ++dim6) {
+        int64_t offset6 = offset7 + strides[6] * dim6;
+        int64_t end_dims5 = dim6 == end_dims[6] ? end_dims[5] : dims[5] - 1;
+        for (int64_t dim5 = start_dims[5]; dim5 >= end_dims5; ++dim5) {
+          int64_t offset5 = offset6 + strides[5] * dim5;
+          int64_t end_dims4 = dim5 == end_dims[5] ? end_dims[4] : dims[4] - 1;
+          for (int64_t dim4 = start_dims[4]; dim4 >= end_dims4; ++dim4) {
+            int64_t offset4 = offset5 + strides[4] * dim4;
+            int64_t end_dims3 = dim4 == end_dims[4] ? end_dims[3] : dims[3] - 1;
+            for (int64_t dim3 = start_dims[3]; dim3 >= end_dims3; ++dim3) {
+              int64_t offset3 = offset4 + strides[3] * dim3;
+              int64_t end_dims2 =
+                  dim3 == end_dims[3] ? end_dims[2] : dims[2] - 1;
+              for (int64_t dim2 = start_dims[2]; dim2 >= end_dims2; ++dim2) {
+                int64_t offset2 = offset3 + strides[2] * dim2;
+                int64_t end_dims1 =
+                    dim2 == end_dims[2] ? end_dims[1] : dims[1] - 1;
+                for (int64_t dim1 = start_dims[1]; dim1 >= end_dims1; ++dim1) {
+                  int64_t input_offset =
+                      offset2 + strides[1] * dim1 + strides[0] * start_dims[0];
+                  int64_t end_dims0 =
+                      dim1 == end_dims[1] ? end_dims[0] : dims[0] - 1;
+                  for (int64_t dim0 = start_dims[0]; dim0 >= end_dims0;
+                       ++dim0) {
+                    out_data[start_offset] = input_data[input_offset];
+                    start_offset++;
+                    input_offset += strides[0];
+                  }
+                  start_dims[0] = 0;
+                }
+                start_dims[1] = 0;
+              }
+              start_dims[2] = 0;
+            }
+            start_dims[3] = 0;
+          }
+          start_dims[4] = 0;
+        }
+        start_dims[5] = 0;
+      }
+      start_dims[6] = 0;
+    }
+    start_dims[7] = 0;
   }
 }
 
@@ -122,17 +188,15 @@ void ContiguousKernel(const Context& dev_ctx,
     return;
   }
 
-  phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride;
-  phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_dims;
-  for (int i = 0; i < input.dims().size(); i++) {
-    input_dims[i] = input.dims()[i];
-    input_stride[i] = input.strides()[i];
-  }
+  funcs::ValueArray<int64_t, funcs::SegmentedArraySize::kFixed16> input_stride;
+  funcs::ValueArray<int64_t, funcs::SegmentedArraySize::kFixed16> input_dims;
+  input_stride.Set(src_stride.GetMutable(), src_stride.size());
+  input_dims.Set(src_shape.GetMutable(), input.dims().size());
 
   if (rank == 0) {
     rank = 1;
-    input_dims[0] = numel;
-    input_stride[0] = 1;
+    input_dims.data[0] = numel;
+    input_stride.data[0] = 1;
   }
 
   int64_t block = 512;
