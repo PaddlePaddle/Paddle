@@ -115,6 +115,22 @@ DLL_EXPORT int fast_embedding(Context* ctx,
                               int64_t padding_idx,
                               TID start_index = 0);
 
+template <typename T>
+DLL_EXPORT int bn_act_fusion_infer(Context* ctx,
+                                   const T* x,
+                                   T* y,
+                                   int64_t n,
+                                   int64_t c,
+                                   int64_t h,
+                                   int64_t w,
+                                   float eps,
+                                   const float* scale,
+                                   const float* bias,
+                                   const float* global_mean,
+                                   const float* global_var,
+                                   bool is_nchw,
+                                   int act_type);
+
 }  // namespace plugin
 }  // namespace api
 }  // namespace xpu

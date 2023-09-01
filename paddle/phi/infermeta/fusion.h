@@ -201,4 +201,16 @@ void FastLayernormXPUInferMeta(const MetaTensor& x,
                                float epsilon,
                                MetaTensor* out);
 
+void BnActXPUInferMeta(const MetaTensor& x,
+                       const MetaTensor& mean,
+                       const MetaTensor& variance,
+                       const MetaTensor& scale,
+                       const MetaTensor& bias,
+                       float momentum,
+                       float epsilon,
+                       const std::string& data_layout,
+                       int act_type,
+                       MetaTensor* y,
+                       MetaConfig config = MetaConfig());
+
 }  // namespace phi
