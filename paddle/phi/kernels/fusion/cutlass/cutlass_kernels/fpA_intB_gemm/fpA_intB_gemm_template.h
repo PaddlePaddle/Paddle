@@ -45,6 +45,7 @@ limitations under the License. */
 #pragma GCC diagnostic pop
 
 #include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/cutlass_heuristic.h"
+#include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/arch_define.h"
 #include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/fpA_intB_gemm.h"
 #include "paddle/phi/kernels/fusion/cutlass/utils/cuda_utils.h"
 namespace phi {
@@ -321,6 +322,7 @@ struct dispatch_stages<T,
   }
 };
 
+#if defined(USE_FPAINTB_GEMM_WITH_SM80)
 template <typename T,
           typename WeightType,
           typename EpilogueTag,
@@ -369,6 +371,7 @@ struct dispatch_stages<T,
                                                        occupancy);
   }
 };
+#endif
 
 template <typename T,
           typename WeightType,

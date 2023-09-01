@@ -305,6 +305,7 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::dispatch_to_arch<EpilogueTag>(
     int* occupancy) {
   // VLOG(3)<<__PRETTY_FUNCTION__;
   if (sm_ >= 70 && sm_ < 75) {
+#if defined(USE_FPAINTB_GEMM_WITH_SM70)
     dispatch_gemm_to_cutlass<T, WeightType, cutlass::arch::Sm70, EpilogueTag>(
         A,
         B,
@@ -319,7 +320,13 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::dispatch_to_arch<EpilogueTag>(
         gemm_config,
         stream,
         occupancy);
+#else
+    throw std::runtime_error(
+        "[CutlassFpAIntBGemmRunner][GEMM Dispatch] Arch unsupported for "
+        "CUTLASS mixed type GEMM");
+#endif
   } else if (sm_ >= 75 && sm_ < 80) {
+#if defined(USE_FPAINTB_GEMM_WITH_SM75)
     dispatch_gemm_to_cutlass<T, WeightType, cutlass::arch::Sm75, EpilogueTag>(
         A,
         B,
@@ -334,7 +341,13 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::dispatch_to_arch<EpilogueTag>(
         gemm_config,
         stream,
         occupancy);
+#else
+    throw std::runtime_error(
+        "[CutlassFpAIntBGemmRunner][GEMM Dispatch] Arch unsupported for "
+        "CUTLASS mixed type GEMM");
+#endif
   } else if (sm_ >= 80 && sm_ < 90) {
+#if defined(USE_FPAINTB_GEMM_WITH_SM80)
     dispatch_gemm_to_cutlass<T, WeightType, cutlass::arch::Sm80, EpilogueTag>(
         A,
         B,
@@ -349,6 +362,11 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::dispatch_to_arch<EpilogueTag>(
         gemm_config,
         stream,
         occupancy);
+#else
+    throw std::runtime_error(
+        "[CutlassFpAIntBGemmRunner][GEMM Dispatch] Arch unsupported for "
+        "CUTLASS mixed type GEMM");
+#endif
   } else {
     throw std::runtime_error(
         "[CutlassFpAIntBGemmRunner][GEMM Dispatch] Arch unsupported for "

@@ -88,6 +88,7 @@ if(WITH_CUTLASS)
       ${CMAKE_COMMAND} -E make_directory
       "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen"
     COMMAND ${PYTHON_EXECUTABLE} generic_mixed_gemm_kernelLauncher.py
+            --cuda_arch "${NVCC_ARCH_BIN}"
     WORKING_DIRECTORY
       "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm"
   )
