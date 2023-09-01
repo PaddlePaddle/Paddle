@@ -123,5 +123,7 @@ void InterpreterCore::SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
 
 void InterpreterCore::PreStaticBuild() { impl_->PreStaticBuild(); }
 
+bool InterpreterCore::IsStaticBuild() const { return impl_->IsStaticBuild(); }
+
 }  // namespace framework
 }  // namespace paddle

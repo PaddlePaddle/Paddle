@@ -76,6 +76,8 @@ class InterpreterCore {
 
   void PreStaticBuild();
 
+  bool IsStaticBuild();
+
  private:
   DISABLE_COPY_AND_ASSIGN(InterpreterCore);
 
