@@ -49,6 +49,58 @@ __global__ void AllcloseCUDAKernel(const T* in_data,
   }
 }
 
+template <>
+__global__ void AllcloseCUDAKernel<phi::dtype::complex<float>>(
+    const phi::dtype::complex<float>* in_data,
+    const phi::dtype::complex<float>* other_data,
+    const double rtol,
+    const double atol,
+    bool equal_nan,
+    int num,
+    bool* out_data) {
+  unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  bool val;
+  for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
+    const phi::dtype::complex<float> a = in_data[i];
+    const phi::dtype::complex<float> b = other_data[i];
+    if (isnan(a) || isnan(b)) {
+      val = equal_nan && isnan(a) == isnan(b);
+    } else {
+      float left = abs(a - b);
+      float right = atol + rtol * abs(b);
+      float diff = abs(left - right);
+      val = a == b || left <= right || diff <= 1e-15;
+    }
+    if (!val) *out_data = false;
+  }
+}
+
+template <>
+__global__ void AllcloseCUDAKernel<phi::dtype::complex<double>>(
+    const phi::dtype::complex<double>* in_data,
+    const phi::dtype::complex<double>* other_data,
+    const double rtol,
+    const double atol,
+    bool equal_nan,
+    int num,
+    bool* out_data) {
+  unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  bool val;
+  for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
+    const phi::dtype::complex<double> a = in_data[i];
+    const phi::dtype::complex<double> b = other_data[i];
+    if (isnan(a) || isnan(b)) {
+      val = equal_nan && isnan(a) == isnan(b);
+    } else {
+      double left = abs(a - b);
+      double right = atol + rtol * abs(b);
+      double diff = abs(left - right);
+      val = a == b || left <= right || diff <= 1e-15;
+    }
+    if (!val) *out_data = false;
+  }
+}
+
 template <typename T, typename Context>
 void AllCloseKernel(const Context& dev_ctx,
                     const DenseTensor& x,
@@ -102,6 +154,8 @@ PD_REGISTER_KERNEL(allclose,
                    phi::AllCloseKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
