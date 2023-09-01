@@ -202,30 +202,30 @@ def shard_layer(
 
     Examples:
 
-    ..code-block:: python
+        ..code-block:: python
 
-        >>> import paddle
-        >>> import paddle.distributed as dist
-        >>> mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
 
-        >>> class MLP(paddle.nn.Layer):
-        ...     def __init__(self, ):
-        ...         super.__init__()
-        ...         self.fc1 = nn.Linear(8, 8)
-        ...         elf.fc2 = nn.Linear(8, 8)
+            >>> class MLP(paddle.nn.Layer):
+            ...     def __init__(self, ):
+            ...         super.__init__()
+            ...         self.fc1 = nn.Linear(8, 8)
+            ...         elf.fc2 = nn.Linear(8, 8)
 
-        ...     def forward(self, input):
-        ...         return self.fc2(self.fc1(input))
+            ...     def forward(self, input):
+            ...         return self.fc2(self.fc1(input))
 
-        >>> def shard_params_func(model_name, model):
-        ...     dist_attr = dist.TensorDistAttr(shard_spec==['x', 'y'], mesh=mesh)
-        ...     if model_name == 'fc1':
-        ...         model.weight = dist.shard_tensor(model.weight, dist_attr)
+            >>> def shard_params_func(model_name, model):
+            ...     dist_attr = dist.TensorDistAttr(shard_spec==['x', 'y'], mesh=mesh)
+            ...     if model_name == 'fc1':
+            ...         model.weight = dist.shard_tensor(model.weight, dist_attr)
 
-        >>> model = MLP()
-        >>> model = dist.shard_layer(model, shard_params_func)
+            >>> model = MLP()
+            >>> model = dist.shard_layer(model, shard_params_func)
 
-        >>> print(model)
+            >>> print(model)
     """
     # Check the legality of process_mesh
     if not isinstance(process_mesh, dist.ProcessMesh):
