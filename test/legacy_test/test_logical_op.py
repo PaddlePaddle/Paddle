@@ -221,9 +221,7 @@ def test_type_error(unit_test, use_gpu, type_str_map):
             y = paddle.to_tensor(y)
             error_type = BaseException
         if binary_op:
-            if type_str_map['x'] != type_str_map['y'] and type_str_map[
-                'x'
-            ] not in [np.complex64, np.complex128]:
+            if type_str_map['x'] != type_str_map['y']:
                 unit_test.assertRaises(error_type, op, x=x, y=y)
             if not in_dynamic_mode():
                 error_type = TypeError
