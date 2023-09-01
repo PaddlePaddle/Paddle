@@ -32,15 +32,10 @@ limitations under the License. */
 #endif
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/os_info.h"
-PADDLE_DEFINE_EXPORTED_bool(enable_rpc_profiler,
-                            false,
-                            "Enable rpc profiler or not.");
+#include "paddle/phi/core/flags.h"
 
-PD_DEFINE_bool(enable_record_memory,
-               false,
-               "enable memory recorder");  // NOLINT
+PHI_DECLARE_bool(enable_record_memory);
 
 #if defined(_WIN32) && defined(PHI_SHARED)
 phi::ProfilerState phi::ProfilerHelper::g_state = phi::ProfilerState::kDisabled;
@@ -609,12 +604,6 @@ MemEvenRecorder::RecordMemEvent::~RecordMemEvent() {  // NOLINT
   }
   PopMemEvent(start_ns_, end_ns_, bytes_, place_, annotation_free);
 }
-
-/*RecordRPCEvent::RecordRPCEvent(const std::string &name) {
-  if (FLAGS_enable_rpc_profiler) {
-    event_.reset(new platform::RecordEvent(name));
-  }
-}*/
 
 RecordBlock::RecordBlock(int block_id)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
