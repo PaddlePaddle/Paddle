@@ -15,6 +15,7 @@
 #pragma once
 
 #include <array>
+#include <functional>
 #include <iostream>
 #include <queue>
 #include <tuple>
@@ -73,15 +74,15 @@ class EquationGraphTopoWalker final {
     std::unordered_set<VT> queued_variables{};
     std::queue<FT> functions_queue{};
     std::unordered_set<FT> queued_functions{};
-    const TryEnqueueVaraible = [&](VT variable) {
+    const auto& TryEnqueueVaraible = [&](VT variable) {
       if (queued_variables.count(variable) == 0) {
-        variables_queue.push_back(variable);
+        variables_queue.push(variable);
         queued_variables.insert(variable);
       }
     };
-    const TryEnqueueFunction = [&](FT function) {
+    const auto& TryEnqueueFunction = [&](FT function) {
       if (queued_functions.count(function) == 0) {
-        functions_queue.push_back(function);
+        functions_queue.push(function);
         queued_functions.insert(function);
       }
     };
