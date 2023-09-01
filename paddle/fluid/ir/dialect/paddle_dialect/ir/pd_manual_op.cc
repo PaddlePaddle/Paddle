@@ -25,6 +25,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/multiary.h"
+#include "paddle/phi/infermeta/ternary.h"
 
 namespace paddle {
 namespace dialect {
@@ -143,6 +144,432 @@ void AddNOp::Build(ir::Builder &builder,             // NOLINT
 
 void AddNOp::InferMeta(phi::InferMetaContext *infer_meta) {
   auto fn = PD_INFER_META(phi::AddNInferMeta);
+  fn(infer_meta);
+}
+
+const char *FusedGemmEpilogueOp::attributes_name[3] = {
+    "trans_x", "trans_y", "activation"};
+
+OpInfoTuple FusedGemmEpilogueOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      paddle::dialect::OpInputInfo(
+          "x", "paddle::dialect::DenseTensorType", false, false, false),
+      paddle::dialect::OpInputInfo(
+          "y", "paddle::dialect::DenseTensorType", false, false, false),
+      paddle::dialect::OpInputInfo(
+          "bias", "paddle::dialect::DenseTensorType", false, false, false)};
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {
+      paddle::dialect::OpAttributeInfo("trans_x", "ir::BoolAttribute", ""),
+      paddle::dialect::OpAttributeInfo("trans_y", "ir::BoolAttribute", ""),
+      paddle::dialect::OpAttributeInfo("activation", "ir::StrAttribute", "")};
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      paddle::dialect::OpOutputInfo(
+          "out", "paddle::dialect::DenseTensorType", false, false),
+      paddle::dialect::OpOutputInfo(
+          "reserve_space", "paddle::dialect::DenseTensorType", true, false)};
+  paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo(
+      "FusedGemmEpilogueInferMeta",
+      {"x", "y", "bias", "trans_x", "trans_y", "activation"},
+      {""},
+      {""},
+      {},
+      {},
+      {});
+
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "fused_gemm_epilogue");
+}
+
+void FusedGemmEpilogueOp::Build(ir::Builder &builder,
+                                ir::OperationArgument &argument,
+                                ir::OpResult x_,
+                                ir::OpResult y_,
+                                ir::OpResult bias_,
+                                ir::AttributeMap attributes) {
+  bool trans_x = attributes.at("trans_x").dyn_cast<ir::BoolAttribute>().data();
+
+  bool trans_y = attributes.at("trans_y").dyn_cast<ir::BoolAttribute>().data();
+
+  std::string activation =
+      attributes.at("activation").dyn_cast<ir::StrAttribute>().AsString();
+
+  VLOG(4) << "Builder construction inputs";
+  std::vector<ir::OpResult> argument_inputs = {x_, y_, bias_};
+  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+
+  VLOG(4) << "Builder construction attributes";
+  ir::Attribute attr_trans_x =
+      ir::BoolAttribute::get(ir::IrContext::Instance(), trans_x);
+  argument.AddAttribute("trans_x", attr_trans_x);
+  ir::Attribute attr_trans_y =
+      ir::BoolAttribute::get(ir::IrContext::Instance(), trans_y);
+  argument.AddAttribute("trans_y", attr_trans_y);
+  ir::Attribute attr_activation =
+      ir::StrAttribute::get(ir::IrContext::Instance(), activation);
+  argument.AddAttribute("activation", attr_activation);
+
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorType x =
+      x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  (void)x;
+  paddle::dialect::DenseTensorType y =
+      y_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  (void)y;
+  paddle::dialect::DenseTensorType bias =
+      bias_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  (void)bias;
+
+  VLOG(4) << "Builder construction  dense_x";
+  phi::DenseTensor dense_x(
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
+      phi::DenseTensorMeta(paddle::dialect::TransToPhiDataType(x.dtype()),
+                           x.dims(),
+                           x.data_layout(),
+                           x.lod(),
+                           x.offset()));
+  VLOG(4) << "Builder construction  meta_x";
+  phi::MetaTensor meta_x(&dense_x);
+
+  VLOG(4) << "Builder construction  dense_y";
+  phi::DenseTensor dense_y(
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
+      phi::DenseTensorMeta(paddle::dialect::TransToPhiDataType(y.dtype()),
+                           y.dims(),
+                           y.data_layout(),
+                           y.lod(),
+                           y.offset()));
+  VLOG(4) << "Builder construction  meta_y";
+  phi::MetaTensor meta_y(&dense_y);
+
+  VLOG(4) << "Builder construction  dense_bias";
+  phi::DenseTensor dense_bias(
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
+      phi::DenseTensorMeta(paddle::dialect::TransToPhiDataType(bias.dtype()),
+                           bias.dims(),
+                           bias.data_layout(),
+                           bias.lod(),
+                           bias.offset()));
+  VLOG(4) << "Builder construction  meta_bias";
+  phi::MetaTensor meta_bias(&dense_bias);
+  phi::DenseTensor dense_out;
+  phi::MetaTensor meta_out(&dense_out);
+  phi::DenseTensor dense_reserve_space;
+  phi::MetaTensor meta_reserve_space(&dense_reserve_space);
+
+  phi::FusedGemmEpilogueInferMeta(
+      meta_x,
+      meta_y,
+      meta_bias,
+      trans_x,
+      trans_y,
+      activation,
+      &meta_out,
+      activation == "none" ? nullptr : &meta_reserve_space);
+
+  std::vector<ir::Type> argument_outputs;
+  ir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      ir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.dims(),
+      dense_out.layout(),
+      dense_out.lod(),
+      dense_out.offset());
+  argument_outputs.push_back(out_dense_tensor_type);
+
+  ir::Type reserve_space_dense_tensor_type =
+      activation == "none"
+          ? ir::Type()
+          : paddle::dialect::DenseTensorType::get(
+                ir::IrContext::Instance(),
+                paddle::dialect::TransToIrDataType(dense_reserve_space.dtype()),
+                dense_reserve_space.dims(),
+                dense_reserve_space.layout(),
+                dense_reserve_space.lod(),
+                dense_reserve_space.offset());
+  argument_outputs.push_back(reserve_space_dense_tensor_type);
+
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+}
+
+void FusedGemmEpilogueOp::Verify() {
+  VLOG(4) << "Start Verifying inputs, outputs and attributes for: "
+             "FusedGemmEpilogueOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto input_size = num_operands();
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        3u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of inputs must be equal to 3.", input_size));
+    PADDLE_ENFORCE((*this)
+                       ->operand_source(0)
+                       .type()
+                       .isa<paddle::dialect::DenseTensorType>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type validation failed for the 0th input."));
+    PADDLE_ENFORCE((*this)
+                       ->operand_source(1)
+                       .type()
+                       .isa<paddle::dialect::DenseTensorType>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type validation failed for the 1th input."));
+    PADDLE_ENFORCE((*this)
+                       ->operand_source(2)
+                       .type()
+                       .isa<paddle::dialect::DenseTensorType>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type validation failed for the 2th input."));
+  }
+  VLOG(4) << "Verifying attributes:";
+  {
+    auto &attributes = this->attributes();
+    PADDLE_ENFORCE(attributes.count("trans_x") > 0 &&
+                       attributes.at("trans_x").isa<ir::BoolAttribute>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type of attribute: trans_x is not right."));
+    PADDLE_ENFORCE(attributes.count("trans_y") > 0 &&
+                       attributes.at("trans_y").isa<ir::BoolAttribute>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type of attribute: trans_y is not right."));
+    PADDLE_ENFORCE(attributes.count("activation") > 0 &&
+                       attributes.at("activation").isa<ir::StrAttribute>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type of attribute: activation is not right."));
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto output_size = num_results();
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        2u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of outputs must be equal to 2.", output_size));
+    PADDLE_ENFORCE(
+        (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>(),
+        phi::errors::PreconditionNotMet(
+            "Type validation failed for the 0th output."));
+    if (auto output_1_type = (*this)->result(1).type()) {
+      PADDLE_ENFORCE(output_1_type.isa<paddle::dialect::DenseTensorType>(),
+                     phi::errors::PreconditionNotMet(
+                         "Type validation failed for the 1th output."));
+    }
+  }
+  VLOG(4) << "End Verifying for: FusedGemmEpilogueOp.";
+}
+
+void FusedGemmEpilogueOp::InferMeta(phi::InferMetaContext *infer_meta) {
+  auto fn = PD_INFER_META(phi::FusedGemmEpilogueInferMeta);
+  fn(infer_meta);
+}
+
+const char *FusedGemmEpilogueGradOp::attributes_name[3] = {
+    "trans_x", "trans_y", "activation_grad"};
+
+OpInfoTuple FusedGemmEpilogueGradOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      paddle::dialect::OpInputInfo(
+          "x", "paddle::dialect::DenseTensorType", false, false, false),
+      paddle::dialect::OpInputInfo(
+          "y", "paddle::dialect::DenseTensorType", false, false, false),
+      paddle::dialect::OpInputInfo("reserve_space",
+                                   "paddle::dialect::DenseTensorType",
+                                   true,
+                                   false,
+                                   false),
+      paddle::dialect::OpInputInfo(
+          "out_grad", "paddle::dialect::DenseTensorType", false, false, false)};
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {
+      paddle::dialect::OpAttributeInfo("trans_x", "ir::BoolAttribute", ""),
+      paddle::dialect::OpAttributeInfo("trans_y", "ir::BoolAttribute", ""),
+      paddle::dialect::OpAttributeInfo(
+          "activation_grad", "ir::StrAttribute", "")};
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      paddle::dialect::OpOutputInfo(
+          "x_grad", "paddle::dialect::DenseTensorType", false, false),
+      paddle::dialect::OpOutputInfo(
+          "y_grad", "paddle::dialect::DenseTensorType", false, false),
+      paddle::dialect::OpOutputInfo(
+          "bias_grad", "paddle::dialect::DenseTensorType", false, false)};
+  paddle::dialect::OpRunTimeInfo run_time_info =
+      paddle::dialect::OpRunTimeInfo("FusedGemmEpilogueGradInferMeta",
+                                     {"x",
+                                      "y",
+                                      "reserve_space",
+                                      "out_grad",
+                                      "trans_x",
+                                      "trans_y",
+                                      "activation_grad"},
+                                     {""},
+                                     {""},
+                                     {},
+                                     {},
+                                     {});
+
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "fused_gemm_epilogue_grad");
+}
+
+void FusedGemmEpilogueGradOp::Build(ir::Builder &builder,
+                                    ir::OperationArgument &argument,
+                                    ir::OpResult x_,
+                                    ir::OpResult y_,
+                                    ir::OpResult reserve_space_,
+                                    ir::OpResult out_grad_,
+                                    ir::AttributeMap attributes) {
+  bool trans_x = attributes.at("trans_x").dyn_cast<ir::BoolAttribute>().data();
+
+  bool trans_y = attributes.at("trans_y").dyn_cast<ir::BoolAttribute>().data();
+
+  std::string activation_grad =
+      attributes.at("activation_grad").dyn_cast<ir::StrAttribute>().AsString();
+
+  VLOG(4) << "Builder construction inputs";
+  std::vector<ir::OpResult> argument_inputs = {
+      x_, y_, reserve_space_, out_grad_};
+  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+
+  VLOG(4) << "Builder construction attributes";
+  ir::Attribute attr_trans_x =
+      ir::BoolAttribute::get(ir::IrContext::Instance(), trans_x);
+  argument.AddAttribute("trans_x", attr_trans_x);
+  ir::Attribute attr_trans_y =
+      ir::BoolAttribute::get(ir::IrContext::Instance(), trans_y);
+  argument.AddAttribute("trans_y", attr_trans_y);
+  ir::Attribute attr_activation_grad =
+      ir::StrAttribute::get(ir::IrContext::Instance(), activation_grad);
+  argument.AddAttribute("activation_grad", attr_activation_grad);
+
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorType x =
+      x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  (void)x;
+  paddle::dialect::DenseTensorType y =
+      y_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  (void)y;
+  paddle::dialect::DenseTensorType reserve_space =
+      reserve_space_
+          ? reserve_space_.type().dyn_cast<paddle::dialect::DenseTensorType>()
+          : paddle::dialect::DenseTensorType();
+  (void)reserve_space;
+  paddle::dialect::DenseTensorType out_grad =
+      out_grad_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  (void)out_grad;
+
+  VLOG(4) << "Builder construction  dense_x";
+  phi::DenseTensor dense_x(
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
+      phi::DenseTensorMeta(paddle::dialect::TransToPhiDataType(x.dtype()),
+                           x.dims(),
+                           x.data_layout(),
+                           x.lod(),
+                           x.offset()));
+  VLOG(4) << "Builder construction  meta_x";
+  phi::MetaTensor meta_x(&dense_x);
+
+  VLOG(4) << "Builder construction  dense_y";
+  phi::DenseTensor dense_y(
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
+      phi::DenseTensorMeta(paddle::dialect::TransToPhiDataType(y.dtype()),
+                           y.dims(),
+                           y.data_layout(),
+                           y.lod(),
+                           y.offset()));
+  VLOG(4) << "Builder construction  meta_y";
+  phi::MetaTensor meta_y(&dense_y);
+
+  VLOG(4) << "Builder construction  dense_reserve_space";
+  std::unique_ptr<phi::DenseTensor> dense_reserve_space =
+      reserve_space_
+          ? std::make_unique<phi::DenseTensor>(
+                std::make_unique<paddle::experimental::DefaultAllocator>(
+                    paddle::platform::CPUPlace())
+                    .get(),
+                phi::DenseTensorMeta(
+                    paddle::dialect::TransToPhiDataType(reserve_space.dtype()),
+                    reserve_space.dims(),
+                    reserve_space.data_layout(),
+                    reserve_space.lod(),
+                    reserve_space.offset()))
+          : nullptr;
+  VLOG(4) << "Builder construction  meta_reserve_space";
+  phi::MetaTensor meta_reserve_space(dense_reserve_space.get());
+
+  VLOG(4) << "Builder construction  dense_out_grad";
+  phi::DenseTensor dense_out_grad(
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
+      phi::DenseTensorMeta(
+          paddle::dialect::TransToPhiDataType(out_grad.dtype()),
+          out_grad.dims(),
+          out_grad.data_layout(),
+          out_grad.lod(),
+          out_grad.offset()));
+  VLOG(4) << "Builder construction  meta_out_grad";
+  phi::MetaTensor meta_out_grad(&dense_out_grad);
+  phi::DenseTensor dense_x_grad;
+  phi::MetaTensor meta_x_grad(&dense_x_grad);
+  phi::DenseTensor dense_y_grad;
+  phi::MetaTensor meta_y_grad(&dense_y_grad);
+  phi::DenseTensor dense_bias_grad;
+  phi::MetaTensor meta_bias_grad(&dense_bias_grad);
+
+  phi::FusedGemmEpilogueGradInferMeta(meta_x,
+                                      meta_y,
+                                      meta_reserve_space,
+                                      meta_out_grad,
+                                      trans_x,
+                                      trans_y,
+                                      activation_grad,
+                                      &meta_x_grad,
+                                      &meta_y_grad,
+                                      &meta_bias_grad);
+
+  std::vector<ir::Type> argument_outputs;
+  ir::Type x_grad_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      ir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_x_grad.dtype()),
+      dense_x_grad.dims(),
+      dense_x_grad.layout(),
+      dense_x_grad.lod(),
+      dense_x_grad.offset());
+  argument_outputs.push_back(x_grad_dense_tensor_type);
+
+  ir::Type y_grad_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      ir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_y_grad.dtype()),
+      dense_y_grad.dims(),
+      dense_y_grad.layout(),
+      dense_y_grad.lod(),
+      dense_y_grad.offset());
+  argument_outputs.push_back(y_grad_dense_tensor_type);
+
+  ir::Type bias_grad_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      ir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_bias_grad.dtype()),
+      dense_bias_grad.dims(),
+      dense_bias_grad.layout(),
+      dense_bias_grad.lod(),
+      dense_bias_grad.offset());
+  argument_outputs.push_back(bias_grad_dense_tensor_type);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+}
+
+void FusedGemmEpilogueGradOp::Verify() {}
+
+void FusedGemmEpilogueGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
+  auto fn = PD_INFER_META(phi::FusedGemmEpilogueGradInferMeta);
   fn(infer_meta);
 }
 
@@ -363,4 +790,6 @@ void SplitGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
 }  // namespace paddle
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)

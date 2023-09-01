@@ -135,6 +135,8 @@ Tensor& Op::operator()() const {
 int64_t Op::count = 0;
 const char* Op::prefix = "@drr_temp@_";
 
+const char Tensor::NONE_TENSOR_NAME[] = "__@none_tensor@__";
+
 void Tensor::Assign(const Tensor& other) {
   dynamic_cast<ResultPatternGraph*>(pattern_graph_)->AssignTensor(*this, other);
 }
