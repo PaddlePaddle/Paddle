@@ -71,7 +71,7 @@ void AllCloseKernel(const Context& dev_ctx,
   }
 }
 
-template <typename T = phi::dtype::complex<float>, typename Context>
+template <phi::dtype::complex<float>, typename Context>
 void AllCloseKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
@@ -99,14 +99,14 @@ void AllCloseKernel(const Context& dev_ctx,
         atol.dtype()));
   }
   VLOG(3) << "rtol and atol is : " << rtol_v << " " << atol_v;
-  auto* in_a = x.data<T>();
-  auto* in_b = y.data<T>();
+  auto* in_a = x.data<phi::dtype::complex<float>>();
+  auto* in_b = y.data<phi::dtype::complex<float>>();
   auto* out_data = dev_ctx.template Alloc<bool>(out);
   *out_data = true;
 
   auto num = x.numel();
   for (int64_t i = 0; i < num; ++i) {
-    const T a = in_a[i], b = in_b[i];
+    const phi::dtype::complex<float> a = in_a[i], b = in_b[i];
     bool val;
     if (std::isnan(a) || std::isnan(b)) {
       val = equal_nan && std::isnan(a) == std::isnan(b);
@@ -120,7 +120,7 @@ void AllCloseKernel(const Context& dev_ctx,
   }
 }
 
-template <typename T = phi::dtype::complex<double>, typename Context>
+template <phi::dtype::complex<double>, typename Context>
 void AllCloseKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
@@ -148,14 +148,14 @@ void AllCloseKernel(const Context& dev_ctx,
         atol.dtype()));
   }
   VLOG(3) << "rtol and atol is : " << rtol_v << " " << atol_v;
-  auto* in_a = x.data<T>();
-  auto* in_b = y.data<T>();
+  auto* in_a = x.data<phi::dtype::complex<double>>();
+  auto* in_b = y.data<phi::dtype::complex<double>>();
   auto* out_data = dev_ctx.template Alloc<bool>(out);
   *out_data = true;
 
   auto num = x.numel();
   for (int64_t i = 0; i < num; ++i) {
-    const T a = in_a[i], b = in_b[i];
+    const phi::dtype::complex<double> a = in_a[i], b = in_b[i];
     bool val;
     if (std::isnan(a) || std::isnan(b)) {
       val = equal_nan && std::isnan(a) == std::isnan(b);
