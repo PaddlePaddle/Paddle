@@ -248,6 +248,7 @@ class Xdoctester(DocTester):
         self.mode = mode
         self.verbose = verbose
         self.config = {**XDOCTEST_CONFIG, **(config or {})}
+        self._test_capacity = {}
 
         self._patch_global_state = patch_global_state
         self._patch_tensor_place = patch_tensor_place
@@ -328,6 +329,8 @@ class Xdoctester(DocTester):
         logger.info("API check using Xdoctest prepared!-- Example Code")
         logger.info("running under python %s", platform.python_version())
         logger.info("running under xdoctest %s", xdoctest.__version__)
+
+        self._test_capacity = test_capacity
 
     def run(self, api_name: str, docstring: str) -> typing.List[TestResult]:
         """Run the xdoctest with a docstring."""
@@ -447,6 +450,7 @@ class Xdoctester(DocTester):
         stdout_handler = logging.StreamHandler(stream=sys.stdout)
         logger.addHandler(stdout_handler)
         logger.info("----------------Check results--------------------")
+        logger.info(">>> Sample code test capacity: %s", self._test_capacity)
 
         if whl_error is not None and whl_error:
             logger.info("%s is not in whl.", whl_error)
