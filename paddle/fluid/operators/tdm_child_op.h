@@ -21,9 +21,9 @@
 #include <utility>
 #include <vector>
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/mixed_vector.h"
+#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace operators {
