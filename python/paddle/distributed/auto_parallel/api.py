@@ -158,16 +158,15 @@ def dtensor_from_fn(fn, dist_attr, *args, **kwargs):
 
     Examples:
 
-    .. code-block:: python
-
-        >>> import paddle
-        >>> import paddle.distribute as dist
-        >>> # Create a distributed attribute
-        >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
-        >>> dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None])
-        >>> # Call the function dtensor_from_fn with dist_attr parameter
-        >>> d_tensor = dist.dtensor_from_fn(paddle.ones, dist_attr=dist_attr, shape=[1])
-        >>> print(d_tensor)
+        .. code-block:: python
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> # Create a distributed attribute
+            >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+            >>> dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None])
+            >>> # Call the function dtensor_from_fn with dist_attr parameter
+            >>> d_tensor = dist.dtensor_from_fn(paddle.ones, dist_attr=dist_attr, shape=[1])
+            >>> print(d_tensor)
     """
     tensor = fn(*args, **kwargs)
     return shard_tensor(tensor, dist_attr=dist_attr)
