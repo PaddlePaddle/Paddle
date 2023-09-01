@@ -184,10 +184,9 @@ std::unordered_map<ir::Operation*, std::string> GetInplaceOps(
 
     if (op->dialect()->name().compare(
             paddle::dialect::PaddleKernelDialect::name()) != 0) {
-      std::cout << op->name()
-                << "is not a kernel_dialect op, inplace only support "
-                   "kernel_dialect operators"
-                << std::endl;
+      VLOG(6) << op->name()
+              << "is not a kernel_dialect op, inplace only support "
+                 "kernel_dialect operators";
       for (size_t i = 0; i < op->num_results(); ++i) {
         visited_values.insert(op->result(i));
       }
@@ -197,11 +196,11 @@ std::unordered_map<ir::Operation*, std::string> GetInplaceOps(
     auto upper_op_attrs = op->attributes();
     auto upper_op_name =
         upper_op_attrs.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
-    std::cout << "analyse op: " << upper_op_name << std::endl;
+    VLOG(6) << "analyse op: " << upper_op_name;
 
     if (upper_op_attrs.count("is_inplace") != 0 &&
         upper_op_attrs.at("is_inplace").dyn_cast<ir::BoolAttribute>().data()) {
-      std::cout << upper_op_name << " is already an inplace op." << std::endl;
+      VLOG(6) << upper_op_name << " is already an inplace op.";
       for (size_t i = 0; i < op->num_operands(); ++i) {
         reused_input_values.insert(op->operand_source(i));
       }
@@ -216,10 +215,9 @@ std::unordered_map<ir::Operation*, std::string> GetInplaceOps(
         ir::IrContext::Instance()->GetRegisteredOpInfo(upper_op_name + "_");
 
     if (eager_dels.count(op) == 0 || (!upper_inplace_op_info)) {
-      std::cout << upper_op_name
-                << "'s value can't delete or doesn't have inplace op, so that "
-                   "can't do inplace."
-                << std::endl;
+      VLOG(6) << upper_op_name
+              << "'s value can't delete or doesn't have inplace op, so that "
+                 "can't do inplace.";
       for (size_t i = 0; i < op->num_results(); ++i) {
         visited_values.insert(op->result(i));
       }
@@ -235,14 +233,15 @@ std::unordered_map<ir::Operation*, std::string> GetInplaceOps(
             "can not find OpYamlInfoInterface from [%s]", upper_op_name + "_"));
     paddle::dialect::OpYamlInfoParser upper_inplace_op_info_parser(
         upper_inplace_op_interface->get_op_info_());
-    std::unordered_map<int, int> inplace_out_2_in =
+    std::unordered_map<uint32_t, uint32_t> inplace_out_2_in =
         upper_inplace_op_info_parser.GetInplaceIdMap();
 
     bool can_do_inplace = true;
     for (auto& kv : inplace_out_2_in) {
-      int out_slot = kv.first;
-      int in_slot = kv.second;
-      if ((!CanDoInplace(eager_dels.at(op),
+      uint32_t out_slot = kv.first;
+      uint32_t in_slot = kv.second;
+      if ((in_slot >= op->num_operands()) || (out_slot >= op->num_results()) ||
+          (!CanDoInplace(eager_dels.at(op),
                          op->operand_source(in_slot),
                          op->result(out_slot))) ||
           (visited_values.count(op->result(out_slot)) > 0) ||
@@ -250,10 +249,9 @@ std::unordered_map<ir::Operation*, std::string> GetInplaceOps(
           (reused_input_values.count(op->operand_source(in_slot)) > 0) ||
           (reused_output_values.count(op->result(out_slot)) > 0)) {
         can_do_inplace = false;
-        std::cout << upper_op_name
-                  << "'s value has been visited or reused by other inplace op, "
-                     "so that can't do inplace."
-                  << std::endl;
+        VLOG(6) << upper_op_name
+                << "'s value has been visited or reused by other inplace op, "
+                   "so that can't do inplace.";
         VLOG(8) << " -- operand " << in_slot << " and result " << out_slot
                 << " can do inplace: "
                 << CanDoInplace(eager_dels.at(op),
@@ -274,15 +272,13 @@ std::unordered_map<ir::Operation*, std::string> GetInplaceOps(
         reused_input_values.insert(op->operand_source(kv.second));
         reused_output_values.insert(op->result(kv.first));
       }
-      std::cout << upper_op_name
-                << " will change to inplace version op: " << upper_op_name + "_"
-                << std::endl;
+      VLOG(6) << upper_op_name
+              << " will change to inplace version op: " << upper_op_name + "_";
     }
 
     for (size_t i = 0; i < op->num_results(); ++i) {
       visited_values.insert(op->result(i));
     }
-    std::cout << "done" << std::endl;
   }
   return inplace_ops;
 }
@@ -299,12 +295,11 @@ class InplacePass : public ir::Pass {
     auto inplace_ops = GetInplaceOps(block);
 
     for (auto kv : inplace_ops) {
-      std::cout << "Do inplace for: "
-                << kv.first->attributes()
-                       .at("op_name")
-                       .dyn_cast<::ir::StrAttribute>()
-                       .AsString()
-                << std::endl;
+      VLOG(6) << "Do inplace for: "
+              << kv.first->attributes()
+                     .at("op_name")
+                     .dyn_cast<::ir::StrAttribute>()
+                     .AsString();
       ir::Block::iterator insert_pos =
           std::find(block->begin(), block->end(), kv.first);
       IR_ENFORCE(insert_pos != block->end(),
@@ -314,11 +309,9 @@ class InplacePass : public ir::Pass {
       kv.first->set_attribute(
           "op_name",
           ir::StrAttribute::get(ir::IrContext::Instance(), kv.second));
-      std::cout << "set attribute op_name" << std::endl;
       kv.first->set_attribute(
           "is_inplace",
           ir::BoolAttribute::get(ir::IrContext::Instance(), true));
-      std::cout << "set attribute is_inplace" << std::endl;
     }
   }
 
