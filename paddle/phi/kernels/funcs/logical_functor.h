@@ -20,7 +20,6 @@ namespace funcs {
 #define LOGICAL_BINARY_FUNCTOR(func_name, op)                  \
   template <typename Tx, typename Ty = Tx>                     \
   struct func_name {                                           \
-    using ELEMENT_TYPE = T;                                    \
     HOSTDEVICE bool operator()(const Tx a, const Ty b) const { \
       return static_cast<bool>(a) op static_cast<bool>(b);     \
     }                                                          \
