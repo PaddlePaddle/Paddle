@@ -167,9 +167,10 @@ OpInfoTuple FusedGemmEpilogueOp::GetOpInfo() {
           "out", "paddle::dialect::DenseTensorType", false, false),
       paddle::dialect::OpOutputInfo(
           "reserve_space", "paddle::dialect::DenseTensorType", true, false)};
-  paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo(
+  paddle::dialect::OpRunTimeInfo run_time_info(
       "FusedGemmEpilogueInferMeta",
       {"x", "y", "bias", "trans_x", "trans_y", "activation"},
+      {""},
       {""},
       {""},
       {},
@@ -397,20 +398,20 @@ OpInfoTuple FusedGemmEpilogueGradOp::GetOpInfo() {
           "y_grad", "paddle::dialect::DenseTensorType", false, false),
       paddle::dialect::OpOutputInfo(
           "bias_grad", "paddle::dialect::DenseTensorType", false, false)};
-  paddle::dialect::OpRunTimeInfo run_time_info =
-      paddle::dialect::OpRunTimeInfo("FusedGemmEpilogueGradInferMeta",
-                                     {"x",
-                                      "y",
-                                      "reserve_space",
-                                      "out_grad",
-                                      "trans_x",
-                                      "trans_y",
-                                      "activation_grad"},
-                                     {""},
-                                     {""},
-                                     {},
-                                     {},
-                                     {});
+  paddle::dialect::OpRunTimeInfo run_time_info("FusedGemmEpilogueGradInferMeta",
+                                               {"x",
+                                                "y",
+                                                "reserve_space",
+                                                "out_grad",
+                                                "trans_x",
+                                                "trans_y",
+                                                "activation_grad"},
+                                               {""},
+                                               {""},
+                                               {""},
+                                               {},
+                                               {},
+                                               {});
 
   return std::make_tuple(
       inputs, attributes, outputs, run_time_info, "fused_gemm_epilogue_grad");
