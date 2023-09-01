@@ -6,8 +6,14 @@ if(WIN32 AND WITH_TESTING)
   cc_test_old(interceptor_ping_pong_test SRCS interceptor_ping_pong_test.cc
               DEPS fleet_executor ${BRPC_DEPS})
 else()
-  cc_test_old(interceptor_ping_pong_test SRCS interceptor_ping_pong_test.cc
-              DEPS ${paddle_lib} python)
+  cc_test_old(
+    interceptor_ping_pong_test
+    SRCS
+    interceptor_ping_pong_test.cc
+    DEPS
+    ${paddle_lib}
+    python
+    fleet_executor)
 endif()
 
 set_source_files_properties(
@@ -18,8 +24,14 @@ if(WIN32 AND WITH_TESTING)
   cc_test_old(compute_interceptor_test SRCS compute_interceptor_test.cc DEPS
               fleet_executor ${BRPC_DEPS})
 else()
-  cc_test_old(compute_interceptor_test SRCS compute_interceptor_test.cc DEPS
-              ${paddle_lib} python)
+  cc_test_old(
+    compute_interceptor_test
+    SRCS
+    compute_interceptor_test.cc
+    DEPS
+    ${paddle_lib}
+    python
+    fleet_executor)
 endif()
 
 set_source_files_properties(
@@ -29,8 +41,14 @@ if(WIN32 AND WITH_TESTING)
   cc_test_old(source_interceptor_test SRCS source_interceptor_test.cc DEPS
               fleet_executor ${BRPC_DEPS})
 else()
-  cc_test_old(source_interceptor_test SRCS source_interceptor_test.cc DEPS
-              ${paddle_lib} python)
+  cc_test_old(
+    source_interceptor_test
+    SRCS
+    source_interceptor_test.cc
+    DEPS
+    ${paddle_lib}
+    python
+    fleet_executor)
 endif()
 
 set_source_files_properties(
@@ -57,8 +75,14 @@ if(WIN32 AND WITH_TESTING)
     interceptor_pipeline_short_path_test SRCS
     interceptor_pipeline_short_path_test.cc DEPS fleet_executor ${BRPC_DEPS})
 else()
-  cc_test_old(interceptor_pipeline_short_path_test SRCS
-              interceptor_pipeline_short_path_test.cc DEPS ${paddle_lib} python)
+  cc_test_old(
+    interceptor_pipeline_short_path_test
+    SRCS
+    interceptor_pipeline_short_path_test.cc
+    DEPS
+    ${paddle_lib}
+    python
+    fleet_executor)
 endif()
 
 set_source_files_properties(
@@ -69,8 +93,14 @@ if(WIN32 AND WITH_TESTING)
     interceptor_pipeline_long_path_test SRCS
     interceptor_pipeline_long_path_test.cc DEPS fleet_executor ${BRPC_DEPS})
 else()
-  cc_test_old(interceptor_pipeline_long_path_test SRCS
-              interceptor_pipeline_long_path_test.cc DEPS ${paddle_lib} python)
+  cc_test_old(
+    interceptor_pipeline_long_path_test
+    SRCS
+    interceptor_pipeline_long_path_test.cc
+    DEPS
+    ${paddle_lib}
+    python
+    fleet_executor)
 endif()
 
 set_source_files_properties(
@@ -105,7 +135,12 @@ if(WITH_DISTRIBUTE AND NOT WITH_PSLIB)
       interceptor_ping_pong_with_brpc_test.cc DEPS fleet_executor ${BRPC_DEPS})
   else()
     cc_test_old(
-      interceptor_ping_pong_with_brpc_test SRCS
-      interceptor_ping_pong_with_brpc_test.cc DEPS ${paddle_lib} python)
+      interceptor_ping_pong_with_brpc_test
+      SRCS
+      interceptor_ping_pong_with_brpc_test.cc
+      DEPS
+      ${paddle_lib}
+      python
+      fleet_executor)
   endif()
 endif()
