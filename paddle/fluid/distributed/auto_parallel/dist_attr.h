@@ -141,25 +141,24 @@ class OperatorDistAttr {
     execution_stream_ = execution_stream;
   }
 
-  void set_event_name(const std::string& event_name) {
-    event_name_ = event_name;
+  void set_event_to_record(const std::string& event_name) {
+    event_to_record_ = event_name;
   }
 
-  void set_has_mannual_event(bool has_mannual_event) {
-    has_mannual_event_ = has_mannual_event;
+  void set_force_record_event(bool force_record_event) {
+    force_record_event_ = force_record_event;
   }
 
-  void set_mannual_wait_events(
-      const std::vector<std::string>& mannual_wait_events) {
-    mannual_wait_events_ = mannual_wait_events;
+  void set_events_to_wait(const std::vector<std::string>& events_to_wait) {
+    events_to_wait_ = events_to_wait;
   }
 
-  bool has_mannual_event() const { return has_mannual_event_; }
+  bool force_record_event() const { return force_record_event_; }
 
-  const std::string& event_name() const { return event_name_; }
+  const std::string& event_to_record() const { return event_to_record_; }
 
-  const std::vector<std::string>& mannual_wait_events() const {
-    return mannual_wait_events_;
+  const std::vector<std::string>& events_to_wait() const {
+    return events_to_wait_;
   }
 
   int stream_priority() const { return stream_priority_; }
@@ -225,6 +224,11 @@ class OperatorDistAttr {
 
   void parse_from_string(const std::string& data);
 
+  static std::string unique_name(std::string key) {
+    thread_local static std::atomic<int> id_{0};
+    return key + "_" + std::to_string(id_++);
+  }
+
  private:
   static std::vector<std::string> fields_;
   std::map<std::string, TensorDistAttr> input_dist_attrs_;
@@ -235,9 +239,9 @@ class OperatorDistAttr {
   int64_t impl_idx_ = 0;
   bool is_recompute_ = false;
   std::string execution_stream_ = kDefault;
-  bool has_mannual_event_ = false;
-  std::vector<std::string> mannual_wait_events_;
-  std::string event_name_{kDefault};
+  bool force_record_event_ = false;
+  std::vector<std::string> events_to_wait_;
+  std::string event_to_record_ = unique_name("event");  // event_idx
   int stream_priority_ = 0;          // lower value, higher priority
   int64_t scheduling_priority_ = 0;  // lower value, higher priority
   std::map<std::string, bool> annotated_;

@@ -15,7 +15,11 @@
 import unittest
 
 import paddle
-from paddle.distributed.passes.pass_utils import get_skip_gc_vars, split_program
+from paddle.distributed.passes.pass_utils import (
+    _add_event_dependcy,
+    get_skip_gc_vars,
+    split_program,
+)
 from paddle.fluid import core
 from paddle.fluid.executor import _add_feed_fetch_ops, _StandaloneExecutor
 
@@ -92,18 +96,13 @@ class TestMannulEvent(unittest.TestCase):
 
     def split_program(self, prog, apply_mannual_event=False):
         # split two subprograms
-        segment_0_events = {8: "e8", 10: "e10"}
-        segment_1_wait_events = {11: ["e8", "e10"]}
+        waiter_recorder_events_map = {11: [8, 10]}
         prog_block = prog.global_block()
         ops = prog_block.ops
-        for idx, op in enumerate(ops):
-            if idx in segment_0_events and apply_mannual_event:
-                op.desc.dist_attr.has_mannual_event = True
-                op.desc.dist_attr.event_name = segment_0_events[idx]
-            if idx in segment_1_wait_events and apply_mannual_event:
-                op.desc.dist_attr.mannual_wait_events = segment_1_wait_events[
-                    idx
-                ]
+        if apply_mannual_event:
+            for waiter, recorders in waiter_recorder_events_map.items():
+                for recorder in recorders:
+                    _add_event_dependcy(ops[recorder].desc, ops[waiter].desc)
         main_progs, _, _ = split_program(prog, [11])
         return main_progs
 

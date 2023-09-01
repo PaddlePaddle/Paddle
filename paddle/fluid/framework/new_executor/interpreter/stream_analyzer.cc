@@ -99,11 +99,11 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
                                           platform::kCUDA /*unused*/);
           // It means the event will be waited for other interpreter that the
           // event name of a operator is not 'default'.
-          if (recorder_instr.OpFunc()->event_name_ != "default" &&
+          if (recorder_instr.OpFunc()->force_record_event_ == true &&
               (*program_mannual_wait_evnets_)
-                      .count(recorder_instr.OpFunc()->event_name_) == 0) {
+                      .count(recorder_instr.OpFunc()->event_to_record_) == 0) {
             (*program_mannual_wait_evnets_)[recorder_instr.OpFunc()
-                                                ->event_name_] =
+                                                ->event_to_record_] =
                 recorder_instr.EventToRecord();
           }
           instr2event.emplace(recorder_instr_id, device_event);
@@ -123,20 +123,22 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
   for (auto& instruction : *instructions) {
     // create extra event to record
     auto op_func_node = instruction.OpFunc();
-    if (op_func_node->has_mannual_event_ &&
+    if (op_func_node->force_record_event_ &&
         instruction.EventToRecord() == nullptr) {
       auto place = instruction.DeviceContext().GetPlace();
       if (platform::is_gpu_place(place)) {
-        PADDLE_ENFORCE_NE(op_func_node->event_name_,
-                          "default",
-                          phi::errors::InvalidArgument(
-                              "If the attribute 'has_mannual_event_' of one "
-                              "operator is 'true', the 'event_name_' of this "
-                              "operator can not be 'default'. But the "
-                              "'event_name' of the operator %s is 'default'.",
-                              instruction.OpBase()->Type().c_str()));
+        PADDLE_ENFORCE_NE(
+            op_func_node->event_to_record_,
+            "default",
+            phi::errors::InvalidArgument(
+                "If the attribute 'force_record_event_' of one "
+                "operator is 'true', the 'event_to_record_' of this "
+                "operator can not be 'default'. But the "
+                "'event_name' of the operator %s is 'default'.",
+                instruction.OpBase()->Type().c_str()));
         PADDLE_ENFORCE_EQ(
-            (*program_mannual_wait_evnets_).find(op_func_node->event_name_),
+            (*program_mannual_wait_evnets_)
+                .find(op_func_node->event_to_record_),
             (*program_mannual_wait_evnets_).end(),
             phi::errors::InvalidArgument(
                 "The program_mannual_wait_evnets_ had the event "
@@ -148,15 +150,15 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
             std::make_shared<DeviceEvent>(place,
                                           platform::GenerateDeviceEventFlag());
         instruction.AddEventToRecord(device_event, platform::kCUDA /*unused*/);
-        (*program_mannual_wait_evnets_)[op_func_node->event_name_] =
+        (*program_mannual_wait_evnets_)[op_func_node->event_to_record_] =
             instruction.EventToRecord();
-        VLOG(6) << "Create mannual event: " << op_func_node->event_name_
+        VLOG(6) << "Create mannual event: " << op_func_node->event_to_record_
                 << " for the operator: " << instruction.OpBase()->Type();
       }
     }
     // add extra mannual events
-    if (!(op_func_node->mannual_wait_events_.empty())) {
-      for (auto event_name : op_func_node->mannual_wait_events_) {
+    if (!(op_func_node->events_to_wait_.empty())) {
+      for (auto event_name : op_func_node->events_to_wait_) {
         PADDLE_ENFORCE_NE(
             (*program_mannual_wait_evnets_).find(event_name),
             (*program_mannual_wait_evnets_).end(),
@@ -164,7 +166,7 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
                 "The program_mannual_wait_evnets_ don't have the event %s "
                 "for the operator: %s to wait. The event should had been "
                 "created by the operator "
-                "whose event_name_ is %s.",
+                "whose event_to_record_ is %s.",
                 event_name.c_str(),
                 instruction.OpBase()->Type().c_str(),
                 event_name.c_str()));

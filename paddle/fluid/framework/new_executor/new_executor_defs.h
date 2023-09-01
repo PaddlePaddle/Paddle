@@ -167,9 +167,9 @@ struct OpFuncNode {
   // TODO(zhiqiu): Better make it unique_ptr
   std::shared_ptr<OperatorBase> operator_base_{nullptr};
   std::string execution_stream_{kDefaultStream};
-  bool has_mannual_event_{false};
-  std::vector<std::string> mannual_wait_events_;
-  std::string event_name_{"default"};
+  bool force_record_event_{false};
+  std::vector<std::string> events_to_wait_;
+  std::string event_to_record_{"default"};
 
   OpFuncType type_;
   OpKernelComputeFunc kernel_func_;
