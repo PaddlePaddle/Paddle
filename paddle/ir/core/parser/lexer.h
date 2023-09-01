@@ -14,15 +14,8 @@
 
 #pragma once
 #include <istream>
-#include "paddle/ir/core/parser/token.h"
 
-enum LexSegment {
-  parseOpResult = 0,
-  parseOpInfo = 1,
-  parseOpRand = 2,
-  parserAttribute = 3,
-  parseFunctionType = 4,
-};
+#include "paddle/ir/core/parser/token.h"
 
 class Lexer {
  private:
@@ -33,17 +26,18 @@ class Lexer {
  public:
   explicit Lexer(std::istream& is) : is(is) {}
   ~Lexer() = default;
-  Token GetToken(LexSegment seg);
-  Token* LexIdentifer(LexSegment seg);
+  Token ConsumeToken();
+  Token* LexIdentifer();
   Token* LexNumberOrArraow();
-  Token* LexEndTagOrNullVal(LexSegment seg);
+  Token* LexEndTagOrNullVal();
   Token* LexValueId();
   Token* LexEOF();
   Token* LexOpName();
   char GetChar();
   void SkipWhitespace();
-  bool IsEndTag(char, LexSegment);
+  bool IsEndTag(char);
   bool IsSpace(char);
   size_t GetLine();
   size_t GetColumn();
+  void Unget(const int len);
 };

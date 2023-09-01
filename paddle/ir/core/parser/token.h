@@ -28,12 +28,12 @@ enum Token_type {
   NULL_ = 7,
 };
 
-class Token {
+struct Token {
  public:
   string val_;
   Token_type token_type_;
   Token() = default;
-  Token(string val, Token_type token_type) {
+  Token(const string& val, Token_type token_type) {
     val_ = val;
     token_type_ = token_type;
   }

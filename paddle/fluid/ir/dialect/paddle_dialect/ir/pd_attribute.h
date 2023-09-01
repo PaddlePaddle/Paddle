@@ -34,18 +34,7 @@ class IntArrayAttribute : public ir::Attribute {
     return storage() < right.storage();
   }
 
-  static IntArrayAttribute Parse(ir::IrParser &parser) {  // NOLINT
-    Token buket_token = parser.GetToken();
-    std::vector<int32_t> vec{};
-    while (parser.PeekToken().val_ != "]") {
-      Token val_token = parser.GetToken();
-      vec.push_back(atoll(val_token.val_.c_str()));
-      if (parser.PeekToken().val_ == "]") break;
-      parser.GetToken();
-    }
-    parser.GetToken();
-    return IntArrayAttribute::get(parser.ctx, vec);
-  }
+  static IntArrayAttribute Parse(ir::IrParser &parser);  // NOLINT
 
   const phi::IntArray &data() const;
 };
@@ -76,52 +65,9 @@ class DataTypeAttribute : public ir::Attribute {
   bool operator<(const DataTypeAttribute &right) const {
     return storage() < right.storage();
   }
-  static DataTypeAttribute Parse(ir::IrParser &parser) {  // NOLINT
-    Token datatype_token = parser.GetToken();
-    if (datatype_token.val_ == "bool") {
-      return DataTypeAttribute::get(parser.ctx, phi::DataType::BOOL);
-    } else if (datatype_token.val_ == "uint8") {
-      return DataTypeAttribute::get(parser.ctx, phi::DataType::UINT8);
-    } else if (datatype_token.val_ == "int8") {
-      return DataTypeAttribute::get(parser.ctx, phi::DataType::INT8);
-    }
-    if (datatype_token.val_ == "uint16") {
-      return DataTypeAttribute::get(parser.ctx, phi::DataType::UINT16);
-    } else if (datatype_token.val_ == "int16") {
-      return DataTypeAttribute::get(parser.ctx, phi::DataType::INT16);
-    } else if (datatype_token.val_ == "uint32") {
-      return DataTypeAttribute::get(parser.ctx, phi::DataType::UINT32);
-    }
-    if (datatype_token.val_ == "int32") {
-      return DataTypeAttribute::get(parser.ctx, phi::DataType::INT32);
-    } else if (datatype_token.val_ == "uint64") {
-      return DataTypeAttribute::get(parser.ctx, phi::DataType::UINT64);
-    } else if (datatype_token.val_ == "int64") {
-      return DataTypeAttribute::get(parser.ctx, phi::DataType::INT64);
-    } else if (datatype_token.val_ == "float32") {
-      return DataTypeAttribute::get(parser.ctx, phi::DataType::FLOAT32);
-    } else if (datatype_token.val_ == "float64") {
-      return DataTypeAttribute::get(parser.ctx, phi::DataType::FLOAT64);
-    } else if (datatype_token.val_ == "complex64") {
-      return DataTypeAttribute::get(parser.ctx, phi::DataType::COMPLEX64);
-    } else if (datatype_token.val_ == "complex128") {
-      return DataTypeAttribute::get(parser.ctx, phi::DataType::COMPLEX128);
-    } else if (datatype_token.val_ == "undefined") {
-      return DataTypeAttribute::get(parser.ctx, phi::DataType::UNDEFINED);
-    } else if (datatype_token.val_ == "psting") {
-      return DataTypeAttribute::get(parser.ctx, phi::DataType::PSTRING);
-    } else if (datatype_token.val_ == "float16") {
-      return DataTypeAttribute::get(parser.ctx, phi::DataType::FLOAT16);
-    } else if (datatype_token.val_ == "bfloat16") {
-      return DataTypeAttribute::get(parser.ctx, phi::DataType::BFLOAT16);
-    } else if (datatype_token.val_ == "num_data_types") {
-      return DataTypeAttribute::get(parser.ctx, phi::DataType::NUM_DATA_TYPES);
-    } else if (datatype_token.val_ == "all_dtype") {
-      return DataTypeAttribute::get(parser.ctx, phi::DataType::ALL_DTYPE);
-    } else {
-      return DataTypeAttribute::get(parser.ctx, phi::DataType::UNDEFINED);
-    }
-  }
+
+  static DataTypeAttribute Parse(ir::IrParser &parser);  // NOLINT
+
   phi::DataType data() const;
 };
 
@@ -134,45 +80,9 @@ class PlaceAttribute : public ir::Attribute {
   bool operator<(const PlaceAttribute &right) const {
     return storage() < right.storage();
   }
-  static PlaceAttribute Parse(ir::IrParser &parser) {  // NOLINT
-    Token place_identifier_token = parser.GetToken();
-    Token left_parenthesis_token = parser.GetToken();
-    Token place_token = parser.GetToken();
-    if (place_token.val_ == "cpu") {
-      parser.GetToken();
-      return PlaceAttribute::get(parser.ctx, phi::CPUPlace{});
-    } else if (place_token.val_ == "gpu") {
-      parser.GetToken();
-      parser.GetToken();
-      parser.GetToken();
-      return PlaceAttribute::get(parser.ctx, phi::GPUPlace{});
-    } else if (place_token.val_ == "gpu_pinned") {
-      parser.GetToken();
-      return PlaceAttribute::get(parser.ctx, phi::GPUPinnedPlace{});
-    } else if (place_token.val_ == "xpu") {
-      parser.GetToken();
-      parser.GetToken();
-      parser.GetToken();
-      return PlaceAttribute::get(parser.ctx, phi::XPUPlace{});
-    } else if (place_token.val_ == "ipu") {
-      parser.GetToken();
-      parser.GetToken();
-      parser.GetToken();
-      return PlaceAttribute::get(parser.ctx, phi::IPUPlace{});
-    } else if (place_token.val_ == ":") {
-      parser.GetToken();
-      parser.GetToken();
-      return PlaceAttribute::get(parser.ctx, phi::CustomPlace{});
-    } else if (place_token.val_ == "undefined") {
-      parser.GetToken();
-      parser.GetToken();
-      parser.GetToken();
-      return PlaceAttribute::get(parser.ctx, phi::Place{});
-    } else {
-      parser.GetToken();
-      return PlaceAttribute::get(parser.ctx, phi::Place{});
-    }
-  }
+
+  static PlaceAttribute Parse(ir::IrParser &parser);  // NOLINT
+
   phi::Place data() const;
 };
 
@@ -186,36 +96,8 @@ class DataLayoutAttribute : public ir::Attribute {
   bool operator<(const DataLayoutAttribute &right) const {
     return storage() < right.storage();
   }
-  static DataLayoutAttribute Parse(ir::IrParser &parser) {  // NOLINT
-    Token data_layout_token = parser.GetToken();
-    if (data_layout_token.val_ == "NHWC") {
-      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::kNHWC);
-    } else if (data_layout_token.val_ == "NCHW") {
-      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::kNCHW);
-    } else if (data_layout_token.val_ == "Undefined") {
-      parser.GetToken();
-      parser.GetToken();
-      parser.GetToken();
-      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::kAnyLayout);
-    } else if (data_layout_token.val_ == "ONEDNN") {
-      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::kMKLDNN);
-    } else if (data_layout_token.val_ == "SPARSE_COO") {
-      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::SPARSE_COO);
-    } else if (data_layout_token.val_ == "SPARSE_CSR") {
-      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::SPARSE_CSR);
-    } else if (data_layout_token.val_ == "NDHWC") {
-      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::kNDHWC);
-    } else if (data_layout_token.val_ == "NCDHW") {
-      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::kNCDHW);
-    } else if (data_layout_token.val_ == "PSTRING_UNION") {
-      return DataLayoutAttribute::get(parser.ctx,
-                                      phi::DataLayout::PSTRING_UNION);
-    } else if (data_layout_token.val_ == "STRIDED") {
-      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::STRIDED);
-    }
-    return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::kAnyLayout);
-  }
 
+  static DataLayoutAttribute Parse(ir::IrParser &parser);  // NOLINT
   phi::DataLayout data() const;
 };
 

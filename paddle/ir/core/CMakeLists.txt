@@ -3,6 +3,8 @@ set(NEWIR_BINARY_DIR "${PADDLE_BINARY_DIR}/paddle/ir")
 
 file(GLOB IR_SRCS "*.cc")
 
-ir_library(ir_core SRCS ${IR_SRCS})
+file(GLOB IR_PARSER_SRCS "parser/*.cc")
 
-add_subdirectory(parser)
+list(APPEND IR_SRCS ${IR_PARSER_SRCS})
+
+ir_library(ir_core SRCS ${IR_SRCS})

@@ -13,15 +13,16 @@
 // limitations under the License.
 
 #include "paddle/ir/core/parser/lexer.h"
+
 using std::string;
 
-Token Lexer::GetToken(LexSegment seg) {
+Token Lexer::ConsumeToken() {
   SkipWhitespace();
-  if (auto token = LexIdentifer(seg)) {
+  if (auto token = LexIdentifer()) {
     return *token;
   } else if (auto token = LexNumberOrArraow()) {
     return *token;
-  } else if (auto token = LexEndTagOrNullVal(seg)) {
+  } else if (auto token = LexEndTagOrNullVal()) {
     return *token;
   } else if (auto token = LexValueId()) {
     return *token;
@@ -55,8 +56,8 @@ void Lexer::SkipWhitespace() {
   }
 }
 
-Token* Lexer::LexIdentifer(LexSegment seg) {
-  if ((!isalpha(is.peek()) && is.peek() != '_') || IsEndTag(is.peek(), seg)) {
+Token* Lexer::LexIdentifer() {
+  if ((!isalpha(is.peek()) && is.peek() != '_') || IsEndTag(is.peek())) {
     return nullptr;
   }
   string token_identifier = "";
@@ -100,8 +101,8 @@ Token* Lexer::LexNumberOrArraow() {
   return new Token{token_digit, DIGIT};
 }
 
-Token* Lexer::LexEndTagOrNullVal(LexSegment seg) {
-  if (!IsEndTag(is.peek(), seg)) {
+Token* Lexer::LexEndTagOrNullVal() {
+  if (!IsEndTag(is.peek())) {
     return nullptr;
   }
   string token_end = "";
@@ -160,21 +161,22 @@ Token* Lexer::LexOpName() {
     token_opname += GetChar();
   }
   GetChar();
-  return new Token{token_opname, OPNAME};
+  return new Token{"\"" + token_opname + "\"", OPNAME};
 }
 
 bool Lexer::IsSpace(char c) {
   return c == ' ' || c == '\n' || c == '\t' || c == '\f';
 }
 
-bool Lexer::IsEndTag(char c, LexSegment seg) {
-  if (seg == parseFunctionType) {
-    return c == '{' || c == '}' || c == '(' || c == ')' || c == ':' ||
-           c == '>' || c == ',' || c == ']' || c == '[' || c == '+' ||
-           c == '=' || c == 'x' || c == '<';
-  } else {
-    return c == '{' || c == '}' || c == '(' || c == ')' || c == ':' ||
-           c == '>' || c == ',' || c == ']' || c == '[' || c == '+' ||
-           c == '=' || c == '<';
+bool Lexer::IsEndTag(char c) {
+  return c == '{' || c == '}' || c == '(' || c == ')' || c == ':' || c == '>' ||
+         c == ',' || c == ']' || c == '[' || c == '+' || c == '=' || c == '<';
+}
+
+void Lexer::Unget(const int len) {
+  if (is.eof()) {
+    is.clear();
   }
+  column -= len;
+  is.seekg(-len, std::ios::cur);
 }

@@ -106,12 +106,14 @@ ir::Type PaddleDialect::ParseType(ir::IrParser &parser) {  // NOLINT
   std::vector<int> dim{};
   Token dim_token = parser.PeekToken();
   while (dim_token.token_type_ == DIGIT) {
-    dim_token = parser.GetToken();
+    dim_token = parser.ConsumeToken();
     dim.push_back(atoi(dim_token.val_.c_str()));
-    if (parser.PeekToken().val_ != "x") {
+    std::string peek_token_val = parser.PeekToken().val_;
+    if (peek_token_val[0] != 'x') {
       break;
     }
-    parser.GetToken();
+    parser.ConsumeToken();
+    parser.lexer->Unget(peek_token_val.size() - 1);
     if (parser.PeekToken().token_type_ != DIGIT) {
       break;
     }
@@ -128,7 +130,7 @@ ir::Type PaddleDialect::ParseType(ir::IrParser &parser) {  // NOLINT
 }
 
 ir::Attribute PaddleDialect::ParseAttribute(ir::IrParser &parser) {  // NOLINT
-  std::string type_name = parser.GetToken().val_;
+  std::string type_name = parser.ConsumeToken().val_;
   std::string attribute_name =
       type_name.substr(type_name.find('.') + 1, std::string::npos);
   parser.ConsumeAToken(")");
@@ -141,7 +143,8 @@ ir::Attribute PaddleDialect::ParseAttribute(ir::IrParser &parser) {  // NOLINT
   } else if (attribute_name == "DataLayout") {
     return DataLayoutAttribute::Parse(parser);
   } else {
-    IR_THROW("No function to parse " + attribute_name + " exists!");
+    IR_THROW("No function to parse " + attribute_name + " exists!" +
+             parser.GetErrorLocationInfo());
   }
 }
 

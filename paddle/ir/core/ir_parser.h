@@ -25,26 +25,23 @@ using OpAttributeInfoMap = std::map<string, string>;
 namespace ir {
 class IrParser {
  public:
-  Lexer* lexer;
+  std::unique_ptr<Lexer> lexer;
   IrContext* ctx;
   OpResultMap opresultmap;
-  Builder* builder;
-  Token last_token;
-  Token cur_token;
-  LexSegment lex_seg;
+  std::unique_ptr<Builder> builder;
 
  public:
   IrParser(IrContext* ctx, std::istream& is);
 
-  ~IrParser();
+  ~IrParser() = default;
 
-  Token GetToken();
+  Token ConsumeToken();
 
   Token PeekToken();
 
   std::unique_ptr<Program> ParseProgram();
 
-  std::unique_ptr<Region> ParseRegion();
+  void ParseRegion(Region& region);  // NOLINT
 
   void ParseBlock(Block& block);  // NOLINT
 
@@ -61,8 +58,6 @@ class IrParser {
   std::vector<Type> ParseFunctionTypeList();
 
   OpResult GetNullValue();
-
-  void NextLexSegment();
 
   Type ParseType();
 
