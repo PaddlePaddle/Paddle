@@ -53,7 +53,7 @@ def convert_load(x):
 
         from paddle.jit.dy2static.program_translator import ProgramTranslator
 
-        new_var = ProgramTranslator.get_instance()._params_map.get(
+        new_var = ProgramTranslator.get_instance()._inplace_map.get(
             cur_block.program, x.desc.id()
         )
         if new_var is not None:
@@ -381,9 +381,13 @@ def _run_paddle_cond(
     _convert_tensor_arrray_if_necessary(helper, push_pop_names)
     pred = cast_bool_if_necessary(pred)
     init_args = helper.get(return_name_ids)
+    from paddle.jit.dy2static.program_translator import ProgramTranslator
+
+    inplace_map = ProgramTranslator.get_instance()._inplace_map
 
     def new_true_fn():
         # init args may contain mutable python container like [var, 2], we copy then like in while_loop
+        inplace_map_checkpoint = inplace_map.save_checkpoint()
         helper.set(
             return_name_ids,
             paddle.utils.copy_mutable_vars(init_args),
@@ -392,21 +396,22 @@ def _run_paddle_cond(
         # IfExpr will return a non-None return value, so we just return ret.
         # We assume normal return has no return value.
         if ret is None:
-            return helper.get(return_name_ids)
-        else:
-            return ret
+            ret = helper.get(return_name_ids)
+        inplace_map.restore_checkpoint(inplace_map_checkpoint)
+        return ret
 
     def new_false_fn():
         # init args may contain mutable python container like [var, 2], we copy then like in while_loop
+        inplace_map_checkpoint = inplace_map.save_checkpoint()
         helper.set(
             return_name_ids,
             paddle.utils.copy_mutable_vars(init_args),
         )
         ret = false_fn()
         if ret is None:
-            return helper.get(return_name_ids)
-        else:
-            return ret
+            ret = helper.get(return_name_ids)
+        inplace_map.restore_checkpoint(inplace_map_checkpoint)
+        return ret
 
     try:
         cond_outs = paddle.static.nn.cond(
