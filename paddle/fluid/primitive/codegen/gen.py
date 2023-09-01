@@ -45,6 +45,22 @@ VJPS = [
     'sum_grad',
     'concat_grad',
     'split_grad',
+    'gelu_grad',
+    'softmax_grad',
+    'silu_grad',
+    'multiply_grad',
+    'subtract_grad',
+    'erf_grad',
+    'expand_grad',
+    'exp_grad',
+    'elementwise_pow_grad',
+    'fused_softmax_mask_upper_triangle_grad',
+    'matmul_grad',
+    'pow_grad',
+    'reshape_grad',
+    'rsqrt_grad',
+    'slice_grad',
+    'transpose_grad',
 ]
 VJP_COMPS = ['divide_grad', 'sum_grad']
 BACKENDS = [
@@ -68,6 +84,49 @@ BACKENDS = [
     'sum_grad',
     'concat_grad',
     'split_grad',
+    'gelu_grad',
+    'softmax_grad',
+    'silu_grad',
+    'multiply_grad',
+    'subtract_grad',
+    'erf_grad',
+    'expand_grad',
+    'exp_grad',
+    'multiply',
+    'exp',
+    'erf',
+    'cast',
+    'elementwise_pow_grad',
+    'fused_softmax_mask_upper_triangle_grad',
+    'matmul_grad',
+    'pow_grad',
+    'reshape_grad',
+    'rsqrt_grad',
+    'slice_grad',
+    'transpose_grad',
+    'subtract',
+    'assign',
+    'equal',
+    'greater_equal',
+    'greater_than',
+    'less_equal',
+    'less_than',
+    'matmul',
+    'max',
+    'maximum',
+    'minimum',
+    'not_equal',
+    'abs',
+    'bitwise_and',
+    'bitwise_not',
+    'bitwise_or',
+    'bitwise_xor',
+    'floor',
+    'gather_nd',
+    'log',
+    'roll',
+    'scatter',
+    'scatter_nd_add',
 ]
 
 
@@ -157,21 +216,6 @@ def save(content: str, path: pathlib.Path):
             print(f"Generate source file {path}")
 
 
-def filter_compat_info(items):
-    for item in items:
-        item['op'] = item['op'].split('(')[0].strip()
-        if 'backward' in item:
-            item_backwards = item['backward'].split(',')
-            for idx, item_backward in enumerate(item_backwards):
-                item_backward = item_backward.split('(')[0].strip()
-                item_backwards[idx] = item_backward
-            item['backward'] = (
-                ','.join(item_backwards)
-                if len(item_backwards) > 0
-                else item_backwards[0]
-            )
-
-
 def to_compat_dict(items: List[Dict]) -> Dict[str, Dict]:
     compat_dict = {}
     for item in items:
@@ -205,7 +249,9 @@ def extend_compat_info(apis, compats):
     for api in apis:
         attrs = api["attrs"]
         for attr in attrs:
-            if attr['typename'] in ["Scalar", "IntArray"]:
+            if op_gen_tests.is_scalar(
+                attr['typename']
+            ) or op_gen_tests.is_intarray(attr['typename']):
                 attr["support_tensor"] = False
     apis_dict = to_apis_dict(apis)
     for compat_item in compats:
@@ -294,7 +340,6 @@ def gen(
         load(rev_legacy_path),
         load(compat_path),
     )
-    filter_compat_info(compats)
     apis = [{**api, **{'is_fwd': True}} for api in fwds + legacy_fwds]
     apis = apis + [{**api, **{'is_fwd': False}} for api in revs + legacy_revs]
     apis = [
