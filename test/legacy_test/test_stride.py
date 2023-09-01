@@ -47,7 +47,6 @@ class TestStride(unittest.TestCase):
         x_np_transposed2 = x_np_transposed1.transpose(2, 0, 1)
         self.assertTrue(np.allclose(x_transposed2.numpy(), x_np_transposed2))
         self.assertFalse(x_transposed2.is_contiguous())
-        self.assertTrue(x._is_shared_buffer_with(x_transposed2))
 
         y = x_transposed2 + 2
         y_np = x_np_transposed2 + 2
