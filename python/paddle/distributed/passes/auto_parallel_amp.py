@@ -728,7 +728,7 @@ class AMPPass(PassBase):
 
             if is_train:
                 self._update_backward_cast_ops()
-                self._cast_loss()
+                self._cast_loss(self.amp_dtype)
 
             if is_train and self.amp_dtype == "float16":
                 self._init_amp_var()
