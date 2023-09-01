@@ -100,7 +100,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   void PreStaticBuild() override;
 
-  bool IsStaticBuild() const override { return static_build_; };
+  bool IsStaticBuild() const override { return static_build_; }
 
   // workqueue
   std::shared_ptr<interpreter::AsyncWorkQueue> GetWorkQueue();

@@ -100,7 +100,7 @@ class InterpreterBaseImpl {
 
   virtual void PreStaticBuild() = 0;
 
-  virtual bool IsStaticBuild() = 0;
+  virtual bool IsStaticBuild() const = 0;
 };
 
 inline void SetDeviceId(const platform::Place& place) {
