@@ -71,7 +71,7 @@ void AllCloseKernel(const Context& dev_ctx,
   }
 }
 
-template <T, typename Context>
+template <typename T, typename Context>
 void AllCloseKernel<phi::dtype::complex<T>, Context>(const Context& dev_ctx,
                                                      const DenseTensor& x,
                                                      const DenseTensor& y,
