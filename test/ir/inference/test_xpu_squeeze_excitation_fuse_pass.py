@@ -24,11 +24,9 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 class TestSqueezeExcitationFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_xpu=True)
-        yield config, ["squeeze_excitation_block_xpu"], (1e-3, 1e-3)
+        yield config, ["squeeze_excitation_block"], (1e-3, 1e-3)
 
     def sample_program_config(self, draw):
-        data_format = draw(st.sampled_from(["NCHW"]))
-
         def generate_data(shape):
             return np.random.random(shape).astype(np.float32)
 
@@ -53,7 +51,7 @@ class TestSqueezeExcitationFusePass(PassAutoScanTest):
             inputs={"X": ["pool2d_x"]},
             outputs={"Out": ["pool2d_out"]},
             adaptive=True,
-            data_format=data_format,
+            data_format="NCHW",
             global_pooling=False,
             ksize=[1, 1],
             pooling_type="avg",
@@ -67,7 +65,7 @@ class TestSqueezeExcitationFusePass(PassAutoScanTest):
                 "Filter": ["conv2d_weight"],
             },
             outputs={"Output": ["conv2d_out"]},
-            data_format=data_format,
+            data_format="NCHW",
             dilations=[1, 1],
             padding_algorithm="EXPLICIT",
             groups=1,
@@ -99,7 +97,7 @@ class TestSqueezeExcitationFusePass(PassAutoScanTest):
                 "Filter": ["conv2d_weight2"],
             },
             outputs={"Output": ["conv2d_out2"]},
-            data_format=data_format,
+            data_format="NCHW",
             dilations=[1, 1],
             padding_algorithm="EXPLICIT",
             groups=1,

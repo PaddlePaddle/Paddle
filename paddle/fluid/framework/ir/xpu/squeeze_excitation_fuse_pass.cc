@@ -286,7 +286,7 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
         scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
     framework::OpDesc fused_op_desc(block);
-    fused_op_desc.SetType("squeeze_excitation_block_xpu");
+    fused_op_desc.SetType("squeeze_excitation_block");
     fused_op_desc.SetInput("x", {x->Name()});
     if (with_branch) {
       fused_op_desc.SetInput("branch", {ew_branch_add_in->Name()});
@@ -564,4 +564,4 @@ REGISTER_PASS(squeeze_excitation_fuse_pass,
 REGISTER_PASS_CAPABILITY(squeeze_excitation_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination().EQ(
-            "squeeze_excitation_block_xpu", 0));
+            "squeeze_excitation_block", 0));

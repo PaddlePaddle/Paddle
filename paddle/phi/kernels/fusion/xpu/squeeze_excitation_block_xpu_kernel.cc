@@ -20,16 +20,16 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename TW, typename Context>
-void SqueezeExcitationXPUKernelImpl(const Context& ctx,
-                                    const DenseTensor& x,
-                                    const DenseTensor& filter,
-                                    const DenseTensor& filter_max,
-                                    const paddle::optional<DenseTensor>& bias,
-                                    const paddle::optional<DenseTensor>& branch,
-                                    const std::vector<int>& act_type,
-                                    const std::vector<float>& act_param,
-                                    const std::vector<int>& filter_dims,
-                                    DenseTensor* out) {
+void SqueezeExcitationKernelImpl(const Context& ctx,
+                                 const DenseTensor& x,
+                                 const DenseTensor& filter,
+                                 const DenseTensor& filter_max,
+                                 const paddle::optional<DenseTensor>& bias,
+                                 const paddle::optional<DenseTensor>& branch,
+                                 const std::vector<int>& act_type,
+                                 const std::vector<float>& act_param,
+                                 const std::vector<int>& filter_dims,
+                                 DenseTensor* out) {
   using XPUTypeX = typename XPUTypeTrait<T>::Type;
   using XPUTypeW = typename XPUTypeTrait<TW>::Type;
 
@@ -94,33 +94,33 @@ void SqueezeExcitationXPUKernelImpl(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void SqueezeExcitationXPUKernel(const Context& ctx,
-                                const DenseTensor& x,
-                                const DenseTensor& filter,
-                                const DenseTensor& filter_max,
-                                const paddle::optional<DenseTensor>& bias,
-                                const paddle::optional<DenseTensor>& branch,
-                                const std::vector<int>& act_type,
-                                const std::vector<float>& act_param,
-                                const std::vector<int>& filter_dims,
-                                DenseTensor* out) {
-  SqueezeExcitationXPUKernelImpl<T, int16_t, Context>(ctx,
-                                                      x,
-                                                      filter,
-                                                      filter_max,
-                                                      bias,
-                                                      branch,
-                                                      act_type,
-                                                      act_param,
-                                                      filter_dims,
-                                                      out);
+void SqueezeExcitationKernel(const Context& ctx,
+                             const DenseTensor& x,
+                             const DenseTensor& filter,
+                             const DenseTensor& filter_max,
+                             const paddle::optional<DenseTensor>& bias,
+                             const paddle::optional<DenseTensor>& branch,
+                             const std::vector<int>& act_type,
+                             const std::vector<float>& act_param,
+                             const std::vector<int>& filter_dims,
+                             DenseTensor* out) {
+  SqueezeExcitationKernelImpl<T, int16_t, Context>(ctx,
+                                                   x,
+                                                   filter,
+                                                   filter_max,
+                                                   bias,
+                                                   branch,
+                                                   act_type,
+                                                   act_param,
+                                                   filter_dims,
+                                                   out);
 }
 
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(squeeze_excitation_block_xpu,
+PD_REGISTER_KERNEL(squeeze_excitation_block,
                    XPU,
                    ALL_LAYOUT,
-                   phi::fusion::SqueezeExcitationXPUKernel,
+                   phi::fusion::SqueezeExcitationKernel,
                    float) {}

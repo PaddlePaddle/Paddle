@@ -57,7 +57,7 @@ After the pass is applied:
             in_Filter      |     in_FilterMax
                       \    |    /
                         \  |   /
-  in_Branch ------- squeeze_excitation_block_xpu ------ in_Bias
+  in_Branch ------- squeeze_excitation_block ------ in_Bias
                            |
                            |
                            |
