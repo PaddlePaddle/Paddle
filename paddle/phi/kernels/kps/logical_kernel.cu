@@ -25,24 +25,25 @@
 
 namespace phi {
 
-#define DEFINE_LOGICAL_BINARY_KERNEL(type)                            \
-  template <typename T, typename Context>                             \
-  void Logical##type##Kernel(const Context& dev_ctx,                  \
-                             const DenseTensor& x,                    \
-                             const DenseTensor& y,                    \
-                             DenseTensor* out) {                      \
-    if (!out->IsSharedWith(x)) {                                      \
-      dev_ctx.template Alloc<bool>(out);                              \
-    }                                                                 \
-                                                                      \
-    funcs::Logical##type##Functor<T> binary_func;                     \
-    std::vector<const DenseTensor*> ins = {&x, &y};                   \
-    std::vector<DenseTensor*> outs = {out};                           \
-    if (!out->IsSharedWith(x)) {                                      \
-      funcs::BroadcastKernel<bool>(dev_ctx, ins, &outs, binary_func); \
-    } else {                                                          \
-      funcs::BroadcastKernel<T>(dev_ctx, ins, &outs, binary_func);    \
-    }                                                                 \
+#define DEFINE_LOGICAL_BINARY_KERNEL(type)                          \
+  template <typename T, typename Context>                           \
+  void Logical##type##Kernel(const Context& dev_ctx,                \
+                             const DenseTensor& x,                  \
+                             const DenseTensor& y,                  \
+                             DenseTensor* out) {                    \
+    std::vector<const DenseTensor*> ins;                            \
+    if (out->IsSharedWith(x)) {                                     \
+      auto x_origin = x;                                            \
+      ins.push_back(&x_origin);                                     \
+    } else {                                                        \
+      ins.push_back(x);                                             \
+    }                                                               \
+    dev_ctx.template Alloc<bool>(out);                              \
+    out->set_type(phi::DataType::BOOL);                             \
+    funcs::Logical##type##Functor<T> binary_func;                   \
+    ins.push_back(&y);                                              \
+    std::vector<DenseTensor*> outs = {out};                         \
+    funcs::BroadcastKernel<bool>(dev_ctx, ins, &outs, binary_func); \
   }
 
 DEFINE_LOGICAL_BINARY_KERNEL(And)
@@ -54,17 +55,17 @@ template <typename T, typename Context>
 void LogicalNotKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       DenseTensor* out) {
-  if (!out->IsSharedWith(x)) {
-    dev_ctx.template Alloc<bool>(out);
-  }
-  funcs::LogicalNotFunctor<T> unary_func;
-  std::vector<const DenseTensor*> ins = {&x};
-  std::vector<DenseTensor*> outs = {out};
-  if (!out->IsSharedWith(x)) {
-    funcs::BroadcastKernel<bool>(dev_ctx, ins, &outs, unary_func);
+  std::vector<const DenseTensor*> ins;
+  if (out->IsSharedWith(x)) {
+    auto x_origin = x;
+    ins.push_back(&x_origin)
   } else {
-    funcs::BroadcastKernel<T>(dev_ctx, ins, &outs, unary_func);
+    ins.push_back(&x)
   }
+  dev_ctx.template Alloc<bool>(out);
+  out->set_type(phi::DataType::BOOL);
+  funcs::LogicalNotFunctor<T> unary_func;
+  funcs::BroadcastKernel<bool>(dev_ctx, ins, &outs, unary_func);
 }
 
 }  // namespace phi
@@ -99,7 +100,9 @@ PD_REGISTER_KERNEL(logical_xor, KPS, ALL_LAYOUT, phi::LogicalXorKernel, int) {
                      int8_t,                                 \
                      phi::dtype::complex<float>,             \
                      phi::dtype::complex<double>,            \
-                     int16_t) {}
+                     int16_t) {                              \
+    kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);    \
+  }
 
 REGISTER_LOGICAL_CUDA_KERNEL(logical_and, And)
 REGISTER_LOGICAL_CUDA_KERNEL(logical_or, Or)

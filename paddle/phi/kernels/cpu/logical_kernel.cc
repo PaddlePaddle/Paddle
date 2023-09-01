@@ -32,8 +32,10 @@ namespace phi {
                              DenseTensor* out) {                            \
     funcs::Logical##type##Functor<T> binary_func;                           \
     if (out->IsSharedWith(x)) {                                             \
-      funcs::ElementwiseCompute<funcs::Logical##type##Functor<T>, T, T>(    \
-          dev_ctx, x, y, binary_func, out);                                 \
+      auto x_origin = x;                                                    \
+      out->set_type(phi::DataType::BOOL);                                   \
+      funcs::ElementwiseCompute<funcs::Logical##type##Functor<T>, T, bool>( \
+          dev_ctx, x_origin, y, binary_func, out);                          \
     } else {                                                                \
       funcs::ElementwiseCompute<funcs::Logical##type##Functor<T>, T, bool>( \
           dev_ctx, x, y, binary_func, out);                                 \
@@ -79,7 +81,9 @@ void LogicalNotKernel(const Context& dev_ctx,
                      int8_t,                                \
                      phi::dtype::complex<float>,            \
                      phi::dtype::complex<double>,           \
-                     int16_t) {}
+                     int16_t) {                             \
+    kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);   \
+  }
 
 REGISTER_LOGICAL_CPU_KERNEL(logical_and, And)
 REGISTER_LOGICAL_CPU_KERNEL(logical_or, Or)
