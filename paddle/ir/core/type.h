@@ -43,7 +43,6 @@ class IR_API Type {
                                              TraitOrInterface...>;
 
   using Storage = TypeStorage;
-
   using AbstractT = AbstractType;
 
   Type() = default;
@@ -71,7 +70,21 @@ class IR_API Type {
   ///
   TypeId type_id();
 
-  const AbstractType &abstract_type();
+  ///
+  /// \brief Support PointerLikeTypeTraits.
+  ///
+  ///
+  const void *getAsOpaquePointer() const {
+    return static_cast<const void *>(storage_);
+  }
+  static Type getFromOpaquePointer(const void *pointer) {
+    return Type(reinterpret_cast<Storage *>(const_cast<void *>(pointer)));
+  }
+
+  ///
+  /// \brief Return the abstract type descriptor.
+  ///
+  const AbstractT &abstract_type();
 
   ///
   /// \brief Return the Type implementation.

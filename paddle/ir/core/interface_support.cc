@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/core/op_base.h"
+#include "paddle/ir/core/interface_support.h"
+
 namespace ir {
 InterfaceValue::~InterfaceValue() {
   if (model_) free(model_);
