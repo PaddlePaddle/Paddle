@@ -2804,9 +2804,10 @@ static PyObject* tensor_contiguous(TensorObject* self,
       return reinterpret_cast<PyObject*>(self);
     } else {
       eager_gil_scoped_release guard;
-      return ToPyObject(
-          paddle::Tensor(std::make_shared<phi::DenseTensor>(std::move(
-              paddle::experimental::Trans2Contiguous(*(dense_tensor.get()))))));
+      self->tensor.set_impl(std::make_shared<phi::DenseTensor>(std::move(
+          paddle::experimental::Trans2Contiguous(*(dense_tensor.get())))));
+      Py_INCREF(self);
+      return reinterpret_cast<PyObject*>(self);
     }
 
   } else {
