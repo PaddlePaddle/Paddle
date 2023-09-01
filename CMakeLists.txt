@@ -605,6 +605,7 @@ if(WITH_CINN)
   add_definitions(-DPADDLE_WITH_CINN)
 
   if(CINN_ONLY)
+    add_definitions(-DCINN_WITH_ONLY)
     if(WITH_PYTHON)
       add_subdirectory(python)
     endif()

@@ -27,6 +27,7 @@
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
 #include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/runtime/flags.h"
@@ -143,9 +144,8 @@ class PerformanceTester : public ::testing::Test {
         absl::flat_hash_map<std::string, hlir::framework::shape_t>>(
         "infershape");
 
-    std::shared_ptr<hlir::framework::OpLowerer> op_lowerer =
-        std::make_unique<hlir::framework::OpLowerer>(
-            dtype_dict, shape_dict, target_);
+    auto op_lowerer =
+        hlir::framework::CreateOpLowerer(dtype_dict, shape_dict, target_);
 
     CompilationContext& context = graph_compiler->GetCompilationContext();
     context.with_instantiate_variables = true;
@@ -157,9 +157,9 @@ class PerformanceTester : public ::testing::Test {
 
     for (auto group : graph->fusion_groups) {
       context.lowered_funcs.push_back(
-          op_lowerer->Lower(group,
-                            /*apply_op_schedule = */ false,
-                            /*apply_group_schedule=*/false));
+          op_lowerer.Lower(group,
+                           /*apply_op_schedule = */ false,
+                           /*apply_group_schedule=*/false));
     }
 
     VLOG(3) << "===========================No Schedule LoweredFunc "

@@ -14,7 +14,7 @@ namespace primitive {
 using IntArray = paddle::experimental::IntArray;
 
 {% macro sig(fwd_name, name, inputs, attrs, outputs) %}
-std::vector<std::vector<paddle::Tensor>> {{fwd_name}}_vjp({{common.params(inputs, attrs)}}, const std::vector<std::vector<bool>>& stop_gradients);
+std::vector<std::vector<paddle::Tensor>> {{fwd_name}}_vjp({{common.params(inputs, attrs, attrs is exist_mutable_attribute)}}, const std::vector<std::vector<bool>>& stop_gradients);
 {% endmacro %}
 
 {%- set api_map = {} -%}

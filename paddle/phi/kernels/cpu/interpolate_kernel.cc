@@ -232,12 +232,12 @@ static void NearestNeighborInterpolate(const DenseTensor& input,
 
   for (int k = 0; k < out_h; k++) {  // loop for images
     int in_k = (align_corners)
-                   ? static_cast<int>(ratio_h * static_cast<float>(k) + 0.5)
+                   ? std::lround(ratio_h * static_cast<float>(k))
                    : static_cast<int>(ratio_h * static_cast<float>(k));
 
     for (int l = 0; l < out_w; l++) {
       int in_l = (align_corners)
-                     ? static_cast<int>(ratio_w * static_cast<float>(l) + 0.5)
+                     ? std::lround(ratio_w * static_cast<float>(l))
                      : static_cast<int>(ratio_w * static_cast<float>(l));
 
       for (int i = 0; i < n; i++) {    // loop for batches
@@ -515,16 +515,16 @@ static void NearestNeighbor3DInterpolate(const DenseTensor& input,
   auto output_t = EigenTensor<T, 5>::From(*output);
   for (int d = 0; d < out_d; d++) {  // loop for images
     int in_d = (align_corners)
-                   ? static_cast<int>(ratio_d * static_cast<float>(d) + 0.5)
+                   ? std::lround(ratio_d * static_cast<float>(d))
                    : static_cast<int>(ratio_d * static_cast<float>(d));
     for (int k = 0; k < out_h; k++) {
       int in_k = (align_corners)
-                     ? static_cast<int>(ratio_h * static_cast<float>(k) + 0.5)
+                     ? std::lround(ratio_h * static_cast<float>(k))
                      : static_cast<int>(ratio_h * static_cast<float>(k));
 
       for (int l = 0; l < out_w; l++) {
         int in_l = (align_corners)
-                       ? static_cast<int>(ratio_w * static_cast<float>(l) + 0.5)
+                       ? std::lround(ratio_w * static_cast<float>(l))
                        : static_cast<int>(ratio_w * static_cast<float>(l));
 
         for (int i = 0; i < n; i++) {    // loop for batches

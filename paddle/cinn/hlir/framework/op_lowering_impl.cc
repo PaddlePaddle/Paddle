@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/hlir/framework/op_lowering.h"
+#include "paddle/cinn/hlir/framework/op_lowering_impl.h"
 
 #include "paddle/cinn/hlir/framework/op_lowering_util.h"
 #include "paddle/cinn/hlir/op/external_api_registry.h"
@@ -38,15 +38,15 @@ using common::Type;
 
 using cinn::hlir::op::ExternalApiRegistry;
 
-OpLowerer::OpLowerer(
+OpLowererImpl::OpLowererImpl(
     const absl::flat_hash_map<std::string, Type>& type_dict,
     const absl::flat_hash_map<std::string, shape_t>& shape_dict,
     const Target& target)
     : type_dict_(type_dict), shape_dict_(shape_dict), target_(target) {}
 
-std::vector<ir::LoweredFunc> OpLowerer::Lower(const GroupPtr& group,
-                                              bool apply_op_schedule,
-                                              bool apply_group_schedule) {
+std::vector<ir::LoweredFunc> OpLowererImpl::Lower(const GroupPtr& group,
+                                                  bool apply_op_schedule,
+                                                  bool apply_group_schedule) {
   VLOG(3) << "Lowering Group : " << group->group_id
           << " , Op Pattern : " << group->op_pattern_kind;
   group->input_names.clear();
@@ -58,36 +58,38 @@ std::vector<ir::LoweredFunc> OpLowerer::Lower(const GroupPtr& group,
       return LowerGroup(group,
                         apply_op_schedule,
                         apply_group_schedule,
-                        &OpLowerer::ElementwiseScheduleDetermineFunction);
+                        &OpLowererImpl::ElementwiseScheduleDetermineFunction);
     case framework::kReduction:
       return LowerGroup(group,
                         apply_op_schedule,
                         apply_group_schedule,
-                        &OpLowerer::ReduceScheduleDetermineFunction);
+                        &OpLowererImpl::ReduceScheduleDetermineFunction);
     case framework::kOutFusible:
       LOG(FATAL) << "Group Pattern Kind kOutFusible Is Not Implemented!";
     case framework::kNonFusible:
       return LowerGroup(group,
                         apply_op_schedule,
                         apply_group_schedule,
-                        &OpLowerer::NonFusibleScheduleDetermineFunction);
+                        &OpLowererImpl::NonFusibleScheduleDetermineFunction);
     default:
       LOG(FATAL) << "Group Pattern Kind Is Unknown!";
   }
 }
 
-bool OpLowerer::ElementwiseScheduleDetermineFunction(Node* node) {
+bool OpLowererImpl::ElementwiseScheduleDetermineFunction(Node* node) {
   return true;
 }
 
-bool OpLowerer::ReduceScheduleDetermineFunction(Node* node) {
+bool OpLowererImpl::ReduceScheduleDetermineFunction(Node* node) {
   auto& op_pattern_dict = Operator::GetAttrs<OpPatternKind>("OpPattern");
   return op_pattern_dict[node->op()] == framework::kReduction;
 }
 
-bool OpLowerer::NonFusibleScheduleDetermineFunction(Node* node) { return true; }
+bool OpLowererImpl::NonFusibleScheduleDetermineFunction(Node* node) {
+  return true;
+}
 
-std::vector<ir::LoweredFunc> OpLowerer::LowerGroup(
+std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
     const GroupPtr& group,
     bool apply_op_schedule,
     bool apply_group_schedule,
@@ -126,7 +128,8 @@ std::vector<ir::LoweredFunc> OpLowerer::LowerGroup(
       group, tensor_map, do_op_schedule, &ir_sch, &group_func_arg_tensors);
 }
 
-std::vector<ir::LoweredFunc> OpLowerer::LowerCustomCall(const GroupPtr& group) {
+std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
+    const GroupPtr& group) {
   std::vector<Node*> nodes = group->CollectNodes();
   CHECK_EQ(nodes.size(), 1);
   Node* node = nodes[0];
@@ -178,7 +181,7 @@ std::vector<ir::LoweredFunc> OpLowerer::LowerCustomCall(const GroupPtr& group) {
   return {pack[0].operator ir::Expr().as_lowered_func_ref()};
 }
 
-std::vector<ir::LoweredFunc> OpLowerer::PostProcess(
+std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     const GroupPtr& group,
     const std::unordered_map<std::string, ir::Tensor>& tensor_map,
     bool done_op_schedule,
@@ -260,7 +263,7 @@ std::vector<ir::LoweredFunc> OpLowerer::PostProcess(
   return {func};
 }
 
-std::vector<ir::Expr> OpLowerer::LowerOps(
+std::vector<ir::Expr> OpLowererImpl::LowerOps(
     const std::vector<Node*>& nodes,
     bool apply_op_schedule,
     ScheduleDetermineFunction schedule_determine_func,
@@ -307,7 +310,7 @@ std::vector<ir::Expr> OpLowerer::LowerOps(
   return func_bodies;
 }
 
-std::vector<ir::LoweredFunc> OpLowerer::DoOpLower(
+std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
     std::shared_ptr<hlir::framework::OpImpl> op_impl,
     Node* node,
     std::unordered_map<std::string, ir::Tensor>* tensor_map,
@@ -375,7 +378,7 @@ std::vector<ir::LoweredFunc> OpLowerer::DoOpLower(
   return funcs;
 }
 
-ir::Expr OpLowerer::DoOpSchedule(
+ir::Expr OpLowererImpl::DoOpSchedule(
     std::shared_ptr<hlir::framework::OpImpl> op_impl,
     const std::vector<ir::Tensor>& op_func_arg_tensors,
     const std::vector<ir::LoweredFunc>& lowered_funcs) {
@@ -398,7 +401,7 @@ ir::Expr OpLowerer::DoOpSchedule(
 }
 
 // group schedule
-ir::Expr OpLowerer::DoGroupSchedule(
+ir::Expr OpLowererImpl::DoGroupSchedule(
     ir::IRSchedule& ir_sch,
     const GroupPtr& group,
     const std::unordered_map<std::string, ir::Tensor>& tensor_map) {
