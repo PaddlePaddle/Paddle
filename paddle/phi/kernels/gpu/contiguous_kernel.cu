@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/segmented_array.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
