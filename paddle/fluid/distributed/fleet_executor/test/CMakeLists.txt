@@ -121,8 +121,14 @@ if(WIN32 AND WITH_TESTING)
     device_context
     ${BRPC_DEPS})
 else()
-  cc_test_old(compute_interceptor_run_op_test SRCS
-              compute_interceptor_run_op_test.cc DEPS ${paddle_lib} python)
+  cc_test_old(
+    compute_interceptor_run_op_test
+    SRCS
+    compute_interceptor_run_op_test.cc
+    DEPS
+    ${paddle_lib}
+    python
+    fleet_executor)
 endif()
 
 if(WITH_DISTRIBUTE AND NOT WITH_PSLIB)
