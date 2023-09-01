@@ -126,8 +126,8 @@ if [[ $changed_env_var_count -gt 0 ]]; then
 fi
 
 if [[ $git_files -gt 19 || $git_count -gt 999 ]];then
-    echo_line="You must have Dianhai or XiaoguangHu01 approval for change 20+ files or add than 1000+ lines of content.\n"
-    check_approval 1 Dianhai XiaoguangHu01
+    echo_line="You must have raindrops2sea or XiaoguangHu01 approval for change 20+ files or add than 1000+ lines of content.\n"
+    check_approval 1 raindrops2sea XiaoguangHu01
 fi
 
 for API_FILE in ${API_FILES[*]}; do
@@ -135,7 +135,7 @@ for API_FILE in ${API_FILES[*]}; do
   if [ "${API_CHANGE}" ] && [ "${GIT_PR_ID}" != "" ]; then
       # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
       # You can use http://caius.github.io/github_id/ to find Github user id.
-      # approval_user_list: XiaoguangHu01 46782768,Xreki 12538138,luotao1 6836917,qingqing01 7845005,guoshengCS 14105589,heavengate 12605721,kuke 3064195,Superjomn 328693,lanxianghit 47554610,cyj1986 39645414,hutuxian 11195205,frankwhzhang 20274488,nepeplwu 45024560,Dianhai 38231817,chenwhql 22561442,zhiqiu 6888866,seiriosPlus 5442383,gongweibao 10721757,saxon-zh 2870059, zhouwei25 52485244, Aurelius84 9301846, liym27 33742067, zhhsplendid 7913861, kolinwei 22165420, liuwei1031 46661762, dingjiaweiww 23093488, juncaipeng 52520497, zhangting2020 26615455, Shixiaowei02 39303645, Heeenrrry 28379894,XieYunshen 32428676, Dong Daxiang 35550832, phlrain 43953930, qili93 16605440.
+      # approval_user_list: XiaoguangHu01 46782768,Xreki 12538138,luotao1 6836917,qingqing01 7845005,guoshengCS 14105589,heavengate 12605721,kuke 3064195,Superjomn 328693,lanxianghit 47554610,cyj1986 39645414,hutuxian 11195205,frankwhzhang 20274488,nepeplwu 45024560,raindrops2sea 38231817,chenwhql 22561442,zhiqiu 6888866,seiriosPlus 5442383,gongweibao 10721757,saxon-zh 2870059, zhwesky2010 52485244, Aurelius84 9301846, liym27 33742067, zhhsplendid 7913861, kolinwei 22165420, liuwei1031 46661762, dingjiaweiww 23093488, juncaipeng 52520497, zhangting2020 26615455, Shixiaowei02 39303645, Heeenrrry 28379894,XieYunshen 32428676, Dong Daxiang 35550832, phlrain 43953930, qili93 16605440.
       if [ "${API_FILE}" == "CMakeLists.txt" ];then
           echo_line="You must have one RD (wanghuancoder, luotao1, Aurelius84, XiaoguangHu01 or qili93) approval for CMakeLists.txt, which manages the compilation parameter.\n"
           check_approval 1 wanghuancoder luotao1 Aurelius84 XiaoguangHu01 qili93
@@ -200,11 +200,11 @@ for API_FILE in ${API_FILES[*]}; do
           echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes.\n"
           check_approval 1 fuyinno4 raindrops2sea
       elif [ "${API_FILE}" == "paddle/scripts/paddle_build.bat" ] || [ "${API_FILE}" == "tools/windows/run_unittests.sh" ]; then
-          echo_line="You must have one RD (zhouwei25 (Recommend), wanghuancoder, luotao1 or Aurelius84) approval for ${API_FILE} changes, which manages the Paddle CI task on Windows.\n"
-          check_approval 1 zhouwei25 wanghuancoder luotao1 Aurelius84
+          echo_line="You must have one RD (zhwesky2010 (Recommend), wanghuancoder, luotao1 or Aurelius84) approval for ${API_FILE} changes, which manages the Paddle CI task on Windows.\n"
+          check_approval 1 zhwesky2010 wanghuancoder luotao1 Aurelius84
       elif [ "${API_FILE}" == "tools/parallel_UT_rule.py" ]; then
-          echo_line="You must have one RD (zhouwei25 (Recommend), wanghuancoder, luotao1 or Aurelius84) approval for ${API_FILE} changes, which manages the rule of running unittest with a same GPU. If the unittest failed due to Insufficient GPU memory or CUBLAS_STATUS_ALLOC_FAILED, you can remove it from ${API_FILE}.\n"
-          check_approval 1 zhouwei25 wanghuancoder luotao1 Aurelius84
+          echo_line="You must have one RD (zhwesky2010 (Recommend), wanghuancoder, luotao1 or Aurelius84) approval for ${API_FILE} changes, which manages the rule of running unittest with a same GPU. If the unittest failed due to Insufficient GPU memory or CUBLAS_STATUS_ALLOC_FAILED, you can remove it from ${API_FILE}.\n"
+          check_approval 1 zhwesky2010 wanghuancoder luotao1 Aurelius84
       elif [ "${API_FILE}" == "python/paddle/fluid/parallel_executor.py" ]; then
           echo_line="You must have one RD (Xreki, luotao1, zhhsplendid or Aurelius84) approval for ${API_FILE}, which manages the underlying code for PaddlePaddle.\n"
           check_approval 1 Xreki luotao1 zhhsplendid Aurelius84
@@ -230,6 +230,12 @@ for API_FILE in ${API_FILES[*]}; do
   fi
 done
 
+DEPS_PHI_IN_IR=`git diff --name-only upstream/$BRANCH | grep -E "paddle/ir/" | grep "CMakeList" |xargs -r git diff -U0 upstream/$BRANCH --| grep "^\+" | grep "phi" || true`
+echo "DEPS_PHI_IN_IR:${DEPS_PHI_IN_IR}"
+if [ "${DEPS_PHI_IN_IR}" ] && [ "${DEPS_PHI_IN_IR}" != "" ]; then
+    echo_line="You must have one RD (Aurelius84, phlrain, zhangbo9674, winter-wang) approval for the CMakeLists.txt with DEPS phi* in paddle/ir directory.\n"
+    check_approval 1 Aurelius84 phlrain zhangbo9674 winter-wang
+fi
 FILTER=`git diff --name-only upstream/develop | grep -v "tools/"`
 HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH $FILTER | grep '^\+' | grep -o -m 1 "const_cast" || true`
 if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
@@ -565,13 +571,13 @@ fi
 UNITYBUILD_RULE_CHANGED=$(git diff --name-only upstream/$BRANCH |
                           grep "unity_build_rule.cmake" || true)
 if [ -n "${UNITYBUILD_RULE_CHANGED}" -a -n "${GIT_PR_ID}" ]; then
-    echo_line="You must have one RD (Avin0323(Recommend) or zhouwei25 or
+    echo_line="You must have one RD (Avin0323(Recommend) or zhwesky2010 or
                wanghuancoder or luotao1 or Aurelius84) approval for modifying
                unity_build_rule.cmake which the rules of Unity Build."
     echo_line=$(echo ${echo_line})
-    # Avin0323(23427135) zhouwei25(52485244)
+    # Avin0323(23427135) zhwesky2010(52485244)
     # wanghuancoder(26922892) luotao1(6836917)
-    check_approval 1 Avin0323 zhouwei25 wanghuancoder luotao1 Aurelius84
+    check_approval 1 Avin0323 zhwesky2010 wanghuancoder luotao1 Aurelius84
 fi
 
 if [ -n "${echo_list}" ];then
