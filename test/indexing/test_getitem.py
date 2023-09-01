@@ -166,6 +166,18 @@ class TestGetitemInDygraph(unittest.TestCase):
 
         np.testing.assert_allclose(y.numpy(), np_res)
 
+    def test_indexing_is_multi_dim_list(self):
+        # indexing is multi-dim int list, should be treat as one index, like numpy>=1.23
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
+        np_res = np_data[[[2, 3, 4], [1, 2, 5]]]
+
+        x = paddle.to_tensor(np_data)
+        y = x[[[2, 3, 4], [1, 2, 5]]]
+        y_index_tensor = x[paddle.to_tensor([[2, 3, 4], [1, 2, 5]])]
+
+        np.testing.assert_allclose(y.numpy(), np_res)
+        np.assert_allclose(y.numpy(), y_index_tensor.numpy())
+
 
 class TestGetitemInStatic(unittest.TestCase):
     def setUp(self):
@@ -403,6 +415,24 @@ class TestGetitemInStatic(unittest.TestCase):
             res = self.exe.run(fetch_list=[y.name])
 
         np.testing.assert_allclose(res[0], np_res)
+
+    def test_indexing_is_multi_dim_list(self):
+        # indexing is multi-dim int list, should be treat as one index, like numpy>=1.23
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
+        np_res = np_data[[[2, 3, 4], [1, 2, 5]]]
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.to_tensor(np_data)
+            y = _getitem_static(x, [[[2, 3, 4], [1, 2, 5]]])
+            y_index_tensor = _getitem_static(
+                x, paddle.to_tensor([[2, 3, 4], [1, 2, 5]])
+            )
+
+            res = self.exe.run(fetch_list=[y.name, y_index_tensor.name])
+
+        np.testing.assert_allclose(res[0], np_res)
+        np.testing.assert_allclose(res[1], np_res)
 
 
 class TestGetItemErrorCase(unittest.TestCase):
