@@ -456,7 +456,7 @@ class ColumnParallelLinear(paddle.nn.Layer):
             or self.mp_fused_linear_param_grad_add
         ):
             assert (
-                paddle.fluid.framework.in_dygraph_mode()
+                paddle.in_dynamic_mode()
             ), "mp_async_allreduce, mp_skip_c_identity and mp_fused_linear_param_grad_add are only available under dygraph mode"
         if self.fuse_matmul_bias:
             if not is_fused_matmul_bias_supported():
@@ -628,7 +628,7 @@ class RowParallelLinear(paddle.nn.Layer):
             or self.mp_fused_linear_param_grad_add
         ):
             assert (
-                paddle.fluid.framework.in_dygraph_mode()
+                paddle.in_dynamic_mode()
             ), "mp_async_allreduce, mp_skip_c_identity and mp_fused_linear_param_grad_add are only available under dygraph mode"
         assert in_features % self.world_size == 0, (
             "Number of row of the weight for linear ({}) must be"
