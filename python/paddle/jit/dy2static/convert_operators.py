@@ -16,10 +16,7 @@ import re
 
 import paddle
 from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid.dygraph.base import (
-    _convert_into_variable,
-    in_declarative_mode,
-)
+from paddle.fluid.dygraph.base import _convert_into_variable, in_to_static_mode
 from paddle.fluid.framework import Variable, core, default_main_program
 
 from .utils import (
@@ -41,14 +38,14 @@ def convert_attr(x, attr):
 
 
 def convert_load(x):
-    if in_declarative_mode() and isinstance(x, paddle.fluid.core.eager.Tensor):
+    if in_to_static_mode() and isinstance(x, paddle.fluid.core.eager.Tensor):
         """
         TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.
         """
         return _convert_into_variable(x)
 
     # get the new output of the var
-    if in_declarative_mode() and isinstance(x, Variable):
+    if in_to_static_mode() and isinstance(x, Variable):
         cur_block = default_main_program().current_block()
 
         from paddle.jit.dy2static.program_translator import ProgramTranslator
