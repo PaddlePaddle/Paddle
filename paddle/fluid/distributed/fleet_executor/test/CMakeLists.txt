@@ -128,7 +128,9 @@ else()
     DEPS
     ${paddle_lib}
     python
-    fleet_executor)
+    fleet_executor
+    fill_constant_op
+    elementwise_add_op)
 endif()
 
 if(WITH_DISTRIBUTE AND NOT WITH_PSLIB)
