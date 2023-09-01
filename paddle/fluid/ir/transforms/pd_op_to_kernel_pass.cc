@@ -94,6 +94,28 @@ bool NeedFallBackCpu(const ir::Operation* op,
   return false;
 }
 
+phi::Backend GetDstBackend(const std::string& op_name,
+                           phi::Place place,
+                           OpYamlInfoParser* op_yaml_info_parser,
+                           phi::Backend kernel_def_backend,
+                           size_t input_index) {
+  if (op_name == "builtin.set_parameter" &&
+      place.GetType() == phi::AllocationType::GPU) {
+    // NOTE: align old executor, all the paramter are initilizered
+    // on backend of executor place defined
+    return phi::TransToPhiBackend(place);
+  }
+
+  auto dst_backend = kernel_def_backend;
+  if (op_yaml_info_parser != nullptr &&
+      op_yaml_info_parser->IsTensorAttribute(input_index)) {
+    // Tensor Attribute should on cpu backend for better performance
+    dst_backend = phi::Backend::CPU;
+  }
+
+  return dst_backend;
+}
+
 bool NeedFallBackFromGPUDNN2GPU(ir::Operation* op,
                                 const phi::KernelKey kernel_key) {
   // NOTE(phlrain): keep the same kernel select strategy with
@@ -182,6 +204,10 @@ ir::OpResult AddPlaceTransferOp(ir::OpResult in,
     ir::Operation* op =
         ir::Operation::Create({in}, op_attribute, {out_type}, op_info);
 
+    if (in.GetDefiningOp()->HasAttribute(kAttrIsPersisable)) {
+      op->set_attribute(kAttrIsPersisable,
+                        in.GetDefiningOp()->attribute(kAttrIsPersisable));
+    }
     program->block()->push_back(op);
 
     auto new_in = op->result(0);
@@ -844,10 +870,14 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
         auto& kernel = phi::KernelFactory::Instance().SelectKernelWithGPUDNN(
             kernel_fn_str, kernel_key);
 
-        if (kernel.IsValid() && (!UnchangeOutputOps.count(op_item->name()))) {
+        bool check_place_transfer =
+            (op_item->name() == "builtin.set_parameter") ||
+            (kernel.IsValid() && (!UnchangeOutputOps.count(op_item->name())));
+
+        if (check_place_transfer) {
           if (new_in_type.isa<dialect::AllocatedDenseTensorType>()) {
             // allocated type
-            auto place =
+            auto in_place =
                 new_in_type.dyn_cast<dialect::AllocatedDenseTensorType>()
                     .place();
 
@@ -855,17 +885,21 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
             auto args_def = kernel.args_def();
             auto input_defs = args_def.input_defs();
 
+            auto dst_backend = GetDstBackend(op_item->name(),
+                                             place,
+                                             op_info_parser.get(),
+                                             kernel.InputAt(i).backend,
+                                             i);
+
             bool need_trans =
-                (place.GetType() != phi::AllocationType::UNDEFINED) &&
-                (op_info_parser != nullptr &&
-                 !op_info_parser->IsTensorAttribute(i)) &&
+                (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
                 (paddle::experimental::NeedTransformPlace(
-                    place, kernel.InputAt(i).backend, {}));
+                    in_place, dst_backend, {}));
             if (need_trans) {
-              VLOG(6) << "need trans from " << place << " to "
+              VLOG(6) << "need trans from " << in_place << " to "
                       << kernel_key.backend();
               // build memcopy op
-              auto out_place = phi::TransToPhiPlace(kernel.InputAt(i).backend);
+              auto out_place = phi::TransToPhiPlace(dst_backend);
               auto new_in_alloc_type =
                   new_in_type.dyn_cast<dialect::AllocatedDenseTensorType>();
               auto out_type = dialect::AllocatedDenseTensorType::get(
@@ -878,7 +912,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
                   new_in_alloc_type.offset());
               new_in = AddPlaceTransferOp(new_in,
                                           out_type,
-                                          place,
+                                          in_place,
                                           out_place,
                                           kernel_key,
                                           program.get());
