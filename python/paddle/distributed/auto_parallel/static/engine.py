@@ -835,6 +835,14 @@ class Engine:
                 dist_main_program, self._place, dist_context
             )
 
+        # NOTE(zhaoyinglia): Skip startup program when use new ir temporarily.
+        use_new_ir = False
+        if auto_utils.use_new_ir():
+            use_new_ir = True
+            paddle.framework.set_flags(
+                {"FLAGS_enable_new_ir_in_executor": False}
+            )
+
         if self._executor is None:
             self._executor = paddle.static.Executor(self._place)
             uninitialized = []
@@ -861,6 +869,11 @@ class Engine:
                 self._cur_rank
             ]
             self._executor.run(dist_startup_prog)
+
+        if use_new_ir:
+            paddle.framework.set_flags(
+                {"FLAGS_enable_new_ir_in_executor": True}
+            )
 
     def fit(
         self,
