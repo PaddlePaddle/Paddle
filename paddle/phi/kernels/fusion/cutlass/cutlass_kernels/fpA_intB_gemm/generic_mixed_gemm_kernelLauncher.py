@@ -128,9 +128,7 @@ def SubstituteTemplate(template, values):
 def find_arch_range(archs):
     compile_archs = []
     for arch in archs:
-        if arch < 70 or arch >= 90:
-            print("warning: sm_%d is not supported" % arch)
-        elif arch >= 70 and arch < 75:
+        if arch >= 70 and arch < 75:
             compile_archs.append(70)
         elif arch >= 75 and arch < 80:
             compile_archs.append(75)
@@ -162,8 +160,6 @@ def parse_args():
         help="The CUDA architecture to be generated.",
     )
     args = parser.parse_args()
-    print("args.cuda_arch:-------------------------")
-    print(args.cuda_arch)
     return args
 
 
