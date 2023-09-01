@@ -20,6 +20,7 @@
 
 #include "paddle/ir/core/enforce.h"
 #include "paddle/ir/pass/analysis_manager.h"
+#include "paddle/ir/pass/pass_registry.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace ir {

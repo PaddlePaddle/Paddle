@@ -1,0 +1,9 @@
+- backward_op : set_value_grad
+  args : (Tensor out_grad, Tensor values, int64_t[] starts, int64_t[] ends, int64_t[] steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
+  output : Tensor(x_grad), Tensor(values_grad)
+  infer_meta:
+    func: SetValueGradInferMeta
+    param: [out_grad, values]
+  kernel:
+    func: set_value_grad
+    param: [out_grad, starts, ends, steps, axes, decrease_axes, none_axes]

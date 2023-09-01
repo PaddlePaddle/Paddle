@@ -273,10 +273,7 @@ uint32_t OpResultImpl::GetResultIndex() const {
   return ir::dyn_cast<OpInlineResultImpl>(this)->GetResultIndex();
 }
 
-OpResultImpl::~OpResultImpl() {
-  assert(use_empty() &&
-         owner()->name() + " operation destroyed but still has uses.");
-}
+OpResultImpl::~OpResultImpl() { assert(use_empty()); }
 
 ir::Operation *OpResultImpl::owner() const {
   // For inline result, pointer offset index to obtain the address of op.

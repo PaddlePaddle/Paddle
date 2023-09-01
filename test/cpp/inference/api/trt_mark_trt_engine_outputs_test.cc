@@ -12,7 +12,6 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "gflags/gflags.h"
 #include "test/cpp/inference/api/trt_test_helper.h"
 
 namespace paddle {
