@@ -62,6 +62,12 @@ bool CanDoInplace(const std::unordered_set<ir::Value>& eager_dels,
 }
 
 bool IsNoNeedBuffer(ir::Operation* op, ir::Value value) {
+  if (op->dialect()->name().compare(
+          paddle::dialect::PaddleKernelDialect::name()) != 0) {
+    VLOG(8) << op->name()
+            << "is not a kernel_dialect op, no need buffer is false";
+    return false;
+  }
   auto op_name =
       op->attributes().at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
   ir::OpInfo op_info = ir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
@@ -87,11 +93,22 @@ bool IsNoNeedBuffer(ir::Operation* op, ir::Value value) {
 std::unordered_set<ir::Value> GetSkipDeletionValues(ir::Block* block) {
   std::unordered_set<ir::Value> skip_dels;
   for (auto& op : *block) {
-    if (op->name() == "pd.feed" || op->name() == "pd.data") {
+    if (op->dialect()->name().compare(
+            paddle::dialect::PaddleKernelDialect::name()) != 0) {
+      continue;
+    }
+    IR_ENFORCE(op->attributes().count("op_name") > 0,
+               "kernel_dialect op should own an 'op_name' attribute.");
+    auto upper_op_name = op->attributes()
+                             .at("op_name")
+                             .dyn_cast<::ir::StrAttribute>()
+                             .AsString();
+
+    if (upper_op_name == "pd.feed" || upper_op_name == "pd.data") {
       skip_dels.insert(op->result(0));
       continue;
     }
-    if (op->name() == "pd.fetch" || op->name() == "pd.shadow_output") {
+    if (upper_op_name == "pd.fetch" || upper_op_name == "pd.shadow_output") {
       skip_dels.insert(op->operand_source(0));
       continue;
     }
@@ -108,20 +125,16 @@ GetEagerDeletionValues(ir::Block* block) {
 
   std::unordered_map<ir::Value, ir::Operation*> del_value_2_op;
   for (auto& op : *block) {
+    std::string upper_op_name = op->name();
     if (op->dialect()->name().compare(
-            paddle::dialect::PaddleKernelDialect::name()) != 0) {
-      VLOG(6) << op->name()
-              << "is not a kernel_dialect op, inplace only support "
-                 "kernel_dialect operators";
-      continue;
+            paddle::dialect::PaddleKernelDialect::name()) == 0) {
+      IR_ENFORCE(op->attributes().count("op_name") > 0,
+                 "kernel_dialect op should own an 'op_name' attribute.");
+      upper_op_name = op->attributes()
+                          .at("op_name")
+                          .dyn_cast<::ir::StrAttribute>()
+                          .AsString();
     }
-
-    IR_ENFORCE(op->attributes().count("op_name") > 0,
-               "kernel_dialect op should own an 'op_name' attribute.");
-    auto upper_op_name = op->attributes()
-                             .at("op_name")
-                             .dyn_cast<::ir::StrAttribute>()
-                             .AsString();
 
     for (size_t i = 0; i < op->num_operands(); ++i) {
       auto input = op->operand_source(i);
