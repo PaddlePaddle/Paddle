@@ -121,19 +121,37 @@ class TestRandomSplitApi(unittest.TestCase):
         paddle.static.default_main_program().random_seed = 1
 
         dataset1, dataset2 = paddle.io.random_split(range(5), [1, 4])
+        dataset3, dataset4, dataset5 = paddle.io.random_split(
+            range(10), [0.1, 0.3, 0.6]
+        )
 
         self.assertTrue(len(dataset1) == 1)
         self.assertTrue(len(dataset2) == 4)
 
-        elements_list = list(range(5))
+        self.assertTrue(len(dataset3) == 1)
+        self.assertTrue(len(dataset4) == 3)
+        self.assertTrue(len(dataset5) == 6)
+
+        elements_list1 = list(range(5))
+        elements_list2 = list(range(10))
 
         for _, val in enumerate(dataset1):
-            elements_list.remove(val)
+            elements_list1.remove(val)
 
         for _, val in enumerate(dataset2):
-            elements_list.remove(val)
+            elements_list1.remove(val)
 
-        self.assertTrue(len(elements_list) == 0)
+        for _, val in enumerate(dataset3):
+            elements_list2.remove(val)
+
+        for _, val in enumerate(dataset4):
+            elements_list2.remove(val)
+
+        for _, val in enumerate(dataset5):
+            elements_list2.remove(val)
+
+        self.assertTrue(len(elements_list1) == 0)
+        self.assertTrue(len(elements_list2) == 0)
 
 
 class TestRandomSplitError(unittest.TestCase):
@@ -143,6 +161,15 @@ class TestRandomSplitError(unittest.TestCase):
 
         self.assertRaises(ValueError, paddle.io.random_split, range(5), [3, 8])
         self.assertRaises(ValueError, paddle.io.random_split, range(5), [8])
+        self.assertRaises(
+            ValueError, paddle.io.random_split, range(5), [0.1, 0.2]
+        )
+        self.assertRaises(
+            ValueError, paddle.io.random_split, range(5), [-0.1, -0.2]
+        )
+        self.assertRaises(
+            ValueError, paddle.io.random_split, range(5), [0.7, 0.9, 0.2]
+        )
         self.assertRaises(ValueError, paddle.io.random_split, range(5), [])
 
 

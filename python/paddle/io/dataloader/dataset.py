@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
+
 import paddle
 
 from ... import framework
@@ -485,7 +487,7 @@ def random_split(dataset, lengths, generator=None):
 
     Args:
         dataset (Dataset): Dataset to be split
-        lengths (sequence): lengths of splits to be produced
+        lengths (sequence): lengths or fractions of splits to be produced
         generator (Generator, optional): Generator used for the random permutation. Default is None then the DefaultGenerator is used in manual_seed().
 
     Returns:
@@ -499,8 +501,11 @@ def random_split(dataset, lengths, generator=None):
 
             >>> paddle.seed(2023)
             >>> a_list = paddle.io.random_split(range(10), [3, 7])
+            >>> b_list = paddle.io.random_split(range(10), [0.1, 0.2, 0.7])
             >>> print(len(a_list))
             2
+            >>> print(len(b_list))
+            3
 
             >>> # output of the first subset
             >>> for idx, v in enumerate(a_list[0]):
@@ -521,6 +526,22 @@ def random_split(dataset, lengths, generator=None):
             6 8
     """
     # Cannot verify that dataset is Sized
+    if math.isclose(sum(lengths), 1) and sum(lengths) <= 1:
+        subset_lengths = []
+        for i, frac in enumerate(lengths):
+            if frac < 0 or frac > 1:
+                raise ValueError(
+                    f"Fraction at index {i} is not between 0 and 1"
+                )
+            in_split = int(math.floor(len(dataset) * frac))
+            subset_lengths.append(in_split)
+        ramainder = len(dataset) - sum(subset_lengths)
+
+        for i in range(ramainder):
+            idx = i % len(subset_lengths)
+            subset_lengths[idx] += 1
+        lengths = subset_lengths
+
     if sum(lengths) != len(dataset):  # type: ignore
         raise ValueError(
             "Sum of input lengths does not equal the length of the input dataset!"
