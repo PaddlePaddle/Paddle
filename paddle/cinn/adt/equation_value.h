@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "cinn/adt/adt.h"
+#include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/equation.h"
-#include "paddle/cinn/adt/match_and_rewrite.h"
+#include "paddle/cinn/adt/match.h"
 
 namespace cinn::adt::equation {
 
@@ -31,6 +31,7 @@ DEFINE_ADT_UNION(Constant,
                  std::int64_t,
                  tStride<UniqueId>,
                  tDim<UniqueId>,
+                 List<Constant>,
                  Neg<Constant>,
                  Add<Constant, Constant>,
                  Mul<Constant, Constant>);
@@ -38,6 +39,7 @@ DEFINE_ADT_UNION(Constant,
 OVERLOAD_OPERATOR_EQ_NE(Constant, UnionEqual);
 OVERLOAD_OPERATOR_EQ_NE(tStride<UniqueId>, TagEqual);
 OVERLOAD_OPERATOR_EQ_NE(tDim<UniqueId>, TagEqual);
+OVERLOAD_OPERATOR_EQ_NE(List<Constant>, ListEqual);
 OVERLOAD_OPERATOR_EQ_NE(Neg<Constant>, TupleEqual);
 using AddConstant = Add<Constant, Constant>;
 using MulConstant = Mul<Constant, Constant>;
@@ -50,26 +52,14 @@ struct Undefined final {
   bool operator!=(const Undefined&) const { return false; }
 };
 
-// IndexDot T = DotValue [Constant] T
-template <typename StrideT, typename T>
-struct DotValue : public Tuple<List<StrideT>, T> {
-  using Tuple<List<StrideT>, T>::Tuple;
+template <typename IteratorsT>
+struct IndexDot : public Tuple<IteratorsT, Constant> {
+  using Tuple<IteratorsT, Constant>::Tuple;
 };
 
-template <typename T>
-struct IndexDot final : public DotValue<Constant, T> {
-  using DotValue<Constant, T>::DotValue;
-};
-
-// IndexUnDot T = UnDotValue [Constant] T
-template <typename StrideT, typename T>
-struct UnDotValue : public Tuple<List<StrideT>, T> {
-  using Tuple<List<StrideT>, T>::Tuple;
-};
-
-template <typename T>
-struct IndexUnDot final : public UnDotValue<Constant, T> {
-  using UnDotValue<Constant, T>::UnDotValue;
+template <typename IteratorsT>
+struct IndexUnDot : public Tuple<IteratorsT, Constant> {
+  using Tuple<IteratorsT, Constant>::Tuple;
 };
 
 // ConstantAdd T = Add T Constant
@@ -90,10 +80,10 @@ struct ConstantMod final : public Mod<T, Constant> {
   using Mod<T, Constant>::Mod;
 };
 
-// ListGetItem T = (T, Constant)
-template <typename T>
-struct ListGetItem final : public Tuple<T, Constant> {
-  using Tuple<T, Constant>::Tuple;
+// ListGetItem T ConstantT = (T, ConstantT)
+template <typename T, typename ConstantT>
+struct ListGetItem final : public Tuple<T, ConstantT> {
+  using Tuple<T, ConstantT>::Tuple;
 };
 
 // PtrGetItem T = (tPointer UniqueId, T)
@@ -111,7 +101,7 @@ DEFINE_ADT_UNION(Value,
                  ConstantAdd<Value>,
                  ConstantDiv<Value>,
                  ConstantMod<Value>,
-                 ListGetItem<Value>,
+                 ListGetItem<Value, Constant>,
                  PtrGetItem<Value>);
 
 OVERLOAD_OPERATOR_EQ_NE(Value, UnionEqual);
@@ -121,7 +111,8 @@ OVERLOAD_OPERATOR_EQ_NE(IndexUnDot<Value>, TupleEqual);
 OVERLOAD_OPERATOR_EQ_NE(ConstantAdd<Value>, TupleEqual);
 OVERLOAD_OPERATOR_EQ_NE(ConstantDiv<Value>, TupleEqual);
 OVERLOAD_OPERATOR_EQ_NE(ConstantMod<Value>, TupleEqual);
-OVERLOAD_OPERATOR_EQ_NE(ListGetItem<Value>, TupleEqual);
+using ListGetItem_Value_Constant = ListGetItem<Value, Constant>;
+OVERLOAD_OPERATOR_EQ_NE(ListGetItem_Value_Constant, TupleEqual);
 OVERLOAD_OPERATOR_EQ_NE(PtrGetItem<Value>, TupleEqual);
 
 }  // namespace cinn::adt::equation

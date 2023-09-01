@@ -154,7 +154,7 @@ bool TagEqual(const T& lhs, const T& rhs) {
     name(const name&) = default;            \
     name(name&&) = default;                 \
     name& operator=(const name&) = default; \
-    name& operator=(name&&) = deafult;      \
+    name& operator=(name&&) = default;      \
   };
 
 #define DEFINE_ADT_UNION(class_name, ...)                                      \
@@ -173,11 +173,6 @@ bool TagEqual(const T& lhs, const T& rhs) {
     template <typename T>                                                      \
     const T& Get() const {                                                     \
       return std::get<T>(variant_);                                            \
-    }                                                                          \
-                                                                               \
-    template <typename T>                                                      \
-    bool Has() const {                                                         \
-      return std::holds_alternative<T>(variant_);                              \
     }                                                                          \
                                                                                \
     template <typename T>                                                      \

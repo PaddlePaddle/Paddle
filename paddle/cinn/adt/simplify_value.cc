@@ -16,14 +16,24 @@
 
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/index_expr_infer_context.h"
-#include "paddle/cinn/adt/match_and_rewrite.h"
+#include "paddle/cinn/adt/match.h"
 #include "paddle/cinn/adt/match_trait.h"
 #include "paddle/cinn/adt/simplify_value.h"
 
 namespace cinn::adt::equation {
 
+template <typename T, typename ExprT>
+ExprT MatchAndRewrite(const ExprT& expr) {
+  if (cinn::adt::Match<typename T::source_pattern_type>(expr)) {
+    return T().MatchAndRewrite(expr);
+  } else {
+    return expr;
+  }
+}
+
 struct SimplifyDotUndot {
-  using source_pattern_type = IndexDot<List<ListGetItem<IndexUnDot<Value>>>>;
+  using source_pattern_type =
+      IndexDot<List<ListGetItem<IndexUnDot<Value>, std::int64_t>>>;
 
   Value MatchAndRewrite(const Value& value, const IndexExprInferContext& ctx) {
     const auto& [dot_strides, list_get_item_values] =
@@ -32,9 +42,8 @@ struct SimplifyDotUndot {
     std::optional<Value> pre_index_undot{std::nullopt};
     for (std::size_t i = 0; i < list_get_items->size(); ++i) {
       const auto& [index_undot_value, constant_idx] =
-          list_get_items.Get(i).Get<ListGetItem<Value>>().tuple();
-      if (!constant_idx.Has<std::int64_t>() ||
-          !constant_idx.Get<std::int64_t>() == i) {
+          list_get_items.Get(i).Get<ListGetItem<Value, Constant>>().tuple();
+      if (!constant_idx.Get<std::int64_t>() == i) {
         return value;
       }
       if (pre_index_undot.has_value()) {
@@ -58,11 +67,12 @@ struct SimplifyDotUndot {
 };
 
 struct SimplifyUndotDot {
-  using source_pattern_type = ListGetItem<IndexUnDot<IndexDot<List<Value>>>>;
+  using source_pattern_type =
+      ListGetItem<IndexUnDot<IndexDot<List<Value>>>, std::int64_t>;
 
   Value MatchAndRewrite(const Value& value, const IndexExprInferContext& ctx) {
     const auto& [index_undot_value, constant_idx] =
-        value.Get<ListGetItem<Value>>().tuple();
+        value.Get<ListGetItem<Value, Constant>>().tuple();
     const auto& [undot_strides, index_value] =
         index_undot_value.Get<IndexUnDot<Value>>().tuple();
     const auto& [dot_strides, index_dot_values] =
@@ -71,23 +81,17 @@ struct SimplifyUndotDot {
     if (undot_strides != dot_strides) {
       return value;
     }
-    if (!constant_idx.Has<std::int64_t>()) {
-      return value;
-    }
     return iter_values.Get(constant_idx.Get<std::int64_t>());
   }
 };
 
 struct SimplifyListGetItem {
-  using source_pattern_type = ListGetItem<List<Value>>;
+  using source_pattern_type = ListGetItem<List<Value>, std::int64_t>;
 
   Value MatchAndRewrite(const Value& value, const IndexExprInferContext& ctx) {
     const auto& [list_values, constant_idx] =
-        value.Get<ListGetItem<Value>>().tuple();
+        value.Get<ListGetItem<Value, Constant>>().tuple();
     const auto& iter_values = list_values.Get<List<Value>>();
-    if (!constant_idx.Has<std::int64_t>()) {
-      return value;
-    }
     return iter_values.Get(constant_idx.Get<std::int64_t>());
   }
 };
