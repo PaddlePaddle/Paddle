@@ -32,71 +32,75 @@ __global__ void ContiguousFunc(
   int64_t start_offset = (blockIdx.x * blockDim.x + threadIdx.x) *
                          ((numel / (blockDim.x * gridDim.x)) + 1);
   int64_t end_offset = start_offset + ((numel / (blockDim.x * gridDim.x)) + 1);
+  if (end_offset > numel) {
+    end_offset = numel;
+  }
   int64_t start_dims[9];
   int64_t end_dims[9];
   int64_t index_tmp_start = start_offset;
 #pragma unroll
+  int64_t j = N - 1;
   for (int64_t dim = 8; dim >= 0; --dim) {
-    if (dim < N - 1) {
+    if (j >= 0) {
+      start_dims[dim] = index_tmp_start % dims[j];
+      end_dims[dim] = end_offset % dims[j];
+      index_tmp_start = index_tmp_start / dims[j];
+      end_offset = end_offset / dims[j];
+    } else {
       start_dims[dim] = 0;
       end_dims[dim] = 0;
-    } else {
-      start_dims[dim] = index_tmp_start % dims[dim];
-      end_dims[dim] = end_offset % dims[dim];
-      index_tmp_start = index_tmp_start / dims[dim];
-      end_offset = end_offset / dims[dim];
     }
+    --j;
   }
 
-  for (int64_t dim8 = start_dims[8]; dim8 >= end_dims[8]; ++dim8) {
-    int64_t offset8 = strides[8] * dim8;
-    int64_t end_dims7 = dim8 == end_dims[8] ? end_dims[7] : dims[7] - 1;
-    for (int64_t dim7 = start_dims[7]; dim7 >= end_dims7; ++dim7) {
-      int64_t offset7 = offset8 + strides[7] * dim7;
-      int64_t end_dims6 = dim7 == end_dims[7] ? end_dims[6] : dims[6] - 1;
-      for (int64_t dim6 = start_dims[6]; dim6 >= end_dims6; ++dim6) {
-        int64_t offset6 = offset7 + strides[6] * dim6;
-        int64_t end_dims5 = dim6 == end_dims[6] ? end_dims[5] : dims[5] - 1;
-        for (int64_t dim5 = start_dims[5]; dim5 >= end_dims5; ++dim5) {
-          int64_t offset5 = offset6 + strides[5] * dim5;
-          int64_t end_dims4 = dim5 == end_dims[5] ? end_dims[4] : dims[4] - 1;
-          for (int64_t dim4 = start_dims[4]; dim4 >= end_dims4; ++dim4) {
-            int64_t offset4 = offset5 + strides[4] * dim4;
-            int64_t end_dims3 = dim4 == end_dims[4] ? end_dims[3] : dims[3] - 1;
-            for (int64_t dim3 = start_dims[3]; dim3 >= end_dims3; ++dim3) {
-              int64_t offset3 = offset4 + strides[3] * dim3;
-              int64_t end_dims2 =
-                  dim3 == end_dims[3] ? end_dims[2] : dims[2] - 1;
-              for (int64_t dim2 = start_dims[2]; dim2 >= end_dims2; ++dim2) {
-                int64_t offset2 = offset3 + strides[2] * dim2;
-                int64_t end_dims1 =
-                    dim2 == end_dims[2] ? end_dims[1] : dims[1] - 1;
-                for (int64_t dim1 = start_dims[1]; dim1 >= end_dims1; ++dim1) {
-                  int64_t input_offset =
-                      offset2 + strides[1] * dim1 + strides[0] * start_dims[0];
-                  int64_t end_dims0 =
-                      dim1 == end_dims[1] ? end_dims[0] : dims[0] - 1;
-                  for (int64_t dim0 = start_dims[0]; dim0 >= end_dims0;
-                       ++dim0) {
-                    out_data[start_offset] = input_data[input_offset];
+  for (int64_t dim0 = start_dims[0]; dim0 <= end_dims[0]; ++dim0) {
+    int64_t offset0 = strides[0] * dim0;
+    int64_t end_dims1 = dim0 == end_dims[0] ? end_dims[1] : dims[1] - 1;
+    for (int64_t dim1 = start_dims[1]; dim1 <= end_dims1; ++dim1) {
+      int64_t offset1 = offset0 + strides[1] * dim1;
+      int64_t end_dims2 = dim1 == end_dims[1] ? end_dims[2] : dims[2] - 1;
+      for (int64_t dim2 = start_dims[2]; dim2 <= end_dims2; ++dim2) {
+        int64_t offset2 = offset1 + strides[2] * dim2;
+        int64_t end_dims3 = dim2 == end_dims[2] ? end_dims[3] : dims[3] - 1;
+        for (int64_t dim3 = start_dims[3]; dim3 <= end_dims3; ++dim3) {
+          int64_t offset3 = offset2 + strides[3] * dim3;
+          int64_t end_dims4 = dim3 == end_dims[3] ? end_dims[4] : dims[4] - 1;
+          for (int64_t dim4 = start_dims[4]; dim4 <= end_dims4; ++dim4) {
+            int64_t offset4 = offset3 + strides[4] * dim4;
+            int64_t end_dims5 = dim4 == end_dims[4] ? end_dims[5] : dims[5] - 1;
+            for (int64_t dim5 = start_dims[5]; dim5 <= end_dims5; ++dim5) {
+              int64_t offset5 = offset4 + strides[5] * dim5;
+              int64_t end_dims6 =
+                  dim5 == end_dims[5] ? end_dims[6] : dims[6] - 1;
+              for (int64_t dim6 = start_dims[6]; dim6 <= end_dims6; ++dim6) {
+                int64_t offset6 = offset5 + strides[6] * dim6;
+                int64_t end_dims7 =
+                    dim6 == end_dims[6] ? end_dims[7] : dims[7] - 1;
+                for (int64_t dim7 = start_dims[7]; dim7 <= end_dims7; ++dim7) {
+                  int64_t offset7 = offset6 + strides[7] * dim7;
+                  int64_t end_dims8 =
+                      dim7 == end_dims[7] ? end_dims[8] : dims[8] - 1;
+                  for (int64_t dim8 = start_dims[8]; dim8 <= end_dims8;
+                       ++dim8) {
+                    int64_t offset8 = offset7 + strides[8] * dim8;
+                    out_data[start_offset] = input_data[offset8];
                     start_offset++;
-                    input_offset += strides[0];
                   }
-                  start_dims[0] = 0;
+                  start_dims[8] = 0;
                 }
-                start_dims[1] = 0;
+                start_dims[7] = 0;
               }
-              start_dims[2] = 0;
+              start_dims[6] = 0;
             }
-            start_dims[3] = 0;
+            start_dims[5] = 0;
           }
           start_dims[4] = 0;
         }
-        start_dims[5] = 0;
+        start_dims[3] = 0;
       }
-      start_dims[6] = 0;
+      start_dims[2] = 0;
     }
-    start_dims[7] = 0;
+    start_dims[1] = 0;
   }
 }
 
@@ -181,14 +185,16 @@ void ContiguousKernel(const Context& dev_ctx,
 
   phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride;
   phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_dims;
-  for (int i = 0; i < 9; i++) {
-    if (i < input.dims().size()) {
-      input_dims[i] = input.dims()[i];
-      input_stride[i] = input.strides()[i];
+  int j = input.dims().size() - 1;
+  for (int i = 8; i >= 0; --i) {
+    if (j >= 0) {
+      input_dims[i] = input.dims()[j];
+      input_stride[i] = input.strides()[j];
     } else {
-      input_dims[i] = 0;
+      input_dims[i] = 1;
       input_stride[i] = 0;
     }
+    --j;
   }
 
   if (rank == 0) {
