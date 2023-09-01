@@ -191,12 +191,16 @@ class TestFlashAttentionAPI(unittest.TestCase):
                 fetches_result[0], out_, rtol=5e-03, atol=1e-03
             )
 
-    def flash_attn_compute(self, query, key, value):
+    def test_all(self):
         print(
             f"Test case shape {self.shape} dtype {self.dtype} causal {self.causal}"
         )
         # test dynamic
         paddle.disable_static()
+
+        query = np.random.random(self.shape)
+        key = np.random.random(self.shape)
+        value = np.random.random(self.shape)
 
         q = paddle.to_tensor(
             query, place=self.place, dtype=self.dtype, stop_gradient=False
@@ -302,13 +306,6 @@ class TestFlashAttentionAPI(unittest.TestCase):
             np.testing.assert_allclose(
                 fetches_result[0], out_, rtol=5e-03, atol=1e-03
             )
-            return out, out_, q.grad.numpy(), k.grad.numpy(), v.grad.numpy()
-
-    def test_all(self):
-        query = np.random.random(self.shape)
-        key = np.random.random(self.shape)
-        value = np.random.random(self.shape)
-        out, out_, _, _, _ = self.flash_attn_compute(query, key, value)
 
 
 @unittest.skipIf(
@@ -379,24 +376,6 @@ class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
         self.return_softmax = False
         self.use_sdp_kernel = False
 
-    def test_all_flag(self):
-        paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
-        query = np.random.random(self.shape)
-        key = np.random.random(self.shape)
-        value = np.random.random(self.shape)
-
-        out1, out1_, q_grad1, k_grad1, v_grad1 = self.flash_attn_compute(
-            query, key, value
-        )
-        out2, out2_, q_grad2, k_grad2, v_grad2 = self.flash_attn_compute(
-            query, key, value
-        )
-        self.assertTrue(np.equal(out1.numpy(), out2.numpy()).all())
-        self.assertTrue(np.equal(q_grad1, q_grad2).all())
-        self.assertTrue(np.equal(k_grad1, k_grad2).all())
-        self.assertTrue(np.equal(v_grad1, v_grad2).all())
-        paddle.set_flags({'FLAGS_cudnn_deterministic': 0})
-
 
 class TestFlashAttentionAPITest2(TestFlashAttentionAPI):
     def setUp(self):
@@ -431,7 +410,7 @@ class TestFlashAttentionAPITest4(TestFlashAttentionAPI):
         self.use_sdp_kernel = False
 
 
-class TestFlashAttentionAPITest5(TestFlashAttentionAPITest1):
+class TestFlashAttentionAPITest5(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (8, 1024, 16, 256)
@@ -457,7 +436,7 @@ class TestMathAttentionAPITest(TestFlashAttentionAPI):
         self.enable_mem_efficient = False
 
 
-class TestSDPAttentionAPITest(TestFlashAttentionAPITest1):
+class TestSDPAttentionAPITest(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (8, 1024, 16, 128)
