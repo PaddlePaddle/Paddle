@@ -52,9 +52,7 @@ def get_ir_program_1():
             shape=[4, 5], dtype='float32', value=2.0
         )
         x.stop_gradient = False
-        dout = paddle.tensor.fill_constant(
-            shape=[1], dtype='float32', value=1.0
-        )
+        dout = paddle.tensor.fill_constant(shape=[], dtype='float32', value=1.0)
         dout.stop_gradient = False
         out = paddle.sum(x)
     newir_program = ir.translate_to_new_ir(main_program.desc)
@@ -127,7 +125,7 @@ class TestVjpPrim(unittest.TestCase):
         newir_program = get_ir_program_1()
         paddle.framework.set_flags({"FLAGS_enable_new_ir_in_executor": True})
         paddle.fluid.core._set_prim_backward_enabled(True)
-        dout = newir_program.block().ops[-2].result(0)
+        dout = newir_program.block().ops[-3].result(0)
         out_grads = [[dout]]
         stop_gradients = [[False], [True]]
         sum_op = newir_program.block().ops[-1]
@@ -166,7 +164,7 @@ class TestVjpPrim(unittest.TestCase):
             grad_outs[0][0].get_defining_op().name(), "pd.sum_grad"
         )
         self.assertEqual(grad_outs[1][0], None)
-        self.assertEqual(len(newir_program.block().ops), 6)
+        self.assertEqual(len(newir_program.block().ops), 5)
 
 
 if __name__ == "__main__":

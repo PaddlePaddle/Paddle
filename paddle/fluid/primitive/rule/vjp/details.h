@@ -47,9 +47,8 @@ void divide_grad(const Tensor& x,
         set_output<T>(dy_res, dy);
       } else {
         auto dy_reduce_res =
-            dy_res.sum(phi::vectorize(reduce_dim), y.dtype(), false);
-        auto reshape_res = reshape<T>(dy_reduce_res, phi::vectorize(y.dims()));
-        auto dy_tmp = std::get<0>(reshape_res);
+            sum<T>(dy_res, phi::vectorize(reduce_dim), y.dtype(), false);
+        auto dy_tmp = reshape<T>(dy_reduce_res, phi::vectorize(y.dims()));
         set_output<T>(dy_tmp, dy);
       }
     } else {
@@ -67,10 +66,8 @@ void divide_grad(const Tensor& x,
         set_output<T>(dx_res, dx);
       } else {
         auto dx_reduce_res =
-            dx_res.sum(phi::vectorize(reduce_dim), x.dtype(), false);
-        auto dx_reduce_reshape_res =
-            reshape<T>(dx_reduce_res, phi::vectorize(x.dims()));
-        auto dx_tmp = std::get<0>(dx_reduce_reshape_res);
+            sum<T>(dx_res, phi::vectorize(reduce_dim), x.dtype(), false);
+        auto dx_tmp = reshape<T>(dx_reduce_res, phi::vectorize(x.dims()));
         set_output<T>(dx_tmp, dx);
       }
 
@@ -118,9 +115,8 @@ void sum_grad(const Tensor& x,
         }
       }
       auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
-      auto out_grad_reshape_res = reshape<T>(out_grad, out_grad_shape);
-      auto out_grad_ = std::get<0>(out_grad_reshape_res);
-      x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
+      auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
+      x_grad_tmp = expand<T>(out_grad_, IntArray(x_dim));
     } else {
       x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
     }
