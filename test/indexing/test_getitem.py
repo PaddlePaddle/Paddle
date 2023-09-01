@@ -138,6 +138,34 @@ class TestGetitemInDygraph(unittest.TestCase):
 
         np.testing.assert_allclose(y.numpy(), np_res)
 
+    def test_indexing_with_bool_list1(self):
+        # test bool-list indexing when axes num less than x.rank
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        np_res = np_data[[True, False, True], [False, False, False, True]]
+
+        x = paddle.to_tensor(np_data)
+        y = x[[True, False, True], [False, False, False, True]]
+
+        np.testing.assert_allclose(y.numpy(), np_res)
+
+    def test_indexing_with_bool_list2(self):
+        # test bool-list indexing when axes num less than x.rank
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        np_res = np_data[
+            [True, False, True],
+            [False, False, True, False],
+            [True, False, False, True, False],
+        ]
+
+        x = paddle.to_tensor(np_data)
+        y = x[
+            [True, False, True],
+            [False, False, True, False],
+            [True, False, False, True, False],
+        ]
+
+        np.testing.assert_allclose(y.numpy(), np_res)
+
 
 class TestGetitemInStatic(unittest.TestCase):
     def setUp(self):
@@ -330,6 +358,48 @@ class TestGetitemInStatic(unittest.TestCase):
         ):
             x = paddle.to_tensor(np_data)
             y = _getitem_static(x, (slice(None, None, None), range(3), 4))
+            res = self.exe.run(fetch_list=[y.name])
+
+        np.testing.assert_allclose(res[0], np_res)
+
+    def test_indexing_with_bool_list1(self):
+        # test bool-list indexing when axes num less than x.rank
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        np_res = np_data[[True, False, True], [False, False, False, True]]
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.to_tensor(np_data)
+            y = _getitem_static(
+                x, ([[True, False, True], [False, False, False, True]])
+            )
+            res = self.exe.run(fetch_list=[y.name])
+
+        np.testing.assert_allclose(res[0], np_res)
+
+    def test_indexing_with_bool_list2(self):
+        # test bool-list indexing when axes num less than x.rank
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        np_res = np_data[
+            [True, False, True],
+            [False, False, True, False],
+            [True, False, False, True, False],
+        ]
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.to_tensor(np_data)
+            y = _getitem_static(
+                x,
+                (
+                    [
+                        [True, False, True],
+                        [False, False, True, False],
+                        [True, False, False, True, False],
+                    ]
+                ),
+            )
             res = self.exe.run(fetch_list=[y.name])
 
         np.testing.assert_allclose(res[0], np_res)
