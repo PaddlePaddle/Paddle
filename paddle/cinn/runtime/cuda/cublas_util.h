@@ -17,6 +17,9 @@
 
 #include "glog/logging.h"
 #include "paddle/cinn/common/type.h"
+#include "paddle/cinn/runtime/flags.h"
+
+DECLARE_bool(gemm_use_half_precision_compute_type);
 
 namespace cinn {
 namespace runtime {
