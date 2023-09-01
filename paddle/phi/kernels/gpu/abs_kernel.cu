@@ -20,9 +20,10 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/abs_util.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-
+// #include "paddle/phi/kernels/funcs/element_util.h"
 namespace phi {
 
 template <typename T, typename Enable = void>
@@ -30,8 +31,8 @@ struct CudaAbsFunctor;
 
 template <typename T>
 struct CudaAbsFunctor<T, phi::funcs::Complex<T, phi::dtype::Real<T>>> {
-  __device__ __forceinline__ phi::dtype::Real<T> operator()(const T x) const {
-    return abs(x);
+  __device__ __forceinline__ phi::dtype::Real<T> operator()(const T* x) const {
+    return abs(x[0]);
   }
 };
 
@@ -40,7 +41,9 @@ struct CudaAbsFunctor<
     T,
     std::enable_if_t<std::is_same<T, phi::dtype::Real<T>>::value &&
                      std::is_same<T, phi::dtype::bfloat16>::value>> {
-  __device__ __forceinline__ T operator()(const T x) const { return abs(x); }
+  __device__ __forceinline__ T operator()(const T* x) const {
+    return abs(x[0]);
+  }
 };
 
 template <typename T>
@@ -48,19 +51,69 @@ struct CudaAbsFunctor<
     T,
     std::enable_if_t<std::is_same<T, phi::dtype::Real<T>>::value &&
                      !std::is_same<T, phi::dtype::bfloat16>::value>> {
-  __device__ __forceinline__ T operator()(const T x) const {
-    return std::abs(x);
+  __device__ __forceinline__ T operator()(const T* x) const {
+    return std::abs(x[0]);
   }
 };
+
+// template <typename T, typename Enable = void>
+// struct CudaAbsFunctor;
+
+// template <typename T>
+// struct CudaAbsFunctor<T, phi::funcs::Complex<T, phi::dtype::Real<T>>> {
+//   __device__ __forceinline__ phi::dtype::Real<T> operator()(const T x) const
+//   {
+//     return abs(x);
+//   }
+// };
+
+// template <typename T>
+// struct CudaAbsFunctor<
+//     T,
+//     std::enable_if_t<std::is_same<T, phi::dtype::Real<T>>::value &&
+//                      std::is_same<T, phi::dtype::bfloat16>::value>> {
+//   __device__ __forceinline__ T operator()(const T x) const { return abs(x); }
+// };
+
+// template <typename T>
+// struct CudaAbsFunctor<
+//     T,
+//     std::enable_if_t<std::is_same<T, phi::dtype::Real<T>>::value &&
+//                      !std::is_same<T, phi::dtype::bfloat16>::value>> {
+//   __device__ __forceinline__ T operator()(const T x) const {
+//     return std::abs(x);
+//   }
+// };
 
 template <typename T, typename Context>
 void AbsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   ctx.template Alloc<phi::dtype::Real<T>>(out);
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
-  auto functor = CudaAbsFunctor<T>();
+  // auto functor = CudaAbsFunctor<T>();
 
-  funcs::ElementwiseKernel<phi::dtype::Real<T>>(ctx, ins, &outs, functor);
+  // funcs::ElementwiseKernel<phi::dtype::Real<T>>(ctx, ins, &outs, functor);
+
+  // auto t = funcs::UnaryFunctor<T, CudaAbsFunctor<T> >( CudaAbsFunctor<T>() );
+  // funcs::abs<T>(x, out, t);
+
+  // auto functor = CudaAbsFunctor<T>();
+  // //auto t = funcs::AnyFunctor<T, CudaAbsFunctor<T> >( CudaAbsFunctor<T>() );
+  // funcs::LaunchSameDimsElementwiseCudaKernel<funcs::ElementwiseType::kUnary,
+  // T,
+  //                                       phi::dtype::Real<T>>(ctx, ins, &outs,
+  //                                                      functor);
+
+  // funcs::test_func( []( T a) { std::cout << "111 " << a << std::endl;} );
+
+  // auto t = funcs::UnaryFunctor<T, phi::dtype::Real<T>, CudaAbsFunctor<T> >(
+  // CudaAbsFunctor<T>() );
+  std::cerr << "out dim " << out->dims() << std::endl;
+  auto t = CudaAbsFunctor<T>();
+  funcs::TensorContainer ten_con(&x, out);
+  std::cerr << "out ptr" << out->data() << std::endl;
+  std::cerr << "out ptr 12 " << ten_con.out_->data() << std::endl;
+  funcs::test_func(ctx.stream(), ten_con, t);
 }
 
 }  // namespace phi

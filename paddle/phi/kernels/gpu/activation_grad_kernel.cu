@@ -21,9 +21,9 @@ limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/binary_util.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/impl/activation_grad_impl.h"
-
 namespace phi {
 
 template <typename T, typename Context, typename Functor>
@@ -63,16 +63,24 @@ void ActivationGradGPUImpl(const Context& dev_ctx,
   if (static_cast<int>(Functor::FwdDeps()) ==
       static_cast<int>(funcs::ActBwdOpFwdDeps::kDepOut)) {
     // Only need forward output Out
-    ins.push_back(out);
-    funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
+    // ins.push_back(out);
+    // funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
+    auto t = funcs::BinaryFunctor<T, Functor>(functor);
+    funcs::binary<T>(*d_out, *out, d_x, t);
   } else if (static_cast<int>(Functor::FwdDeps()) ==
              static_cast<int>(funcs::ActBwdOpFwdDeps::kDepX)) {
     // Only need forward input X
-    ins.push_back(x);
-    funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
-  } else {
-    funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
+    // ins.push_back(x);
+
+    // funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
+    auto t = funcs::BinaryFunctor<T, Functor>(functor);
+    funcs::binary<T>(*d_out, *x, d_x, t);
   }
+  // else {
+  //   // funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
+  //   auto t = funcs::UnaryFunctor<T, Functor >( functor );
+  //   funcs::abs<T>(*d_out, d_x, t);
+  // }
 }
 
 #define DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(name, functor_class) \
@@ -161,22 +169,22 @@ void ActivationGradGPUImpl(const Context& dev_ctx,
         dev_ctx, nullptr, &out, &dout, dx, functor);            \
   }
 
-#define DEFINE_GPU_ACTIVATION_GRAD_KERNEL_NODEP(name, functor_class)      \
-  template <typename T, typename Context>                                 \
-  void name##GradKernel(                                                  \
-      const Context& dev_ctx, const DenseTensor& dout, DenseTensor* dx) { \
-    funcs::functor_class<T> functor;                                      \
-    ActivationGradGPUImpl<T, Context, funcs::functor_class<T>>(           \
-        dev_ctx, nullptr, nullptr, &dout, dx, functor);                   \
-  }
+// #define DEFINE_GPU_ACTIVATION_GRAD_KERNEL_NODEP(name, functor_class)      \
+//   template <typename T, typename Context>                                 \
+//   void name##GradKernel(                                                  \
+//       const Context& dev_ctx, const DenseTensor& dout, DenseTensor* dx) { \
+//     funcs::functor_class<T> functor;                                      \
+//     ActivationGradGPUImpl<T, Context, funcs::functor_class<T>>(           \
+//         dev_ctx, nullptr, nullptr, &dout, dx, functor);                   \
+//   }
 
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu, CudaReluGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, CudaTanhGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Sigmoid, CudaSigmoidGradFunctor);
 
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_NODEP(Round, CudaZeroGradFunctor);
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_NODEP(Floor, CudaZeroGradFunctor);
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_NODEP(Ceil, CudaZeroGradFunctor);
+// DEFINE_GPU_ACTIVATION_GRAD_KERNEL_NODEP(Round, CudaZeroGradFunctor);
+// DEFINE_GPU_ACTIVATION_GRAD_KERNEL_NODEP(Floor, CudaZeroGradFunctor);
+// DEFINE_GPU_ACTIVATION_GRAD_KERNEL_NODEP(Ceil, CudaZeroGradFunctor);
 
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Cos, CudaCosGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Tan, CudaTanGradFunctor);
@@ -271,12 +279,12 @@ void EluGradKernel(const Context& dev_ctx,
   if (alpha > 0) {
     funcs::CudaELUGradFunctor<T> functor;
     functor.alpha = alpha;
-    funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
+    // funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
   } else {
     funcs::CudaELUGradNegativeAlphaFunctor<T> functor;
     functor.alpha = alpha;
     ins.push_back(&x);
-    funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
+    // funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
   }
 }
 
@@ -510,9 +518,9 @@ PD_REGISTER_KERNEL(log_double_grad,
                    phi::dtype::bfloat16) {}
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(hardswish_grad, HardSwishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(swish_grad, SwishGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(round_grad, RoundGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(floor_grad, FloorGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(ceil_grad, CeilGradKernel)
+// PD_REGISTER_ACTIVATION_GRAD_KERNEL(round_grad, RoundGradKernel)
+// PD_REGISTER_ACTIVATION_GRAD_KERNEL(floor_grad, FloorGradKernel)
+// PD_REGISTER_ACTIVATION_GRAD_KERNEL(ceil_grad, CeilGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(celu_grad, CeluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(celu_double_grad, CeluDoubleGradKernel)
 
