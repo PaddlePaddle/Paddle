@@ -39,8 +39,14 @@ if(WIN32 AND WITH_TESTING)
   cc_test_old(sink_interceptor_test SRCS sink_interceptor_test.cc DEPS
               fleet_executor ${BRPC_DEPS})
 else()
-  cc_test_old(sink_interceptor_test SRCS sink_interceptor_test.cc DEPS
-              ${paddle_lib} python)
+  cc_test_old(
+    sink_interceptor_test
+    SRCS
+    sink_interceptor_test.cc
+    DEPS
+    ${paddle_lib}
+    python
+    fleet_executor)
 endif()
 
 set_source_files_properties(
