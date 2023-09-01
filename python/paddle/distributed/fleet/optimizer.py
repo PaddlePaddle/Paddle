@@ -38,12 +38,12 @@ def _dygraph_distributed_optimizer(optimizer, strategy=None):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP('raise AttributeError')
             >>> import paddle
             >>> import paddle.distributed.fleet as fleet
             >>> fleet.init(is_collective=True)
             >>> strategy = fleet.DistributedStrategy()
-            >>> optimizer = paddle.optimizer.SGD(learning_rate=0.001)
+            >>> linear = paddle.nn.Linear(10, 10)
+            >>> optimizer = paddle.optimizer.SGD(learning_rate=0.001, parameters=linear.parameters())
             >>> optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
 
     """
