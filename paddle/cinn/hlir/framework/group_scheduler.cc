@@ -576,6 +576,7 @@ void GroupScheduler::DoVerticalLoopFusion() {
 }
 
 void GroupScheduler::BindCudaAxis() {
+  if (target_.arch != Target::Arch::NVGPU) return;
   VLOG(5) << "[Start BindCudaAxis] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 
@@ -601,6 +602,7 @@ void GroupScheduler::BindCudaAxis() {
 }
 
 void GroupScheduler::AllocateStorage() {
+  if (target_.arch != Target::Arch::NVGPU) return;
   VLOG(5) << "[Start AllocateStorage] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 
