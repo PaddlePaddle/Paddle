@@ -12,19 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/ir/pass/pass_registry.h"
 
-#include <cstdint>
-#include <vector>
+namespace ir {
+PassRegistry &PassRegistry::Instance() {
+  static PassRegistry g_pass_info_map;
+  return g_pass_info_map;
+}
 
-namespace phi {
-class DeviceContext;
-class DenseTensor;
-namespace distributed {
-
-DenseTensor ReshardConcatFunctor(const DeviceContext& dev_ctx,
-                                 const std::vector<const DenseTensor*>& input,
-                                 int64_t axis);
-
-}  // namespace distributed
-}  // namespace phi
+}  // namespace ir

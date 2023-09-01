@@ -12,20 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include <cstdint>
-#include <vector>
+#include "paddle/phi/core/compat/op_utils.h"
 
 namespace phi {
-class DenseTensor;
-class DeviceContext;
 
-namespace distributed {
+KernelSignature LarsMomentumOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "lars_momentum",
+      {"Param", "Velocity", "LearningRate", "Grad", "MasterParam"},
+      {"lars_weight_decay",
+       "mu",
+       "lars_coeff",
+       "epsilon",
+       "multi_precision",
+       "rescale_grad"},
+      {"ParamOut", "VelocityOut", "MasterParamOut"});
+}
 
-DenseTensor ReshardAllGatherFunctor(DeviceContext* dev_ctx,
-                                    const DenseTensor& input,
-                                    const std::vector<int64_t>& process_ids);
-
-}  // namespace distributed
 }  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(lars_momentum, phi::LarsMomentumOpArgumentMapping);

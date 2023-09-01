@@ -16,7 +16,7 @@ import unittest
 
 import paddle
 from paddle import ir
-from paddle.autograd.backward import grad
+from paddle.autograd.ir_backward import grad
 
 paddle.enable_static()
 
