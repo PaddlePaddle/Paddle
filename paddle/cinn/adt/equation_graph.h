@@ -125,9 +125,7 @@ class Graph final {
         /*OutputVariablesVisitor=*/GetOutputVariablesVisitor());
   }
 
-  std::unordered_set<Variable> GetVariables() const {
-    return this->variables_;
-  }
+  std::unordered_set<Variable> GetVariables() const { return variables_; }
 
  private:
   void CollectVariablesAndEdges(const Function& function) {
@@ -149,13 +147,13 @@ class Graph final {
       [&](const Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>& dot) {
         const auto& [strides, out_index, in_iterators] = dot.tuple();
         out_variables.emplace(out_index.value());
-        in_variables.emplace(in_iterators.value().begin(),
-                             in_iterators.value().end());
+        in_variables.emplace(in_iterators.value()->begin(),
+                             in_iterators.value()->end());
       },
       [&](const UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>& undot) {
         const auto& [strides, out_iterators, in_index] = undot.tuple();
-        out_variables.emplace(out_iterators.value().begin(),
-                              out_iterators.value().end());
+        out_variables.emplace(out_iterators.value()->begin(),
+                              out_iterators.value()->end());
         in_variables.emplace(in_index.value());
       },
       [&](const ConstructFakeOpPlaceHolder<tOut<FakeOpPlaceHolder>,
@@ -163,8 +161,8 @@ class Graph final {
         const auto& [out_fake_op_placeholder, in_indexes] =
             construct_fake.tuple();
         out_variables.emplace(out_fake_op_placeholder.value());
-        in_variables.emplace(in_indexes.value().begin(),
-                             in_indexes.value().end());
+        in_variables.emplace(in_indexes.value()->begin(),
+                             in_indexes.value()->end());
       }
     };
     // clang-format on
