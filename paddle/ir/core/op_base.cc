@@ -18,13 +18,13 @@ InterfaceValue::~InterfaceValue() {
   if (model_) free(model_);
 }
 
-InterfaceValue::InterfaceValue(InterfaceValue&& val) {
+InterfaceValue::InterfaceValue(InterfaceValue&& val) noexcept {
   type_id_ = val.type_id_;
   model_ = val.model_;
   val.model_ = nullptr;
 }
 
-InterfaceValue& InterfaceValue::operator=(InterfaceValue&& val) {
+InterfaceValue& InterfaceValue::operator=(InterfaceValue&& val) noexcept {
   swap(std::move(val));
   return *this;
 }
