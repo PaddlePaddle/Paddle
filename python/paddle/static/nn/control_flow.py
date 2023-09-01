@@ -942,22 +942,22 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
             >>> with paddle.static.program_guard(main_program, startup_program):
             ...    index_1 = paddle.full(shape=[1], dtype='int32', fill_value=1)
             ...    index_2 = paddle.full(shape=[1], dtype='int32', fill_value=2)
-
+            ...
             ...    out_1 = paddle.static.nn.switch_case(
             ...        branch_index=index_1,
             ...        branch_fns={1: fn_1, 2: fn_2},
             ...        default=fn_3)
-
+            ...
             ...    out_2 = paddle.static.nn.switch_case(
             ...        branch_index=index_2,
             ...        branch_fns=[(1, fn_1), (2, fn_2)],
             ...        default=fn_3)
-
+            ...
             ...    # Argument default is None and no index matches. fn_3 will be called because of the max index 7.
             ...    out_3 = paddle.static.nn.switch_case(
             ...        branch_index=index_2,
             ...        branch_fns=[(0, fn_1), (4, fn_2), (7, fn_3)])
-
+            ...
             ...    exe = paddle.static.Executor(paddle.CPUPlace())
             ...    res_1, res_2, res_3 = exe.run(main_program, fetch_list=[out_1, out_2, out_3])
             ...    # Variable: fill_constant_1.tmp_0
@@ -1702,14 +1702,17 @@ def Print(
             >>> main_program = paddle.static.default_main_program()
             >>> exe = paddle.static.Executor(place=paddle.CPUPlace())
             >>> res = exe.run(main_program, fetch_list=[out])
-            >>> # Variable: fill_constant_1.tmp_0
-            >>> #   - message: The content of input layer:
-            >>> #   - lod: {}
-            >>> #   - place: Place(cpu)
-            >>> #   - shape: [2, 3]
-            >>> #   - layout: NCHW
-            >>> #   - dtype: int64
-            >>> #   - data: [3 3 3 3 3 3]
+            Variable: fill_constant_1.tmp_0
+              - message: The content of input layer:
+              - lod: {}
+              - place: Place(cpu)
+              - shape: [2, 3]
+              - layout: NCHW
+              - dtype: int64
+              - data: [3 3 3 3 3 3]
+            >>> res
+            [array([[3, 3, 3],
+                    [3, 3, 3]], dtype=int64)]
     '''
     check_variable_and_dtype(
         input,

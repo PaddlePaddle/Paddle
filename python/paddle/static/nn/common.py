@@ -3276,10 +3276,8 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
             ...                fetch_list=[output.name])
             ...     print("{0} + {1} = {2}".format(input1, input2, out))
             >>> py_func_demo()
-            >>> # [[1 5 4]
-            >>> #  [9 4 8]] + [[3 7 7]
-            >>> #  [2 3 9]] = [array([[ 4, 12, 11],
-            >>> #                     [11,  7, 17]], dtype=int32)]
+            >>> # [[1 5 4]   + [[3 7 7]  =  [array([[ 4, 12, 11]
+            >>> #  [9 4 8]]     [2 3 9]]            [11,  7, 17]], dtype=int32)]
     """
     helper = LayerHelper('py_func', **locals())
     check_type(x, 'X', (list, tuple, Variable, type(None)), 'py_func')
