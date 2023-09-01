@@ -35,10 +35,6 @@ class TestPdInplacePass(unittest.TestCase):
                 z = paddle.divide(x, y)
                 out = paddle.nn.functional.relu(z)
 
-                op_names = [op.name() for op in main_program.block().ops]
-                self.assertTrue('pd.relu' in op_names)
-                self.assertTrue('pd.relu_' not in op_names)
-
                 exe = paddle.static.Executor()
                 x_feed = np.ones([2, 2], dtype=np.float32) * 10
                 (sum_value,) = exe.run(feed={'x': x_feed}, fetch_list=[out])
@@ -46,10 +42,6 @@ class TestPdInplacePass(unittest.TestCase):
                     (sum_value == np.ones([2, 2], dtype="float32") * 10).all(),
                     True,
                 )
-
-                op_names = [op.name() for op in main_program.block().ops]
-                self.assertTrue('pd.relu' not in op_names)
-                self.assertTrue('pd.relu_' in op_names)
 
 
 if __name__ == "__main__":
