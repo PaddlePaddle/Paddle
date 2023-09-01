@@ -1702,6 +1702,7 @@ def Print(
             >>> main_program = paddle.static.default_main_program()
             >>> exe = paddle.static.Executor(place=paddle.CPUPlace())
             >>> res = exe.run(main_program, fetch_list=[out])
+            >>> # doctest: +SKIP('Unable to get output')
             Variable: fill_constant_1.tmp_0
               - message: The content of input layer:
               - lod: {}
@@ -1710,6 +1711,7 @@ def Print(
               - layout: NCHW
               - dtype: int64
               - data: [3 3 3 3 3 3]
+            >>> # doctest: -SKIP
             >>> res
             [array([[3, 3, 3],
                     [3, 3, 3]], dtype=int64)]
