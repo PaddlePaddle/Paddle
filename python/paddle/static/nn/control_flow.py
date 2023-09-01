@@ -960,14 +960,14 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
 
             ...    exe = paddle.static.Executor(paddle.CPUPlace())
             ...    res_1, res_2, res_3 = exe.run(main_program, fetch_list=[out_1, out_2, out_3])
-            Variable: fill_constant_1.tmp_0
-            - message: The content of input layer:
-            - lod: {}
-            - place: Place(cpu)
-            - shape: [2, 3]
-            - layout: NCHW
-            - dtype: int64
-            - data: [3 3 3 3 3 3]
+            ...    # Variable: fill_constant_1.tmp_0
+            ...    #   - message: The content of input layer:
+            ...    #   - lod: {}
+            ...    #   - place: Place(cpu)
+            ...    #   - shape: [2, 3]
+            ...    #   - layout: NCHW
+            ...    #   - dtype: int64
+            ...    #   - data: [3 3 3 3 3 3]
 
             >>> print(res_1)
             [[1. 1.]]
@@ -1183,11 +1183,11 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
 
             >>> print(a)
             Tensor(shape=[1, 2], dtype=int32, place=Place(cpu), stop_gradient=True,
-                [[1, 1]])
+                   [[1, 1]])
             >>> print(b)
             Tensor(shape=[2, 3], dtype=bool, place=Place(cpu), stop_gradient=True,
-                [[True, True, True],
-                 [True, True, True]])
+                   [[True, True, True],
+                    [True, True, True]])
     """
     if in_dygraph_mode():
         assert isinstance(pred, Variable), "The pred in cond must be Variable"
@@ -1702,14 +1702,14 @@ def Print(
             >>> main_program = paddle.static.default_main_program()
             >>> exe = paddle.static.Executor(place=paddle.CPUPlace())
             >>> res = exe.run(main_program, fetch_list=[out])
-            Variable: fill_constant_1.tmp_0
-            - message: The content of input layer:
-            - lod: {}
-            - place: Place(cpu)
-            - shape: [2, 3]
-            - layout: NCHW
-            - dtype: int64
-            - data: [3 3 3 3 3 3]
+            >>> # Variable: fill_constant_1.tmp_0
+            >>> #   - message: The content of input layer:
+            >>> #   - lod: {}
+            >>> #   - place: Place(cpu)
+            >>> #   - shape: [2, 3]
+            >>> #   - layout: NCHW
+            >>> #   - dtype: int64
+            >>> #   - data: [3 3 3 3 3 3]
     '''
     check_variable_and_dtype(
         input,
