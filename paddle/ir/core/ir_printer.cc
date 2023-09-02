@@ -301,7 +301,7 @@ void Program::Print(std::ostream& os) const {
 
 void Operation::Print(std::ostream& os) const {
   IrPrinter printer(os);
-  printer.PrintFullOperation(this);
+  printer.PrintOperation(this);
 }
 
 void Type::Print(std::ostream& os) const {
