@@ -44,7 +44,7 @@ class FusedDropoutAdd(Layer):
     Examples:
         .. code-block:: python
 
-            >>> # required: gpu
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> from paddle.incubate.nn.layer.fused_dropout_add import FusedDropoutAdd
 
