@@ -598,6 +598,19 @@ class OpInfoParser:
             if 'Scalar' in temp_type:
                 if 'data_type' in attribute_info:
                     temp_type = attribute_info['data_type']
+                op_name = self.op_yaml_item['name']
+                attr_name = attribute_info['name']
+                if (
+                    op_name not in ["isclose", "allclose"]
+                    and self.op_compat_item is not None
+                    and 'scalar' in self.op_compat_item.keys()
+                    and attr_name in self.op_compat_item['scalar'].keys()
+                    and 'data_type'
+                    in self.op_compat_item['scalar'][attr_name].keys()
+                ):
+                    temp_type = self.op_compat_item['scalar'][attr_name][
+                        'data_type'
+                    ]
             if 'IntArray' in temp_type:
                 if 'data_type' in attribute_info:
                     temp_type = "const " + attribute_info['data_type'] + "&"

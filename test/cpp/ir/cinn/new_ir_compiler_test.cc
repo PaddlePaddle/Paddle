@@ -26,8 +26,8 @@
 
 #include "paddle/cinn/utils/data_util.h"
 
-#include "paddle/cinn/hlir/dialect/jit_kernel_op.h"
-#include "paddle/cinn/hlir/dialect/runtime_dialect.h"
+#include "paddle/cinn/hlir/dialect/runtime_dialect/ir/jit_kernel_op.h"
+#include "paddle/cinn/hlir/dialect/runtime_dialect/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/convert_to_dialect.h"
 #include "paddle/cinn/hlir/framework/new_ir_compiler.h"
 

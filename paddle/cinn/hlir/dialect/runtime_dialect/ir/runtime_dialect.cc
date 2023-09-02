@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/hlir/dialect/runtime_dialect.h"
-#include "paddle/cinn/hlir/dialect/jit_kernel_op.h"
+#include "paddle/cinn/hlir/dialect/runtime_dialect/ir/runtime_dialect.h"
+#include "paddle/cinn/hlir/dialect/runtime_dialect/ir/jit_kernel_op.h"
 
 namespace cinn {
 namespace dialect {
