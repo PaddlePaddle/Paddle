@@ -223,13 +223,15 @@ def in_new_ir_mode():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            print(paddle.framework.in_new_ir_mode())  # False
+            >>> print(paddle.framework.in_new_ir_mode())
+            False
 
-            paddle.enable_static()
-            paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-            print(paddle.framework.in_new_ir_mode())  # True
+            >>> paddle.enable_static()
+            >>> paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+            >>> print(paddle.framework.in_new_ir_mode())
+            True
 
     """
     return ir.core._use_new_ir_api() and not in_dygraph_mode()
@@ -246,15 +248,18 @@ def in_dynamic_or_new_ir_mode():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            print(paddle.framework.in_dynamic_or_new_ir_mode())  # True
+            >>> print(paddle.framework.in_dynamic_or_new_ir_mode())
+            True
 
-            paddle.enable_static()
-            print(paddle.framework.in_dynamic_or_new_ir_mode())  # False
+            >>> paddle.enable_static()
+            >>> print(paddle.framework.in_dynamic_or_new_ir_mode())
+            False
 
-            paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-            print(paddle.framework.in_dynamic_or_new_ir_mode())  # True
+            >>> paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+            >>> print(paddle.framework.in_dynamic_or_new_ir_mode())
+            True
 
     """
     return in_dygraph_mode() or in_new_ir_mode()
