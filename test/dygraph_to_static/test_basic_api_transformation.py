@@ -16,6 +16,7 @@ import inspect
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
 from paddle import fluid, to_tensor
@@ -91,6 +92,7 @@ class TestDygraphBasicApi_ToVariable(unittest.TestCase):
             res = self.dygraph_func(self.input).numpy()
             return res
 
+    @test_and_compare_with_new_ir(True)
     def get_static_output(self):
         main_program = fluid.Program()
         main_program.random_seed = SEED
@@ -245,6 +247,7 @@ class TestDygraphBasicApi(unittest.TestCase):
 
             return res
 
+    @test_and_compare_with_new_ir(True)
     def get_static_output(self):
         startup_program = fluid.Program()
         startup_program.random_seed = SEED
@@ -278,6 +281,7 @@ class TestDygraphBasicApi_BilinearTensorProduct(TestDygraphBasicApi):
             res = self.dygraph_func(self.input1, self.input2).numpy()
             return res
 
+    @test_and_compare_with_new_ir(True)
     def get_static_output(self):
         startup_program = fluid.Program()
         startup_program.random_seed = SEED
@@ -403,6 +407,7 @@ class TestDygraphBasicApi_CosineDecay(unittest.TestCase):
             res = self.dygraph_func().numpy()
             return res
 
+    @test_and_compare_with_new_ir(True)
     def get_static_output(self):
         startup_program = fluid.Program()
         startup_program.random_seed = SEED
@@ -433,6 +438,7 @@ class TestDygraphBasicApi_ExponentialDecay(TestDygraphBasicApi_CosineDecay):
             res = self.dygraph_func()
             return res
 
+    @test_and_compare_with_new_ir(True)
     def get_static_output(self):
         startup_program = fluid.Program()
         startup_program.random_seed = SEED
@@ -459,6 +465,7 @@ class TestDygraphBasicApi_InverseTimeDecay(TestDygraphBasicApi_CosineDecay):
             res = self.dygraph_func()
             return res
 
+    @test_and_compare_with_new_ir(True)
     def get_static_output(self):
         startup_program = fluid.Program()
         startup_program.random_seed = SEED
@@ -485,6 +492,7 @@ class TestDygraphBasicApi_NaturalExpDecay(TestDygraphBasicApi_CosineDecay):
             res = self.dygraph_func()
             return res
 
+    @test_and_compare_with_new_ir(True)
     def get_static_output(self):
         startup_program = fluid.Program()
         startup_program.random_seed = SEED

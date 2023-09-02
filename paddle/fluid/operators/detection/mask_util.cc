@@ -51,9 +51,9 @@ void Poly2Mask(const float* xy, int k, int h, int w, uint8_t* mask) {
   x = reinterpret_cast<int*>(xptr->ptr());
   y = x + (k + 1);
 
-  for (j = 0; j < k; j++) x[j] = static_cast<int>(scale * xy[j * 2 + 0] + .5);
+  for (j = 0; j < k; j++) x[j] = std::lround(scale * xy[j * 2 + 0]);
   x[k] = x[0];
-  for (j = 0; j < k; j++) y[j] = static_cast<int>(scale * xy[j * 2 + 1] + .5);
+  for (j = 0; j < k; j++) y[j] = std::lround(scale * xy[j * 2 + 1]);
   y[k] = y[0];
   for (j = 0; j < k; j++) {
     m += UMax(abs(x[j] - x[j + 1]), abs(y[j] - y[j + 1])) + 1;
@@ -82,7 +82,7 @@ void Poly2Mask(const float* xy, int k, int h, int w, uint8_t* mask) {
       for (d = 0; d <= dx; d++) {
         t = flip ? dx - d : d;
         u[m] = t + xs;
-        v[m] = static_cast<int>(ys + s * t + .5);
+        v[m] = std::lround(ys + s * t);
         m++;
       }
     } else {
@@ -90,7 +90,7 @@ void Poly2Mask(const float* xy, int k, int h, int w, uint8_t* mask) {
       for (d = 0; d <= dy; d++) {
         t = flip ? dy - d : d;
         v[m] = t + ys;
-        u[m] = static_cast<int>(xs + s * t + .5);
+        u[m] = std::lround(xs + s * t);
         m++;
       }
     }
