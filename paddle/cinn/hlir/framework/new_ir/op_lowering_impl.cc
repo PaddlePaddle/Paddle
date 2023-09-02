@@ -26,7 +26,7 @@
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/phi/core/ddim.h"
 
-DECLARE_bool(cinn_use_cuda_vectorize);
+PD_DECLARE_bool(cinn_use_cuda_vectorize);
 
 namespace cinn {
 namespace hlir {
