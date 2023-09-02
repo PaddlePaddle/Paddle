@@ -13,14 +13,8 @@ foreach(target ${TEST_INTERP_CASES})
 endforeach()
 
 foreach(target ${TEST_IR_SYSTEM_CASES})
-  py_test_modules(
-    ${target}
-    MODULES
-    ${target}
-    ENVS
-    GLOG_v=1
-    FLAGS_enable_new_ir_api=true
-    FLAGS_new_ir_apply_inplace_pass=true)
+  py_test_modules(${target} MODULES ${target} ENVS GLOG_v=1
+                  FLAGS_enable_new_ir_api=true)
 endforeach()
 
 set_tests_properties(test_pd_inplace_pass PROPERTIES TIMEOUT 60)
