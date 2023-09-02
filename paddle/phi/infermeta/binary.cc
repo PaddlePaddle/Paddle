@@ -1137,7 +1137,7 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   auto y_dims = y.dims();
   PADDLE_ENFORCE_EQ(
       true,
-      x_rank == static_cast<size_t>(y_dims.size()),
+      x_rank == static_cast<int>(y_dims.size()),
       phi::errors::PreconditionNotMet(
           "ShapeError: The shape of input tensor Y: %s should match with "
           "input tenosr X: %s",
@@ -3198,7 +3198,7 @@ void UnpoolInferMeta(const MetaTensor& x,
   if (config.is_runtime || !output_size.FromTensor()) {
     output_size_val = output_size.GetData();
   }
-  for (int i = 0; i < ksize.size(); ++i) {
+  for (int i = 0; i < static_cast<int>(ksize.size()); ++i) {
     if (!config.is_runtime && in_x_dims[i + 2] <= 0) {
       output_shape.push_back(-1);
     } else {
@@ -3239,7 +3239,7 @@ void Unpool3dInferMeta(const MetaTensor& x,
                         in_y_dims));
 
   std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
-  for (int i = 0; i < ksize.size(); ++i) {
+  for (int i = 0; i < static_cast<int>(ksize.size()); ++i) {
     if (!config.is_runtime && in_x_dims[i + 2] <= 0) {
       output_shape.push_back(-1);
     } else {
