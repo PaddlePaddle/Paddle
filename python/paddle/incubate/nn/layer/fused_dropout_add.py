@@ -46,6 +46,7 @@ class FusedDropoutAdd(Layer):
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
+            >>> paddle.device.set_device('gpu')
             >>> from paddle.incubate.nn.layer.fused_dropout_add import FusedDropoutAdd
 
             >>> x = paddle.to_tensor([[1,2,3], [4,5,6]], dtype="float32")
