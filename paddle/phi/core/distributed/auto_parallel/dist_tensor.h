@@ -21,24 +21,21 @@
 
 namespace phi {
 namespace distributed {
+class ReshardFunction;
 
 class DistTensor final
     : public phi::TensorBase,
       public phi::TypeInfoTraits<phi::TensorBase, DistTensor> {
  public:
+  /// \brief Careful to create dist tensor using default constructor.
+  /// this should only used in reshard for now, and the dist properties
+  /// will be set by reshard later.
+  DistTensor() = default;
+
   /// \brief Construct a dist tensor based dense tensor.
   /// \param global_value The global dense tensor of the current tensor.
   /// \param dist_attr The distributed attributes of the current tensor.
   DistTensor(const phi::DenseTensor& global_value,
-             const TensorDistAttr& dist_attr);
-
-  // TODO(chenweihang): Remove this constructor after added reshard impl
-  /// \brief Construct a dist tensor based dense tensor.
-  /// \param value The local dense tensor of the current tensor.
-  /// \param dims The global dimension of the currnet tensor.
-  /// \param dist_attr The distributed attributes of the current tensor.
-  DistTensor(const phi::DenseTensor& value,
-             const DDim& dims,
              const TensorDistAttr& dist_attr);
 
   /// \brief Construct a empty dist tensor (for infer spmd)
@@ -47,7 +44,7 @@ class DistTensor final
   DistTensor(const DDim& dims, const TensorDistAttr& dist_attr);
 
   /// \brief Destroy the tensor object and release exclusive resources.
-  ~DistTensor() = default;
+  virtual ~DistTensor() = default;
 
   /// \brief Returns the name of the class for type traits.
   /// \return The name of the class.
@@ -109,6 +106,8 @@ class DistTensor final
                      bool fake_alloc = false) override;
 
  private:
+  friend class ReshardFunction;
+
   // The global dimensions(shape)
   DDim dims_;
   // The distributed attributes

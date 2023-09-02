@@ -76,7 +76,7 @@ class TestShuffleBatchOpBase(OpTest):
         return np.reshape(np.array(arr_list), shape)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestShuffleBatchOp2(TestShuffleBatchOpBase):

@@ -38,7 +38,7 @@
 PHI_DECLARE_bool(use_mkldnn);
 PHI_DECLARE_string(tracer_mkldnn_ops_on);
 PHI_DECLARE_string(tracer_mkldnn_ops_off);
-DECLARE_bool(use_stride_kernel);
+PD_DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace imperative {

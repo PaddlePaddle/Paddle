@@ -15,14 +15,64 @@
 
 import paddle
 
+from .fluid.wrapped_decorator import signature_safe_contextmanager
 
-def _switch_to_new_ir():
-    if paddle.ir.core._use_new_ir_api():
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_in_executor": True})
-        paddle.static.Program = paddle.ir.Program
-        paddle.fluid.Program = paddle.ir.Program
-        paddle.fluid.program_guard = paddle.ir.core.program_guard
-        paddle.static.program_guard = paddle.ir.core.program_guard
-        paddle.framework.default_main_program = (
-            paddle.ir.core.default_main_program
-        )
+
+class IrChange:
+    def __init__(self):
+        old_flag = paddle.fluid.framework.get_flags("FLAGS_enable_new_ir_api")
+        paddle.fluid.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+        if not paddle.ir.core._use_new_ir_api():
+            self.old_Program = paddle.static.Program
+            self.old_program_guard = paddle.fluid.program_guard
+            self.old_default_main_program = paddle.static.default_main_program
+        else:
+            raise RuntimeError(
+                "IrChange only init when paddle.ir.core._use_new_ir_api() is false, \
+                please set FLAGS_enable_new_ir_api = false"
+            )
+        paddle.fluid.framework.set_flags(old_flag)
+
+    def _switch_to_new_ir(self):
+        if paddle.ir.core._use_new_ir_api():
+            paddle.framework.set_flags(
+                {"FLAGS_enable_new_ir_in_executor": True}
+            )
+            paddle.ir.register_paddle_dialect()
+            paddle.static.Program = paddle.ir.Program
+            paddle.fluid.Program = paddle.ir.Program
+            paddle.fluid.program_guard = paddle.ir.core.program_guard
+            paddle.static.program_guard = paddle.ir.core.program_guard
+            paddle.framework.default_main_program = (
+                paddle.ir.core.default_main_program
+            )
+
+    def _switch_to_old_ir(self):
+        if not paddle.ir.core._use_new_ir_api():
+            paddle.framework.set_flags(
+                {"FLAGS_enable_new_ir_in_executor": False}
+            )
+            paddle.static.Program = self.old_Program
+            paddle.fluid.Program = self.old_Program
+            paddle.fluid.program_guard = self.old_program_guard
+            paddle.static.program_guard = self.old_program_guard
+            paddle.framework.default_main_program = (
+                self.old_default_main_program
+            )
+        else:
+            raise RuntimeError(
+                "IrChange._switch_to_old_ir only work when paddle.ir.core._use_new_ir_api() is false, \
+                please set FLAGS_enable_new_ir_api = false"
+            )
+
+
+@signature_safe_contextmanager
+def _newir_guard():
+    ir_change = IrChange()
+    paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+    ir_change._switch_to_new_ir()
+    try:
+        yield
+    finally:
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+        ir_change._switch_to_old_ir()

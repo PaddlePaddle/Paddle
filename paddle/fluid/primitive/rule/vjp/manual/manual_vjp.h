@@ -23,12 +23,5 @@ namespace paddle {
 namespace primitive {
 
 using IntArray = paddle::experimental::IntArray;
-
-std::vector<std::vector<paddle::Tensor>> concat_vjp(
-    const std::vector<Tensor>& x,
-    const Tensor& out_grad,
-    const Tensor& axis,
-    const std::vector<std::vector<bool>>& stop_gradients);
-
 }  // namespace primitive
 }  // namespace paddle

@@ -154,7 +154,6 @@ void UpdatePrivateDeviceContext(InferGPUContext *gpu_context,
 #endif
 }  // namespace
 
-using inference::Singleton;
 #ifdef PADDLE_WITH_TENSORRT
 using inference::tensorrt::TRTCalibratorEngine;
 using inference::tensorrt::TRTCalibratorEngineManager;
@@ -1572,6 +1571,8 @@ void AnalysisPredictor::PrepareArgument() {
         }
       } else if (config_.use_xpu()) {
         // All passes support fp16. Not reset pass_builder.
+      } else if (config_.use_custom_device()) {
+        // All passes support fp16. Not reset pass_builder.
       } else {
         pass_builder->ClearPasses();
       }
@@ -1616,6 +1617,7 @@ void AnalysisPredictor::PrepareArgument() {
   // mixed precison.
   argument_->SetModelPrecision(static_cast<int>(model_precision_));
   argument_->SetMixedBlackList(config_.mixed_black_list_);
+  argument_->SetMixedWhiteList(config_.mixed_white_list_);
   argument_->SetEnableGPUMixed(config_.enable_gpu_mixed_);
   argument_->SetMixedPrecisionMode(static_cast<int>(
       paddle::ConvertPrecision(config_.mixed_precision_mode_)));
@@ -1706,10 +1708,10 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
 
   auto SetGflags = [](const AnalysisConfig &config) {
     auto SetGflag = [](const char *name, const char *value) {
-      std::string ret = ::GFLAGS_NAMESPACE::SetCommandLineOption(name, value);
+      bool success = paddle::flags::SetFlagValue(name, value);
       PADDLE_ENFORCE_EQ(
-          ret.empty(),
-          false,
+          success,
+          true,
           platform::errors::InvalidArgument(
               "Fail to set gflag: %s, please make sure the gflag exists.",
               name));
@@ -2526,6 +2528,7 @@ void AnalysisPredictor::ClearIntermediateTensor() {
 }
 
 #ifdef PADDLE_WITH_TENSORRT
+using inference::Singleton;
 bool AnalysisPredictor::SaveTrtCalibToDisk() {
   PADDLE_ENFORCE_EQ(config_.tensorrt_engine_enabled(),
                     true,
@@ -2580,7 +2583,7 @@ bool AnalysisPredictor::SaveTrtCalibToDisk() {
 }
 #endif
 
-AnalysisPredictor::~AnalysisPredictor() {
+AnalysisPredictor::~AnalysisPredictor() {  // NOLINT
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled() &&
       config_.tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8 &&
@@ -3086,8 +3089,8 @@ std::tuple<int, int, int> GetTrtRuntimeVersion() {
 #endif
 }
 
-std::string UpdateDllFlag(const char *name, const char *value) {
-  return paddle::UpdateDllFlag(name, value);
+void UpdateDllFlag(const char *name, const char *value) {
+  paddle::UpdateDllFlag(name, value);
 }
 
 void ConvertToMixedPrecision(const std::string &model_file,
@@ -3097,7 +3100,8 @@ void ConvertToMixedPrecision(const std::string &model_file,
                              PrecisionType mixed_precision,
                              paddle_infer::PlaceType backend,
                              bool keep_io_types,
-                             std::unordered_set<std::string> black_list) {
+                             std::unordered_set<std::string> black_list,
+                             std::unordered_set<std::string> white_list) {
   auto phi_backend = paddle::ConvertBackend(backend);
   auto phi_precision = paddle::ConvertPrecision(mixed_precision);
   paddle::inference::analysis::ConvertToMixedPrecision(model_file,
@@ -3107,7 +3111,8 @@ void ConvertToMixedPrecision(const std::string &model_file,
                                                        phi_precision,
                                                        phi_backend,
                                                        keep_io_types,
-                                                       black_list);
+                                                       black_list,
+                                                       white_list);
 }
 
 }  // namespace paddle_infer

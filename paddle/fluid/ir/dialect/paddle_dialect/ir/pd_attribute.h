@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute_storage.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/ir/core/attribute.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/ir_parser.h"
@@ -50,6 +51,10 @@ class ScalarAttribute : public ir::Attribute {
            (val.type_id() == ir::Int32Attribute::type_id()) ||
            (val.type_id() == ir::Int64Attribute::type_id()) ||
            (val.type_id() == ir::StrAttribute::type_id());
+  }
+
+  static ir::Attribute get(ir::IrContext *ctx, phi::Scalar scalar) {
+    return TransToIrAttribute(scalar, ctx);
   }
 
   phi::Scalar data();
