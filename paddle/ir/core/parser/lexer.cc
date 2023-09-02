@@ -56,7 +56,7 @@ void Lexer::SkipWhitespace() {
   }
 }
 
-Token* Lexer::LexIdentifer() {
+std::unique_ptr<Token> Lexer::LexIdentifer() {
   if ((!isalpha(is.peek()) && is.peek() != '_') || IsEndTag(is.peek())) {
     return nullptr;
   }
@@ -64,10 +64,11 @@ Token* Lexer::LexIdentifer() {
   while (isalnum(is.peek()) || is.peek() == '_' || is.peek() == '.') {
     token_identifier += GetChar();
   }
-  return new Token{token_identifier, IDENTIFER};
+  std::unique_ptr<Token> token(new Token{token_identifier, IDENTIFER});
+  return token;
 }
 
-Token* Lexer::LexNumberOrArraow() {
+std::unique_ptr<Token> Lexer::LexNumberOrArraow() {
   if (!isdigit(is.peek()) && is.peek() != '-') {
     return nullptr;
   }
@@ -77,7 +78,8 @@ Token* Lexer::LexNumberOrArraow() {
 
   if (token_digit[0] == '-' && is.peek() == '>') {
     GetChar();
-    return new Token{"->", ARRAOW};
+    std::unique_ptr<Token> arrow_token(new Token{"->", ARRAOW});
+    return arrow_token;
   }
   while (isdigit(is.peek())) {
     token_digit += GetChar();
@@ -96,12 +98,14 @@ Token* Lexer::LexNumberOrArraow() {
     while (isdigit(is.peek())) {
       token_digit += GetChar();
     }
-    return new Token{token_digit, SDIGIT};
+    std::unique_ptr<Token> sdigit_token(new Token{token_digit, SDIGIT});
+    return sdigit_token;
   }
-  return new Token{token_digit, DIGIT};
+  std::unique_ptr<Token> digit_token(new Token{token_digit, DIGIT});
+  return digit_token;
 }
 
-Token* Lexer::LexEndTagOrNullVal() {
+std::unique_ptr<Token> Lexer::LexEndTagOrNullVal() {
   if (!IsEndTag(is.peek())) {
     return nullptr;
   }
@@ -109,7 +113,8 @@ Token* Lexer::LexEndTagOrNullVal() {
   token_end += GetChar();
   if ((token_end[0] == '<' && (is.peek() != '<' && is.peek() != '#')) ||
       token_end[0] != '<') {
-    return new Token{token_end, ENDTAG};
+    std::unique_ptr<Token> endtag_token(new Token{token_end, ENDTAG});
+    return endtag_token;
   }
   if (is.peek() == '<') {
     string token_null_val = "";
@@ -119,18 +124,22 @@ Token* Lexer::LexEndTagOrNullVal() {
     }
     GetChar();
     GetChar();
-    return new Token{"<<" + token_null_val + ">>", NULL_};
+    std::unique_ptr<Token> null_token(
+        new Token{"<<" + token_null_val + ">>", NULL_});
+    return null_token;
   } else {
     string token_attrnull = "";
     while (is.peek() != '>') {
       token_attrnull += GetChar();
     }
     GetChar();
-    return new Token{"<" + token_attrnull + ">", NULL_};
+    std::unique_ptr<Token> null_token(
+        new Token{"<" + token_attrnull + ">", NULL_});
+    return null_token;
   }
 }
 
-Token* Lexer::LexValueId() {
+std::unique_ptr<Token> Lexer::LexValueId() {
   if (is.peek() != '%') {
     return nullptr;
   }
@@ -140,18 +149,20 @@ Token* Lexer::LexValueId() {
   while (isdigit(is.peek())) {
     token_valueid += GetChar();
   }
-  return new Token{token_valueid, VALUEID};
+  std::unique_ptr<Token> valueid_token(new Token{token_valueid, VALUEID});
+  return valueid_token;
 }
 
-Token* Lexer::LexEOF() {
+std::unique_ptr<Token> Lexer::LexEOF() {
   if (is.peek() == EOF) {
-    return new Token{"LEX_DOWN", EOF_};
+    std::unique_ptr<Token> eof_token(new Token{"LEX_DOWN", EOF_});
+    return eof_token;
   } else {
     return nullptr;
   }
 }
 
-Token* Lexer::LexOpName() {
+std::unique_ptr<Token> Lexer::LexOpName() {
   if (is.peek() != '"') {
     return nullptr;
   }
@@ -161,7 +172,9 @@ Token* Lexer::LexOpName() {
     token_opname += GetChar();
   }
   GetChar();
-  return new Token{"\"" + token_opname + "\"", OPNAME};
+  std::unique_ptr<Token> opname_token(
+      new Token{"\"" + token_opname + "\"", OPNAME});
+  return opname_token;
 }
 
 bool Lexer::IsSpace(char c) {

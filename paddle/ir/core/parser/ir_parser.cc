@@ -14,8 +14,6 @@
 
 #include "paddle/ir/core/ir_parser.h"
 
-#include <cmath>
-
 #include "paddle/ir/core/builtin_dialect.h"
 #include "paddle/ir/core/builtin_type.h"
 

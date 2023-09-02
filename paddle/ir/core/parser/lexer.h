@@ -14,6 +14,7 @@
 
 #pragma once
 #include <istream>
+#include <memory>
 
 #include "paddle/ir/core/parser/token.h"
 
@@ -27,12 +28,12 @@ class Lexer {
   explicit Lexer(std::istream& is) : is(is) {}
   ~Lexer() = default;
   Token ConsumeToken();
-  Token* LexIdentifer();
-  Token* LexNumberOrArraow();
-  Token* LexEndTagOrNullVal();
-  Token* LexValueId();
-  Token* LexEOF();
-  Token* LexOpName();
+  std::unique_ptr<Token> LexIdentifer();
+  std::unique_ptr<Token> LexNumberOrArraow();
+  std::unique_ptr<Token> LexEndTagOrNullVal();
+  std::unique_ptr<Token> LexValueId();
+  std::unique_ptr<Token> LexEOF();
+  std::unique_ptr<Token> LexOpName();
   char GetChar();
   void SkipWhitespace();
   bool IsEndTag(char);
