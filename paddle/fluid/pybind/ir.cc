@@ -507,7 +507,7 @@ void BindPassManager(pybind11::module *m) {
           },
           py::arg("opt_level") = 2)
       .def("add_pass",
-           [](PassManager &self, std::string pass_name) {
+           [](PassManager &self, const std::string &pass_name) {
              self.AddPass(
                  std::move(ir::PassRegistry::Instance().Get(pass_name)));
            })
