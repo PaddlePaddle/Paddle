@@ -85,10 +85,10 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     bool has_structured_kernel =
         phi::KernelFactory::Instance().HasStructuredKernel(op_type);
 
-    KernelCode kernel_code = (in_black_list << 7) + (is_operator_base << 6) +
-                             (is_custom_op << 5) + (use_mkldnn << 4) +
-                             (has_fluid_kernel << 3) +
-                             (has_structured_kernel << 2);
+    KernelCode kernel_code = static_cast<int8_t>(
+        (in_black_list << 7) + (is_operator_base << 6) + (is_custom_op << 5) +
+        (use_mkldnn << 4) + (has_fluid_kernel << 3) +
+        (has_structured_kernel << 2));
     if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
       if (in_black_list ||
           (is_operator_base &&

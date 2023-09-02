@@ -108,9 +108,9 @@ static int BuildFusion(Graph* graph,
 
     auto alpha = 1.0f;
     auto beta = 1.0f;
-    int m = embedding_tensor.dims()[0];
-    int n = weightx_tensor.dims()[1];
-    int k = embedding_tensor.dims()[1];
+    int m = static_cast<int>(embedding_tensor.dims()[0]);
+    int n = static_cast<int>(weightx_tensor.dims()[1]);
+    int k = static_cast<int>(embedding_tensor.dims()[1]);
 
     // Copy only gate biases values (only actual bias data, not peephole
     // weights)
