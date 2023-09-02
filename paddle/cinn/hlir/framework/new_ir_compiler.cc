@@ -137,7 +137,8 @@ std::shared_ptr<Scope> BuildScope(const Target& target,
 
     std::string name =
         name_prefix + std::to_string(std::hash<::ir::Value>()(value));
-    auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    auto type_info =
+        value.type().dyn_cast<::paddle::dialect::DenseTensorType>();
     auto* var = scope->Var<Tensor>(name);
     auto& tensor = absl::get<Tensor>(*var);
     // NOTE: can be replaced with phi::vectorized ?

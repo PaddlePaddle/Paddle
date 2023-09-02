@@ -40,7 +40,7 @@ using framework::StrategyFunction;
 
 namespace details {
 ir::Tensor GetTensor(const ::ir::Value& value) {
-  auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  auto type_info = value.type().dyn_cast<::paddle::dialect::DenseTensorType>();
   auto in_shape = phi::vectorize<int>(type_info.dims());
   auto dtype = type_info.dtype();
   std::string input_id = CompatibleInfo::InputName(value);
@@ -79,7 +79,7 @@ void CollectOutputInfo(const ::ir::Operation* op,
     std::string output_id = CompatibleInfo::OutputName(out_value);
     // group->output_names.push_back(output_id);
     auto type_info =
-        out_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+        out_value.type().dyn_cast<::paddle::dialect::DenseTensorType>();
 
     out_types->push_back(utils::ConvertIRType(type_info.dtype()));
     auto out_shape = phi::vectorize<int>(type_info.dims());
