@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
 #include "paddle/utils/flags.h"
 
-PD_DECLARE_bool(use_stride_kernel);
+PHI_DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace experimental {
