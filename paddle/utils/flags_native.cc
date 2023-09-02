@@ -393,6 +393,10 @@ void ParseCommandLineFlags(int* pargc, char*** pargv) {
   for (size_t i = 0; i < argv_num; i++) {
     const std::string& argv = argvs[i];
 
+    if (argv.empty()) {
+      continue;
+    }
+
     if (argv.size() < 2 || argv[0] != '-') {
       LOG_FLAG_FATAL_ERROR("invalid commandline argument: \"" + argv + "\", " +
                            arg_format_help);
