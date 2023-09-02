@@ -1179,7 +1179,7 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
         {"dtype",
          paddle::dialect::DataTypeAttribute::get(
              ctx,
-             paddle::dialect::VarTypeToDataType(
+             paddle::translator::VarTypeToDataType(
                  static_cast<paddle::framework::proto::VarType_Type>(dtype)))}};
     int place_type = PADDLE_GET_CONST(int, op_desc.GetAttr("place_type"));
     switch (place_type) {
@@ -1275,7 +1275,7 @@ struct FillConstant2FullWithTensorTranscriber : public OpTranscriber {
         {"dtype",
          paddle::dialect::DataTypeAttribute::get(
              ctx,
-             paddle::dialect::VarTypeToDataType(
+             paddle::translator::VarTypeToDataType(
                  static_cast<paddle::framework::proto::VarType_Type>(dtype)))}};
     return attribute_map;
   }
