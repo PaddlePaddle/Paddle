@@ -61,46 +61,46 @@ class Cifar10(Dataset):
 
         .. code-block:: python
 
-            import itertools
-            import paddle.vision.transforms as T
-            from paddle.vision.datasets import Cifar10
+            >>> import itertools
+            >>> import paddle.vision.transforms as T
+            >>> from paddle.vision.datasets import Cifar10
 
+            >>> cifar10 = Cifar10()
+            >>> print(len(cifar10))
+            50000
 
-            cifar10 = Cifar10()
-            print(len(cifar10))
-            # 50000
+            >>> for i in range(5):  # only show first 5 images
+            ...     img, label = cifar10[i]
+            ...     print(type(img), img.size, label)
+            <class 'PIL.Image.Image'> (32, 32) 6
+            <class 'PIL.Image.Image'> (32, 32) 9
+            <class 'PIL.Image.Image'> (32, 32) 9
+            <class 'PIL.Image.Image'> (32, 32) 4
+            <class 'PIL.Image.Image'> (32, 32) 1
 
-            for i in range(5):  # only show first 5 images
-                img, label = cifar10[i]
-                # do something with img and label
-                print(type(img), img.size, label)
-                # <class 'PIL.Image.Image'> (32, 32) 6
+            >>> transform = T.Compose(
+            ...     [
+            ...         T.Resize(64),
+            ...         T.ToTensor(),
+            ...         T.Normalize(
+            ...             mean=[0.5, 0.5, 0.5],
+            ...             std=[0.5, 0.5, 0.5],
+            ...             to_rgb=True,),
+            ...     ])
+            >>> cifar10_test = Cifar10(
+            ...     mode="test",
+            ...     transform=transform,  # apply transform to every image
+            ...     backend="cv2",  # use OpenCV as image transform backend)
+            >>> print(len(cifar10_test))
+            10000
 
-
-            transform = T.Compose(
-                [
-                    T.Resize(64),
-                    T.ToTensor(),
-                    T.Normalize(
-                        mean=[0.5, 0.5, 0.5],
-                        std=[0.5, 0.5, 0.5],
-                        to_rgb=True,
-                    ),
-                ]
-            )
-
-            cifar10_test = Cifar10(
-                mode="test",
-                transform=transform,  # apply transform to every image
-                backend="cv2",  # use OpenCV as image transform backend
-            )
-            print(len(cifar10_test))
-            # 10000
-
-            for img, label in itertools.islice(iter(cifar10_test), 5):  # only show first 5 images
-                # do something with img and label
-                print(type(img), img.shape, label)
-                # <class 'paddle.Tensor'> [3, 64, 64] 3
+            >>> for img, label in itertools.islice(iter(cifar10_test), 5):  # only show first 5 images
+            ...     print(type(img), img.shape, label)
+            <class 'paddle.Tensor'> [3, 64, 64] 3
+            <class 'paddle.Tensor'> [3, 64, 64] 8
+            <class 'paddle.Tensor'> [3, 64, 64] 8
+            <class 'paddle.Tensor'> [3, 64, 64] 0
+            <class 'paddle.Tensor'> [3, 64, 64] 6
     """
 
     def __init__(
@@ -210,46 +210,48 @@ class Cifar100(Cifar10):
 
         .. code-block:: python
 
-            import itertools
-            import paddle.vision.transforms as T
-            from paddle.vision.datasets import Cifar100
+            >>> import itertools
+            >>> import paddle.vision.transforms as T
+            >>> from paddle.vision.datasets import Cifar100
 
+            >>> cifar100 = Cifar100()
+            >>> print(len(cifar100))
+            50000
 
-            cifar100 = Cifar100()
-            print(len(cifar100))
-            # 50000
+            >>> for i in range(5):  # only show first 5 images
+            ...     img, label = cifar100[i]
+            ...     print(type(img), img.size, label)
+                    <class 'PIL.Image.Image'> (32, 32) 19
+                    <class 'PIL.Image.Image'> (32, 32) 29
+                    <class 'PIL.Image.Image'> (32, 32) 0
+                    <class 'PIL.Image.Image'> (32, 32) 11
+                    <class 'PIL.Image.Image'> (32, 32) 1
 
-            for i in range(5):  # only show first 5 images
-                img, label = cifar100[i]
-                # do something with img and label
-                print(type(img), img.size, label)
-                # <class 'PIL.Image.Image'> (32, 32) 19
+            >>> transform = T.Compose(
+            ...     [
+            ...         T.Resize(64),
+            ...         T.ToTensor(),
+            ...         T.Normalize(
+            ...             mean=[0.5, 0.5, 0.5],
+            ...             std=[0.5, 0.5, 0.5],
+            ...             to_rgb=True,),
+            ...     ])
 
+            >>> cifar100_test = Cifar100(
+            ...     mode="test",
+            ...     transform=transform,  # apply transform to every image
+            ...     backend="cv2",)  # use OpenCV as image transform backend
+            >>> print(len(cifar100_test))
+            10000
 
-            transform = T.Compose(
-                [
-                    T.Resize(64),
-                    T.ToTensor(),
-                    T.Normalize(
-                        mean=[0.5, 0.5, 0.5],
-                        std=[0.5, 0.5, 0.5],
-                        to_rgb=True,
-                    ),
-                ]
-            )
+            >>> for img, label in itertools.islice(iter(cifar100_test), 5):  # only show first 5 images
+            ...     print(type(img), img.shape, label)
+            <class 'paddle.Tensor'> [3, 64, 64] 49
+            <class 'paddle.Tensor'> [3, 64, 64] 33
+            <class 'paddle.Tensor'> [3, 64, 64] 72
+            <class 'paddle.Tensor'> [3, 64, 64] 51
+            <class 'paddle.Tensor'> [3, 64, 64] 71
 
-            cifar100_test = Cifar100(
-                mode="test",
-                transform=transform,  # apply transform to every image
-                backend="cv2",  # use OpenCV as image transform backend
-            )
-            print(len(cifar100_test))
-            # 10000
-
-            for img, label in itertools.islice(iter(cifar100_test), 5):  # only show first 5 images
-                # do something with img and label
-                print(type(img), img.shape, label)
-                # <class 'paddle.Tensor'> [3, 64, 64] 49
     """
 
     def __init__(

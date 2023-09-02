@@ -91,16 +91,16 @@ class Compose:
 
         .. code-block:: python
 
-            from paddle.vision.datasets import Flowers
-            from paddle.vision.transforms import Compose, ColorJitter, Resize
-
-            transform = Compose([ColorJitter(), Resize(size=608)])
-            flowers = Flowers(mode='test', transform=transform)
-
-            for i in range(10):
-                sample = flowers[i]
-                print(sample[0].size, sample[1])
-
+            >>> from paddle.vision.datasets import Flowers
+            >>> from paddle.vision.transforms import Compose, ColorJitter, Resize
+            >>> transform = Compose([ColorJitter(), Resize(size=608)])
+            >>> flowers = Flowers(mode='test', transform=transform)
+            >>> for i in range(3):
+            ...     sample = flowers[i]
+            ...     print(sample[0].size, sample[1])
+            (916, 608) [1]
+            (758, 608) [1]
+            (811, 608) [1]
     """
 
     def __init__(self, transforms):
@@ -166,72 +166,72 @@ class BaseTransform:
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            import paddle.vision.transforms.functional as F
-            from paddle.vision.transforms import BaseTransform
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> import paddle.vision.transforms.functional as F
+            >>> from paddle.vision.transforms import BaseTransform
 
-            def _get_image_size(img):
-                if F._is_pil_image(img):
-                    return img.size
-                elif F._is_numpy_image(img):
-                    return img.shape[:2][::-1]
-                else:
-                    raise TypeError("Unexpected type {}".format(type(img)))
-
-            class CustomRandomFlip(BaseTransform):
-                def __init__(self, prob=0.5, keys=None):
-                    super().__init__(keys)
-                    self.prob = prob
-
-                def _get_params(self, inputs):
-                    image = inputs[self.keys.index('image')]
-                    params = {}
-                    params['flip'] = np.random.random() < self.prob
-                    params['size'] = _get_image_size(image)
-                    return params
-
-                def _apply_image(self, image):
-                    if self.params['flip']:
-                        return F.hflip(image)
-                    return image
-
-                # if you only want to transform image, do not need to rewrite this function
-                def _apply_coords(self, coords):
-                    if self.params['flip']:
-                        w = self.params['size'][0]
-                        coords[:, 0] = w - coords[:, 0]
-                    return coords
-
-                # if you only want to transform image, do not need to rewrite this function
-                def _apply_boxes(self, boxes):
-                    idxs = np.array([(0, 1), (2, 1), (0, 3), (2, 3)]).flatten()
-                    coords = np.asarray(boxes).reshape(-1, 4)[:, idxs].reshape(-1, 2)
-                    coords = self._apply_coords(coords).reshape((-1, 4, 2))
-                    minxy = coords.min(axis=1)
-                    maxxy = coords.max(axis=1)
-                    trans_boxes = np.concatenate((minxy, maxxy), axis=1)
-                    return trans_boxes
-
-                # if you only want to transform image, do not need to rewrite this function
-                def _apply_mask(self, mask):
-                    if self.params['flip']:
-                        return F.hflip(mask)
-                    return mask
-
-            # create fake inputs
-            fake_img = Image.fromarray((np.random.rand(400, 500, 3) * 255.).astype('uint8'))
-            fake_boxes = np.array([[2, 3, 200, 300], [50, 60, 80, 100]])
-            fake_mask = fake_img.convert('L')
-
-            # only transform for image:
-            flip_transform = CustomRandomFlip(1.0)
-            converted_img = flip_transform(fake_img)
-
-            # transform for image, boxes and mask
-            flip_transform = CustomRandomFlip(1.0, keys=('image', 'boxes', 'mask'))
-            (converted_img, converted_boxes, converted_mask) = flip_transform((fake_img, fake_boxes, fake_mask))
-            print('converted boxes', converted_boxes)
+            >>> def _get_image_size(img):
+            ...     if F._is_pil_image(img):
+            ...         return img.size
+            ...     elif F._is_numpy_image(img):
+            ...         return img.shape[:2][::-1]
+            ...     else:
+            ...         raise TypeError("Unexpected type {}".format(type(img)))
+            ...
+            >>> class CustomRandomFlip(BaseTransform):
+            ...     def __init__(self, prob=0.5, keys=None):
+            ...         super().__init__(keys)
+            ...         self.prob = prob
+            ...
+            ...     def _get_params(self, inputs):
+            ...         image = inputs[self.keys.index('image')]
+            ...         params = {}
+            ...         params['flip'] = np.random.random() < self.prob
+            ...         params['size'] = _get_image_size(image)
+            ...         return params
+            ...
+            ...     def _apply_image(self, image):
+            ...         if self.params['flip']:
+            ...             return F.hflip(image)
+            ...         return image
+            ...
+            ...     # if you only want to transform image, do not need to rewrite this function
+            ...     def _apply_coords(self, coords):
+            ...         if self.params['flip']:
+            ...             w = self.params['size'][0]
+            ...             coords[:, 0] = w - coords[:, 0]
+            ...         return coords
+            ...
+            ...     # if you only want to transform image, do not need to rewrite this function
+            ...     def _apply_boxes(self, boxes):
+            ...         idxs = np.array([(0, 1), (2, 1), (0, 3), (2, 3)]).flatten()
+            ...         coords = np.asarray(boxes).reshape(-1, 4)[:, idxs].reshape(-1, 2)
+            ...         coords = self._apply_coords(coords).reshape((-1, 4, 2))
+            ...         minxy = coords.min(axis=1)
+            ...         maxxy = coords.max(axis=1)
+            ...         trans_boxes = np.concatenate((minxy, maxxy), axis=1)
+            ...         return trans_boxes
+            ...
+            ...     # if you only want to transform image, do not need to rewrite this function
+            ...     def _apply_mask(self, mask):
+            ...         if self.params['flip']:
+            ...             return F.hflip(mask)
+            ...         return mask
+            ...
+            >>> # create fake inputs
+            >>> fake_img = Image.fromarray((np.random.rand(400, 500, 3) * 255.).astype('uint8'))
+            >>> fake_boxes = np.array([[2, 3, 200, 300], [50, 60, 80, 100]])
+            >>> fake_mask = fake_img.convert('L')
+            >>> # only transform for image:
+            >>> flip_transform = CustomRandomFlip(1.0)
+            >>> converted_img = flip_transform(fake_img)
+            >>> # transform for image, boxes and mask
+            >>> flip_transform = CustomRandomFlip(1.0, keys=('image', 'boxes', 'mask'))
+            >>> (converted_img, converted_boxes, converted_mask) = flip_transform((fake_img, fake_boxes, fake_mask))
+            >>> print('converted boxes', converted_boxes)
+            converted boxes [[300   3 498 300]
+            [420  60 450 100]]
 
     """
 
@@ -319,23 +319,18 @@ class ToTensor(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> import paddle.vision.transforms as T
+            >>> import paddle.vision.transforms.functional as F
 
-            import paddle.vision.transforms as T
-            import paddle.vision.transforms.functional as F
-
-            fake_img = Image.fromarray((np.random.rand(4, 5, 3) * 255.).astype(np.uint8))
-
-            transform = T.ToTensor()
-
-            tensor = transform(fake_img)
-
-            print(tensor.shape)
-            # [3, 4, 5]
-
-            print(tensor.dtype)
-            # paddle.float32
+            >>> fake_img = Image.fromarray((np.random.rand(4, 5, 3) * 255.).astype(np.uint8))
+            >>> transform = T.ToTensor()
+            >>> tensor = transform(fake_img)
+            >>> print(tensor.shape)
+            [3, 4, 5]
+            >>> print(tensor.dtype)
+            paddle.float32
     """
 
     def __init__(self, data_format='CHW', keys=None):
@@ -389,21 +384,19 @@ class Resize(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import Resize
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import Resize
 
-            fake_img = Image.fromarray((np.random.rand(256, 300, 3) * 255.).astype(np.uint8))
-
-            transform = Resize(size=224)
-            converted_img = transform(fake_img)
-            print(converted_img.size)
-            # (262, 224)
-
-            transform = Resize(size=(200,150))
-            converted_img = transform(fake_img)
-            print(converted_img.size)
-            # (150, 200)
+            >>> fake_img = Image.fromarray((np.random.rand(256, 300, 3) * 255.).astype(np.uint8))
+            >>> transform = Resize(size=224)
+            >>> converted_img = transform(fake_img)
+            >>> print(converted_img.size)
+            (262, 224)
+            >>> transform = Resize(size=(200,150))
+            >>> converted_img = transform(fake_img)
+            >>> print(converted_img.size)
+            (150, 200)
     """
 
     def __init__(self, size, interpolation='bilinear', keys=None):
@@ -456,16 +449,15 @@ class RandomResizedCrop(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import RandomResizedCrop
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import RandomResizedCrop
 
-            transform = RandomResizedCrop(224)
-
-            fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
-            print(fake_img.size)
+            >>> transform = RandomResizedCrop(224)
+            >>> fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.size)
+            (224, 224)
 
     """
 
@@ -643,16 +635,16 @@ class CenterCrop(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import CenterCrop
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import CenterCrop
 
-            transform = CenterCrop(224)
+            >>> transform = CenterCrop(224)
+            >>> fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.size)
+            (224, 224)
 
-            fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
-            print(fake_img.size)
     """
 
     def __init__(self, size, keys=None):
@@ -684,16 +676,15 @@ class RandomHorizontalFlip(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import RandomHorizontalFlip
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import RandomHorizontalFlip
 
-            transform = RandomHorizontalFlip(0.5)
-
-            fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
-            print(fake_img.size)
+            >>> transform = RandomHorizontalFlip(0.5)
+            >>> fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.size)
+            (320, 300)
     """
 
     def __init__(self, prob=0.5, keys=None):
@@ -738,16 +729,14 @@ class RandomVerticalFlip(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import RandomVerticalFlip
-
-            transform = RandomVerticalFlip()
-
-            fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
-            print(fake_img.size)
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import RandomVerticalFlip
+            >>> transform = RandomVerticalFlip()
+            >>> fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.size)
+            (320, 300)
 
     """
 
@@ -799,21 +788,21 @@ class Normalize(BaseTransform):
     Examples:
 
         .. code-block:: python
-          :name: code-example
-            import paddle
-            from paddle.vision.transforms import Normalize
+            :name: code-example
+            >>> import paddle
+            >>> from paddle.vision.transforms import Normalize
+            >>> paddle.seed(2023)
 
-            normalize = Normalize(mean=[127.5, 127.5, 127.5],
-                                  std=[127.5, 127.5, 127.5],
-                                  data_format='HWC')
-
-            fake_img = paddle.rand([300,320,3]).numpy() * 255.
-
-            fake_img = normalize(fake_img)
-            print(fake_img.shape)
-            # (300, 320, 3)
-            print(fake_img.max(), fake_img.min())
-            # 0.99999905 -0.999974
+            >>> normalize = Normalize(mean=[127.5, 127.5, 127.5],
+            ...                         std=[127.5, 127.5, 127.5],
+            ...                         data_format='HWC')
+            ...
+            >>> fake_img = paddle.rand([300,320,3]).numpy() * 255.
+            >>> fake_img = normalize(fake_img)
+            >>> print(fake_img.shape)
+            (300, 320, 3)
+            >>> print(fake_img.max(), fake_img.min())
+            0.99999464 -0.9999929
 
     """
 
@@ -860,16 +849,15 @@ class Transpose(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import Transpose
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import Transpose
 
-            transform = Transpose()
-
-            fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
-            print(fake_img.shape)
+            >>> transform = Transpose()
+            >>> fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.shape)
+            (3, 300, 320)
 
     """
 
@@ -908,15 +896,19 @@ class BrightnessTransform(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import BrightnessTransform
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import BrightnessTransform
+            >>> np.random.seed(2023)
 
-            transform = BrightnessTransform(0.4)
-
-            fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
+            >>> transform = BrightnessTransform(0.4)
+            >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
+            >>> print(fake_img.load()[1,1])
+            (60, 169, 34)
+            >>> # doctest: +SKIP('random sample in Brightness function')
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.load()[1,1])
+            (68, 192, 38)
 
     """
 
@@ -951,15 +943,15 @@ class ContrastTransform(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import ContrastTransform
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import ContrastTransform
 
-            transform = ContrastTransform(0.4)
-
-            fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
+            >>> transform = ContrastTransform(0.4)
+            >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.size)
+            (224, 224)
 
     """
 
@@ -996,16 +988,15 @@ class SaturationTransform(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import SaturationTransform
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import SaturationTransform
 
-            transform = SaturationTransform(0.4)
-
-            fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
-
+            >>> transform = SaturationTransform(0.4)
+            >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.size)
+            (224, 224)
     """
 
     def __init__(self, value, keys=None):
@@ -1039,15 +1030,15 @@ class HueTransform(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import HueTransform
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import HueTransform
 
-            transform = HueTransform(0.4)
-
-            fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
+            >>> transform = HueTransform(0.4)
+            >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.size)
+            (224, 224)
 
     """
 
@@ -1090,15 +1081,15 @@ class ColorJitter(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import ColorJitter
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import ColorJitter
 
-            transform = ColorJitter(0.4, 0.4, 0.4, 0.4)
-
-            fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
+            >>> transform = ColorJitter(0.4, 0.4, 0.4, 0.4)
+            >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.size)
+            (224, 224)
 
     """
 
@@ -1195,17 +1186,19 @@ class RandomCrop(BaseTransform):
     Examples:
 
         .. code-block:: python
-          :name: code-example1
+            :name: code-example1
 
-            import paddle
-            from paddle.vision.transforms import RandomCrop
-            transform = RandomCrop(224)
+            >>> import paddle
+            >>> from paddle.vision.transforms import RandomCrop
+            >>> transform = RandomCrop(224)
 
-            fake_img = paddle.randint(0, 255, shape=(3, 324,300), dtype = 'int32')
-            print(fake_img.shape) # [3, 324, 300]
+            >>> fake_img = paddle.randint(0, 255, shape=(3, 324,300), dtype = 'int32')
+            >>> print(fake_img.shape)
+            [3, 324, 300]
 
-            crop_img = transform(fake_img)
-            print(crop_img.shape) # [3, 224, 224]
+            >>> crop_img = transform(fake_img)
+            >>> print(crop_img.shape)
+            [3, 224, 224]
     """
 
     def __init__(
@@ -1313,16 +1306,15 @@ class Pad(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import Pad
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import Pad
 
-            transform = Pad(2)
-
-            fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
-            print(fake_img.size)
+            >>> transform = Pad(2)
+            >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.size)
+            (228, 228)
     """
 
     def __init__(self, padding, fill=0, padding_mode='constant', keys=None):
@@ -1429,15 +1421,14 @@ class RandomAffine(BaseTransform):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.transforms import RandomAffine
+            >>> import paddle
+            >>> from paddle.vision.transforms import RandomAffine
 
-            transform = RandomAffine([-90, 90], translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[-10, 10])
-
-            fake_img = paddle.randn((3, 256, 300)).astype(paddle.float32)
-
-            fake_img = transform(fake_img)
-            print(fake_img.shape)
+            >>> transform = RandomAffine([-90, 90], translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[-10, 10])
+            >>> fake_img = paddle.randn((3, 256, 300)).astype(paddle.float32)
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.shape)
+            [3, 256, 300]
     """
 
     def __init__(
@@ -1583,16 +1574,15 @@ class RandomRotation(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import RandomRotation
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import RandomRotation
 
-            transform = RandomRotation(90)
-
-            fake_img = Image.fromarray((np.random.rand(200, 150, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
-            print(fake_img.size)
+            >>> transform = RandomRotation(90)
+            >>> fake_img = Image.fromarray((np.random.rand(200, 150, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.size)
+            (150, 200)
     """
 
     def __init__(
@@ -1683,15 +1673,14 @@ class RandomPerspective(BaseTransform):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.transforms import RandomPerspective
+            >>> import paddle
+            >>> from paddle.vision.transforms import RandomPerspective
 
-            transform = RandomPerspective(prob=1.0, distortion_scale=0.9)
-
-            fake_img = paddle.randn((3, 200, 150)).astype(paddle.float32)
-
-            fake_img = transform(fake_img)
-            print(fake_img.shape)
+            >>> transform = RandomPerspective(prob=1.0, distortion_scale=0.9)
+            >>> fake_img = paddle.randn((3, 200, 150)).astype(paddle.float32)
+            >>> fake_img = transform(fake_img)
+            >>> print(fake_img.shape)
+            [3, 200, 150]
     """
 
     def __init__(
@@ -1806,16 +1795,15 @@ class Grayscale(BaseTransform):
 
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import Grayscale
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import Grayscale
 
-            transform = Grayscale()
-
-            fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-
-            fake_img = transform(fake_img)
-            print(np.array(fake_img).shape)
+            >>> transform = Grayscale()
+            >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
+            >>> fake_img = transform(fake_img)
+            >>> print(np.array(fake_img).shape)
+            (224, 224)
     """
 
     def __init__(self, num_output_channels=1, keys=None):
@@ -1861,13 +1849,74 @@ class RandomErasing(BaseTransform):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            fake_img = paddle.randn((3, 10, 10)).astype(paddle.float32)
-            transform = paddle.vision.transforms.RandomErasing()
-            result = transform(fake_img)
-
-            print(result)
+            >>> fake_img = paddle.randn((3, 10, 10)).astype(paddle.float32)
+            >>> # doctest: +SKIP('random sample')
+            >>> transform = paddle.vision.transforms.RandomErasing()
+            >>> result = transform(fake_img)
+            >>> print(result)
+            Tensor(shape=[3, 10, 10], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[ 0.06132207,  1.11349595,  0.41906244, -0.24858207, -1.85169315,
+                -1.50370061,  1.73954511,  0.13331604,  1.66359663, -0.55764782],
+              [-0.59911072, -0.57773495, -1.03176904, -0.33741450, -0.29695082,
+               -1.50258386,  0.67233968, -1.07747352,  0.80170447, -0.06695852],
+              [ 0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+               0.        ,  0.        , -0.18707706, -0.00711021,  0.35236868],
+              [ 0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+               0.        ,  0.        ,  0.99335045, -1.23486686,  0.59551388],
+              [ 0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+               0.        ,  0.        ,  1.07340240, -0.05492965,  1.04750168],
+              [-2.33754158,  1.16518629,  0.66847134, -1.05326962, -0.05703246,
+              -0.48190674,  1.81305492,  0.08148229,  0.44784251,  0.35859334],
+              [-2.38284039, -0.24213965, -1.88001716,  0.03133615, -0.04362833,
+              -0.08405837,  0.09976969,  2.02437997,  0.12619922, -0.56315082],
+              [-2.68867159,  0.73883981, -0.29759684, -0.45756167,  0.95168287,
+              -0.14470525,  0.30066529,  1.18784654,  0.63827103,  1.36695337],
+              [ 1.61990213, -0.73944050,  0.73837692, -0.41667160,  0.61278981,
+               0.02087829, -0.43928462, -1.47477698, -1.53987849,  0.20241615],
+              [ 0.45081368, -0.02444682, -0.78401005,  1.23124194,  0.30582234,
+               1.86639202, -0.75136954,  0.29581168, -0.10936873,  1.73816776]],
+            [[-0.72542310, -0.63993341,  0.56905884, -1.17587972,  0.77404201,
+               0.55725455, -0.12353957, -0.37242520, -0.34365371, -0.09493168],
+             [ 0.73530573, -0.86228633, -0.02959622, -0.03226689, -0.21481566,
+              -0.47017041, -1.21647561, -0.68564278, -1.10357809,  0.02646546],
+             [ 0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+               0.        ,  0.        ,  0.49751246, -0.51239246, -0.79590178],
+             [ 0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+               0.        ,  0.        , -1.16470373, -0.35125455,  0.75562203],
+             [ 0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+               0.        ,  0.        ,  1.18107891, -1.67300129, -1.06133699],
+             [-1.03817058,  0.23859102,  0.96272832,  0.41728491, -0.03280865,
+               0.57484967,  1.75306129, -2.32939911,  0.10201593,  0.34171841],
+             [-0.69578737,  2.41477871,  1.26193678,  0.66589457, -1.49077952,
+              -1.70719969,  0.39087290,  0.50119525,  0.63716847, -0.75410712],
+             [-0.09374881, -0.56940532, -0.04401193,  0.91731805, -0.02830890,
+               0.49011385,  0.50313145, -0.29533651, -0.28930089, -2.28019619],
+             [ 1.10705769, -0.79245502,  0.87229425,  0.67771286, -0.44833222,
+               0.75625074, -0.19795555,  0.28102958,  0.59057784, -2.08670688],
+             [-0.61498135,  0.02922253,  2.80116510, -1.06567729, -0.63830417,
+               0.44657886, -0.50627631,  0.44015732,  0.19885772,  0.10491568]],
+            [[-0.52558190,  1.22400081,  1.11275101,  1.10335207, -1.59716892,
+               1.01421928, -0.09739432, -0.98027742,  0.40395170,  0.25537461],
+             [-0.51878536, -0.61024582,  0.50451010,  0.26289132,  0.56812924,
+              -0.87446779, -0.49784994,  1.08992171,  0.26955956,  1.06183958],
+             [ 0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+               0.        ,  0.        ,  1.68337405, -0.13305348,  0.35332149],
+             [ 0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+               0.        ,  0.        , -1.30810261, -1.25963831, -0.31366265],
+             [ 0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+               0.        ,  0.        ,  0.68742216,  0.14700869,  0.97539783],
+             [-0.19738473, -0.32171771, -0.26854011,  0.90689135,  1.46283400,
+              -1.27207208, -1.35320270,  0.33667681,  1.57079256, -0.38402310],
+             [ 1.11476696,  0.98115855,  0.97479266,  0.36703467, -0.00831872,
+              -2.13060308, -1.04265428, -0.08608285, -1.73132539,  1.24107051],
+             [ 0.56288141,  0.46964890,  0.91645026, -0.05119862,  0.59841532,
+               0.03627319, -1.43532479,  1.20123708,  0.20666319, -0.73813838],
+             [ 0.86293906,  0.68414116,  0.33721316, -0.53163993, -0.91380602,
+               0.68903226, -0.50675344,  0.43721840, -1.05881357, -0.85710162],
+             [ 0.06327752,  1.08296001, -1.10259342,  0.61139840,  1.04057574,
+              -0.50645292, -0.92569566,  1.01503468,  1.49153447,  0.25960931]]])
     """
 
     def __init__(
