@@ -23,7 +23,7 @@ from . import set_flags, get_flags
 from .framework import Program, default_main_program
 
 from ..ir import core as ir_core
-from ..ir import OpResult, PassManager
+from ..ir import OpResult
 from .wrapped_decorator import signature_safe_contextmanager
 from .data_feeder import convert_dtype
 from .framework import Variable, Operator
