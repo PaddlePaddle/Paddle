@@ -55,14 +55,14 @@ namespace framework {
 NewIRInterpreter::NewIRInterpreter(
     const platform::Place& place,
     const std::vector<std::string>& fetch_var_names,
-    std::unique_ptr<::ir::Program> ir_prog,
+    std::unique_ptr<::ir::Block> ir_block,
     framework::Scope* scope,
     const ExecutionConfig& execution_config)
     : place_(place),
       execution_config_(execution_config),
       var_scope_(scope),
       scope_(scope),
-      ir_program_(std::move(ir_prog)),
+      ir_block_(std::move(ir_block)),
       ir_stream_analyzer_(place),
       fetch_var_names_(fetch_var_names) {
   VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
@@ -499,7 +499,7 @@ void NewIRInterpreter::BuildInstruction() {
   VLOG(6) << "Build Instructions for new ir ... ";
   vec_instruction_base_.clear();
   size_t op_idx = 0;
-  for (auto& op : *ir_program_->block()) {
+  for (auto& op : *ir_block_) {
     VLOG(6) << "Build Instruction for op: " << op_idx;
     if (op->dialect()->name() == "builtin") {
       if (interpreter::GetSpecialOpNames().count(op->name())) {
@@ -913,7 +913,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
     // Build
     std::stringstream ss;
     ss << this;
-    ::ir::BuildScope(*ir_program_->block(),
+    ::ir::BuildScope(*ir_block_,
                      InnerScope(),
                      ss.str(),
                      &value_2_var_name_,

@@ -198,7 +198,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   InstructionSchedulingPriorityLess ir_instruction_scheduling_priority_less;
 
-  std::unique_ptr<::ir::Program> ir_program_{nullptr};
+  std::unique_ptr<::ir::Block> ir_block_{nullptr};
 
   std::vector<std::unique_ptr<InstructionBase>> vec_instruction_base_;
 
