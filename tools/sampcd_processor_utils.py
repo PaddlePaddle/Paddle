@@ -26,10 +26,10 @@ import typing
 logger = logging.getLogger(__name__)
 logger.propagate = False
 
-console = logging.StreamHandler(stream=sys.stdout)
-console.setFormatter(logging.Formatter("%(message)s"))
+# console = logging.StreamHandler(stream=sys.stdout)
+# console.setFormatter(logging.Formatter("%(message)s"))
 
-logger.addHandler(console)
+# logger.addHandler(console)
 
 
 RUN_ON_DEVICE = 'cpu'
