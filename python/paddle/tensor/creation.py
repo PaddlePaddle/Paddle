@@ -88,11 +88,21 @@ def create_global_var(
 
     Examples:
         .. code-block:: python
+            :name: e1
 
             >>> import paddle
             >>> paddle.enable_static()
             >>> var = paddle.static.create_global_var(shape=[2,3], value=1.0, dtype='float32',
             ...                                persistable=True, force_cpu=True, name='new_var')
+
+        .. code-block:: python
+            :name: e2
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> # test fail in GPU
+            >>> print(1+1)
+            3
     """
     # TODO:
     check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_global_var')
