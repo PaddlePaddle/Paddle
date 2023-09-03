@@ -720,6 +720,24 @@ struct RsqrtGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct RsqrtGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x UNUSED, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * (static_cast<ComplexType<T>>(-0.5) * out * out * out)
+                              .unaryExpr(Conj<T>());
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
 // // For numerical stability, using the following formula instead of
 // softplus(x) =
 // // log(1 + exp(x))
@@ -3316,6 +3334,24 @@ struct CudaRsqrtGradFunctor : public BaseActivationFunctor<T> {
     MPType dout = static_cast<MPType>(arg_dout);
     MPType out = static_cast<MPType>(arg_out);
     return static_cast<T>(minus_one_half * dout * out * out * out);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+template <typename T>
+struct CudaRsqrtGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  ComplexType<T> minus_one_half = static_cast<ComplexType<T>>(-0.5f);
+
+  // dx = -0.5 * dout * out^3
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> arg_dout, const ComplexType<T> arg_out) const {
+    ComplexType<T> dout = arg_dout;
+    ComplexType<T> out = arg_out;
+    return dout * conj(minus_one_half * out * out * out);
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {

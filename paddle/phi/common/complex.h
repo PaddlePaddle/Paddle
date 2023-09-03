@@ -487,6 +487,18 @@ HOSTDEVICE inline complex<T> log(const complex<T>& a) {
 }
 
 template <typename T>
+HOSTDEVICE inline complex<T> rsqrt(const complex<T>& a) {
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+  return complex<T>(thrust::complex<T>(1.0) /
+                    thrust::sqrt(thrust::complex<T>(a)));
+#else
+  return complex<T>(static_cast<std::complex<T>>(1.0) /
+                    std::sqrt(std::complex<T>(a)));
+#endif
+}
+
+template <typename T>
 inline std::ostream& operator<<(std::ostream& os, const complex<T>& a) {
   os << "real:" << a.real << " imag:" << a.imag;
   return os;

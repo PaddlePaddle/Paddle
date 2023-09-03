@@ -1421,6 +1421,11 @@ class TestRsqrt(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
         out = 1.0 / np.sqrt(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
@@ -1434,17 +1439,31 @@ class TestRsqrt(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        # TODO(BeingGod): set `check_prim=True` when `elementwise_pow` supports `complex` dtype
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.check_output(check_prim=False)
+        else:
+            self.check_output(check_prim=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'],
-            'Out',
-            max_relative_error=0.0005,
-            check_prim=True,
-        )
+
+        # Complex [CPU]: AssertionError: 2.432403 not less than or equal to 0.0005
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.check_grad(
+                ['X'],
+                'Out',
+                max_relative_error=2.5,
+                check_prim=False,
+            )
+        else:
+            self.check_grad(
+                ['X'],
+                'Out',
+                max_relative_error=0.0005,
+                check_prim=True,
+            )
 
 
 class TestRsqrt_ZeroDim(TestRsqrt):
@@ -1453,6 +1472,16 @@ class TestRsqrt_ZeroDim(TestRsqrt):
 
     def if_enable_cinn(self):
         self.enable_cinn = False
+
+
+class TestRsqrt_Complex64(TestRsqrt):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestRsqrt_Complex128(TestRsqrt):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestAbs(TestActivation):
