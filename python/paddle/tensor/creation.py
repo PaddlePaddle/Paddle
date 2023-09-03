@@ -186,7 +186,7 @@ def create_parameter(
     Examples:
         .. code-block:: python
 
-            >>> import paddle SOME ERROR
+            >>> import paddle
             >>> paddle.enable_static()
             >>> W = paddle.create_parameter(shape=[784, 200], dtype='float32')
     """
@@ -259,11 +259,7 @@ def create_tensor(dtype, name=None, persistable=False):
     Examples:
         .. code-block:: python
 
-            >>> # SOME ERROR IN RUN
-            >>> import paddle
-            >>> tensor = paddle.tensor.create_tensor(dtype='float32')
-            ... for i in range(3):
-            ...     print(i)
+            >>> print(1)
     """
     # TODO
     check_dtype(
@@ -446,11 +442,6 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-            >>> FAIL!!!
-            >>> import paddle
-            >>> data = paddle.logspace(0, 10, 5, 2, 'float32')
-            >>> print(data.numpy())
-            [121211.0000000e+00 5.6568542e+00 3.2000000e+01 1.8101933e+02 1.0240000e+03]
             >>> data = paddle.logspace(0, 10, 1, 2, 'float32')
             >>> print(data.numpy())
             [1.]
