@@ -58,7 +58,7 @@ def fused_rotary_position_embedding(
             >>> # num_heads = 2
             >>> # head_dim = 2
 
-            >>> paddle.seed(1024)
+            >>> paddle.seed(1204)
 
             >>> # q, k, v: [batch_size, seq_len, num_heads, head_dim]
             >>> q = paddle.randn([2, 2, 2, 2], dtype='float16')
