@@ -2280,7 +2280,7 @@ def fold(
 
     Parameters:
         x(Tensor):                3-D Tensor, input tensor of format [N, C, L],
-                                  data type can be float32 or float64
+                                  data type can be float32, float64, complex64 or complex128
         output_sizes(int|list|tuple):       The size of output size, should be [output_size_h, output_size_w]
                                   or an interger o treated as [o, o].
         kernel_sizes(int|list|tuple):   The size of convolution kernel, should be [k_h, k_w]
@@ -2325,7 +2325,9 @@ def fold(
 
     helper = LayerHelper("fold", **locals())
 
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'fold')
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'complex64', 'complex128'], 'fold'
+    )
 
     assert len(x.shape) == 3, "input should be the format of [N, C, L]"
 
