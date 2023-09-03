@@ -349,12 +349,12 @@ class TestAddMMOp5(unittest.TestCase):
 
 class TestAddMMOp6(TestAddMMOp):
     def init_dtype_type(self):
-        return np.complex64
+        self.dtype = np.complex64
 
 
 class TestAddMMOp7(TestAddMMOp):
     def init_dtype_type(self):
-        return np.complex128
+        self.dtype = np.complex128
 
 
 class TestAddMMAPI(unittest.TestCase):
