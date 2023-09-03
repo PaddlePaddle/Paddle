@@ -65,7 +65,7 @@
   using paddle_flags::FLAGS_##name
 
 #define PHI_DEFINE_VARIABLE(type, shorttype, name, default_value, description) \
-  namespace paddle_flags {                          \
+  namespace paddle_flags {                                                     \
   static const type FLAGS_##name##_default = default_value;                    \
   PHI_EXPORT_FLAG type FLAGS_##name = default_value;                           \
   /* Register FLAG */                                                          \
