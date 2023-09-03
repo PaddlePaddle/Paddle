@@ -3200,6 +3200,9 @@ function summary_check_problems() {
         echo "*****Example code error***** Please fix the error listed in the information:"
         echo "==============================================================================="
         echo "$example_info" | grep "API check -- Example Code" -A $(echo "$example_info" | wc -l)
+        echo "==============================================================================="
+        echo "*****Example code FAIL*****"
+        echo "==============================================================================="
         exit $example_code
     fi
     set -x
