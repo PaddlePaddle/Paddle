@@ -100,9 +100,8 @@ def create_global_var(
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
-            >>> # test fail in GPU
             >>> print(1+1)
-            3
+            2
     """
     # TODO:
     check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_global_var')
