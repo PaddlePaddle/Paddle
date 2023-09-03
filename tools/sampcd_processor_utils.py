@@ -26,14 +26,10 @@ import typing
 logger = logging.getLogger(__name__)
 logger.propagate = False
 
-if logger.handlers:
-    console = logger.handlers[
-        0
-    ]  # we assume the first handler is the one we want to configure
-else:
-    console = logging.StreamHandler(stream=sys.stderr)
-    logger.addHandler(console)
+console = logging.StreamHandler(stream=sys.stdout)
 console.setFormatter(logging.Formatter("%(message)s"))
+
+logger.addHandler(console)
 
 
 RUN_ON_DEVICE = 'cpu'
@@ -502,9 +498,6 @@ def check_old_style(docstrings_to_test: typing.Dict[str, str]):
                 old_style_apis.append(docstring_name)
 
     if old_style_apis:
-        stdout_handler = logging.StreamHandler(stream=sys.stdout)
-        logger.addHandler(stdout_handler)
-
         logger.info(
             ">>> %d apis use plain sample code style.",
             len(old_style_apis),
@@ -612,6 +605,7 @@ def run_doctest(args, doctester: DocTester):
     # init logger
     init_logger(debug=args.debug, log_file=args.logf)
 
+    logger.info("API check -- Example Code")
     logger.info("----------------Codeblock Check Start--------------------")
 
     logger.info(">>> Check test mode ...")

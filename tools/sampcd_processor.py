@@ -23,13 +23,11 @@ for example, you can run cpu version testing like this:
 """
 
 import functools
-import logging
 import multiprocessing
 import os
 import platform
 import queue
 import re
-import sys
 import threading
 import time
 import typing
@@ -447,8 +445,6 @@ class Xdoctester(DocTester):
         summary_timeout = []
         summary_nocodes = []
 
-        stdout_handler = logging.StreamHandler(stream=sys.stdout)
-        logger.addHandler(stdout_handler)
         logger.info("----------------Check results--------------------")
         logger.info(">>> Sample code test capacity: %s", self._test_capacity)
 
