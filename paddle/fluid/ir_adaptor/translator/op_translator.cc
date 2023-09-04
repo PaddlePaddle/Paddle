@@ -1161,10 +1161,10 @@ struct MulOpTranscriber : public OpTranscriber {
     int x_num_col_dims = paddle::get<int>(op_desc.GetAttr("x_num_col_dims"));
     int y_num_col_dims = paddle::get<int>(op_desc.GetAttr("y_num_col_dims"));
 
-    if (1 == x_num_col_dims && 1 == y_num_col_dims) {
-      return OpTranscriber::GenerateOperationInput(
-          ctx, param_map, op_desc, normalized_op_name, input_infos, program);
-    }
+    // if (1 == x_num_col_dims && 1 == y_num_col_dims) {
+    //   return OpTranscriber::GenerateOperationInput(
+    //       ctx, param_map, op_desc, normalized_op_name, input_infos, program);
+    // }
 
     // ---------- 进行 X shape 的检查 ----------
     auto x_names = op_desc.Input("X", true);
@@ -1197,7 +1197,7 @@ struct MulOpTranscriber : public OpTranscriber {
     dialect::DenseTensorType x_tensor_type =
         x_type.dyn_cast<dialect::DenseTensorType>();
     std::vector<int64_t> x_shape = phi::vectorize(x_tensor_type.dims());
-    IR_ENFORCE(x_num_col_dims <= x_shape.size(),
+    IR_ENFORCE(x_num_col_dims <= static_cast<int>(x_shape.size()),
                "Expected op[%s]'s attr `x_num_col_dims` less than or equal to "
                "dim of input X %s, but got %d",
                op_desc.Type(),
@@ -1235,7 +1235,7 @@ struct MulOpTranscriber : public OpTranscriber {
     dialect::DenseTensorType y_tensor_type =
         y_type.dyn_cast<dialect::DenseTensorType>();
     std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
-    IR_ENFORCE(y_num_col_dims <= y_shape.size(),
+    IR_ENFORCE(y_num_col_dims <= static_cast<int>(y_shape.size()),
                "Expected op[%s]'s attr `y_num_col_dims` less than or equal to "
                "dim of input Y %s, but got %d",
                op_desc.Type(),
@@ -1245,82 +1245,43 @@ struct MulOpTranscriber : public OpTranscriber {
     ir::Builder builder(ctx, program->block());
     ir::OpResult x_new, y_new;
 
-    // 给 x y 做 resize
-    if (1 != x_num_col_dims) {
-      std::vector<int64_t> x_new_shape({
-        std::accumulate(x_shape.begin(),
-                        x_shape.begin() + x_num_col_dims,
-                        1,
-                        std::multiplies<int64_t>());
-        std::accumulate(x_shape.begin() + x_num_col_dims,
-                        x_shape.end(),
-                        1,
-                        std::multiplies<int64_t>());
-      });
-      dialect::ReshapeOp reshape_op_x =
-          builder.Build<dialect::ReshapeOp>(x_value, x_new_shape);
-      x_new = reshape_op_x.out();
-      VLOG(6) << "[" << op_desc.Type() << "] x_shape change from "
-              << x_tensor_type.dims() << " to " << phi::make_ddim(x_new_shape);
-    } else {
-      x_new = x_value;
-    }
+    std::vector<int64_t> x_new_shape({
+        std::max(std::accumulate(x_shape.begin(),
+                                 x_shape.begin() + x_num_col_dims,
+                                 static_cast<int64_t>(1),
+                                 std::multiplies<int64_t>()),
+                 static_cast<int64_t>(-1)),
+        std::max(std::accumulate(x_shape.begin() + x_num_col_dims,
+                                 x_shape.end(),
+                                 static_cast<int64_t>(1),
+                                 std::multiplies<int64_t>()),
+                 static_cast<int64_t>(-1)),
+    });
+    dialect::ReshapeOp reshape_op_x =
+        builder.Build<dialect::ReshapeOp>(x_value, x_new_shape);
+    x_new = reshape_op_x.out();
+    VLOG(6) << "[" << op_desc.Type() << "] x_shape change from "
+            << x_tensor_type.dims() << " to " << phi::make_ddim(x_new_shape);
 
-    // -------------- 这里会有静态图涉及到的问题吗 --------------
-    // if (std::find(x_shape.begin(), x_shape.end(), -1) == x_shape.end())
-    // else {
-    //   auto shape_op = builder.Build<dialect::ShapeOp>(x_value);
-    //   auto append_shape_op = builder.Build<dialect::FullIntArrayOp>(
-    //       std::vector<int64_t>(append_size, 1),
-    //       phi::DataType::INT64,
-    //       phi::CPUPlace());
-    //   auto y_true_shape_op = builder.Build<ir::CombineOp>(
-    //       std::vector<ir::OpResult>{shape_op.out(), append_shape_op.out()});
-    //   auto concat_op =
-    //       builder.Build<dialect::ConcatOp>(y_true_shape_op.out(), 0);
-    //   auto y_new_shape = concat_op.out();
-    //   auto reshape_op = builder.Build<dialect::ReshapeOp>(y_value,
-    //   y_new_shape); y_new = reshape_op.out();
-    // }
+    std::vector<int64_t> y_new_shape(
+        {std::max(std::accumulate(y_shape.begin(),
+                                  y_shape.begin() + y_num_col_dims,
+                                  static_cast<int64_t>(1),
+                                  std::multiplies<int64_t>()),
+                  static_cast<int64_t>(-1)),
+         std::max(std::accumulate(y_shape.begin() + y_num_col_dims,
+                                  y_shape.end(),
+                                  static_cast<int64_t>(1),
+                                  std::multiplies<int64_t>()),
+                  static_cast<int64_t>(-1))});
 
-    if (1 != y_num_col_dims) {
-      std::vector<int64_t> y_new_shape({
-        std::accumulate(y_shape.begin(),
-                        y_shape.begin() + y_num_col_dims,
-                        1,
-                        std::multiplies<int64_t>());
-        std::accumulate(y_shape.begin() + y_num_col_dims,
-                        y_shape.end(),
-                        1,
-                        std::multiplies<int64_t>());
-      });
+    dialect::ReshapeOp reshape_op_y =
+        builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
+    y_new = reshape_op_y.out();
+    VLOG(6) << "[" << op_desc.Type() << "] y_shape change from "
+            << y_tensor_type.dims() << " to " << phi::make_ddim(y_new_shape);
 
-      dialect::ReshapeOp reshape_op =
-          builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
-      y_new = reshape_op.out();
-      VLOG(6) << "[" << op_desc.Type() << "] y_shape change from "
-              << y_tensor_type.dims() << " to " << phi::make_ddim(y_new_shape);
-    } else {
-      y_new = y_value;
-    }
-
-    // -------------- 这里会有静态图涉及到的问题吗 --------------
-    // if (std::find(y_shape.begin(), y_shape.end(), -1) == y_shape.end())
-    // else {
-    //   auto shape_op = builder.Build<dialect::ShapeOp>(y_value);
-    //   auto append_shape_op = builder.Build<dialect::FullIntArrayOp>(
-    //       std::vector<int64_t>(append_size, 1),
-    //       phi::DataType::INT64,
-    //       phi::CPUPlace());
-    //   auto y_true_shape_op = builder.Build<ir::CombineOp>(
-    //       std::vector<ir::OpResult>{shape_op.out(), append_shape_op.out()});
-    //   auto concat_op =
-    //       builder.Build<dialect::ConcatOp>(y_true_shape_op.out(), 0);
-    //   auto y_new_shape = concat_op.out();
-    //   auto reshape_op = builder.Build<dialect::ReshapeOp>(y_value,
-    //   y_new_shape); y_new = reshape_op.out();
-    // }
-    return {x_value, y_new};
+    return {x_new, y_new};
   }
 };
 
