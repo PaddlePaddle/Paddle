@@ -102,7 +102,6 @@ def create_global_var(
             >>> import paddle
             >>> print(1+1)
             3
-
     """
     # TODO:
     check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_global_var')
