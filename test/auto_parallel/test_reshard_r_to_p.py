@@ -17,26 +17,26 @@ import unittest
 import collective.test_communication_api_base as test_base
 
 
-class TestReshardRToS(test_base.CommunicationTestDistBase):
+class TestReshardRToP(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(num_of_devices=2, timeout=120)
         self._default_envs = {
+            "shape": "(10, 20)",
             "dtype": "float32",
             "seeds": str(self._seeds),
         }
         self._changeable_envs = {
-            "shape": ["(10, 20)", "(5, 7)"],
-            "shard": ["0", "1"],
+            "shape": ["(10, 20)"],
             "backend": ["cpu", "gpu"],
         }
 
-    def test_reshard_r_to_s(self):
+    def test_reshard_r_to_p(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )
         for envs in envs_list:
             self.run_test_case(
-                "reshard_r_to_s.py",
+                "reshard_r_to_p.py",
                 user_defined_envs=envs,
             )
 
