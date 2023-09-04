@@ -355,6 +355,7 @@ def gen(
         load(rev_legacy_path),
         load(compat_path),
     )
+    filter_compat_info(compats)
     apis = [{**api, **{'is_fwd': True}} for api in fwds + legacy_fwds]
     apis = apis + [{**api, **{'is_fwd': False}} for api in revs + legacy_revs]
     apis = [
