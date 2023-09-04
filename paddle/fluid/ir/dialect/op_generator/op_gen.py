@@ -351,10 +351,13 @@ class OpInfoParser:
         if 'forward' in self.op_yaml_item:
             forward_input_name_list = []
             forward_map = self.op_yaml_item['forward']
-            inputs = forward_map['inputs']
-            for input in inputs:
-                forward_input_name_list.append(input['name'])
-            return forward_input_name_list
+            if forward_map is not None:
+                inputs = forward_map['inputs']
+                for input in inputs:
+                    forward_input_name_list.append(input['name'])
+                return forward_input_name_list
+            else:
+                return None
         else:
             return None
     
@@ -718,31 +721,34 @@ def to_pascal_case(s):
         return "".join([word.capitalize() for word in words]) + ""
 
 
-def OpInputsGradSemanticCheck(op_info, op_info_items):
+def OpInputGradSemanticCheck(op_info, op_info_items):
     input_grad_semantic_list = []
-    fwd_input_list = op_info.input_name_list
+    num_inputs = len(op_info.input_name_list)
     
+    # get backward op
     bwd_op_name = op_info.backward_name
     if (bwd_op_name is None) or (bwd_op_name not in op_info_items.keys()):
-        input_grad_semantic_list = ["false" for i in range(len(fwd_input_list))]
+        input_grad_semantic_list = ["false" for i in range(num_inputs)]
     else:
         bwd_op_info = op_info_items[bwd_op_name]
 
+        # cut "_grad" of each output of bwd_op, and then compare each modified output with corresponding input
+        # thus determine whether each input has grad semantic
         bwd_output_list = bwd_op_info.output_name_list
         bwd_output_list_new = []
         for bwd_output in bwd_output_list:
-            bwd_output_list_new.append(bwd_output[:-5])
+            bwd_output_list_new.append(bwd_output[:-5]) # cut _grad
         
         bwd_fwd_input_list = bwd_op_info.forward_input_name_list
         if bwd_fwd_input_list is not None:     # set_value, set_value_with_tensor, set_value_grad is not supported
-            assert len(fwd_input_list) == len(bwd_fwd_input_list), "Configuration of forward op and backward op is not match."
-            for i in range(len(bwd_fwd_input_list)):
+            assert len(bwd_fwd_input_list) == num_inputs, "Configuration of forward op and backward op is not match."
+            for i in range(num_inputs):
                 if bwd_fwd_input_list[i] in bwd_output_list_new:
                     input_grad_semantic_list.append("true")
                 else:
                     input_grad_semantic_list.append("false")
         else:
-            input_grad_semantic_list = ["false" for i in range(len(fwd_input_list))]
+            input_grad_semantic_list = ["false" for i in range(num_inputs)]
 
     return input_grad_semantic_list
 
@@ -750,12 +756,15 @@ def OpMutableAttributeGradSemanticCheck(op_info, op_info_items):
     mutable_attribute_grad_semantic_list = []
     fwd_mutable_attribute_list = op_info.mutable_attribute_name_list
 
+    # get backward op
     bwd_op_name = op_info.backward_name
     if (bwd_op_name is None) or (bwd_op_name not in op_info_items.keys()):
         mutable_attribute_grad_semantic_list = ["false" for i in range(len(fwd_mutable_attribute_list))]
     else:
         bwd_op_info = op_info_items[bwd_op_name]
 
+        # cut "_grad" of each output of bwd_op, and then compare each modified output with corresponding attribute
+        # thus determine whether each attribute has grad semantic
         bwd_output_list = bwd_op_info.output_name_list
         bwd_output_list_new = []
         for bwd_output in bwd_output_list:
@@ -806,7 +815,6 @@ def OpGenerator(
     ops_defined_list = []  # all op class defined store in this list
     ops_vjp_defined_list = []  # all op vjp static interface defination
     for key, op_info in op_info_items.items():
-
         # get op inputs info
         op_input_name_list = op_info.input_name_list
         op_input_type_list = op_info.input_type_list
@@ -862,7 +870,7 @@ def OpGenerator(
         exclusive_interface_str = gen_exclusive_interface_str(op_info)
 
         # check op inputs and mutable_attributes grad semantics
-        input_grad_semantic_list = OpInputsGradSemanticCheck(op_info, op_info_items)
+        input_grad_semantic_list = OpInputGradSemanticCheck(op_info, op_info_items)
         mutable_attribute_grad_semantic_list = OpMutableAttributeGradSemanticCheck(op_info, op_info_items)
         
         # If op has inplace info, we will generate inplace op and non-inplace op.
