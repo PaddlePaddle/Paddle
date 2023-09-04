@@ -23,8 +23,11 @@
 namespace paddle {
 namespace dialect {
 
-ir::OpResult split_grad(std::vector<ir::OpResult> out_grads, ir::OpResult axis);
+ir::OpResult embedding_grad(ir::OpResult x,
+                            ir::OpResult weight,
+                            ir::OpResult out_grad,
+                            int64_t padding_idx,
+                            bool sparse);
 
-ir::OpResult split_grad(std::vector<ir::OpResult> out_grads, int axis);
 }  // namespace dialect
 }  // namespace paddle
