@@ -2,7 +2,7 @@ file(
   GLOB TEST_INTERP_CASES
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "test_*.py")
-list(REMOVE_ITEM TEST_INTERP_CASES "test_standalone_mannual_event.py")
+list(REMOVE_ITEM TEST_INTERP_CASES "test_standalone_custom_event.py")
 string(REPLACE ".py" "" TEST_INTERP_CASES "${TEST_INTERP_CASES}")
 
 foreach(target ${TEST_INTERP_CASES})
@@ -32,7 +32,7 @@ py_test_modules(
 # These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
 set(STATIC_BUILD_TESTS
     test_standalone_controlflow test_standalone_cuda_graph_multi_stream
-    test_standalone_custom_stream test_standalone_mannual_event
+    test_standalone_custom_stream test_standalone_custom_event
     test_standalone_executor test_standalone_multiply_write)
 
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})

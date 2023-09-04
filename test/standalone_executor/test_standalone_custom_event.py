@@ -16,7 +16,7 @@ import unittest
 
 import paddle
 from paddle.distributed.passes.pass_utils import (
-    _add_event_dependcy,
+    _add_event_dependency,
     get_skip_gc_vars,
     split_program,
 )
@@ -102,7 +102,7 @@ class TestMannulEvent(unittest.TestCase):
         if apply_mannual_event:
             for waiter, recorders in waiter_recorder_events_map.items():
                 for recorder in recorders:
-                    _add_event_dependcy(ops[recorder].desc, ops[waiter].desc)
+                    _add_event_dependency(ops[recorder].desc, ops[waiter].desc)
         main_progs, _, _ = split_program(prog, [11])
         return main_progs
 

@@ -225,7 +225,7 @@ class OperatorDistAttr {
   void parse_from_string(const std::string& data);
 
   static std::string unique_name(std::string key) {
-    thread_local static std::atomic<int> id_{0};
+    static std::atomic<int> id_{0};
     return key + "_" + std::to_string(id_++);
   }
 

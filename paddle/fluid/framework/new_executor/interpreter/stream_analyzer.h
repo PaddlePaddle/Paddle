@@ -86,10 +86,10 @@ class StreamAnalyzer {
 
   void ShareEventInfoFrom(const StreamAnalyzer& src);
 
-  void SetMannualEventsInfo(
+  void SetForceEventsToWaitInfo(
       std::unordered_map<std::string, std::shared_ptr<EventInter>>*
-          mannual_envets) {
-    program_mannual_wait_evnets_ = mannual_envets;
+          program_force_events_to_wait) {
+    program_force_events_to_wait_ = program_force_events_to_wait;
   }
 
   std::shared_ptr<
@@ -121,7 +121,7 @@ class StreamAnalyzer {
       std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>>
       event_info_;
   std::unordered_map<std::string, std::shared_ptr<EventInter>>*
-      program_mannual_wait_evnets_;  // not owned
+      program_force_events_to_wait_;  // not owned
 };
 
 /// ======================== ///

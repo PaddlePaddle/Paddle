@@ -527,7 +527,7 @@ def _program_for_fthenb_and_1f1b(program):
     return [lr_prog, fwd_prog, bwd_prog, opt_prog]
 
 
-def _add_event_dependcy(recorder_op_desc, waiter_op_desc):
+def _add_event_dependency(recorder_op_desc, waiter_op_desc):
     '''
     Add the extra event dependcy of the two operators.
     This function mainly aims for the cross-programs in pipeline parallelism,

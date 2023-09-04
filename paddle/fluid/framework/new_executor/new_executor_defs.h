@@ -215,7 +215,7 @@ class Instruction {
     events_to_wait_.emplace_back(instr_id, event, waiter_type);
   }
 
-  void AddMannualEventToWait(const EventInter* event_inter) {
+  void AddEventToWait(const EventInter* event_inter) {
     events_to_wait_.push_back(*event_inter);
   }
 

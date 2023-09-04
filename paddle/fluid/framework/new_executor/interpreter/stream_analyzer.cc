@@ -100,10 +100,10 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
           // It means the event will be waited for other interpreter that the
           // event name of a operator is not 'default'.
           if (recorder_instr.OpFunc()->force_record_event_ == true &&
-              (*program_mannual_wait_evnets_)
+              (*program_force_events_to_wait_)
                       .count(recorder_instr.OpFunc()->event_to_record_) == 0) {
-            (*program_mannual_wait_evnets_)[recorder_instr.OpFunc()
-                                                ->event_to_record_] =
+            (*program_force_events_to_wait_)[recorder_instr.OpFunc()
+                                                 ->event_to_record_] =
                 recorder_instr.EventToRecord();
           }
           instr2event.emplace(recorder_instr_id, device_event);
@@ -137,11 +137,11 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
                 "'event_name' of the operator %s is 'default'.",
                 instruction.OpBase()->Type().c_str()));
         PADDLE_ENFORCE_EQ(
-            (*program_mannual_wait_evnets_)
+            (*program_force_events_to_wait_)
                 .find(op_func_node->event_to_record_),
-            (*program_mannual_wait_evnets_).end(),
+            (*program_force_events_to_wait_).end(),
             phi::errors::InvalidArgument(
-                "The program_mannual_wait_evnets_ had the event "
+                "The program_force_events_to_wait_ had the event "
                 "that belongs to the operator : %s before the operator create "
                 "the event, "
                 "This is is werid.",
@@ -150,7 +150,7 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
             std::make_shared<DeviceEvent>(place,
                                           platform::GenerateDeviceEventFlag());
         instruction.AddEventToRecord(device_event, platform::kCUDA /*unused*/);
-        (*program_mannual_wait_evnets_)[op_func_node->event_to_record_] =
+        (*program_force_events_to_wait_)[op_func_node->event_to_record_] =
             instruction.EventToRecord();
         VLOG(6) << "Create mannual event: " << op_func_node->event_to_record_
                 << " for the operator: " << instruction.OpBase()->Type();
@@ -160,10 +160,10 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
     if (!(op_func_node->events_to_wait_.empty())) {
       for (auto event_name : op_func_node->events_to_wait_) {
         PADDLE_ENFORCE_NE(
-            (*program_mannual_wait_evnets_).find(event_name),
-            (*program_mannual_wait_evnets_).end(),
+            (*program_force_events_to_wait_).find(event_name),
+            (*program_force_events_to_wait_).end(),
             phi::errors::InvalidArgument(
-                "The program_mannual_wait_evnets_ don't have the event %s "
+                "The program_force_events_to_wait_ don't have the event %s "
                 "for the operator: %s to wait. The event should had been "
                 "created by the operator "
                 "whose event_to_record_ is %s.",
@@ -171,8 +171,8 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
                 instruction.OpBase()->Type().c_str(),
                 event_name.c_str()));
 
-        instruction.AddMannualEventToWait(
-            (*program_mannual_wait_evnets_)[event_name].get());
+        instruction.AddEventToWait(
+            (*program_force_events_to_wait_)[event_name].get());
       }
     }
   }
