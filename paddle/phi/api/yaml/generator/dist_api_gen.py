@@ -88,19 +88,19 @@ INPLACE_API_OUT_CREATION_TEMPLATE = """
 """
 SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
     auto dist_out = SetKernelDistOutput(&api_output);
-    auto dense_out = const_cast<phi::DenseTensor*>(&dist_out->value());
+    auto dense_out = dist_out->unsafe_mutable_value();
 """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
     auto dist_out_{} = SetKernelDistOutput({});
-    auto dense_out_{} = const_cast<phi::DenseTensor*>(&dist_out_{}->value());
+    auto dense_out_{} = dist_out_{}->unsafe_mutable_value();
 """
 SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput(&api_output, spmd_info.second[0]);
-    auto dense_out = const_cast<phi::DenseTensor*>(&dist_out->value());
+    auto dense_out = dist_out->unsafe_mutable_value();
 """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out_{} = SetKernelDistOutput({}, spmd_info.second[{}]);
-    auto dense_out_{} = const_cast<phi::DenseTensor*>(&dist_out_{}->value());
+    auto dense_out_{} = dist_out_{}->unsafe_mutable_value();
 """
 
 # TODO(chenweihang): support vector and tuple output later
@@ -108,7 +108,7 @@ VECTOR_OUT_CREATION_TEMPLATE = """
 """
 MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
     auto dist_out_{} = {}({}, {});
-    auto dense_out_{} = const_cast<phi::DenseTensor*>(&dist_out_{}->value());
+    auto dense_out_{} = dist_out_{}->unsafe_mutable_value();
 """
 TUPLE_OUT_CREATION_TEMPLATE = """
 """

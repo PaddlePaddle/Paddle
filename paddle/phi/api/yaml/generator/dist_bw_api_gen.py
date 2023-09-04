@@ -40,14 +40,14 @@ MAIN_DIST_BRANCH_TEMPLATE = """
 # 1. Create API Outputs
 SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput({});
-    auto dense_out = const_cast<phi::DenseTensor*>(&dist_out->value());
+    auto dense_out = dist_out->unsafe_mutable_value();
 """
 INPLACE_OUT_CREATION_TEMPLATE = """
     *{} = {};
 """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out_{} = SetKernelDistOutput({});
-    auto dense_out_{} = const_cast<phi::DenseTensor*>(&dist_out_{}->value());
+    auto dense_out_{} = dist_out_{}->unsafe_mutable_value();
 """
 
 # 2. Infer Global Shape

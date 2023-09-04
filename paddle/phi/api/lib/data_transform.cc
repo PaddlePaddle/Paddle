@@ -620,15 +620,13 @@ std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
                                    dense_tensor.meta().is_contiguous()))) {
       return std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in);
     }
-    // Note: Here we only trans DenseTensor Data, the DistTensor info
-    // does not need to be updated, so we cannot construct new DistTensor by
-    // DenseTensor, it will trigger additional reshard operations, causing
-    // the tensor value changed. So we use const_cast to change the DenseTensor
-    // value directly, which is safe
+    // TODO(chenweihang): The global meta in DistTensor is not changed,
+    // but the local meta in DenseTensor maybe changed, such as layout
+    // change(NCHW->NHWC), so the new DistTensor's meta maybe not unified.
     VLOG(6) << "PrepareDataForDistTensor return transformed dist tensor";
     auto dist_out = std::make_shared<phi::distributed::DistTensor>(
         dist_tensor->dims(), dist_tensor->dist_attr());
-    auto* out = const_cast<phi::DenseTensor*>(&dist_out->value());
+    auto* out = dist_out->unsafe_mutable_value();
     *out = TransformData(
         dense_tensor, target_args_def, transform_flag, is_stride_kernel);
     return dist_out;
