@@ -189,15 +189,16 @@ def generate_source_cu(
 if __name__ == "__main__":
     args = parse_args()
     archs = args.cuda_arch
+    header_all = DefineHeader
+    header_name = "autogen/arch_define.h"
     if archs:
-        header_all = DefineHeader
         for arch in archs:
             define_line = "#define USE_FPAINTB_GEMM_WITH_SM%s\n" % str(arch)
             header_all += define_line
-        header_name = "autogen/arch_define.h"
-        with open(header_name, "w") as f:
-            f.write(header_all)
-            f.close()
+    with open(header_name, "w") as f:
+        f.write(header_all)
+        f.close()
+    if archs:
         for element_type in ElementTypes.keys():
             for arch in archs:
                 for epilogue_tag in EpilogueTags.keys():
