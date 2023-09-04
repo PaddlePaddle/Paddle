@@ -26,6 +26,7 @@
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_dialect.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_op.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/legacy_kernel_op.h"
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_adaptor.h"
 #include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/platform/init.h"
@@ -126,4 +127,47 @@ TEST(dialect_attr, attr) {
   EXPECT_EQ(
       ss.str() == "<backend:CPU|layout:Undefined(AnyLayout)|dtype:float32>",
       true);
+}
+
+ir::AttributeMap CreateAttributeMap(std::vector<std::string> attribute_names,
+                                    std::vector<std::string> attributes,
+                                    std::string attr_name,
+                                    phi::KernelKey kernel_key) {
+  ir::IrContext* ctx = ir::IrContext::Instance();
+  ir::AttributeMap attr_map;
+  for (size_t i = 0; i < attribute_names.size(); i++) {
+    ir::Attribute attr_value = ir::StrAttribute::get(ctx, attributes[i]);
+    attr_map.insert(
+        std::pair<std::string, ir::Attribute>(attribute_names[i], attr_value));
+  }
+  auto attr = paddle::dialect::KernelAttribute::get(ctx, kernel_key);
+  attr_map.insert(std::pair<std::string, ir::Attribute>(attr_name, attr));
+  return attr_map;
+}
+
+TEST(kernel_dialect, legacy_op_test) {
+  // (1) Init environment.
+
+  ir::IrContext* ctx = ir::IrContext::Instance();
+  ir::Program program((ctx));
+
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  phi::KernelKey kernel_key(
+      phi::Backend::CPU, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT32);
+
+  ir::OpInfo kernel_op_info =
+      ctx->GetRegisteredOpInfo(paddle::dialect::LegacyKernelOp::name());
+  ir::OperationArgument argument(kernel_op_info);
+  argument.attributes = CreateAttributeMap({"op_name", "kernel_name"},
+                                           {"pd.kernel_op", "kernel_op"},
+                                           "kernel_key",
+                                           kernel_key);
+
+  ir::Operation* op = ir::Operation::Create(std::move(argument));
+  EXPECT_EQ("pd.kernel_op",
+            op->dyn_cast<paddle::dialect::LegacyKernelOp>().op_name());
+  EXPECT_EQ("kernel_op",
+            op->dyn_cast<paddle::dialect::LegacyKernelOp>().kernel_name());
+  EXPECT_EQ(kernel_key,
+            op->dyn_cast<paddle::dialect::LegacyKernelOp>().kernel_key());
 }
