@@ -30,26 +30,34 @@ inline void CompareKernelImpl(const Context& ctx,
                               const DenseTensor& y,
                               int axis,
                               DenseTensor* out) {
-  if (!out->IsSharedWith(x)) {
-    ctx.template Alloc<bool>(out);
-    if (x.dims().size() >= y.dims().size()) {
-      funcs::ElementwiseCompute<Functor, T, bool>(
-          ctx, x, y, Functor(), out, axis);
-    } else {
-      funcs::ElementwiseCompute<InverseFunctor, T, bool>(
-          ctx, x, y, InverseFunctor(), out, axis);
-    }
+  ctx.template Alloc<bool>(out);
+  if (x.dims().size() >= y.dims().size()) {
+    funcs::ElementwiseCompute<Functor, T, bool>(
+        ctx, x, y, Functor(), out, axis);
   } else {
-    auto x_origin = x;
-    out->set_type(phi::DataType::BOOL);
-    ctx.template Alloc<bool>(out);
-    if (x_origin.dims().size() >= y.dims().size()) {
-      funcs::ElementwiseCompute<Functor, T, bool>(
-          ctx, x_origin, y, Functor(), out, axis);
-    } else {
-      funcs::ElementwiseCompute<InverseFunctor, T, bool>(
-          ctx, x_origin, y, InverseFunctor(), out, axis);
-    }
+    funcs::ElementwiseCompute<InverseFunctor, T, bool>(
+        ctx, x, y, InverseFunctor(), out, axis);
+  }
+}
+
+template <typename T,
+          typename Context,
+          typename Functor,
+          typename InverseFunctor>
+inline void InplaceCompareKernelImpl(const Context& ctx,
+                                     const DenseTensor& x,
+                                     const DenseTensor& y,
+                                     int axis,
+                                     DenseTensor* out) {
+  auto x_origin = x;
+  out->set_type(phi::DataType::BOOL);
+  ctx.template Alloc<bool>(out);
+  if (x_origin.dims().size() >= y.dims().size()) {
+    funcs::ElementwiseCompute<Functor, T, bool>(
+        ctx, x_origin, y, Functor(), out, axis);
+  } else {
+    funcs::ElementwiseCompute<InverseFunctor, T, bool>(
+        ctx, x_origin, y, InverseFunctor(), out, axis);
   }
 }
 

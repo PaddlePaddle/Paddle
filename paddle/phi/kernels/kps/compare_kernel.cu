@@ -52,16 +52,25 @@ inline void CompareKernelImpl(const Context& ctx,
                               const DenseTensor& y,
                               int axis,
                               DenseTensor* out) {
-  std::vector<const DenseTensor*> ins;
-  if (out->IsSharedWith(x)) {
-    auto x_origin = x;
-    ins.push_back(&x_origin);
-  } else {
-    ins.push_back(&x);
-  }
+  ctx.template Alloc<bool>(out);
+  std::vector<const DenseTensor*> ins{&x, &y};
+  std::vector<DenseTensor*> outs{out};
+  funcs::BroadcastKernel<bool>(ctx, ins, &outs, Functor(), axis);
+}
+
+template <typename T,
+          typename Context,
+          typename Functor,
+          typename InverseFunctor>
+inline void InplaceCompareKernelImpl(const Context& ctx,
+                                     const DenseTensor& x,
+                                     const DenseTensor& y,
+                                     int axis,
+                                     DenseTensor* out) {
+  auto x_origin = x;
   ctx.template Alloc<bool>(out);
   out->set_type(phi::DataType::BOOL);
-  ins.push_back(&y);
+  std::vector<const DenseTensor*> ins{&x_origin, &y};
   std::vector<DenseTensor*> outs{out};
   funcs::BroadcastKernel<bool>(ctx, ins, &outs, Functor(), axis);
 }

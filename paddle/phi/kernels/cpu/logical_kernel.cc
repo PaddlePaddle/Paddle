@@ -54,15 +54,18 @@ void LogicalNotKernel(const Context& dev_ctx,
   funcs::LogicalNotFunctor<T> unary_func;
 
   phi::Transform<Context> trans;
-  if (!out->IsSharedWith(x)) {
+  if (out->IsSharedWith(x)) {
+    auto x_origin = x;
+    out->set_type(phi::DataType::BOOL);
+    auto* out_ptr = dev_ctx.template Alloc<bool>(out);
+    trans(dev_ctx,
+          x_origin.data<T>(),
+          x_origin.data<T>() + x_origin.numel(),
+          out_ptr,
+          unary_func);
+  } else {
     auto* out_ptr = dev_ctx.template Alloc<bool>(out);
     trans(dev_ctx, x.data<T>(), x.data<T>() + x.numel(), out_ptr, unary_func);
-  } else {
-    trans(dev_ctx,
-          x.data<T>(),
-          x.data<T>() + x.numel(),
-          reinterpret_cast<T*>(out->data()),
-          unary_func);
   }
 }
 
