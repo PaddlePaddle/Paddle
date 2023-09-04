@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, dy2static_unittest
+from dygraph_to_static_util import (
+    ast_only_test,
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 import paddle.nn.functional as F
@@ -169,6 +173,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
 
 
 class TestBackend(unittest.TestCase):
+    @test_and_compare_with_new_ir(False)
     def test_backend(self):
         x = paddle.randn([2, 4])
         out1 = self.forward(x, 'CINN')

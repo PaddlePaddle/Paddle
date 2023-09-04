@@ -61,13 +61,15 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/utils/pybind.h"
 
 PHI_DECLARE_bool(set_to_1d);
-PD_DECLARE_bool(use_stride_kernel);
+PHI_DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace pybind {
@@ -98,6 +100,30 @@ Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj) {
         "method, when you reach this means we got another type index."));
   }
 }
+
+namespace {
+#ifdef PADDLE_WITH_DISTRIBUTE
+phi::DenseTensor ReshardXToReplicated(
+    phi::distributed::DistTensor* dist_tensor) {
+  if (!phi::distributed::IsDimsMappingReplicated(
+          dist_tensor->dist_attr().dims_mapping())) {
+    phi::distributed::TensorDistAttr dist_attr(dist_tensor->dist_attr());
+    std::vector<int64_t> dims_mapping(dist_tensor->dims().size(), -1);
+    dist_attr.set_dims_mapping(dims_mapping);
+
+    // reshard to replicate dist tensor
+    auto* func =
+        phi::distributed::ChooseProperReshardFunction(*dist_tensor, dist_attr);
+    auto* dev_ctx =
+        phi::DeviceContextPool::Instance().Get(dist_tensor->place());
+    auto out_tensor = func->Eval(dev_ctx, *dist_tensor, dist_attr);
+    return out_tensor->value();
+  } else {
+    return dist_tensor->value();
+  }
+}
+#endif
+}  // namespace
 
 PyDoc_STRVAR(tensor_method_numpy__doc__,  // NOLINT
              R"DOC(numpy($self, /)
@@ -145,15 +171,6 @@ static PyObject* tensor_method_numpy(TensorObject* self,
     return array;
   }
   auto tensor_dims = self->tensor.shape();
-#ifdef PADDLE_WITH_DISTRIBUTE
-  // Now the DistTensor's numpy() return the local tensor value
-  if (self->tensor.is_dist_tensor()) {
-    tensor_dims = phi::vectorize(
-        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
-            ->value()
-            .dims());
-  }
-#endif
   auto numpy_dtype = TensorDtype2NumpyDtype(self->tensor.type());
   auto sizeof_dtype = phi::SizeOf(self->tensor.type());
   Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];     // NOLINT
@@ -258,12 +275,11 @@ static PyObject* tensor_method_numpy(TensorObject* self,
                            dense_tensor->Holder()->size());
     } else if (self->tensor.is_dist_tensor()) {
 #ifdef PADDLE_WITH_DISTRIBUTE
-      // TODO(chenweihang): deal with DistTensor as local DenseTensor now,
-      // if the local DenseTensor is shard or partial, do gather or reduce?
       VLOG(6) << "Getting DistTensor's numpy value";
       auto* dist_tensor =
           static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
-      auto& dense_tensor = dist_tensor->value();
+      auto dense_tensor = ReshardXToReplicated(dist_tensor);
+
       cpu_tensor.set_meta(dense_tensor.meta());
       // deep copy
       auto tmp_allocation_ptr =
@@ -330,7 +346,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       VLOG(6) << "Getting DistTensor's numpy value";
       auto* dist_tensor =
           static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
-      auto& dense_tensor = dist_tensor->value();
+      auto dense_tensor = ReshardXToReplicated(dist_tensor);
+
       cpu_tensor.set_meta(dense_tensor.meta());
       auto tmp_allocation_ptr =
           memory::Alloc(cpu_place, dense_tensor.Holder()->size());
@@ -2680,6 +2697,30 @@ static PyObject* tensor__grad_value(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__local_value(TensorObject* self,
+                                     PyObject* args,
+                                     PyObject* kwargs) {
+  EAGER_TRY
+  if (self->tensor.is_dist_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+    phi::distributed::DistTensor* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+    paddle::Tensor result(
+        std::make_shared<phi::DenseTensor>(dist_tensor->value()));
+    return ToPyObject(result);
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "The `_local_value` method of (Dist)Tensor is not supported "
+        "in the current PaddlePaddle, please recompile and install "
+        "PaddlePaddle "
+        "with the option of `WITH_DISTRIBUTE=ON`."));
+#endif
+  } else {
+    RETURN_PY_NONE
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor__unset_fake_empty(TensorObject* self,
                                           PyObject* args,
                                           PyObject* kwargs) {
@@ -2819,9 +2860,10 @@ static PyObject* tensor_contiguous(TensorObject* self,
       return reinterpret_cast<PyObject*>(self);
     } else {
       eager_gil_scoped_release guard;
-      return ToPyObject(
-          paddle::Tensor(std::make_shared<phi::DenseTensor>(std::move(
-              paddle::experimental::Trans2Contiguous(*(dense_tensor.get()))))));
+      self->tensor.set_impl(std::make_shared<phi::DenseTensor>(std::move(
+          paddle::experimental::Trans2Contiguous(*(dense_tensor.get())))));
+      Py_INCREF(self);
+      return reinterpret_cast<PyObject*>(self);
     }
 
   } else {
@@ -3128,6 +3170,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      nullptr},
     {"_grad_value",
      (PyCFunction)(void (*)())tensor__grad_value,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_local_value",
+     (PyCFunction)(void (*)())tensor__local_value,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_unset_fake_empty",
