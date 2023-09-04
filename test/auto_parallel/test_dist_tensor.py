@@ -61,38 +61,47 @@ class TestDistTensorFromFn(unittest.TestCase):
 
         # Call the function dtensor_from_fn with dist_attr parameter
         result = dist.dtensor_from_fn(
-            paddle.ones, dist_attr=dist_attr, shape=[1]
+            paddle.ones, dist_attr=dist_attr, shape=[16]
         )
-
         # Verify the result
         if paddle.in_dynamic_mode():
+            dist_attr.dynamic_dims = []
             self.assertIsInstance(result, paddle.Tensor)
-            self.assertEqual(result.shape, [1])
+            self.assertEqual(result.shape, [16])
+            self.assertEqual(result.dist_attr, dist_attr)
         else:
+            dist_attr.dynamic_dims = [0]
             self.assertIsInstance(result, paddle.fluid.framework.Variable)
-            self.assertEqual(result.shape, (1,))
+            self.assertEqual(result.shape, (16,))
+            self.assertEqual(result.dist_attr, dist_attr)
 
-        # Test with generate_tensor_zeros()
         result_zeros = dist.dtensor_from_fn(
-            paddle.zeros, dist_attr=dist_attr, shape=[1]
+            paddle.zeros, dist_attr=dist_attr, shape=[16]
         )
         if paddle.in_dynamic_mode():
+            dist_attr.dynamic_dims = []
             self.assertIsInstance(result, paddle.Tensor)
-            self.assertEqual(result.shape, [1])
+            self.assertEqual(result.shape, [16])
+            self.assertEqual(result.dist_attr, dist_attr)
         else:
+            dist_attr.dynamic_dims = [0]
             self.assertIsInstance(result, paddle.fluid.framework.Variable)
-            self.assertEqual(result.shape, (1,))
+            self.assertEqual(result.shape, (16,))
+            self.assertEqual(result.dist_attr, dist_attr)
 
-        # Test with generate_tensor_random()
         result_random = dist.dtensor_from_fn(
-            paddle.rand, dist_attr=dist_attr, shape=[1]
+            paddle.rand, dist_attr=dist_attr, shape=[16]
         )
         if paddle.in_dynamic_mode():
+            dist_attr.dynamic_dims = []
             self.assertIsInstance(result, paddle.Tensor)
-            self.assertEqual(result.shape, [1])
+            self.assertEqual(result.shape, [16])
+            self.assertEqual(result.dist_attr, dist_attr)
         else:
+            dist_attr.dynamic_dims = [0]
             self.assertIsInstance(result, paddle.fluid.framework.Variable)
-            self.assertEqual(result.shape, (1,))
+            self.assertEqual(result.shape, (16,))
+            self.assertEqual(result.dist_attr, dist_attr)
 
         # Test with invalid sharding_specs length
         with self.assertRaises(AssertionError):
