@@ -94,8 +94,6 @@ class DrrRewritePattern : public ir::RewritePattern {
       auto* ir_node = ir_q.front();
       drr_q.pop();
       ir_q.pop();
-      VLOG(9) << "drr_node name : " << drr_node->name()
-              << ", ir_node name: " << ir_node->name();
       if (drr_node->name() != ir_node->name()) {
         matched = false;
         VLOG(6) << " --- match false: " << drr_node->name();
@@ -155,11 +153,12 @@ class DrrRewritePattern : public ir::RewritePattern {
             ir_q.push(found.second);
             drr_visited.insert(drr_brother_op);
             ir_visited.insert(found.second);
-          } else {
-            VLOG(6) << " --- match false: brother op not same";
-            matched = false;
-            break;
           }
+          //  else {
+          //   VLOG(6) << " --- match false: brother op not same";
+          //   matched = false;
+          //   break;
+          // }
         }
 
         if (source_pattern_graph_->input_tensors().count(
@@ -171,6 +170,7 @@ class DrrRewritePattern : public ir::RewritePattern {
         auto* drr_ancestor_op = drr_input_tensors[i]->producer();
         auto* ir_ancestor_op = ir_input_value.GetDefiningOp();
         if (drr_ancestor_op->name() != ir_ancestor_op->name()) {
+          VLOG(6) << " --- match false: ancestor op not same";
           matched = false;
           break;
         }
@@ -236,10 +236,13 @@ class DrrRewritePattern : public ir::RewritePattern {
             ir_q.push(found.second);
             drr_visited.insert(drr_child_op);
             ir_visited.insert(found.second);
-          } else {
-            matched = false;
-            break;
           }
+          // else {
+          //   matched = false;
+          //   VLOG(6) << " --- match false: " << drr_child_op->name()
+          //           << " not found.";
+          //   break;
+          // }
         }
       }
 
@@ -252,6 +255,7 @@ class DrrRewritePattern : public ir::RewritePattern {
       IR_ENFORCE(step == source_pattern_graph_->CountOfOpCalls(),
                  "step not equal to count of opcalls");
     } else {
+      VLOG(6) << " --- match false: " << op->name();
       return matched;
     }
     // matched = matched && step == source_pattern_graph_->CountOfOpCalls();
@@ -271,18 +275,15 @@ class DrrRewritePattern : public ir::RewritePattern {
 
   void PatternGraphRewrite(const MatchContextImpl& source_pattern_match_ctx,
                            ir::PatternRewriter& rewriter) const {  // NOLINT
-    // 1. Create Operations in result_pattern_graph
+    VLOG(6) << "Create Operations in result_pattern_graph";
     MatchContextImpl res_match_ctx = CreateOperations(
         *result_pattern_graph_, source_pattern_match_ctx, rewriter);
-
-    // 2. Process Assign Tensor
+    VLOG(6) << "Process Assign Tensor";
     RebindIrTensorForAssignTensor(*result_pattern_graph_, &res_match_ctx);
-
-    // 3. Replace Output Values in source_pattern_graph by Output Values in
-    // result_pattern_graph
+    VLOG(6) << "Replace Output Values in source_pattern_graph by Output Values "
+               "in result_pattern_graph";
     ReplaceOutputTensor(source_pattern_match_ctx, res_match_ctx, rewriter);
-
-    // 4. Delete Operations in source_pattern_graph
+    VLOG(6) << "Delete Operations in source_pattern_graph";
     DeleteSourcePatternOp(
         *source_pattern_graph_, source_pattern_match_ctx, rewriter);
   }
@@ -295,6 +296,9 @@ class DrrRewritePattern : public ir::RewritePattern {
     MatchContextImpl res_match_ctx;
     // add input tensors info for res_match_ctx
     for (const auto& in_tensor : result_pattern_graph.input_tensors()) {
+      IR_ENFORCE(result_pattern_graph.id2owend_tensor().count(in_tensor),
+                 "Drr input tensor [%s] must exists in result pattern graph.",
+                 in_tensor);
       if (!result_pattern_graph.id2owend_tensor().at(in_tensor)->is_none()) {
         res_match_ctx.BindIrValue(
             in_tensor,
@@ -352,15 +356,17 @@ class DrrRewritePattern : public ir::RewritePattern {
           topo_order_ops.push_back(&op_call);
         });
     // Delete Operation with topo order from output tensors.
-    std::for_each(
-        topo_order_ops.rbegin(),
-        topo_order_ops.rend(),
-        [&src_match_ctx, &rewriter](const OpCall* op_call) {
-          auto* op = src_match_ctx.operation_map().at(op_call)->get();
-          VLOG(6) << "Delete (" << op_call->name() << " @" << op_call << " :@"
-                  << op << ") in source_pattern_graph ";
-          rewriter.EraseOp(src_match_ctx.operation_map().at(op_call)->get());
-        });
+    std::for_each(topo_order_ops.rbegin(),
+                  topo_order_ops.rend(),
+                  [&src_match_ctx, &rewriter](const OpCall* op_call) {
+                    IR_ENFORCE(src_match_ctx.operation_map().count(op_call),
+                               "Drr OpCall [%s] must exists in match context.",
+                               op_call->name());
+                    auto* op = src_match_ctx.operation_map().at(op_call)->get();
+                    VLOG(6) << "Delete (" << op_call->name() << " @" << op_call
+                            << " :@" << op << ") in source_pattern_graph ";
+                    rewriter.EraseOp(op);
+                  });
   }
 
   const std::shared_ptr<SourcePatternGraph> source_pattern_graph_;

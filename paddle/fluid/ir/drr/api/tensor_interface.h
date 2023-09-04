@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 namespace ir {
 namespace drr {
 
@@ -24,6 +26,10 @@ class IrDtype;
 class ShapeInterface final {
  public:
   bool operator==(const ShapeInterface& other) const;
+
+  int size() const;
+
+  int64_t at(int idx) const;
 
  private:
   explicit ShapeInterface(const IrShape* shape) : shape_(shape) {}

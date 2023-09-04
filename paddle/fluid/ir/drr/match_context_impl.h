@@ -34,10 +34,16 @@ class MatchContextImpl final {
   ~MatchContextImpl() = default;
 
   const TensorInterface& Tensor(const std::string& tensor_name) const {
+    IR_ENFORCE(tensor_map_.count(tensor_name),
+               "Drr tensor [%s] must exists in pattern graph.",
+               tensor_name);
     return *tensor_map_.at(tensor_name);
   }
 
   const IrOperation& Operation(const OpCall* op_call) const {
+    IR_ENFORCE(operation_map_.count(op_call),
+               "Drr operation [%s] must exists in pattern graph.",
+               op_call->name());
     return *operation_map_.at(op_call);
   }
 
