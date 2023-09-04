@@ -26,10 +26,19 @@ import typing
 logger = logging.getLogger(__name__)
 logger.propagate = False
 
-console = logging.StreamHandler(stream=sys.stdout)
-console.setFormatter(logging.Formatter("%(message)s"))
+formatter = logging.Formatter("%(message)s")
 
-logger.addHandler(console)
+handler_stdout = logging.StreamHandler(stream=sys.stdout)
+handler_stdout.setLevel(logging.DEBUG)
+handler_stdout.addFilter(lambda record: record.levelno <= logging.INFO)
+handler_stdout.setFormatter(formatter)
+
+handler_stderr = logging.StreamHandler(stream=sys.stderr)
+handler_stderr.setLevel(logging.WARNING)
+handler_stderr.setFormatter(formatter)
+
+logger.addHandler(handler_stdout)
+logger.addHandler(handler_stderr)
 
 
 RUN_ON_DEVICE = 'cpu'
@@ -373,7 +382,13 @@ def extract_code_blocks_from_docstr(docstr, google_style=True):
 
 
 def log_exit(arg=None):
-    logger.info("----------------End of the Check--------------------")
+    if arg:
+        _logger = logger.warning
+    else:
+        _logger = logger.info
+
+    _logger("----------------End of the Check--------------------")
+
     sys.exit(arg)
 
 

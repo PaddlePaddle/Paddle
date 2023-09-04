@@ -449,20 +449,22 @@ class Xdoctester(DocTester):
         logger.info(">>> Sample code test capacity: %s", self._test_capacity)
 
         if whl_error is not None and whl_error:
-            logger.info("%s is not in whl.", whl_error)
-            logger.info("")
-            logger.info("Please check the whl package and API_PR.spec!")
-            logger.info(
+            logger.warning("%s is not in whl.", whl_error)
+            logger.warning("")
+            logger.warning("Please check the whl package and API_PR.spec!")
+            logger.warning(
                 "You can follow these steps in order to generate API.spec:"
             )
-            logger.info("1. cd ${paddle_path}, compile paddle;")
-            logger.info("2. pip install build/python/dist/(build whl package);")
-            logger.info(
+            logger.warning("1. cd ${paddle_path}, compile paddle;")
+            logger.warning(
+                "2. pip install build/python/dist/(build whl package);"
+            )
+            logger.warning(
                 "3. run 'python tools/print_signatures.py paddle > paddle/fluid/API.spec'."
             )
             for test_result in test_results:
                 if test_result.failed:
-                    logger.info(
+                    logger.warning(
                         "In addition, mistakes found in sample codes: %s",
                         test_result.name,
                     )
@@ -492,40 +494,49 @@ class Xdoctester(DocTester):
 
             if len(summary_success):
                 logger.info(
-                    ">>> %d sample codes ran success", len(summary_success)
+                    ">>> %d sample codes ran success in env: %s",
+                    len(summary_success),
+                    self._test_capacity,
                 )
                 logger.info('\n'.join(summary_success))
 
             if len(summary_skiptest):
                 logger.info(
-                    ">>> %d sample codes skipped", len(summary_skiptest)
+                    ">>> %d sample codes skipped in env: %s",
+                    len(summary_skiptest),
+                    self._test_capacity,
                 )
                 logger.info('\n'.join(summary_skiptest))
 
             if len(summary_nocodes):
-                logger.info(
-                    ">>> %d apis could not run test or don't have sample codes",
+                logger.warning(
+                    ">>> %d apis could not run test or don't have sample codes in env: %s",
                     len(summary_nocodes),
+                    self._test_capacity,
                 )
-                logger.info('\n'.join(summary_nocodes))
+                logger.warning('\n'.join(summary_nocodes))
 
             if len(summary_timeout):
-                logger.info(
-                    ">>> %d sample codes ran timeout", len(summary_timeout)
+                logger.warning(
+                    ">>> %d sample codes ran timeout in env: %s",
+                    len(summary_timeout),
+                    self._test_capacity,
                 )
                 for _result in summary_timeout:
-                    logger.info(
+                    logger.warning(
                         f"{_result['api_name']} - more than {_result['run_time']}s"
                     )
 
             if len(summary_failed):
-                logger.info(
-                    ">>> %d sample codes ran failed", len(summary_failed)
+                logger.warning(
+                    ">>> %d sample codes ran failed in env: %s",
+                    len(summary_failed),
+                    self._test_capacity,
                 )
-                logger.info('\n'.join(summary_failed))
+                logger.warning('\n'.join(summary_failed))
 
             if summary_failed or summary_timeout or summary_nocodes:
-                logger.info(
+                logger.warning(
                     "Mistakes found in sample codes. Please recheck the sample codes."
                 )
                 log_exit(1)
