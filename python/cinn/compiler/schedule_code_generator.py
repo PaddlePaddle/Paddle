@@ -16,6 +16,8 @@ import ast
 
 from cinn.schedule import IRSchedule
 
+from .utils import node_is_schedule
+
 
 class ScheduleCodeGenerator(ast.NodeVisitor):
     """
@@ -28,6 +30,7 @@ class ScheduleCodeGenerator(ast.NodeVisitor):
         self.scheduler = IRSchedule.make(self.cinn_llir_func)
         self.sch_seq = []
         self.name2blocks = {}
+        self.name2loops = {}
 
     def visit_Subscript(self, node):
         """
@@ -35,64 +38,65 @@ class ScheduleCodeGenerator(ast.NodeVisitor):
         """
         if type(node.ctx) != ast.Store:
             return
-        block = self.scheduler.get_block(node.value.id)
-        self.name2blocks[node.value.id] = block
-        loops = self.scheduler.get_loops(node.value.id)
-        name2loops = self.scheduler.get_name2loops_dict(node.value.id)
 
         for sch_node in self.sch_seq:
+            self.name2blocks[node.value.id] = self.scheduler.get_block(
+                node.value.id
+            )
+            self.name2loops = self.scheduler.get_name2loops_dict(node.value.id)
+
             sch_name = (
                 sch_node.func.id
                 if isinstance(sch_node.func, ast.Name)
                 else sch_node.func.attr
             )
-            sch_args = []
-            for sch_arg in sch_node.args:
-                if isinstance(sch_arg, ast.Name):
-                    assert (
-                        sch_arg.id in name2loops
-                        or sch_arg.id in self.name2blocks
-                    ), f'No matching block and loop was found for {sch_name}, \
-                    current blocks are {self.name2blocks.keys()}, loops under block {node.value.id} are {name2loops.keys()}'
-                    sch_args.append(name2loops[sch_arg.id])
-                else:
-                    sch_args.append(sch_arg)
+            sch_args = [self.eval(item) for item in sch_node.args]
 
-            # TODO(6clc): support keywords
-            # sch_keywords = sch_node.keywords
-            getattr(self.scheduler, sch_name)(sch_args)
+            sch_keywords = {
+                kw.arg: self.eval(kw.value) for kw in sch_node.keywords
+            }
+
+            getattr(self.scheduler, sch_name)(*sch_args, **sch_keywords)
 
         self.sch_seq = []
+        self.name2loops = {}
 
     def visit_Assign(self, node):
-        if not isinstance(node.value, ast.Call):
-            self.generic_visit(node)
-            return
-        if isinstance(node.value.func, ast.Name) and node.func.id not in [
-            "fuse",
-            "split",
-        ]:
-            self.sch_seq.append(node)
-            return
-        if isinstance(
-            node.value.func, ast.Attribute
-        ) and node.func.attr not in [
-            "fuse",
-            "split",
-        ]:
+        if isinstance(node.value, ast.Call) and node_is_schedule(node):
             self.sch_seq.append(node)
             return
         self.generic_visit(node)
 
     def visit_Call(self, node):
-        if isinstance(node.func, ast.Name) and node.func.id not in [
-            "fuse",
-            "split",
-        ]:
-            return
-        if isinstance(node.func, ast.Attribute) and node.func.attr not in [
-            "fuse",
-            "split",
-        ]:
+        if not node_is_schedule(node):
             return
         self.sch_seq.append(node)
+
+    def eval(self, node):
+        return getattr(self, f'eval_{type(node).__name__}')(node)
+
+    def eval_List(self, node):
+        return [self.eval(item) for item in node.elts]
+
+    def eval_Tuple(self, node):
+        return [self.eval(item) for item in node.elts]
+
+    def eval_Constant(self, node):
+        return node.value
+
+    def eval_UnaryOp(self, node):
+        return eval(
+            compile(ast.Expression(body=node), filename='', mode='eval')
+        )
+
+    def eval_Name(self, node):
+        if node.id in self.name2loops:
+            return self.name2loops[node.id]
+        elif node.id in self.name2blocks:
+            return self.name2blocks[node.id]
+        else:
+            raise Exception(
+                f'No matching block and loop was found for {node.id}. \
+                 Current loops are {self.name2loops.keys()}. \
+                 Current blocks are {self.name2blocks.keys()}.'
+            )

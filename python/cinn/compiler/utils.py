@@ -11,16 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from cinn.ir import IrCompare
-from cinn.runtime import CinnLowerLevelIrJit
+import ast
+
+from cinn.schedule import IRSchedule
 
 
-def assert_llir_equal(llir1, llir2, allow_name_suffix_diff=True):
-    comparer = IrCompare(allow_name_suffix_diff)
+def node_is_schedule(node: ast.Call):
+    func_name = ""
+    if isinstance(node.func, ast.Name):
+        func_name = node.func.id
+    elif isinstance(node.func, ast.Attribute):
+        func_name = node.func.attr
 
-    if isinstance(llir1, CinnLowerLevelIrJit):
-        llir1_expr = llir1.convert_to_llir().body()
-        llir2_expr = llir2.convert_to_llir().body()
-    assert comparer.compare(
-        llir1_expr, llir2_expr
-    ), f'llir1: {llir1} \n llir2: {llir2}'
+    return getattr(IRSchedule, func_name, None)

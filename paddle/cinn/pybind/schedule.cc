@@ -42,6 +42,14 @@ void BindSchedule(py::module *m) {
           })
       .def("fuse",
            py::overload_cast<const std::vector<Expr> &>(&ir::IRSchedule::Fuse))
+      .def("split",
+           py::overload_cast<const Expr &, const std::vector<int> &>(
+               &ir::IRSchedule::Split),
+           py::arg("loop"),
+           py::arg("factors"))
+      .def("reorder",
+           py::overload_cast<const std::vector<Expr> &>(
+               &ir::IRSchedule::Reorder))
       .def("get_module",
            py::overload_cast<>(&ir::IRSchedule::GetModule, py::const_))
       .def("get_block",

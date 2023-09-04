@@ -18,6 +18,8 @@ from typing import Union
 from cinn import ir
 from cinn.runtime.data_array import DataArray
 
+from .utils import node_is_schedule
+
 
 class ComputeCodeGenerator(ast.NodeVisitor):
     """
@@ -221,7 +223,7 @@ class ComputeCodeGenerator(ast.NodeVisitor):
         lhs = node.targets[0]
 
         # 1 parse RHS
-        rhs_expr = self.eval_expression(node.value)
+        rhs_expr = self.visit(node.value)
 
         # 2 parse LHS
         if isinstance(lhs, ast.Subscript):
@@ -257,51 +259,16 @@ class ComputeCodeGenerator(ast.NodeVisitor):
         return ir.Block.make(blocks)
 
     def visit_Expr(self, node):
-        return self.eval_expression(node.value)
+        return self.visit(node.value)
 
     def visit_Call(self, node):
-        return self.eval_expression(node)
-
-    def eval_expression(self, node):
-        """
-        Parse Expr expression composed of AST nodes
-
-        Args:
-            node(ast): The ast of Python
-
-        Returns:
-            cinn.ir.Expr: Expr is equivalent to node
-        """
-
-        if isinstance(node, ast.Name):
-            assert (
-                node.id in self.variables_table
-            ), f"Undefined Variable: {node.id}"
-            return self.variables_table[node.id]
-        if isinstance(node, ast.Call) and node.func.attr in ["fuse", "split"]:
+        func_name = node.func.attr
+        if node_is_schedule(node) is not None:
             return "no compute"
 
-        args = []
-        if isinstance(node, ast.BinOp):
-            args = [node.left, node.right]
-        elif isinstance(node, ast.UnaryOp):
-            args = [node.operand]
-        elif isinstance(node, ast.Compare):
-            assert (
-                len(node.ops) == 1
-            ), "Only binary comparison symbols are supported. Expressions such as '1 <= a < 10' are not supported."
-            args = [node.left, *node.comparators]
-        elif isinstance(node, ast.BoolOp):
-            args = node.values
-        elif isinstance(node, ast.Call):
-            args = node.args
-        else:
-            raise NotImplementedError(
-                f'The parse data type: {node} is not currently supported'
-            )
-        for i, arg in enumerate(args):
-            args[i] = self.visit(arg)
-
+    # visit Expressions
+    def visit_BinOp(self, node):
+        args = [self.visit(node.left), self.visit(node.right)]
         ast2cinn = {
             # Binary Op
             ast.Add: ir.Add,
@@ -311,16 +278,29 @@ class ComputeCodeGenerator(ast.NodeVisitor):
             ast.Mod: ir.Mod,
             ast.And: ir.And,
             ast.Or: ir.Or,
-            # Comparator Op
+        }
+        return ast2cinn[type(node.op)].make(*args)
+
+    def visit_UnaryOp(self, node):
+        args = [self.visit(node.operand)]
+        ast2cinn = {
+            ast.USub: ir.Minus,
+            ast.Not: ir.Not,
+        }
+        return ast2cinn[type(node.op)].make(*args)
+
+    def visit_Compare(self, node):
+        assert (
+            len(node.ops) == 1
+        ), "Only binary comparison symbols are supported. Expressions such as '1 <= a < 10' are not supported."
+        args = [node.left, *node.comparators]
+        ast2cinn = {
             ast.Eq: ir.EQ,
             ast.NotEq: ir.NE,
             ast.Lt: ir.LT,
             ast.LtE: ir.LE,
             ast.Gt: ir.GT,
             ast.GtE: ir.GE,
-            # Unary Op
-            ast.USub: ir.Minus,
-            ast.Not: ir.Not,
         }
         return ast2cinn[type(node.op)].make(*args)
 
