@@ -169,14 +169,14 @@ class TestGetitemInDygraph(unittest.TestCase):
     def test_indexing_is_multi_dim_list(self):
         # indexing is multi-dim int list, should be treat as one index, like numpy>=1.23
         np_data = np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
-        np_res = np_data[[[2, 3, 4], [1, 2, 5]]]
+        np_res = np_data[np.array([[2, 3, 4], [1, 2, 5]])]
 
         x = paddle.to_tensor(np_data)
         y = x[[[2, 3, 4], [1, 2, 5]]]
         y_index_tensor = x[paddle.to_tensor([[2, 3, 4], [1, 2, 5]])]
 
         np.testing.assert_allclose(y.numpy(), np_res)
-        np.assert_allclose(y.numpy(), y_index_tensor.numpy())
+        np.testing.assert_allclose(y.numpy(), y_index_tensor.numpy())
 
 
 class TestGetitemInStatic(unittest.TestCase):
@@ -384,7 +384,7 @@ class TestGetitemInStatic(unittest.TestCase):
         ):
             x = paddle.to_tensor(np_data)
             y = _getitem_static(
-                x, ([[True, False, True], [False, False, False, True]])
+                x, ([True, False, True], [False, False, False, True])
             )
             res = self.exe.run(fetch_list=[y.name])
 
@@ -405,11 +405,9 @@ class TestGetitemInStatic(unittest.TestCase):
             y = _getitem_static(
                 x,
                 (
-                    [
-                        [True, False, True],
-                        [False, False, True, False],
-                        [True, False, False, True, False],
-                    ]
+                    [True, False, True],
+                    [False, False, True, False],
+                    [True, False, False, True, False],
                 ),
             )
             res = self.exe.run(fetch_list=[y.name])
@@ -419,12 +417,12 @@ class TestGetitemInStatic(unittest.TestCase):
     def test_indexing_is_multi_dim_list(self):
         # indexing is multi-dim int list, should be treat as one index, like numpy>=1.23
         np_data = np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
-        np_res = np_data[[[2, 3, 4], [1, 2, 5]]]
+        np_res = np_data[np.array([[2, 3, 4], [1, 2, 5]])]
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
             x = paddle.to_tensor(np_data)
-            y = _getitem_static(x, [[[2, 3, 4], [1, 2, 5]]])
+            y = _getitem_static(x, ([[2, 3, 4], [1, 2, 5]]))
             y_index_tensor = _getitem_static(
                 x, paddle.to_tensor([[2, 3, 4], [1, 2, 5]])
             )

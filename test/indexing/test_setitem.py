@@ -91,7 +91,7 @@ class TestSetitemInDygraph(unittest.TestCase):
     def test_indexing_is_multi_dim_list(self):
         # indexing is multi-dim int list, should be treat as one index, like numpy>=1.23
         np_data = np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
-        np_data[[[2, 3, 4], [1, 2, 5]]] = 100
+        np_data[np.array([[2, 3, 4], [1, 2, 5]])] = 100
 
         x = paddle.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
         x[[[2, 3, 4], [1, 2, 5]]] = 100
@@ -211,7 +211,7 @@ class TestSetitemInStatic(unittest.TestCase):
         ):
             x = paddle.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
             y = _setitem_static(
-                x, ([[True, False, True], [False, False, False, True]]), 7
+                x, ([True, False, True], [False, False, False, True]), 7
             )
             res = self.exe.run(fetch_list=[y.name])
 
@@ -232,11 +232,9 @@ class TestSetitemInStatic(unittest.TestCase):
             y = _setitem_static(
                 x,
                 (
-                    [
-                        [True, False, True],
-                        [False, False, True, False],
-                        [True, False, False, True, False],
-                    ]
+                    [True, False, True],
+                    [False, False, True, False],
+                    [True, False, False, True, False],
                 ),
                 8,
             )
@@ -247,7 +245,7 @@ class TestSetitemInStatic(unittest.TestCase):
     def test_indexing_is_multi_dim_list(self):
         # indexing is multi-dim int list, should be treat as one index, like numpy>=1.23
         np_data = np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
-        np_data[[[2, 3, 4], [1, 2, 5]]] = 10
+        np_data[np.array([[2, 3, 4], [1, 2, 5]])] = 10
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):

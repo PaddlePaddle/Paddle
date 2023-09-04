@@ -585,19 +585,6 @@ class TestVariableSlice(unittest.TestCase):
 
 
 class TestListIndex(unittest.TestCase):
-    # note(chenjianye):
-    # Non-tuple sequence for multidimensional indexing is supported in numpy < 1.23.
-    # For List case, the outermost `[]` will be treated as tuple `()` in version less than 1.23,
-    # which is used to wrap index elements for multiple axes.
-    # And from 1.23, this will be treat as a whole and only works on one axis.
-    #
-    # e.g. x[[[0],[1]]] == x[([0],[1])] == x[[0],[1]] (in version < 1.23)
-    #      x[[[0],[1]]] == x[array([[0],[1]])] (in version >= 1.23)
-    #
-    # Here, we just modify the code to remove the impact of numpy version changes,
-    # changing x[[[0],[1]]] to x[tuple([[0],[1]])] == x[([0],[1])] == x[[0],[1]].
-    # Whether the paddle behavior in this case will change is still up for debate.
-
     def setUp(self):
         np.random.seed(2022)
 
@@ -639,7 +626,7 @@ class TestListIndex(unittest.TestCase):
                 exe.run(paddle.static.default_startup_program())
                 fetch_list = [y.name]
 
-                getitem_np = array[tuple(index_mod)]
+                getitem_np = array[np.array(index_mod)]
                 getitem_pp = exe.run(
                     prog, feed={x.name: array}, fetch_list=fetch_list
                 )
@@ -660,7 +647,7 @@ class TestListIndex(unittest.TestCase):
             pt = paddle.to_tensor(array)
             index_mod = (index % (array.shape[-1])).tolist()
             try:
-                getitem_np = array[tuple(index_mod)]
+                getitem_np = array[np.array(index_mod)]
 
             except:
                 with self.assertRaises(ValueError):
@@ -845,7 +832,7 @@ class TestListIndex(unittest.TestCase):
         array2 = array.copy()
         try:
             index = (
-                tuple(index)
+                np.array(index)
                 if isinstance(index, list) and isinstance(index[0], list)
                 else index
             )
@@ -869,12 +856,12 @@ class TestListIndex(unittest.TestCase):
     def test_static_graph_setitem_list_index(self):
         paddle.enable_static()
         # case 1:
-        inps_shape = [3, 4, 5, 2, 3]
+        inps_shape = [4, 5, 2]
         array = np.arange(self.numel(inps_shape), dtype='float32').reshape(
             inps_shape
         )
 
-        index_shape = [3, 3, 1, 2]
+        index_shape = [3, 3, 1]
         index = np.arange(self.numel(index_shape)).reshape(index_shape)
 
         value_shape = inps_shape[3:]
@@ -897,12 +884,12 @@ class TestListIndex(unittest.TestCase):
             index = index[0]
 
         # case 2:
-        inps_shape = [3, 4, 5, 4, 3]
+        inps_shape = [4, 5, 4]
         array = np.arange(self.numel(inps_shape), dtype='float32').reshape(
             inps_shape
         )
 
-        index_shape = [4, 3, 2, 2]
+        index_shape = [4, 3, 2]
         index = np.arange(self.numel(index_shape)).reshape(index_shape)
 
         value_shape = [3]
@@ -913,7 +900,7 @@ class TestListIndex(unittest.TestCase):
             + 100
         )
 
-        for _ in range(4):
+        for _ in range(3):
             program = paddle.static.Program()
             index_mod = (index % (min(array.shape))).tolist()
 
