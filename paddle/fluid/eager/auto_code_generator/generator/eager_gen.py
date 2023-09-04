@@ -205,7 +205,7 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
   // Create Grad Node
 {}
   VLOG(4) << \"Finish AD API GRAD: {}";
-  egr::memcheck(\"{}2 begin..\");
+  egr::memcheck(\"{}2 end..\");
   // LOG IF DEBUG
   {}
   // Return
