@@ -53,8 +53,11 @@ TEST(API, case_convert) {
     cpu_strings_x_data[i] = strs[i];
   }
   // 2. get expected results
-  std::string expected_results[] = {
-      strs[0], strs[0], strs[1], strs[1]};  // NOLINT
+  std::string expected_results[] = {// NOLINT
+                                    strs[0],
+                                    strs[0],
+                                    strs[1],
+                                    strs[1]};
   std::transform(
       strs[0].begin(), strs[0].end(), expected_results[0].begin(), ::tolower);
   std::transform(
@@ -103,8 +106,8 @@ TEST(API, case_convert_utf8) {
 
   pstring* cpu_strings_x_data =
       dev_ctx->template Alloc<pstring>(cpu_strings_x.get());
-  std::string strs[] = {"óÓsscHloëË",
-                        "óÓsscHloëËóÓsscHloëËóÓsscHloëË"};  // NOLINT
+  std::string strs[] = {"óÓsscHloëË",  // NOLINT
+                        "óÓsscHloëËóÓsscHloëËóÓsscHloëË"};
   for (int i = 0; i < 2; ++i) {
     cpu_strings_x_data[i] = strs[i];
   }

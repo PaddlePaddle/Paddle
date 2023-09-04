@@ -451,7 +451,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
             ocr_attention = OCRAttention()
 
             if Config.learning_rate_decay == "piecewise_decay":
-                learning_rate = fluid.layers.piecewise_decay(
+                learning_rate = paddle.optimizer.lr.piecewise_decay(
                     [50000], [Config.LR, Config.LR * 0.01]
                 )
             else:
@@ -527,7 +527,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
             ocr_attention = OCRAttention()
 
             if Config.learning_rate_decay == "piecewise_decay":
-                learning_rate = fluid.layers.piecewise_decay(
+                learning_rate = paddle.optimizer.lr.piecewise_decay(
                     [50000], [Config.LR, Config.LR * 0.01]
                 )
             else:

@@ -24,7 +24,7 @@ cc_library(
 cc_library(
   jit_compilation_unit
   SRCS compilation_unit.cc
-  DEPS proto_desc executor parallel_executor executor_cache)
+  DEPS proto_desc executor parallel_executor)
 
 cc_library(
   jit_function_schema

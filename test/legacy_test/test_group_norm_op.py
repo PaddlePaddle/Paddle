@@ -352,6 +352,7 @@ class TestGroupNormOp2_With_NHWC(TestGroupNormOp):
 
 class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
     def init_test_case(self):
+        self.no_need_check_inplace = True
         self.attrs['groups'] = 1
         self.data_format = "NHWC"
         self.attrs['epsilon'] = 0.5

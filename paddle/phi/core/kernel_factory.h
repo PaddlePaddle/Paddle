@@ -325,7 +325,8 @@ class KernelFactory {
   bool HasStructuredKernel(const std::string& op_type) const;
 
   KernelResult SelectKernelOrThrowError(const std::string& kernel_name,
-                                        const KernelKey& kernel_key) const;
+                                        const KernelKey& kernel_key,
+                                        bool use_strided_kernel = false) const;
 
   bool HasKernel(const std::string& kernel_name,
                  const KernelKey& kernel_key) const;

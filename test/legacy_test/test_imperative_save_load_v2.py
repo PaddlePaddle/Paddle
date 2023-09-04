@@ -22,9 +22,9 @@ import paddle
 from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.learning_rate_scheduler import LearningRateDecay
 from paddle.nn import Embedding
 from paddle.optimizer import Adam
+from paddle.optimizer.lr import LRScheduler
 
 
 class SimpleLSTMRNN(paddle.nn.Layer):
@@ -552,7 +552,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                     self.assertTrue(np.sum(np.abs(v.numpy())) == 0)
 
-            if isinstance(adam._learning_rate, LearningRateDecay):
+            if isinstance(adam._learning_rate, LRScheduler):
                 adam._learning_rate.step_num = 0
 
             adam.set_state_dict(self.opti_dict)
@@ -673,7 +673,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 else:
                     np_opti_dict[k] = v
 
-            if isinstance(adam._learning_rate, LearningRateDecay):
+            if isinstance(adam._learning_rate, LRScheduler):
                 adam._learning_rate.step_num = 0
 
             adam.set_state_dict(np_opti_dict)

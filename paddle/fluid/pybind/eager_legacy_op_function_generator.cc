@@ -477,7 +477,7 @@ GenerateOpFunctions() {
   return std::make_tuple(op_function_list, bind_function_list);
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[]) {  // NOLINT
   if (argc != 2) {
     std::cerr << "argc must be 2" << std::endl;
     return -1;

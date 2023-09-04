@@ -20,7 +20,7 @@ import numpy as np
 
 import paddle
 from paddle import fluid
-from paddle.fluid import core, framework, layers
+from paddle.fluid import core, framework
 
 
 def exponential_decay(
@@ -239,7 +239,9 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             d_model = 0.01
             warmup_steps = 200
             learning_rate = 2.0
-            lr = fluid.layers.noam_decay(d_model, warmup_steps, learning_rate)
+            lr = paddle.optimizer.lr.noam_decay(
+                d_model, warmup_steps, learning_rate
+            )
             for step in range(5):
                 step += 1
                 right_result = noam_decay(
@@ -278,7 +280,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 np.testing.assert_allclose(t, right_result[i], rtol=1e-05)
 
             with self.assertRaises(TypeError):
-                lr = fluid.layers.linear_lr_warmup(
+                lr = paddle.optimizer.lr.linear_lr_warmup(
                     learning_rate="fake_lr",
                     warmup_steps=2,
                     start_lr=0.0,
@@ -443,39 +445,59 @@ class TestLearningRateDecay(unittest.TestCase):
         common_kwargs_false["staircase"] = False
 
         decay_fns = [
-            (exponential_decay, layers.exponential_decay, common_kwargs_true),
-            (exponential_decay, layers.exponential_decay, common_kwargs_false),
-            (natural_exp_decay, layers.natural_exp_decay, common_kwargs_true),
-            (natural_exp_decay, layers.natural_exp_decay, common_kwargs_false),
-            (inverse_time_decay, layers.inverse_time_decay, common_kwargs_true),
+            (
+                exponential_decay,
+                paddle.optimizer.lr.exponential_decay,
+                common_kwargs_true,
+            ),
+            (
+                exponential_decay,
+                paddle.optimizer.lr.exponential_decay,
+                common_kwargs_false,
+            ),
+            (
+                natural_exp_decay,
+                paddle.optimizer.lr.natural_exp_decay,
+                common_kwargs_true,
+            ),
+            (
+                natural_exp_decay,
+                paddle.optimizer.lr.natural_exp_decay,
+                common_kwargs_false,
+            ),
             (
                 inverse_time_decay,
-                layers.inverse_time_decay,
+                paddle.optimizer.lr.inverse_time_decay,
+                common_kwargs_true,
+            ),
+            (
+                inverse_time_decay,
+                paddle.optimizer.lr.inverse_time_decay,
                 common_kwargs_false,
             ),
             (
                 polynomial_decay,
-                layers.polynomial_decay,
+                paddle.optimizer.lr.polynomial_decay,
                 {"learning_rate": 1.0, "decay_steps": 5, "cycle": True},
             ),
             (
                 polynomial_decay,
-                layers.polynomial_decay,
+                paddle.optimizer.lr.polynomial_decay,
                 {"learning_rate": 1.0, "decay_steps": 5, "cycle": False},
             ),
             (
                 piecewise_decay,
-                layers.piecewise_decay,
+                paddle.optimizer.lr.piecewise_decay,
                 {"boundaries": [3, 6, 9], "values": [0.1, 0.2, 0.3, 0.4]},
             ),
             (
                 cosine_decay,
-                layers.cosine_decay,
+                paddle.optimizer.lr.cosine_decay,
                 {"learning_rate": 0.1, "step_each_epoch": 100, "epochs": 120},
             ),
             (
                 noam_decay,
-                layers.noam_decay,
+                paddle.optimizer.lr.noam_decay,
                 {"d_model": 0.01, "warmup_steps": 200, "learning_rate": 2.0},
             ),
         ]
@@ -507,7 +529,7 @@ class TestLinearWamrupLearningRateDecay(unittest.TestCase):
         end_lr = 0.1
 
         with fluid.program_guard(main_prog, startup_prog):
-            decayed_lr = layers.linear_lr_warmup(
+            decayed_lr = paddle.optimizer.lr.linear_lr_warmup(
                 fluid_decay_fn(**kwargs), warmup_steps, start_lr, end_lr
             )
 
@@ -548,7 +570,7 @@ class TestLinearWamrupLearningRateDecayWithScalarInput(unittest.TestCase):
         warmup_steps = 10
 
         with fluid.program_guard(main_prog, startup_prog):
-            decayed_lr = layers.linear_lr_warmup(
+            decayed_lr = paddle.optimizer.lr.linear_lr_warmup(
                 lr, warmup_steps, start_lr, end_lr
             )
 

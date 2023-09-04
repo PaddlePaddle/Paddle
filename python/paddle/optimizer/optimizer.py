@@ -125,40 +125,40 @@ class Optimizer:
     Examples:
         .. code-block:: python
 
-            #Take the subclass adam as an example
-            import paddle
-            linear = paddle.nn.Linear(10, 10)
-            inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
-            out = linear(inp)
-            loss = paddle.mean(out)
-            adam = paddle.optimizer.Adam(learning_rate=0.1,
-                    parameters=linear.parameters())
-            loss.backward()
-            adam.step()
-            adam.clear_grad()
+            >>> # Take the subclass adam as an example
+            >>> import paddle
+            >>> linear = paddle.nn.Linear(10, 10)
+            >>> inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
+            >>> out = linear(inp)
+            >>> loss = paddle.mean(out)
+            >>> adam = paddle.optimizer.Adam(learning_rate=0.1,
+            ...         parameters=linear.parameters())
+            >>> loss.backward()
+            >>> adam.step()
+            >>> adam.clear_grad()
 
-            #Take the subclass sgd as an example
-            #optimize parameters in linear_1 and linear2 in different options.
-            #Note that the learning_rate of linear_2 is 0.01.
-            linear_1 = paddle.nn.Linear(10, 10)
-            linear_2 = paddle.nn.Linear(10, 10)
-            inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
-            out = linear_1(inp)
-            out = linear_2(out)
-            loss = paddle.mean(out)
-            sgd = paddle.optimizer.SGD(
-                learning_rate=0.1,
-                parameters=[{
-                    'params': linear_1.parameters()
-                }, {
-                    'params': linear_2.parameters(),
-                    'weight_decay': 0.001,
-                    'learning_rate': 0.1
-                }],
-                weight_decay=0.01)
-            loss.backward()
-            sgd.step()
-            sgd.clear_grad()
+            >>> #Take the subclass sgd as an example
+            >>> #optimize parameters in linear_1 and linear2 in different options.
+            >>> #Note that the learning_rate of linear_2 is 0.01.
+            >>> linear_1 = paddle.nn.Linear(10, 10)
+            >>> linear_2 = paddle.nn.Linear(10, 10)
+            >>> inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
+            >>> out = linear_1(inp)
+            >>> out = linear_2(out)
+            >>> loss = paddle.mean(out)
+            >>> sgd = paddle.optimizer.SGD(
+            ...     learning_rate=0.1,
+            ...     parameters=[{
+            ...         'params': linear_1.parameters()
+            ...     }, {
+            ...         'params': linear_2.parameters(),
+            ...         'weight_decay': 0.001,
+            ...         'learning_rate': 0.1
+            ...     }],
+            ...     weight_decay=0.01)
+            >>> loss.backward()
+            >>> sgd.step()
+            >>> sgd.clear_grad()
 
     """
 
@@ -343,23 +343,23 @@ class Optimizer:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                emb = paddle.nn.Embedding(10, 10)
+                >>> emb = paddle.nn.Embedding(10, 10)
 
-                layer_state_dict = emb.state_dict()
-                paddle.save(layer_state_dict, "emb.pdparams")
+                >>> layer_state_dict = emb.state_dict()
+                >>> paddle.save(layer_state_dict, "emb.pdparams")
 
-                scheduler = paddle.optimizer.lr.NoamDecay(
-                    d_model=0.01, warmup_steps=100, verbose=True)
-                adam = paddle.optimizer.Adam(
-                    learning_rate=scheduler,
-                    parameters=emb.parameters())
-                opt_state_dict = adam.state_dict()
-                paddle.save(opt_state_dict, "adam.pdopt")
+                >>> scheduler = paddle.optimizer.lr.NoamDecay(
+                ...     d_model=0.01, warmup_steps=100, verbose=True)
+                >>> adam = paddle.optimizer.Adam(
+                ...     learning_rate=scheduler,
+                ...     parameters=emb.parameters())
+                >>> opt_state_dict = adam.state_dict()
+                >>> paddle.save(opt_state_dict, "adam.pdopt")
 
-                opti_state_dict = paddle.load("adam.pdopt")
-                adam.set_state_dict(opti_state_dict)
+                >>> opti_state_dict = paddle.load("adam.pdopt")
+                >>> adam.set_state_dict(opti_state_dict)
 
         '''
         if isinstance(self._learning_rate, LRScheduler):
@@ -500,23 +500,22 @@ class Optimizer:
         Examples:
             .. code-block:: python
 
-                import paddle
-                linear = paddle.nn.Linear(10, 10)
+                >>> import paddle
+                >>> linear = paddle.nn.Linear(10, 10)
 
-                adam = paddle.optimizer.Adam(0.1, parameters=linear.parameters())
+                >>> adam = paddle.optimizer.Adam(0.1, parameters=linear.parameters())
 
-                # set learning rate manually by python float value
-                lr_list = [0.2, 0.3, 0.4, 0.5, 0.6]
-                for i in range(5):
-                    adam.set_lr(lr_list[i])
-                    lr = adam.get_lr()
-                    print("current lr is {}".format(lr))
-                # Print:
-                #    current lr is 0.2
-                #    current lr is 0.3
-                #    current lr is 0.4
-                #    current lr is 0.5
-                #    current lr is 0.6
+                >>> # set learning rate manually by python float value
+                >>> lr_list = [0.2, 0.3, 0.4, 0.5, 0.6]
+                >>> for i in range(5):
+                ...     adam.set_lr(lr_list[i])
+                ...     lr = adam.get_lr()
+                ...     print("current lr is {}".format(lr))
+                current lr is 0.2
+                current lr is 0.3
+                current lr is 0.4
+                current lr is 0.5
+                current lr is 0.6
 
         """
         if not isinstance(value, (int, float)):
@@ -570,24 +569,24 @@ class Optimizer:
         Examples:
             .. code-block:: python
 
-                import paddle
-                linear = paddle.nn.Linear(10, 10)
+                >>> import paddle
+                >>> linear = paddle.nn.Linear(10, 10)
 
-                adam = paddle.optimizer.Adam(0.1, parameters=linear.parameters())
+                >>> adam = paddle.optimizer.Adam(0.1, parameters=linear.parameters())
 
-                # set learning rate manually by class LRScheduler
-                scheduler = paddle.optimizer.lr.MultiStepDecay(learning_rate=0.5, milestones=[2,4,6], gamma=0.8)
-                adam.set_lr_scheduler(scheduler)
-                lr = adam.get_lr()
-                print("current lr is {}".format(lr))
-                #    current lr is 0.5
+                >>> # set learning rate manually by class LRScheduler
+                >>> scheduler = paddle.optimizer.lr.MultiStepDecay(learning_rate=0.5, milestones=[2,4,6], gamma=0.8)
+                >>> adam.set_lr_scheduler(scheduler)
+                >>> lr = adam.get_lr()
+                >>> print("current lr is {}".format(lr))
+                current lr is 0.5
 
-                # set learning rate manually by another LRScheduler
-                scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.1, step_size=5, gamma=0.6)
-                adam.set_lr_scheduler(scheduler)
-                lr = adam.get_lr()
-                print("current lr is {}".format(lr))
-                #    current lr is 0.1
+                >>> # set learning rate manually by another LRScheduler
+                >>> scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.1, step_size=5, gamma=0.6)
+                >>> adam.set_lr_scheduler(scheduler)
+                >>> lr = adam.get_lr()
+                >>> print("current lr is {}".format(lr))
+                current lr is 0.1
 
         """
         from paddle.optimizer.lr import LRScheduler
@@ -611,50 +610,79 @@ class Optimizer:
         Examples:
             .. code-block:: python
 
-                # train on default dynamic graph mode
-                import paddle
-                import numpy as np
-                emb = paddle.nn.Embedding(10, 3)
+                >>> # train on default dynamic graph mode
+                >>> import paddle
+                >>> import numpy as np
+                >>> emb = paddle.nn.Embedding(10, 3)
 
-                ## example1: LRScheduler is not used, return the same value is all the same
-                adam = paddle.optimizer.Adam(0.01, parameters = emb.parameters())
-                for batch in range(10):
-                    input = paddle.randint(low=0, high=5, shape=[5])
-                    out = emb(input)
-                    out.backward()
-                    print("Learning rate of step{}: {}".format(batch, adam.get_lr())) # 0.01
-                    adam.step()
+                >>> ## example1: LRScheduler is not used, return the same value is all the same
+                >>> adam = paddle.optimizer.Adam(0.01, parameters = emb.parameters())
+                >>> for batch in range(10):
+                ...     input = paddle.randint(low=0, high=5, shape=[5])
+                ...     out = emb(input)
+                ...     out.backward()
+                ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr())) # 0.01
+                ...     adam.step()
+                Learning rate of step0: 0.01
+                Learning rate of step1: 0.01
+                Learning rate of step2: 0.01
+                Learning rate of step3: 0.01
+                Learning rate of step4: 0.01
+                Learning rate of step5: 0.01
+                Learning rate of step6: 0.01
+                Learning rate of step7: 0.01
+                Learning rate of step8: 0.01
+                Learning rate of step9: 0.01
 
-                ## example2: StepDecay is used, return the scheduled learning rate
-                scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.5, step_size=2, gamma=0.1)
-                adam = paddle.optimizer.Adam(scheduler, parameters = emb.parameters())
-                for batch in range(10):
-                    input = paddle.randint(low=0, high=5, shape=[5])
-                    out = emb(input)
-                    out.backward()
-                    print("Learning rate of step{}: {}".format(batch, adam.get_lr())) # 0.5->0.05...
-                    adam.step()
-                    scheduler.step()
+                >>> ## example2: StepDecay is used, return the scheduled learning rate
+                >>> scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.5, step_size=2, gamma=0.1)
+                >>> adam = paddle.optimizer.Adam(scheduler, parameters = emb.parameters())
+                >>> for batch in range(10):
+                ...     input = paddle.randint(low=0, high=5, shape=[5])
+                ...     out = emb(input)
+                ...     out.backward()
+                ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr())) # 0.5->0.05...
+                ...     adam.step()
+                ...     scheduler.step()
+                Learning rate of step0: 0.5
+                Learning rate of step1: 0.5
+                Learning rate of step2: 0.05
+                Learning rate of step3: 0.05
+                Learning rate of step4: 0.005000000000000001
+                Learning rate of step5: 0.005000000000000001
+                Learning rate of step6: 0.0005000000000000001
+                Learning rate of step7: 0.0005000000000000001
+                Learning rate of step8: 5.000000000000001e-05
+                Learning rate of step9: 5.000000000000001e-05
 
-                # train on static graph mode
-                paddle.enable_static()
-                main_prog = paddle.static.Program()
-                start_prog = paddle.static.Program()
-                with paddle.static.program_guard(main_prog, start_prog):
-                    x = paddle.static.data(name='x', shape=[None, 10])
-                    z = paddle.static.nn.fc(x, 100)
-                    loss = paddle.mean(z)
-                    scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.5, step_size=2, gamma=0.1)
-                    adam = paddle.optimizer.Adam(learning_rate=scheduler)
-                    adam.minimize(loss)
+                >>> # train on static graph mode
+                >>> paddle.enable_static()
+                >>> main_prog = paddle.static.Program()
+                >>> start_prog = paddle.static.Program()
+                >>> with paddle.static.program_guard(main_prog, start_prog):
+                ...     x = paddle.static.data(name='x', shape=[None, 10])
+                ...     z = paddle.static.nn.fc(x, 100)
+                ...     loss = paddle.mean(z)
+                ...     scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.5, step_size=2, gamma=0.1)
+                ...     adam = paddle.optimizer.Adam(learning_rate=scheduler)
+                ...     adam.minimize(loss)
 
-                exe = paddle.static.Executor()
-                exe.run(start_prog)
-                for batch in range(10):
-                    print("Learning rate of step{}: {}", adam.get_lr())     # 0.5->0.05->0.005...
-                    out = exe.run(main_prog, feed={'x': np.random.randn(3, 10).astype('float32')})
-                    scheduler.step()
-
+                >>> exe = paddle.static.Executor()
+                >>> exe.run(start_prog)
+                >>> for batch in range(10):
+                ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr())) # 0.5->0.05->0.005...
+                ...     out = exe.run(main_prog, feed={'x': np.random.randn(3, 10).astype('float32')})
+                ...     scheduler.step()
+                Learning rate of step0: 0.5
+                Learning rate of step1: 0.5
+                Learning rate of step2: 0.05
+                Learning rate of step3: 0.05
+                Learning rate of step4: 0.005000000000000001
+                Learning rate of step5: 0.005000000000000001
+                Learning rate of step6: 0.0005000000000000001
+                Learning rate of step7: 0.0005000000000000001
+                Learning rate of step8: 5.000000000000001e-05
+                Learning rate of step9: 5.000000000000001e-05
         """
         if isinstance(self._learning_rate, float):
             return self._learning_rate
@@ -1114,9 +1142,6 @@ class Optimizer:
         end = len(target_block.ops)
         return target_block._slice_ops(start, end)
 
-    def _append_dgc_ops(self, param_and_grad):
-        pass
-
     def backward(
         self,
         loss,
@@ -1149,17 +1174,17 @@ class Optimizer:
         Examples:
             .. code-block:: python
 
-                import paddle
-                x = paddle.arange(26, dtype="float32").reshape([2, 13])
+                >>> import paddle
+                >>> x = paddle.arange(26, dtype="float32").reshape([2, 13])
 
-                linear = paddle.nn.Linear(13, 5)
-                # This can be any optimizer supported by dygraph.
-                adam = paddle.optimizer.Adam(learning_rate = 0.01,
-                                            parameters = linear.parameters())
-                out = linear(x)
-                out.backward()
-                adam.step()
-                adam.clear_grad()
+                >>> linear = paddle.nn.Linear(13, 5)
+                >>> # This can be any optimizer supported by dygraph.
+                >>> adam = paddle.optimizer.Adam(learning_rate = 0.01,
+                ...                             parameters = linear.parameters())
+                >>> out = linear(x)
+                >>> out.backward()
+                >>> adam.step()
+                >>> adam.clear_grad()
         """
         act_no_grad_set = None
         if framework.in_dygraph_mode():
@@ -1205,9 +1230,6 @@ class Optimizer:
                     params_grads = append_backward(
                         loss, parameter_list, act_no_grad_set, callbacks
                     )
-                # Note: since we can't use all_reduce_op now,
-                #  dgc_op should be the last op of one grad.
-                self._append_dgc_ops(params_grads)
         return params_grads
 
     def apply_gradients(self, params_grads):
@@ -1224,20 +1246,21 @@ class Optimizer:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                inp = paddle.uniform([10, 10], dtype="float32", min=-0.1, max=0.1)
-                linear = paddle.nn.Linear(10, 10)
-                out = linear(inp)
-                loss = paddle.mean(out)
-                optimizer = paddle.optimizer.Adam(learning_rate=0.1,
-                        parameters=linear.parameters())
-                params_grads = optimizer.backward(loss)
-                optimizer.apply_gradients(params_grads)
+                >>> inp = paddle.uniform([10, 10], dtype="float32", min=-0.1, max=0.1)
+                >>> linear = paddle.nn.Linear(10, 10)
+                >>> out = linear(inp)
+                >>> loss = paddle.mean(out)
+                >>> optimizer = paddle.optimizer.Adam(learning_rate=0.1,
+                ...         parameters=linear.parameters())
+                >>> params_grads = optimizer.backward(loss)
+                >>> optimizer.apply_gradients(params_grads)
 
         """
-
-        params_grads = sorted(params_grads, key=lambda x: x[0].name)
+        # NOTE(zhaoyinglia): AutoParallel set '_sorted' attribute to skip the 'sorted' operator.
+        if not hasattr(self, "_sorted"):
+            params_grads = sorted(params_grads, key=lambda x: x[0].name)
 
         # 'optimizer(grad_clip)' or 'set_gradient_clip'
         if self._grad_clip is not None:
@@ -1442,17 +1465,17 @@ class Optimizer:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                a = paddle.arange(26, dtype="float32").reshape([2, 13])
-                linear = paddle.nn.Linear(13, 5)
-                # This can be any optimizer supported by dygraph.
-                adam = paddle.optimizer.Adam(learning_rate = 0.01,
-                                            parameters = linear.parameters())
-                out = linear(a)
-                out.backward()
-                adam.step()
-                adam.clear_grad()
+                >>> a = paddle.arange(26, dtype="float32").reshape([2, 13])
+                >>> linear = paddle.nn.Linear(13, 5)
+                >>> # This can be any optimizer supported by dygraph.
+                >>> adam = paddle.optimizer.Adam(learning_rate = 0.01,
+                ...                             parameters = linear.parameters())
+                >>> out = linear(a)
+                >>> out.backward()
+                >>> adam.step()
+                >>> adam.clear_grad()
 
         """
         param_list = []
@@ -1500,21 +1523,21 @@ class Optimizer:
         Examples:
             .. code-block:: python
 
-                import paddle
-                linear = paddle.nn.Linear(10, 10)
-                input = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
-                out = linear(input)
-                loss = paddle.mean(out)
+                >>> import paddle
+                >>> linear = paddle.nn.Linear(10, 10)
+                >>> input = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
+                >>> out = linear(input)
+                >>> loss = paddle.mean(out)
 
-                beta1 = paddle.to_tensor([0.9], dtype="float32")
-                beta2 = paddle.to_tensor([0.99], dtype="float32")
+                >>> beta1 = paddle.to_tensor([0.9], dtype="float32")
+                >>> beta2 = paddle.to_tensor([0.99], dtype="float32")
 
-                adam = paddle.optimizer.Adam(learning_rate=0.1,
-                        parameters=linear.parameters(),
-                        weight_decay=0.01)
-                loss.backward()
-                adam.minimize(loss)
-                adam.clear_grad()
+                >>> adam = paddle.optimizer.Adam(learning_rate=0.1,
+                ...         parameters=linear.parameters(),
+                ...         weight_decay=0.01)
+                >>> loss.backward()
+                >>> adam.minimize(loss)
+                >>> adam.clear_grad()
 
         """
         assert isinstance(loss, Variable), "The loss should be an Tensor."
@@ -1568,17 +1591,17 @@ class Optimizer:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                a = paddle.arange(26, dtype="float32").reshape([2, 13])
-                linear = paddle.nn.Linear(13, 5)
-                # This can be any optimizer supported by dygraph.
-                adam = paddle.optimizer.Adam(learning_rate = 0.01,
-                                        parameters = linear.parameters())
-                out = linear(a)
-                out.backward()
-                adam.step()
-                adam.clear_grad()
+                >>> a = paddle.arange(26, dtype="float32").reshape([2, 13])
+                >>> linear = paddle.nn.Linear(13, 5)
+                >>> # This can be any optimizer supported by dygraph.
+                >>> adam = paddle.optimizer.Adam(learning_rate = 0.01,
+                ...                         parameters = linear.parameters())
+                >>> out = linear(a)
+                >>> out.backward()
+                >>> adam.step()
+                >>> adam.clear_grad()
         """
         if paddle.fluid.dygraph.base.in_declarative_mode():
             self._declarative_step()

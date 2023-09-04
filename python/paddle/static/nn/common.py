@@ -24,7 +24,7 @@ from paddle.common_ops_import import (
     check_type,
     check_variable_and_dtype,
 )
-from paddle.fluid import core, layers, unique_name
+from paddle.fluid import core, unique_name
 from paddle.fluid.data_feeder import check_dtype
 from paddle.fluid.framework import (
     Program,
@@ -4210,7 +4210,7 @@ class ExponentialMovingAverage:
         Update Exponential Moving Average. Should only call this method in
         train program.
         """
-        global_step = layers.autoincreased_step_counter(
+        global_step = paddle.optimizer.lr.autoincreased_step_counter(
             counter_name=self._step_counter_name
         )
         param_master_emas = []

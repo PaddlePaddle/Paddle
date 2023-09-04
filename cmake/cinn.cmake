@@ -168,8 +168,8 @@ cinn_cc_library(
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
 if(NOT CINN_ONLY)
-  target_link_libraries(cinnapi phi)
-  add_dependencies(cinnapi phi)
+  target_link_libraries(cinnapi pd_dialect phi)
+  add_dependencies(cinnapi pd_dialect phi)
 endif()
 
 target_link_libraries(cinnapi ${PYTHON_LIBRARIES})
@@ -181,6 +181,11 @@ if(WITH_MKL)
     target_link_libraries(cinnapi ${MKLDNN_LIB})
     add_dependencies(cinnapi ${MKLDNN_PROJECT})
   endif()
+endif()
+
+if(NOT WITH_GFLAGS)
+  target_link_libraries(cinnapi gflags)
+  add_dependencies(cinnapi gflags)
 endif()
 
 if(WITH_GPU)
@@ -221,8 +226,8 @@ function(gen_cinncore LINKTYPE)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
   if(NOT CINN_ONLY)
-    target_link_libraries(${CINNCORE_TARGET} phi)
-    add_dependencies(${CINNCORE_TARGET} phi)
+    target_link_libraries(${CINNCORE_TARGET} pd_dialect phi)
+    add_dependencies(${CINNCORE_TARGET} pd_dialect phi)
   endif()
 
   add_dependencies(${CINNCORE_TARGET} pybind)
@@ -235,6 +240,11 @@ function(gen_cinncore LINKTYPE)
       target_link_libraries(${CINNCORE_TARGET} ${MKLDNN_LIB})
       add_dependencies(${CINNCORE_TARGET} ${MKLDNN_PROJECT})
     endif()
+  endif()
+
+  if(NOT WITH_GFLAGS)
+    target_link_libraries(${CINNCORE_TARGET} gflags)
+    add_dependencies(${CINNCORE_TARGET} gflags)
   endif()
 
   if(WITH_GPU)
@@ -326,12 +336,8 @@ set(CINN_LIB "${CINN_LIB_LOCATION}/${CINN_LIB_NAME}")
 # Add CINN's dependencies header files
 ######################################
 
-# Add absl
-set(ABSL_INCLUDE_DIR "${CMAKE_BINARY_DIR}/dist/third_party/absl/include")
-include_directories(${ABSL_INCLUDE_DIR})
-
 # Add isl
-set(ISL_INCLUDE_DIR "${CMAKE_BINARY_DIR}/dist/third_party/isl/include")
+set(ISL_INCLUDE_DIR "${CMAKE_BINARY_DIR}/third_party/install/isl/include")
 include_directories(${ISL_INCLUDE_DIR})
 
 # Add LLVM

@@ -22,64 +22,17 @@ namespace phi {
 template <typename T, typename Context>
 void RmsNormKernel(const Context& dev_ctx,
                    const DenseTensor& x,
-                   const DenseTensor& weight,
                    const paddle::optional<DenseTensor>& bias,
-                   float epsilon,
-                   int begin_norm_axis,
-                   DenseTensor* out);
-
-template <typename T, typename Context>
-void RmsNormWrapper(const Context& ctx,
-                    const T* x,
-                    const T* weight,
-                    const T* bias,
-                    const float epsilon,
-                    const int rows,
-                    const int cols,
-                    T* output);
-
-template <typename T, typename Context>
-void ResidualAddRmsNormWrapper(const Context& ctx,
-                               const T* x,
-                               const T* residual,
-                               const T* bias,
-                               const T* norm_weight,
-                               const T* norm_bias,
-                               const float epsilon,
-                               const int rows,
-                               const int cols,
-                               T* residual_output,
-                               T* output);
-
-template <typename T, typename Context>
-void RmsNormInt8OutWrapper(const Context& ctx,
-                           const T* x,
-                           const T* weight,
-                           const T* bias,
-                           const float epsilon,
-                           const int rows,
-                           const int cols,
-                           const float in_scale,
-                           const int quant_round_type,
-                           const float quant_max_bound,
-                           const float quant_min_bound,
-                           int8_t* output);
-
-template <typename T, typename Context>
-void ResidualAddRmsNormInt8OutWrapper(const Context& ctx,
-                                      const T* x,
-                                      const T* residual,
-                                      const T* bias,
-                                      const T* norm_weight,
-                                      const T* norm_bias,
-                                      const float epsilon,
-                                      const int rows,
-                                      const int cols,
-                                      const float in_scale,
-                                      const int quant_round_type,
-                                      const float quant_max_bound,
-                                      const float quant_min_bound,
-                                      T* residual_output,
-                                      int8_t* output);
+                   const paddle::optional<DenseTensor>& residual,
+                   const DenseTensor& norm_weight,
+                   const paddle::optional<DenseTensor>& norm_bias,
+                   const float epsilon,
+                   const int begin_norm_axis,
+                   const float quant_scale,
+                   const int quant_round_type,
+                   const float quant_max_bound,
+                   const float quant_min_bound,
+                   DenseTensor* out,
+                   DenseTensor* residual_out);
 
 }  // namespace phi

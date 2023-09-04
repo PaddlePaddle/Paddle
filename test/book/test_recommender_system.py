@@ -213,12 +213,25 @@ def train(use_cuda, save_dirname, is_local=True):
         'movie_title',
         'score',
     ]
+    feed_infer_order = [
+        'user_id',
+        'gender_id',
+        'age_id',
+        'job_id',
+        'movie_id',
+        'category_id',
+        'movie_title',
+    ]
 
     def train_loop(main_program):
         exe.run(framework.default_startup_program())
 
         feed_list = [
             main_program.global_block().var(var_name) for var_name in feed_order
+        ]
+        feed_infer_list = [
+            main_program.global_block().var(var_name)
+            for var_name in feed_infer_order
         ]
         feeder = fluid.DataFeeder(feed_list, place)
 
@@ -248,17 +261,9 @@ def train(use_cuda, save_dirname, is_local=True):
                     if test_avg_cost < 6.0:
                         # if avg_cost less than 6.0, we think our code is good.
                         if save_dirname is not None:
-                            fluid.io.save_inference_model(
+                            paddle.static.io.save_inference_model(
                                 save_dirname,
-                                [
-                                    "user_id",
-                                    "gender_id",
-                                    "age_id",
-                                    "job_id",
-                                    "movie_id",
-                                    "category_id",
-                                    "movie_title",
-                                ],
+                                feed_infer_list,
                                 [scale_infer],
                                 exe,
                             )
@@ -302,7 +307,7 @@ def infer(use_cuda, save_dirname=None):
 
     inference_scope = fluid.core.Scope()
     with fluid.scope_guard(inference_scope):
-        # Use fluid.io.load_inference_model to obtain the inference program desc,
+        # Use paddle.static.io.load_inference_model to obtain the inference program desc,
         # the feed_target_names (the names of variables that will be fed
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
@@ -310,7 +315,7 @@ def infer(use_cuda, save_dirname=None):
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(save_dirname, exe)
+        ] = paddle.static.io.load_inference_model(save_dirname, exe)
 
         # Use the first data from paddle.dataset.movielens.test() as input
         assert feed_target_names[0] == "user_id"

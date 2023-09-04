@@ -28,11 +28,13 @@ namespace phi {
 struct StorageProperties {
  public:
   virtual ~StorageProperties() = default;
+
   TypeInfo<StorageProperties> type_info() const { return type_info_; }
 
  private:
   template <typename T, typename U>
   friend class TypeInfoTraits;
+
   TypeInfo<StorageProperties> type_info_{
       TypeInfo<StorageProperties>::kUnknownType};
 };
@@ -70,29 +72,7 @@ struct OneDNNStorageProperties
 };
 #endif
 
-static std::unique_ptr<StorageProperties> CopyStorageProperties(
-    const std::unique_ptr<StorageProperties>& sp) {
-  if (sp) {
-    if (NPUStorageProperties::classof(sp.get())) {
-      auto result = std::make_unique<NPUStorageProperties>();
-      result->storage_format =
-          static_cast<NPUStorageProperties*>(sp.get())->storage_format;
-      result->storage_dims =
-          static_cast<NPUStorageProperties*>(sp.get())->storage_dims;
-      return result;
-#ifdef PADDLE_WITH_DNNL
-    } else if (OneDNNStorageProperties::classof(sp.get())) {
-      auto result = std::make_unique<OneDNNStorageProperties>();
-      result->format = static_cast<OneDNNStorageProperties*>(sp.get())->format;
-      result->mem_desc =
-          static_cast<OneDNNStorageProperties*>(sp.get())->mem_desc;
-      return result;
-#endif
-    } else {
-      return nullptr;
-    }
-  }
-  return nullptr;
-}
+std::unique_ptr<StorageProperties> CopyStorageProperties(
+    const std::unique_ptr<StorageProperties>& sp);
 
 }  // namespace phi
