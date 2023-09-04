@@ -22,6 +22,21 @@ from dist_api_gen import DistForwardAPI
 # Code Gen Templates #
 ######################
 
+MAIN_DIST_BRANCH_TEMPLATE = """
+  // Auto Parallel condition
+  if ({}) {{
+    // 1. Create API Output & Prepare Dist and Dense Output{}
+    // 2. Infer DistTensor's Global Shape{}
+    // 3. Select Kernel{}
+    // 4. PrepareData (DataTransform & Prepare Dist and Dense Input){}
+    // 5. Infer Local DenseTensor Meta{}
+    // 6. DenseTensor Kernel Call{}
+    // 7. Reshard Output{}
+    // 8. Return
+    {}
+  }}
+"""
+
 # 1. Create API Outputs
 SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput({});
@@ -35,9 +50,20 @@ MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
     auto dense_out_{} = const_cast<phi::DenseTensor*>(&dist_out_{}->value());
 """
 
-# 8. Reshard Output
+# 2. Infer Global Shape
+SINGLE_DIST_META_IN_TEMPLATE = """MakeDistMetaTensor(*{}.impl()), """
+SINGLE_DIST_META_OUT_DECL_TEMPLATE = """
+    phi::distributed::DistMetaTensor meta_{}({});"""
+INFER_GLOBAL_META_TEMPLATE = """
+    phi::{}({}{});
+"""
+
+# 7. Reshard Output
 SINGLE_OUTPUT_RESHARD_TEMPLATE = """
-    phi::distributed::ReshardDistTensor(dev_ctx, {}, {}->dist_attr());"""
+    ReshardDistTensor(dev_ctx, {}, {}->dist_attr());"""
+RESHARD_OUTPUT_DEBUG_INFO = """
+    VLOG(6) << "Reshard `{}` from " << {}->dist_attr() << " to " << spmd_info.second[{}] << "done.";
+"""
 
 
 class DistBackwardAPI(DistForwardAPI, BackwardAPI):
@@ -124,35 +150,109 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
     def gene_api_declaration(self) -> str:
         return BackwardAPI.gene_api_declaration(self)
 
-    def generate_reshard_input_code(self) -> str:
-        return "\n    // backward apis do not need to reshard input"
+    def generate_infer_global_shape_code(self) -> str:
+        input_names = self.inputs['names']
+        attr_names = self.attrs['names']
+        output_names = self.outputs['names']
+
+        # 1. get infer meta func name
+        infer_meta = self.infer_meta
+        infer_meta_func_code = infer_meta['func']
+
+        # 2. get meta tensor input args
+        infer_meta_params = (
+            infer_meta['param']
+            if infer_meta['param'] is not None
+            else input_names + attr_names
+        )
+        input_args_code = ""
+        for param in infer_meta_params:
+            if param in input_names:
+                if self.inputs['input_info'][param] == "const Tensor&":
+                    input_args_code += SINGLE_DIST_META_IN_TEMPLATE.format(
+                        param
+                    )
+                else:
+                    raise ValueError(
+                        f"{self.api} : Param of infer_spmd error : {self.inputs['input_info'][param]} type is not supported."
+                    )
+            elif param in attr_names:
+                input_args_code = input_args_code + param + ", "
+            elif isinstance(param, str):
+                input_args_code = input_args_code + "\"" + param + "\", "
+            elif isinstance(param, bool):
+                input_args_code = input_args_code + str(param).lower() + ", "
+            else:
+                input_args_code = input_args_code + str(param) + ", "
+
+        # 3. get meta tensor output args
+        output_decl_code = ""
+        output_args_code = ""
+        for i, out_name in enumerate(self.dist_output_args):
+            if self.outputs['types'][i] == 'std::vector<Tensor>':
+                # TODO(chenweihang): support vector output later
+                pass
+            else:
+                output_decl_code += SINGLE_DIST_META_OUT_DECL_TEMPLATE.format(
+                    out_name, out_name
+                )
+                if len(self.dense_output_args) == 1:
+                    output_args_code += f"&meta_{out_name}, "
+                else:
+                    output_args_code += (
+                        f"{out_name} ? &meta_{out_name} : nullptr, "
+                    )
+        output_args_code = output_args_code[:-2]
+
+        return output_decl_code + INFER_GLOBAL_META_TEMPLATE.format(
+            infer_meta_func_code, input_args_code, output_args_code
+        )
 
     def generate_reshard_output_code(self) -> str:
-        output_num = len(self.outputs['types'])
-        output_reshard_code = ""
-        if output_num == 1:
-            if self.outputs['types'][0] == 'Tensor':
-                out_name = self.outputs['names'][0]
-                assert out_name.endswith('_grad')
-                output_reshard_code += SINGLE_OUTPUT_RESHARD_TEMPLATE.format(
-                    'dist_out', 'dist_input_' + out_name[:-5]
-                )
-            else:
-                self.vector_output_size_assertion_check()
-        elif output_num > 1:
-            for i, out_name in enumerate(self.outputs['names']):
-                assert out_name.endswith('_grad')
-                output_reshard_code += SINGLE_OUTPUT_RESHARD_TEMPLATE.format(
-                    f'dist_out_{i}', 'dist_input_' + out_name[:-5]
-                )
-        else:
-            raise ValueError(
-                "{} : Output error: the output should not be empty.".format(
-                    self.api
-                )
-            )
+        # output_num = len(self.outputs['types'])
+        # output_reshard_code = ""
+        # if output_num == 1:
+        #     if self.outputs['types'][0] == 'Tensor':
+        #         out_name = self.outputs['names'][0]
+        #         assert out_name.endswith('_grad')
+        #         output_reshard_code += SINGLE_OUTPUT_RESHARD_TEMPLATE.format(
+        #             'dist_out', 'dist_input_' + out_name[:-5]
+        #         )
+        #     else:
+        #         self.vector_output_size_assertion_check()
+        # elif output_num > 1:
+        #     for i, out_name in enumerate(self.outputs['names']):
+        #         assert out_name.endswith('_grad')
+        #         # TODO(chenweihang): some backward kernel may not contains
+        #         # the grag var's forward input
+        #         output_reshard_code += SINGLE_OUTPUT_RESHARD_TEMPLATE.format(
+        #             f'dist_out_{i}', 'dist_input_' + out_name[:-5]
+        #         )
+        # else:
+        #     raise ValueError(
+        #         "{} : Output error: the output should not be empty.".format(
+        #             self.api
+        #         )
+        #     )
 
-        return output_reshard_code
+        # return output_reshard_code
+        return ""
+
+    def generate_auto_paralel_branch(self) -> str:
+        # if no tensor input, do not genetate auto parallel branch
+        if len(self.inputs['names']) == 0:
+            return ""
+        return MAIN_DIST_BRANCH_TEMPLATE.format(
+            self.generate_if_condition_code(),
+            self.generate_output_creation_code(),
+            self.generate_infer_global_shape_code(),
+            self.generate_kernel_selection_code(),
+            self.generate_prepare_data_code(),
+            self.generate_infer_meta_code(),
+            self.generate_kernel_call_code(),
+            self.generate_reshard_output_code(),
+            self.generate_return_code(),
+        )
 
 
 def header_include():

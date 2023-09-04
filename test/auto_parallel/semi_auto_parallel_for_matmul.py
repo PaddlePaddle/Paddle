@@ -48,12 +48,19 @@ class TestMatmulApiForSemiAutoParallel:
         dist_x = dist.shard_tensor(x, dist_attr=x_dist_attr)
         dist_y = dist.shard_tensor(y, dist_attr=y_dist_attr)
 
-        # case 1: mk[0,-1],kn[-1,-1] -> mk[0,-1],kn[-1,-1] = nm[0,-1] partial[]
+        # case 1: mk[0,-1],kn[-1,-1] -> mk[0,-1],kn[-1,-1] = mn[0,-1] partial[]
         dist_out = paddle.matmul(dist_x, dist_y)
 
         # verify shape
         out_shape = [64, 48]
         out_local_shape = [32, 48]
+        print("dist_out.shape: ", dist_out.shape, "out_shape: ", out_shape)
+        print(
+            "dist_out._local_shape: ",
+            dist_out._local_shape,
+            "out_local_shape: ",
+            out_local_shape,
+        )
         assert np.equal(dist_out.shape, out_shape).all()
         assert np.equal(dist_out._local_shape, out_local_shape).all()
 

@@ -18,18 +18,14 @@ limitations under the License. */
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/string_tensor.h"
-
-namespace phi {
-namespace distributed {
-class DistTensor;
-class DistMetaTensor;
-}  // namespace distributed
-}  // namespace phi
 
 namespace paddle {
 namespace experimental {
@@ -140,15 +136,17 @@ void TransStrideLegacy(phi::DeviceContext* dev_ctx,
 
 /* ------------------ for auto parallel ----------------------- */
 
-phi::distributed::DistTensor* SetKernelDistOutput(Tensor* out);
+phi::distributed::DistTensor* SetKernelDistOutput(
+    Tensor* out,
+    const phi::distributed::TensorDistAttr& dist_attr =
+        phi::distributed::TensorDistAttr());
 
 phi::distributed::DistMetaTensor MakeDistMetaTensor(
-    const phi::distributed::DistTensor& tensor);
+    const phi::TensorBase& tensor);
 
 void ReshardDistTensor(phi::DeviceContext* dev_ctx,
                        phi::distributed::DistTensor* tensor,
                        const phi::distributed::TensorDistAttr& dist_attr);
-)
 
 }  // namespace experimental
 }  // namespace paddle

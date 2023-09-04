@@ -535,13 +535,13 @@ void TransStride(phi::DeviceContext* dev_ctx,
 
 /* ------------------ for auto parallel ----------------------- */
 
-phi::distributed::DistTensor* SetKernelDistOutput(Tensor* out) {
+phi::distributed::DistTensor* SetKernelDistOutput(
+    Tensor* out, const phi::distributed::TensorDistAttr& dist_attr) {
   if (out) {
     // TODO(chenweihang): now all dist case are nullptr
     if (out->impl() == nullptr) {
-      // TODO(chenweihang): polish code, dist_attr is null now
-      auto dist_t = std::make_shared<phi::distributed::DistTensor>(
-          phi::DDim(), phi::distributed::TensorDistAttr());
+      auto dist_t = std::make_shared<phi::distributed::DistTensor>(phi::DDim(),
+                                                                   dist_attr);
       out->set_impl(dist_t);
     }
     return static_cast<phi::distributed::DistTensor*>(out->impl().get());
@@ -550,16 +550,20 @@ phi::distributed::DistTensor* SetKernelDistOutput(Tensor* out) {
 }
 
 phi::distributed::DistMetaTensor MakeDistMetaTensor(
-    const phi::distributed::DistTensor& tensor) {
+    const phi::TensorBase& tensor) {
   return phi::distributed::DistMetaTensor(tensor);
 }
 
 void ReshardDistTensor(phi::DeviceContext* dev_ctx,
                        phi::distributed::DistTensor* tensor,
                        const phi::distributed::TensorDistAttr& dist_attr) {
-  auto* func =
-      phi::distributed::ChooseProperReshardFunction(*tensor, dist_attr);
-  func->Eval(dev_ctx, *tensor, dist_attr, tensor);
+  if (tensor->dist_attr() != dist_attr) {
+    auto* func =
+        phi::distributed::ChooseProperReshardFunction(*tensor, dist_attr);
+    func->Eval(dev_ctx, *tensor, dist_attr, tensor);
+    VLOG(6) << "Reshard tensor from " << tensor->dist_attr() << " to "
+            << dist_attr << "done.";
+  }
 }
 
 }  // namespace experimental

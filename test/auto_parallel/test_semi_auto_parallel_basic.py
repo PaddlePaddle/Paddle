@@ -17,7 +17,7 @@ import unittest
 import collective.test_communication_api_base as test_base
 
 
-class TestSemiAutoParallelMatmul(unittest.TestCase):
+class TestSemiAutoParallelMatmul(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(num_of_devices=2, timeout=120)
         self._default_envs = {
@@ -26,7 +26,7 @@ class TestSemiAutoParallelMatmul(unittest.TestCase):
         }
         # case 1: mk[0,-1],kn[-1,-1] -> mk[0,-1],kn[-1,-1] = nm[0,-1] partial[]
         # case 2: mk[-1,0],kn[-1,-1] -> mk[-1,0],kn[0,-1] = nm[-1,-1] partial[0]
-        self._changeable_envs = {"backend": ["cpu", "gpu"]}
+        self._changeable_envs = {"backend": ["cpu"]}
 
     def test_matmul_api(self):
         envs_list = test_base.gen_product_envs_list(

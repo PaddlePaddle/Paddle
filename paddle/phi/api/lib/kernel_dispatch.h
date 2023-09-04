@@ -96,8 +96,6 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   // data_promote
   DataTypeSet dtype_set{DataType::UNDEFINED};
 
-  // TODO(chenweihang): deal with multiple diff input Tensors
-  // TODO(chenweihang): add global device guard method to set backend
   inline void AssignKernelKeySet(const phi::TensorBase& tensor) {
     // assign Backend
     BackendSet tensor_backend_set = detail::GetTensorBackendSet(tensor);
