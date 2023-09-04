@@ -41,15 +41,14 @@ Attribute ConvertAttribute(const ::ir::Attribute& src_attr) {
     dst_attr = src_attr.dyn_cast<::ir::Int64Attribute>().data();
   } else if (src_attr.isa<::ir::DoubleAttribute>()) {
     dst_attr = src_attr.dyn_cast<::ir::DoubleAttribute>().data();
-  } else if (src_attr.isa<::paddle::dialect::IntArrayAttribute>()) {
-    auto& arr = src_attr.dyn_cast<::paddle::dialect::IntArrayAttribute>()
+  } else if (src_attr.isa<paddle::dialect::IntArrayAttribute>()) {
+    auto& arr = src_attr.dyn_cast<paddle::dialect::IntArrayAttribute>()
                     .data()
                     .GetData();
     std::vector<int> val(arr.begin(), arr.end());
     dst_attr = val;
-  } else if (src_attr.isa<::paddle::dialect::DataTypeAttribute>()) {
-    auto dtype =
-        src_attr.dyn_cast<::paddle::dialect::DataTypeAttribute>().data();
+  } else if (src_attr.isa<paddle::dialect::DataTypeAttribute>()) {
+    auto dtype = src_attr.dyn_cast<paddle::dialect::DataTypeAttribute>().data();
     dst_attr = phi::DataTypeToString(dtype);
   } else {
     LOG(FATAL) << "unknown Attribute: " << src_attr;
@@ -62,9 +61,9 @@ AttributeMap ConvertAttributes(const NewIR_AttributeMap& src_attrs) {
   AttributeMap dst_attrs;
   for (auto& item : src_attrs) {
     VLOG(4) << "deal with " << item.first;
-    if (item.second.isa<::paddle::dialect::PlaceAttribute>()) {
+    if (item.second.isa<paddle::dialect::PlaceAttribute>()) {
       auto is_cpu =
-          item.second.dyn_cast<::paddle::dialect::PlaceAttribute>().data() ==
+          item.second.dyn_cast<paddle::dialect::PlaceAttribute>().data() ==
           phi::CPUPlace();
       dst_attrs["force_cpu"] = is_cpu;
     } else {
