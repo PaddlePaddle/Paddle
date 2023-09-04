@@ -2375,6 +2375,10 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : save_combine
+  inputs :
+    {x : X}
+
 - op : scale
   backward : scale_grad
   inputs :
