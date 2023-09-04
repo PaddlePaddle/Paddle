@@ -55,64 +55,6 @@ class TestDistTensor(unittest.TestCase):
         self.assertEqual(dist_tensor_with_tensor.dist_attr, dist_attr)
 
 
-class TestDistTensorFromFn(unittest.TestCase):
-    def run_dtensor_from_fn(self):
-        # Create a distributed attribute
-        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
-        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None])
-
-        # Call the function dtensor_from_fn with dist_attr parameter
-        result = dist.dtensor_from_fn(
-            paddle.ones, dist_attr=dist_attr, shape=[1]
-        )
-
-        # Verify the result
-        if paddle.in_dynamic_mode():
-            self.assertIsInstance(result, paddle.Tensor)
-            self.assertEqual(result.shape, [1])
-        else:
-            self.assertIsInstance(result, paddle.fluid.framework.Variable)
-            self.assertEqual(result.shape, (1,))
-
-        # Test with generate_tensor_zeros()
-        result_zeros = dist.dtensor_from_fn(
-            paddle.zeros, dist_attr=dist_attr, shape=[1]
-        )
-        if paddle.in_dynamic_mode():
-            self.assertIsInstance(result, paddle.Tensor)
-            self.assertEqual(result.shape, [1])
-        else:
-            self.assertIsInstance(result, paddle.fluid.framework.Variable)
-            self.assertEqual(result.shape, (1,))
-
-        # Test with generate_tensor_random()
-        result_random = dist.dtensor_from_fn(
-            paddle.rand, dist_attr=dist_attr, shape=[1]
-        )
-        if paddle.in_dynamic_mode():
-            self.assertIsInstance(result, paddle.Tensor)
-            self.assertEqual(result.shape, [1])
-        else:
-            self.assertIsInstance(result, paddle.fluid.framework.Variable)
-            self.assertEqual(result.shape, (1,))
-
-        # Test with invalid sharding_specs length
-        with self.assertRaises(AssertionError):
-            invalid_dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x'])
-            dist.dtensor_from_fn(
-                paddle.ones, dist_attr=invalid_dist_attr, shape=[2, 3]
-            )
-
-    def test_dynamic_mode(self):
-        self.run_dtensor_from_fn()
-
-    # Test exceptions when running in static mode
-    def test_static_mode(self):
-        paddle.enable_static()
-        self.run_dtensor_from_fn()
-        paddle.disable_static()
-
-
 class TestDistTensorForDygraphAPI(unittest.TestCase):
     def check_tensor_eq(self, a, b):
         np1 = a.numpy()
@@ -175,41 +117,14 @@ class TestShardLayer(unittest.TestCase):
                     )
                     module.register_parameter(name, dist_param)
 
-        # Define input hook and Verify
+        # Define input hook
         def input_fn(layer, input):
             input_return = input[0] * 2
             return input_return
 
-        input_fn_handle = model.register_forward_pre_hook(input_fn)
-
-        value0 = np.arange(26).reshape(2, 13).astype("float32")
-        in0 = paddle.to_tensor(value0)
-        out0 = model(in0)
-
-        input_fn_handle.remove()
-
-        value1 = value0 * 2
-        in1 = paddle.to_tensor(value1)
-        out1 = model(in1)
-        # hook change the linear's input to input * 2, so out0 is equal to out1.
-        assert (out0.numpy() == out1.numpy()).any()
-
-        # Define output hook and Verify
+        # Define output hook
         def output_fn(layer, input, output):
             return output * 2
-
-        output_fn_handle = model.register_forward_post_hook(output_fn)
-
-        value1 = np.arange(26).reshape(2, 13).astype("float32")
-        in1 = paddle.to_tensor(value1)
-
-        out0 = model(in1)
-
-        output_fn_handle.remove()
-
-        out1 = model(in1)
-        # hook change the linear's output to output * 2, so out0 is equal to out1 * 2.
-        assert (out0.numpy() == (out1.numpy()) * 2).any()
 
         # Shard the model
         model = dist.shard_layer(
@@ -225,6 +140,37 @@ class TestShardLayer(unittest.TestCase):
             if param is not None:
                 self.assertIsInstance(param, paddle.Tensor)
                 self.assertTrue(param.shape == [13, 5] or param.shape == [5])
+
+        # Verify input_fn
+        input_fn_handle = model.register_forward_pre_hook(input_fn)
+
+        value0 = np.arange(26).reshape(2, 13).astype("float32")
+        in0 = paddle.to_tensor(value0)
+        out0 = model(in0)
+
+        input_fn_handle.remove()
+
+        value1 = value0 * 2
+        in1 = paddle.to_tensor(value1)
+        out1 = model(in1)
+
+        # hook change the linear's input to input * 2, so out0 is equal to out1.
+        assert (out0.numpy() == out1.numpy()).any()
+
+        # Verify output_fn
+        output_fn_handle = model.register_forward_post_hook(output_fn)
+
+        value1 = np.arange(26).reshape(2, 13).astype("float32")
+        in1 = paddle.to_tensor(value1)
+
+        out0 = model(in1)
+
+        output_fn_handle.remove()
+
+        out1 = model(in1)
+
+        # hook change the linear's output to output * 2, so out0 is equal to out1 * 2.
+        assert (out0.numpy() == (out1.numpy()) * 2).any()
 
 
 if __name__ == '__main__':

@@ -148,36 +148,6 @@ def shard_tensor(
         )
 
 
-def dtensor_from_fn(fn, dist_attr, *args, **kwargs):
-    """
-    Construct a Distributed Tensor from a function of arguments.
-
-    Args:
-        fn (callable): A callable function that takes arguments of Distributed Tensor and returns tensor.
-        dist_attr (paddle.distributed.DistAttr): Specify how tensors are distributed or sliced on ProcessMesh.
-        *args (tuple): A tuple of arguments to be passed to the ``fn`` function.
-        **kwargs (dict): A dict of arguments to be passed to the ``fn`` function.
-
-    Retruns:
-        Tensor: A Tensor constructed from ``fn`` with distributed attributes.
-
-    Examples:
-
-    .. code-block:: python
-
-        >>> import paddle
-        >>> import paddle.distribute as dist
-        >>> # Create a distributed attribute
-        >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
-        >>> dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None])
-        >>> # Call the function dtensor_from_fn with dist_attr parameter
-        >>> d_tensor = dist.dtensor_from_fn(paddle.ones, dist_attr=dist_attr, shape=[1])
-        >>> print(d_tensor)
-    """
-    tensor = fn(*args, **kwargs)
-    return shard_tensor(tensor, dist_attr=dist_attr)
-
-
 def shard_layer(
     model: nn.Layer,
     process_mesh: dist.ProcessMesh,
@@ -194,7 +164,7 @@ def shard_layer(
         model(nn.Layer): Model constructed by users using paddle.nn.Layer.
         process_mesh(ProcessMesh): ProcessMesh information to be placed in this model.
         shard_fn(Callable): Function for splitting model parameters. If not specified, by default we copy all parameters of the model across ProcessMesh.
-        input_fn(Callable): Specify the partition distribution of the input, input_fn will serve for the Layer as forward_pre_hook.
+        input_fn(Callable): Specify the partition distribution of the input, input_fn will serve for the Layer as forward_pre_hook.By default we do not do any partitioning.
         ouput_fn(Callable): Specify the partition distribution of the output, output_fn will serve for the Layer as forward_post_hook. By default we do not do any partitioning.
 
     Returns:
@@ -227,23 +197,26 @@ def shard_layer(
 
             >>> print(model)
     """
-    # Check the legality of process_mesh
-    if not isinstance(process_mesh, dist.ProcessMesh):
-        raise ValueError("process_mesh 参数必须是 dist.ProcessMesh 类型")
-
     # Ensure that process_mesh is not an empty object
     if process_mesh is None:
-        raise ValueError("process_mesh 参数不能为空")
+        raise ValueError("process_mesh parameter cannot be empty")
+
+    # Check the legality of process_mesh
+    if not isinstance(process_mesh, dist.ProcessMesh):
+        raise ValueError(
+            "process_mesh parameter must be of type dist.ProcessMesh"
+        )
 
     if shard_fn is None:
         # if shard_fn not specified, by default replicate
         # all model params
         for name, submod in model.named_parameters():
-            shard_tensor(submod, process_mesh)
+            dist_attr = dist.TensorDistAttr(process_mesh=process_mesh)
+            shard_tensor(submod, dist_attr)
     else:
         # apply shard_fn to submodules
         for name, submod in model.named_parameters():
-            shard_fn(name, submod, process_mesh)
+            shard_fn(name, submod)
 
     # register input_fn as model forward pre hook
     if input_fn is not None:
