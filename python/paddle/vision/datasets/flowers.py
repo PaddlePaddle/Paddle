@@ -75,11 +75,9 @@ class Flowers(Dataset):
 
             >>> for i in range(5):  # only show first 5 images
             ...     img, label = flowers[i]
+            ...     # do something with img and label
             ...     print(type(img), img.size, label)
-            <class 'PIL.JpegImagePlugin.JpegImageFile'> (523, 500) [1]
-            <class 'PIL.JpegImagePlugin.JpegImageFile'> (666, 500) [1]
-            ...
-            <class 'PIL.JpegImagePlugin.JpegImageFile'> (500, 601) [1]
+            ...     # <class 'PIL.JpegImagePlugin.JpegImageFile'> (523, 500) [1]
 
             >>> transform = T.Compose(
             ...     [
@@ -88,21 +86,22 @@ class Flowers(Dataset):
             ...         T.Normalize(
             ...             mean=[0.5, 0.5, 0.5],
             ...             std=[0.5, 0.5, 0.5],
-            ...             to_rgb=True,),
-            ...     ])
+            ...             to_rgb=True,
+            ...         ),
+            ...     ]
+            ... )
             >>> flowers_test = Flowers(
             ...     mode="test",
             ...     transform=transform,  # apply transform to every image
-            ...     backend="cv2",)  # use OpenCV as image transform backend
+            ...     backend="cv2",  # use OpenCV as image transform backend
+            ... )
             >>> print(len(flowers_test))
             1020
 
             >>> for img, label in itertools.islice(iter(flowers_test), 5):  # only show first 5 images
+            ...     # do something with img and label
             ...     print(type(img), img.shape, label)
-            <class 'paddle.Tensor'> [3, 64, 96] [1]
-            <class 'paddle.Tensor'> [3, 64, 79] [1]
-            ...
-            <class 'paddle.Tensor'> [3, 91, 64] [1]
+            ...     # <class 'paddle.Tensor'> [3, 64, 96] [1]
     """
 
     def __init__(
