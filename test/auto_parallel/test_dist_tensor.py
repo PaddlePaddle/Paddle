@@ -83,6 +83,7 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
         dist_out.backward()
         self.check_tensor_eq(local_in.grad, dist_in.grad)
 
+    # input: std::vector<phi::Tensor>, output: phi::Tensor
     def test_concat_for_dist_tensor(self):
         x1 = np.random.random(size=[4, 4]).astype("float32")
         x2 = np.random.random(size=[4, 4]).astype("float32")
@@ -99,6 +100,7 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
         self.check_tensor_eq(local_in2.grad, dist_in2.grad)
         self.check_tensor_eq(local_in3.grad, dist_in3.grad)
 
+    # input: std::vector<phi::Tensor>, output: std::vector<phi::Tensor>
     def test_broadcast_tensors_for_dist_tensor(self):
         x1 = np.random.random(size=[4, 4]).astype("float32")
         x2 = np.random.random(size=[4, 4]).astype("float32")
@@ -112,13 +114,29 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
         self.check_tensor_eq(local_out1, dist_out1)
         self.check_tensor_eq(local_out2, dist_out2)
 
-        # local_out = local_out1 + local_out2
-        # dist_out = dist_out1 + dist_out2
+        local_out = local_out1 + local_out2
+        dist_out = dist_out1 + dist_out2
 
-        # local_out.backward()
-        # dist_out.backward()
-        # self.check_tensor_eq(local_in1.grad, dist_in1.grad)
-        # self.check_tensor_eq(local_in2.grad, dist_in2.grad)
+        local_out.backward()
+        dist_out.backward()
+        self.check_tensor_eq(local_in1.grad, dist_in1.grad)
+        self.check_tensor_eq(local_in2.grad, dist_in2.grad)
+
+    # input: phi::Tensor, output: std::vector<phi::Tensor>
+    def test_unbind_api_for_dist_tensor(self):
+        x = np.random.random(size=[2, 8]).astype("float32")
+        local_in, dist_in = self.create_local_and_dist_tensor_pair(x)
+        local_out1, local_out2 = paddle.unbind(local_in, axis=0)
+        dist_out1, dist_out2 = paddle.unbind(dist_in, axis=0)
+        self.check_tensor_eq(local_out1, dist_out1)
+        self.check_tensor_eq(local_out2, dist_out2)
+
+        local_out = local_out1 + local_out2
+        dist_out = dist_out1 + dist_out2
+
+        local_out.backward()
+        dist_out.backward()
+        self.check_tensor_eq(local_in.grad, dist_in.grad)
 
     def test_matmul_api_for_dist_tensor(self):
         x = np.random.random(size=[4, 4]).astype("float32")
