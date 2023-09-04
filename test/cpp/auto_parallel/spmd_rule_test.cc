@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
+#include "paddle/phi/infermeta/spmd_rules/general.h"
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
 
 namespace paddle {
@@ -427,6 +428,50 @@ TEST(MatmulSPMDRuleInferBackward, Ctor) {
   EXPECT_EQ(infered_dist_attrs.second[0].is_partial(), true);
 
   VLOG(4) << "test1 done." << std::endl << std::endl << std::endl;
+}
+
+TEST(ReplicatedSPMDRule, Ctor) {
+  // build input data class
+  std::vector<int64_t> x_shape = {512, 1024, 64, 32};
+  std::vector<int64_t> y_shape = {512, 1, 32, 48};
+  std::vector<int64_t> out_shape = {512, 1024, 64, 48};
+
+  std::vector<int64_t> mesh_shape = {2, 3};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  TensorDistAttr x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping(
+      std::vector<int64_t>({-1, 1, 0, -1}));  // no affect
+  x_dist_attr.set_dynamic_dims(std::vector<bool>({false, false}));
+
+  TensorDistAttr y_dist_attr = TensorDistAttr();
+  y_dist_attr.set_process_mesh(process_mesh);
+  y_dist_attr.set_dims_mapping(
+      std::vector<int64_t>({0, 1, -1, -1}));  // no affect
+  y_dist_attr.set_dynamic_dims(std::vector<bool>({false, false}));
+
+  TensorDistAttr out_dist_attr = TensorDistAttr();
+  out_dist_attr.set_process_mesh(process_mesh);
+  out_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1, 1, -1}));
+  out_dist_attr.set_dynamic_dims(std::vector<bool>({false, false}));
+  out_dist_attr.set_partial_status(std::vector<int64_t>({0}));
+
+  phi::distributed::DistMetaTensor x(phi::make_ddim(x_shape), x_dist_attr);
+  phi::distributed::DistMetaTensor y(phi::make_ddim(y_shape), y_dist_attr);
+  phi::distributed::DistMetaTensor out(phi::make_ddim(out_shape),
+                                       out_dist_attr);
+
+  // Only test function calling now, the result checking need to be added later
+  // call in vector arguments format
+  auto infered_dist_attrs_st = phi::distributed::ReplicatedSpmdInferBackward(
+      {&x, &y}, {&out}, {/*trans_x=*/false, /*trans_x=*/false});
+
+  // call in variadic arguments format
+  auto infered_dist_attrs_dy = phi::distributed::GeneralSpmdInferBackward(
+      x, y, /*trans_x=*/false, /*trans_x=*/false, &out);
 }
 
 }  // namespace auto_parallel
