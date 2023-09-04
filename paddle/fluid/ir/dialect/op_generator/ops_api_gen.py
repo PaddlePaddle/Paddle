@@ -15,7 +15,7 @@
 import argparse
 import os
 
-from api_gen import NAMESPACE_TEMPLATE, PD_MANUAL_OP_LIST, CodeGen
+from api_gen import NAMESPACE_TEMPLATE, CodeGen
 
 CPP_FILE_TEMPLATE = """
 #include <pybind11/pybind11.h>
@@ -71,10 +71,7 @@ class OpsAPIGen(CodeGen):
         ops_api_str = ''
         for op_info in op_info_items:
             for op_name in op_info.op_phi_name:
-                if (
-                    op_info.infer_meta_func is None
-                    and op_name not in PD_MANUAL_OP_LIST
-                ):
+                if self._need_skip(op_info, op_name):
                     continue
                 function_impl_str += self._gen_one_function_impl(op_name)
                 ops_api_str += self._gen_one_ops_api(op_name)

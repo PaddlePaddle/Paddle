@@ -359,8 +359,175 @@ void SplitGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
   fn(infer_meta);
 }
 
+const char *EmbeddingGradOp::attributes_name[2] = {"padding_idx", "sparse"};
+
+OpInfoTuple EmbeddingGradOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      paddle::dialect::OpInputInfo(
+          "x", "paddle::dialect::DenseTensorType", false, false, false),
+      paddle::dialect::OpInputInfo(
+          "weight", "paddle::dialect::DenseTensorType", false, false, false),
+      paddle::dialect::OpInputInfo(
+          "out_grad", "paddle::dialect::DenseTensorType", false, false, false)};
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {
+      paddle::dialect::OpAttributeInfo("padding_idx", "ir::Int64Attribute", ""),
+      paddle::dialect::OpAttributeInfo("sparse", "ir::BoolAttribute", "")};
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      paddle::dialect::OpOutputInfo(
+          "weight_grad", "paddle::dialect::SelectedRowsType", false, false)};
+  paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo(
+      "EmbeddingGradInferMeta",
+      {"weight"},
+      {"embedding_grad"},
+      {"x", "weight", "out_grad", "padding_idx", "sparse"},
+      {"weight"},
+      {},
+      {},
+      {});
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "embedding_grad");
+}
+
+void EmbeddingGradOp::Build(ir::Builder &builder,
+                            ir::OperationArgument &argument,
+                            ir::OpResult x_,
+                            ir::OpResult weight_,
+                            ir::OpResult out_grad_,
+                            int64_t padding_idx,
+                            bool sparse) {
+  VLOG(4) << "Builder construction inputs";
+  std::vector<ir::OpResult> argument_inputs = {x_, weight_, out_grad_};
+  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+
+  VLOG(4) << "Builder construction attributes";
+  ir::Attribute attr_padding_idx =
+      ir::Int64Attribute::get(ir::IrContext::Instance(), padding_idx);
+  argument.AddAttribute("padding_idx", attr_padding_idx);
+  ir::Attribute attr_sparse =
+      ir::BoolAttribute::get(ir::IrContext::Instance(), sparse);
+  argument.AddAttribute("sparse", attr_sparse);
+
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorType x =
+      x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  (void)x;
+  paddle::dialect::DenseTensorType weight =
+      weight_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  (void)weight;
+  paddle::dialect::DenseTensorType out_grad =
+      out_grad_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  (void)out_grad;
+
+  VLOG(4) << "Builder construction  dense_x";
+  phi::DenseTensor dense_x(
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
+      phi::DenseTensorMeta(paddle::dialect::TransToPhiDataType(x.dtype()),
+                           x.dims(),
+                           x.data_layout(),
+                           x.lod(),
+                           x.offset()));
+  VLOG(4) << "Builder construction  meta_x";
+  phi::MetaTensor meta_x(&dense_x);
+
+  VLOG(4) << "Builder construction  dense_weight";
+  phi::DenseTensor dense_weight(
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
+      phi::DenseTensorMeta(paddle::dialect::TransToPhiDataType(weight.dtype()),
+                           weight.dims(),
+                           weight.data_layout(),
+                           weight.lod(),
+                           weight.offset()));
+  VLOG(4) << "Builder construction  meta_weight";
+  phi::MetaTensor meta_weight(&dense_weight);
+
+  phi::DenseTensor dense_weight_grad;
+  phi::MetaTensor meta_weight_grad(&dense_weight_grad);
+
+  phi::EmbeddingGradInferMeta(meta_x, meta_weight, &meta_weight_grad);
+
+  std::vector<ir::Type> argument_outputs;
+  ir::Type weight_grad_dense_tensor_type =
+      paddle::dialect::DenseTensorType::get(
+          ir::IrContext::Instance(),
+          paddle::dialect::TransToIrDataType(dense_weight_grad.dtype()),
+          dense_weight_grad.dims(),
+          dense_weight_grad.layout(),
+          dense_weight_grad.lod(),
+          dense_weight_grad.offset());
+  argument_outputs.push_back(weight_grad_dense_tensor_type);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+}
+
+void EmbeddingGradOp::Verify() {
+  VLOG(4)
+      << "Start Verifying inputs, outputs and attributes for: EmbeddingGradOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto input_size = num_operands();
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        3u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of inputs must be equal to 3.", input_size));
+    PADDLE_ENFORCE((*this)
+                       ->operand_source(0)
+                       .type()
+                       .isa<paddle::dialect::DenseTensorType>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type validation failed for the 0th input."));
+    PADDLE_ENFORCE((*this)
+                       ->operand_source(1)
+                       .type()
+                       .isa<paddle::dialect::DenseTensorType>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type validation failed for the 1th input."));
+    PADDLE_ENFORCE((*this)
+                       ->operand_source(2)
+                       .type()
+                       .isa<paddle::dialect::DenseTensorType>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type validation failed for the 2th input."));
+  }
+  VLOG(4) << "Verifying attributes:";
+  {
+    auto &attributes = this->attributes();
+    PADDLE_ENFORCE(attributes.count("padding_idx") > 0 &&
+                       attributes.at("padding_idx").isa<ir::Int64Attribute>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type of attribute: padding_idx is not right."));
+    PADDLE_ENFORCE(attributes.count("sparse") > 0 &&
+                       attributes.at("sparse").isa<ir::BoolAttribute>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type of attribute: sparse is not right."));
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto output_size = num_results();
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        1u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of outputs must be equal to 1.", output_size));
+    PADDLE_ENFORCE(
+        (*this)->result(0).type().isa<paddle::dialect::SelectedRowsType>(),
+        phi::errors::PreconditionNotMet(
+            "Type validation failed for the 0th output."));
+  }
+  VLOG(4) << "End Verifying for: EmbeddingGradOp.";
+}
+
+void EmbeddingGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
+  auto fn = PD_INFER_META(phi::EmbeddingGradInferMeta);
+  fn(infer_meta);
+}
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::EmbeddingGradOp)

@@ -14,7 +14,8 @@
 
 #ifdef GET_MANUAL_OP_LIST
 #undef GET_MANUAL_OP_LIST
-paddle::dialect::AddNOp, paddle::dialect::SplitGradOp
+paddle::dialect::AddNOp, paddle::dialect::SplitGradOp,
+    paddle::dialect::EmbeddingGradOp
 
 #else
 
@@ -74,10 +75,34 @@ class SplitGradOp : public ir::Op<SplitGradOp, OpYamlInfoInterface> {
   static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 
+class EmbeddingGradOp : public ir::Op<EmbeddingGradOp, OpYamlInfoInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd.embedding_grad"; }
+  static const char *attributes_name[2];
+  static constexpr uint32_t attributes_num = 2;
+  static OpInfoTuple GetOpInfo();
+  static void Build(ir::Builder &builder,             // NOLINT
+                    ir::OperationArgument &argument,  // NOLINT
+                    ir::OpResult x_,
+                    ir::OpResult weight_,
+                    ir::OpResult out_grad_,
+                    int64_t padding_idx = -1,
+                    bool spare = false);
+
+  void Verify();
+  ir::Value x() { return operand_source(0); }
+  ir::Value weight() { return operand_source(1); }
+  ir::Value out_grad() { return operand_source(2); }
+  ir::OpResult weight_grad() { return result(0); }
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::EmbeddingGradOp)
 
 #endif
