@@ -435,6 +435,13 @@
   outputs :
     out : Out
 
+- op : c_embedding
+  backward : c_embedding_grad
+  inputs :
+    {weight : W, x : Ids}
+  outputs :
+    out : Out
+
 - op : cast
   inputs :
     x : X
@@ -3032,11 +3039,23 @@
     yolo_loss : GetYoloLossExpectedKernelType
     yolo_loss_grad : GetYoloLossExpectedKernelType
 
+- op: c_allreduce_sum
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_broadcast
   inputs :
     x : X
   outputs :
     out : Out
+
+- op: c_identity
+  inputs :
+    x : X
+  outputs :
+    out: Out
 
 - op: c_sync_calc_stream
   inputs :
