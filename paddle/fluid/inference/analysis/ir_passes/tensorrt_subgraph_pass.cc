@@ -566,6 +566,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   auto use_dla = Get<bool>("trt_use_dla");
   auto dla_core = Get<int>("trt_dla_core");
   auto use_inspector = Get<bool>("use_inspector");
+  auto engine_info_path = Get<std::string>("engine_info_path");
   auto disable_trt_plugin_fp16 = Get<bool>("disable_trt_plugin_fp16");
   auto context_memory_sharing = Get<bool>("context_memory_sharing");
   auto enable_low_precision_io = Get<bool>("enable_low_precision_io");
@@ -758,6 +759,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   params.tensorrt_transformer_maskid = tensorrt_transformer_maskid;
   params.context_memory_sharing = context_memory_sharing;
   params.use_inspector = use_inspector;
+  params.engine_info_path = engine_info_path;
   params.enable_low_precision_io = enable_low_precision_io;
 
   tensorrt::TensorRTEngine *trt_engine =

@@ -224,6 +224,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("use_static_engine", new bool(use_static_engine));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
       pass->Set("use_inspector", new bool(argument->tensorrt_use_inspector()));
+      pass->Set("engine_info_path",
+                new std::string(argument->tensorrt_engine_info_path()));
 
       // tuned trt dynamic_shape
       pass->Set("trt_shape_range_info_path",

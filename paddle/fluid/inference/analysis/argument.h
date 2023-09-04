@@ -272,6 +272,9 @@ struct Argument {
                       TensorRtAllowBuildAtRuntime,
                       bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_inspector, TensorRtUseInspector, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_engine_info_path,
+                      TensorRtEngineInfoPath,
+                      std::string);
   DECL_ARGUMENT_FIELD(tensorrt_use_explicit_quantization,
                       TensorRtUseExplicitQuantization,
                       bool);

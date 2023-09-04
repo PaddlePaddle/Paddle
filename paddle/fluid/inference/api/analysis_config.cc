@@ -478,6 +478,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(collect_shape_range_info_);
   CP_MEMBER(shape_range_info_path_);
   CP_MEMBER(trt_use_inspector_);
+  CP_MEMBER(trt_engine_info_path_);
   CP_MEMBER(trt_use_explicit_quantization_);
   CP_MEMBER(trt_engine_memory_sharing_);
   CP_MEMBER(trt_engine_memory_sharing_identifier_);
@@ -841,7 +842,12 @@ void AnalysisConfig::EnableTensorRtDLA(int dla_core) {
   trt_dla_core_ = dla_core;
 }
 
-void AnalysisConfig::EnableTensorRtInspector() { trt_use_inspector_ = true; }
+void AnalysisConfig::EnableTensorRtInspector(
+    const std::string &trt_engine_info_path) {
+  trt_use_inspector_ = true;
+  std::remove(trt_engine_info_path.c_str());
+  trt_engine_info_path_ = trt_engine_info_path;
+}
 
 void AnalysisConfig::EnableTensorRtExplicitQuantization() {
   trt_use_explicit_quantization_ = true;
