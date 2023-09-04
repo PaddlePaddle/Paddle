@@ -76,7 +76,6 @@ void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
                             in.value(),
                             in_process_ids.size(),
                             GetMutableTensor(out));
-
   std::map<int64_t, int64_t> split_axis_to_mesh_axis =
       GetSplitAxisWithDimsMapping(in_dims_mapping);
   int64_t split_axis = split_axis_to_mesh_axis.begin()->first;
