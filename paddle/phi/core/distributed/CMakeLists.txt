@@ -2,6 +2,7 @@ add_subdirectory(check)
 add_subdirectory(store)
 
 set(COMM_CONTEXT_MANAGER_DEPS tcp_store)
+set(COMM_TASK_MANAGER_DEPS tcp_store)
 
 if(WITH_NCCL OR WITH_RCCL)
   cc_library(
@@ -30,3 +31,8 @@ cc_library(
   comm_context_manager
   SRCS comm_context_manager.cc
   DEPS ${COMM_CONTEXT_MANAGER_DEPS})
+
+cc_library(
+  comm_task_manager
+  SRCS comm_task_manager.cc nccl_comm_task.cc nccl_tools.cc
+  DEPS ${COMM_TASK_MANAGER_DEPS})

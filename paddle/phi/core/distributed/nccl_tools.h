@@ -16,7 +16,7 @@
 
 #include <string>
 
-#include "paddle/fluid/distributed/collective/types.h"
+#include "paddle/phi/core/distributed/types.h"
 
 #ifdef PADDLE_WITH_RCCL
 #include <hip/hip_runtime.h>
@@ -26,7 +26,7 @@
 #include "paddle/phi/backends/dynload/nccl.h"
 #endif
 
-namespace paddle {
+namespace phi {
 namespace distributed {
 
 #define NCCL_CHECK(cmd)                                                \
@@ -41,6 +41,18 @@ namespace distributed {
     }                                                                  \
   } while (0)
 
+#define CUDA_CHECK(expr)                        \
+  do {                                          \
+    cudaError_t r = expr;                       \
+    if (r != cudaSuccess) {                     \
+      printf("Failed, cuda error %s:%d '%s'\n", \
+             __FILE__,                          \
+             __LINE__,                          \
+             cudaGetErrorString(r));            \
+      exit(EXIT_FAILURE);                       \
+    }                                           \
+  } while (0)
+
 ncclRedOp_t ToNCCLRedType(ReduceOp reduction);
 
 std::string SerializeNCCLUniqueId(const ncclUniqueId& ncclID);
@@ -50,4 +62,4 @@ std::string NCCLDTypeToString(ncclDataType_t dtype);
 std::string NCCLRedTypeToString(ncclRedOp_t op);
 
 }  // namespace distributed
-}  // namespace paddle
+}  // namespace phi

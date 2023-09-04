@@ -212,6 +212,8 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   std::unordered_map<std::string, std::unique_ptr<phi::GPUContext>>
       place_to_comm_ctx_;
 
+  uint64_t comm_seq_{0};
+
   // TODO(sunyilun): attrs below will be removed later
   std::mutex mutex_;
   static uint64_t s_group_call_counter;

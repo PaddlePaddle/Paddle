@@ -15,7 +15,7 @@
 #pragma once
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace paddle {
+namespace phi {
 namespace distributed {
 
 inline phi::DenseTensor GetPartialTensor(const phi::DenseTensor& tensor,
@@ -52,4 +52,4 @@ inline bool IsP2POP(CommType comm_type, bool is_batch_p2p = false) {
 }
 
 }  //  namespace distributed
-}  //  namespace paddle
+}  // namespace phi

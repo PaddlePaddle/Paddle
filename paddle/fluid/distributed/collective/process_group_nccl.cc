@@ -15,18 +15,22 @@
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 
 #include "paddle/fluid/distributed/collective/common.h"
-#include "paddle/fluid/distributed/collective/nccl_tools.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/distributed/check/nccl_dynamic_check.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
+#include "paddle/phi/core/distributed/comm_task_manager.h"
+#include "paddle/phi/core/distributed/nccl_comm_task.h"
+#include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
 
 DECLARE_bool(benchmark);
 DECLARE_bool(nccl_blocking_wait);
 DECLARE_bool(use_stream_safe_cuda_allocator);
+DECLARE_bool(enable_async_trace);
 
 // set this flag to `true` and recompile to enable dynamic checks
 constexpr bool FLAGS_enable_nccl_dynamic_check = false;
@@ -35,6 +39,8 @@ constexpr int64_t kWaitBlockTImeout = 10;
 namespace paddle {
 namespace distributed {
 
+using phi::distributed::IsP2POP;
+using phi::distributed::ToNCCLRedType;
 uint64_t ProcessGroupNCCL::s_group_call_counter = 0;
 
 ProcessGroupNCCL::NCCLTask::NCCLTask(const Place& place,
@@ -848,6 +854,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
     CommType comm_type,
     bool sync_op,
     bool use_calc_stream) {
+  comm_seq_++;
   const auto& place = tensor.place();
   const auto& key = GetKeyFromPlace(place);
 
@@ -867,7 +874,47 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
   const auto& comm_ctx = place_to_comm_ctx_.at(key);
   auto nccl_comm = comm_ctx->nccl_comm();
   auto nccl_stream = use_calc_stream ? calc_ctx->stream() : comm_ctx->stream();
-  fn(nccl_comm, nccl_stream);
+
+  VLOG(0) << "debug collective construct NCCLCommTask, enable_async_trace "
+          << FLAGS_enable_async_trace << ", nccl_blocking_wait "
+          << FLAGS_nccl_blocking_wait;
+  if (!FLAGS_enable_async_trace) {
+    fn(nccl_comm, nccl_stream);
+    VLOG(0) << "debug collective evetn ";
+  } else {
+    VLOG(0) << "debug collective construct NCCLCommTask, enable_async_trace "
+            << FLAGS_enable_async_trace;
+    auto comm_task =
+        std::make_unique<phi::distributed::NCCLCommTask>(place,
+                                                         rank_,
+                                                         size_,
+                                                         comm_seq_,
+                                                         tensor.numel(),
+                                                         sync_op,
+                                                         use_calc_stream,
+                                                         nccl_comm,
+                                                         nccl_stream,
+                                                         comm_type);
+    VLOG(0) << "debug collective construct NCCLCommTask after";
+    comm_task->StartRecord();
+
+    VLOG(0) << "debug collective fn before";
+    fn(nccl_comm, nccl_stream);
+    VLOG(0) << "debug collective fn after 1";
+
+    comm_task->EndRecord(nccl_stream);
+    VLOG(0) << "debug collective fn after 2";
+    comm_task->store_ = store_;
+
+    VLOG(0) << "debug collective construct CommTaskManager GetInstance";
+    auto comm_task_manager = phi::distributed::CommTaskManager::GetInstance();
+    VLOG(0) << "debug collective construct CommTaskManager CommTaskEnqueue";
+
+    comm_task_manager.CommTaskEnqueue(std::move(comm_task));
+    VLOG(0) << "debug collective construct CommTaskManager end";
+
+    VLOG(0) << "debug collective fn after";
+  }
 
   if (!use_calc_stream) {
     if (FLAGS_use_stream_safe_cuda_allocator) {
@@ -933,7 +980,29 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
 
   auto nccl_comm = comm_ctx->nccl_comm();
   auto nccl_stream = use_calc_stream ? calc_ctx->stream() : comm_ctx->stream();
+
+  auto comm_task =
+      std::make_unique<phi::distributed::NCCLCommTask>(place,
+                                                       rank_,
+                                                       size_,
+                                                       comm_seq_,
+                                                       tensor.numel(),
+                                                       sync_op,
+                                                       use_calc_stream,
+                                                       nccl_comm,
+                                                       nccl_stream,
+                                                       comm_type);
+
+  if (FLAGS_enable_async_trace) {
+    comm_task->StartRecord();
+  }
   fn(nccl_comm, nccl_stream, p2p_target_rank);
+  if (FLAGS_enable_async_trace) {
+    comm_task->EndRecord(nccl_stream);
+    comm_task->store_ = store_;
+    auto comm_task_manager = phi::distributed::CommTaskManager::GetInstance();
+    comm_task_manager.CommTaskEnqueue(std::move(comm_task));
+  }
 
   if (!use_calc_stream) {
     if (FLAGS_use_stream_safe_cuda_allocator) {

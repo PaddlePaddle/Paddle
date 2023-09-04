@@ -1122,6 +1122,15 @@ PADDLE_DEFINE_EXPORTED_bool(gpugraph_debug_gpu_memory,
 PADDLE_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
 #endif
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PADDLE_DEFINE_EXPORTED_bool(enable_nccl_async_trace,
+                            false,
+                            "enable nccl async trace");
+PADDLE_DEFINE_EXPORTED_bool(enable_nccl_error_check,
+                            false,
+                            "enable nccl error check");
+#endif
+
 /**
  * Autotune related FLAG
  * Name: FLAGS_use_autotune
@@ -1247,3 +1256,21 @@ PADDLE_DEFINE_EXPORTED_bool(use_shm_cache,
 PADDLE_DEFINE_EXPORTED_string(tensor_operants_mode,
                               "eager",
                               "Tensor operants mode");
+/**
+ * enable async trace related FLAG
+ * Name: enable_async_trace
+ * Since Version: 2.5.0
+ * Value Range: bool, default=false
+ * default=false
+ * Example:
+ */
+PADDLE_DEFINE_EXPORTED_bool(enable_async_trace, false, "enable async_trace");
+/**
+ * async error handle related FLAG
+ * Name: async_error_handle
+ * Since Version: 2.5.0
+ * Value Range: int, {NoHandling = 0, TearDown = 1}
+ * default=false
+ * Example:
+ */
+PADDLE_DEFINE_EXPORTED_int32(async_error_handle, 0, "async error handle");
