@@ -60,14 +60,14 @@ namespace framework {
 NewIRInterpreter::NewIRInterpreter(
     const platform::Place& place,
     const std::vector<std::string>& fetch_var_names,
-    std::unique_ptr<::ir::Block> ir_block,
+    const ::ir::Block* ir_block,
     framework::Scope* scope,
     const ExecutionConfig& execution_config)
     : place_(place),
       execution_config_(execution_config),
       var_scope_(scope),
       scope_(scope),
-      ir_block_(std::move(ir_block)),
+      ir_block_(ir_block),
       ir_stream_analyzer_(place),
       fetch_var_names_(fetch_var_names) {
   VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
@@ -94,8 +94,7 @@ NewIRInterpreter::NewIRInterpreter(
   // TODO(zhangbo): delete var_scope
   var_scope_.SetLocalScope(local_scope_);
 
-  execution_config_.AnalyzeThreadPoolConfig(place,
-                                            ir_program_->block()->size());
+  execution_config_.AnalyzeThreadPoolConfig(place, 1);
   execution_config_.Log(/*log_level=*/8);
 
   ir_instruction_scheduling_priority_less = [this](size_t lhs, size_t rhs) {

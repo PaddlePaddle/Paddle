@@ -44,7 +44,7 @@ class StandaloneExecutor {
  private:
   bool is_interpretercore_build_result_shared_{false};
   const platform::Place place_;
-  const interpreter::Plan plan_;
+  interpreter::Plan plan_;
 
   std::vector<framework::Scope*> micro_batch_scopes_;
   std::vector<std::shared_ptr<InterpreterCore>> interpretercores_;

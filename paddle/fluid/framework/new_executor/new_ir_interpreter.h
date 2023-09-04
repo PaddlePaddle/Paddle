@@ -19,7 +19,7 @@
 #include "paddle/ir/core/value.h"
 
 namespace ir {
-class Program;
+class Block;
 }  // namespace ir
 
 namespace paddle {
@@ -36,7 +36,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
  public:
   NewIRInterpreter(const platform::Place& place,
                    const std::vector<std::string>& fetch_var_names,
-                   std::unique_ptr<::ir::Program> ir_prog,
+                   const ::ir::Block* ir_block,
                    Scope* scope,
                    const ExecutionConfig& execution_config = ExecutionConfig());
 
@@ -198,7 +198,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   InstructionSchedulingPriorityLess ir_instruction_scheduling_priority_less;
 
-  std::unique_ptr<::ir::Block> ir_block_{nullptr};
+  const ::ir::Block* ir_block_{nullptr};
 
   std::vector<std::unique_ptr<InstructionBase>> vec_instruction_base_;
 

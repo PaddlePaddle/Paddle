@@ -94,12 +94,13 @@ class ConstantFoldingPattern : public ir::RewritePattern {
     // Execute program
     paddle::framework::interpreter::ExecutionConfig exe_config;
     exe_config.create_local_scope = false;
-    paddle::framework::InterpreterCore core(
-        phi::CPUPlace{},
-        fetch_var_names,
-        paddle::dialect::PdOpLowerToKernelPass(temp_program.get()),
-        &scope_,
-        exe_config);
+    auto kernel_program =
+        paddle::dialect::PdOpLowerToKernelPass(temp_program.get());
+    paddle::framework::InterpreterCore core(phi::CPUPlace{},
+                                            fetch_var_names,
+                                            kernel_program->block(),
+                                            &scope_,
+                                            exe_config);
 
     paddle::framework::FetchList fetch_list = core.Run({});
 
