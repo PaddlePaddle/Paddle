@@ -40,6 +40,7 @@ from ..framework import (
     convert_np_dtype_to_dtype_,
     core,
     in_dynamic_mode,
+    in_dynamic_or_new_ir_mode,
 )
 
 __all__ = []
@@ -874,14 +875,14 @@ def full_like(x, fill_value, dtype=None, name=None):
 
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
-    if in_dynamic_mode():
+    if in_dynamic_or_new_ir_mode():
         place = _current_expected_place()
         if force_cpu:
             place = core.CPUPlace()
         if isinstance(shape, (list, tuple)):
             shape = paddle.utils.convert_shape_to_list(shape)
 
-        if not isinstance(dtype, core.VarDesc.VarType):
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
         if out is None:
@@ -895,21 +896,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             out.stop_gradient = True
             return out
     else:
-        if paddle.ir.core._use_new_ir_api():
-            # Below code will be removed after we can generate IR api automatically
-            place = _current_expected_place()
-            if force_cpu:
-                place = core.CPUPlace()
-            if isinstance(shape, (list, tuple)):
-                shape = paddle.utils.convert_shape_to_list(shape)
-
-            if not isinstance(dtype, core.DataType):
-                dtype = paddle.ir.core.convert_np_dtype_to_dtype_(dtype)
-
-            if out is None:
-                out = paddle._ir_ops.full(shape, float(value), dtype, place)
-                out.stop_gradient = True
-                return out
         attrs = {'force_cpu': force_cpu}
         dtype = convert_dtype(dtype)
         if not isinstance(value, Variable):
