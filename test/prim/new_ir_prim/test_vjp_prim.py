@@ -32,11 +32,11 @@ def get_ir_program_0():
         )
         x.stop_gradient = False
         y = paddle.tensor.fill_constant(shape=[4], dtype='float32', value=1.0)
-        y.stop_gradiable = False
+        y.stop_gradient = False
         dout = paddle.tensor.fill_constant(
             shape=[1, 4], dtype='float32', value=1.0
         )
-        dout.stop_gradiable = False
+        dout.stop_gradient = False
         out = paddle.divide(x, y)
     newir_program = ir.translate_to_new_ir(main_program.desc)
     return newir_program
@@ -52,10 +52,8 @@ def get_ir_program_1():
             shape=[4, 5], dtype='float32', value=2.0
         )
         x.stop_gradient = False
-        dout = paddle.tensor.fill_constant(
-            shape=[1], dtype='float32', value=1.0
-        )
-        dout.stop_gradiable = False
+        dout = paddle.tensor.fill_constant(shape=[], dtype='float32', value=1.0)
+        dout.stop_gradient = False
         out = paddle.sum(x)
     newir_program = ir.translate_to_new_ir(main_program.desc)
     return newir_program
@@ -124,7 +122,7 @@ class TestVjpPrim(unittest.TestCase):
     def test_sum_grad_prim(self):
         newir_program = get_ir_program_1()
         paddle.fluid.core._set_prim_backward_enabled(True)
-        dout = newir_program.block().ops[-2].result(0)
+        dout = newir_program.block().ops[-3].result(0)
         out_grads = [[dout]]
         stop_gradients = [[False], [True]]
         sum_op = newir_program.block().ops[-1]
@@ -162,7 +160,7 @@ class TestVjpPrim(unittest.TestCase):
             grad_outs[0][0].get_defining_op().name(), "pd.sum_grad"
         )
         self.assertEqual(grad_outs[1][0], None)
-        self.assertEqual(len(newir_program.block().ops), 6)
+        self.assertEqual(len(newir_program.block().ops), 5)
 
 
 if __name__ == "__main__":

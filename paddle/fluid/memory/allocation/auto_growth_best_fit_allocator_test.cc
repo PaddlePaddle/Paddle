@@ -19,8 +19,8 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 
-DECLARE_bool(free_idle_chunk);
-DECLARE_bool(free_when_no_cache_hit);
+PD_DECLARE_bool(free_idle_chunk);
+PD_DECLARE_bool(free_when_no_cache_hit);
 
 namespace paddle {
 namespace memory {

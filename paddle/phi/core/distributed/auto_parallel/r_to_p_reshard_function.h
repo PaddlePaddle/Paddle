@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,20 +14,21 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace distributed {
 
-template <typename T, typename DevCtx>
-class DistributedFusedLambInitOpKernel : public framework::OpKernel<T> {
+class RToPReshardFunction final : public ReshardFunction {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "The distributed_fused_lamb_init operator does not support CPU yet."));
-  }
+  bool IsSuitable(const DistTensor& in,
+                  const TensorDistAttr& out_dist_attr) override;
+
+  void Eval(DeviceContext* dev_ctx,
+            const DistTensor& in,
+            const TensorDistAttr& out_dist_attr,
+            DistTensor* out) override;
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace distributed
+}  // namespace phi

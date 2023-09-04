@@ -429,6 +429,7 @@ class Cluster:
         # This property only be valid when the cluster consists of machines,
         # which have the same number accelerators.
         self._num_devices_per_machine = None
+        self._gpu_model = None
 
     def gen_default_config_cluster(
         self,
@@ -451,6 +452,7 @@ class Cluster:
         dcu_models = ["DCU"]
         all_gpu_models = gpu_models + xpu_models + dcu_models
         self._num_devices_per_machine = device_count
+        self._gpu_model = gpu_model
 
         def _convert_to_type(gpu_model):
             type = None

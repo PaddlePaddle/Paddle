@@ -12,21 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/cinn/hlir/dialect/runtime_dialect/ir/runtime_dialect.h"
+#include "paddle/cinn/hlir/dialect/runtime_dialect/ir/jit_kernel_op.h"
 
-#include <map>
-#include <vector>
-#include "paddle/phi/common/int_array.h"
+namespace cinn {
+namespace dialect {
 
-namespace phi {
-class DeviceContext;
-class DenseTensor;
+RuntimeDialect::RuntimeDialect(::ir::IrContext* context)
+    : ::ir::Dialect(
+          name(), context, ::ir::TypeId::get<cinn::dialect::RuntimeDialect>()) {
+  this->initialize();
+}
 
-namespace distributed {
-std::vector<DenseTensor> ReshardSplitFunctor(const DeviceContext& dev_ctx,
-                                             const DenseTensor& input,
-                                             const IntArray& sections,
-                                             int64_t axis);
+void RuntimeDialect::initialize() { RegisterOps<cinn::dialect::JitKernelOp>(); }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace dialect
+}  // namespace cinn
+
+IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::RuntimeDialect)

@@ -17,7 +17,6 @@
 #include <algorithm>
 #include <vector>
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
@@ -29,6 +28,7 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/flags.h"
+#include "paddle/utils/flags.h"
 PADDLE_DEFINE_EXPORTED_bool(
     fleet_executor_with_standalone,
     false,

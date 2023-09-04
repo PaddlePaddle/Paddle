@@ -72,7 +72,7 @@ void Compile(NetBuilder& net_builder) {  // NOLINT
       graph->GetMutableAttrs<absl::flat_hash_map<std::string, shape_t>>(
           "infershape");
 
-  OpLowerer op_lowerer(dtype_dict, shape_dict, target);
+  auto op_lowerer = CreateOpLowerer(dtype_dict, shape_dict, target);
   for (auto& fusion_op : graph->fusion_groups) {
     auto lowered_func = op_lowerer.Lower(fusion_op);
     CHECK_EQ(lowered_func.size(), 1);
