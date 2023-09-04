@@ -14,6 +14,7 @@
 
 #include "paddle/ir/core/value.h"
 
+#include <glog/logging.h>
 #include <cstddef>
 
 #include "paddle/ir/core/enforce.h"
@@ -274,8 +275,9 @@ uint32_t OpResultImpl::GetResultIndex() const {
 }
 
 OpResultImpl::~OpResultImpl() {
-  assert(use_empty() &&
-         owner()->name() + " operation destroyed but still has uses.");
+  if (!use_empty()) {
+    LOG(ERROR) << owner()->name() << " operation destroyed but still has uses.";
+  }
 }
 
 ir::Operation *OpResultImpl::owner() const {

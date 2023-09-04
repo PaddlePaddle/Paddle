@@ -49,11 +49,14 @@ class IrValue : public TensorInterface {
  public:
   explicit IrValue(const ir::Value& value)
       : value_(value),
-        shape_(
-            &value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims()),
-        dtype_(&value.type()
-                    .dyn_cast<paddle::dialect::DenseTensorType>()
-                    .dtype()) {}
+        shape_(value ? &value.type()
+                            .dyn_cast<paddle::dialect::DenseTensorType>()
+                            .dims()
+                     : nullptr),
+        dtype_(value ? &value.type()
+                            .dyn_cast<paddle::dialect::DenseTensorType>()
+                            .dtype()
+                     : nullptr) {}
 
   ShapeInterface Shape() const override { return ShapeInterface(&shape_); }
   DtypeInterface Dtype() const override { return DtypeInterface(&dtype_); }
