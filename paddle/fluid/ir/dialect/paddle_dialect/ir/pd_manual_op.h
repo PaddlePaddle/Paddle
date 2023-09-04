@@ -19,7 +19,9 @@ paddle::dialect::AddNOp, paddle::dialect::SplitGradOp,
 
 #else
 
-#pragma once
+#ifndef PADDLE_FLUID_IR_DIALECT_PADDLE_DIALECT_IR_PD_MANUAL_OP_H_
+#define PADDLE_FLUID_IR_DIALECT_PADDLE_DIALECT_IR_PD_MANUAL_OP_H_
+
 #include <vector>
 
 #include "paddle/fluid/framework/infershape_utils.h"
@@ -105,4 +107,6 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::EmbeddingGradOp)
 
-#endif
+#endif  // PADDLE_FLUID_IR_DIALECT_PADDLE_DIALECT_IR_PD_MANUAL_OP_H_
+
+#endif  // NOLINT
