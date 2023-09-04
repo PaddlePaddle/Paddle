@@ -23,6 +23,8 @@
 
 namespace cinn::adt::equation {
 
+using Functions = Equations;
+
 // clang-format off
 /*
 Graph = ([Variale], [Function], [Edge Variable Function], [Edge Function Variable])
@@ -34,7 +36,7 @@ class Graph final {
   using V2Fs = std::unordered_map<const Variable, std::vector<const Function*>>;
   using F2Vs = std::unordered_map<const Function*, std::vector<const Variable>>;
 
-  explicit Graph(const std::shared_ptr<std::vector<Equation>>& equations)
+  explicit Graph(const Functions& equations)
       : functions_(equations),
         variable2next_functions_(std::make_shared<V2Fs>()),
         function2in_variables_(std::make_shared<F2Vs>()),
@@ -125,7 +127,11 @@ class Graph final {
         /*OutputVariablesVisitor=*/GetOutputVariablesVisitor());
   }
 
-  std::unordered_set<Variable> GetVariables() const { return variables_; }
+  const std::unordered_set<Variable>& GetVariables() const {
+    return variables_;
+  }
+
+  const Equations& GetEquations() const { return functions_; }
 
  private:
   void CollectVariablesAndEdges(const Function& function) {
@@ -180,7 +186,7 @@ class Graph final {
     }
   }
 
-  std::shared_ptr<std::vector<Function>> functions_;
+  Functions functions_;
   // tNext [Function] <- Variable
   std::shared_ptr<V2Fs> variable2next_functions_;
   // tIn [Variable] <- Function

@@ -1,0 +1,148 @@
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "paddle/cinn/adt/generate_map_expr.h"
+#include "paddle/cinn/adt/equation.h"
+
+namespace cinn::adt {
+
+namespace {
+
+using AnchorTensor = eqaution::Variable;
+using FakeOpPlaceHolders = List<equation::FakeOpPlaceHolder>;
+
+std::shared_ptr<equation::Graph> GenerateEquationGraph(
+    const cinn::hlir::framework::Graph::Group& group) {
+  ADT_TODO();  // Trival code
+}
+
+std::unordered_map<AnchorTensor, FakeOpPlaceHolders> PartitionIGroups(
+    const cinn::hlir::framework::Graph::Group& group,
+    const equation::Graph& equations) {
+  ADT_TODO();  // Trival code
+}
+
+template <typename DoEachT>
+std::vector<std::shared_ptr<IGroup>> AssembleIGroups(
+    const cinn::hlir::framework::Graph::Group& group,
+    const std::unordered_map<AnchorTensor, FakeOpPlaceHolders>&
+        anchor_tensor2_igroup,
+    const DoEachT& DoEach) {
+  ADT_TODO();  // Trival code
+}
+
+m_ir::MapIR GenerateMapIR(
+    const cinn::hlir::framework::Graph::Group& group,
+    const std::shared_ptr<equation::Graph>& equation_graph,
+    const AnchorTensor& anchor_tensor,
+    const FakeOpPlaceHolders& fake_op_placeholders) {
+  ADT_TODO();  // Trival code
+}
+
+equation::Equations GenerateMapIREquations(
+    const cinn::hlir::framework::Graph::Group& group,
+    const std::shared_ptr<equation::Graph>& equation_graph,
+    const AnchorTensor& anchor_tensor,
+    const FakeOpPlaceHolders& fake_op_placeholders) {
+  ADT_TODO();  // Trival code
+}
+
+std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
+    const cinn::hlir::framework::Graph::Group& group,
+    const std::shared_ptr<equation::Graph>& equation_graph,
+    const std::unordered_map<AnchorTensor, FakeOpPlaceHolders>&
+        anchor_tensor2_igroup) {
+  return AssembleIGroups(
+      group,
+      anchor_tensor2_igroup,
+      [&](const auto& anchor_tensor, const auto& fake_op_placeholders) {
+        return std::pair{
+            GenerateMapIR(
+                group, equation_graph, anchor_tensor, fake_op_placeholders),
+            GenerateMapIREquations(
+                group, equation_graph, anchor_tensor, fake_op_placeholders)};
+      });
+}
+
+std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
+    const cinn::hlir::framework::Graph::Group& group) {
+  auto equation_graph = GenerateEquationGraph(group);
+
+  auto anchor_tensor2_igroup = PartitionIGroups(group, equation_graph);
+
+  return GenerateIGroups(group, equation_graph, anchor_tensor2_igroup);
+}
+
+std::shared_ptr<KGroup> GenerateKGroups(
+    const cinn::hlir::framework::Graph::Group& group,
+    const std::vector<std::shared_ptr<IGroup>>& igroups) {
+  ADT_TODO();  // Trival code
+}
+
+equation::GraphView MakeSdEqautionGraphView(
+    const std::shared_ptr<IGroup>& kgroup,
+    const m_expr::ScheduleDescriptor& sd) {
+  ADT_TODO();  // Trival code
+}
+
+template <typename DoEachT>
+cinn::adt::m_expr::MapExpr MergeMapExpr(const std::shared_ptr<KGroup>& kgroup,
+                                        const DoEachT& DoEach) {
+  ADT_TODO();  // Trival code temporarily, consider multiple igroups later
+}
+
+using TensorIndex = Variable;
+using TensorIndexExpr = Value;
+std::unordered_map<TensorIndex, TensorIndexExpr> GenerateTensorIndex(
+    const std::shared_ptr<IGroup>& igroup,
+    const eqaution::GraphView& sd_equation_graph_view) {
+  ADT_TODO();  // Trival code
+}
+
+cinn::adt::m_expr::MapExpr GenerateMapExpr(
+    const std::shared_ptr<IGroup>& igroup,
+    const std::unordered_map<TensorIndex, TensorIndexExpr>& tensor_indexes) {
+  ADT_TODO();  // Trival code
+}
+
+cinn::adt::m_expr::MapExpr GenerateMapExpr(
+    const std::shared_ptr<IGroup>& igroup,
+    const m_expr::ScheduleDescriptor& sd) {
+  auto sd_equation_graph_view = MakeSdEqautionGraphView(igroup, sd);
+
+  auto tensor_indexes = GenerateTensorIndex(igroup, sd_equation_graph_view);
+
+  return GenerateMapExpr(igroup, tensor_indexes);
+}
+
+cinn::adt::m_expr::MapExpr GenerateMapExpr(
+    const std::shared_ptr<KGroup>& kgroup) {
+  return MergeMapExpr(kgroup, [&](const std::shared_ptr<IGroup>& igroup) {
+    auto sd = kgroup.GetDefaultScheduleDescriptor(igroup);
+    return GenerateMapExpr(igroup, sd);
+  });
+}
+
+}  // namespace
+
+cinn::adt::m_expr::MapExpr GenerateMapExpr(
+    const cinn::hlir::framework::Graph::Group& group) {
+  auto igroups = GenerateIGroups(group);
+
+  auto kgroup = GenerateKGroups(group, igroups);
+
+  return GenerateMapExpr(kgroup);
+}
+
+}  // namespace cinn::adt

@@ -53,7 +53,7 @@ EquationIGroupOps GenerateIGroup(const Graph& graph,
   return igroup;
 }
 
-bool isContain(const EquationIGroupOps& pre_igroup,
+bool IsContain(const EquationIGroupOps& pre_igroup,
                const EquationIGroupOps& igroup) {
   for (auto iter = pre_igroup.begin(); iter != pre_igroup.end(); ++iter) {
     if (igroup.find(*iter) == igroup.end()) {
@@ -71,7 +71,7 @@ void UpdateIGroupMap(
     if (iter->second.size() >= igroup.size()) {
       continue;
     }
-    if (isContain(iter->second, igroup)) {
+    if (IsContain(iter->second, igroup)) {
       index2IGroup->erase(iter);
     }
   }
