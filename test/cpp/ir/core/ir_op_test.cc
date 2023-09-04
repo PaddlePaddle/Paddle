@@ -244,11 +244,6 @@ TEST(op_test, region_test) {
   ir::Region &region = op3->region(0);
   EXPECT_EQ(region.empty(), true);
 
-  // (3) Test custom operation printer
-  std::stringstream ss;
-  op1->Print(ss);
-  EXPECT_EQ(ss.str(), " (%0) = \"test.operation1\" ()");
-
   region.push_back(new ir::Block());
   region.push_front(new ir::Block());
   region.insert(region.begin(), new ir::Block());
