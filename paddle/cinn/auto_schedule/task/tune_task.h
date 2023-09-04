@@ -34,16 +34,17 @@ namespace cinn {
 namespace auto_schedule {
 
 class TuneTask {
+  using GroupPtr = hlir::framework::GroupPtr;
+
  public:
   TuneTask() = default;
-  explicit TuneTask(std::shared_ptr<hlir::framework::Graph::Group> group)
-      : subgraph(group) {}
+  explicit TuneTask(GroupPtr group) : subgraph(group) {}
   // Initialize a task
   void Initialize(
       const absl::flat_hash_map<std::string, hlir::framework::shape_t>&
           shape_dict,
       const absl::flat_hash_map<std::string, cinn::common::Type>& dtype_dict,
-      hlir::framework::OpLowerer* lower_handler);
+      hlir::framework::OpLowerer<GroupPtr>* lower_handler);
   // Extract bodies in lowered_funcs() and return
   std::vector<ir::Expr> GetLoweredFuncBodyExprs() const;
 
@@ -51,7 +52,7 @@ class TuneTask {
   // sub-graph (if an op won't be fused, it will be a Group with size=1).
   std::shared_ptr<hlir::framework::Graph::Group> subgraph;
   // Lower handler, Not owned
-  hlir::framework::OpLowerer* op_lowerer;
+  hlir::framework::OpLowerer<GroupPtr>* op_lowerer;
   // target of this task
   common::Target target;
   // stores the initial (un-optimized) LoweredFuncs

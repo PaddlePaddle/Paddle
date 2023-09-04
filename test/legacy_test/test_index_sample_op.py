@@ -28,6 +28,11 @@ class TestIndexSampleOp(OpTest):
         self.python_api = paddle.index_sample
         self.config()
         xnp = np.random.random(self.x_shape).astype(self.x_type)
+        if self.x_type == np.complex64 or self.x_type == np.complex128:
+            xnp = (
+                np.random.random(self.x_shape)
+                + 1j * np.random.random(self.x_shape)
+            ).astype(self.x_type)
         indexnp = np.random.randint(
             low=0, high=self.x_shape[1], size=self.index_shape
         ).astype(self.index_type)
@@ -118,6 +123,28 @@ class TestCase6(TestIndexSampleOp):
         """
         self.x_shape = (10, 128)
         self.x_type = "float16"
+        self.index_shape = (10, 64)
+        self.index_type = "int64"
+
+
+class TestIndexSampleComplex64(TestIndexSampleOp):
+    def config(self):
+        """
+        For complex64 x type
+        """
+        self.x_shape = (10, 128)
+        self.x_type = np.complex64
+        self.index_shape = (10, 64)
+        self.index_type = "int64"
+
+
+class TestIndexSampleComplex128(TestIndexSampleOp):
+    def config(self):
+        """
+        For complex64 x type
+        """
+        self.x_shape = (10, 128)
+        self.x_type = np.complex128
         self.index_shape = (10, 64)
         self.index_type = "int64"
 
