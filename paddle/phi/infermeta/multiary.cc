@@ -4041,6 +4041,8 @@ void FusedRopeInferMeta(const MetaTensor& q,
                         const MetaTensor& v,
                         const MetaTensor& sin,
                         const MetaTensor& cos,
+                        const MetaTensor& position_ids,
+                        bool use_neox_rotary_style,
                         MetaTensor* out_q,
                         MetaTensor* out_k,
                         MetaTensor* out_v) {
@@ -4124,6 +4126,39 @@ void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
   out->set_dtype(row.dtype());
   out_count->set_dims({-1});
   out_count->set_dtype(DataType::INT32);
+}
+
+void MultiheadMatmulInferMeta(const MetaTensor& input,
+                              const MetaTensor& w,
+                              const MetaTensor& bias,
+                              const MetaTensor& bias_qk,
+                              const bool transpose_q,
+                              const bool transpose_k,
+                              const bool transpose_v,
+                              const float alpha,
+                              const int head_number,
+                              MetaTensor* out) {
+  auto w_dims = w.dims();
+  PADDLE_ENFORCE_GT(
+      w_dims.size(),
+      2,
+      errors::InvalidArgument(
+          "MultiheadMatmul's w is expected at least a 3-D tensor, but "
+          "it's %d-D tensor now.",
+          w_dims.size()));
+
+  auto bias_dims = bias.dims();
+  PADDLE_ENFORCE_GT(
+      bias_dims.size(),
+      1,
+      errors::InvalidArgument(
+          "MultiheadMatmul's bias should be at least 2-D tensor, but it's "
+          "%d-D tensor now.",
+          bias_dims.size()));
+
+  out->set_dims(input.dims());
+  out->set_dtype(input.dtype());
+  out->share_lod(input);
 }
 
 void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
