@@ -469,16 +469,16 @@ def RegisterPass(function=None, input_specs={}):
     Examples:
         .. code-block:: python
 
-        >>> import paddle
-        >>> from paddle.fluid.ir import RegisterPass
+            >>> import paddle
+            >>> from paddle.fluid.ir import RegisterPass
 
-        >>> @RegisterPass
-        >>> def multi_add_to_addn():
-        ...    def pattern(x, y, z):
-        ...        return paddle.add(paddle.add(x, y), z)
-        ...    def replace(x, y, z):
-        ...        return paddle.add_n([x, y, z])
-        ...    return pattern, replace
+            >>> @RegisterPass
+            >>> def multi_add_to_addn():
+            ...    def pattern(x, y, z):
+            ...        return paddle.add(paddle.add(x, y), z)
+            ...    def replace(x, y, z):
+            ...        return paddle.add_n([x, y, z])
+            ...    return pattern, replace
     """
 
     def _is_pass_pair(check_pair):
