@@ -33,6 +33,10 @@ template <typename T, typename DeviceContext>
 class CSoftmaxWithCrossEntropyOp : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    const int64_t ignore_index = ctx.Attr<int64_t>("ignore_index");
+    if (ignore_index >= 0) {
+      LOG_FIRST_N(INFO, 1) << "XPU does not support ignore_index in mp.";
+    }
     const int rid = ctx.Attr<int>("ring_id");
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(rid)) {
@@ -459,6 +463,10 @@ class CSoftmaxWithCrossEntropyGrad : public framework::OpKernel<T> {
         context.Output<phi::DenseTensor>(framework::GradVarName("Logits"));
     const phi::DenseTensor* softmax =
         context.Input<phi::DenseTensor>("Softmax");
+    const int64_t ignore_index = context.Attr<int64_t>("ignore_index");
+    if (ignore_index >= 0) {
+      LOG_FIRST_N(INFO, 1) << "XPU does not support ignore_index in mp.";
+    }
     const int rank = context.Attr<int>("rank");
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
