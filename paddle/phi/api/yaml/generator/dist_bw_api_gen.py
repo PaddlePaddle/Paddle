@@ -27,7 +27,7 @@ SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput({});
     auto dense_out = const_cast<phi::DenseTensor*>(&dist_out->value());
 """
-PARALLEL_OUT_CREATION_TEMPLATE = """
+VECTOR_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput({name});
     std::vector<phi::DenseTensor*> dense_out(dist_out.size());
     for (size_t i=0; i<dist_out.size(); i++) {{
@@ -61,7 +61,7 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                     self.outputs['names'][0]
                 )
             elif self.outputs['types'][0] == 'std::vector<Tensor>':
-                output_creation_code += PARALLEL_OUT_CREATION_TEMPLATE.format(
+                output_creation_code += VECTOR_OUT_CREATION_TEMPLATE.format(
                     name=self.outputs['names'][0]
                 )
             else:
