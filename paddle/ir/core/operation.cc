@@ -121,7 +121,7 @@ Operation *Operation::Create(const std::vector<ir::OpResult> &inputs,
 // Call destructors for Region , OpResults, Operation, and OpOperands in
 // sequence, and finally free memory.
 void Operation::Destroy() {
-  VLOG(6) << "Destroy Operation [" << name() << "] ...";
+  VLOG(10) << "Destroy Operation [" << name() << "] ...";
   // 1. Deconstruct Regions.
   if (num_regions_ > 0) {
     for (size_t idx = 0; idx < num_regions_; idx++) {

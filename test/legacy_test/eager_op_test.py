@@ -1370,9 +1370,19 @@ class OpTest(unittest.TestCase):
             return
         if self._check_cinn:
             return
-        stored_flag = get_flags('FLAGS_enable_new_ir_in_executor')
+        stored_flag = get_flags(
+            [
+                'FLAGS_enable_new_ir_in_executor',
+                "FLAGS_new_ir_apply_inplace_pass",
+            ]
+        )
         try:
-            set_flags({"FLAGS_enable_new_ir_in_executor": True})
+            set_flags(
+                {
+                    "FLAGS_enable_new_ir_in_executor": True,
+                    "FLAGS_new_ir_apply_inplace_pass": 0,
+                }
+            )
             new_scope = paddle.static.Scope()
             executor = Executor(place)
             new_program = None
@@ -1927,6 +1937,7 @@ class OpTest(unittest.TestCase):
         only_check_prim=False,
         inplace_atol=None,
         check_cinn=False,
+        check_new_ir=True,
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
@@ -2455,6 +2466,7 @@ class OpTest(unittest.TestCase):
         if (
             self.op_type
             in new_ir_python_api_grad_white_list.new_ir_python_api_grad_white_list
+            and check_new_ir
         ):
             if (
                 type(place) is paddle.fluid.libpaddle.CPUPlace
@@ -2576,6 +2588,7 @@ class OpTest(unittest.TestCase):
         inplace_atol=None,
         check_cinn=False,
         only_check_prim=False,
+        check_new_ir=True,
     ):
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
@@ -2600,6 +2613,7 @@ class OpTest(unittest.TestCase):
                 only_check_prim=only_check_prim,
                 inplace_atol=inplace_atol,
                 check_cinn=check_cinn,
+                check_new_ir=check_new_ir,
             )
             if not res and only_check_prim:
                 continue
@@ -2766,6 +2780,7 @@ class OpTest(unittest.TestCase):
         only_check_prim=False,
         atol=1e-5,
         check_cinn=False,
+        check_new_ir=True,
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -2788,6 +2803,7 @@ class OpTest(unittest.TestCase):
                 only_check_prim=only_check_prim,
                 atol=atol,
                 check_cinn=check_cinn,
+                check_new_ir=check_new_ir,
             )
 
     def check_grad_with_place(
@@ -2807,6 +2823,7 @@ class OpTest(unittest.TestCase):
         numeric_place=None,
         atol=1e-5,
         check_cinn=False,
+        check_new_ir=True,
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -3007,6 +3024,7 @@ class OpTest(unittest.TestCase):
         if (
             self.op_type
             in new_ir_python_api_grad_white_list.new_ir_python_api_grad_white_list
+            and check_new_ir
         ):
             if (
                 type(place) is paddle.fluid.libpaddle.CPUPlace
@@ -3207,9 +3225,19 @@ class OpTest(unittest.TestCase):
         if self._check_cinn:
             return
 
-        stored_flag = get_flags('FLAGS_enable_new_ir_in_executor')
+        stored_flag = get_flags(
+            [
+                'FLAGS_enable_new_ir_in_executor',
+                "FLAGS_new_ir_apply_inplace_pass",
+            ]
+        )
         try:
-            set_flags({"FLAGS_enable_new_ir_in_executor": True})
+            set_flags(
+                {
+                    "FLAGS_enable_new_ir_in_executor": True,
+                    "FLAGS_new_ir_apply_inplace_pass": 0,
+                }
+            )
             executor = Executor(place)
             new_gradients = list(
                 map(
