@@ -932,7 +932,7 @@ def OpGenerator(
                     op_infer_meta_map,
                     muta_attr_is_input=False,
                 )
-                if len(op_attribute_name_list) > 1:
+                if len(op_attribute_name_list) > 0:
                     (
                         build_args_with_attr_is_map_for_declare,
                         build_func_with_attr_is_map,
