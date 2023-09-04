@@ -139,12 +139,6 @@ bool Tensor::is_dense_tensor() const {
   return phi::DenseTensor::classof(impl_.get());
 }
 bool Tensor::is_dist_tensor() const {
-  std::cout << "is_dist_ensor function, is_dist_tensor: "
-            << phi::distributed::DistTensor::classof(impl_.get()) << std::endl;
-  std::cout << "is_dist_ensor function, is_dense_tensor: "
-            << phi::DenseTensor::classof(impl_.get()) << std::endl;
-  std::cout << "is_dist_ensor function, is_nullptr: "
-            << (impl_.get() == nullptr) << std::endl;
   return phi::distributed::DistTensor::classof(impl_.get());
 }
 bool Tensor::is_selected_rows() const {
@@ -362,8 +356,6 @@ const std::shared_ptr<phi::TensorBase> &Tensor::impl() const { return impl_; }
 
 void Tensor::set_impl(const std::shared_ptr<phi::TensorBase> &impl) {
   impl_ = impl;
-  std::cout << "impl_ is dist_tensor: "
-            << phi::distributed::DistTensor::classof(impl_.get()) << std::endl;
 }
 
 void Tensor::set_impl(std::shared_ptr<phi::TensorBase> &&impl) {

@@ -236,20 +236,10 @@ OUTPUT_RESHARD_TEMPLATE = """
 #     out_size_expr : [], expression for getting size of vector<Tensor>
 
 skip_op_lists = [
-    # "broadcast_tensors",
-    # "broadcast_tensors_grad",  #
     "check_finite_and_unscale",  # std::vector<Tensor>&, const Tensor& -> std::tuple<std::vector<Tensor>&, Tensor>
     "coalesce_tensor",  # const std::vector<Tensor>&, DataType, bool, bool, bool, float, bool, int, int, const std::vector<int64_t>&, const std::vector<int64_t>& -> std::tuple<std::vector<Tensor>, Tensor>
-    # "meshgrid",
-    # "meshgrid_grad",  # const std::vector<Tensor>& -> std::vector<Tensor>
-    # "unbind",  # const Tensor&, int -> std::vector<Tensor>
-    # "unstack",
-    # "unstack_grad",  # const Tensor&, int, int -> std::vector<Tensor>
-    "update_loss_scaling",  # std::vector<Tensor>&, const Tensor&, Tensor&, Tensor&, Tensor&, int, int, float, float, const Scalar& -> std::tuple<std::vector<Tensor>&, Tensor&, Tensor&, Tensor&>
     "einsum",
     "einsum_grad",  # const std::vector<Tensor>&, const std::string& -> std::tuple<Tensor, std::vector<Tensor>, std::vector<Tensor>>
-    # "split",  # const Tensor&, const IntArray&, const Scalar& -> std::vector<Tensor>
-    # "split_with_num",  # const Tensor&, int, const Scalar& -> std::vector<Tensor>
 ]
 
 
@@ -335,9 +325,6 @@ class DistForwardAPI(ForwardAPI):
             if self.outputs['types'][0] == 'Tensor':
                 output_creation_code += SINGLE_OUT_CREATION_TEMPLATE
             elif self.outputs['types'][0] == 'std::vector<Tensor>':
-                # print("self.kernel['func'][0]: ", self.kernel['func'][0])
-                # print("self.outputs['out_size_expr'][0]: ", self.outputs['out_size_expr'][0])
-                # print()
                 output_creation_code += (
                     SINGLE_OUT_VECTOR_CREATION_TEMPLATE.format(
                         self.outputs['out_size_expr'][0]

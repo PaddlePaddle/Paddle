@@ -549,10 +549,10 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
   std::vector<phi::distributed::DistTensor*> result;
   for (auto tmp : out) {
     if (tmp) {
-      // TODO(chenweihang): now all dist case are nullptr
+      // TODO(GhostScreaming): now all dist case are nullptr
       if (tmp->impl() == nullptr) {
         phi::DenseTensor dense_t;
-        // TODO(chenweihang): polish code, dist_attr is null now
+        // TODO(GhostScreaming): polish code, dist_attr is null now
         phi::distributed::TensorDistAttr dist_attr;
         auto dist_t =
             std::make_shared<phi::distributed::DistTensor>(dense_t, dist_attr);
@@ -573,7 +573,7 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
   std::vector<phi::distributed::DistTensor*> results(out_size);
   for (size_t i = 0; i < out_size; ++i) {
     phi::DenseTensor dense_t;
-    // TODO(chenweihang): polish code, dist_attr is null now
+    // TODO(GhostScreaming): polish code, dist_attr is null now
     phi::distributed::TensorDistAttr dist_attr;
     auto dist_t =
         std::make_shared<phi::distributed::DistTensor>(dense_t, dist_attr);
@@ -582,26 +582,6 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
     out->back().set_impl(dist_t);
   }
   return results;
-
-  // for (auto tmp : out) {
-  //   if (tmp) {
-  //     // TODO(chenweihang): now all dist case are nullptr
-  //     if (tmp->impl() == nullptr) {
-  //       phi::DenseTensor dense_t;
-  //       // TODO(chenweihang): polish code, dist_attr is null now
-  //       phi::distributed::TensorDistAttr dist_attr;
-  //       auto dist_t =
-  //           std::make_shared<phi::distributed::DistTensor>(dense_t,
-  //           dist_attr);
-  //       tmp->set_impl(dist_t);
-  //     }
-  //     result.emplace_back(
-  //         static_cast<phi::distributed::DistTensor*>(tmp->impl().get()));
-  //   } else {
-  //     result.emplace_back(nullptr);
-  //   }
-  // }
-  // return result;
 }
 
 }  // namespace experimental
