@@ -110,6 +110,11 @@ std::string Value::PrintUdChain() {
   return impl()->PrintUdChain();
 }
 
+std::string Value::Name() const {
+  CHECK_VALUE_NULL_IMPL(Name);
+  return impl()->Name();
+}
+
 Value::UseIterator Value::use_begin() const {
   return ir::OpOperand(first_use());
 }
@@ -254,6 +259,12 @@ std::string ValueImpl::PrintUdChain() {
     }
   }
   result << "nullptr";
+  return result.str();
+}
+
+std::string ValueImpl::Name() const {
+  std::stringstream result;
+  result << "Value[" << this << "]";
   return result.str();
 }
 

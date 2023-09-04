@@ -193,8 +193,7 @@ void IrPrinter::PrintValue(const Value& v) {
     return;
   }
 
-  std::string new_name = "%" + std::to_string(cur_var_number_);
-  cur_var_number_++;
+  std::string new_name = "%" + v.Name();
   aliases_[key] = new_name;
   os << new_name;
 }

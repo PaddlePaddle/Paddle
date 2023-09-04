@@ -71,7 +71,6 @@ class IR_API IrPrinter : public BasicIrPrinter {
   void PrintOpReturnType(const Operation* op);
 
  private:
-  size_t cur_var_number_{0};
   std::unordered_map<const void*, std::string> aliases_;
 };
 

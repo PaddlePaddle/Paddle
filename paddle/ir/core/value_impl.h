@@ -104,6 +104,8 @@ class alignas(8) ValueImpl {
 
   std::string PrintUdChain();
 
+  std::string Name() const;
+
  protected:
   ///
   /// \brief Only can be constructed by derived classes such as OpResultImpl.

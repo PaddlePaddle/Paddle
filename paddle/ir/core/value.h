@@ -108,6 +108,8 @@ class IR_API Value {
 
   std::string PrintUdChain();
 
+  std::string Name() const;
+
   ///
   /// \brief Provide iterator interface to access Value use chain.
   ///
