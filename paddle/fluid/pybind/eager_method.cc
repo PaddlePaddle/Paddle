@@ -69,7 +69,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/utils/pybind.h"
 
 PHI_DECLARE_bool(set_to_1d);
-PD_DECLARE_bool(use_stride_kernel);
+PHI_DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace pybind {

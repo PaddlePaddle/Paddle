@@ -59,24 +59,20 @@
 #else  // PADDLE_WITH_GFLAGS
 
 #define PHI_DECLARE_VARIABLE(type, shorttype, name) \
-  namespace paddle {                                \
-  namespace flags {                                 \
+  namespace paddle_flags {                          \
   extern PHI_IMPORT_FLAG type FLAGS_##name;         \
   }                                                 \
-  }                                                 \
-  using paddle::flags::FLAGS_##name
+  using paddle_flags::FLAGS_##name
 
 #define PHI_DEFINE_VARIABLE(type, shorttype, name, default_value, description) \
-  namespace paddle {                                                           \
-  namespace flags {                                                            \
+  namespace paddle_flags {                                                     \
   static const type FLAGS_##name##_default = default_value;                    \
   PHI_EXPORT_FLAG type FLAGS_##name = default_value;                           \
   /* Register FLAG */                                                          \
   static ::paddle::flags::FlagRegisterer flag_##name##_registerer(             \
       #name, description, __FILE__, &FLAGS_##name##_default, &FLAGS_##name);   \
   }                                                                            \
-  }                                                                            \
-  using paddle::flags::FLAGS_##name
+  using paddle_flags::FLAGS_##name
 
 #endif
 
