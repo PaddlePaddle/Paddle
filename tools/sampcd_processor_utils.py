@@ -30,7 +30,6 @@ formatter = logging.Formatter("%(message)s")
 
 handler_stdout = logging.StreamHandler(stream=sys.stdout)
 handler_stdout.setLevel(logging.DEBUG)
-handler_stdout.addFilter(lambda record: record.levelno <= logging.INFO)
 handler_stdout.setFormatter(formatter)
 
 handler_stderr = logging.StreamHandler(stream=sys.stderr)
