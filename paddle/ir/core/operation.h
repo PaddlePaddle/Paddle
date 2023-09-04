@@ -109,6 +109,11 @@ class IR_API alignas(8) Operation final {
     return CastUtil<T>::call(this);
   }
 
+  template <typename T>
+  bool isa() const {
+    return T::classof(this);
+  }
+
   template <typename Trait>
   bool HasTrait() const {
     return info_.HasTrait<Trait>();

@@ -359,8 +359,29 @@ void SplitGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
   fn(infer_meta);
 }
 
+void IfOp::Build(ir::Builder &builder,             // NOLINT
+                 ir::OperationArgument &argument,  // NOLINT
+                 ir::OpResult cond,
+                 std::vector<ir::Type> &&output_types) {
+  argument.num_regions = 2;
+  argument.AddOperand(cond);
+  argument.output_types.swap(output_types);
+}
+ir::Block *IfOp::true_block() {
+  ir::Region &true_region = (*this)->region(0);
+  if (true_region.empty()) true_region.emplace_back();
+  return true_region.front();
+}
+ir::Block *IfOp::false_block() {
+  ir::Region &false_region = (*this)->region(1);
+  if (false_region.empty()) false_region.emplace_back();
+  return false_region.front();
+}
+
+void IfOp::Verify() {}
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)

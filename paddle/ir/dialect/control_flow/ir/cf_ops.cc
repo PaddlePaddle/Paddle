@@ -12,30 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/ir/dialect/control_flow/ir/cf_ops.h"
 
-#include "paddle/ir/core/dialect.h"
+namespace ir {
 
-namespace paddle {
-namespace dialect {
+void YieldOp::Build(Builder &builder,
+                    OperationArgument &argument,
+                    std::vector<OpResult> &&inputs) {
+  argument.AddOperands(inputs.begin(), inputs.end());
+}
+}  // namespace ir
 
-class PaddleDialect : public ir::Dialect {
- public:
-  explicit PaddleDialect(ir::IrContext* context);
-
-  static const char* name() { return "pd"; }
-
-  void PrintType(ir::Type type, std::ostream& os) const;
-  void PrintAttribute(ir::Attribute type, std::ostream& os) const;
-
-  void PrintOperation(const ir::Operation* op,
-                      ir::IrPrinter& printer) const override;  // NOLINT
-
- private:
-  void initialize();
-};
-
-}  // namespace dialect
-}  // namespace paddle
-
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::PaddleDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::YieldOp)

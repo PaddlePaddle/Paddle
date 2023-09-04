@@ -14,28 +14,22 @@
 
 #pragma once
 
-#include "paddle/ir/core/dialect.h"
+#include "paddle/ir/core/builder.h"
+#include "paddle/ir/core/op_base.h"
 
-namespace paddle {
-namespace dialect {
-
-class PaddleDialect : public ir::Dialect {
+namespace ir {
+class IR_API YieldOp : public Op<YieldOp> {
  public:
-  explicit PaddleDialect(ir::IrContext* context);
+  using Op::Op;
+  static const char *name() { return "cf.yield"; }
+  static constexpr uint32_t attributes_num = 0;
+  static constexpr const char **attributes_name = nullptr;
 
-  static const char* name() { return "pd"; }
-
-  void PrintType(ir::Type type, std::ostream& os) const;
-  void PrintAttribute(ir::Attribute type, std::ostream& os) const;
-
-  void PrintOperation(const ir::Operation* op,
-                      ir::IrPrinter& printer) const override;  // NOLINT
-
- private:
-  void initialize();
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    std::vector<OpResult> &&inputs);
+  void Verify() {}
 };
+}  // namespace ir
 
-}  // namespace dialect
-}  // namespace paddle
-
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::PaddleDialect)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::YieldOp);
