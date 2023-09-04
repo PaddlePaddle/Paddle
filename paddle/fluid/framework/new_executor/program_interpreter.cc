@@ -69,6 +69,17 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
                   !FLAGS_new_executor_use_cuda_graph &&
                   interpreter::BlockCanBeStaticBuilt(block);
 
+  for (auto& op : block.AllOps()) {
+    if (op->HasAttr("sub_block")) {
+      auto* sub_block =
+          PADDLE_GET_CONST(framework::BlockDesc*, op->GetAttr("sub_block"));
+      bool is_sub_block_static_build =
+          interpreter::BlockCanBeStaticBuilt(*sub_block);
+      static_build_ = static_build_ && is_sub_block_static_build;
+      VLOG(4) << "SubBlock " << sub_block->ID()
+              << " can be static build: " << is_sub_block_static_build;
+    }
+  }
   instruction_scheduling_priority_less = [this](size_t lhs, size_t rhs) {
     SchedulingPriority lhs_scheduling_priority =
         vec_instruction_[lhs].GetSchedulingPriority();
@@ -162,12 +173,18 @@ FetchList ProgramInterpreter::Run(
   }
 }
 
-void ProgramInterpreter::PreBuild() {
+void ProgramInterpreter::PreStaticBuild() {
   SetDeviceId(place_);
 #ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
   if (!is_build_) {
+    if (!static_build_) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "ProgramInterpreter::PreStaticBuild should be called only when "
+          "static_build_ is true"));
+    }
+
     paddle::framework::interpreter::BuildVariableScope(
         block_, execution_config_, &var_scope_);
 

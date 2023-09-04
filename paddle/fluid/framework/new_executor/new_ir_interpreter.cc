@@ -1277,7 +1277,7 @@ void NewIRInterpreter::PreAnalysis() {
   VLOG(4) << "Done UpdateNcclOpNum";
 }
 
-void NewIRInterpreter::PreBuild() {
+void NewIRInterpreter::PreStaticBuild() {
   PADDLE_THROW(platform::errors::Unimplemented(
       "PreBuild is not implemented in NewIRInterpreter."));
 }

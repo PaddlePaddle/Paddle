@@ -281,8 +281,8 @@ class OperatorBase {
   //  The implementation should be written at RunImpl
   void Run(const Scope& scope, const platform::Place& place);
 
-  virtual void PreBuildOpFunc(const Scope& scope,
-                              const platform::Place& place) const {}
+  virtual void RunPreStaticBuild(const Scope& scope,
+                                 const platform::Place& place) const {}
 
   // FIXME(typhoonzero): this is only used for recv_op to stop event_loop.
   virtual void Stop() {}

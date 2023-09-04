@@ -98,7 +98,7 @@ class InterpreterBaseImpl {
 
   virtual bool IsSharedResultsBuild() const = 0;
 
-  virtual void PreBuild() = 0;
+  virtual void PreStaticBuild() = 0;
 
   virtual bool IsStaticBuild() const = 0;
 };
