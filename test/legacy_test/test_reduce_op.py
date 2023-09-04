@@ -1180,7 +1180,11 @@ class Test3DReduce3(Test1DReduce):
 
 
 def reduce_sum_wrapper2(x, axis=[0], dtype=None, keepdim=False):
-    return paddle._C_ops.sum(x, axis, dtype, keepdim)
+    if paddle.in_dynamic_mode():
+        return paddle._C_ops.sum(x, axis, dtype, keepdim)
+    else:
+        if paddle.ir.core._use_new_ir_api():
+            return paddle._ir_ops.sum(x, axis, dtype, keepdim)
 
 
 class Test8DReduce0(Test1DReduce):
