@@ -201,7 +201,7 @@ void FastLayernormXPUInferMeta(const MetaTensor& x,
                                float epsilon,
                                MetaTensor* out);
 
-void BnActXPUInferMeta(const MetaTensor& x,
+void BNActXPUInferMeta(const MetaTensor& x,
                        const MetaTensor& mean,
                        const MetaTensor& variance,
                        const MetaTensor& scale,

@@ -39,8 +39,8 @@ namespace framework {
 namespace ir {
 namespace patterns {
 
-struct BnActXPUPattern : public PatternBase {
-  BnActXPUPattern(PDPattern* pattern,
+struct BNActXPUPattern : public PatternBase {
+  BNActXPUPattern(PDPattern* pattern,
                   const std::string& name_scope,
                   const std::string& act_type);
   // declare operator node's name
@@ -59,7 +59,7 @@ struct BnActXPUPattern : public PatternBase {
   std::string act_type_;
 };
 
-BnActXPUPattern::BnActXPUPattern(PDPattern* pattern,
+BNActXPUPattern::BNActXPUPattern(PDPattern* pattern,
                                  const std::string& name_scope,
                                  const std::string& act_type)
     : PatternBase(pattern, name_scope, name_scope), act_type_(act_type) {
@@ -103,7 +103,7 @@ BnActXPUPattern::BnActXPUPattern(PDPattern* pattern,
 
 }  // namespace patterns
 
-class BnActXPUFusePass : public FusePassBase {
+class BNActXPUFusePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
@@ -113,7 +113,7 @@ class BnActXPUFusePass : public FusePassBase {
   const std::string name_scope_{"bn_act_xpu_fuse_pass"};
 };
 
-void BnActXPUFusePass::ApplyImpl(ir::Graph* graph) const {
+void BNActXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
@@ -125,15 +125,15 @@ void BnActXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_subgraph_count);
 }
 
-int BnActXPUFusePass::ApplyImpl(ir::Graph* graph,
+int BNActXPUFusePass::ApplyImpl(ir::Graph* graph,
                                 const std::string& act_type) const {
   GraphPatternDetector gpd;
-  patterns::BnActXPUPattern pattern(
+  patterns::BNActXPUPattern pattern(
       gpd.mutable_pattern(), name_scope_, act_type);
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
-    VLOG(4) << "handle BnActXPUFusePass fuse";
+    VLOG(4) << "handle BNActXPUFusePass fuse";
     // declare operator node's name
     GET_IR_NODE(bn);
     GET_IR_NODE(act);
@@ -190,7 +190,7 @@ int BnActXPUFusePass::ApplyImpl(ir::Graph* graph,
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(bn_act_xpu_fuse_pass, paddle::framework::ir::BnActXPUFusePass);
+REGISTER_PASS(bn_act_xpu_fuse_pass, paddle::framework::ir::BNActXPUFusePass);
 
 REGISTER_PASS_CAPABILITY(bn_act_xpu_fuse_pass)
     .AddCombination(

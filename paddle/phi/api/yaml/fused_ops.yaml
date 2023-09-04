@@ -27,7 +27,7 @@
   args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, float momentum, float epsilon, str data_layout, int act_type)
   output : Tensor(out)
   infer_meta :
-    func : BnActXPUInferMeta
+    func : BNActXPUInferMeta
   kernel :
     func : bn_act_xpu
     data_type : x

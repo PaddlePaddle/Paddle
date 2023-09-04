@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "glog/logging.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
@@ -20,7 +21,7 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void BnActXPUKernel(const Context& dev_ctx,
+void BNActXPUKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& mean,
                     const DenseTensor& variance,
@@ -74,6 +75,30 @@ void BnActXPUKernel(const Context& dev_ctx,
   bool is_nchw = data_layout_str == "NCHW";
   const auto* mean_data = mean.data<float>();
   const auto* variance_data = variance.data<float>();
+#ifndef PADDLE_WITH_XPU_PLUGIN
+  LOG(WARNING)
+      << "Add -DWITH_XPU_PLUGIN=ON to build xpu::plugin::fast_where(), or use "
+         "xpu::select() instead, which leads low performance.";
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  XPUType* temp_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(x.numel());
+  int r = xpu::batch_norm_infer<XPUType>(dev_ctx.x_context(),
+                                         x_data,
+                                         temp_data,
+                                         N,
+                                         C,
+                                         H,
+                                         W,
+                                         epsilon,
+                                         scale_data,
+                                         bias_data,
+                                         mean_data,
+                                         variance_data,
+                                         is_nchw);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "batch_norm_infer");
+  r = xpu::relu(
+      dev_ctx.x_context(), temp_data, y_data, x.numel(), nullptr, nullptr);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "relu");
+#else
   int r = xpu::plugin::bn_act_fusion_infer<XPUType>(dev_ctx.x_context(),
                                                     x_data,
                                                     y_data,
@@ -89,6 +114,7 @@ void BnActXPUKernel(const Context& dev_ctx,
                                                     is_nchw,
                                                     act_type);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "bn_act_fusion_infer");
+#endif
 }
 
 }  // namespace fusion
@@ -97,6 +123,6 @@ void BnActXPUKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(bn_act_xpu,
                    XPU,
                    ALL_LAYOUT,
-                   phi::fusion::BnActXPUKernel,
+                   phi::fusion::BNActXPUKernel,
                    float,
                    phi::dtype::float16) {}

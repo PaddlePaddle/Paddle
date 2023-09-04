@@ -821,7 +821,7 @@ void FastLayernormXPUInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
-void BnActXPUInferMeta(const MetaTensor& x,
+void BNActXPUInferMeta(const MetaTensor& x,
                        const MetaTensor& mean,
                        const MetaTensor& variance,
                        const MetaTensor& scale,

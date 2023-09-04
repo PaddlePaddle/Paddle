@@ -21,7 +21,7 @@ from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestXpuBnActFusePass(PassAutoScanTest):
+class TestXpuBNActFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_xpu=True)
         yield config, ["bn_act_xpu"], (1e-5, 1e-5)
