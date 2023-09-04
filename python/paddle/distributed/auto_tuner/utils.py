@@ -185,130 +185,97 @@ def search_all(tuner_cfg):
 
 def gen_new_args(raw_args, cfg, tuner_cfg):
     """Generate new script args."""
-    assert "run_cmd" in tuner_cfg
-    cmd = copy.deepcopy(tuner_cfg["run_cmd"])
-    res_args = copy.deepcopy(raw_args)
-    if "dp_degree" in cmd and "dp_degree" in cfg:
-        if "--" in cmd["dp_degree"][0]:
-            cmd["dp_degree"][1] = cmd["dp_degree"][1] + str(cfg["dp_degree"])
-            res_args.extend(cmd["dp_degree"])
-        else:
-            cmd["dp_degree"][1] = (
-                cmd["dp_degree"][1] + "=" + str(cfg["dp_degree"])
-            )
-            res_args.extend(cmd["dp_degree"])
 
-    if "mp_degree" in cmd and "mp_degree" in cfg:
-        if "--" in cmd["mp_degree"][0]:
-            cmd["mp_degree"][1] = cmd["mp_degree"][1] + str(cfg["mp_degree"])
-            res_args.extend(cmd["mp_degree"])
-        else:
-            cmd["mp_degree"][1] = (
-                cmd["mp_degree"][1] + "=" + str(cfg["mp_degree"])
-            )
-            res_args.extend(cmd["mp_degree"])
+    def _gen_new_arg(arg, cmd, cfg, res_args, tuner_cfg):
+        if arg in cmd and arg in cfg:
+            if "--" in cmd[arg][0]:
+                cmd[arg][1] = cmd[arg][1] + str(cfg[arg])
+                res_args.extend(cmd[arg])
+            elif "-o" in cmd[arg][0]:
+                cmd[arg][1] = cmd[arg][1] + "=" + str(cfg[arg])
+                res_args.extend(cmd[arg])
+            elif ".json" in cmd[arg][0]:
+                import json
 
-    if "pp_degree" in cmd and "pp_degree" in cfg:
-        if "--" in cmd["pp_degree"][0]:
-            cmd["pp_degree"][1] = cmd["pp_degree"][1] + str(cfg["pp_degree"])
-            res_args.extend(cmd["pp_degree"])
-        else:
-            cmd["pp_degree"][1] = (
-                cmd["pp_degree"][1] + "=" + str(cfg["pp_degree"])
-            )
-            res_args.extend(cmd["pp_degree"])
+                file_path = cmd[arg][0]
+                try:
+                    with open(file_path, "r") as f:
+                        cmd_cfg = json.load(f)
+                except:
+                    raise ValueError(
+                        "Please check your auto tuner json whether valid."
+                    )
+                keys = cmd[arg][1]
+                for key in keys[: len(keys) - 1]:
+                    cmd_cfg = cmd_cfg[key]
+                cmd_cfg[keys[-1]] = cfg[arg]
+                json.dump(cmd_cfg, open(cmd[arg][0], "w"))
+            elif ".yaml" in cmd[arg][0]:
+                import yaml
 
-    if "vpp_degree" in cmd and "vpp_degree" in cfg:
-        if "--" in cmd["vpp_degree"][0]:
-            cmd["vpp_degree"][1] = cmd["vpp_degree"][1] + str(cfg["vpp_degree"])
-            res_args.extend(cmd["vpp_degree"])
-        else:
-            cmd["vpp_degree"][1] = (
-                cmd["vpp_degree"][1] + "=" + str(cfg["vpp_degree"])
+                file_path = cmd[arg][0]
+                try:
+                    with open(file_path, "r") as f:
+                        cmd_cfg = yaml.safe_load(f)
+                except:
+                    raise ValueError(
+                        "Please check your auto tuner json whether valid."
+                    )
+                keys = cmd[arg][1]
+                for key in keys[: len(keys) - 1]:
+                    cmd_cfg = cmd_cfg[key]
+                cmd_cfg[keys[-1]] = cfg[arg]
+                yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
+        elif arg == "local_batch_size" and arg in cmd:
+            local_batch_size = (
+                tuner_cfg["model_cfg"]["global_batch_size"]
+                // cfg["sharding_degree"]
+                // cfg["dp_degree"]
             )
-            res_args.extend(cmd["vpp_degree"])
+            if "--" in cmd["local_batch_size"][0]:
+                cmd["local_batch_size"][1] = cmd["local_batch_size"][1] + str(
+                    local_batch_size
+                )
+                res_args.extend(cmd["local_batch_size"])
+            elif "-o" in cmd["local_batch_size"][0]:
+                cmd["local_batch_size"][1] = (
+                    cmd["local_batch_size"][1] + "=" + str(local_batch_size)
+                )
+                res_args.extend(cmd["local_batch_size"])
+            elif ".json" in cmd[arg][0]:
+                import json
 
-    if "micro_batch_size" in cmd and "micro_batch_size" in cfg:
-        if "--" in cmd["micro_batch_size"][0]:
-            cmd["micro_batch_size"][1] = cmd["micro_batch_size"][1] + str(
-                cfg["micro_batch_size"]
-            )
-            res_args.extend(cmd["micro_batch_size"])
-        else:
-            cmd["micro_batch_size"][1] = (
-                cmd["micro_batch_size"][1] + "=" + str(cfg["micro_batch_size"])
-            )
-            res_args.extend(cmd["micro_batch_size"])
+                file_path = cmd[arg][0]
+                try:
+                    with open(file_path, "r") as f:
+                        cmd_cfg = json.load(f)
+                except:
+                    raise ValueError(
+                        "Please check your auto tuner json whether valid."
+                    )
+                keys = cmd[arg][1]
+                for key in keys[: len(keys) - 1]:
+                    cmd_cfg = cmd_cfg[key]
+                cmd_cfg[keys[-1]] = local_batch_size
+                json.dump(cmd_cfg, open(cmd[arg][0], "w"))
+            elif ".yaml" in cmd[arg][0]:
+                import yaml
 
-    if "sharding_degree" in cmd and "sharding_degree" in cfg:
-        if "--" in cmd["sharding_degree"][0]:
-            cmd["sharding_degree"][1] = cmd["sharding_degree"][1] + str(
-                cfg["sharding_degree"]
-            )
-            res_args.extend(cmd["sharding_degree"])
-        else:
-            cmd["sharding_degree"][1] = (
-                cmd["sharding_degree"][1] + "=" + str(cfg["sharding_degree"])
-            )
-            res_args.extend(cmd["sharding_degree"])
+                file_path = cmd[arg][0]
+                try:
+                    with open(file_path, "r") as f:
+                        cmd_cfg = yaml.safe_load(f)
+                except:
+                    raise ValueError(
+                        "Please check your auto tuner json whether valid."
+                    )
+                keys = cmd[arg][1]
+                for key in keys[: len(keys) - 1]:
+                    cmd_cfg = cmd_cfg[key]
+                cmd_cfg[keys[-1]] = local_batch_size
+                yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
 
-    if "sharding_stage" in cmd and "sharding_stage" in cfg:
-        if "--" in cmd["sharding_stage"][0]:
-            cmd["sharding_stage"][1] = cmd["sharding_stage"][1] + str(
-                cfg["sharding_stage"]
-            )
-            res_args.extend(cmd["sharding_stage"])
-        else:
-            cmd["sharding_stage"][1] = (
-                cmd["sharding_stage"][1] + "=" + str(cfg["sharding_stage"])
-            )
-            res_args.extend(cmd["sharding_stage"])
-
-    if "use_recompute" in cmd and "use_recompute" in cfg:
-        if "--" in cmd["use_recompute"][0]:
-            cmd["use_recompute"][1] = cmd["use_recompute"][1] + str(
-                cfg["use_recompute"]
-            )
-            res_args.extend(cmd["use_recompute"])
-        else:
-            cmd["use_recompute"][1] = (
-                cmd["use_recompute"][1] + "=" + str(cfg["use_recompute"])
-            )
-            res_args.extend(cmd["use_recompute"])
-
-    if "recompute_granularity" in cmd and "recompute_granularity" in cfg:
-        if "--" in cmd["recompute_granularity"][0]:
-            cmd["recompute_granularity"][1] = cmd["recompute_granularity"][
-                1
-            ] + str(cfg["recompute_granularity"])
-            res_args.extend(cmd["recompute_granularity"])
-        else:
-            cmd["recompute_granularity"][1] = (
-                cmd["recompute_granularity"][1]
-                + "="
-                + str(cfg["recompute_granularity"])
-            )
-            res_args.extend(cmd["recompute_granularity"])
-
-    if "local_batch_size" in cmd:
-        local_batch_size = (
-            tuner_cfg["model_cfg"]["global_batch_size"]
-            // cfg["sharding_degree"]
-            // cfg["dp_degree"]
-        )
-        if "--" in cmd["local_batch_size"][0]:
-            cmd["local_batch_size"][1] = cmd["local_batch_size"][1] + str(
-                local_batch_size
-            )
-            res_args.extend(cmd["local_batch_size"])
-        else:
-            cmd["local_batch_size"][1] = (
-                cmd["local_batch_size"][1] + "=" + str(local_batch_size)
-            )
-            res_args.extend(cmd["local_batch_size"])
-
-    if "gradient_accumulation_steps" in cmd:
-        if "--" in cmd["gradient_accumulation_steps"][0]:
+        elif arg == "gradient_accumulation_steps" and arg in cmd:
             try:
                 gradient_accumulation_steps = (
                     tuner_cfg["model_cfg"]["global_batch_size"]
@@ -316,28 +283,69 @@ def gen_new_args(raw_args, cfg, tuner_cfg):
                     // cfg["dp_degree"]
                     // cfg["micro_batch_size"]
                 )
+            except:
+                return
+            if "--" in cmd["gradient_accumulation_steps"][0]:
                 cmd["gradient_accumulation_steps"][1] = cmd[
                     "gradient_accumulation_steps"
                 ][1] + str(gradient_accumulation_steps)
                 res_args.extend(cmd["gradient_accumulation_steps"])
-            except:
-                pass
-        else:
-            try:
-                gradient_accumulation_steps = (
-                    tuner_cfg["model_cfg"]["global_batch_size"]
-                    // cfg["sharding_degree"]
-                    // cfg["dp_degree"]
-                    // cfg["micro_batch_size"]
-                )
+
+            elif "-o" in cmd["gradient_accumulation_steps"][0]:
                 cmd["gradient_accumulation_steps"][1] = (
                     cmd["gradient_accumulation_steps"][1]
                     + "="
                     + str(gradient_accumulation_steps)
                 )
                 res_args.extend(cmd["gradient_accumulation_steps"])
-            except:
-                pass
+            elif ".json" in cmd[arg][0]:
+                import json
+
+                file_path = cmd[arg][0]
+                try:
+                    with open(file_path, "r") as f:
+                        cmd_cfg = json.load(f)
+                except:
+                    raise ValueError(
+                        "Please check your auto tuner json whether valid."
+                    )
+                keys = cmd[arg][1]
+                for key in keys[: len(keys) - 1]:
+                    cmd_cfg = cmd_cfg[key]
+                cmd_cfg[keys[-1]] = gradient_accumulation_steps
+                json.dump(cmd_cfg, open(cmd[arg][0], "w"))
+            elif ".yaml" in cmd[arg][0]:
+                import yaml
+
+                file_path = cmd[arg][0]
+                try:
+                    with open(file_path, "r") as f:
+                        cmd_cfg = yaml.safe_load(f)
+                except:
+                    raise ValueError(
+                        "Please check your auto tuner json whether valid."
+                    )
+                keys = cmd[arg][1]
+                for key in keys[: len(keys) - 1]:
+                    cmd_cfg = cmd_cfg[key]
+                cmd_cfg[keys[-1]] = gradient_accumulation_steps
+                yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
+
+    assert "run_cmd" in tuner_cfg
+    cmd = copy.deepcopy(tuner_cfg["run_cmd"])
+    res_args = copy.deepcopy(raw_args)
+
+    _gen_new_arg("dp_degree", cmd, cfg, res_args, tuner_cfg)
+    _gen_new_arg("mp_degree", cmd, cfg, res_args, tuner_cfg)
+    _gen_new_arg("pp_degree", cmd, cfg, res_args, tuner_cfg)
+    _gen_new_arg("vpp_degree", cmd, cfg, res_args, tuner_cfg)
+    _gen_new_arg("micro_batch_size", cmd, cfg, res_args, tuner_cfg)
+    _gen_new_arg("sharding_degree", cmd, cfg, res_args, tuner_cfg)
+    _gen_new_arg("sharding_stage", cmd, cfg, res_args, tuner_cfg)
+    _gen_new_arg("use_recompute", cmd, cfg, res_args, tuner_cfg)
+    _gen_new_arg("recompute_granularity", cmd, cfg, res_args, tuner_cfg)
+    _gen_new_arg("local_batch_size", cmd, cfg, res_args, tuner_cfg)
+    _gen_new_arg("gradient_accumulation_steps", cmd, cfg, res_args, tuner_cfg)
 
     return res_args
 

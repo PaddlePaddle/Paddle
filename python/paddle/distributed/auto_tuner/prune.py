@@ -132,6 +132,8 @@ def prune_by_vpp(tuner_cfg, cur_cfg, history_cfgs=None):
     if num_layers:
         if num_layers % (pp_degree * vpp_degree) != 0:
             return True
+        if pp_degree == 1 and vpp_degree != 1:
+            return True
 
     vpp_degree_candidates = tuner_cfg.get("vpp_degree", None)
     if vpp_degree_candidates == "auto":

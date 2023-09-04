@@ -495,15 +495,24 @@ def launch():
                 ctx.max_time_per_task = warmup_time
             is_first_task = False
             # auto tuner supports dp, mp, pp, micro batch size, sharding, recompute by default and every task has own log dir
-            log_dir = "DP{}_MP{}_PP{}_Sharding_degree_{}_stage_{}_MBS_{}_Recompute_{}_granularity_{}".format(
+            acc_steps = (
+                tuner_cfg["model_cfg"]["global_batch_size"]
+                // cur_cfg["dp_degree"]
+                // cur_cfg["sharding_degree"]
+                // cur_cfg["micro_batch_size"]
+            )
+            cur_cfg["acc_steps"] = acc_steps
+            log_dir = "DP{}_MP{}_PP{}_VPP_{}_Sharding_degree_{}_stage_{}_MBS_{}_Recompute_{}_granularity_{}_AccSteps_{}".format(
                 cur_cfg["dp_degree"],
                 cur_cfg["mp_degree"],
                 cur_cfg["pp_degree"],
+                cur_cfg["vpp_degree"],
                 cur_cfg["sharding_degree"],
                 cur_cfg["sharding_stage"],
                 cur_cfg["micro_batch_size"],
                 cur_cfg["use_recompute"],
                 cur_cfg["recompute_granularity"],
+                cur_cfg["acc_steps"],
             )
 
             ctx.args.log_dir = log_dir
