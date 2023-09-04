@@ -16,6 +16,7 @@ set(STANDALONE_EXECUTOR_DEPS
     phi_kernel_adaptor
     program_translator
     instruction_base
+    pd_inplace_pass
     ir)
 
 cc_library(
