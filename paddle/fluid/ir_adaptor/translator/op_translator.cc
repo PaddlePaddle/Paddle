@@ -1181,11 +1181,20 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
              ctx,
              paddle::dialect::VarTypeToDataType(
                  static_cast<paddle::framework::proto::VarType_Type>(dtype)))}};
+
+    if (op_desc.HasAttr("force_cpu")) {
+      bool force_cpu = PADDLE_GET_CONST(bool, op_desc.GetAttr("force_cpu"));
+      if (force_cpu) {
+        attribute_map["place"] =
+            paddle::dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
+      }
+    }
+
     int place_type = PADDLE_GET_CONST(int, op_desc.GetAttr("place_type"));
     switch (place_type) {
       case -1:
-        attribute_map["place"] =
-            paddle::dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
+        attribute_map["place"] = paddle::dialect::PlaceAttribute::get(
+            ctx, phi::Place(phi::AllocationType::UNDEFINED));
         break;
       case 0:
         attribute_map["place"] =
