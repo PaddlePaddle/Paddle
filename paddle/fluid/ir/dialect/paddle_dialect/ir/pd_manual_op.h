@@ -14,8 +14,7 @@
 
 #ifdef GET_MANUAL_OP_LIST
 #undef GET_MANUAL_OP_LIST
-paddle::dialect::AddNOp, paddle::dialect::SplitGradOp,
-    paddle::dialect::EmbeddingGradOp
+paddle::dialect::AddNOp, paddle::dialect::SplitGradOp
 
 #else
 
