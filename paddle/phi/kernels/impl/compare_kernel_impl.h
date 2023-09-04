@@ -30,6 +30,10 @@ inline void CompareKernelImpl(const Context& ctx,
                               int axis,
                               DenseTensor* out);
 
+template <typename T,
+          typename Context,
+          typename Functor,
+          typename InverseFunctor>
 inline void InplaceCompareKernelImpl(const Context& ctx,
                                      const DenseTensor& x,
                                      const DenseTensor& y,
