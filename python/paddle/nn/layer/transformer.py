@@ -1461,7 +1461,7 @@ class Transformer(Layer):
             length (int|Tensor): The length of sequence.
 
         Returns:
-            Tensor: Generated square mask according to the given length.
+            Tensor, generated according to the size of the input the length of the specific shape for [length, length] of the square to mask.
 
         Examples:
             .. code-block:: python
