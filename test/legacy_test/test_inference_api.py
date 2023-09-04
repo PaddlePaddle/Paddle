@@ -190,6 +190,7 @@ class TestInferenceBaseAPI(unittest.TestCase):
             predictor.run()
 
         def test_paddle_tensor():
+            paddle.disable_static()
             config = self.get_config(program, params)
             predictor = create_predictor(config)
             in_names = predictor.get_input_names()
@@ -197,6 +198,7 @@ class TestInferenceBaseAPI(unittest.TestCase):
             in_data = paddle.Tensor(np.ones((1, 6, 32, 32)).astype(np.float32))
             in_handle.share_external_data(in_data)
             predictor.run()
+            paddle.enable_static()
 
         test_lod_tensor()
         test_paddle_tensor()

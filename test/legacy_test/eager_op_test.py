@@ -1370,9 +1370,19 @@ class OpTest(unittest.TestCase):
             return
         if self._check_cinn:
             return
-        stored_flag = get_flags('FLAGS_enable_new_ir_in_executor')
+        stored_flag = get_flags(
+            [
+                'FLAGS_enable_new_ir_in_executor',
+                "FLAGS_new_ir_apply_inplace_pass",
+            ]
+        )
         try:
-            set_flags({"FLAGS_enable_new_ir_in_executor": True})
+            set_flags(
+                {
+                    "FLAGS_enable_new_ir_in_executor": True,
+                    "FLAGS_new_ir_apply_inplace_pass": 0,
+                }
+            )
             new_scope = paddle.static.Scope()
             executor = Executor(place)
             new_program = None
@@ -3215,9 +3225,19 @@ class OpTest(unittest.TestCase):
         if self._check_cinn:
             return
 
-        stored_flag = get_flags('FLAGS_enable_new_ir_in_executor')
+        stored_flag = get_flags(
+            [
+                'FLAGS_enable_new_ir_in_executor',
+                "FLAGS_new_ir_apply_inplace_pass",
+            ]
+        )
         try:
-            set_flags({"FLAGS_enable_new_ir_in_executor": True})
+            set_flags(
+                {
+                    "FLAGS_enable_new_ir_in_executor": True,
+                    "FLAGS_new_ir_apply_inplace_pass": 0,
+                }
+            )
             executor = Executor(place)
             new_gradients = list(
                 map(

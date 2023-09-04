@@ -18,15 +18,14 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle.fluid import core
+from paddle.framework import core
 
 
-class TestReshardRToS:
+class TestReshardRToP:
     def __init__(self):
         self._shape = eval(os.getenv("shape"))
         self._dtype = os.getenv("dtype")
         self._seeds = eval(os.getenv("seeds"))
-        self._shard = eval(os.getenv("shard"))
         self._backend = os.getenv("backend")
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
@@ -42,7 +41,6 @@ class TestReshardRToS:
 
         in_shard_specs = [None for i in range(len(self._shape))]
         out_shard_specs = [None for i in range(len(self._shape))]
-        out_shard_specs[self._shard] = "x"
 
         dist_attr = dist.DistAttr(
             mesh=self._mesh, sharding_specs=in_shard_specs
@@ -50,28 +48,26 @@ class TestReshardRToS:
         out_dist_attr = dist.DistAttr(
             mesh=self._mesh, sharding_specs=out_shard_specs
         )
+        out_dist_attr._set_partial_dims([0])
 
         input_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
 
-        reshard_func = core.RToSReshardFunction()
+        reshard_func = core.RToPReshardFunction()
         assert reshard_func.is_suitable(input_tensor, out_dist_attr)
 
         out = reshard_func.eval(dev_ctx, input_tensor, out_dist_attr)
-        out_shape = list(self._shape)
 
-        if out_shape[self._shard] % 2 == 0:
-            out_shape[self._shard] = out_shape[self._shard] // 2
-            np.testing.assert_equal(out.numpy(), input_tensor.numpy())
-        else:
-            out_shape[self._shard] = (
-                out_shape[self._shard] // 2
-                if dist.get_rank() == 1
-                else out_shape[self._shard] // 2 + 1
+        if dist.get_rank() == 0:
+            np.testing.assert_equal(
+                out._local_value().numpy(), input_tensor.numpy()
             )
+        else:
+            zeros = paddle.zeros(self._shape)
+            np.testing.assert_equal(out._local_value().numpy(), zeros.numpy())
 
         assert np.equal(out.shape, input_tensor.shape).all()
-        assert np.equal(out._local_shape, out_shape).all()
+        assert np.equal(out._local_shape, input_tensor._local_shape).all()
 
 
 if __name__ == '__main__':
-    TestReshardRToS().run_test_case()
+    TestReshardRToP().run_test_case()
