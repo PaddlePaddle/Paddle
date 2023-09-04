@@ -2461,7 +2461,7 @@ class OpTest(unittest.TestCase):
                 or type(place) is paddle.fluid.libpaddle.CUDAPlace
             ):
                 print("New IR checker begins...........")
-                with paddle.new_ir_utils._newir_guard():
+                with paddle.new_ir_utils.IrGuard():
                     new_ir_checker = NewIRChecker(self, self.outputs)
                     new_ir_checker.check()
 
@@ -3020,7 +3020,7 @@ class OpTest(unittest.TestCase):
                 or type(place) is paddle.fluid.libpaddle.CUDAPlace
             ):
                 print("New IR gradient begins...........")
-                with paddle.new_ir_utils._newir_guard():
+                with paddle.new_ir_utils.IrGuard():
                     new_ir_grad = self._get_ir_gradient(
                         inputs_to_check,
                         place,

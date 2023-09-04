@@ -478,10 +478,9 @@ if is_compiled_with_cinn():
 
 disable_static()
 
-from .new_ir_utils import IrChange  # noqa: F401
+from .new_ir_utils import IrGuard  # noqa: F401
 
-ir_change = IrChange()
-ir_change._switch_to_new_ir()
+ir_change = IrGuard()
 
 __all__ = [  # noqa
     'iinfo',
