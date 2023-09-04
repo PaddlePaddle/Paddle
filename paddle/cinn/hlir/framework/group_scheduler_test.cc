@@ -46,7 +46,8 @@ void Compile(NetBuilder* net_builder) {
       graph->GetMutableAttrs<absl::flat_hash_map<std::string, shape_t>>(
           "infershape");
 
-  OpLowerer op_lowerer(dtype_dict, shape_dict, target);
+  auto op_lowerer =
+      hlir::framework::CreateOpLowerer(dtype_dict, shape_dict, target);
   for (auto& fusion_group : graph->fusion_groups) {
     std::vector<ir::LoweredFunc> lowered_funcs =
         op_lowerer.Lower(fusion_group,
