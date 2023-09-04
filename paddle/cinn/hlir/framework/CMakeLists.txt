@@ -1,3 +1,4 @@
+add_subdirectory(new_ir)
 core_gather_headers()
 
 gather_srcs(
@@ -17,8 +18,8 @@ gather_srcs(
   node.cc
   pass.cc
   op_strategy.cc
-  op_lowering.cc
   op_lowering_util.cc
+  op_lowering_impl.cc
   accuracy_checker.cc
   visualize_helper.cc)
 
