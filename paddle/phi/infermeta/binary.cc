@@ -1274,6 +1274,43 @@ void EmbeddingInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void CEmbeddingInferMeta(const MetaTensor& weight,
+                         const MetaTensor& x,
+                         int64_t start_index,
+                         MetaTensor* out) {
+  const auto& table_dims = weight.dims();
+  const auto& ids_dims = x.dims();
+  int ids_rank = ids_dims.size();
+
+  VLOG(5) << "ids rank is " << ids_rank << std::endl;
+  PADDLE_ENFORCE_EQ(
+      table_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "ShapeError: The dimensions of the 'c_embedding' must be 2. "
+          "But received c_embedding's dimensions = %d, "
+          "c_embedding's shape = [%s].",
+          table_dims.size(),
+          table_dims));
+
+  auto output_dims = phi::vectorize(ids_dims);
+  output_dims.push_back(table_dims[1]);
+  out->set_dims(phi::make_ddim(output_dims));
+  out->set_dtype(weight.dtype());
+  out->share_lod(x);
+
+  const auto height = table_dims[0];
+  const auto width = table_dims[1];
+  PADDLE_ENFORCE_EQ(
+      (height > 0 && width > 0 && start_index >= 0),
+      true,
+      phi::errors::InvalidArgument(
+          "height:%ld width:%ld start_index:%ld must not have negative values",
+          height,
+          width,
+          start_index));
+}
+
 void ExpandAsInferMeta(const MetaTensor& x,
                        const MetaTensor& y,
                        const std::vector<int>& target_shape,
