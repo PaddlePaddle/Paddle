@@ -39,6 +39,7 @@
 #include "paddle/ir/core/value.h"
 #include "paddle/ir/pass/pass.h"
 #include "paddle/ir/pass/pass_manager.h"
+#include "paddle/ir/pass/pass_registry.h"
 #include "paddle/ir/transforms/dead_code_elimination_pass.h"
 #include "paddle/phi/core/enforce.h"
 #include "pybind11/stl.h"
@@ -56,6 +57,8 @@ using ir::Value;
 using paddle::dialect::APIBuilder;
 using paddle::dialect::DenseTensorType;
 using pybind11::return_value_policy;
+
+USE_PASS(dead_code_elimination);
 
 namespace paddle {
 namespace pybind {
@@ -488,15 +491,6 @@ void BindIrPass(pybind11::module *m) {
            [](const Pass &self) { return self.pass_info().dependents; });
 }
 
-// TODO(zhiqiu): refine pass registry
-std::unique_ptr<Pass> CreatePassByName(std::string name) {
-  if (name == "DeadCodeEliminationPass") {
-    return ir::CreateDeadCodeEliminationPass();
-  } else {
-    IR_THROW("The %s pass is not registed", name);
-  }
-}
-
 void BindPassManager(pybind11::module *m) {
   py::class_<PassManager, std::shared_ptr<PassManager>> pass_manager(
       *m,
@@ -513,8 +507,9 @@ void BindPassManager(pybind11::module *m) {
           },
           py::arg("opt_level") = 2)
       .def("add_pass",
-           [](PassManager &self, std::string pass_name) {
-             self.AddPass(std::move(CreatePassByName(pass_name)));
+           [](PassManager &self, const std::string &pass_name) {
+             self.AddPass(
+                 std::move(ir::PassRegistry::Instance().Get(pass_name)));
            })
       .def("passes",
            [](PassManager &self) {

@@ -38,7 +38,11 @@ OP_VJP_FORWARD_OUTPUT_GRAD_TEMPLATE = """
     Tensor {output_grad_name}(std::make_shared<primitive::LazyTensor>(out_grads[{idx1}][{idx2}]));"""
 
 OP_VJP_FORWARD_OUTPUT_GRAD_LIST_TEMPLATE = """
-    std::vector<Tensor> {output_grad_name}(std::make_shared<primitive::LazyTensor>(out_grads[{idx1}]));"""
+    std::vector<Tensor> {output_grad_name};
+    for (size_t idx = 0; idx < out_grads[{index}].size(); idx++) {{
+        {output_grad_name}.emplace_back(
+            std::make_shared<primitive::LazyTensor>(out_grads[{index}][idx]));
+    }}"""
 
 OP_VJP_ATTRIBUTE_TEMPLATE = """
     {attr_type} {attr_name} = op->attribute("{attr_name}").dyn_cast<{attr_parse_type}>().data();"""
@@ -47,9 +51,10 @@ OP_VJP_ATTRIBUTE_DEFAULT_TEMPLATE = """
     {attr_type} {attr_name} = {default_value};"""
 
 
-OP_VJP_CALL_VJP_TEMPLATE = """  std::vector<std::vector<Tensor>> tensor_res =
-    primitive::{op_phi_name}_vjp(
-    {inputs_list}stop_gradients);"""
+OP_VJP_CALL_VJP_TEMPLATE = """
+    std::vector<std::vector<Tensor>> tensor_res =
+        primitive::{op_phi_name}_vjp(
+        {inputs_list}stop_gradients);"""
 
 OP_VJP_STOPGRADIENT_TEMPLATE = """
     std::vector<std::vector<ir::OpResult>> res(tensor_res.size());
@@ -73,10 +78,10 @@ std::vector<std::vector<ir::OpResult>> {op_class_name}::Vjp(ir::Operation* op, c
     VLOG(6) << "Vjp prepare Prepare attributes of {op_grad_name}";
 {attribute_code}
 
-    VLOG(4) << "Vjp prepare call {op_phi_name}'s vjp inteface";
+    VLOG(6) << "Vjp prepare call {op_phi_name}'s vjp inteface";
 {call_vjp_code}
 
-    VLOG(4) << "Vjp prepare stop gradient of {op_grad_name}";
+    VLOG(6) << "Vjp prepare stop gradient of {op_grad_name}";
 {stop_gradient_input_grad_code}
     return res;
 }}
@@ -122,11 +127,21 @@ def gen_op_vjp_str(
                 )
         else:
             grad_idx += 1
-            forward_output_grad_code += (
-                OP_VJP_FORWARD_OUTPUT_GRAD_TEMPLATE.format(
-                    output_grad_name=bw_input_list[idx], idx1=grad_idx, idx2=0
+            input_type = input_types_map[op_grad_info.input_type_list[idx]]
+            if input_type == 'Tensor':
+                forward_output_grad_code += (
+                    OP_VJP_FORWARD_OUTPUT_GRAD_TEMPLATE.format(
+                        output_grad_name=bw_input_list[idx],
+                        idx1=grad_idx,
+                        idx2=0,
+                    )
                 )
-            )
+            else:
+                forward_input_output_code += (
+                    OP_VJP_FORWARD_OUTPUT_GRAD_LIST_TEMPLATE.format(
+                        output_grad_name=bw_input_list[idx], index=grad_idx
+                    )
+                )
     op_attribute_list = op_grad_info.attribute_name_list
     attribute_code = ''
     for idx in range(len(op_attribute_list)):

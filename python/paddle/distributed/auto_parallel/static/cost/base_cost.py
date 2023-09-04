@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 from paddle.utils.flops import flops
 
-from ..cluster import LinkType
+from ..cluster import LinkType, get_default_cluster
 from ..dist_tensor import DistributedTensor
 from ..process_group import get_process_group
 from ..utils import _get_comm_group, _get_idx_in_axis
@@ -785,9 +785,12 @@ class CommOpCost(OpCost):
             if self.op is not None:
                 vars = self.op.block.vars
                 # NOTE: The tensor communicated input_name is "X" in default. Otherwise, this function should be overrided
-                var_name = self.op.input("X")[0]
+                try:
+                    var_name = self.op.input("X")[0]
+                except:
+                    var_name = self.op.output("Out")[0]
                 var = get_var_with_recursion(
-                    var_name, self.op.block, self.program
+                    var_name, self.op.block, self.op.block.program
                 )
                 dtype = var.dtype
                 shape = var.shape
@@ -838,7 +841,7 @@ class CommOpCost(OpCost):
             if self.op_desc is not None:
                 self._group_ranks = self.op_desc["group_ranks"]
             elif self.op is not None:
-                ring_id = self.op.attrs("ring_id")
+                ring_id = self.op.attr("ring_id")
                 process_group = get_process_group(ring_id)
                 if process_group is None:
                     raise ValueError(
@@ -920,4 +923,58 @@ def calc_time_by_modeling(op=None, desc=None, cluster=None):
             op=op, op_desc=desc, cluster=cluster
         )
     time = op_cost.calc_time()
+    return time
+
+
+def calc_time_by_cost_model(op, cluster=None):
+    """Calc op time by cost model and the unit is microsecond."""
+    if not isinstance(op, paddle.fluid.framework.Operator):
+        raise TypeError(
+            "OP must be paddle.fluid.framework.Operator, but got {}.".format(
+                type(op)
+            )
+        )
+    if not cluster:
+        cluster = get_default_cluster()
+    time = 0.0
+    op_type = op.type
+    # calc comp op time by flops
+    if op_type not in NON_COMP_TYPE:
+        attrs = op.all_attrs()
+        # build comp op inputs desc to calc flops.
+        # for example, a matmul op inputs desc will be {"X": [(1024, 1024)], "Y": [(1024, 1024)]}
+        inputs = {}
+        for input_name in op.input_names:
+            var_names = op.input(input_name)
+            inputs[input_name] = []
+            for var_name in var_names:
+                var = op.block._var_recursive(var_name)
+                inputs[input_name].append(var.shape)
+
+        # the time of grad operator is twice than its forward operator empirically
+        if "_grad" in op_type:
+            op_type = op_type[: len(op_type) - 5]
+            flops_count = 2 * flops(op_type, inputs, attrs)
+        else:
+            flops_count = flops(op_type, inputs, attrs)
+
+        if cluster._gpu_model == "V100":
+            time = flops_count * 2.9e-7 * 2.6
+        elif cluster._gpu_model == "A100":
+            time = flops_count * 2.9e-7
+        else:
+            raise ValueError(
+                "Only A100 and V100 gpu has been supported currently."
+            )
+
+    # calc comm op time by communication modeling formula
+    elif op_type in COMM_OP_TYPE:
+        op_cost = _g_op_cost_factory[op_type](
+            op=op, comm_context=CommContext(cluster)
+        )
+        time = op_cost.calc_time()
+
+    else:
+        raise ValueError(f"The {op_type} has not been supported now.")
+
     return time
