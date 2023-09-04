@@ -189,6 +189,16 @@
     data_type : x
   optional : mask, seq_lod, max_seq_len, x_fp16, out_fp16
 
+- op : multihead_matmul
+  args : (Tensor input, Tensor w, Tensor bias, Tensor bias_qk, bool transpose_q = false, bool transpose_k = true, bool transpose_v = false, float alpha = 1.0f, int head_number = 1)
+  output : Tensor(out)
+  infer_meta :
+    func : MultiheadMatmulInferMeta
+  kernel :
+    func : multihead_matmul
+    data_type : input
+  optional : bias_qk
+
 - op : yolo_box_xpu
   args : (Tensor x, Tensor x_max, Tensor grid, Tensor stride, Tensor anchor_grid, float offset)
   output : Tensor(out), Tensor(out_max)

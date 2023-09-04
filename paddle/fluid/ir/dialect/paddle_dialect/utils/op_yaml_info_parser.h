@@ -34,10 +34,10 @@ class OpYamlInfoParser {
   const std::vector<std::string>& TensorParams(bool is_kernel = false) const;
   const std::vector<std::string>& AttrParams(bool is_kernel = false) const;
   const OpRunTimeInfo& OpRuntimeInfo() const;
-  const std::map<std::string, int>& InputName2Id() const;
-  const std::map<std::string, int>& OutputName2Id() const;
+  const std::map<std::string, uint32_t>& InputName2Id() const;
+  const std::map<std::string, uint32_t>& OutputName2Id() const;
 
-  const std::vector<int>& NoNeedBufferIds() const;
+  const std::vector<uint32_t>& NoNeedBufferIds() const;
 
   const std::vector<std::string>& InputNames() const {
     return input_name_list_;
@@ -52,6 +52,8 @@ class OpYamlInfoParser {
   bool HasInplace(const std::string& out_name) const;
 
   const std::string& InplaceName(const std::string& out_name) const;
+
+  std::unordered_map<uint32_t, uint32_t> GetInplaceIdMap() const;
 
   bool HasView(const std::string& out_name) const;
 
@@ -68,20 +70,20 @@ class OpYamlInfoParser {
   OpInfoTuple op_info_tuple_;
 
   // input info
-  std::map<std::string, int> input_name2id_;
+  std::map<std::string, uint32_t> input_name2id_;
   std::vector<std::string> input_name_list_;
   std::map<std::string, OpInputInfo> input_info_;
-  int input_tensor_number_{0};
+  uint32_t input_tensor_number_{0};
 
   // no_need_buffer_ids
-  std::vector<int> no_need_buffer_ids_;
+  std::vector<uint32_t> no_need_buffer_ids_;
 
   // attribute info
   std::vector<std::string> attribute_name_list_;
   std::map<std::string, OpAttributeInfo> attr_info_;
 
   // output info
-  std::map<std::string, int> output_name2id_;
+  std::map<std::string, uint32_t> output_name2id_;
   std::vector<std::string> output_name_list_;
   std::map<std::string, OpOutputInfo> output_info_;
 
