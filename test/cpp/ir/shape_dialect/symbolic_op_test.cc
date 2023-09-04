@@ -170,6 +170,16 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
       "S6", -100000, false, false, true, true);
   ir::dialect::SymbolicDim symDimS7 = builder.Build<ir::dialect::SymbolicDim>(
       "S7", -100000, false, false, true, true);
+  ir::dialect::SymbolicDim symDimS8 = builder.Build<ir::dialect::SymbolicDim>(
+      "S8", -100000, false, false, true, true);
+  ir::dialect::SymbolicDim symDimS9 = builder.Build<ir::dialect::SymbolicDim>(
+      "S9", -100000, false, false, true, true);
+  ir::dialect::SymbolicDim symDimS10 = builder.Build<ir::dialect::SymbolicDim>(
+      "S10", -100000, false, false, true, true);
+  ir::dialect::SymbolicDim symDimS11 = builder.Build<ir::dialect::SymbolicDim>(
+      "S11", -100000, false, false, true, true);
+  ir::dialect::SymbolicDim symDimS12 = builder.Build<ir::dialect::SymbolicDim>(
+      "S12", -100000, false, false, true, false);
   ir::dialect::SymbolicDim symDimC10 = builder.Build<ir::dialect::SymbolicDim>(
       "C10", 10, true, false, true, true);
   ir::dialect::SymbolicDim symDimC20 = builder.Build<ir::dialect::SymbolicDim>(
@@ -183,16 +193,25 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
   ir::OpResult dimOpS5 = builder.Build<ir::dialect::DimOp>("S5").out();
   ir::OpResult dimOpS6 = builder.Build<ir::dialect::DimOp>("S6").out();
   ir::OpResult dimOpS7 = builder.Build<ir::dialect::DimOp>("S7").out();
+  ir::OpResult dimOpS8 = builder.Build<ir::dialect::DimOp>("S8").out();
+  ir::OpResult dimOpS9 = builder.Build<ir::dialect::DimOp>("S9").out();
+  ir::OpResult dimOpS10 = builder.Build<ir::dialect::DimOp>("S10").out();
+  ir::OpResult dimOpS11 = builder.Build<ir::dialect::DimOp>("S11").out();
   ir::OpResult dimOpC10 = builder.Build<ir::dialect::DimOp>("C10").out();
   ir::OpResult dimOpC20 = builder.Build<ir::dialect::DimOp>("C20").out();
+  ir::OpResult constant =
+      builder
+          .Build<ir::ConstantOp>(ir::Int32Attribute::get(ctx, 2),
+                                 ir::Int32Type::get(ctx))
+          ->result(0);
 
-  // mark S1 == S2.
+  // Mark S1 == S2.
   builder.Build<ir::dialect::TieProductEqualOp>(
-      1, 1, std::vector<ir::OpResult>{dimOpS1, dimOpS2});
-  // For check S0 == S3.
+      2, 2, std::vector<ir::OpResult>{constant, dimOpS1, dimOpS2, constant});
+  // Mark S0 * S1 == S2 * S3, For check S0 == S3.
   builder.Build<ir::dialect::TieProductEqualOp>(
       2, 2, std::vector<ir::OpResult>{dimOpS0, dimOpS1, dimOpS2, dimOpS3});
-  // For check S4 == S5.
+  // Mark S4 * S0 * S1 == S2 * S3 * S5, For check S4 == S5.
   builder.Build<ir::dialect::TieProductEqualOp>(
       3,
       3,
@@ -201,18 +220,22 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
   // For check S6 == C10 * C20.
   builder.Build<ir::dialect::TieProductEqualOp>(
       1, 2, std::vector<ir::OpResult>{dimOpS6, dimOpC10, dimOpC20});
-  // For check C10 == S7.
+  // Mark C10 * S0 * S1 == S2 * S3 * S7, for check C10 == S7.
   builder.Build<ir::dialect::TieProductEqualOp>(
       3,
       3,
       std::vector<ir::OpResult>{
           dimOpC10, dimOpS0, dimOpS1, dimOpS2, dimOpS3, dimOpS7});
 
+  // Mark S8 * S9 == S10 * S11, for unsimplify product case
+  builder.Build<ir::dialect::TieProductEqualOp>(
+      2, 2, std::vector<ir::OpResult>{dimOpS8, dimOpS9, dimOpS10, dimOpS11});
+
   ir::SymbolicDimMgr symDimMgr(program.module_op());
 
   symDimMgr.load();
 
-  // For check S1 * S4 == S2 * S5
+  // For check indirect equality: S1 * S4 == S2 * S5
   ir::SymbolicDimProduct symDimProductLhs;
   ir::SymbolicDimProduct symDimProductRhs;
 
@@ -221,6 +244,18 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
 
   symDimProductRhs.symbols.push_back(symDimS2);
   symDimProductRhs.symbols.push_back(symDimS5);
+
+  // For uncompletely simplied product check: S8 * S9 * S12 == S10 * S11 * S12
+  ir::SymbolicDimProduct symDimProductLhs_;
+  ir::SymbolicDimProduct symDimProductRhs_;
+
+  symDimProductLhs_.symbols.push_back(symDimS8);
+  symDimProductLhs_.symbols.push_back(symDimS9);
+  symDimProductLhs_.symbols.push_back(symDimS12);
+
+  symDimProductRhs_.symbols.push_back(symDimS10);
+  symDimProductRhs_.symbols.push_back(symDimS11);
+  symDimProductRhs_.symbols.push_back(symDimS12);
 
   // For check simplifySymbolicDimProduct, {factor = 1, Sym = {S7}} => {factor =
   // 10}
@@ -243,7 +278,8 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
   std::tie(newLhs, newRhs) = symDimMgr.simplifySymbolicDimProductPair(
       symDimProductPairLhs, symDimProductPairRhs);
 
-  // For check symbolicDimProductDivide
+  // For check symbolicDimProductDivide, {S4 * S1 * C20} / {S1 * C10} => {factor
+  // = 2 Sym = {S4}}
   ir::SymbolicDimProduct symDimProductDivLhs;
   ir::SymbolicDimProduct symDimProductDivRhs;
   symDimProductDivLhs.symbols.push_back(symDimS4);
@@ -273,6 +309,8 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
   EXPECT_EQ(divRes->symbols[0], symDimMgr.getRootSymbolicDim(symDimS4));
   EXPECT_TRUE(
       symDimMgr.isSymbolicDimProductEqual(symDimProductLhs, symDimProductRhs));
+  EXPECT_TRUE(symDimMgr.isSymbolicDimProductEqual(symDimProductLhs_,
+                                                  symDimProductRhs_));
 }
 
 TEST(assist_struct_test, dim) {

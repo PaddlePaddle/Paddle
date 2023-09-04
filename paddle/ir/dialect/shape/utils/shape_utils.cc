@@ -341,8 +341,8 @@ bool SymbolicDimMgr::updateProductEqualityMap() {
   }
   // hash function of SymbolicDimProduct is expensive, thus we map it to integer
   // domain first.
-  std::unordered_map<SymbolicDimProduct*, size_t> symProd2Idx;
-  std::vector<SymbolicDimProduct*> idx2SymProd(productSet.size());
+  std::unordered_map<const SymbolicDimProduct*, size_t> symProd2Idx;
+  std::vector<const SymbolicDimProduct*> idx2SymProd(productSet.size());
   std::vector<size_t> idx2root(productSet.size());
   for (auto x : productSet) {
     size_t idx = symProd2Idx.size();
