@@ -41,16 +41,16 @@ namespace distributed {
     }                                                                  \
   } while (0)
 
-#define CUDA_CHECK(expr)                        \
-  do {                                          \
-    cudaError_t r = expr;                       \
-    if (r != cudaSuccess) {                     \
-      printf("Failed, cuda error %s:%d '%s'\n", \
-             __FILE__,                          \
-             __LINE__,                          \
-             cudaGetErrorString(r));            \
-      exit(EXIT_FAILURE);                       \
-    }                                           \
+#define CUDA_CHECK(expr)                                               \
+  do {                                                                 \
+      cudaError_t r = expr;                                            \
+      if (r != cudaSuccess) {                                          \
+          PADDLE_THROW(                                                \
+            phi::errors::External("Failed, cuda error %s:%d '%s'\n",   \
+                      __FILE__,                                        \
+                      __LINE__,                                        \
+                      cudaGetErrorString(r)));                         \
+      }                                                                \
   } while (0)
 
 ncclRedOp_t ToNCCLRedType(ReduceOp reduction);

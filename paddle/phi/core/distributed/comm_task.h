@@ -26,51 +26,67 @@
 namespace phi {
 namespace distributed {
 
+class Store;
 class CommTask {
  public:
   CommTask(const std::string& backend = "",
            const phi::Place& place = phi::Place(),
            int rank = -1,
            int size = 0,
+           int gid = 0,
            int64_t numel = 0,
            CommType comm_type = CommType::UNKNOWN)
       : backend_(backend),
         place_(place),
         rank_(rank),
         size_(size),
+        gid_(gid),
         numel_(numel),
         comm_type_(comm_type) {
-    VLOG(0) << "debug CommTask construct";
+            const char* global_rank = std::getenv("PADDLE_TRAINER_ID");
+            PADDLE_ENFORCE_NOT_NULL(
+                    global_rank,
+                    phi::errors::NotFound(
+                        "The environment variable 'PADDLE_TRAINER_ID' cannot be found."));
+            global_rank_ = std::atoi(global_rank);
   }
   virtual ~CommTask() = default;
 
   std::string GetBackend() { return backend_; }
   phi::Place GetPlace() { return place_; }
+  int GetGlobalRank() { return global_rank_; }
   int GetRank() { return rank_; }
   int GetSize() { return size_; }
+  int GetGid() { return gid_; }
   int64_t GetNumel() { return numel_; }
   uint64_t GetSeq() { return seq_; }
   CommType GetCommType() { return comm_type_; }
   bool GetTraceUpdated() { return start_trace_updated_; }
-  void SetTraceUpdated(bool updated) { start_trace_updated_ = updated; }
+  void SetTraceUpdated() { start_trace_updated_ = true; }
   std::chrono::time_point<std::chrono::steady_clock> GetStartTime() {
     return start_time_;
   }
+  std::shared_ptr<Store> GetStore() {
+      return store_;
+  }
+  void SetStore(std::shared_ptr<Store> store) {
+      store_ = store;
+  }
 
+  virtual std::string GetTraceMsg() {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("%s is not implemented.", __func__));
+    return "";
+  }
   virtual void StartRecord() {
     PADDLE_THROW(
         phi::errors::Unimplemented("%s is not implemented.", __func__));
     return;
   }
-  virtual void EndRecord(phi::gpuStream_t stream) {
+  virtual void EndRecord() {
     PADDLE_THROW(
         phi::errors::Unimplemented("%s is not implemented.", __func__));
     return;
-  }
-  virtual bool CudaEventQuery(cudaEvent_t event) {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("%s is not implemented.", __func__));
-    return false;
   }
 
   virtual void SetException(std::exception_ptr exception) {
@@ -122,19 +138,19 @@ class CommTask {
  protected:
   std::string backend_;
   phi::Place place_;
+  int global_rank_;
   int rank_;
   int size_;
+  int gid_;
   int64_t numel_;
   uint64_t seq_{0};
   CommType comm_type_;
   bool start_trace_updated_{false};
 
-  mutable std::mutex mutex_;
-  std::condition_variable cv_;
   bool completed_ = false;
   bool aborted_{false};
-  std::exception_ptr exception_;
   std::chrono::time_point<std::chrono::steady_clock> start_time_;
+  std::shared_ptr<Store> store_;
 
  private:
   DISABLE_COPY_AND_ASSIGN(CommTask);

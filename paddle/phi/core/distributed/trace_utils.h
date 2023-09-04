@@ -25,8 +25,7 @@ enum TraceEventType {
   TraceEventEnd,
 };
 
-template <typename T>
-using TraceMap = std::map<uint64_t, std::map<int, std::pair<std::string, T>>>;
+using TraceMap = std::map<uint64_t, std::map<int, std::pair<std::string, TraceEventType>>>;
 
 inline std::string GetTraceStartKey(const std::string& backend, int rank) {
   return backend + "_" + std::to_string(rank) + "_trace_start";
@@ -54,11 +53,17 @@ inline bool UpdateTraceMsg(std::shared_ptr<Store> store,
                            const std::string& key,
                            uint64_t seq,
                            const std::string& comm_type) {
+  VLOG(1) << "update trace msg key: " << key << ", type " << comm_type << ", seq " << seq;
   std::vector<uint8_t> value(comm_type.size() + sizeof(seq) + 1);
+  VLOG(1) << "update trace msg key: " << key << ", type " << comm_type << ", seq " << seq;
   memcpy(value.data(), &seq, sizeof(seq));
+  VLOG(1) << "update trace msg key: " << key << ", type " << comm_type << ", seq " << seq;
   memcpy(value.data() + sizeof(seq), comm_type.data(), comm_type.size());
+  VLOG(1) << "update trace msg key: " << key << ", type " << comm_type << ", seq " << seq;
   try {
+    VLOG(0) << "update trace msg key: " << key << ", type " << comm_type << ", seq " << seq;
     store->set(key, value);
+    VLOG(0) << "update trace msg key: " << key << ", type " << comm_type << ", seq " << seq;
     return true;
   } catch (...) {
     LOG(ERROR) << "Store is down while updating trace msg, with seq: " << seq
@@ -70,14 +75,10 @@ inline bool UpdateTraceMsg(std::shared_ptr<Store> store,
 inline bool ParseTraceValue(std::shared_ptr<Store> store,
                             const std::string& key,
                             uint64_t* seq,
-                            std::string* comm_type,
-                            bool* skip) {
+                            std::string* comm_type) {
   try {
     std::vector<uint8_t> value = store->get(key);
-    if (value.size() <= 0) {
-      *skip = true;
-      return true;
-    }
+    VLOG(0) << "parse trace key: " << key << ", val size: " << value.size();
     memcpy(seq, value.data(), sizeof(*seq));
     std::string type_value(
         reinterpret_cast<char*>(value.data() + sizeof(*seq)));
@@ -102,11 +103,11 @@ inline std::string RanksToString(const std::vector<int>& ranks) {
 }
 
 inline std::string AnalyzeTraceMsg(
-    const TraceMap<TraceEventType>& trace_type_map) {
-  uint64_t lag_seq = trace_type_map.begin()->first;
+    const TraceMap& trace_map) {
+  uint64_t lag_seq = trace_map.begin()->first;
   std::vector<int> start_ranks;
   std::vector<int> end_ranks;
-  for (auto& p : trace_type_map.begin()->second) {
+  for (auto& p : trace_map.begin()->second) {
     if (p.second.second == TraceEventStart) {
       start_ranks.emplace_back(p.first);
     } else {
@@ -114,18 +115,20 @@ inline std::string AnalyzeTraceMsg(
     }
   }
 
+  VLOG(0) << "debug start_ranks size: " << start_ranks.size() << ", end_ranks size: " << end_ranks.size();
   std::string result =
       "\n\t The lagging/dead/mismatched ranks that has desync problem are:";
   if (start_ranks.size()) {
     result +=
-        "\n\t -[" + RanksToString(start_ranks) +
+        "ranks [" + RanksToString(start_ranks) +
         "] joined but do not finish collective seq: " + std::to_string(lag_seq);
   }
   if (end_ranks.size()) {
-    result += "\n\t -[" + RanksToString(end_ranks) +
+    result += ", ranks [" + RanksToString(end_ranks) +
               "] finished collective seq: " + std::to_string(lag_seq) +
               ", but didnt join collective seq: " + std::to_string(lag_seq + 1);
   }
+  VLOG(0) << "debug analyze trace result: " << result;
   return result;
 }
 
@@ -134,25 +137,28 @@ inline std::string GenerateTraceMsg(std::shared_ptr<Store> store,
                                     int curr_rank,
                                     int world_size) {
   std::string result;
-  TraceMap<TraceEventType> seq_rank_type_map;
+  TraceMap trace_map;
 
   uint64_t curr_seq;
   std::string curr_comm_type;
 
+  VLOG(0) << "generate trace msg backend: " << backend;
   for (int rank = 0; rank < world_size; ++rank) {
+    VLOG(0) << "generate trace msg rank: " << rank;
     uint64_t seq_start = 0;
     {
       std::string trace_start_key = GetTraceStartKey(backend, rank);
+      if (!store->check(trace_start_key)) {
+          VLOG(0) << "check empty trace msg key: " << trace_start_key;
+          continue;
+      }
+
       std::string comm_type;
-      bool skip = false;
-      if (!ParseTraceValue(
-              store, trace_start_key, &seq_start, &comm_type, &skip)) {
+      if (!ParseTraceValue(store, trace_start_key, &seq_start, &comm_type)) {
         return result;
       }
-      if (skip) {
-        continue;
-      }
-      seq_rank_type_map[seq_start].emplace(
+      VLOG(0) << "generate trace msg key: " << trace_start_key;
+      trace_map[seq_start].emplace(
           rank, std::make_pair(comm_type, TraceEventStart));
       if (rank == curr_rank) {
         curr_seq = seq_start;
@@ -161,24 +167,31 @@ inline std::string GenerateTraceMsg(std::shared_ptr<Store> store,
     }
     {
       std::string trace_end_key = GetTraceEndKey(backend, rank);
+      if (!store->check(trace_end_key)) {
+          VLOG(0) << "check empty trace msg key: " << trace_end_key;
+          continue;
+      }
+
       uint64_t seq = 0;
       std::string comm_type;
-      bool skip = false;
-      if (!ParseTraceValue(store, trace_end_key, &seq, &comm_type, &skip)) {
+      VLOG(0) << "generate trace msg key: " << trace_end_key;
+      if (!ParseTraceValue(store, trace_end_key, &seq, &comm_type)) {
         return result;
       }
-      if (skip) {
-        continue;
-      }
+      VLOG(0) << "generate trace msg key: " << trace_end_key;
+      VLOG(0) << "generate trace msg seq_start: " << seq_start << ", seq: " << seq;
       if (seq == seq_start) {
-        seq_rank_type_map[seq][rank].second = TraceEventEnd;
+        trace_map[seq][rank].second = TraceEventEnd;
+        VLOG(0) << "generate trace seq: " << seq << ", rank: " << rank << ", event end";
       }
     }
   }
-  result += "\n\t [" + std::to_string(curr_rank) +
-            "] timeout at collective: " + curr_comm_type +
+  VLOG(0) << "generate trace msg process result: " << result;
+  result += "\n\t Global detail, rank: " + std::to_string(curr_rank) +
+            " timeout at collective: " + curr_comm_type +
             ", seq: " + std::to_string(curr_seq);
-  result += AnalyzeTraceMsg(seq_rank_type_map);
+  VLOG(0) << "generate trace msg process result: " << result;
+  result += AnalyzeTraceMsg(trace_map);
   return result;
 }
 

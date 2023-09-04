@@ -24,6 +24,8 @@
 #include "paddle/phi/core/distributed/comm_task_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_task.h"
 #include "paddle/phi/core/distributed/utils.h"
+#include "paddle/phi/core/distributed/nccl_tools.h"
+#include "paddle/phi/core/distributed/trace_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
 
@@ -41,6 +43,11 @@ namespace distributed {
 
 using phi::distributed::IsP2POP;
 using phi::distributed::ToNCCLRedType;
+using phi::distributed::SerializeNCCLUniqueId;
+using phi::distributed::NCCLDTypeToString;
+using phi::distributed::NCCLRedTypeToString;
+using phi::distributed::GetTraceStartKey;
+using phi::distributed::GetTraceEndKey;
 uint64_t ProcessGroupNCCL::s_group_call_counter = 0;
 
 ProcessGroupNCCL::NCCLTask::NCCLTask(const Place& place,
@@ -99,8 +106,10 @@ ProcessGroupNCCL::ProcessGroupNCCL(
     const std::shared_ptr<phi::distributed::Store>& store,
     int rank,
     int size,
-    int gid)
-    : ProcessGroupWithStream(rank, size, gid), store_(store) {}
+    int gid,
+    int64_t timeout)
+    : ProcessGroupWithStream(rank, size, gid), store_(store), pg_timeout_(timeout) {
+    }
 
 void ProcessGroupNCCL::GroupStart() {
   NCCL_CHECK(phi::dynload::ncclGroupStart());
@@ -213,6 +222,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
                                                /*dst_rank*/ rank_,
                                                /*cur_rank*/ rank_,
                                                size_);
+  VLOG(1) << "debug all reduce begin ";
   return Collective(
       [&](ncclComm_t comm, gpuStream_t stream) {
         if (FLAGS_enable_nccl_dynamic_check) {
@@ -234,10 +244,15 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
                 << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
 
+        int64_t numel = in_tensor.numel();
+        if (rank_ == 1) {
+            numel += 200;
+        }
         NCCL_CHECK(
             phi::dynload::ncclAllReduce(in_tensor.data(),
                                         out_tensor->data(),
-                                        in_tensor.numel(),
+                                        //in_tensor.numel(),
+                                        numel,
                                         phi::ToNCCLDataType(in_tensor.dtype()),
                                         ToNCCLRedType(opts.reduce_op),
                                         comm,
@@ -379,6 +394,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
     const BroadcastOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
+  VLOG(1) << "debug broadcast begin ";
   phi::distributed::CommStaticCheck::SameShape(*out_tensor,
                                                in_tensor,
                                                /*dst_rank*/ rank_,
@@ -402,10 +418,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
 
+        int64_t numel = in_tensor.numel();
         NCCL_CHECK(
             phi::dynload::ncclBroadcast(in_tensor.data(),
                                         out_tensor->data(),
-                                        in_tensor.numel(),
+                                        //in_tensor.numel(),
+                                        numel,
                                         phi::ToNCCLDataType(in_tensor.dtype()),
                                         root,
                                         comm,
@@ -875,45 +893,30 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
   auto nccl_comm = comm_ctx->nccl_comm();
   auto nccl_stream = use_calc_stream ? calc_ctx->stream() : comm_ctx->stream();
 
-  VLOG(0) << "debug collective construct NCCLCommTask, enable_async_trace "
-          << FLAGS_enable_async_trace << ", nccl_blocking_wait "
-          << FLAGS_nccl_blocking_wait;
   if (!FLAGS_enable_async_trace) {
     fn(nccl_comm, nccl_stream);
-    VLOG(0) << "debug collective evetn ";
   } else {
-    VLOG(0) << "debug collective construct NCCLCommTask, enable_async_trace "
-            << FLAGS_enable_async_trace;
     auto comm_task =
         std::make_unique<phi::distributed::NCCLCommTask>(place,
                                                          rank_,
                                                          size_,
+                                                         gid_,
                                                          comm_seq_,
                                                          tensor.numel(),
                                                          sync_op,
                                                          use_calc_stream,
                                                          nccl_comm,
                                                          nccl_stream,
-                                                         comm_type);
-    VLOG(0) << "debug collective construct NCCLCommTask after";
+                                                         comm_type,
+                                                         pg_timeout_);
     comm_task->StartRecord();
-
-    VLOG(0) << "debug collective fn before";
     fn(nccl_comm, nccl_stream);
-    VLOG(0) << "debug collective fn after 1";
+    comm_task->EndRecord();
+    comm_task->SetStore(store_);
 
-    comm_task->EndRecord(nccl_stream);
-    VLOG(0) << "debug collective fn after 2";
-    comm_task->store_ = store_;
-
-    VLOG(0) << "debug collective construct CommTaskManager GetInstance";
-    auto comm_task_manager = phi::distributed::CommTaskManager::GetInstance();
-    VLOG(0) << "debug collective construct CommTaskManager CommTaskEnqueue";
-
+    auto& comm_task_manager = phi::distributed::CommTaskManager::GetInstance();
     comm_task_manager.CommTaskEnqueue(std::move(comm_task));
-    VLOG(0) << "debug collective construct CommTaskManager end";
-
-    VLOG(0) << "debug collective fn after";
+    VLOG(1) << "debug enqueue task " << static_cast<int>(comm_type);
   }
 
   if (!use_calc_stream) {
@@ -985,6 +988,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
       std::make_unique<phi::distributed::NCCLCommTask>(place,
                                                        rank_,
                                                        size_,
+                                                       gid_,
                                                        comm_seq_,
                                                        tensor.numel(),
                                                        sync_op,
@@ -993,15 +997,17 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
                                                        nccl_stream,
                                                        comm_type);
 
-  if (FLAGS_enable_async_trace) {
-    comm_task->StartRecord();
-  }
-  fn(nccl_comm, nccl_stream, p2p_target_rank);
-  if (FLAGS_enable_async_trace) {
-    comm_task->EndRecord(nccl_stream);
-    comm_task->store_ = store_;
-    auto comm_task_manager = phi::distributed::CommTaskManager::GetInstance();
-    comm_task_manager.CommTaskEnqueue(std::move(comm_task));
+  if (!FLAGS_enable_async_trace) {
+      fn(nccl_comm, nccl_stream, p2p_target_rank);
+  } else {
+      comm_task->StartRecord();
+      fn(nccl_comm, nccl_stream, p2p_target_rank);
+      comm_task->EndRecord();
+      comm_task->SetStore(store_);
+
+      auto& comm_task_manager = phi::distributed::CommTaskManager::GetInstance();
+      comm_task_manager.CommTaskEnqueue(std::move(comm_task));
+      VLOG(1) << "debug enqueue task " << static_cast<int>(comm_type);
   }
 
   if (!use_calc_stream) {

@@ -28,25 +28,23 @@
 namespace phi {
 class DenseTensor;
 namespace distributed {
-class Store;
 
-static constexpr std::chrono::milliseconds DefaultTimeout =
-    std::chrono::seconds(300);
-static constexpr std::chrono::milliseconds NoTimeout =
-    std::chrono::milliseconds::zero();
+static int64_t DefaultTimeout = 30*60*1000;
 
 class NCCLCommTask : public CommTask {
  public:
   NCCLCommTask(const phi::Place& place = phi::Place(),
                int rank = -1,
                int size = 0,
+               int gid = 0,
                uint64_t seq = 0,
                int64_t numel = 0,
                bool sync_op = true,
                bool use_calc_stream = false,
                ncclComm_t = nullptr,
                gpuStream_t = nullptr,
-               CommType comm_type = CommType::UNKNOWN);
+               CommType comm_type = CommType::UNKNOWN,
+               int64_t timeout = DefaultTimeout);
   ~NCCLCommTask() = default;
 
   // check whether the nccl kernel started
@@ -55,6 +53,7 @@ class NCCLCommTask : public CommTask {
   bool IsCompleted() override;
   bool IsSuccess() override;
 
+  std::string GetTraceMsg() override; 
   void SetException(std::exception_ptr exception) override;
   void CheckAndSetException() override;
   std::exception_ptr CheckCommErrors() override;
@@ -62,20 +61,15 @@ class NCCLCommTask : public CommTask {
   void AbortComm() override;
 
   void StartRecord();
-  void EndRecord(phi::gpuStream_t stream);
+  void EndRecord();
 
   bool CudaEventQuery(cudaEvent_t event);
 
-  std::shared_ptr<Store> store_;
-
  protected:
-  // task timeout threshold
+  std::mutex mutex_;
   std::chrono::milliseconds timeout_;
-  // task started time
 
   unsigned int cuda_event_flags_ = cudaEventDisableTiming;
-
-  ncclResult_t nccl_async_err_;
 
   uint64_t seq_;
   int64_t numel_;
@@ -90,8 +84,7 @@ class NCCLCommTask : public CommTask {
   cudaEvent_t nccl_start_event_;
   cudaEvent_t nccl_end_event_;
 
-  std::string comm_failure_reason_;
-  ncclResult_t nccl_async_error_;
+  std::exception_ptr exception_;
 
  private:
   DISABLE_COPY_AND_ASSIGN(NCCLCommTask);

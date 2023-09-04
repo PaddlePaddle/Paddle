@@ -28,18 +28,6 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
-#define NCCL_CHECK(cmd)                            \
-  do {                                             \
-    ncclResult_t r = cmd;                          \
-    if (r != ncclSuccess) {                        \
-      printf("Failed, NCCL error %s:%d '%s'\n",    \
-             __FILE__,                             \
-             __LINE__,                             \
-             phi::dynload::ncclGetErrorString(r)); \
-      exit(EXIT_FAILURE);                          \
-    }                                              \
-  } while (0)
-
 constexpr auto kWaitTimeout = std::chrono::milliseconds(0);
 
 namespace paddle {
@@ -101,6 +89,8 @@ class ProcessGroup {
   int GetRank() const { return rank_; }
 
   int GetSize() const { return size_; }
+
+  int GetGid() const { return gid_; }
 
   virtual std::string GetBackendName() const = 0;
 
