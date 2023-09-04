@@ -85,6 +85,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_reshard_r_to_s MODULES test_reshard_r_to_s)
   set_tests_properties(test_reshard_r_to_s
                        PROPERTIES LABELS "RUN_TYPE=EXECLUSIVE" TIMEOUT 100)
+  py_test_modules(test_reshard_r_to_p MODULES test_reshard_r_to_p)
+  set_tests_properties(test_reshard_r_to_p
+                       PROPERTIES LABELS "RUN_TYPE=EXECLUSIVE" TIMEOUT 100)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
@@ -162,6 +165,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_rule_based_tuner MODULES test_rule_based_tuner)
   py_test_modules(test_dist_tensor MODULES test_dist_tensor)
   py_test_modules(test_shard_tensor_api MODULES test_shard_tensor_api)
+  py_test_modules(test_cost_interface MODULES test_cost_interface)
   py_test_modules(test_semi_auto_parallel_basic MODULES
                   test_semi_auto_parallel_basic)
   # End of unittests WITH single card WITHOUT timeout

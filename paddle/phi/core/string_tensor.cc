@@ -49,7 +49,7 @@ StringTensor& StringTensor::operator=(const StringTensor& other) {
   return *this;
 }
 
-StringTensor& StringTensor::operator=(StringTensor&& other) {  // NOLINT
+StringTensor& StringTensor::operator=(StringTensor&& other) noexcept {
   meta_ = std::move(other.meta_);
   std::swap(holder_, other.holder_);
   return *this;
