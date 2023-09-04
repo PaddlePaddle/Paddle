@@ -12,21 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/hlir/dialect/runtime_dialect.h"
-#include "paddle/cinn/hlir/dialect/jit_kernel_op.h"
+#pragma once
 
-namespace cinn {
-namespace dialect {
+#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
 
-RuntimeDialect::RuntimeDialect(::ir::IrContext* context)
-    : ::ir::Dialect(
-          name(), context, ::ir::TypeId::get<cinn::dialect::RuntimeDialect>()) {
-  this->initialize();
-}
+namespace phi {
+namespace distributed {
 
-void RuntimeDialect::initialize() { RegisterOps<cinn::dialect::JitKernelOp>(); }
+class RToPReshardFunction final : public ReshardFunction {
+ public:
+  bool IsSuitable(const DistTensor& in,
+                  const TensorDistAttr& out_dist_attr) override;
 
-}  // namespace dialect
-}  // namespace cinn
+  void Eval(DeviceContext* dev_ctx,
+            const DistTensor& in,
+            const TensorDistAttr& out_dist_attr,
+            DistTensor* out) override;
+};
 
-IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::RuntimeDialect)
+}  // namespace distributed
+}  // namespace phi
