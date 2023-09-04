@@ -15,5 +15,4 @@
 new_ir_python_api_grad_white_list = [
     "mean",
     "reduce_sum",
-    "elementwise_div",
 ]
