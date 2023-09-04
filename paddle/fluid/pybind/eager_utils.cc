@@ -1490,6 +1490,8 @@ ir::OpResult CastPyArg2OpResult(PyObject* obj,
                                 size_t arg_pos) {
   if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
     return ::pybind11::handle(obj).cast<ir::OpResult>();
+  } else if (obj == nullptr || obj == Py_None) {
+    return ir::OpResult();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
