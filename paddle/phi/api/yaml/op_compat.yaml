@@ -1162,6 +1162,9 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false]
+  int_array:
+    shape :
+      data_type : int64_t
 
 - op : full_like (fill_any_like)
   inputs :
