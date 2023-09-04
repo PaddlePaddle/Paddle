@@ -15,12 +15,10 @@
 #include "paddle/phi/core/distributed/auto_parallel/r_to_s_reshard_function.h"
 
 #include "glog/logging.h"
-#include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_split_functor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
-#include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/kernels/split_kernel.h"
 
 namespace phi {
 namespace distributed {
@@ -73,17 +71,21 @@ void RToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       BalancedSplit(in.dims()[split_axis], num_of_process);
   IntArray sections(split_num_vec);
 
-  std::vector<DenseTensor> split_out_vec = ReshardSplitFunctor(
-      *dev_ctx, in_physical_tensor_cur_rank, sections, split_axis);
+  std::vector<DenseTensor> split_out_vec;
+  auto dtype = in_physical_tensor_cur_rank.dtype();
+  RESHARD_FUNCTOR(dev_ctx,
+                  Split,
+                  dtype,
+                  in_physical_tensor_cur_rank,
+                  sections,
+                  split_axis,
+                  &split_out_vec);
 
   VLOG(3) << "The current process will remain the idx "
           << coord_in_mesh[mesh_axis] << " piece of tensor";
 
-  out_physical_tensor_cur_rank = split_out_vec[coord_in_mesh[mesh_axis]];
-  VLOG(3) << "The shape of physical tensor after split is "
-          << out_physical_tensor_cur_rank.dims();
-
-  set_dist_props(out, out_physical_tensor_cur_rank, in.dims(), out_dist_attr);
+  SetValue(out, split_out_vec[coord_in_mesh[mesh_axis]]);
+  SetDistProps(out, in.dims(), out_dist_attr);
 }
 
 REGISTER_RESHARD_FUNC(RToSReshardFunction);

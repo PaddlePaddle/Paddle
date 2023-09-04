@@ -32,7 +32,7 @@
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 
-DECLARE_bool(use_stride_kernel);
+PD_DECLARE_bool(use_stride_kernel);
 namespace paddle {
 namespace imperative {
 

@@ -450,10 +450,11 @@ class UpsamplingNearest2D(Layer):
     Parameters:
         x (Tensor): 4-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
-        size (list|tuple|Tensor|None): Output shape of image resize
+        size (int|list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_h, out_w) when input is a 4-D Tensor.
-             Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1].
-             If a Tensor , its dimensions size should be a 1.
+             Default: None. If an int value, the `out_h` and `out_w` will be set as the number.
+             If a list/tuple, each element can be an integer or a Tensor of shape: [1].
+             If a Tensor, its dimensions size should be a 1.
         scale_factor (float|int|list|tuple|Tensor|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
              And :attr:`size` has a higher priority than :attr:`scale_factor`.
@@ -489,6 +490,8 @@ class UpsamplingNearest2D(Layer):
         self, size=None, scale_factor=None, data_format='NCHW', name=None
     ):
         super().__init__()
+        if isinstance(size, int):
+            size = [size, size]
         self.size = size
         self.scale_factor = scale_factor
         self.data_format = data_format
@@ -537,9 +540,10 @@ class UpsamplingBilinear2D(Layer):
     Parameters:
         x (Tensor): 4-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
-        size (list|tuple|Tensor|None): Output shape of image resize
+        size (int|list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_h, out_w) when input is a 4-D Tensor.
-             Default: None. If a list/tuple, each element can be an integer or a Tensor  of shape: [1].
+             Default: None. If an int value, the `out_h` and `out_w` will be set as the number.
+             If a list/tuple, each element can be an integer or a Tensor  of shape: [1].
              If a Tensor , its dimensions size should be a 1.
         scale_factor (float|int|list|tuple|Tensor|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
@@ -575,6 +579,8 @@ class UpsamplingBilinear2D(Layer):
         self, size=None, scale_factor=None, data_format='NCHW', name=None
     ):
         super().__init__()
+        if isinstance(size, int):
+            size = [size, size]
         self.size = size
         self.scale_factor = scale_factor
         self.data_format = data_format

@@ -18,7 +18,7 @@
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/core/flags.h"
 
-DECLARE_bool(use_stream_safe_cuda_allocator);
+PD_DECLARE_bool(use_stream_safe_cuda_allocator);
 PHI_DECLARE_string(allocator_strategy);
 
 namespace paddle {
