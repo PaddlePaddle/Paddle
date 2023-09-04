@@ -113,6 +113,36 @@ def prune_by_pp(tuner_cfg, cur_cfg, history_cfgs=None):
 
 
 @register_prune
+def prune_by_vpp(tuner_cfg, cur_cfg, history_cfgs=None):
+    """
+    Prune by vpp (virtual pipeline parallelism), the rules are:
+    1. VPP degree should be evenly divided by number of layers.
+    2. VPP degree should be in the candidates of user defined.
+    """
+    pp_degree = cur_cfg.get("pp_degree", None)
+    vpp_degree = cur_cfg.get("vpp_degree", None)
+    num_layers = tuner_cfg["model_cfg"].get("num_layers", None)
+
+    if pp_degree is None:
+        return False
+
+    if vpp_degree is None:
+        return False
+
+    if num_layers:
+        if num_layers % (pp_degree * vpp_degree) != 0:
+            return True
+
+    vpp_degree_candidates = tuner_cfg.get("vpp_degree", None)
+    if vpp_degree_candidates == "auto":
+        vpp_degree_candidates = tuner_cfg["candidates"]["vpp_degree"]
+    if vpp_degree_candidates:
+        if vpp_degree not in vpp_degree_candidates:
+            return True
+    return False
+
+
+@register_prune
 def prune_by_mbs(tuner_cfg, cur_cfg, history_cfgs=None):
     """
     Prune by mbs (micro batch size), the rules are:
@@ -144,6 +174,13 @@ def prune_by_mbs(tuner_cfg, cur_cfg, history_cfgs=None):
     if local_batch_size:
         if local_batch_size % micro_batch_size != 0:
             return True
+        acc_steps = local_batch_size // micro_batch_size
+        vpp_degree = cur_cfg.get("vpp_degree", None)
+        if vpp_degree is not None and vpp_degree > 1:
+            pp_degree = cur_cfg.get("pp_degree", None)
+            if pp_degree is not None:
+                if acc_steps % pp_degree != 0:
+                    return True
 
     if mbs_candidates:
         if micro_batch_size not in mbs_candidates:

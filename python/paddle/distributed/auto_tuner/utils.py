@@ -46,7 +46,6 @@ def dist_degree(mode, num_gpus, num_nodes):
             results = list(range(1, num_nodes + 1))
         else:
             results = divisor(num_gpus, reverse=True)
-
     elif mode == "mp":
         gpus_per_node = num_gpus // num_nodes
         results = divisor(gpus_per_node, reverse=True)
@@ -84,6 +83,15 @@ def default_candidates(tuner_cfg):
         candidates["pp_degree"] = tuner_cfg.get("pp_degree")
     else:
         candidates["pp_degree"] = [1]
+
+    if tuner_cfg.get("vpp_degree", None) == "auto":
+        candidates["vpp_degree"] = list(
+            range(tuner_cfg["model_cfg"]["num_layers"], 0, -1)
+        )
+    elif tuner_cfg.get("vpp_degree", None):
+        candidates["vpp_degree"] = tuner_cfg.get("vpp_degree")
+    else:
+        candidates["vpp_degree"] = [1]
 
     if tuner_cfg.get("sharding_degree", None) == "auto":
         candidates["sharding_degree"] = dist_degree(
@@ -136,6 +144,7 @@ def search_all(tuner_cfg):
     dp_degree_candidates = candidates["dp_degree"]
     mp_degree_candidates = candidates["mp_degree"]
     pp_degree_candidates = candidates["pp_degree"]
+    vpp_degree_candidates = candidates["vpp_degree"]
     mbs_candidates = candidates["micro_batch_size"]
     sharding_stage_candidates = candidates["sharding_stage"]
     sharding_degree_candidates = candidates["sharding_degree"]
@@ -148,6 +157,7 @@ def search_all(tuner_cfg):
             sharding_stage_candidates,
             mbs_candidates,
             pp_degree_candidates,
+            vpp_degree_candidates,
             mp_degree_candidates,
             use_recompute_candidates,
             recompute_granularity_candidates,
@@ -159,9 +169,10 @@ def search_all(tuner_cfg):
         2: "sharding_stage",
         3: "micro_batch_size",
         4: "pp_degree",
-        5: "mp_degree",
-        6: "use_recompute",
-        7: "recompute_granularity",
+        5: "vpp_degree",
+        6: "mp_degree",
+        7: "use_recompute",
+        8: "recompute_granularity",
     }
     new_all_cfgs = []
     for cfg in all_cfgs:
@@ -206,6 +217,16 @@ def gen_new_args(raw_args, cfg, tuner_cfg):
                 cmd["pp_degree"][1] + "=" + str(cfg["pp_degree"])
             )
             res_args.extend(cmd["pp_degree"])
+
+    if "vpp_degree" in cmd and "vpp_degree" in cfg:
+        if "--" in cmd["vpp_degree"][0]:
+            cmd["vpp_degree"][1] = cmd["vpp_degree"][1] + str(cfg["vpp_degree"])
+            res_args.extend(cmd["vpp_degree"])
+        else:
+            cmd["vpp_degree"][1] = (
+                cmd["vpp_degree"][1] + "=" + str(cfg["vpp_degree"])
+            )
+            res_args.extend(cmd["vpp_degree"])
 
     if "micro_batch_size" in cmd and "micro_batch_size" in cfg:
         if "--" in cmd["micro_batch_size"][0]:
