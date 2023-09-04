@@ -22,9 +22,9 @@ namespace phi {
 namespace fusion {
 
 // T == fp16
-template <typename T, int pow2_index>
+template <typename T, typename MT, int pow2_index>
 __global__ void SoftmaxMaskFuseGPUKernel(const T* x_data,
-                                         const T* mask_data,
+                                         const MT* mask_data,
                                          T* y_data,
                                          int batch_count,
                                          int key_seq_len) {
@@ -62,7 +62,7 @@ __global__ void SoftmaxMaskFuseGPUKernel(const T* x_data,
   // using float for all inter compute
   float data[kLocalBatchSize][kLocalIterations];
   T temp_data[kOneLoadingCounts];
-  T temp_mask[kOneLoadingCounts];
+  MT temp_mask[kOneLoadingCounts];
 
 #pragma unroll
   for (int i = 0; i < kLocalBatchSize; ++i) {
@@ -151,7 +151,6 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
                             const DenseTensor& mask,
                             DenseTensor* out) {
   auto* x_data = x.data<T>();
-  auto* mask_data = mask.data<T>();
   auto* y_data = dev_ctx.template Alloc<T>(out);
 
   auto x_dim = x.dims();
@@ -226,46 +225,90 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
   dim3 blocks(query_seq_len / batches_per_block, attn_heads, batches);
   dim3 threads(warp_size, warps_per_block, 1);
 
-  // launch the kernel based on the pow2_index
-  switch (pow2_index) {
-    case 5:  // 32
-      SoftmaxMaskFuseGPUKernel<T, 5><<<blocks, threads, 0, stream>>>(
-          x_data, mask_data, y_data, batch_count, key_seq_len);
-      break;
-    case 6:  // 64
-      SoftmaxMaskFuseGPUKernel<T, 6><<<blocks, threads, 0, stream>>>(
-          x_data, mask_data, y_data, batch_count, key_seq_len);
-      break;
-    case 7:  // 128
-      SoftmaxMaskFuseGPUKernel<T, 7><<<blocks, threads, 0, stream>>>(
-          x_data, mask_data, y_data, batch_count, key_seq_len);
-      break;
-    case 8:  // 256
-      SoftmaxMaskFuseGPUKernel<T, 8><<<blocks, threads, 0, stream>>>(
-          x_data, mask_data, y_data, batch_count, key_seq_len);
-      break;
-    case 9:  // 512
-      SoftmaxMaskFuseGPUKernel<T, 9><<<blocks, threads, 0, stream>>>(
-          x_data, mask_data, y_data, batch_count, key_seq_len);
-      break;
-    case 10:  // 1024
-      SoftmaxMaskFuseGPUKernel<T, 10><<<blocks, threads, 0, stream>>>(
-          x_data, mask_data, y_data, batch_count, key_seq_len);
-      break;
-    case 11:  // 2048
-      SoftmaxMaskFuseGPUKernel<T, 11><<<blocks, threads, 0, stream>>>(
-          x_data, mask_data, y_data, batch_count, key_seq_len);
-      break;
-    case 12:  // 4096
-      SoftmaxMaskFuseGPUKernel<T, 12><<<blocks, threads, 0, stream>>>(
-          x_data, mask_data, y_data, batch_count, key_seq_len);
-      break;
-    case 13:  // 8192
-      SoftmaxMaskFuseGPUKernel<T, 13><<<blocks, threads, 0, stream>>>(
-          x_data, mask_data, y_data, batch_count, key_seq_len);
-      break;
-    default:
-      break;
+  if (mask.dtype() == x.dtype()) {
+    auto* mask_data = mask.data<T>();
+    switch (pow2_index) {
+      case 5:  // 32
+        SoftmaxMaskFuseGPUKernel<T, T, 5><<<blocks, threads, 0, stream>>>(
+            x_data, mask_data, y_data, batch_count, key_seq_len);
+        break;
+      case 6:  // 64
+        SoftmaxMaskFuseGPUKernel<T, T, 6><<<blocks, threads, 0, stream>>>(
+            x_data, mask_data, y_data, batch_count, key_seq_len);
+        break;
+      case 7:  // 128
+        SoftmaxMaskFuseGPUKernel<T, T, 7><<<blocks, threads, 0, stream>>>(
+            x_data, mask_data, y_data, batch_count, key_seq_len);
+        break;
+      case 8:  // 256
+        SoftmaxMaskFuseGPUKernel<T, T, 8><<<blocks, threads, 0, stream>>>(
+            x_data, mask_data, y_data, batch_count, key_seq_len);
+        break;
+      case 9:  // 512
+        SoftmaxMaskFuseGPUKernel<T, T, 9><<<blocks, threads, 0, stream>>>(
+            x_data, mask_data, y_data, batch_count, key_seq_len);
+        break;
+      case 10:  // 1024
+        SoftmaxMaskFuseGPUKernel<T, T, 10><<<blocks, threads, 0, stream>>>(
+            x_data, mask_data, y_data, batch_count, key_seq_len);
+        break;
+      case 11:  // 2048
+        SoftmaxMaskFuseGPUKernel<T, T, 11><<<blocks, threads, 0, stream>>>(
+            x_data, mask_data, y_data, batch_count, key_seq_len);
+        break;
+      case 12:  // 4096
+        SoftmaxMaskFuseGPUKernel<T, T, 12><<<blocks, threads, 0, stream>>>(
+            x_data, mask_data, y_data, batch_count, key_seq_len);
+        break;
+      case 13:  // 8192
+        SoftmaxMaskFuseGPUKernel<T, T, 13><<<blocks, threads, 0, stream>>>(
+            x_data, mask_data, y_data, batch_count, key_seq_len);
+        break;
+      default:
+        break;
+    }
+  } else if (mask.dtype() == phi::DataType::FLOAT32) {
+    auto* mask_data = mask.data<float>();
+    switch (pow2_index) {
+      case 5:  // 32
+        SoftmaxMaskFuseGPUKernel<T, float, 5><<<blocks, threads, 0, stream>>>(
+            x_data, mask_data, y_data, batch_count, key_seq_len);
+        break;
+      case 6:  // 64
+        SoftmaxMaskFuseGPUKernel<T, float, 6><<<blocks, threads, 0, stream>>>(
+            x_data, mask_data, y_data, batch_count, key_seq_len);
+        break;
+      case 7:  // 128
+        SoftmaxMaskFuseGPUKernel<T, float, 7><<<blocks, threads, 0, stream>>>(
+            x_data, mask_data, y_data, batch_count, key_seq_len);
+        break;
+      case 8:  // 256
+        SoftmaxMaskFuseGPUKernel<T, float, 8><<<blocks, threads, 0, stream>>>(
+            x_data, mask_data, y_data, batch_count, key_seq_len);
+        break;
+      case 9:  // 512
+        SoftmaxMaskFuseGPUKernel<T, float, 9><<<blocks, threads, 0, stream>>>(
+            x_data, mask_data, y_data, batch_count, key_seq_len);
+        break;
+      case 10:  // 1024
+        SoftmaxMaskFuseGPUKernel<T, float, 10><<<blocks, threads, 0, stream>>>(
+            x_data, mask_data, y_data, batch_count, key_seq_len);
+        break;
+      case 11:  // 2048
+        SoftmaxMaskFuseGPUKernel<T, float, 11><<<blocks, threads, 0, stream>>>(
+            x_data, mask_data, y_data, batch_count, key_seq_len);
+        break;
+      case 12:  // 4096
+        SoftmaxMaskFuseGPUKernel<T, float, 12><<<blocks, threads, 0, stream>>>(
+            x_data, mask_data, y_data, batch_count, key_seq_len);
+        break;
+      case 13:  // 8192
+        SoftmaxMaskFuseGPUKernel<T, float, 13><<<blocks, threads, 0, stream>>>(
+            x_data, mask_data, y_data, batch_count, key_seq_len);
+        break;
+      default:
+        break;
+    }
   }
 }
 

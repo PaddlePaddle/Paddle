@@ -176,6 +176,16 @@ class Int64ArrayAttributeVisitor : public AttributeVisitor {
   }
 };
 
+class Int64AttributeVisitor : public AttributeVisitor {
+ public:
+  using AttributeVisitor::AttributeVisitor;
+
+  ir::Attribute operator()(int is) override {
+    VLOG(10) << "translating int to Int64Attribute";
+    return ir::Int64Attribute::get(ctx, is);
+  }
+};
+
 class IntArrayAttributeVisitor : public AttributeVisitor {
  public:
   using AttributeVisitor::AttributeVisitor;
@@ -229,6 +239,7 @@ AttributeTranslator::AttributeTranslator() {
       new PlaceAttributeVisitor();
   special_visitors["ir::ArrayAttribute<ir::Int64Attribute>"] =
       new Int64ArrayAttributeVisitor();
+  special_visitors["ir::Int64Attribute"] = new Int64AttributeVisitor();
 }
 
 ir::Attribute AttributeTranslator::operator()(
