@@ -810,25 +810,30 @@ void ElementwiseKernel(const KPDevice &ctx,
     }
   }
 
-  // calculate the max vec_size for all ins and outs
-  int vec_size = GetVectorizedSizeForTensors<OutT, Functor>(ins, *outs);
-  switch (vec_size) {
-    case VecSizeL:
-      LaunchElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, VecSizeL>(
-          ctx, ins, outs, func);
-      break;
-    case VecSizeM:
-      LaunchElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, VecSizeM>(
-          ctx, ins, outs, func);
-      break;
-    case VecSizeS:
-      LaunchElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, VecSizeS>(
-          ctx, ins, outs, func);
-      break;
-    default: {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "Unsupported vectorized size: %d !", vec_size));
-      break;
+  if constexpr (sizeof(OutT) >= sizeof(double)) {
+    LaunchElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, VecSizeS>(
+        ctx, ins, outs, func);
+  } else {
+    // calculate the max vec_size for all ins and outs
+    int vec_size = GetVectorizedSizeForTensors<OutT, Functor>(ins, *outs);
+    switch (vec_size) {
+      case VecSizeL:
+        LaunchElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, VecSizeL>(
+            ctx, ins, outs, func);
+        break;
+      case VecSizeM:
+        LaunchElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, VecSizeM>(
+            ctx, ins, outs, func);
+        break;
+      case VecSizeS:
+        LaunchElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, VecSizeS>(
+            ctx, ins, outs, func);
+        break;
+      default: {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "Unsupported vectorized size: %d !", vec_size));
+        break;
+      }
     }
   }
 }

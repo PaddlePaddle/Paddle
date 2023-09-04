@@ -828,49 +828,61 @@ void BroadcastKernelForDifferentVecSize(
       kEnabledInt64IndexKernel &&
       (*outs)[0]->numel() >= std::numeric_limits<int32_t>::max();
   if (use_int64_index_kernel) {
-    auto loader_classifier =
-        LoaderTypeClassifier<OutT, kArity, Functor>(ins, outs);
-    switch (loader_classifier.vec_size) {
-      case VecSizeL: {
-        LaunchBroadcastKernelWithInt64IndexHelper<OutT,
-                                                  Functor,
-                                                  kArity,
-                                                  NumOuts,
-                                                  VecSizeL>::Run(ctx,
-                                                                 ins,
-                                                                 outs,
-                                                                 axis,
-                                                                 func);
-        break;
-      }
-      case VecSizeM: {
-        LaunchBroadcastKernelWithInt64IndexHelper<OutT,
-                                                  Functor,
-                                                  kArity,
-                                                  NumOuts,
-                                                  VecSizeM>::Run(ctx,
-                                                                 ins,
-                                                                 outs,
-                                                                 axis,
-                                                                 func);
-        break;
-      }
-      case VecSizeS: {
-        LaunchBroadcastKernelWithInt64IndexHelper<OutT,
-                                                  Functor,
-                                                  kArity,
-                                                  NumOuts,
-                                                  VecSizeS>::Run(ctx,
-                                                                 ins,
-                                                                 outs,
-                                                                 axis,
-                                                                 func);
-        break;
-      }
-      default: {
-        PADDLE_THROW(phi::errors::Unimplemented(
-            "Unsupported vectorized size: %d!", loader_classifier.vec_size));
-        break;
+    if constexpr (sizeof(OutT) >= sizeof(double)) {
+      LaunchBroadcastKernelWithInt64IndexHelper<OutT,
+                                                Functor,
+                                                kArity,
+                                                NumOuts,
+                                                VecSizeS>::Run(ctx,
+                                                               ins,
+                                                               outs,
+                                                               axis,
+                                                               func);
+    } else {
+      auto loader_classifier =
+          LoaderTypeClassifier<OutT, kArity, Functor>(ins, outs);
+      switch (loader_classifier.vec_size) {
+        case VecSizeL: {
+          LaunchBroadcastKernelWithInt64IndexHelper<OutT,
+                                                    Functor,
+                                                    kArity,
+                                                    NumOuts,
+                                                    VecSizeL>::Run(ctx,
+                                                                   ins,
+                                                                   outs,
+                                                                   axis,
+                                                                   func);
+          break;
+        }
+        case VecSizeM: {
+          LaunchBroadcastKernelWithInt64IndexHelper<OutT,
+                                                    Functor,
+                                                    kArity,
+                                                    NumOuts,
+                                                    VecSizeM>::Run(ctx,
+                                                                   ins,
+                                                                   outs,
+                                                                   axis,
+                                                                   func);
+          break;
+        }
+        case VecSizeS: {
+          LaunchBroadcastKernelWithInt64IndexHelper<OutT,
+                                                    Functor,
+                                                    kArity,
+                                                    NumOuts,
+                                                    VecSizeS>::Run(ctx,
+                                                                   ins,
+                                                                   outs,
+                                                                   axis,
+                                                                   func);
+          break;
+        }
+        default: {
+          PADDLE_THROW(phi::errors::Unimplemented(
+              "Unsupported vectorized size: %d!", loader_classifier.vec_size));
+          break;
+        }
       }
     }
     return;
@@ -926,26 +938,31 @@ void BroadcastKernelForDifferentVecSize(
     }
   }
 #endif
-  switch (loader_classifier.vec_size) {
-    case VecSizeL: {
-      LaunchBroadcastKernel<OutT, Functor, kArity, NumOuts, VecSizeL>(
-          ctx, ins, outs, func, configs, loader_classifier);
-      break;
-    }
-    case VecSizeM: {
-      LaunchBroadcastKernel<OutT, Functor, kArity, NumOuts, VecSizeM>(
-          ctx, ins, outs, func, configs, loader_classifier);
-      break;
-    }
-    case VecSizeS: {
-      LaunchBroadcastKernel<OutT, Functor, kArity, NumOuts, VecSizeS>(
-          ctx, ins, outs, func, configs, loader_classifier);
-      break;
-    }
-    default: {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "Unsupported vectorized size: %d!", loader_classifier.vec_size));
-      break;
+  if constexpr (sizeof(OutT) >= sizeof(double)) {
+    LaunchBroadcastKernel<OutT, Functor, kArity, NumOuts, VecSizeS>(
+        ctx, ins, outs, func, configs, loader_classifier);
+  } else {
+    switch (loader_classifier.vec_size) {
+      case VecSizeL: {
+        LaunchBroadcastKernel<OutT, Functor, kArity, NumOuts, VecSizeL>(
+            ctx, ins, outs, func, configs, loader_classifier);
+        break;
+      }
+      case VecSizeM: {
+        LaunchBroadcastKernel<OutT, Functor, kArity, NumOuts, VecSizeM>(
+            ctx, ins, outs, func, configs, loader_classifier);
+        break;
+      }
+      case VecSizeS: {
+        LaunchBroadcastKernel<OutT, Functor, kArity, NumOuts, VecSizeS>(
+            ctx, ins, outs, func, configs, loader_classifier);
+        break;
+      }
+      default: {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "Unsupported vectorized size: %d!", loader_classifier.vec_size));
+        break;
+      }
     }
   }
 }
