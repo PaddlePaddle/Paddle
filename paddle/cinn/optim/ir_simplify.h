@@ -36,5 +36,7 @@ void SimplifyForLoops(Expr *expr);
 
 void SimplifyBlocks(Expr *expr);
 
+void SimplifyCast(Expr *expr);
+
 }  // namespace optim
 }  // namespace cinn
