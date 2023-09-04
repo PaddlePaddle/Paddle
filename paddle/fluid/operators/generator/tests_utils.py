@@ -92,8 +92,8 @@ def exist_mutable_attribute(attrs):
             is_scalar(attr['typename']) or is_intarray(attr['typename'])
         ) and attr['support_tensor'] is True:
             return True
-        else:
-            return False
+    else:
+        return False
 
 
 def is_mutable_attribute(attr):
