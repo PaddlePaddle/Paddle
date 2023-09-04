@@ -54,7 +54,7 @@ MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
 SINGLE_DIST_META_IN_TEMPLATE = """MakeDistMetaTensor(*{}.impl()), """
 SINGLE_DIST_META_OUT_DECL_TEMPLATE = """
     phi::distributed::DistMetaTensor meta_{}({});"""
-INFER_GLOBAL_META_TEMPLATE = """
+INFER_GLOBAL_SHAPE_TEMPLATE = """
     phi::{}({}{});
 """
 
@@ -204,38 +204,12 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                     )
         output_args_code = output_args_code[:-2]
 
-        return output_decl_code + INFER_GLOBAL_META_TEMPLATE.format(
+        return output_decl_code + INFER_GLOBAL_SHAPE_TEMPLATE.format(
             infer_meta_func_code, input_args_code, output_args_code
         )
 
+    # TODO(chenweihang): support backward later
     def generate_reshard_output_code(self) -> str:
-        # output_num = len(self.outputs['types'])
-        # output_reshard_code = ""
-        # if output_num == 1:
-        #     if self.outputs['types'][0] == 'Tensor':
-        #         out_name = self.outputs['names'][0]
-        #         assert out_name.endswith('_grad')
-        #         output_reshard_code += SINGLE_OUTPUT_RESHARD_TEMPLATE.format(
-        #             'dist_out', 'dist_input_' + out_name[:-5]
-        #         )
-        #     else:
-        #         self.vector_output_size_assertion_check()
-        # elif output_num > 1:
-        #     for i, out_name in enumerate(self.outputs['names']):
-        #         assert out_name.endswith('_grad')
-        #         # TODO(chenweihang): some backward kernel may not contains
-        #         # the grag var's forward input
-        #         output_reshard_code += SINGLE_OUTPUT_RESHARD_TEMPLATE.format(
-        #             f'dist_out_{i}', 'dist_input_' + out_name[:-5]
-        #         )
-        # else:
-        #     raise ValueError(
-        #         "{} : Output error: the output should not be empty.".format(
-        #             self.api
-        #         )
-        #     )
-
-        # return output_reshard_code
         return ""
 
     def generate_auto_paralel_branch(self) -> str:

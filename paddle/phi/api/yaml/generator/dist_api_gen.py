@@ -61,8 +61,6 @@ MAIN_DIST_BRANCH_TEMPLATE = """
 AUTO_PARALLEL_COND_TEMPLATE = """AllInputsAreDistTensor({})"""
 
 # 1. InferSPMD
-# Call InferMeta now, replace by InferSPMD function later
-# TODO(chenweihang): InferSPMD function design
 SINGLE_DIST_META_IN_TEMPLATE = """
     auto meta_dist_{} = MakeDistMetaTensor(*{}.impl());"""
 # TODO(chenweihang): support vector and optional args later
@@ -72,9 +70,6 @@ OPTIONAL_DIST_VECTOR_META_IN_TEMPLATE = """
 """
 SINGLE_DIST_META_OUT_DECL_TEMPLATE = """
     phi::distributed::DistMetaTensor meta_{}({});"""
-INFER_GLOBAL_META_TEMPLATE = """
-    phi::{}({}{});
-"""
 INFER_SPMD_TEMPLATE = """
     auto spmd_info = phi::distributed::{}({});
 """
@@ -91,16 +86,16 @@ SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
     auto dense_out = dist_out->unsafe_mutable_value();
 """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
-    auto dist_out_{} = SetKernelDistOutput({});
-    auto dense_out_{} = dist_out_{}->unsafe_mutable_value();
+    auto dist_out_{idx} = SetKernelDistOutput({out});
+    auto dense_out_{idx} = dist_out_{idx}->unsafe_mutable_value();
 """
 SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput(&api_output, spmd_info.second[0]);
     auto dense_out = dist_out->unsafe_mutable_value();
 """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
-    auto dist_out_{} = SetKernelDistOutput({}, spmd_info.second[{}]);
-    auto dense_out_{} = dist_out_{}->unsafe_mutable_value();
+    auto dist_out_{idx} = SetKernelDistOutput({out}, spmd_info.second[{idx}]);
+    auto dense_out_{idx} = dist_out_{idx}->unsafe_mutable_value();
 """
 
 # TODO(chenweihang): support vector and tuple output later
@@ -113,23 +108,9 @@ MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
 TUPLE_OUT_CREATION_TEMPLATE = """
 """
 
-# 3. InferSPMD
-# Call InferMeta now, replace by InferSPMD function later
-# TODO(chenweihang): InferSPMD function design
-SINGLE_DIST_META_IN_TEMPLATE = """
-    auto meta_dist_{} = MakeDistMetaTensor(*{}.impl());"""
-# TODO(chenweihang): support vector and optional args later
-VECTOR_DIST_META_IN_TEMPLATE = """
-"""
-OPTIONAL_DIST_VECTOR_META_IN_TEMPLATE = """
-"""
-SINGLE_DIST_META_OUT_DECL_TEMPLATE = """
-    phi::distributed::DistMetaTensor meta_{}({});"""
-INFER_GLOBAL_META_TEMPLATE = """
+# 3. Infer Global Shape
+INFER_GLOBAL_SHAPE_TEMPLATE = """
     phi::{}({}{});
-"""
-INFER_SPMD_TEMPLATE = """
-    auto spmd_info = phi::distributed::{}({});
 """
 
 # 4. Select Kernel
@@ -143,6 +124,7 @@ KERNEL_SELECTION_TEMPLATE = """
 """
 
 # 5. Reshard Input
+# Note: Resharding maybe need to change input inplace, so here we use const_cast
 SINGLE_INPUT_RESHARD_TEMPLATE = """
     ReshardDistTensor(dev_ctx, const_cast<phi::distributed::DistTensor*>(static_cast<const phi::distributed::DistTensor*>({}.impl().get())), spmd_info.first[{}]);"""
 
@@ -222,15 +204,13 @@ class DistForwardAPI(ForwardAPI):
         self.dist_output_args = []
         self.dense_output_args = []
 
+    # override BaseAPI's method
     def parse_infer_meta(self, infer_meta_config):
         infer_meta = infer_meta_config
         if 'param' not in infer_meta_config:
             infer_meta['param'] = None
         if 'spmd_rule' not in infer_meta_config:
             infer_meta['spmd_rule'] = None
-        else:
-            # debuf info
-            print(infer_meta)
 
         return infer_meta
 
@@ -305,7 +285,7 @@ class DistForwardAPI(ForwardAPI):
             else:
                 self.input_args_code = self.input_args_code + str(param) + ", "
 
-        # TODO(chenweihang): add general spmd rule here
+        # TODO(chenweihang): add general spmd rule later
         infer_spmd_code = ""
         if self.infer_meta['spmd_rule'] is not None:
             infer_spmd_func_code = self.infer_meta['spmd_rule']
@@ -396,13 +376,13 @@ class DistForwardAPI(ForwardAPI):
                     if self.infer_meta['spmd_rule'] is not None:
                         output_creation_code += (
                             MULTI_SINGLE_OUT_CREATION_TEMPLATE.format(
-                                i, get_out_code, i, i, i
+                                idx=i, out=get_out_code
                             )
                         )
                     else:
                         output_creation_code += (
                             MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD.format(
-                                i, get_out_code, i, i
+                                idx=i, out=get_out_code
                             )
                         )
         else:
@@ -437,11 +417,11 @@ class DistForwardAPI(ForwardAPI):
                     )
         output_args_code = output_args_code[:-2]
 
-        infer_global_meta_code = INFER_GLOBAL_META_TEMPLATE.format(
+        infer_global_shape_code = INFER_GLOBAL_SHAPE_TEMPLATE.format(
             infer_meta_func_code, self.input_args_code, output_args_code
         )
 
-        return output_decl_code + infer_global_meta_code
+        return output_decl_code + infer_global_shape_code
 
     def generate_kernel_selection_code(self) -> str:
         return KERNEL_SELECTION_TEMPLATE.format(

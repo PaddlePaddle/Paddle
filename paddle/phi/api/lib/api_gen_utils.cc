@@ -558,11 +558,11 @@ void ReshardDistTensor(phi::DeviceContext* dev_ctx,
                        phi::distributed::DistTensor* tensor,
                        const phi::distributed::TensorDistAttr& dist_attr) {
   if (tensor->dist_attr() != dist_attr) {
+    VLOG(6) << "Reshard tensor from " << tensor->dist_attr() << " to "
+            << dist_attr;
     auto* func =
         phi::distributed::ChooseProperReshardFunction(*tensor, dist_attr);
     func->Eval(dev_ctx, *tensor, dist_attr, tensor);
-    VLOG(6) << "Reshard tensor from " << tensor->dist_attr() << " to "
-            << dist_attr << "done.";
   }
 }
 

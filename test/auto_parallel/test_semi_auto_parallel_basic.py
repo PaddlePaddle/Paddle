@@ -24,8 +24,6 @@ class TestSemiAutoParallelMatmul(test_base.CommunicationTestDistBase):
             "dtype": "float32",
             "seeds": str(self._seeds),
         }
-        # case 1: mk[0,-1],kn[-1,-1] -> mk[0,-1],kn[-1,-1] = nm[0,-1] partial[]
-        # case 2: mk[-1,0],kn[-1,-1] -> mk[-1,0],kn[0,-1] = nm[-1,-1] partial[0]
         self._changeable_envs = {"backend": ["cpu", "gpu"]}
 
     def test_matmul_api(self):

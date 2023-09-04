@@ -27,6 +27,47 @@ class TestMatmulApiForSemiAutoParallel:
         self._backend = os.getenv("backend")
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
+    def test_body(self, x_specs, y_specs):
+        x_shape = [64, 32]
+        y_shape = [32, 48]
+        x = paddle.randn(x_shape, self._dtype)
+        y = paddle.randn(y_shape, self._dtype)
+
+        x_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=x_specs)
+        y_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=y_specs)
+
+        dist_x = dist.shard_tensor(x, dist_attr=x_dist_attr)
+        dist_y = dist.shard_tensor(y, dist_attr=y_dist_attr)
+
+        dist_out = paddle.matmul(dist_x, dist_y)
+
+        # verify global shape
+        out_shape = [64, 48]
+        np.testing.assert_equal(dist_out.shape, out_shape, verbose=True)
+
+        return dist_out
+
+    def test_case1(self):
+        # case1: mk[0,-1],kn[-1,-1] -> mk[0,-1],kn[-1,-1] = mn[0,-1] partial[]
+        dist_out = self.test_body(x_specs=['x', None], y_specs=[None, None])
+        # verify local shape and dist attr
+        np.testing.assert_equal(dist_out._local_shape, [32, 48], verbose=True)
+        np.testing.assert_equal(
+            dist_out.dist_attr.dims_mapping, [0, -1], verbose=True
+        )
+        assert dist_out.dist_attr._is_partial() is False
+
+    def test_case2(self):
+        # case2: mk[-1, 0],kn[-1,-1] --> mk[-1, 0],kn[0, -1] = nm[-1, -1] partial[0]
+        dist_out = self.test_body(x_specs=[None, 'x'], y_specs=[None, None])
+        # verify local shape
+        np.testing.assert_equal(dist_out._local_shape, [64, 48], verbose=True)
+        np.testing.assert_equal(
+            dist_out.dist_attr.dims_mapping, [-1, -1], verbose=True
+        )
+        assert dist_out.dist_attr._is_partial() is True
+        assert dist_out.dist_attr._partial_dims() == {0}
+
     def run_test_case(self):
         if self._backend == "cpu":
             paddle.set_device("cpu")
@@ -35,34 +76,8 @@ class TestMatmulApiForSemiAutoParallel:
         else:
             raise ValueError("Only support cpu or gpu backend.")
 
-        x_shape = [64, 32]
-        y_shape = [32, 48]
-        x = paddle.randn(x_shape, self._dtype)
-        y = paddle.randn(y_shape, self._dtype)
-
-        x_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=['x', None])
-        y_dist_attr = dist.DistAttr(
-            mesh=self._mesh, sharding_specs=[None, None]
-        )
-
-        dist_x = dist.shard_tensor(x, dist_attr=x_dist_attr)
-        dist_y = dist.shard_tensor(y, dist_attr=y_dist_attr)
-
-        # case 1: mk[0,-1],kn[-1,-1] -> mk[0,-1],kn[-1,-1] = mn[0,-1] partial[]
-        dist_out = paddle.matmul(dist_x, dist_y)
-
-        # verify shape
-        out_shape = [64, 48]
-        out_local_shape = [32, 48]
-        print("dist_out.shape: ", dist_out.shape, "out_shape: ", out_shape)
-        print(
-            "dist_out._local_shape: ",
-            dist_out._local_shape,
-            "out_local_shape: ",
-            out_local_shape,
-        )
-        assert np.equal(dist_out.shape, out_shape).all()
-        assert np.equal(dist_out._local_shape, out_local_shape).all()
+        self.test_case1()
+        self.test_case2()
 
 
 if __name__ == '__main__':
