@@ -410,13 +410,8 @@ void EmbeddingGradOp::Build(ir::Builder &builder,
   VLOG(4) << "Builder construction outputs";
   paddle::dialect::DenseTensorType x =
       x_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  (void)x;
   paddle::dialect::DenseTensorType weight =
       weight_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  (void)weight;
-  paddle::dialect::DenseTensorType out_grad =
-      out_grad_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  (void)out_grad;
 
   VLOG(4) << "Builder construction  dense_x";
   phi::DenseTensor dense_x(
