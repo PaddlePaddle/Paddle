@@ -31,7 +31,7 @@ class TestMatmulApiForSemiAutoParallel:
         if self._backend == "cpu":
             paddle.set_device("cpu")
         elif self._backend == "gpu":
-            paddle.set_device("gpu:" + dist.get_rank())
+            paddle.set_device("gpu:" + str(dist.get_rank()))
         else:
             raise ValueError("Only support cpu or gpu backend.")
 
