@@ -957,11 +957,18 @@ class AMPPass(PassBase):
             )
 
             # backward
-            first_backward_op = main_block.ops[loss_op_idx + 2]
-            assert (
-                first_backward_op.type == "fill_constant"
-                and int(first_backward_op.all_attrs()[OP_ROLE_KEY]) == 257
-            )
+            first_backward_op = None
+            insert_op_offset = 3
+            for idx, op in enumerate(main_block.ops[loss_op_idx:]):
+                if op.type == "fill_constant" and is_loss_grad_op(op):
+                    first_backward_op = op
+                    insert_op_offset = idx + 1
+                    break
+                if is_backward_op(op):
+                    break
+
+            assert first_backward_op is not None, "There is not loss_grad op."
+
             cast_loss_grad = main_block.create_var(
                 name=unique_name.generate(tmp_name + "@GRAD"),
                 shape=loss.shape,
@@ -984,7 +991,7 @@ class AMPPass(PassBase):
                 self.dist_context,
             )
             cast_grad_op = main_block._insert_op(
-                loss_op_idx + 3,
+                loss_op_idx + insert_op_offset,
                 type='cast',
                 inputs={'X': [cast_loss_grad]},
                 outputs={'Out': [pre_grad_name]},
