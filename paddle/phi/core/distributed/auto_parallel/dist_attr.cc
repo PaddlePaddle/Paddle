@@ -227,7 +227,7 @@ bool TensorDistAttr::verify_partial_status() const {
     if (itr.first < 0 || itr.first >= process_mesh_.ndim()) {
       return false;
     }
-    if (itr.second < ReduceType::kRedSum || itr.second <= ReduceType::kRedAll) {
+    if (itr.second < ReduceType::kRedSum || itr.second > ReduceType::kRedAll) {
       return false;
     }
   }

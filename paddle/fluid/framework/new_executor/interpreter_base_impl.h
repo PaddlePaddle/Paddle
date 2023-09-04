@@ -45,7 +45,7 @@ PD_DECLARE_bool(new_executor_use_local_scope);
 
 PHI_DECLARE_bool(check_nan_inf);
 PD_DECLARE_bool(benchmark);
-PD_DECLARE_uint64(executor_log_deps_every_microseconds);
+PHI_DECLARE_uint64(executor_log_deps_every_microseconds);
 PHI_DECLARE_bool(new_executor_use_cuda_graph);
 PHI_DECLARE_bool(enable_new_ir_in_executor);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

@@ -1,4 +1,4 @@
-// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <paddle/fluid/platform/device_context.h>
-
 #include <algorithm>
 #include <type_traits>
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/operators/math/bert_encoder_functor.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/errors.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/multihead_matmul_functor.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace fusion {
 
 template <typename T>
 __global__ void transpose(T *src,
@@ -149,7 +148,7 @@ void TransQKVWithBias(const int batch,
     // limit h * head_num to max block size(1024).
     PADDLE_ENFORCE_LE(h * head_num,
                       1024,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
                           head_num,
                           head_size,
@@ -165,7 +164,7 @@ void TransQKVWithBias(const int batch,
     // limit h * head_num to max block size(1024).
     PADDLE_ENFORCE_LE(h * head_num,
                       1024,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
                           head_num,
                           head_size,
@@ -177,7 +176,7 @@ void TransQKVWithBias(const int batch,
     // limit head_size * head_num to max block size(1024).
     PADDLE_ENFORCE_LE(head_size * head_num,
                       1024,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
                           head_num,
                           head_size,
@@ -193,9 +192,9 @@ void TransQKVWithBias(const int batch,
                       const int seq_len,
                       const int head_size,
                       const int head_num,
-                      const platform::float16 *input,
-                      const platform::float16 *bias,
-                      platform::float16 *output,
+                      const phi::dtype::float16 *input,
+                      const phi::dtype::float16 *bias,
+                      phi::dtype::float16 *output,
                       gpuStream_t stream) {
   // BxSx3xNxH + 3xNxH -> 3xBxNxSxH
   int scratch_size = batch * head_num * seq_len * seq_len;
@@ -209,7 +208,7 @@ void TransQKVWithBias(const int batch,
     // limit h * head_num to max block size(1024).
     PADDLE_ENFORCE_LE(h * head_num,
                       1024,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
                           head_num,
                           head_size,
@@ -225,7 +224,7 @@ void TransQKVWithBias(const int batch,
     // limit head_size * head_num to max block size(1024).
     PADDLE_ENFORCE_LE(head_size * head_num,
                       1024,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
                           head_num,
                           head_size,
@@ -240,7 +239,7 @@ inline int round_up(int seq_len, int multiple = 32) {
   PADDLE_ENFORCE_GT(
       multiple,
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "multiple should be a positive number, but it's (%d)", multiple));
   return ((seq_len + multiple - 1) / multiple) * multiple;
 }
@@ -270,168 +269,166 @@ __global__ void broadcast_batch_head_number(const T *src,
   }
 }
 
-template <typename T, typename DeviceContext>
-class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &context) const override {
-    auto *input = context.Input<phi::DenseTensor>("Input");
-    auto *w = context.Input<phi::DenseTensor>("W");
-    auto *bias = context.Input<phi::DenseTensor>("Bias");
-    auto *bias_qk = context.Input<phi::DenseTensor>("BiasQK");
+template <typename T, typename Context>
+void MultiheadMatmulKernel(const Context &dev_ctx,
+                           const DenseTensor &input,
+                           const DenseTensor &w,
+                           const DenseTensor &bias,
+                           const paddle::optional<DenseTensor> &bias_qk,
+                           const bool transpose_q,
+                           const bool transpose_k,
+                           const bool transpose_v,
+                           const float alpha,
+                           const int head_number,
+                           DenseTensor *out) {
+  auto *input_d = input.data<T>();
+  auto *w_d = w.data<T>();
+  auto *bias_d = bias.data<T>();
+  auto *bias_qk_d = bias_qk ? bias_qk->data<T>() : nullptr;
+  T scale = static_cast<T>(alpha);
 
-    auto *input_d = input->data<T>();
-    auto *w_d = w->data<T>();
-    auto *bias_d = bias->data<T>();
-    auto *bias_qk_d = bias_qk ? bias_qk->data<T>() : nullptr;
-    T scale = static_cast<T>(context.Attr<float>("alpha"));
-
-    int head_number = context.Attr<int>("head_number");
-    // compute q*k with eltadd
-    auto &device_ctx = context.template device_context<DeviceContext>();
-    auto stream = device_ctx.stream();
-    // should be (B * S * hidden)
-    auto input_dims = input->dims();
-    // shouble be (hidden * 3 * all_head_size)
-    auto w_dims = w->dims();
-    int batch = input_dims[0];
-    int seq_len = input_dims[1];
-    int hidden = input_dims[2];
-    phi::DenseTensor temp_bias_tensor;
-    // if bias_qk is[batch, 1, 1, seq_len], the bias_qk_d need to be broadcasted
-    if (bias_qk && bias_qk->numel() == (batch * seq_len)) {
-      VLOG(4) << "Do broadcasted bias_qk from [batch, 1, 1, seq_len]";
-      temp_bias_tensor.Resize({batch * head_number * seq_len * seq_len});
-      auto *temp_qk_bias = device_ctx.template Alloc<T>(
-          &temp_bias_tensor, temp_bias_tensor.numel() * sizeof(T));
-      int grid = batch * head_number * seq_len;
-      int block = round_up(seq_len);
-      broadcast<<<grid, block, 0, stream>>>(
-          bias_qk_d, temp_qk_bias, seq_len, head_number);
-      bias_qk_d = static_cast<const T *>(temp_qk_bias);
-    }
-    // if bias_qk is[1, 1, seq_len, seq_len], the bias_qk_d need to be
-    // broadcasted
-    if (bias_qk && bias_qk->numel() == (1 * seq_len * seq_len)) {
-      VLOG(4) << "do broadcasted bias_qk from  [1, 1, seq_len, seq_len]";
-      temp_bias_tensor.Resize({batch * head_number * seq_len * seq_len});
-      auto *temp_qk_bias = device_ctx.template Alloc<T>(
-          &temp_bias_tensor, temp_bias_tensor.numel() * sizeof(T));
-      int grid = batch * head_number * seq_len;
-      int block = round_up(seq_len);
-      broadcast_batch_head_number<<<grid, block, 0, stream>>>(
-          bias_qk_d, temp_qk_bias, batch, seq_len, head_number);
-      bias_qk_d = static_cast<const T *>(temp_qk_bias);
-    }
-    if (!bias_qk) {
-      int size = batch * head_number * seq_len * seq_len;
-      temp_bias_tensor.Resize({size});
-      auto *temp_qk_bias = device_ctx.template Alloc<T>(
-          &temp_bias_tensor, temp_bias_tensor.numel() * sizeof(T));
-#ifdef PADDLE_WITH_HIP
-      hipMemset(temp_qk_bias, 0, sizeof(float) * size);
-#else
-      cudaMemset(temp_qk_bias, 0, sizeof(float) * size);
-#endif
-      bias_qk_d = static_cast<const T *>(temp_qk_bias);
-    }
-    int all_head_size = w_dims[2];
-    int head_size = all_head_size / head_number;
-
-    auto *out = context.Output<phi::DenseTensor>("Out");
-    out->Resize({batch, seq_len, all_head_size});
-    auto *output_d =
-        device_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
-
-    // (B*S, hidden)
-    const phi::DenseTensor input_matrix =
-        phi::ReshapeToMatrix(*input, 2 /*x_num_col_dims */);
-    // (hidden, 3 * all_head_size)
-    const phi::DenseTensor w_matrix =
-        phi::ReshapeToMatrix(*w, 1 /*y_num_col_dims*/);
-
-    phi::DenseTensor temp_out_tensor;
-    auto temp_out_dims =
-        phi::make_ddim({batch, seq_len, 3, head_number, head_size});
-    temp_out_tensor.Resize(
-        {batch * seq_len, phi::product(temp_out_dims) / (batch * seq_len)});
-    auto *temp_out_data = device_ctx.template Alloc<T>(
-        &temp_out_tensor, temp_out_tensor.numel() * sizeof(T));
-
-    // (B * S, hidden) * (hidden, 3 * N * H) -> (B * S * 3 * N * H)
-    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(device_ctx);
-    blas.MatMul(input_matrix, w_matrix, &temp_out_tensor);
-    VLOG(2) << "(B * S, hidden) * (hidden, 3 * N * H) -> (B * S * 3 * N * H)";
-    VLOG(2) << temp_out_tensor;
-    // temp_out_tensor.Resize(temp_out_dims);
-
-    phi::DenseTensor multihead_temp_tensor;
-    // B * head_number * S * S * 1 + B * S * 3 * N * H
-    int scratch_size = batch * head_number * seq_len * seq_len * 1;
-    multihead_temp_tensor.Resize({scratch_size + temp_out_tensor.numel()});
-    auto *multihead_temp_data = device_ctx.template Alloc<T>(
-        &multihead_temp_tensor, multihead_temp_tensor.numel() * sizeof(T));
-
-    auto *qkptr = multihead_temp_data;
-    auto *tptr = multihead_temp_data + scratch_size;
-
-    // Do the transpose with bias.
-    // BxSx3xNxH => tptr: 3xBxNxSxH.
-    TransQKVWithBias(batch,
-                     seq_len,
-                     head_size,
-                     head_number,
-                     temp_out_data,
-                     bias_d,
-                     tptr,
-                     stream);
-    if (std::is_same<T, platform::float16>::value) {
-      math::MultiHeadGPUComputeFunctor<half> multihead_compute_func;
-      multihead_compute_func(device_ctx,
-                             batch,
-                             seq_len,
-                             head_number,
-                             head_size,
-                             reinterpret_cast<half *>(qkptr),
-                             reinterpret_cast<const half *>(bias_qk_d),
-                             false,
-                             reinterpret_cast<half *>(tptr),
-                             __float2half(static_cast<float>(scale)),
-                             __float2half(0.0));
-    } else {
-      math::MultiHeadGPUComputeFunctor<T> multihead_compute_func;
-      multihead_compute_func(device_ctx,
-                             batch,
-                             seq_len,
-                             head_number,
-                             head_size,
-                             qkptr,
-                             bias_qk_d,
-                             false,
-                             tptr,
-                             scale,
-                             T(0.0));
-    }
-
+  // compute q*k with eltadd
+  auto stream = dev_ctx.stream();
+  // should be (B * S * hidden)
+  auto input_dims = input.dims();
+  // shouble be (hidden * 3 * all_head_size)
+  auto w_dims = w.dims();
+  int batch = input_dims[0];
+  int seq_len = input_dims[1];
+  int hidden = input_dims[2];
+  phi::DenseTensor temp_bias_tensor;
+  // if bias_qk is[batch, 1, 1, seq_len], the bias_qk_d need to be broadcasted
+  if (bias_qk && bias_qk->numel() == (batch * seq_len)) {
+    VLOG(4) << "Do broadcasted bias_qk from [batch, 1, 1, seq_len]";
+    temp_bias_tensor.Resize({batch * head_number * seq_len * seq_len});
+    auto *temp_qk_bias = dev_ctx.template Alloc<T>(
+        &temp_bias_tensor, temp_bias_tensor.numel() * sizeof(T));
     int grid = batch * head_number * seq_len;
-    int block = head_size;
-    transpose<T><<<grid, block, 0, stream>>>(
-        tptr, output_d, batch, seq_len, head_number, head_size);
+    int block = round_up(seq_len);
+    broadcast<<<grid, block, 0, stream>>>(
+        bias_qk_d, temp_qk_bias, seq_len, head_number);
+    bias_qk_d = static_cast<const T *>(temp_qk_bias);
   }
-};
-
-}  // namespace operators
-}  // namespace paddle
-
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
-PD_REGISTER_STRUCT_KERNEL(multihead_matmul,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::MultiHeadMatMulV2Kernel,
-                          float,
-                          plat::float16) {}
+  // if bias_qk is[1, 1, seq_len, seq_len], the bias_qk_d need to be
+  // broadcasted
+  if (bias_qk && bias_qk->numel() == (1 * seq_len * seq_len)) {
+    VLOG(4) << "do broadcasted bias_qk from  [1, 1, seq_len, seq_len]";
+    temp_bias_tensor.Resize({batch * head_number * seq_len * seq_len});
+    auto *temp_qk_bias = dev_ctx.template Alloc<T>(
+        &temp_bias_tensor, temp_bias_tensor.numel() * sizeof(T));
+    int grid = batch * head_number * seq_len;
+    int block = round_up(seq_len);
+    broadcast_batch_head_number<<<grid, block, 0, stream>>>(
+        bias_qk_d, temp_qk_bias, batch, seq_len, head_number);
+    bias_qk_d = static_cast<const T *>(temp_qk_bias);
+  }
+  if (!bias_qk) {
+    int size = batch * head_number * seq_len * seq_len;
+    temp_bias_tensor.Resize({size});
+    auto *temp_qk_bias = dev_ctx.template Alloc<T>(
+        &temp_bias_tensor, temp_bias_tensor.numel() * sizeof(T));
+#ifdef PADDLE_WITH_HIP
+    hipMemset(temp_qk_bias, 0, sizeof(float) * size);
 #else
-PD_REGISTER_STRUCT_KERNEL(
-    multihead_matmul, GPU, ALL_LAYOUT, ops::MultiHeadMatMulV2Kernel, float) {}
+    cudaMemset(temp_qk_bias, 0, sizeof(float) * size);
+#endif
+    bias_qk_d = static_cast<const T *>(temp_qk_bias);
+  }
+  int all_head_size = w_dims[2];
+  int head_size = all_head_size / head_number;
+
+  out->Resize({batch, seq_len, all_head_size});
+  auto *output_d = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
+
+  // (B*S, hidden)
+  const phi::DenseTensor input_matrix =
+      phi::ReshapeToMatrix(input, 2 /*x_num_col_dims */);
+  // (hidden, 3 * all_head_size)
+  const phi::DenseTensor w_matrix =
+      phi::ReshapeToMatrix(w, 1 /*y_num_col_dims*/);
+
+  phi::DenseTensor temp_out_tensor;
+  auto temp_out_dims =
+      phi::make_ddim({batch, seq_len, 3, head_number, head_size});
+  temp_out_tensor.Resize(
+      {batch * seq_len, phi::product(temp_out_dims) / (batch * seq_len)});
+  auto *temp_out_data = dev_ctx.template Alloc<T>(
+      &temp_out_tensor, temp_out_tensor.numel() * sizeof(T));
+
+  // (B * S, hidden) * (hidden, 3 * N * H) -> (B * S * 3 * N * H)
+  auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+  blas.MatMul(input_matrix, w_matrix, &temp_out_tensor);
+  VLOG(2) << "(B * S, hidden) * (hidden, 3 * N * H) -> (B * S * 3 * N * H)";
+  // temp_out_tensor.Resize(temp_out_dims);
+
+  phi::DenseTensor multihead_temp_tensor;
+  // B * head_number * S * S * 1 + B * S * 3 * N * H
+  int scratch_size = batch * head_number * seq_len * seq_len * 1;
+  multihead_temp_tensor.Resize({scratch_size + temp_out_tensor.numel()});
+  auto *multihead_temp_data = dev_ctx.template Alloc<T>(
+      &multihead_temp_tensor, multihead_temp_tensor.numel() * sizeof(T));
+
+  auto *qkptr = multihead_temp_data;
+  auto *tptr = multihead_temp_data + scratch_size;
+
+  // Do the transpose with bias.
+  // BxSx3xNxH => tptr: 3xBxNxSxH.
+  TransQKVWithBias(batch,
+                   seq_len,
+                   head_size,
+                   head_number,
+                   temp_out_data,
+                   bias_d,
+                   tptr,
+                   stream);
+  if (std::is_same<T, phi::dtype::float16>::value) {
+    phi::funcs::MultiheadGPUComputeFunctor<half> multihead_compute_func;
+    multihead_compute_func(dev_ctx,
+                           batch,
+                           seq_len,
+                           head_number,
+                           head_size,
+                           reinterpret_cast<half *>(qkptr),
+                           reinterpret_cast<const half *>(bias_qk_d),
+                           false,
+                           reinterpret_cast<half *>(tptr),
+                           __float2half(static_cast<float>(scale)),
+                           __float2half(0.0));
+  } else {
+    phi::funcs::MultiheadGPUComputeFunctor<T> multihead_compute_func;
+    multihead_compute_func(dev_ctx,
+                           batch,
+                           seq_len,
+                           head_number,
+                           head_size,
+                           qkptr,
+                           bias_qk_d,
+                           false,
+                           tptr,
+                           scale,
+                           T(0.0));
+  }
+
+  int grid = batch * head_number * seq_len;
+  int block = head_size;
+  transpose<T><<<grid, block, 0, stream>>>(
+      tptr, output_d, batch, seq_len, head_number, head_size);
+}
+
+}  // namespace fusion
+}  // namespace phi
+
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
+PD_REGISTER_KERNEL(multihead_matmul,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::fusion::MultiheadMatmulKernel,
+                   float,
+                   phi::dtype::float16) {}
+#else
+PD_REGISTER_KERNEL(multihead_matmul,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::fusion::MultiheadMatmulKernel,
+                   float) {}
 #endif
