@@ -167,7 +167,6 @@ class ProcessGroup:
                     for endpoint in strategy.trainer_endpoints:
                         endpoints_str += endpoint
                     endpoints_str += f"ring_id:{ring_id}"
-                    print("endpoints_str: ", endpoints_str)
                     endpoints_str_hash = hashlib.md5(
                         endpoints_str.encode(encoding='UTF-8')
                     ).hexdigest()
