@@ -65,10 +65,12 @@ TEST(type_test, type_base) {
   // Test 1: Test the function of IrContext to register Dialect.
   ir::IrContext *ctx = ir::IrContext::Instance();
   ir::Dialect *fake_dialect = ctx->GetOrRegisterDialect<FakeDialect>();
+  std::vector<ir::details::InterfaceValue> interface_map;
 
   // Test 2: Test the get method of AbstractType.
   ir::TypeId a_id = ir::TypeId::get<TypeA>();
-  ir::AbstractType abstract_type_a = ir::AbstractType::get(a_id, *fake_dialect);
+  ir::AbstractType abstract_type_a =
+      ir::AbstractType::get(a_id, *fake_dialect, std::move(interface_map));
   EXPECT_EQ(abstract_type_a.type_id(), a_id);
 
   // Test 3: Test the constructor of TypeStorage.
@@ -265,4 +267,28 @@ class TestClass {};
 TEST(type_test, get_type_name) {
   auto name = ir::get_type_name<TestNamespace::TestClass>();
   EXPECT_EQ(name, "TestNamespace::TestClass");
+}
+
+// Define a dialect, types of test will be registered by this dialect.
+class TestDialect : public ir::Dialect {
+ public:
+  explicit TestDialect(ir::IrContext *context)
+      : ir::Dialect(name(), context, ir::TypeId::get<TestDialect>()) {
+    // initialize();
+  }
+  static const char *name() { return "test"; }
+
+ private:
+  // void initialize() { RegisterOps<OperationTest>(); }
+};
+IR_DECLARE_EXPLICIT_TYPE_ID(TestDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(TestDialect)
+
+TEST(shapedtype_test, shapedtype_test) {
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  ir::Dialect *test_dialect = ctx->GetOrRegisterDialect<TestDialect>();
+  EXPECT_EQ(test_dialect != nullptr, true);
+
+  // paddle::dialect::InferMetaInterface interface =
+  //   op->dyn_cast<paddle::dialect::InferMetaInterface>();
 }

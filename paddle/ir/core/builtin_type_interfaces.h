@@ -123,8 +123,8 @@ class ShapedTypeInterface : public ir::TypeInterfaceBase<ShapedTypeInterface> {
 
   /// Check whether the given shape has any size indicating a dynamic dimension.
   static bool isDynamicShape(std::vector<int64_t> dSizes) {
-    return details::any_of(dSizes,
-                           [](int64_t dSize) { return isDynamic(dSize); });
+    return ::details::any_of(dSizes,
+                             [](int64_t dSize) { return isDynamic(dSize); });
   }
 
   /// Check whether the given dimension has a dynamic size.
@@ -137,8 +137,8 @@ class ShapedTypeInterface : public ir::TypeInterfaceBase<ShapedTypeInterface> {
   /// Get the number of dimensions with dynamic size for a ranked type.
   /// Aborts for unranked types.
   int64_t getNumDynamicDims() const {
-    return details::count_if(vectorize((*this).getShape()),
-                             ir::ShapedTypeInterface::isDynamic);
+    return ::details::count_if(vectorize((*this).getShape()),
+                               ir::ShapedTypeInterface::isDynamic);
   }
 
   /// Get the size of the specified dimension for a ranked type.

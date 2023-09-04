@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/ir/core/interface_value.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/storage_manager.h"
 #include "paddle/ir/core/type_id.h"
@@ -36,8 +37,11 @@ class IR_API AbstractType {
   /// \param type_id The type id of the AbstractType.
   /// \param dialect The Dialect which the type registered to.
   ///
-  static AbstractType get(TypeId type_id, const Dialect &dialect) {
-    return AbstractType(type_id, dialect);
+  static AbstractType get(
+      TypeId type_id,
+      const Dialect &dialect,
+      std::vector<details::InterfaceValue> &&interface_map) {
+    return AbstractType(type_id, dialect, std::move(interface_map));
   }
 
   ///
@@ -47,7 +51,7 @@ class IR_API AbstractType {
   ///
   template <typename T>
   static AbstractType get(const Dialect &dialect) {
-    return AbstractType(TypeId::get<T>(), dialect);
+    return AbstractType(TypeId::get<T>(), dialect, T::interface_map());
   }
 
   ///
@@ -90,12 +94,21 @@ class IR_API AbstractType {
   /// \param type_id The type id of the AbstractType.
   /// \param dialect The Dialect which the type registered to.
   ///
-  explicit AbstractType(TypeId type_id, const Dialect &dialect)
-      : type_id_(type_id), dialect_(dialect) {}
+  explicit AbstractType(TypeId type_id,
+                        const Dialect &dialect,
+                        std::vector<details::InterfaceValue> &&interface_map)
+      : type_id_(type_id),
+        dialect_(dialect),
+        interface_map_(std::move(interface_map)) {}
 
-  TypeId type_id_;
+  /// A unique identifier of the derived Type class.
+  const TypeId type_id_;
 
+  /// Dialect to which this type was registered
   const Dialect &dialect_;
+
+  /// A collection of the interfaces registered to this type.
+  std::vector<details::InterfaceValue> interface_map_;
 };
 
 struct TypeManager;

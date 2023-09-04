@@ -81,6 +81,14 @@ class StorageHelperBase : public BaseT {
     return val.type_id() == type_id();
   }
 
+  /// Returns an interface map for the interfaces registered to this storage
+  /// user.
+  static std::vector<details::InterfaceValue> interface_map() {
+    std::vector<details::InterfaceValue> a;
+    return a;
+    // return detail::InterfaceMap::template get<Traits<ConcreteT>...>();
+  }
+
   /// Get or create a new ConcreteT instance within the ctx.
   template <typename... Args>
   static ConcreteT get(ir::IrContext *ctx, Args... args) {

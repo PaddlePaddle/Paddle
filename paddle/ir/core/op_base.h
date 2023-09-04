@@ -122,9 +122,9 @@ class Op : public OpBase {
 
   // Returns an interface map containing the interfaces registered to this
   // operation.
-  static std::vector<InterfaceValue> GetInterfaceMap() {
+  static std::vector<details::InterfaceValue> GetInterfaceMap() {
     constexpr size_t interfaces_num = std::tuple_size<InterfaceList>::value;
-    std::vector<InterfaceValue> interfaces_map(interfaces_num);
+    std::vector<details::InterfaceValue> interfaces_map(interfaces_num);
     ConstructInterfacesOrTraits<ConcreteOp, InterfaceList>::interface(
         interfaces_map.data());
     return interfaces_map;

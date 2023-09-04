@@ -15,17 +15,18 @@
 #include "paddle/ir/core/interface_support.h"
 
 namespace ir {
-InterfaceValue::~InterfaceValue() {
+details::InterfaceValue::~InterfaceValue() {
   if (model_) free(model_);
 }
 
-InterfaceValue::InterfaceValue(InterfaceValue&& val) noexcept {
+details::InterfaceValue::InterfaceValue(InterfaceValue&& val) noexcept {
   type_id_ = val.type_id_;
   model_ = val.model_;
   val.model_ = nullptr;
 }
 
-InterfaceValue& InterfaceValue::operator=(InterfaceValue&& val) noexcept {
+details::InterfaceValue& details::InterfaceValue::operator=(
+    InterfaceValue&& val) noexcept {
   swap(std::move(val));
   return *this;
 }
