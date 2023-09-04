@@ -3894,10 +3894,10 @@ function main() {
         example_info_gpu=""
         example_code_gpu=0
         if [ "${WITH_GPU}" == "ON" ] ; then
-            { example_info_gpu=$(exec_samplecode_test gpu 2>&1 1>&3 3>&-); } 3>&1
+            { example_info_gpu=$(exec_samplecode_test gpu 2>&1 1>&3 3>/dev/null); } 3>&1
             example_code_gpu=$?
         fi
-        { example_info=$(exec_samplecode_test cpu 2>&1 1>&3 3>&-); } 3>&1
+        { example_info=$(exec_samplecode_test cpu 2>&1 1>&3 3>/dev/null); } 3>&1
         example_code=$?
         summary_check_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
         assert_api_spec_approvals
