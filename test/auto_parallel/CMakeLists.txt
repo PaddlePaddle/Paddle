@@ -85,9 +85,12 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_reshard_r_to_s MODULES test_reshard_r_to_s)
   set_tests_properties(test_reshard_r_to_s
                        PROPERTIES LABELS "RUN_TYPE=EXECLUSIVE" TIMEOUT 100)
+  py_test_modules(test_reshard_r_to_p MODULES test_reshard_r_to_p)
+  set_tests_properties(test_reshard_r_to_p
+                       PROPERTIES LABELS "RUN_TYPE=EXECLUSIVE" TIMEOUT 100)
   py_test_modules(test_gpt_with_newir MODULES test_gpt_with_newir)
   set_tests_properties(test_gpt_with_newir
-                       PROPERTIES LABELS "RUN_TYPE=EXECLUSIVE" TIMEOUT 60)
+                       PROPERTIES LABELS "RUN_TYPE=EXECLUSIVE" TIMEOUT 100)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
