@@ -101,6 +101,7 @@ class TestVjpPrim(unittest.TestCase):
         ]
         for idx, op in enumerate(newir_program.block().ops):
             self.assertEqual(op.name(), all_op_names[idx])
+        paddle.fluid.core._set_prim_backward_enabled(False)
 
     def test_divide_grad_no_prim(self):
         newir_program = get_ir_program_0()
@@ -148,6 +149,7 @@ class TestVjpPrim(unittest.TestCase):
         ]
         for idx, op in enumerate(newir_program.block().ops):
             self.assertEqual(op.name(), all_op_names[idx])
+        paddle.fluid.core._set_prim_backward_enabled(False)
 
     def test_sum_grad_no_prim(self):
         newir_program = get_ir_program_1()

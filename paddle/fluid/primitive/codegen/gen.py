@@ -245,6 +245,21 @@ def get_inplace_api(apis):
     return inplace_apis
 
 
+def filter_compat_info(items):
+    for item in items:
+        item['op'] = item['op'].split('(')[0].strip()
+        if 'backward' in item:
+            item_backwards = item['backward'].split(',')
+            for idx, item_backward in enumerate(item_backwards):
+                item_backward = item_backward.split('(')[0].strip()
+                item_backwards[idx] = item_backward
+            item['backward'] = (
+                ','.join(item_backwards)
+                if len(item_backwards) > 0
+                else item_backwards[0]
+            )
+
+
 def extend_compat_info(apis, compats):
     for api in apis:
         attrs = api["attrs"]
