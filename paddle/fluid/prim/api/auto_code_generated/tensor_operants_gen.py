@@ -235,7 +235,11 @@ Tensor StaticTensorOperants::add(const Tensor& x, const Scalar& y) {
 }
 
 Tensor StaticTensorOperants::subtract(const Tensor& x, const Scalar& y) {
-  return paddle::prim::subtract<DescTensor>(x, paddle::prim::full<DescTensor>(x.shape(), y, x.dtype(), x.place()));
+  if (FLAGS_enable_new_ir_in_executor) {
+    return paddle::primitive::backend::subtract<LazyTensor>(x, paddle::primitive::backend::full<LazyTensor>(x.shape(), y, x.dtype(), x.place()));
+  } else {
+    return paddle::prim::subtract<DescTensor>(x, paddle::prim::full<DescTensor>(x.shape(), y, x.dtype(), x.place()));
+  }
 }
 
 Tensor StaticTensorOperants::multiply(const Tensor& x, const Scalar& y) {
@@ -264,7 +268,11 @@ Tensor StaticTensorOperants::add(const Scalar& x, const Tensor& y) {
 
 
 Tensor StaticTensorOperants::subtract(const Scalar& x, const Tensor& y) {
-  return paddle::prim::subtract<DescTensor>(paddle::prim::full<DescTensor>(y.shape(), x, y.dtype(), y.place()), y);
+  if (FLAGS_enable_new_ir_in_executor) {
+    return paddle::primitive::backend::subtract<LazyTensor>(paddle::primitive::backend::full<LazyTensor>(y.shape(), x, y.dtype(), y.place()), y);
+  } else {
+    return paddle::prim::subtract<DescTensor>(paddle::prim::full<DescTensor>(y.shape(), x, y.dtype(), y.place()), y);
+  }
 }
 
 Tensor StaticTensorOperants::multiply(const Scalar& x, const Tensor& y) {
@@ -377,22 +385,19 @@ class PrimTensorAPI(BaseAPI):
 
     def gene_static_tensor_func_call(self):
         api_func_name = self.get_api_func_name()
-
         backend_static_func_name = (
             'paddle::primitive::backend::' + api_func_name + '<LazyTensor>'
         )
-
         prim_static_func_name = (
             'paddle::prim::' + api_func_name + '<DescTensor>'
         )
-
         static_func_parameters = self.get_func_args()
 
         static_tensor_func_call = f"""if (FLAGS_enable_new_ir_in_executor) {{
     return {backend_static_func_name}({static_func_parameters});
-    }} else {{
+  }} else {{
     return {prim_static_func_name}({static_func_parameters});
-    }}"""
+  }}"""
 
         return static_tensor_func_call
 
