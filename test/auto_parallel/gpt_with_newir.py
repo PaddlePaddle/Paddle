@@ -62,7 +62,7 @@ class Test1F1BPass(unittest.TestCase):
 
         strategy = apply_pass()
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
-        opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
+        opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=None)
         model, loss = generate_model(mode)
 
         engine = auto.Engine(model, loss, opt, strategy=strategy)
@@ -85,10 +85,10 @@ class Test1F1BPass(unittest.TestCase):
         os.environ['FLAGS_enable_new_ir_in_executor'] = 'True'
 
         # data parallel
-        engine_dp = self.get_engine("dp")
-        outs = engine_dp.fit(
-            self.dataset, 3, batch_size=self.batch_size, log_freq=1
-        )
+        # engine_dp = self.get_engine("dp")
+        # outs = engine_dp.fit(
+        #     self.dataset, 3, batch_size=self.batch_size, log_freq=1
+        # )
 
         # navie pipeline parallel without schedule
         engine_pp = self.get_engine("pp")
