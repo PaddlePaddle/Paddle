@@ -12,21 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/hlir/dialect/runtime_dialect.h"
-#include "paddle/cinn/hlir/dialect/jit_kernel_op.h"
+#pragma once
 
-namespace cinn {
-namespace dialect {
+#include <memory>
+#include "paddle/ir/core/dll_decl.h"
 
-RuntimeDialect::RuntimeDialect(::ir::IrContext* context)
-    : ::ir::Dialect(
-          name(), context, ::ir::TypeId::get<cinn::dialect::RuntimeDialect>()) {
-  this->initialize();
-}
+namespace ir {
 
-void RuntimeDialect::initialize() { RegisterOps<cinn::dialect::JitKernelOp>(); }
+class Pass;
 
-}  // namespace dialect
-}  // namespace cinn
+std::unique_ptr<Pass> CreateInplacePass();
 
-IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::RuntimeDialect)
+}  // namespace ir
