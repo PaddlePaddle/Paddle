@@ -538,6 +538,8 @@ class TestComplexElementwiseDivOp(OpTest):
         self.check_grad(
             ['X', 'Y'],
             'Out',
+            numeric_grad_delta=1e-5,
+            max_relative_error=1e-6,
         )
 
     def test_check_grad_ingore_x(self):
@@ -545,6 +547,8 @@ class TestComplexElementwiseDivOp(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
+            numeric_grad_delta=1e-5,
+            max_relative_error=1e-6,
         )
 
     def test_check_grad_ingore_y(self):
@@ -552,6 +556,8 @@ class TestComplexElementwiseDivOp(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
+            numeric_grad_delta=1e-5,
+            max_relative_error=1e-6,
         )
 
 

@@ -435,6 +435,13 @@
   outputs :
     out : Out
 
+- op : c_embedding
+  backward : c_embedding_grad
+  inputs :
+    {weight : W, x : Ids}
+  outputs :
+    out : Out
+
 - op : cast
   inputs :
     x : X
@@ -1173,6 +1180,39 @@
       data_type : float
       support_tensor : true
 
+- op : fused_batch_norm_act
+  backward : fused_batch_norm_act_grad
+  inputs:
+    x : X
+    mean : Mean
+    variance : Variance
+    scale : Scale
+    bias : Bias
+  outputs :
+    out : Y
+    mean_out: MeanOut
+    variance_out: VarianceOut
+    saved_mean: SavedMean
+    saved_variance: SavedVariance
+    reserve_space: ReserveSpace
+
+- op : fused_bn_add_activation_ (fused_bn_add_activation)
+  backward : fused_bn_add_activation_grad
+  inputs:
+    x : X
+    z : Z
+    mean : Mean
+    variance : Variance
+    scale : Scale
+    bias : Bias
+  outputs :
+    out : Y
+    mean_out: MeanOut
+    variance_out: VarianceOut
+    saved_mean: SavedMean
+    saved_variance: SavedVariance
+    reserve_space: ReserveSpace
+
 - op : fused_conv2d
   extra :
     attrs : [bool use_cudnn = false, float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float Scale_in = 1.0f,
@@ -1895,6 +1935,14 @@
   outputs :
     {out : Out, index : Index, nms_rois_num : NmsRoisNum}
 
+- op : multihead_matmul
+  inputs :
+    {input : Input, w : W, bias : Bias, bias_qk : BiasQK}
+  outputs :
+    out : Out
+  attrs :
+    {transpose_q : transpose_Q,  transpose_k : transpose_K, transpose_v : transpose_V}
+
 - op : multinomial
   inputs :
     {x : X}
@@ -2165,6 +2213,11 @@
   attrs :
     {axis : Axis, reduce : Reduce}
 
+- op : pylayer
+  backward : pylayer_grad
+  extra :
+    attrs : ['str[] skip_eager_deletion_vars = {}']
+
 - op : qr
   backward : qr_grad
   inputs :
@@ -2336,6 +2389,10 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : save_combine
+  inputs :
+    {x : X}
 
 - op : scale
   backward : scale_grad
@@ -2990,7 +3047,31 @@
     yolo_loss : GetYoloLossExpectedKernelType
     yolo_loss_grad : GetYoloLossExpectedKernelType
 
+- op: c_allreduce_sum
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_broadcast
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op: c_identity
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_sync_calc_stream
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op: c_sync_comm_stream
   inputs :
     x : X
   outputs :
@@ -3033,6 +3114,10 @@
   outputs :
     out : Out
 
+- op: recv_v2
+  outputs :
+    out : Out
+
 - op: reindex_graph (graph_reindex)
   inputs :
     {x : X, neighbors : Neighbors, count : Count, hashtable_value : HashTable_Value, hashtable_index : HashTable_Index}
@@ -3044,6 +3129,44 @@
     {x: X}
   outputs:
     {out: Out, noise: Noise}
+
+- op: send_v2
+  inputs :
+    x : X
+
+- op: set_value
+  backward: set_value_grad
+  inputs:
+    x : Input
+  outputs:
+    out: Out
+  int_array:
+    starts:
+      data_type : int64_t
+      tensors_name : StartsTensorList
+    ends:
+      data_type : int64_t
+      tensors_name : EndsTensorList
+    steps:
+      data_type : int64_t
+      tensors_name : StepsTensorList
+
+- op: set_value_with_tensor
+  backward: set_value_grad
+  inputs:
+    x : Input
+  outputs:
+    out: Out
+  int_array:
+    starts:
+      data_type : int64_t
+      tensors_name : StartsTensorList
+    ends:
+      data_type : int64_t
+      tensors_name : EndsTensorList
+    steps:
+      data_type : int64_t
+      tensors_name : StepsTensorList
 
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad

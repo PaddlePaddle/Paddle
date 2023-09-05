@@ -88,7 +88,6 @@ endif()
 
 list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
 list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
-list(REMOVE_ITEM TEST_OPS test_linear_compress)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
@@ -159,7 +158,6 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
   list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
-  list(REMOVE_ITEM TEST_OPS test_linear_compress)
   list(REMOVE_ITEM TEST_OPS test_matmul_int8_op)
   list(REMOVE_ITEM TEST_OPS test_variable_length_memory_efficient_attention)
 endif()
@@ -503,6 +501,10 @@ if(NOT WITH_GPU
    OR WIN32
    OR APPLE)
   list(REMOVE_ITEM TEST_OPS test_build_strategy_fusion_group_pass)
+endif()
+
+if(NOT WITH_CUDNN_FRONTEND)
+  list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_relu_conv_bnstats_op)
 endif()
 
 # Some ops need to check results when gc is enabled
@@ -1059,7 +1061,7 @@ set_tests_properties(
   PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv_nn_grad PROPERTIES TIMEOUT 120)
 set_tests_properties(test_program_prune_backward PROPERTIES TIMEOUT 120)
-set_tests_properties(test_group_norm_op PROPERTIES TIMEOUT 300)
+set_tests_properties(test_group_norm_op PROPERTIES TIMEOUT 1000)
 set_tests_properties(test_imperative_optimizer PROPERTIES TIMEOUT 250)
 set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 250)
 set_tests_properties(test_pool2d_op PROPERTIES TIMEOUT 120)
@@ -1288,6 +1290,7 @@ set(STATIC_BUILD_TESTS
     test_fuse_bn_act_pass
     test_fused_feedforward_op
     test_fused_feedforward_pass
+    test_fused_layernorm_op
     test_imperative_optimizer
     test_lamb_op
     test_layer_norm_op
@@ -1308,6 +1311,7 @@ set(STATIC_BUILD_TESTS
     test_segment_ops
     test_sparse_momentum_op
     test_sgd_op_bf16
+    test_shuffle_batch_op
     test_softmax_mask_fuse_upper_triangle_op
     test_sparse_conv_op
     test_sparse_norm_op

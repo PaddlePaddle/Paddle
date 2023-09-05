@@ -21,16 +21,9 @@ limitations under the License. */
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/tensor_array.h"
 #include "paddle/phi/core/tensor_meta.h"
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#endif
 
 namespace phi {
 
-// TODO(chenweihang): DenseTensorUtils has been abused during the development
-// process, and now its semantics are incorrect. It can not only operate
-// DenseTensors, but also other types of Tensors, requiring renaming or
-// splitting
 class DenseTensorUtils {
  public:
   static DenseTensorMeta* GetMutableMeta(DenseTensor* tensor) {
@@ -44,12 +37,6 @@ class DenseTensorUtils {
   static SparseTensorMeta* GetMutableMeta(SparseCsrTensor* tensor) {
     return &(tensor->meta_);
   }
-
-#ifdef PADDLE_WITH_DISTRIBUTE
-  static DenseTensorMeta* GetMutableMeta(distributed::DistTensor* tensor) {
-    return &(tensor->meta_);
-  }
-#endif
 
   static const std::shared_ptr<phi::Allocation>& GetHolder(
       const DenseTensor& tensor) {

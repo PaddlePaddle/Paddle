@@ -415,6 +415,12 @@ class _SaveLoadConfig:
         # if True, multi `StaticFunction` will share params in one file.
         self.combine_params = False
 
+        # when need to save a prune model, use input_names_after_prune to specify the inputs left after pruning
+        self.input_names_after_prune = None
+
+        # in the scene of llm-inference, prunning program can cause unexpectable result, an option to skip prune is necessary
+        self.skip_prune_program = False
+
     @property
     def output_spec(self):
         return self._output_spec
@@ -488,11 +494,13 @@ class _SaveLoadConfig:
 
 def _parse_save_configs(configs):
     supported_configs = [
-        'output_spec',
+        "output_spec",
         "with_hook",
         "combine_params",
         "clip_extra",
         "skip_forward",
+        "input_names_after_prune",
+        "skip_prune_program",
     ]
 
     # input check
@@ -505,11 +513,15 @@ def _parse_save_configs(configs):
 
     # construct inner config
     inner_config = _SaveLoadConfig()
-    inner_config.output_spec = configs.get('output_spec', None)
-    inner_config.with_hook = configs.get('with_hook', False)
+    inner_config.output_spec = configs.get("output_spec", None)
+    inner_config.with_hook = configs.get("with_hook", False)
     inner_config.combine_params = configs.get("combine_params", False)
     inner_config.clip_extra = configs.get("clip_extra", True)
     inner_config.skip_forward = configs.get("skip_forward", False)
+    inner_config.input_names_after_prune = configs.get(
+        "input_names_after_prune", None
+    )
+    inner_config.skip_prune_program = configs.get("skip_prune_program", False)
 
     return inner_config
 
@@ -533,7 +545,7 @@ def _parse_load_config(configs):
     return inner_config
 
 
-def _get_input_var_names(inputs, input_spec):
+def _get_input_var_names(inputs, input_spec, input_names_after_prune):
     name_none_error = (
         "The %s's name is None. "
         "When using jit.save, please set InputSepc's name in "
@@ -546,6 +558,14 @@ def _get_input_var_names(inputs, input_spec):
         "in input_spec is the same as the name of InputSpec in "
         "`to_static` decorated on the Layer.forward method."
     )
+    if input_names_after_prune is not None:
+        input_spec = [
+            x
+            for x in input_spec
+            if isinstance(x, paddle.static.InputSpec)
+            and x.name in input_names_after_prune
+        ]
+
     result_list = []
     input_var_names = [
         var.name
@@ -1201,7 +1221,9 @@ def save(layer, path, input_spec=None, **configs):
         #   - the input_spec length < len((concrete_program.inputs) - 1
         #   - the input_spec's name should be in concrete_program.inputs
         input_var_names = _get_input_var_names(
-            concrete_program.inputs, inner_input_spec
+            concrete_program.inputs,
+            inner_input_spec,
+            configs.input_names_after_prune,
         )
 
         # NOTE(chenweihang): [ Get output variables ]
@@ -1231,10 +1253,10 @@ def save(layer, path, input_spec=None, **configs):
             file_prefix = file_prefix + '.' + attr_func
         file_prefix = os.path.join(model_path, file_prefix)
         with scope_guard(scope):
-            input_vars = []
-            for var in concrete_program.main_program.clone().list_vars():
-                if var.name in input_var_names:
-                    input_vars.append(var)
+            input_vars = [
+                concrete_program.main_program.global_block().var(name)
+                for name in input_var_names
+            ]
             save_inference_model(
                 path_prefix=file_prefix,
                 feed_vars=input_vars,
@@ -1242,6 +1264,7 @@ def save(layer, path, input_spec=None, **configs):
                 executor=Executor(_current_expected_place()),
                 program=concrete_program.main_program.clone(),
                 clip_extra=configs.clip_extra,
+                skip_prune_program=configs.skip_prune_program,
             )
 
         if combine_params:

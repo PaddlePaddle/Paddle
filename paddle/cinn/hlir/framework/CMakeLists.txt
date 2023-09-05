@@ -1,3 +1,4 @@
+add_subdirectory(new_ir)
 core_gather_headers()
 
 gather_srcs(
@@ -12,12 +13,13 @@ gather_srcs(
   program.cc
   parallel_compiler.cc
   graph_compiler.cc
+  graph_compiler_util.cc
   graph.cc
   node.cc
   pass.cc
   op_strategy.cc
-  op_lowering.cc
   op_lowering_util.cc
+  op_lowering_impl.cc
   accuracy_checker.cc
   visualize_helper.cc)
 
@@ -52,5 +54,5 @@ cinn_cc_test(test_hlir_framework_op SRCS op_test.cc DEPS cinncore)
 cinn_cc_test(test_hlir_framework_print_graph_pass SRCS print_graph_pass_test.cc
              DEPS cinncore)
 cinn_cc_test(test_hlir_framework_graph SRCS graph_test.cc DEPS cinncore)
-
-#cinn_cc_test(test_hlir_framework_graph_compiler SRCS graph_compiler_test.cc DEPS cinncore)
+cinn_cc_test(test_hlir_framework_graph_compiler SRCS graph_compiler_test.cc
+             DEPS cinncore)

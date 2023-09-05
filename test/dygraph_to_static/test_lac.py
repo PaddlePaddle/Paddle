@@ -79,7 +79,7 @@ class DynamicGRU(paddle.nn.Layer):
             # input_ = inputs[:, j:j+1, :]  # original code
             input_ = paddle.slice(inputs, axes=[1], starts=[j], ends=[j + 1])
             input_ = paddle.reshape(input_, [-1, input_.shape[2]])
-            hidden, reset, gate = self.gru_unit(input_, hidden)
+            hidden, reset = self.gru_unit(input_, hidden)
             hidden_ = paddle.reshape(hidden, [-1, 1, hidden.shape[1]])
             res.append(hidden_)
 
@@ -603,8 +603,12 @@ class TestLACModel(unittest.TestCase):
                 paddle.jit.save(
                     layer=model,
                     path=self.model_save_prefix,
-                    input_spec=[input_specs[0], input_specs[-1]],
+                    input_spec=input_specs,
                     output_spec=[crf_decode],
+                    input_names_after_prune=[
+                        input_specs[0].name,
+                        input_specs[-1].name,
+                    ],
                 )
             else:
                 paddle.save(

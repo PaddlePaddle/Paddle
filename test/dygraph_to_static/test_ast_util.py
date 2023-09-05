@@ -17,6 +17,7 @@ import textwrap
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 from ifelse_simple_func import (
     dyfunc_with_if_else,
     dyfunc_with_if_else2,
@@ -60,6 +61,7 @@ class TestAST2Func(unittest.TestCase):
                 test_ret = self._ast2func(func)(x_v).numpy()
                 self.assertTrue((true_ret == test_ret).all())
 
+    @test_and_compare_with_new_ir(False)
     def test_ast2func_static(self):
         paddle.enable_static()
 

@@ -171,7 +171,6 @@ inline bool NeedTransformPlace(const phi::Place& src_place,
   return ret;
 }
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 /* ------------------ for auto parallel ----------------------- */
 
 // TODO(chenweihang): impl Reshard input and output function
@@ -180,7 +179,12 @@ std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag,
     bool is_stride_kernel);
-#endif
+
+std::vector<std::shared_ptr<phi::distributed::DistTensor>>
+PrepareDataForDistTensor(const std::vector<Tensor>& input,
+                         const phi::TensorArgDef& target_args_def,
+                         const TransformFlag& transform_flag,
+                         bool is_stride_kernel);
 
 }  // namespace experimental
 }  // namespace paddle
