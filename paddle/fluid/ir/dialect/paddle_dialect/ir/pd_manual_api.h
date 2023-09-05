@@ -26,8 +26,8 @@ namespace dialect {
 ir::OpResult embedding_grad(ir::OpResult x,
                             ir::OpResult weight,
                             ir::OpResult out_grad,
-                            int64_t padding_idx,
-                            bool sparse);
+                            int64_t padding_idx = -1,
+                            bool sparse = false);
 
 }  // namespace dialect
 }  // namespace paddle
