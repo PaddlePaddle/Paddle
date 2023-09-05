@@ -21,7 +21,7 @@
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
 
-DECLARE_string(cinn_fusion_groups_graphviz_dir);
+PD_DECLARE_string(cinn_fusion_groups_graphviz_dir);
 
 namespace cinn {
 namespace hlir {
