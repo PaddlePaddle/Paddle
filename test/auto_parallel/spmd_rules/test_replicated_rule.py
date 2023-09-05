@@ -104,6 +104,24 @@ class TestReplicatedSPMDRule(unittest.TestCase):
         self.assertEqual(result_dist_attrs[1][0].dims_mapping, [-1, -1, -1, -1])
         self.assertEqual(result_dist_attrs[1][1].dims_mapping, [-1, -1, -1])
 
+        # 1 inputs 3 outputs
+        result_dist_attrs = self.rule.infer_forward(
+            [self.y_dist_tensor_spec],
+            [
+                self.x_dist_tensor_spec,
+                self.out1_dist_tensor_spec,
+                self.out2_dist_tensor_spec,
+            ],
+        )
+        self.assertEqual(len(result_dist_attrs), 2)
+        self.assertEqual(len(result_dist_attrs[0]), 1)
+        self.assertEqual(len(result_dist_attrs[1]), 3)
+
+        self.assertEqual(result_dist_attrs[0][1].dims_mapping, [-1, -1])
+        self.assertEqual(result_dist_attrs[1][0].dims_mapping, [-1, -1, -1, -1])
+        self.assertEqual(result_dist_attrs[1][0].dims_mapping, [-1, -1, -1, -1])
+        self.assertEqual(result_dist_attrs[1][1].dims_mapping, [-1, -1, -1])
+
 
 if __name__ == "__main__":
     unittest.main()
