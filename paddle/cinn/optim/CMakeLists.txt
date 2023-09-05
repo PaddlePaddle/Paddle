@@ -3,7 +3,6 @@ core_gather_headers()
 gather_srcs(
   cinnapi_src
   SRCS
-  remove_nested_block.cc
   replace_call_with_expr.cc
   ir_replace.cc
   replace_var_with_expr.cc
@@ -34,8 +33,6 @@ if(WITH_CUDA)
   gather_srcs(cinnapi_src SRCS transform_gpu_forloop.cc)
 endif()
 
-cinn_cc_test(test_remove_nested_block SRCS remove_nested_block_test.cc DEPS
-             cinncore)
 cinn_cc_test(test_ir_simplify SRCS ir_simplify_test.cc DEPS cinncore)
 cinn_cc_test(test_replace_call_with_expr SRCS replace_call_with_expr_test.cc
              DEPS cinncore)
