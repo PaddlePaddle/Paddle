@@ -292,6 +292,8 @@ if(WITH_XPU)
                ${XPU_PASS_DEPS})
   pass_library(squeeze_excitation_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(elementwise_mul_add_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
 endif()
 
 cc_library(
