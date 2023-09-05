@@ -37,7 +37,7 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
 
   std::vector<int64_t> output_dims = phi::vectorize<int64_t>(input.dims());
   std::vector<int64_t> output_stride = phi::vectorize<int64_t>(input.strides());
-  int64_t output_offset = input.offset();
+  int64_t output_offset = static_cast<int64_t>(input.offset());
   for (size_t i = 0; i < axes.size(); ++i) {
     int64_t axis_size = input.dims()[axes[i]];
 
@@ -82,7 +82,8 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
       starts[i] = (strides[i] < 0) ? axis_size - 1 : axis_size;
     }
 
-    output_offset += starts[i] * output_stride[axes[i]] * SizeOf(out->dtype());
+    output_offset += static_cast<int>(starts[i] * output_stride[axes[i]] *
+                                      SizeOf(out->dtype()));
     output_dims[axes[i]] = dim;
     output_stride[axes[i]] *= strides[i];
   }
@@ -107,7 +108,7 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
 
   auto meta = out->meta();
   meta.offset = output_offset;
-  auto tmp_dim = DDim(output_dims.data(), output_dims.size());
+  auto tmp_dim = DDim(output_dims.data(), static_cast<int>(output_dims.size()));
   // if (product(meta.dims) > 0 && meta.dims != tmp_dim) {
   //   PADDLE_THROW(
   //       phi::errors::Fatal("Striede_slice kernel stride compute diff, infer "
@@ -116,7 +117,8 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
   //                          tmp_dim));
   // }
   meta.dims = tmp_dim;
-  meta.strides = DDim(output_stride.data(), output_stride.size());
+  meta.strides =
+      DDim(output_stride.data(), static_cast<int>(output_stride.size()));
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
 }

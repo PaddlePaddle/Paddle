@@ -100,8 +100,8 @@ void SvdKernel(const Context& dev_ctx,
   DenseTensor trans_x = ::phi::TransposeLast2Dim<T>(dev_ctx, X);
   auto* x_data = trans_x.data<T>();
   auto x_dims = X.dims();
-  int rows = x_dims[x_dims.size() - 2];
-  int cols = x_dims[x_dims.size() - 1];
+  int rows = static_cast<int>(x_dims[x_dims.size() - 2]);
+  int cols = static_cast<int>(x_dims[x_dims.size() - 1]);
   // int k = std::min(rows, cols);
   // int col_u = full ? rows : k;
   // int col_v = full ? cols : k;
@@ -113,7 +113,7 @@ void SvdKernel(const Context& dev_ctx,
       0,
       cols,
       errors::InvalidArgument("The col of Input(X) should be greater than 0."));
-  int batches = numel / (rows * cols);
+  int batches = static_cast<int>(numel / (rows * cols));
   auto* U_out = dev_ctx.template Alloc<phi::dtype::Real<T>>(U);
   auto* VH_out = dev_ctx.template Alloc<phi::dtype::Real<T>>(VH);
   auto* S_out = dev_ctx.template Alloc<phi::dtype::Real<T>>(S);

@@ -29,7 +29,7 @@
 #include "paddle/cinn/utils/string.h"
 
 //! Root of the builtin code.
-DECLARE_string(cinn_x86_builtin_code_root);
+PD_DECLARE_string(cinn_x86_builtin_code_root);
 
 namespace cinn {
 namespace backends {

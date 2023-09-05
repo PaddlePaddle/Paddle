@@ -654,6 +654,7 @@ void ProgramInterpreter::Convert(
   vec_instruction_.reserve(op_nums);
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
     auto& op_func_node = nodes[op_idx];
+    stream_analyzer_.SetForceEventsToWaitInfo(force_evnets_to_wait_);
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
 #ifdef PADDLE_WITH_CUDA
     if (FLAGS_new_executor_use_cuda_graph) {
