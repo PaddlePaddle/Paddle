@@ -157,8 +157,12 @@ OpInfoTuple SplitGradOp::GetOpInfo() {
                   false,
                   false,
                   true),
-      OpInputInfo(
-          "axis", "paddle::dialect::ScalarAttribute", false, false, true, false)};
+      OpInputInfo("axis",
+                  "paddle::dialect::ScalarAttribute",
+                  false,
+                  false,
+                  true,
+                  false)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       OpOutputInfo("x_grad", "paddle::dialect::DenseTensorType", false, false)};
