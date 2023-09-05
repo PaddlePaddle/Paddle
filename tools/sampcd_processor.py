@@ -445,8 +445,8 @@ class Xdoctester(DocTester):
         summary_timeout = []
         summary_nocodes = []
 
-        logger.info("----------------Check results--------------------")
-        logger.info(">>> Sample code test capacity: %s", self._test_capacity)
+        logger.warning("----------------Check results--------------------")
+        logger.warning(">>> Sample code test capacity: %s", self._test_capacity)
 
         if whl_error is not None and whl_error:
             logger.warning("%s is not in whl.", whl_error)
@@ -541,8 +541,8 @@ class Xdoctester(DocTester):
                 )
                 log_exit(1)
 
-        logger.info("Sample code check is successful!")
-        logger.info("----------------End of the Check--------------------")
+        logger.warning("Sample code check is successful!")
+        logger.warning("----------------End of the Check--------------------")
 
 
 if __name__ == '__main__':

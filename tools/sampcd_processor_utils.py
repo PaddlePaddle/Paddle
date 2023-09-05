@@ -28,10 +28,12 @@ logger.propagate = False
 
 formatter = logging.Formatter("%(message)s")
 
+# add stdout for all logs
 handler_stdout = logging.StreamHandler(stream=sys.stdout)
 handler_stdout.setLevel(logging.DEBUG)
 handler_stdout.setFormatter(formatter)
 
+# add stderr for bad code-block
 handler_stderr = logging.StreamHandler(stream=sys.stderr)
 handler_stderr.setLevel(logging.WARNING)
 handler_stderr.setFormatter(formatter)
