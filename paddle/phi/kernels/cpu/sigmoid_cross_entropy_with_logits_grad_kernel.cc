@@ -31,7 +31,7 @@ void SigmoidCrossEntropyWithLogitsGradKernel(
     DenseTensor* in_grad) {
   auto dx_data = dev_ctx.template Alloc<T>(in_grad);
 
-  int limit = in_grad->numel();
+  int limit = static_cast<int>(in_grad->numel());
   auto x_data = x.data<T>();
   auto label_data = label.data<T>();
   auto dout_data = out_grad.data<T>();
