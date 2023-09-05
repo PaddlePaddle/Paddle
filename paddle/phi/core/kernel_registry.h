@@ -43,7 +43,10 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)>;
 
 // TODO(chenweihang): Polish the kernel selection logic, support the selection
 // of ALL_DTYPE kernel, and simplify the constructor
-
+enum class RegType : uint8_t {
+  INNER = 0,
+  OUTER,
+};
 struct KernelRegistrar {
  public:
   KernelRegistrar(RegType,
