@@ -679,7 +679,6 @@ class PartialProgramLayer:
             # start_idx + 1, main_program, program
             # )
 
-        print("MainProgram after append backward: ", program)
         hash_id = paddle.utils._hash_with_id(program, self)
         extra_info = self._program_extra_info.get(hash_id, {})
         extra_info['forward_end_op_idx'] = forward_end_idx
@@ -772,8 +771,6 @@ class PartialProgramLayer:
     def _get_forward_backward_program_form(
         self, whole_program, forward_end_op_index
     ):
-        print("WholeProgram:", whole_program)
-        print("forward_end_op_index:", forward_end_op_index)
         # NOTE(dev): We apply build_strategy for backward firstly to
         # avoid skipping more gc variables.
         forward_inputs_grads = self.get_program_extra(whole_program)[
@@ -796,17 +793,6 @@ class PartialProgramLayer:
         # whole_program
         # ) + self._grad_var_names.get('param', [])
 
-        print(whole_program)
-        print("=============")
-        print(forward_inputs)
-        print(forward_outputs)
-        print(forward_inputs_grads)
-        print(forward_outputs_grads)
-        print("=============")
-        for op in whole_program.block().ops:
-            print(f"results: {op.name()}", op.results())
-
-        print("start assert ...")
         assert whole_program.block().ops[0].results()[0] == forward_inputs[0]
         assert whole_program.block().ops[1].results()[0] == forward_outputs[0]
         assert (
@@ -816,8 +802,6 @@ class PartialProgramLayer:
         assert (
             whole_program.block().ops[3].results()[0] == forward_inputs_grads[0]
         )
-
-        print("inputs is ok ...")
 
         (
             forward_program,
@@ -1136,9 +1120,6 @@ def partial_program_from(concrete_program, from_method=False):
 def add_build_strategy_for(
     program, start_op_index, end_op_index, build_strategy=None, skip_vars=None
 ):
-    print("Cloneing Program: ")
-    print(paddle.fluid.libpaddle.ir.program_clone(program))
-
     paddle.fluid.libpaddle.ir.program_split(
         program,
     )

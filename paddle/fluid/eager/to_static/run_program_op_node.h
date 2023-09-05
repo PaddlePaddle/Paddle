@@ -250,10 +250,6 @@ static void ShareTensorsIntoScopeByValue(const ::ir::Block *block,
                                          const std::vector<::ir::Value> &values,
                                          paddle::framework::Scope *scope) {
   auto names = GetNameFromValue(block, values);
-  VLOG(1) << "Sharing: name of value is:";
-  for (auto s : names) {
-    VLOG(1) << "    name = " << s;
-  }
   ShareTensorsIntoScopeWithName(tensors, names, scope);
 }
 
@@ -383,11 +379,11 @@ static void GcScope(paddle::framework::Scope *scope) {
 
 template <class T>
 void print_collection(const T &t) {
-  VLOG(1) << "Print collection start :";
+  VLOG(5) << "Print collection start :";
   for (auto s : t) {
-    VLOG(1) << s;
+    VLOG(5) << s;
   }
-  VLOG(1) << "Print collection end.";
+  VLOG(5) << "Print collection end.";
 }
 
 }  // namespace details
@@ -438,9 +434,6 @@ inline void NewIRRunProgramAPI(
   // auto dout_names =
   // PADDLE_GET_CONST(std::vector<::ir::Value>, attrs.at("fp"));
 
-  VLOG(1) << "length os fx, fo, fp : " << input_values.size() << " "
-          << output_values.size();
-
   auto *forward_global_block =
       PADDLE_GET_CONST(::ir::Block *, attrs.at("forward_global_block"));
   auto *backward_global_block =
@@ -451,15 +444,13 @@ inline void NewIRRunProgramAPI(
   auto *backward_program =
       backward_global_block->GetParentOp()->GetParentProgram();
 
-  VLOG(1) << "Value Judgement(expect 1): "
-          << ((*forward_global_block->begin())->result(0).value_impl() ==
-              input_values[0].impl());
-
-  std::ostringstream print_stream;
-  forward_program->Print(print_stream);
-  print_stream << "\n";
-  backward_program->Print(print_stream);
-  VLOG(1) << print_stream.str();
+  if (VLOG_IS_ON(4)) {
+    std::ostringstream print_stream;
+    forward_program->Print(print_stream);
+    print_stream << "\n";
+    backward_program->Print(print_stream);
+    VLOG(4) << print_stream.str();
+  }
 
   VLOG(10) << is_test << program_id;
 
