@@ -1214,6 +1214,14 @@ std::unordered_set<std::string> GetSpecialOpNames() {
   };
 }
 
+void BuildId2VarName(const std::map<std::string, int>& var_name_2_id,
+                     std::unordered_map<int, std::string>* id_2_var_name) {
+  // PADDLE_ENFORCE_NOT_NULL(id2_var_name, "id2_var_name can not be null");
+  for (auto [var_name, id] : var_name_2_id) {
+    id_2_var_name->insert({id, var_name});
+  }
+}
+
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle

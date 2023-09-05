@@ -194,11 +194,10 @@ std::string NewIRInterpreter::GetNameById(int id) const {
   // typically when the target variable is not existed in the original program
   // desc, but created by interpretercore.
   // For example, created and used by d2h_copy or h2d_copy operator.
-  auto it = std::find_if(var_name_2_id_.begin(),
-                         var_name_2_id_.end(),
-                         [id](const auto& pair) { return pair.second == id; });
-  if (it != var_name_2_id_.end()) {
-    return it->first;
+
+  auto it = id_2_var_name_.find(id);
+  if (it != id_2_var_name_.end()) {
+    return it->second;
   }
   return "";
 }
@@ -713,11 +712,14 @@ void NewIRInterpreter::RecordStreamForGC(InstructionBase* instr) {
    */
   for (int var_id : instr->GCCheckVars()) {
     VLOG(4) << "GC sync " << GetNameById(var_id);
-
-    // persistable var will be ignore while GC
-    if (parameter_var_names_.count(GetNameById(var_id))) {
-      VLOG(4) << GetNameById(var_id) << " is a parameter, skip gc";
-      continue;
+    {
+      platform::RecordEvent record(
+          "SkipParameter", platform::TracerEventType::UserDefined, 10);
+      // persistable var will be ignore while GC
+      if (parameter_var_names_.count(GetNameById(var_id))) {
+        VLOG(4) << GetNameById(var_id) << " is a parameter, skip gc";
+        continue;
+      }
     }
 
     paddle::framework::Variable* var = variable_list_[var_id];
@@ -925,6 +927,9 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                      &variable_2_var_name_,
                      &var_name_2_id_,
                      &variable_list_);
+
+    interpreter::BuildId2VarName(var_name_2_id_, &id_2_var_name_);
+
     VLOG(4) << "Done BuildScope";
     VLOG(4) << DebugValueInfo();
 
