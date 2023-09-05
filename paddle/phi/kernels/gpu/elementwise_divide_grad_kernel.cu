@@ -71,6 +71,19 @@ PD_REGISTER_KERNEL(divide_grad,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
+#ifdef PADDLE_WITH_MUSA
+PD_REGISTER_KERNEL(divide_double_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::DivideDoubleGradKernel,
+                   float,
+                   phi::dtype::bfloat16,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+#else
 PD_REGISTER_KERNEL(divide_double_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -83,3 +96,5 @@ PD_REGISTER_KERNEL(divide_double_grad,
                    int64_t,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+
+#endif

@@ -60,7 +60,6 @@ if(WITH_MUSA)
     "gpu/depthwise_conv_grad_kernel.cu"
     "gpu/depthwise_conv_kernel.cu"
     "gpu/dist_kernel.cu"
-    "gpu/elementwise_divide_grad_kernel.cu"
     "gpu/elementwise_grad_kernel.cu"
     "gpu/erfinv_kernel.cu"
     "gpu/exponential_kernel.cu"
