@@ -34,7 +34,7 @@ __global__ void KernelBincount(const InputT* input,
                                const bool has_weights,
                                const T* weights,
                                OutT* output) {
-  int tid = blockIdx.x * blockDim.x + threadIdx;
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
   if (tid < total_elements) {
     if (!has_weights) {
       phi::CudaAtomicAdd(&output[input[tid]], 1L);
