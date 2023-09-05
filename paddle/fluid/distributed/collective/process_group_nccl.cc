@@ -110,7 +110,13 @@ ProcessGroupNCCL::ProcessGroupNCCL(
     int64_t timeout)
     : ProcessGroupWithStream(rank, size, gid),
       store_(store),
-      pg_timeout_(timeout) {}
+      pg_timeout_(timeout) {
+  // TODO(yuwentao01): for debug
+  char* test_hang = std::getenv("TEST_HANG");
+  if (test_hang != nullptr) {
+    pg_timeout_ = 20 * 1000;
+  }
+}
 
 void ProcessGroupNCCL::GroupStart() {
   NCCL_CHECK(phi::dynload::ncclGroupStart());
@@ -223,7 +229,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
                                                /*dst_rank*/ rank_,
                                                /*cur_rank*/ rank_,
                                                size_);
-  VLOG(1) << "debug all reduce begin ";
   return Collective(
       [&](ncclComm_t comm, gpuStream_t stream) {
         if (FLAGS_enable_nccl_dynamic_check) {
@@ -246,8 +251,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
                 << ", use_calc_stream: " << use_calc_stream;
 
         int64_t numel = in_tensor.numel();
-        if (rank_ == 1) {
-          numel += 200;
+        // TODO(yuwentao01) for debug
+        char* test_hang = std::getenv("TEST_HANG");
+        if (test_hang != nullptr && rank_ == 2) {
+          numel += 10;
         }
         NCCL_CHECK(
             phi::dynload::ncclAllReduce(in_tensor.data(),
@@ -395,7 +402,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
     const BroadcastOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  VLOG(1) << "debug broadcast begin ";
   phi::distributed::CommStaticCheck::SameShape(*out_tensor,
                                                in_tensor,
                                                /*dst_rank*/ rank_,
@@ -419,12 +425,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
 
-        int64_t numel = in_tensor.numel();
         NCCL_CHECK(
             phi::dynload::ncclBroadcast(in_tensor.data(),
                                         out_tensor->data(),
-                                        // in_tensor.numel(),
-                                        numel,
+                                        in_tensor.numel(),
                                         phi::ToNCCLDataType(in_tensor.dtype()),
                                         root,
                                         comm,
@@ -917,7 +921,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
 
     auto& comm_task_manager = phi::distributed::CommTaskManager::GetInstance();
     comm_task_manager.CommTaskEnqueue(std::move(comm_task));
-    VLOG(1) << "debug enqueue task " << static_cast<int>(comm_type);
   }
 
   if (!use_calc_stream) {
@@ -1008,7 +1011,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
 
     auto& comm_task_manager = phi::distributed::CommTaskManager::GetInstance();
     comm_task_manager.CommTaskEnqueue(std::move(comm_task));
-    VLOG(1) << "debug enqueue task " << static_cast<int>(comm_type);
   }
 
   if (!use_calc_stream) {
@@ -1038,9 +1040,10 @@ std::shared_ptr<ProcessGroupNCCL> ProcessGroupNCCL::CreateProcessGroupNCCL(
     const std::shared_ptr<phi::distributed::Store>& store,
     int rank,
     int size,
-    int gid) {
+    int gid,
+    int64_t timeout) {
   auto process_group =
-      std::make_shared<ProcessGroupNCCL>(store, rank, size, gid);
+      std::make_shared<ProcessGroupNCCL>(store, rank, size, gid, timeout);
   ProcessGroupIdMap::GetInstance().emplace(gid, process_group);
   return process_group;
 }

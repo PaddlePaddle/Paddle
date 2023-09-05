@@ -37,8 +37,6 @@
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
-DECLARE_int32(async_error_handle);
-
 namespace phi {
 namespace distributed {
 
@@ -78,80 +76,55 @@ void CommTaskManager::CommTaskLoop() {
         lock,
         std::chrono::milliseconds(loop_thread_sleep_millis),
         [&]() -> bool { return terminated_.load(); });
-    VLOG(1) << "task loop begin, comm_task_list_ size: "
-            << comm_task_list_.size();
     for (auto task = comm_task_list_.begin(); task != comm_task_list_.end();) {
-      VLOG(1) << "process task " << CommTypeToString((*task)->GetCommType())
-              << ", trace: " << (*task)->GetTraceMsg();
       (*task)->CheckAndSetException();
       if ((*task)->IsTimeout()) {
-        VLOG(0) << "debug timeout task "
-                << CommTypeToString((*task)->GetCommType())
-                << ", curr rank: " << (*task)->GetRank();
         std::string exception_msg = (*task)->GetTraceMsg();
-        VLOG(0) << "debug timeout exp msg : " << exception_msg;
         exception_msg += GenerateTraceMsg((*task)->GetStore(),
                                           (*task)->GetBackend(),
                                           (*task)->GetRank(),
                                           (*task)->GetSize());
-        VLOG(0) << "debug timeout exp msg : " << exception_msg;
         LOG(ERROR) << exception_msg;
         std::exception_ptr exception_ptr =
             std::make_exception_ptr(std::runtime_error(exception_msg));
         (*task)->SetException(exception_ptr);
         (*task)->AbortComm();
-        VLOG(0) << "debug timeout exp msg : " << exception_msg;
       }
 
-      VLOG(1) << "process task " << CommTypeToString((*task)->GetCommType())
-              << ", started " << (*task)->IsStarted() << ", completed "
-              << (*task)->IsCompleted() << ", store err " << store_error_;
-      VLOG(1) << "process task updated " << (*task)->GetTraceUpdated()
-              << ", terminated_ " << terminated_.load();
       if (!(*task)->GetTraceUpdated() && (*task)->IsStarted() &&
           !terminated_.load() && !store_error_) {
         std::string trace_key =
             GetTraceStartKey((*task)->GetBackend(), (*task)->GetRank());
-        VLOG(0) << "process task update trace_key: " << trace_key;
         store_error_ =
             !UpdateTraceMsg((*task)->GetStore(),
                             trace_key,
                             (*task)->GetSeq(),
                             CommTypeToString((*task)->GetCommType()));
         (*task)->SetTraceUpdated();
-        VLOG(1) << "process task update trace_key: " << trace_key;
       }
 
       if ((*task)->IsCompleted()) {
-        VLOG(1) << "process task completed, store_error: " << store_error_;
         if (!(*task)->GetTraceUpdated() && !terminated_.load() &&
             !store_error_) {
           std::string trace_key =
               GetTraceStartKey((*task)->GetBackend(), (*task)->GetRank());
-          VLOG(0) << "process task update trace_key: " << trace_key;
           store_error_ =
               !UpdateTraceMsg((*task)->GetStore(),
                               trace_key,
                               (*task)->GetSeq(),
                               CommTypeToString((*task)->GetCommType()));
           (*task)->SetTraceUpdated();
-          VLOG(1) << "process task update trace_key: " << trace_key;
         }
-        VLOG(1) << "process task completed, store_error_ " << store_error_;
         if (!terminated_.load() && !store_error_) {
           std::string trace_key =
               GetTraceEndKey((*task)->GetBackend(), (*task)->GetRank());
-          VLOG(0) << "process task update trace_key: " << trace_key;
           store_error_ =
               !UpdateTraceMsg((*task)->GetStore(),
                               trace_key,
                               (*task)->GetSeq(),
                               CommTypeToString((*task)->GetCommType()));
-          VLOG(1) << "process task update trace_key: " << trace_key;
         }
         task = comm_task_list_.erase(task);
-        VLOG(1) << "process erase task "
-                << CommTypeToString((*task)->GetCommType());
       } else {
         ++task;
       }

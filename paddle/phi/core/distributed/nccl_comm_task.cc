@@ -166,10 +166,6 @@ bool NCCLCommTask::IsSuccess() {
 
 bool NCCLCommTask::IsTimeout() {
   auto current_timepoint = std::chrono::steady_clock::now();
-  VLOG(1) << "debug check timeout " << timeout_.count() << ", interval "
-          << std::chrono::duration_cast<std::chrono::milliseconds>(
-                 current_timepoint - start_time_)
-                 .count();
   return std::chrono::duration_cast<std::chrono::milliseconds>(
              current_timepoint - start_time_) >= timeout_;
 }
@@ -200,18 +196,21 @@ std::string NCCLCommTask::GetTraceMsg() {
   auto current_timepoint = std::chrono::steady_clock::now();
   auto time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
       current_timepoint - start_time_);
-  return "\n\tFind Timeout task local detail, "
-         "global_rank: " +
-         std::to_string(global_rank_) + ", group_id: " + std::to_string(gid_) +
+  return "\n\t Find Timeout task :"
+         " comm_type: " +
+         CommTypeToString(comm_type_) +
+         ", global_rank: " + std::to_string(global_rank_) +
          ", local_rank: " + std::to_string(rank_) +
-         ", size: " + std::to_string(size_) + ", seq: " + std::to_string(seq_) +
-         ", comm_type: " + CommTypeToString(comm_type_) +
+         ", seq: " + std::to_string(seq_) +
+         ", group_id: " + std::to_string(gid_) +
+         ", size: " + std::to_string(size_) +
          ", numel: " + std::to_string(numel_) +
          ", sync_op: " + std::to_string(sync_op_) +
          ", use_calc_stream: " + std::to_string(use_calc_stream_) +
          ", started: " + std::to_string(IsStarted()) +
          ", completed: " + std::to_string(IsCompleted()) +
-         ", timeoutd: " + std::to_string(IsTimeout()) +
+         ", timeout : " + std::to_string(timeout_.count()) +
+         ", is_timeout: " + std::to_string(IsTimeout()) +
          ", time_elapsed: " + std::to_string(time_elapsed.count());
 }
 

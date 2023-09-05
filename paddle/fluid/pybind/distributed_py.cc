@@ -1236,6 +1236,7 @@ void BindDistributed(py::module *m) {
                   py::arg("rank"),
                   py::arg("world_size"),
                   py::arg("group_id") = 0,
+                  py::arg("timeout") = 30 * 60 * 1000,
                   py::call_guard<py::gil_scoped_release>())
       .def_static("group_start", distributed::ProcessGroupNCCL::GroupStart)
       .def_static("group_end", distributed::ProcessGroupNCCL::GroupEnd);

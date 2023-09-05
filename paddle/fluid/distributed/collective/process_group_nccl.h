@@ -70,7 +70,8 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
       const std::shared_ptr<phi::distributed::Store>& store,
       int rank,
       int size,
-      int gid);
+      int gid,
+      int64_t timeout);
 
   ProcessGroupNCCL(const std::shared_ptr<phi::distributed::Store>& store,
                    int rank,
