@@ -260,7 +260,8 @@ Interceptor* Carrier::SetInterceptor(int64_t interceptor_id,
   interceptor->RegisterCarrier(this);
 
   // TODO(fleet_exe dev): get loop
-  auto* loop = thread_pool_.GetLoop(interceptor_id % thread_num_);
+  auto* loop =
+      thread_pool_.GetLoop(static_cast<int>(interceptor_id % thread_num_));
   PADDLE_ENFORCE_NOT_NULL(
       loop, platform::errors::Fatal("thread task loop must not null"));
   interceptor->RegisterTaskLoop(loop);
@@ -296,7 +297,7 @@ void Carrier::CreateInterceptors(
   auto gc = GetGC(place_);
 
   // create source and sink task node
-  auto max_run_times = microbatch_scopes_.size();
+  int64_t max_run_times = static_cast<int64_t>(microbatch_scopes_.size());
   TaskNode* source = new TaskNode(
       rank_, SOURCE_ID, max_run_times);  // rank, task_id, max_run_times
   TaskNode* sink = new TaskNode(rank_, SINK_ID, max_run_times);
