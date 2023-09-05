@@ -706,7 +706,7 @@ struct SingleLayer : public Layer<T, CellType> {
                   DenseTensor* cell_value,
                   DenseTensor* cell_act_value,
                   const std::string& mode,
-                  bool is_test) {
+                  bool is_test) override {
     this->RunIter(dev_ctx,
                   input,
                   vec,
@@ -745,7 +745,7 @@ struct BidirLayer : public Layer<T, CellType> {
                   DenseTensor* cell_value,
                   DenseTensor* cell_act_value,
                   const std::string& mode,
-                  bool is_test) {
+                  bool is_test) override {
     std::vector<DenseTensor> output_vec(2);
     DenseTensor forward_input_w, forward_cell_value, forward_cell_act_value;
     DenseTensor backward_input_w, backward_cell_value, backward_cell_act_value;
