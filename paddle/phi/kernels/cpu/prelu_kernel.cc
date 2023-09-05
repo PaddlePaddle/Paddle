@@ -30,7 +30,7 @@ void PReluKernel(const Context& dev_ctx,
   const T* alpha_ptr = alpha.data<T>();
   T* o_ptr = dev_ctx.template Alloc<T>(out);
 
-  int numel = x.numel();
+  int numel = static_cast<int>(x.numel());
   auto dim = x.dims();
   int index = 0;
   int i = 0;
@@ -38,22 +38,22 @@ void PReluKernel(const Context& dev_ctx,
     if (data_format == "NCHW") {
       int temp = 1;
       for (int j = 2; j < dim.size(); j++) {
-        temp *= dim[j];
+        temp *= static_cast<int>(dim[j]);
       }
       for (i = 0; i < numel; i++) {
-        index = (i / temp) % dim[1];
+        index = static_cast<int>((i / temp) % dim[1]);
         o_ptr[i] = x_ptr[i] > 0 ? x_ptr[i] : alpha_ptr[index] * x_ptr[i];
       }
     } else {
       for (i = 0; i < numel; i++) {
-        index = i % dim[dim.size() - 1];
+        index = static_cast<int>(i % dim[dim.size() - 1]);
         o_ptr[i] = x_ptr[i] > 0 ? x_ptr[i] : alpha_ptr[index] * x_ptr[i];
       }
     }
   } else if (mode == "element") {
     int temp = 1;
     for (int j = 1; j < dim.size(); j++) {
-      temp *= dim[j];
+      temp *= static_cast<int>(dim[j]);
     }
     for (i = 0; i < numel; i++) {
       index = i % temp;

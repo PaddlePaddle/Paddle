@@ -21,15 +21,15 @@ limitations under the License. */
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
-#include "paddle/utils/flags.h"
 
-PD_DECLARE_bool(use_stride_kernel);
+PHI_DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace experimental {
@@ -630,6 +630,48 @@ std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
         out, dist_tensor->dist_attr());
   }
   return nullptr;
+}
+
+std::vector<std::shared_ptr<phi::distributed::DistTensor>>
+PrepareDataForDistTensor(const std::vector<Tensor>& input,
+                         const phi::TensorArgDef& target_args_def,
+                         const TransformFlag& transform_flag,
+                         bool is_stride_kernel) {
+  std::vector<std::shared_ptr<phi::distributed::DistTensor>> out;
+  for (auto x : input) {
+    const auto& tensor_in = x.impl();
+    if (tensor_in) {
+      phi::distributed::DistTensor* dist_tensor =
+          static_cast<phi::distributed::DistTensor*>(tensor_in.get());
+      const phi::DenseTensor& dense_tensor = dist_tensor->value();
+      if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
+          (!NeedTransformPlace(
+               dense_tensor.place(), target_args_def.backend, transform_flag) &&
+           !NeedTransformDataType(
+               dense_tensor.dtype(), target_args_def.dtype, transform_flag) &&
+           !NeedTransformLayout(dense_tensor.layout(),
+                                target_args_def.layout,
+                                dense_tensor.place(),
+                                transform_flag) &&
+           !NeedTransform2Contiguous(is_stride_kernel,
+                                     dense_tensor.meta().is_contiguous()))) {
+        out.push_back(
+            std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in));
+        continue;
+      }
+      phi::DenseTensor trans_in_tensor = TransformData(
+          dense_tensor, target_args_def, transform_flag, is_stride_kernel);
+      // TODO(GhostScreaming): The global meta in DistTensor is not changed,
+      // but the local meta in DenseTensor maybe changed, such as layout
+      // change(NCHW->NHWC), so the new DistTensor's meta maybe not unified.
+      VLOG(6) << "PrepareDataForDistTensor return transformed dist tensor";
+      out.push_back(std::make_shared<phi::distributed::DistTensor>(
+          trans_in_tensor, dist_tensor->dist_attr()));
+    } else {
+      out.push_back(nullptr);
+    }
+  }
+  return out;
 }
 
 }  // namespace experimental
