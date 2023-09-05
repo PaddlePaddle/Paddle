@@ -3552,9 +3552,11 @@ EOF
     if [ "$3" != "" ]; then
       parallel_number=$3
     fi
-    export MAX_JOBS=${parallel_number}
+    
     # reset ccache zero stats for collect PR's actual hit rate
-
+    if [ "${MAX_JOBS}" == "" ]; then
+        export MAX_JOBS=${parallel_number}
+    fi
     ccache -z
     cd ..
     if [ "${PYTHON_EXECUTABLE}" != "" ];then
