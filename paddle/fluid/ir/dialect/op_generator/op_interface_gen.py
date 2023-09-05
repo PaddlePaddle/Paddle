@@ -34,6 +34,14 @@ OP_VJP_FORWARD_MULTI_INPUT_TEMPLATE = """
             std::make_shared<primitive::LazyTensor>(combine_op_obj.inputs()[idx]));
     }}"""
 
+OP_VJP_FORWARD_OPTIONAL_INPUT_TEMPLATE = """
+    if (op_obj.{input_name}().type() == None){{
+        paddle::optional<Tensor> {input_name};
+    }}
+    else{{
+        paddle::optional<Tensor> {input_name} = paddle::make_optional<Tensor>(std::make_shared<primitive::LazyTensor>(op_obj.{input_name}()));
+    }}"""
+
 OP_VJP_FORWARD_OUTPUT_GRAD_TEMPLATE = """
     Tensor {output_grad_name}(std::make_shared<primitive::LazyTensor>(out_grads[{idx1}][{idx2}]));"""
 
@@ -45,7 +53,7 @@ OP_VJP_FORWARD_OUTPUT_GRAD_LIST_TEMPLATE = """
     }}"""
 
 OP_VJP_ATTRIBUTE_TEMPLATE = """
-    {attr_type} {attr_name} = op->attribute("{attr_name}").dyn_cast<{attr_parse_type}>().data();"""
+    {attr_type} {attr_name} = op->attribute("{attr_name}").dyn_cast<{attr_parse_type}>().{func}();"""
 
 OP_VJP_ATTRIBUTE_DEFAULT_TEMPLATE = """
     {attr_type} {attr_name} = {default_value};"""
@@ -90,6 +98,10 @@ std::vector<std::vector<ir::OpResult>> {op_class_name}::Vjp(ir::Operation* op, c
 input_types_map = {
     'paddle::dialect::DenseTensorType': 'Tensor',
     'ir::VectorType<paddle::dialect::DenseTensorType>': 'Tensor[]',
+}
+
+attr_data_map = {
+    'ir::StrAttribute': 'AsString',
 }
 
 
@@ -155,10 +167,17 @@ def gen_op_vjp_str(
                     )
                 )
             else:
+                func = 'data'
+                if (
+                    op_grad_info.attribute_type_list[idx]
+                    in attr_data_map.keys()
+                ):
+                    func = attr_data_map[op_grad_info.attribute_type_list[idx]]
                 attribute_code += OP_VJP_ATTRIBUTE_TEMPLATE.format(
                     attr_type=op_grad_info.attribute_gen_arg_type_list[idx],
                     attr_name=op_attribute_list[idx],
                     attr_parse_type=op_grad_info.attribute_type_list[idx],
+                    func=func,
                 )
 
         else:
