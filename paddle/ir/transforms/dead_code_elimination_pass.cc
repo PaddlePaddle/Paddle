@@ -17,6 +17,7 @@
 #include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/program.h"
 #include "paddle/ir/pass/pass.h"
+#include "paddle/ir/pass/pass_registry.h"
 
 namespace {
 
@@ -25,7 +26,7 @@ namespace {
 // Now just a naive implementation.
 class DeadCodeEliminationPass : public ir::Pass {
  public:
-  DeadCodeEliminationPass() : ir::Pass("DeadCodeEliminationPass", 0) {}
+  DeadCodeEliminationPass() : ir::Pass("dead_code_elimination", 0) {}
 
   void Run(ir::Operation *op) override {
     auto module_op = op->dyn_cast<ir::ModuleOp>();
@@ -75,3 +76,5 @@ std::unique_ptr<Pass> CreateDeadCodeEliminationPass() {
 }
 
 }  // namespace ir
+
+REGISTER_PASS(dead_code_elimination, DeadCodeEliminationPass);

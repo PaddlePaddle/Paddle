@@ -1025,7 +1025,7 @@ function generate_upstream_develop_api_spec() {
     git log --pretty=oneline -10
 
     dev_commit=`git log -1|head -1|awk '{print $2}'`
-    dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl"
+    dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl"
     url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
     if [ "$url_return" == '200' ];then
         echo "wget develop whl from bos! "
@@ -3552,9 +3552,11 @@ EOF
     if [ "$3" != "" ]; then
       parallel_number=$3
     fi
-    export MAX_JOBS=${parallel_number}
+    
     # reset ccache zero stats for collect PR's actual hit rate
-
+    if [ "${MAX_JOBS}" == "" ]; then
+        export MAX_JOBS=${parallel_number}
+    fi
     ccache -z
     cd ..
     if [ "${PYTHON_EXECUTABLE}" != "" ];then
