@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
 
-#include "paddle/cinn/hlir/dialect/jit_kernel_op.h"
-#include "paddle/cinn/hlir/dialect/runtime_dialect.h"
+#include "paddle/cinn/hlir/dialect/runtime_dialect/ir/jit_kernel_op.h"
+#include "paddle/cinn/hlir/dialect/runtime_dialect/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/fluid/framework/paddle2cinn/transform_type.h"
 

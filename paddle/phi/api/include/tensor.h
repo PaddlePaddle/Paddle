@@ -96,7 +96,7 @@ class PADDLE_API Tensor final {
   /**
    * @brief Construct a new Tensor object by move
    */
-  Tensor(Tensor&&) = default;
+  Tensor(Tensor&&) noexcept = default;
 
   /**
    * @brief Construct a new Tensor object by a TensorBase pointer
@@ -522,7 +522,7 @@ class PADDLE_API Tensor final {
    * @param x
    * @return Tensor&
    */
-  Tensor& operator=(Tensor&& x) &;
+  Tensor& operator=(Tensor&& x) & noexcept;
 
   /**
    * @brief Tensor operants
