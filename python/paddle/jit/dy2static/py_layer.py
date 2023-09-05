@@ -48,7 +48,7 @@ class StaticPyLayerContext:
                 type=saved_var.type,
             )
             out_list.append(out)
-            
+
         return out_list
 
     # TODO(MarioLulab): support not_inplace

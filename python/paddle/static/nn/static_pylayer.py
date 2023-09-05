@@ -98,6 +98,7 @@ class StaticPyLayerBlock:
         )
 
         self.fwd_op_id = pylayer_op.idx
+
     def complete_backward_block(self):
         inside_block = self.helper.main_program.current_block()
         parent_block = self.helper.main_program.block(inside_block.parent_idx)
