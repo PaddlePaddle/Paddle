@@ -249,15 +249,15 @@ void BindOperation(py::module *m) {
            })
       .def("get_input_grad_semantics",
            [](Operation &self) -> py::list {
-            py::list op_list;
-            paddle::dialect::OpYamlInfoInterface yaml_interface =
-                self.dyn_cast<paddle::dialect::OpYamlInfoInterface>();
-            auto input_grads_info = std::get<0>(yaml_interface.GetOpInfo());
-            for(auto &input_grad_info : input_grads_info) {
-              op_list.append(input_grad_info.with_grad_semantic);
-            }
-            return op_list;
-      })
+             py::list op_list;
+             paddle::dialect::OpYamlInfoInterface yaml_interface =
+                 self.dyn_cast<paddle::dialect::OpYamlInfoInterface>();
+             auto inputs_grad_info = std::get<0>(yaml_interface.GetOpInfo());
+             for (auto &input_grad_info : inputs_grad_info) {
+               op_list.append(input_grad_info.with_grad_semantic);
+             }
+             return op_list;
+           })
       .def("replace_all_uses_with",
            [](Operation &self, const std::vector<OpResult> &op_results) {
              self.ReplaceAllUsesWith(op_results);
