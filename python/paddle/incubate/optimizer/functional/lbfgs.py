@@ -98,7 +98,7 @@ def minimize_lbfgs(
             ...     # Call the bfgs method to optimize the loss, note that the third parameter returned represents the weight
             ...     w_update = paddle.incubate.optimizer.functional.minimize_bfgs(loss, w)[2]
             ...     # Use paddle.assign to update parameters in place
-            ...     paddle. assign(w_update, w)
+            ...     paddle.assign(w_update, w)
 
         .. code-block:: python
             :name: code-example2
@@ -121,7 +121,7 @@ def minimize_lbfgs(
             ...     # Flatten x before using minimize_bfgs
             ...     x_update = paddle.incubate.optimizer.functional.minimize_bfgs(bfgs_f, flatten(x))[2]
             ...     # unflatten x_update, then update parameters
-            ...     paddle. assign(unflatten(x_update), x)
+            ...     paddle.assign(unflatten(x_update), x)
 
     """
     if dtype not in ['float32', 'float64']:

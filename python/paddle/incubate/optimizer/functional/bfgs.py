@@ -120,7 +120,7 @@ def minimize_bfgs(
             ...     # Flatten x before using minimize_bfgs
             ...     x_update = paddle.incubate.optimizer.functional.minimize_bfgs(bfgs_f, flatten(x))[2]
             ...     # unflatten x_update, then update parameters
-            ...     paddle. assign(unflatten(x_update), x)
+            ...     paddle.assign(unflatten(x_update), x)
     """
 
     if dtype not in ['float32', 'float64']:
