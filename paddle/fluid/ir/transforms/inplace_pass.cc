@@ -328,4 +328,4 @@ std::unique_ptr<ir::Pass> CreateInplacePass() {
 
 }  // namespace ir
 
-REGISTER_PASS(inplace, InplacePass);
+REGISTER_IR_PASS(inplace, InplacePass);
