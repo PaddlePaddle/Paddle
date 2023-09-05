@@ -43,8 +43,6 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
-namespace py = ::pybind11;
-
 PyTypeObject* p_pylayer_type;
 extern PyTypeObject* p_tensor_type;
 

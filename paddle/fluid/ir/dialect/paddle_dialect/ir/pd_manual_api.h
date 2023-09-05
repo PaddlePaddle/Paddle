@@ -21,5 +21,10 @@
 #include "paddle/phi/common/place.h"
 
 namespace paddle {
-namespace dialect {}  // namespace dialect
+namespace dialect {
+
+ir::OpResult split_grad(std::vector<ir::OpResult> out_grads, ir::OpResult axis);
+
+ir::OpResult split_grad(std::vector<ir::OpResult> out_grads, int axis);
+}  // namespace dialect
 }  // namespace paddle

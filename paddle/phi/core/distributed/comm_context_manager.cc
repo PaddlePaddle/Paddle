@@ -12,24 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_GLOO)
-#include <gloo/rendezvous/prefix_store.h>
-
-#include "paddle/phi/core/distributed/gloo_comm_context.h"
-#include "paddle/phi/core/distributed/gloo_utils.h"
-#include "paddle/phi/core/distributed/store/gloo_store.h"
-#endif
-
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #include <memory>
 #include <string>
+#include "glog/logging.h"
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/distributed/store/store.h"
 #include "paddle/phi/core/enforce.h"
 
+#if defined(PADDLE_WITH_GLOO)
+#include <gloo/rendezvous/prefix_store.h>
+#include "paddle/phi/core/distributed/gloo_comm_context.h"
+#include "paddle/phi/core/distributed/gloo_utils.h"
+#include "paddle/phi/core/distributed/store/gloo_store.h"
+#endif
+
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -39,16 +40,25 @@
 namespace phi {
 namespace distributed {
 
+int CommContextManager::device_id = -1;
+
+void CommContextManager::SetDeviceId(int dev_id) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-void CommContextManager::SetCUDADeviceId(int dev_id) {
   phi::backends::gpu::SetDeviceId(dev_id);
+  CommContextManager::device_id = dev_id;
+#endif
 }
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 void CommContextManager::CreateNCCLCommContext(
     const std::shared_ptr<Store>& store,
     const std::string& unique_comm_key,
     int rank,
     int size) {
+  auto& comm_context_manager = CommContextManager::GetInstance();
+  if (comm_context_manager.Has(unique_comm_key)) {
+    return;
+  }
   ncclUniqueId nccl_id;
   if (rank == 0) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetUniqueId(&nccl_id));
@@ -67,7 +77,28 @@ void CommContextManager::CreateNCCLCommContext(
 
   auto nccl_comm_context =
       std::make_unique<NCCLCommContext>(rank, size, nccl_id);
-  auto& comm_context_manager = CommContextManager::GetInstance();
+
+  if (CommContextManager::device_id != -1) {
+    std::unique_ptr<phi::GPUContext> dev_ctx(
+        new phi::GPUContext(phi::GPUPlace(CommContextManager::device_id)));
+    dev_ctx->SetAllocator(phi::memory_utils::GetAllocator(
+        CommContextManager::device_id, dev_ctx->stream()));
+    dev_ctx->SetHostAllocator(phi::memory_utils::GetHostAllocator());
+    dev_ctx->SetZeroAllocator(
+        phi::memory_utils::GetZeroAllocator(CommContextManager::device_id));
+    dev_ctx->SetHostZeroAllocator(phi::memory_utils::GetHostZeroAllocator());
+    dev_ctx->SetPinnedAllocator(phi::memory_utils::GetPinnedAllocator());
+    dev_ctx->PartialInitWithAllocator();
+    auto compute_event =
+        phi::memory_utils::GetCudaEvent(CommContextManager::device_id);
+    auto comm_event =
+        phi::memory_utils::GetCudaEvent(CommContextManager::device_id);
+
+    nccl_comm_context->SetDevContext(std::move(dev_ctx));
+    nccl_comm_context->SetComputeEvent(std::move(compute_event));
+    nccl_comm_context->SetCommEvent(std::move(comm_event));
+  }
+
   comm_context_manager.SetStore(store);
   comm_context_manager.Emplace(unique_comm_key, std::move(nccl_comm_context));
 }

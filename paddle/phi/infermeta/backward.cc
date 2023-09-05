@@ -1219,9 +1219,11 @@ void IndexPutGradInferMeta(const MetaTensor& x,
 
 void FusedRopeGradInferMeta(const MetaTensor& sin,
                             const MetaTensor& cos,
+                            const MetaTensor& position_ids,
                             const MetaTensor& dout_q,
                             const MetaTensor& dout_k,
                             const MetaTensor& dout_v,
+                            bool use_neox_rotary_style,
                             MetaTensor* dq,
                             MetaTensor* dk,
                             MetaTensor* dv) {
@@ -1244,6 +1246,22 @@ void FusedRopeGradInferMeta(const MetaTensor& sin,
   if (dout_v) {
     dv->set_dims(dout_v.dims());
     dv->set_dtype(dout_v.dtype());
+  }
+}
+
+void SetValueGradInferMeta(const MetaTensor& out_grad,
+                           const MetaTensor& values,
+                           MetaTensor* x_grad,
+                           MetaTensor* value_grad) {
+  if (x_grad) {
+    x_grad->set_dims(out_grad.dims());
+    x_grad->set_dtype(out_grad.dtype());
+    x_grad->share_lod(out_grad);
+  }
+  if (value_grad) {
+    value_grad->set_dims(values.dims());
+    value_grad->set_dtype(values.dtype());
+    value_grad->share_lod(values);
   }
 }
 
