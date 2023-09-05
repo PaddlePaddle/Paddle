@@ -16,7 +16,12 @@ import argparse
 
 import yaml
 from backward_api_gen import BackwardAPI
-from dist_api_gen import DistForwardAPI
+from dist_api_gen import (
+    VECTOR_DIST_META_IN_DECL_TEMPLATE,
+    VECTOR_DIST_META_IN_TEMPLATE,
+    VECTOR_DIST_META_OUT_DECL_TEMPLATE,
+    DistForwardAPI,
+)
 
 ######################
 # Code Gen Templates #
@@ -40,6 +45,13 @@ MAIN_DIST_BRANCH_TEMPLATE = """
 SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput({});
     auto dense_out = dist_out->unsafe_mutable_value();
+"""
+VECTOR_OUT_CREATION_TEMPLATE = """
+    auto dist_out = SetKernelDistOutput({name});
+    std::vector<phi::DenseTensor*> dense_out(dist_out.size());
+    for (size_t i=0; i<dist_out.size(); i++) {{
+        dense_out[i] = const_cast<phi::DenseTensor*>(&dist_out[i]->value());
+    }}
 """
 INPLACE_OUT_CREATION_TEMPLATE = """
     *{} = {};
@@ -80,6 +92,10 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
             if self.outputs['types'][0] == 'Tensor':
                 output_creation_code += SINGLE_OUT_CREATION_TEMPLATE.format(
                     self.outputs['names'][0]
+                )
+            elif self.outputs['types'][0] == 'std::vector<Tensor>':
+                output_creation_code += VECTOR_OUT_CREATION_TEMPLATE.format(
+                    name=self.outputs['names'][0]
                 )
             else:
                 self.vector_output_size_assertion_check()
@@ -163,12 +179,23 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
             if infer_meta['param'] is not None
             else input_names + attr_names
         )
+        input_meta_code = ""
         input_args_code = ""
         for param in infer_meta_params:
             if param in input_names:
                 if self.inputs['input_info'][param] == "const Tensor&":
                     input_args_code += SINGLE_DIST_META_IN_TEMPLATE.format(
                         param
+                    )
+                elif (
+                    self.inputs['input_info'][param]
+                    == "const std::vector<Tensor>&"
+                ):
+                    input_args_code += VECTOR_DIST_META_IN_TEMPLATE.format(
+                        param
+                    )
+                    input_meta_code += VECTOR_DIST_META_IN_DECL_TEMPLATE.format(
+                        name=param
                     )
                 else:
                     raise ValueError(
@@ -188,8 +215,15 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
         output_args_code = ""
         for i, out_name in enumerate(self.dist_output_args):
             if self.outputs['types'][i] == 'std::vector<Tensor>':
-                # TODO(chenweihang): support vector output later
-                pass
+                output_decl_code += VECTOR_DIST_META_OUT_DECL_TEMPLATE.format(
+                    name=out_name
+                )
+                if len(self.dense_output_args) == 1:
+                    output_args_code += f"{out_name}_meta_ptr_vec, "
+                else:
+                    output_args_code += (
+                        f"{out_name} ? {out_name}_meta_ptr_vec : nullptr, "
+                    )
             else:
                 output_decl_code += SINGLE_DIST_META_OUT_DECL_TEMPLATE.format(
                     out_name, out_name
