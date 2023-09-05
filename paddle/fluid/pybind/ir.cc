@@ -31,6 +31,7 @@
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
+#include "paddle/fluid/ir/transforms/inplace_pass.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
 #include "paddle/ir/core/block.h"
@@ -60,6 +61,7 @@ using paddle::dialect::DenseTensorType;
 using pybind11::return_value_policy;
 
 USE_PASS(dead_code_elimination);
+USE_PASS(inplace);
 
 namespace paddle {
 namespace pybind {
@@ -811,7 +813,7 @@ void BindPassManager(pybind11::module *m) {
           },
           py::arg("opt_level") = 2)
       .def("add_pass",
-           [](PassManager &self, std::string pass_name) {
+           [](PassManager &self, const std::string &pass_name) {
              self.AddPass(
                  std::move(ir::PassRegistry::Instance().Get(pass_name)));
            })
