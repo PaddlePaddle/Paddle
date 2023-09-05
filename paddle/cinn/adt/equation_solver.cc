@@ -29,29 +29,28 @@ class IndexExprInferContext;
 
 std::unordered_map<Variable, Value> InferValues(
     const Identity<tOut<Iterator>, tIn<Iterator>>& id,
-    const IndexExprInferContext& ctx) {
+    IndexExprInferContext* ctx) {
   const auto& [out_iter, in_iter] = id.tuple();
   Variable in_variable{in_iter.value()};
-  CHECK(ctx.HasValue(in_variable));
-  return {{out_iter.value(), ctx.GetValue(in_variable)}};
+  CHECK(ctx->HasValue(in_variable));
+  return {{out_iter.value(), ctx->GetValue(in_variable)}};
 }
 
 std::unordered_map<Variable, Value> InferValues(
-    const Identity<tOut<Index>, tIn<Index>>& id,
-    const IndexExprInferContext& ctx) {
+    const Identity<tOut<Index>, tIn<Index>>& id, IndexExprInferContext* ctx) {
   const auto& [out_index, in_index] = id.tuple();
   Variable in_variable{in_index.value()};
-  CHECK(ctx.HasValue(in_variable));
-  return {{out_index.value(), ctx.GetValue(in_variable)}};
+  CHECK(ctx->HasValue(in_variable));
+  return {{out_index.value(), ctx->GetValue(in_variable)}};
 }
 
 std::unordered_map<Variable, Value> InferValues(
     const Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>& dot,
-    const IndexExprInferContext& ctx) {
+    IndexExprInferContext* ctx) {
   const auto& [strides, out_index, in_iters] = dot.tuple();
   List<Value> in_values;
   for (const auto& iter : *in_iters.value()) {
-    in_values->emplace_back(ctx.GetValue(iter));
+    in_values->emplace_back(ctx->GetValue(iter));
   }
   List<Constant> stride_constants{strides->begin(), strides->end()};
   IndexDot<Value> index_dot{stride_constants, in_values};
@@ -60,15 +59,15 @@ std::unordered_map<Variable, Value> InferValues(
 
 std::unordered_map<Variable, Value> InferValues(
     const UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>& undot,
-    const IndexExprInferContext& ctx) {
+    IndexExprInferContext* ctx) {
   const auto& [strides, out_iters, in_index] = undot.tuple();
   List<Constant> stride_constants{strides->begin(), strides->end()};
   IndexUnDot<Value> index_undot{stride_constants,
-                                ctx.GetValue(in_index.value())};
+                                ctx->GetValue(in_index.value())};
 
   std::unordered_map<Variable, Value> ret{};
   for (std::size_t idx = 0; idx < out_iters.value()->size(); ++idx) {
-    ListGetItem<Value> list_get_item{index_undot, idx};
+    ListGetItem<Value, Constant> list_get_item{index_undot, idx};
     ret.emplace(out_iters.value()->at(idx), list_get_item);
   }
   return ret;
@@ -77,20 +76,29 @@ std::unordered_map<Variable, Value> InferValues(
 std::unordered_map<Variable, Value> InferValues(
     const ConstructFakeOpPlaceHolder<tOut<FakeOpPlaceHolder>, tIn<List<Index>>>&
         construct_placeholder,
-    const IndexExprInferContext& ctx) {
+    IndexExprInferContext* ctx) {
   const auto& [out_placeholder, in_indexes] = construct_placeholder.tuple();
   List<Value> in_values;
   for (const auto& iter : *in_indexes.value()) {
-    in_values->emplace_back(ctx.GetValue(iter));
+    in_values->emplace_back(ctx->GetValue(iter));
   }
   return {{out_placeholder.value(), in_values}};
 }
 
+std::unordered_map<Variable, Value> InferValues(
+    const ConstructTensorIndex2Tensor<cinn::hlir::framework::NodeData*,
+                                      tIn<Index>>&
+        construct_tensor_index2tensor,
+    IndexExprInferContext* ctx) {
+  const auto& [tensor, in_index] = construct_tensor_index2tensor.tuple();
+  ctx->AddTensorIndex2Tensor(in_index.value(), tensor);
+  return {};
+}
+
 std::unordered_map<Variable, Value> InferValues(const Function* function,
                                                 IndexExprInferContext* ctx) {
-  return std::visit(
-      [&](auto&& function) { return InferValues(function, *ctx); },
-      function->variant());
+  return std::visit([&](auto&& function) { return InferValues(function, ctx); },
+                    function->variant());
 }
 
 DEFINE_ADT_TAG(tHasUniqueInferedValue);

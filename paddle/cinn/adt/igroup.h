@@ -27,6 +27,9 @@ using AnchorTensor = eqaution::Variable;
 
 class IGroup final {
  public:
+  IGroup(const IGroup&) = delete;
+  IGroup(IGroup&&) = delete;
+
   explicit IGroup(const std::shared_ptr<MapIR>& map_ir,
                   const std::shared_ptr<AnchorTensor>& anchor_tensor,
                   const std::shared_ptr<equation::Graph>& equation_graph)
@@ -42,10 +45,13 @@ class IGroup final {
 
   GraphView GetDefaultGraphView() const { ADT_TODO(); }
 
+  cinn::hlir::framework::NodeData* GetTensor(const Index& index) const;
+
  private:
   std::shared_ptr<AnchorTensor> anchor_tensor_;
   std::shared_ptr<m_ir::MapIR> map_ir_;
   std::shared_ptr<equation::Graph> equation_graph_;
+  equation::IndexExprInferContext index_expr_infer_ctx_;
 };
 
 }  // namespace cinn::adt

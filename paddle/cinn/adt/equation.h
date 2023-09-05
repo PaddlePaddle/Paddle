@@ -90,8 +90,8 @@ using DimTuple = List<Dim>;
 using Stride = tStride<UniqueId>;
 // StrideTuple = [Stride]
 using StrideTuple = List<Stride>;
-// FakeOpPlaceHolder = tOp Name
-using FakeOpPlaceHolder = tOp<Name>;
+// FakeOpPlaceHolder = tOp cinn::hlir::framework::Node*
+using FakeOpPlaceHolder = tOp<cinn::hlir::framework::Node*>;
 
 template <typename OutT, typename InT>
 struct Identity;
@@ -140,6 +140,15 @@ struct ConstructFakeOpPlaceHolder<tOut<FakeOpPlaceHolder>, tIn<List<Index>>>
   using Tuple<tOut<FakeOpPlaceHolder>, tIn<List<Index>>>::Tuple;
 };
 
+template <typename T0, typename T1>
+struct ConstructTensorIndex2Tensor;
+
+template <>
+struct ConstructTensorIndex2Tensor<cinn::hlir::framework::NodeData*, tIn<Index>>
+    : public Tuple<cinn::hlir::framework::NodeData*, tIn<Index>> {
+  using Tuple<cinn::hlir::framework::NodeData*, tIn<Index>>::Tuple;
+};
+
 // clang-format off
 /*
 Equation = Identity (tOut Iterator) (tIn Iterator)
@@ -153,7 +162,9 @@ DEFINE_ADT_UNION(Equation,
                  Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>,
                  UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>,
                  ConstructFakeOpPlaceHolder<tOut<FakeOpPlaceHolder>,
-                                            tIn<List<Index>>>);
+                                            tIn<List<Index>>>,
+                 ConstructTensorIndex2Tensor<cinn::hlir::framework::NodeData*,
+                                             tIn<Index>>);
 
 // Variable = Iterator | Index | FakeOpPlaceHolder
 DEFINE_ADT_UNION(Variable,

@@ -17,7 +17,7 @@
 #include <function>
 
 #include "paddle/cinn/adt/adt.h"
-#include "paddle/cinn/adt/tensor_flatten_index_lambda.h"
+#include "paddle/cinn/adt/equation_value.h"
 
 namespace cinn {
 namespace hlir {
@@ -72,12 +72,9 @@ using Tensor = const hlir::framework::NodeData*;
 // TensorOrBuf = Tensor | TempStorage
 DEFINE_ADT_UNION(TensorOrBuf, Tensor, TempStorage);
 
-// TensorArg = (TensorOrBuf, TensorFlattenIndexLambda <- [tScheduleIterVar Name,
-// ScheduleSize])
-using TensorArg =
-    Tuple<TensorOrBuf,
-          std::function<TensorFlattenIndexLambda(
-              List<Tuple<tScheduleIterVar<Name>, ScheduleSize>>)>>;
+// TensorArg = (TensorOrBuf, TensorIndexExpr)
+using TensorIndexExpr = equation::Value;
+using TensorArg = Tuple<TensorOrBuf, TensorIndexExpr>;
 
 // Arg T = TensorArg | T
 template <typename T>
@@ -106,18 +103,28 @@ class OpExpr final : public Tuple<Op, In<Arg<OpExpr>>> {
 // OpStmtNode = (Op, In [Arg OpExpr], Out [TensorArg])
 using OpStmtNode = Tuple<Op, In<List<Arg<OpExpr>>>, Out<List<TensorArg>>>;
 
+// MapNode T = (ScheduleDescriptor, [T])
 template <typename T>
-class MapNode final
-    : public Tuple<ScheduleDescriptor, tAnchor<Tensor>, List<T>> {
+class MapNode final : public Tuple<ScheduleDescriptor, List<T>> {
  public:
-  using Tuple<ScheduleDescriptor, tAnchor<Tensor>, List<T>>::Tuple;
+  using Tuple<ScheduleDescriptor, List<T>>::Tuple;
 };
 
 // Stmt = OpStmtNode | MapNode Stmt
 DEFINE_ADT_UNION(Stmt, OpStmtNode, MapNode<Stmt>);
 
-// Kernel = (MapNode Stmt, In [Tensor], Out [Tensor])
-using Kernel = Tuple<MapNode<Stmt>, In<List<Tensor>>, Out<List<Tensor>>>;
+// IGroup = (MapStmtNode, tAnchor Tensor)
+class IGroup final : public Tuple<MapNode<Stmt>, tAnchor<Tensor>> {
+ public:
+  using Tuple<MapNode<Stmt>, tAnchor<Tensor>>::Tuple;
+};
+
+// Kernel = ([IGroup], In [Tensor], Out [Tensor])
+class Kernel final
+    : public Tuple<List<IGroup>, In<List<Tensor>>, Out<List<Tensor>>> {
+ public:
+  using Tuple<List<IGroup>, In<List<Tensor>>, Out<List<Tensor>>>::Tuple;
+};
 
 // MapExpr = Kernel
 using MapExpr = Kernel;

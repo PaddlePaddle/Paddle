@@ -42,9 +42,7 @@ class KGroup final {
   }
 
   ScheduleDescriptor GetDefaultScheduleDescriptor(
-      const std::shared_ptr<IGroup>& igroup) const {
-    ADT_TODO();  // Trival Code
-  }
+      const std::shared_ptr<IGroup>& igroup) const;
 
  private:
   std::shared_ptr<cinn::hlir::framework::Graph::Group> cinn_group_;

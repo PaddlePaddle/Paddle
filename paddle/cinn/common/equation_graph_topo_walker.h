@@ -39,6 +39,10 @@ class EquationGraphTopoWalker final {
         VisitOutputVariables(OutputVariablesVisitor) {}
   ~EquationGraphTopoWalker() = default;
 
+  EquationGraphTopoWalker Merge(const EquationGraphTopoWalker& walker) {
+    ADT_TODO();
+  }
+
   void operator()(VT start, const VariableVisitorT& VariableVisitor) const {
     std::array<VT, 1> starts{start};
     (*this)(starts.begin(), starts.end(), VariableVisitor, [&](FT) {});

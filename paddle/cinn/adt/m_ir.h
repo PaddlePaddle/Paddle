@@ -19,48 +19,37 @@
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/m_expr.h"
 
+namespace cinn::hlir::framework {
+class Node;
+}
+
 namespace cinn {
 namespace adt {
 namespace m_ir {
 
-// AutoSize = {}
-class AutoSize final {};
-
-// ScheduleSize = Int64 | AutoSize
-using ScheduleSize = Tuple<std::size_t, AutoSize>;
-
-// ScheduleType = S0x | S0y | S0z | S1x | S1y | S1z | Temporal | Vectorize |
-// Unroll
-using ScheduleType = m_expr::ScheduleType;
-
-// ScheduleDescriptor = [(ScheduleType, ScheduleSize)]
-using ScheduleDescriptor = List<Tuple<ScheduleType, ScheduleSize>>;
-
-// SymbolicDim = tVar Name
-using SymbolicDim = tVar<Name>;
-
 // SSAShadowTensor = (tSSAShadow Name, const Graph::NodeData*)
-using SSAShadowTensor = Tuple<tSSAShadow<Name>, m_expr::Tensor>;
+class SSAShadowTensor final : public Tuple<tSSAShadow<Name>, m_expr::Tensor> {
+ public:
+  using Tuple<tSSAShadow<Name>, m_expr::Tensor>::Tuple;
+}
 
 // Tensor = const Graph::NodeData* | SSAShadowTensor
 DEFINE_ADT_UNION(Tensor, m_expr::Tensor, SSAShadowTensor);
 
-// Arg = (Tensor, [SymbolicDim])
-using Arg = Tuple<Tensor, List<SymbolicDim>>;
+// Arg = Tensor
+using Arg = Tensor;
 
-// Op = const Graph::Node* | BuiltinReduceRelatedOp | MemoryBarrier
-// BuiltinReduceRelatedOp = Zeros | InplaceAdd
-// MemoryBarrier = {}    // (Sync Thread)
-using Op = m_expr::Op;
+// Op = const Graph::Node*
+using Op = const cinn::hlir::framework::Node*;
 
 // OpStmtNode = (Op, In [Arg], Out [Arg])
-using OpStmtNode = Tuple<Op, In<List<Arg>>, Out<List<Arg>>>;
+class OpStmtNode final : public Tuple<Op, In<List<Arg>>, Out<List<Arg>>> {
+ public:
+  using Tuple<Op, In<List<Arg>>, Out<List<Arg>>>::Tuple;
+};
 
-// MapStmtNode = (ScheduleDescriptor, OpStmtNode)
-using MapStmtNode = Tuple<ScheduleDescriptor, OpStmtNode>;
-
-// MapIR = [MapStmtNode]
-using MapIR = List<MapStmtNode>;
+// MapIR = [OpStmtNode]
+using MapIR = List<OpStmtNode>;
 
 }  // namespace m_ir
 }  // namespace adt

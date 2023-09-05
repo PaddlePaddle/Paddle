@@ -40,8 +40,26 @@ class IndexExprInferContext final {
     return map_.count(variable) > 0;
   }
 
+  void AddTensorIndex2Tensor(const Index& index,
+                             cinn::hlir::framework::NodeData* tensor_ptr) {
+    CHECK(tensor_index2tensor_.emplace(index, tensor_ptr).second);
+    CHECK(tensor2tensor_index_.emplace(tensor_ptr, index).second);
+  }
+
+  cinn::hlir::framework::NodeData* GetTensor(const Index& index) const {
+    return tensor_index2tensor_.at(index);
+  }
+
+  const Index GetIndex(cinn::hlir::framework::NodeData* tensor_ptr) const {
+    return tensor2tensor_index_.at(tensor_ptr);
+  }
+
  private:
   std::unordered_map<const Variable, Value> map_;
+  std::unordered_map<const Index, cinn::hlir::framework::NodeData*>
+      tensor_index2tensor_;
+  std::unordered_map<cinn::hlir::framework::NodeData*, const Index>
+      tensor2tensor_index_;
 };
 
 }  // namespace cinn::adt::equation
