@@ -41,44 +41,40 @@ def distributed_model(model):
 
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
-            from paddle.distributed import fleet
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> from paddle.distributed import fleet
 
-            class LinearNet(nn.Layer):
-                def __init__(self):
-                    super().__init__()
-                    self._linear1 = nn.Linear(10, 10)
-                    self._linear2 = nn.Linear(10, 1)
+            >>> class LinearNet(nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self._linear1 = nn.Linear(10, 10)
+            ...         self._linear2 = nn.Linear(10, 1)
+            ...     def forward(self, x):
+            ...         return self._linear2(self._linear1(x))
 
-                def forward(self, x):
-                    return self._linear2(self._linear1(x))
+            >>> # 1. initialize fleet environment
+            >>> fleet.init(is_collective=True)
 
-            # 1. initialize fleet environment
-            fleet.init(is_collective=True)
+            >>> # 2. create layer & optimizer
+            >>> layer = LinearNet()
+            >>> loss_fn = nn.MSELoss()
+            >>> adam = paddle.optimizer.Adam(
+            ...     learning_rate=0.001, parameters=layer.parameters())
 
-            # 2. create layer & optimizer
-            layer = LinearNet()
-            loss_fn = nn.MSELoss()
-            adam = paddle.optimizer.Adam(
-                learning_rate=0.001, parameters=layer.parameters())
+            >>> # 3. get data_parallel model using fleet
+            >>> adam = fleet.distributed_optimizer(adam)
+            >>> dp_layer = fleet.distributed_model(layer)
 
-            # 3. get data_parallel model using fleet
-            adam = fleet.distributed_optimizer(adam)
-            dp_layer = fleet.distributed_model(layer)
-
-            # 4. run layer
-            inputs = paddle.randn([10, 10], 'float32')
-            outputs = dp_layer(inputs)
-            labels = paddle.randn([10, 1], 'float32')
-            loss = loss_fn(outputs, labels)
-
-            print("loss:", loss.numpy())
-
-            loss.backward()
-
-            adam.step()
-            adam.clear_grad()
+            >>> # 4. run layer
+            >>> inputs = paddle.randn([10, 10], 'float32')
+            >>> outputs = dp_layer(inputs)
+            >>> labels = paddle.randn([10, 1], 'float32')
+            >>> loss = loss_fn(outputs, labels)
+            >>> print("loss:", loss.numpy())
+            >>> loss.backward()
+            >>> adam.step()
+            >>> adam.clear_grad()
 
 
     """
