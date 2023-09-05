@@ -55,10 +55,10 @@ def fused_dropout_add(
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
-            >>> paddle.set_device('gpu')
-            >>> paddle.seed(2023)
             >>> from paddle.incubate.nn.functional import fused_dropout_add
 
+            >>> paddle.set_device('gpu')
+            >>> paddle.seed(2023)
             >>> x = paddle.randn([4, 10], dtype="float32")
             >>> y = paddle.randn([4, 10], dtype="float32")
             >>> out = fused_dropout_add(x, y, p=0.5)

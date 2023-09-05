@@ -48,10 +48,9 @@ def fused_rotary_position_embedding(
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
-            >>> paddle.set_device('gpu')
             >>> from paddle.incubate.nn.functional import fused_rotary_position_embedding
 
-            >>> paddle.device.set_device('gpu')
+            >>> paddle.set_device('gpu')
 
             >>> # batch_size = 2
             >>> # seq_len = 2

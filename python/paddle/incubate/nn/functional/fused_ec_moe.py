@@ -39,9 +39,9 @@ def fused_ec_moe(
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
-            >>> paddle.set_device('gpu')
             >>> from paddle.incubate.nn.functional import fused_ec_moe
 
+            >>> paddle.set_device('gpu')
             >>> x = paddle.randn([10, 128, 1024])
             >>> gate = paddle.randn([10, 128, 8])
             >>> bmm0_weight = paddle.randn([8, 1024, 4096])
