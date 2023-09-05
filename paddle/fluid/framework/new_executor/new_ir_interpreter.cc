@@ -712,14 +712,11 @@ void NewIRInterpreter::RecordStreamForGC(InstructionBase* instr) {
    */
   for (int var_id : instr->GCCheckVars()) {
     VLOG(4) << "GC sync " << GetNameById(var_id);
-    {
-      platform::RecordEvent record(
-          "SkipParameter", platform::TracerEventType::UserDefined, 10);
-      // persistable var will be ignore while GC
-      if (parameter_var_names_.count(GetNameById(var_id))) {
-        VLOG(4) << GetNameById(var_id) << " is a parameter, skip gc";
-        continue;
-      }
+
+    // persistable var will be ignore while GC
+    if (parameter_var_names_.count(GetNameById(var_id))) {
+      VLOG(4) << GetNameById(var_id) << " is a parameter, skip gc";
+      continue;
     }
 
     paddle::framework::Variable* var = variable_list_[var_id];
