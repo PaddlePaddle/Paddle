@@ -76,9 +76,9 @@ void BNActXPUKernel(const Context& dev_ctx,
   const auto* mean_data = mean.data<float>();
   const auto* variance_data = variance.data<float>();
 #ifndef PADDLE_WITH_XPU_PLUGIN
-  LOG(WARNING)
-      << "Add -DWITH_XPU_PLUGIN=ON to build xpu::plugin::fast_where(), or use "
-         "xpu::select() instead, which leads low performance.";
+  LOG(WARNING) << "Add -DWITH_XPU_PLUGIN=ON to build "
+                  "xpu::plugin::bn_act_fusion_infer(), which will lead high "
+                  "performance.";
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   XPUType* temp_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(x.numel());
   int r = xpu::batch_norm_infer<XPUType>(dev_ctx.x_context(),

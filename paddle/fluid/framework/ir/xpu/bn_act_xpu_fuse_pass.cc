@@ -67,8 +67,6 @@ BNActXPUPattern::BNActXPUPattern(PDPattern* pattern,
                 ->assert_is_op("batch_norm")
                 ->assert_more([](Node* node) {
                   auto is_test = node->Op()->GetAttrIfExists<bool>("is_test");
-                  auto trainable_statistics =
-                      node->Op()->GetAttrIfExists<bool>("rainable_statistics");
                   return is_test;
                 });
   auto bn_input = pattern->NewNode(bn_input_repr())
