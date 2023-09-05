@@ -524,37 +524,5 @@ class TestFlashAttrnionWithMaskAPI(TestFlashAttentionWithMaskAPI):
         self.causal = False
 
 
-class TestFlashAttrnionWithMaskAPI1(TestFlashAttentionWithMaskAPI):
-    def setUp(self):
-        self.place = paddle.CUDAPlace(0)
-        self.shape = (16, 1, 146, 146)
-        self.dtype = paddle.float16
-        self.dropout = 0.0
-        self.causal = False
-
-class TestFlashAttrnionWithMaskAPI2(TestFlashAttentionWithMaskAPI):
-    def setUp(self):
-        self.place = paddle.CUDAPlace(0)
-        self.shape = (16, 1, 397, 397)
-        self.dtype = paddle.float16
-        self.dropout = 0.0
-        self.causal = False
-
-class TestFlashAttrnionWithMaskAPI3(TestFlashAttentionWithMaskAPI):
-    def setUp(self):
-        self.place = paddle.CUDAPlace(0)
-        self.shape = (1, 32, 1016, 1016)
-        self.dtype = paddle.float16
-        self.dropout = 0.0
-        self.causal = False
-
-class TestFlashAttrnionWithMaskAPI4(TestFlashAttentionWithMaskAPI):
-    def setUp(self):
-        self.place = paddle.CUDAPlace(0)
-        self.shape = (1, 32, 953, 953)
-        self.dtype = paddle.float16
-        self.dropout = 0.0
-        self.causal = False
-
 if __name__ == '__main__':
     unittest.main()
