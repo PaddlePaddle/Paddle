@@ -97,6 +97,14 @@ void PaddleDialect::PrintAttribute(ir::Attribute attr, std::ostream &os) const {
     os << "<#AttrNotImplemented>";
   }
 }
+void PaddleDialect::PrintOperation(ir::Operation *op,
+                                   ir::IrPrinter &printer) const {
+  if (auto if_op = op->dyn_cast<IfOp>()) {
+    if_op.Print(printer);
+  } else {
+    printer.PrintGeneralOperation(op);
+  }
+}
 
 }  // namespace dialect
 }  // namespace paddle

@@ -645,7 +645,18 @@ ir::Block *IfOp::false_block() {
   if (false_region.empty()) false_region.emplace_back();
   return false_region.front();
 }
-
+void IfOp::Print(ir::IrPrinter &printer) {
+  auto &os = printer.os;
+  auto op = operation();
+  printer.PrintOpResult(op);
+  os << " = pd.if";
+  printer.PrintOpOperands(op);
+  os << " -> ";
+  printer.PrintOpReturnType(op);
+  printer.PrintBlock(true_block());
+  os << " else ";
+  printer.PrintBlock(false_block());
+}
 void IfOp::Verify() {}
 }  // namespace dialect
 }  // namespace paddle

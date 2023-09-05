@@ -28,6 +28,7 @@ paddle::dialect::AddNOp, paddle::dialect::SplitGradOp, paddle::dialect::IfOp
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_util.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/ir/core/builder.h"
+#include "paddle/ir/core/ir_printer.h"
 #include "paddle/ir/core/op_base.h"
 #include "paddle/ir/core/operation_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -126,11 +127,11 @@ class IfOp : public ir::Op<IfOp> {
                     ir::OperationArgument &argument,  // NOLINT
                     ir::OpResult cond,
                     std::vector<ir::Type> &&output_types);
-
-  void Verify();
   ir::Value cond() { return operand_source(0); }
   ir::Block *true_block();
   ir::Block *false_block();
+  void Print(ir::IrPrinter &printer);  // NOLINT
+  void Verify();
 };
 
 }  // namespace dialect
