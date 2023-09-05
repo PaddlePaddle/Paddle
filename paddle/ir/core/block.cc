@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/ir/core/block.h"
+
+#include <unordered_set>
+
 #include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/region.h"
@@ -59,5 +62,35 @@ Block::UseIterator Block::use_begin() const { return first_use_; }
 Block::UseIterator Block::use_end() const { return Block::UseIterator(); }
 
 bool Block::HasOneUse() const { return first_use_ && !first_use_.next_use(); }
+
+void Block::ResetOpListOrder(const OpListType &new_op_list) {
+  IR_ENFORCE(new_op_list.size() == ops_.size(),
+             "The size of new_op_list not same with ops_.");
+  IR_ENFORCE(TopoOrderCheck(new_op_list),
+             "The new_op_list is not in topological order.");
+
+  ops_.clear();
+  for (Operation *op : new_op_list) {
+    push_back(op);
+  }
+}
+
+bool Block::TopoOrderCheck(const OpListType &op_list) {
+  std::unordered_set<Value> visited_values;
+  for (const Operation *op : op_list) {
+    if (op->num_operands() > 0) {
+      for (size_t i = 0; i < op->num_operands(); ++i) {
+        auto operand = op->operand_source(i);
+        if (operand && visited_values.count(op->operand_source(i)) == 0) {
+          return false;
+        }
+      }
+    }
+    for (size_t i = 0; i < op->results().size(); ++i) {
+      visited_values.insert(op->result(i));
+    }
+  }
+  return true;
+}
 
 }  // namespace ir
