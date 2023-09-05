@@ -33,17 +33,24 @@ class TensorGroup {
   explicit TensorGroup(const std::vector<ir::Tensor>& tensors);
   ~TensorGroup();
 
+  bool Contain(const std::string& name) const;
+
+  void Insert(const ir::Tensor& tensor);
+
   ir::Tensor Get(const std::string& name);
+
+  std::set<ir::Tensor> GetAllTensors();
 
   void CtrlDepend(const ir::Tensor& tensor, const ir::Tensor& to_dep);
 
-  void Insert(const ir::Tensor& tensor);
+  std::set<ir::Tensor> GetCrtlDepTensors(const std::string& tensor_name);
+
+  bool HasMarkedReduceInit(const ir::_Tensor_& tensor) const;
 
   // Marks a tensor needs to do reduce init
   ir::Tensor MarkReduceInit(const ir::_Tensor_& tensor);
 
  private:
-  // std::unordered_map<std::string, ir::Tensor> name_to_tensor_;
   absl::flat_hash_map<std::string, ir::Tensor> name_to_tensor_;
 
   // Stores vector of tensor names, which the key tensor depends on
