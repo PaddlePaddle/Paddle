@@ -223,7 +223,11 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
 
     args1.idesc.set(transformed_dout, iwo_groups);
     args1.wdesc.set(filter, layout_tensor, iwo_groups);
+#ifdef PADDLE_WITH_MUSA
+    args1.odesc.set<T>(x_transpose, dx_data);
+#else
     args1.odesc.set(x_transpose, iwo_groups);
+#endif
     args1.cdesc.set(dtype,
                     padding_common,
                     strides,
