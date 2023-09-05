@@ -649,6 +649,7 @@ PD_REGISTER_KERNEL(depthwise_conv2d,
                    phi::DepthwiseConvCudnnKernel,
                    float,
                    phi::dtype::float16) {}
+
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(conv2d,
