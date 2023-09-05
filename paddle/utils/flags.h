@@ -79,8 +79,8 @@ using gflags::DoubleFromEnv;
 using gflags::Int32FromEnv;
 using gflags::Int64FromEnv;
 using gflags::StringFromEnv;
-using gflags::UInt32FromEnv;
-using gflags::UInt64FromEnv;
+using gflags::Uint32FromEnv;
+using gflags::Uint64FromEnv;
 #else
 #define DEFINE_FROM_ENV_FUNC(type, name)                     \
   inline type name##FromEnv(const std::string& env_var_name, \
