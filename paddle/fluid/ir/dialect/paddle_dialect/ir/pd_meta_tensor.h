@@ -55,7 +55,7 @@ class IrMetaTensor : public phi::TensorBase,
 
   phi::DataLayout layout() const noexcept override { return layout_; }
 
-  LoD lod() const noexcept { return lod_; }
+  const LoD& lod() const noexcept { return lod_; }
 
   size_t offset() const noexcept { return offset_; }
 
