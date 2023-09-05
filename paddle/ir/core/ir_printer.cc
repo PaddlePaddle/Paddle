@@ -125,7 +125,7 @@ void IrPrinter::PrintProgram(const Program* program) {
   }
 }
 
-void IrPrinter::PrintOperation(const Operation* op) {
+void IrPrinter::PrintOperation(Operation* op) {
   if (auto* dialect = op->dialect()) {
     dialect->PrintOperation(op, *this);
     return;
@@ -299,7 +299,7 @@ void Program::Print(std::ostream& os) const {
   printer.PrintProgram(this);
 }
 
-void Operation::Print(std::ostream& os) const {
+void Operation::Print(std::ostream& os) {
   IrPrinter printer(os);
   printer.PrintOperation(this);
 }

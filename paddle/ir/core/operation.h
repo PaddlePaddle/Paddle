@@ -75,7 +75,7 @@ class IR_API alignas(8) Operation final {
   const Region &region(unsigned index) const;
   uint32_t num_regions() const { return num_regions_; }
 
-  void Print(std::ostream &os) const;
+  void Print(std::ostream &os);
 
   const AttributeMap &attributes() const { return attributes_; }
 

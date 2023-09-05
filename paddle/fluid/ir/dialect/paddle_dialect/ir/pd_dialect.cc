@@ -49,8 +49,11 @@ void PaddleDialect::initialize() {
 #define GET_OP_LIST
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"  // NOLINT
       >();
-  RegisterOps<paddle::dialect::AddNOp, paddle::dialect::SplitGradOp>();
-
+  RegisterOps<paddle::dialect::AddNOp,
+              paddle::dialect::AddN_Op,
+              paddle::dialect::AddNWithKernelOp,
+              paddle::dialect::SplitGradOp,
+              paddle::dialect::IfOp>();
   RegisterInterfaces<ParameterConvertInterface>();
 }
 
@@ -97,10 +100,11 @@ void PaddleDialect::PrintAttribute(ir::Attribute attr, std::ostream &os) const {
     os << "<#AttrNotImplemented>";
   }
 }
+
 void PaddleDialect::PrintOperation(ir::Operation *op,
                                    ir::IrPrinter &printer) const {
-  if (auto if_op = op->dyn_cast<IfOp>()) {
-    if_op.Print(printer);
+  if (op->isa<IfOp>()) {
+    printer.PrintFullOperation(op);
   } else {
     printer.PrintGeneralOperation(op);
   }
