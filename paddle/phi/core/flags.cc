@@ -1247,3 +1247,7 @@ PADDLE_DEFINE_EXPORTED_bool(use_shm_cache,
 PADDLE_DEFINE_EXPORTED_string(tensor_operants_mode,
                               "eager",
                               "Tensor operants mode");
+
+PADDLE_DEFINE_EXPORTED_bool(enable_process_group_event_record,
+                            false,
+                            "Whether to enable process group event record.");

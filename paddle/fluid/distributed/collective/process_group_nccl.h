@@ -77,6 +77,8 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
                    int size,
                    int gid);
 
+  ~ProcessGroupNCCL();
+
   std::string GetBackendName() const override { return "NCCL"; }
 
   phi::DeviceContext* GetDeviceContext(const Place& place) const override;
@@ -169,6 +171,8 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
   ncclComm_t NCCLComm(const Place& place) const;
 
+  std::vector<double> GetEventTimeAndRelease();
+
  private:
   std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(const Place& place,
                                                          int rank,
@@ -203,6 +207,16 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
       bool sync_op,
       bool use_calc_stream);
 
+ public:
+  gpuEvent_t RecordStartEventOnCalcStream();
+
+  void RecordEndEventOnCalcStream(gpuEvent_t event);
+
+ private:
+  gpuEvent_t RecordStartEvent(gpuStream_t stream);
+
+  void RecordEndEvent(gpuEvent_t event, gpuStream_t stream);
+
  private:
   std::shared_ptr<phi::distributed::Store> store_;
 
@@ -211,6 +225,13 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   std::unordered_map<std::string, phi::GPUContext*> place_to_calc_ctx_;
   std::unordered_map<std::string, std::unique_ptr<phi::GPUContext>>
       place_to_comm_ctx_;
+
+  struct Events {
+    std::vector<std::pair<gpuEvent_t, gpuEvent_t>> events;
+    size_t length{0};
+  };
+
+  std::vector<Events> events_;
 
   // TODO(sunyilun): attrs below will be removed later
   std::mutex mutex_;

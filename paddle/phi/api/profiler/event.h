@@ -205,6 +205,13 @@ class CudaEvent {
   }
   gpuEvent_t GetRawCudaEvent() { return event_; }
 
+  float ElapsedTime(const CudaEvent &end_event) const {
+    float ms;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaEventElapsedTime(&ms, event_, end_event.event_));
+    return ms;
+  }
+
  private:
 #ifdef PADDLE_WITH_HIP
   unsigned int flags_ = hipEventDefault;

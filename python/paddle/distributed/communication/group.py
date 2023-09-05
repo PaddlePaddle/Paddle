@@ -77,6 +77,9 @@ class Group:
         else:
             return -1
 
+    def _get_event_time_and_release(self, accumulate=True):
+        return self._pg._get_event_time_and_release(accumulate)
+
     def __repr__(self):
         debug_str = "rank: {}, nranks: {}, id: {}, ranks: ".format(
             self.rank, self.nranks, self.id

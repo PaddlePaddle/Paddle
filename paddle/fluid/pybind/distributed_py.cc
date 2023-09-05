@@ -1224,7 +1224,24 @@ void BindDistributed(py::module *m) {
               py::arg("src"),
               py::arg("num"),
               py::arg("id"),
-              py::call_guard<py::gil_scoped_release>());
+              py::call_guard<py::gil_scoped_release>())
+          .def("_record_start_event_on_calc_stream",
+               [](distributed::ProcessGroup &self) -> uintptr_t {
+                 PADDLE_THROW(phi::errors::Unimplemented(
+                     "Unsupported _record_start_event_on_calc_stream method."));
+               })
+          .def("_record_end_event_on_calc_stream",
+               [](distributed::ProcessGroupNCCL &self, uintptr_t event) {
+                 PADDLE_THROW(phi::errors::Unimplemented(
+                     "Unsupported _record_end_event_on_calc_stream method."));
+               })
+          .def(
+              "_get_event_time_and_release",
+              [](distributed::ProcessGroup &self, bool accumulate) {
+                PADDLE_THROW(phi::errors::Unimplemented(
+                    "Unsupported _get_event_time_and_release method."));
+              },
+              py::arg("accumulate") = true);
 
 #if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
   py::class_<distributed::ProcessGroupNCCL,
@@ -1238,8 +1255,45 @@ void BindDistributed(py::module *m) {
                   py::arg("group_id") = 0,
                   py::call_guard<py::gil_scoped_release>())
       .def_static("group_start", distributed::ProcessGroupNCCL::GroupStart)
-      .def_static("group_end", distributed::ProcessGroupNCCL::GroupEnd);
-
+      .def_static("group_end", distributed::ProcessGroupNCCL::GroupEnd)
+      .def(
+          "_record_start_event_on_calc_stream",
+          [](distributed::ProcessGroupNCCL &self) -> uintptr_t {
+            return reinterpret_cast<uintptr_t>(
+                self.RecordStartEventOnCalcStream());
+          },
+          py::call_guard<py::gil_scoped_release>())
+      .def(
+          "_record_end_event_on_calc_stream",
+          [](distributed::ProcessGroupNCCL &self, uintptr_t event) {
+            return self.RecordEndEventOnCalcStream(
+                reinterpret_cast<gpuEvent_t>(event));
+          },
+          py::call_guard<py::gil_scoped_release>())
+      .def(
+          "_get_event_time_and_release",
+          [](distributed::ProcessGroupNCCL &self,
+             bool accumulate) -> py::object {
+            std::vector<double> times;
+            double total_ms = 0.0;
+            {
+              py::gil_scoped_release release;
+              times = self.GetEventTimeAndRelease();
+              if (accumulate) {
+                total_ms = std::accumulate(times.begin(), times.end(), 0.0);
+              }
+            }
+            if (accumulate) {
+              return py::cast(total_ms);
+            } else {
+              py::list obj(times.size());
+              for (size_t i = 0; i < times.size(); ++i) {
+                obj[i] = py::cast(times[i]);
+              }
+              return obj;
+            }
+          },
+          py::arg("accumulate") = true);
 #endif
 
 #if defined(PADDLE_WITH_MPI)

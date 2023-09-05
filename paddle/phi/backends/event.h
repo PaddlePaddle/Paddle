@@ -47,6 +47,7 @@ class Event {
   void Record(const stream::Stream* stream);
   bool Query() const;
   void Synchronize() const;
+  double ElapsedTime(const Event& end_event) const;
   const Place& GetPlace() const;
 
  private:

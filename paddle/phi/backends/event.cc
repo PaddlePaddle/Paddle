@@ -62,6 +62,14 @@ bool Event::Query() const { return device_->QueryEvent(this); }
 
 void Event::Synchronize() const { device_->SynchronizeEvent(this); }
 
+double Event::ElapsedTime(const Event& end_event) const {
+  auto s_event = static_cast<gpuEvent_t>(event_);
+  auto e_event = static_cast<gpuEvent_t>(end_event.event_);
+  float ms;
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaEventElapsedTime(&ms, s_event, e_event));
+  return ms;
+}
+
 const Place& Event::GetPlace() const { return place_; }
 
 }  // namespace event

@@ -27,6 +27,7 @@
 DECLARE_bool(benchmark);
 DECLARE_bool(nccl_blocking_wait);
 DECLARE_bool(use_stream_safe_cuda_allocator);
+DECLARE_bool(enable_process_group_event_record);
 
 // set this flag to `true` and recompile to enable dynamic checks
 constexpr bool FLAGS_enable_nccl_dynamic_check = false;
@@ -94,7 +95,96 @@ ProcessGroupNCCL::ProcessGroupNCCL(
     int rank,
     int size,
     int gid)
-    : ProcessGroupWithStream(rank, size, gid), store_(store) {}
+    : ProcessGroupWithStream(rank, size, gid), store_(store) {
+  events_.resize(phi::backends::gpu::GetGPUDeviceCount());
+}
+
+ProcessGroupNCCL::~ProcessGroupNCCL() {
+  for (const auto& e : events_) {
+    for (const auto& p : e.events) {
+      cudaEventDestroy(p.first);
+      cudaEventDestroy(p.second);
+    }
+  }
+}
+
+std::vector<double> ProcessGroupNCCL::GetEventTimeAndRelease() {
+  auto dev_id = phi::backends::gpu::GetCurrentDeviceId();
+  auto& e = events_[dev_id];
+  std::vector<double> times;
+  times.reserve(e.length);
+  for (size_t i = 0; i < e.length; ++i) {
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventSynchronize(e.events[i].second));
+    float ms = 0.0f;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaEventElapsedTime(&ms, e.events[i].first, e.events[i].second));
+    times.push_back(ms);
+  }
+  e.length = 0;
+  return times;
+}
+
+gpuEvent_t ProcessGroupNCCL::RecordStartEventOnCalcStream() {
+  if (!FLAGS_enable_process_group_event_record) {
+    return nullptr;
+  }
+
+  auto dev_id = phi::backends::gpu::GetCurrentDeviceId();
+  auto stream = static_cast<phi::GPUContext*>(
+                    GetDeviceContext(phi::GPUPlace(dev_id), true))
+                    ->stream();
+  return RecordStartEvent(stream);
+}
+
+void ProcessGroupNCCL::RecordEndEventOnCalcStream(gpuEvent_t event) {
+  if (event == nullptr) {
+    return;
+  }
+
+  auto dev_id = phi::backends::gpu::GetCurrentDeviceId();
+  auto stream = static_cast<phi::GPUContext*>(
+                    GetDeviceContext(phi::GPUPlace(dev_id), true))
+                    ->stream();
+  RecordEndEvent(event, stream);
+}
+
+gpuEvent_t ProcessGroupNCCL::RecordStartEvent(gpuStream_t stream) {
+  if (!FLAGS_enable_process_group_event_record) {
+    return nullptr;
+  }
+
+  if (s_group_call_counter > 0) {
+    return nullptr;
+  }
+
+  auto dev_id = phi::backends::gpu::GetCurrentDeviceId();
+  gpuEvent_t start_event, end_event;
+  auto& e = events_[dev_id];
+  if (e.events.size() <= e.length) {
+    VLOG(10) << "Create new events when cached event pair number is "
+             << e.events.size() << " , and used event pair number is "
+             << e.length;
+    e.events.resize(e.events.size() + 1);
+    auto& p = e.events[e.length++];
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&p.first));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&p.second));
+    start_event = p.first;
+    end_event = p.second;
+  } else {
+    start_event = e.events[e.length].first;
+    end_event = e.events[e.length].second;
+    ++e.length;
+  }
+
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(start_event, stream));
+  return end_event;
+}
+
+void ProcessGroupNCCL::RecordEndEvent(gpuEvent_t event, gpuStream_t stream) {
+  if (event != nullptr) {
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, stream));
+  }
+}
 
 void ProcessGroupNCCL::GroupStart() {
   NCCL_CHECK(phi::dynload::ncclGroupStart());
@@ -228,6 +318,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
                 << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
 
+        auto event = RecordStartEvent(stream);
         NCCL_CHECK(
             phi::dynload::ncclAllReduce(in_tensor.data(),
                                         out_tensor->data(),
@@ -236,6 +327,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
                                         ToNCCLRedType(opts.reduce_op),
                                         comm,
                                         stream));
+        RecordEndEvent(event, stream);
       },
       in_tensor,
       CommType::ALLREDUCE,
@@ -310,6 +402,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
                 << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
 
+        auto event = RecordStartEvent(stream);
         GroupStart();
         for (auto i = 0; i < size_; i++) {
           in_numel = in_size_each_rank[i] * in_row_size;
@@ -335,6 +428,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
           out_offset += out_numel;
         }
         GroupEnd();
+        RecordEndEvent(event, stream);
       },
       in_tensor,
       CommType::ALLTOALL,
@@ -396,6 +490,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
 
+        auto event = RecordStartEvent(stream);
         NCCL_CHECK(
             phi::dynload::ncclBroadcast(in_tensor.data(),
                                         out_tensor->data(),
@@ -404,6 +499,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
                                         root,
                                         comm,
                                         stream));
+        RecordEndEvent(event, stream);
       },
       in_tensor,
       CommType::BROADCAST,
@@ -444,6 +540,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
                 << ", nranks: " << size_ << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
 
+        auto event = RecordStartEvent(stream);
         NCCL_CHECK(
             phi::dynload::ncclReduce(in_tensor.data(),
                                      out_tensor->data(),
@@ -453,6 +550,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
                                      opts.root_rank,
                                      comm,
                                      stream));
+        RecordEndEvent(event, stream);
       },
       in_tensor,
       CommType::REDUCE,
@@ -492,6 +590,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::ReduceScatter(
                 << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
 
+        auto event = RecordStartEvent(stream);
         NCCL_CHECK(phi::dynload::ncclReduceScatter(
             in_tensor.data(),
             out_tensor->data(),
@@ -500,6 +599,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::ReduceScatter(
             ToNCCLRedType(opts.reduce_op),
             comm,
             stream));
+        RecordEndEvent(event, stream);
       },
       in_tensor,
       CommType::REDUCE_SCATTER,
@@ -543,6 +643,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
         if (rank_ == opts.root_rank) {
           int64_t offset = 0;
           phi::DenseTensor partial_tensor;
+          auto event = RecordStartEvent(stream);
           GroupStart();
           for (auto i = 0; i < size_; i++) {
             partial_tensor = GetPartialTensor(in_tensor, offset, numel);
@@ -563,7 +664,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
                                      comm,
                                      stream));
           GroupEnd();
+          RecordEndEvent(event, stream);
         } else {
+          auto event = RecordStartEvent(stream);
           NCCL_CHECK(
               phi::dynload::ncclRecv(out_tensor->data(),
                                      numel,
@@ -571,6 +674,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
                                      opts.root_rank,
                                      comm,
                                      stream));
+          RecordEndEvent(event, stream);
         }
       },
       in_tensor,
@@ -627,6 +731,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
             << ", nranks: " << size_ << ", sync_op: " << sync_op
             << ", use_calc_stream: " << use_calc_stream;
 
+    auto event = RecordStartEvent(stream);
     GroupStart();
     // root receive from all devices
     if (rank_ == opts.root_rank) {
@@ -649,6 +754,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
                                       comm,
                                       stream));
     GroupEnd();
+    RecordEndEvent(event, stream);
   };
   return Collective(
       gather_func, in_tensor, CommType::GATHER, sync_op, use_calc_stream);
@@ -688,12 +794,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
                 << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
 
+        auto event = RecordStartEvent(stream);
         NCCL_CHECK(phi::dynload::ncclRecv(tensor->data(),
                                           tensor->numel(),
                                           phi::ToNCCLDataType(tensor->dtype()),
                                           rank_in_group,
                                           comm,
                                           stream));
+        RecordEndEvent(event, stream);
       },
       src_rank,
       *tensor,
@@ -735,6 +843,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
                 << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
 
+        auto event = RecordStartEvent(stream);
         NCCL_CHECK(phi::dynload::ncclSend(
             tensor_maybe_partial.data(),
             tensor_maybe_partial.numel(),
@@ -742,6 +851,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
             rank_in_group,
             comm,
             stream));
+        RecordEndEvent(event, stream);
       },
       dst_rank,
       tensor_maybe_partial,

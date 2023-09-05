@@ -278,6 +278,7 @@ def batch_send_recv_on_calc_stream(p2p_op_list):
         return
     group = _get_global_group() if group is None else group
     backend = group.backend
+    event = group.process_group._record_start_event_on_calc_stream()
     with _with_batch_p2p_guard(backend):
         for p2p_op in p2p_op_list:
             op = p2p_op.op
@@ -287,6 +288,7 @@ def batch_send_recv_on_calc_stream(p2p_op_list):
             nranks = p2p_op.nranks
             rank_id = p2p_op.rank_id
             op(tensor, comm_group, peer, nranks, rank_id)
+    group.process_group._record_end_event_on_calc_stream(event)
 
 
 def _process_p2p_tuple_or_tensor(
