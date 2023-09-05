@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle._ir_ops import add, erf, multiply, tanh
+from paddle import _ir_ops
 
 from .primitives import *  # noqa: F403
 from .register import register_decomp
@@ -60,9 +60,16 @@ def gelu_composite(x, approximate):
     else:
         # gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
 
-        cdf = multiply(
+        cdf = _ir_ops.multiply(
             half,
-            (add(one, erf(multiply(x, full(x.shape, M_SQRT1_2, x.dtype))))),
+            (
+                _ir_ops.add(
+                    one,
+                    _ir_ops.erf(
+                        _ir_ops.multiply(x, full(x.shape, M_SQRT1_2, x.dtype))
+                    ),
+                )
+            ),
         )
-        out = multiply(x, cdf)
+        out = _ir_ops.multiply(x, cdf)
         return out
