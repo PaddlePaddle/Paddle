@@ -375,7 +375,7 @@ class TestFlashAttentionWithMaskAPI(unittest.TestCase):
 class TestFlashAttentionAPIPrecision(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (2, 128, 8, 32)
+        self.shape = (16, 202, 32, 128)
         self.dropout = 0.0
         self.dtype = 'bfloat16'
         self.dtype_ = 'float32'
