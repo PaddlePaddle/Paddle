@@ -284,7 +284,6 @@ class TestDy2STWithSetValue(AmpTestBase):
             "cast": 0,
             "layer_norm": 1,
             "scale": 3,
-            "share_buffer": 1,
             "set_value": 1,
         }
 
