@@ -1938,6 +1938,14 @@
   outputs :
     {out : Out, index : Index, nms_rois_num : NmsRoisNum}
 
+- op : multihead_matmul
+  inputs :
+    {input : Input, w : W, bias : Bias, bias_qk : BiasQK}
+  outputs :
+    out : Out
+  attrs :
+    {transpose_q : transpose_Q,  transpose_k : transpose_K, transpose_v : transpose_V}
+
 - op : multinomial
   inputs :
     {x : X}
