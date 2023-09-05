@@ -418,8 +418,7 @@ bool SymbolicDimMgr::isSymbolicDimProductEqual(const SymbolicDimProduct& lhs,
 
   // early return for identity case.
   if (newLhs == newRhs) return true;
-  auto status = updateProductEqualityMap();
-  assert(status);
+  IR_ENFORCE(updateProductEqualityMap(), "Update product equality map failed.");
   return isMultipleOfKnownSymbolicDimProductEqualPair(newLhs, newRhs);
 }
 }  // namespace ir
