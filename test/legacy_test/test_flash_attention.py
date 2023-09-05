@@ -428,6 +428,69 @@ class TestFlashAttentionAPIPrecision(unittest.TestCase):
         out_.backward()
         np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
         np.testing.assert_allclose(q.grad.numpy(), q_.grad.numpy(), rtol=5e-03, atol=1e-03)
+        
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11040
+    or not is_sm_supported,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 7.5 or 8.x",
+)
+class TestFlashAttentionAPIPrecision(unittest.TestCase):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (16, 202, 32, 128)
+        self.dropout = 0.0
+        self.dtype = 'bfloat16'
+        self.dtype_ = 'float32'
+        self.causal = False
+
+    def test_bf16_dot_scale_product_vs_float32_naive_attention(self):
+        # test dynamic
+        paddle.disable_static()
+
+        query = np.random.random(self.shape)
+        key = np.random.random(self.shape)
+        value = np.random.random(self.shape)
+
+        q = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        k = paddle.to_tensor(
+            key, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        v = paddle.to_tensor(
+            value, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+
+        dtype_ = 'float32'
+        q_ = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype_, stop_gradient=False
+        )
+        k_ = paddle.to_tensor(
+            key, place=self.place, dtype=self.dtype_, stop_gradient=False
+        )
+        v_ = paddle.to_tensor(
+            value, place=self.place, dtype=self.dtype_, stop_gradient=False
+        )
+
+        mask_shape = (self.shape[0], 1, self.shape[1], self.shape[1])
+        mask = np.random.random(mask_shape)
+        m = paddle.to_tensor(
+            mask, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        m_ = paddle.to_tensor(
+            mask, place=self.place, dtype=self.dtype_, stop_gradient=False
+        )
+        # we define
+        out = scaled_dot_product_attention(
+            q, k, v, m, self.dropout, self.causal
+        )
+        # standard ans
+        out_ = attention_naive_with_mask(q_, k_, v_, m_)
+        out.backward()
+        out_.backward()
+        np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
+        np.testing.assert_allclose(q.grad.numpy(), q_.grad.numpy(), rtol=5e-03, atol=1e-03)
 class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
