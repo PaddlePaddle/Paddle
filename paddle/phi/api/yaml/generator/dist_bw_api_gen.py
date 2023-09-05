@@ -167,7 +167,6 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
     def generate_infer_global_shape_code(self) -> str:
         input_names = self.inputs['names']
         attr_names = self.attrs['names']
-        output_names = self.outputs['names']
 
         # 1. get infer meta func name
         infer_meta = self.infer_meta
@@ -236,8 +235,12 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                     )
         output_args_code = output_args_code[:-2]
 
-        return output_decl_code + INFER_GLOBAL_SHAPE_TEMPLATE.format(
-            infer_meta_func_code, input_args_code, output_args_code
+        return (
+            output_decl_code
+            + input_meta_code
+            + INFER_GLOBAL_SHAPE_TEMPLATE.format(
+                infer_meta_func_code, input_args_code, output_args_code
+            )
         )
 
     def generate_auto_paralel_branch(self) -> str:
