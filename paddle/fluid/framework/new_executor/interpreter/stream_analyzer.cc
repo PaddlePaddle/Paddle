@@ -344,9 +344,25 @@ void analyse_event_info_for_two_instructions<Instruction>(
   // fused_var share the same tensor. However, as the dependency is implicit, we
   // can only add event for it with the help of depend_op.
 
+  // liuchenghao debug
+  // bool next_instr_downstream_kevent_run_not_empty =
+  // !run_type_info[next_instr_id][DownstreamRunType::kEventRun].empty(); if
+  // (instructions[cur_instr_id]->OpBase()->Type() == "fill_constant")
+  //     next_instr_downstream_kevent_run_not_empty = false;
+  // if (instructions[next_instr_id]->OpBase()->Type() != "recv_v2")
+  //     next_instr_downstream_kevent_run_not_empty = false;
+  // if (next_instr_downstream_kevent_run_not_empty){
+  //   VLOG(6) << "** [id=" << cur_instr_id << ", type=" <<
+  //   instructions[cur_instr_id]->OpBase()->Type() <<
+  //     "]->[id=" << next_instr_id << ", type=" <<
+  //     instructions[next_instr_id]->OpBase()->Type() <<
+  //     "], next instruction (id=" << next_instr_id << ")'s downstream
+  //     kEventRun not empty.";
+  // }
+
   if (has_data_dependency<Instruction, std::string>(
           instructions[cur_instr_id], instructions[next_instr_id]) ||
-      !run_type_info[next_instr_id][DownstreamRunType::kEventRun].empty() ||
+      //! run_type_info[next_instr_id][DownstreamRunType::kEventRun].empty() ||
       instructions[next_instr_id]->OpBase()->Type() == "depend") {
     waiter_instr_ids->insert(next_instr_id);
     return;
@@ -406,7 +422,7 @@ void analyse_event_info_for_two_instructions<
 
   if (has_data_dependency<paddle::framework::InstructionBase, ir::Value>(
           instructions[cur_instr_id], instructions[next_instr_id]) ||
-      !run_type_info[next_instr_id][DownstreamRunType::kEventRun].empty() ||
+      //! run_type_info[next_instr_id][DownstreamRunType::kEventRun].empty() ||
       instructions[next_instr_id]->Name() == "pd.depend") {
     waiter_instr_ids->insert(next_instr_id);
     return;

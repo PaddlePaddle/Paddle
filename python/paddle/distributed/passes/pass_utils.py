@@ -390,6 +390,12 @@ def _insert_sync_for_fthenb_1f1b(program):
                 if int(op_role) == int(OpRole.Forward):
                     sync_comm_op._set_attr('pipeline_flag', '')
                     offset += 1
+
+            if op.type == 'recv_v2':
+                ring_id = op.attr('ring_id')
+                recv_stream_name = "recv_stream[rid=%s]" % str(ring_id)
+                op.dist_attr.execution_stream = recv_stream_name
+
         block._sync_with_cpp()
 
         offset = 0
