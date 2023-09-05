@@ -49,7 +49,7 @@ MAIN_DIST_BRANCH_TEMPLATE = """
     // 3. Infer DistTensor's Global Shape{}
     // 4. Select Kernel{}
     // 5. Reshard Input{}\n
-    // 6. PrepareData (DataTransform & Prepare Dist and Dense Input){}
+    // 6. PrepareData (DataTransform & Prepare Dense Input){}
     // 7. Infer Local DenseTensor Meta{}
     // 8. DenseTensor Kernel Call{}
     // 9. Return
@@ -124,14 +124,17 @@ KERNEL_SELECTION_TEMPLATE = """
 """
 
 # 5. Reshard Input
-# Note: Resharding maybe need to change input inplace, so here we use const_cast
 SINGLE_INPUT_RESHARD_TEMPLATE = """
-    ReshardDistTensor(dev_ctx, const_cast<phi::distributed::DistTensor*>(static_cast<const phi::distributed::DistTensor*>({}.impl().get())), spmd_info.first[{}]);"""
+    auto dist_input_{arg} = ReshardDistTensor(dev_ctx, {arg}, spmd_info.first[{idx}]);"""
 
 # 6. PrepareData
 SINGLE_PREPARE_DATA_TEMPLATE = """
-    auto dist_input_{} = PrepareDataForDistTensor({}, GetKernelInputArgDef(kernel.InputAt({}), kernel_backend), {}, kernel_result.is_stride_kernel);
-    auto input_{} = &dist_input_{}->value();
+    dist_input_{arg} = PrepareDataForDistTensor(dist_input_{arg}, GetKernelInputArgDef(kernel.InputAt({idx}), kernel_backend), {flag}, kernel_result.is_stride_kernel);
+    auto input_{arg} = &dist_input_{arg}->value();
+"""
+SINGLE_PREPARE_DATA_TEMPLATE_NO_RESHARD = """
+    auto dist_input_{arg} = PrepareDataForDistTensor({arg}, GetKernelInputArgDef(kernel.InputAt({idx}), kernel_backend), {flag}, kernel_result.is_stride_kernel);
+    auto input_{arg} = &dist_input_{arg}->value();
 """
 INFER_META_SINGLE_INPUT_TEMPLATE = """
     auto dist_input_{} = {}.impl();
@@ -443,7 +446,9 @@ class DistForwardAPI(ForwardAPI):
                 if param in input_names:
                     if self.inputs['input_info'][param] == "const Tensor&":
                         input_reshard_code += (
-                            SINGLE_INPUT_RESHARD_TEMPLATE.format(param, i)
+                            SINGLE_INPUT_RESHARD_TEMPLATE.format(
+                                arg=param, idx=i
+                            )
                         )
                     else:
                         raise ValueError(
@@ -470,14 +475,18 @@ class DistForwardAPI(ForwardAPI):
         if kernel_param is None:
             kernel_param = input_names + attr_names
 
-        input_tensor_code += SINGLE_PREPARE_DATA_TEMPLATE.format(
-            input_name,
-            input_name,
-            kernel_param.index(input_name),
-            trans_flag,
-            input_name,
-            input_name,
-        )
+        if self.infer_meta['spmd_rule'] is not None:
+            input_tensor_code += SINGLE_PREPARE_DATA_TEMPLATE.format(
+                arg=input_name,
+                idx=kernel_param.index(input_name),
+                flag=trans_flag,
+            )
+        else:
+            input_tensor_code += SINGLE_PREPARE_DATA_TEMPLATE_NO_RESHARD.format(
+                arg=input_name,
+                idx=kernel_param.index(input_name),
+                flag=trans_flag,
+            )
 
         return input_tensor_code
 

@@ -24,8 +24,6 @@ PHI_DECLARE_bool(use_stride_kernel);
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 
 namespace paddle {
 namespace experimental {
@@ -552,18 +550,6 @@ phi::distributed::DistTensor* SetKernelDistOutput(
 phi::distributed::DistMetaTensor MakeDistMetaTensor(
     const phi::TensorBase& tensor) {
   return phi::distributed::DistMetaTensor(tensor);
-}
-
-void ReshardDistTensor(phi::DeviceContext* dev_ctx,
-                       phi::distributed::DistTensor* tensor,
-                       const phi::distributed::TensorDistAttr& dist_attr) {
-  if (tensor->dist_attr() != dist_attr) {
-    VLOG(6) << "Reshard tensor from " << tensor->dist_attr() << " to "
-            << dist_attr;
-    auto* func =
-        phi::distributed::ChooseProperReshardFunction(*tensor, dist_attr);
-    func->Eval(dev_ctx, *tensor, dist_attr, tensor);
-  }
 }
 
 }  // namespace experimental

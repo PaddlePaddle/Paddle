@@ -144,9 +144,5 @@ phi::distributed::DistTensor* SetKernelDistOutput(
 phi::distributed::DistMetaTensor MakeDistMetaTensor(
     const phi::TensorBase& tensor);
 
-void ReshardDistTensor(phi::DeviceContext* dev_ctx,
-                       phi::distributed::DistTensor* tensor,
-                       const phi::distributed::TensorDistAttr& dist_attr);
-
 }  // namespace experimental
 }  // namespace paddle

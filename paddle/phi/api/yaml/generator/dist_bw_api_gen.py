@@ -28,11 +28,10 @@ MAIN_DIST_BRANCH_TEMPLATE = """
     // 1. Create API Output & Prepare Dist and Dense Output{}
     // 2. Infer DistTensor's Global Shape{}
     // 3. Select Kernel{}
-    // 4. PrepareData (DataTransform & Prepare Dist and Dense Input){}
+    // 4. PrepareData (DataTransform & Prepare Dense Input){}
     // 5. Infer Local DenseTensor Meta{}
     // 6. DenseTensor Kernel Call{}
-    // 7. Reshard Output{}
-    // 8. Return
+    // 7. Return
     {}
   }}
 """
@@ -58,11 +57,10 @@ INFER_GLOBAL_SHAPE_TEMPLATE = """
     phi::{}({}{});
 """
 
-# 7. Reshard Output
-SINGLE_OUTPUT_RESHARD_TEMPLATE = """
-    ReshardDistTensor(dev_ctx, {}, {}->dist_attr());"""
-RESHARD_OUTPUT_DEBUG_INFO = """
-    VLOG(6) << "Reshard `{}` from " << {}->dist_attr() << " to " << spmd_info.second[{}] << "done.";
+# 4. PrepareData (DataTransform & Prepare Dist and Dense Input)
+SINGLE_PREPARE_DATA_TEMPLATE = """
+    auto dist_input_{arg} = PrepareDataForDistTensor({arg}, GetKernelInputArgDef(kernel.InputAt({idx}), kernel_backend), {flag}, kernel_result.is_stride_kernel);
+    auto input_{arg} = &dist_input_{}->value();
 """
 
 
@@ -208,10 +206,6 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
             infer_meta_func_code, input_args_code, output_args_code
         )
 
-    # TODO(chenweihang): support backward later
-    def generate_reshard_output_code(self) -> str:
-        return ""
-
     def generate_auto_paralel_branch(self) -> str:
         # if no tensor input, do not genetate auto parallel branch
         if len(self.inputs['names']) == 0:
@@ -224,7 +218,6 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
             self.generate_prepare_data_code(),
             self.generate_infer_meta_code(),
             self.generate_kernel_call_code(),
-            self.generate_reshard_output_code(),
             self.generate_return_code(),
         )
 
