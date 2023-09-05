@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import os
+
 from paddle.common_ops_import import check_dtype, check_variable_and_dtype
 from paddle.distributed.auto_parallel.static.cost.comm_op_cost import (
     AllreduceSumOpCost,
@@ -37,6 +39,7 @@ from ..utils import (
     _get_corresponding_rank,
     _get_idx_in_axis,
     compute_compatible_and_update_dim_mapping,
+    infer_with_spmd,
     is_dim_replicate,
     is_dim_shard,
     set_var_dist_attr,
@@ -323,6 +326,12 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         ids_name = op_desc.input('Ids')[0]
         w_name = op_desc.input('W')[0]
         out_name = op_desc.output('Out')[0]
+        if os.getenv("ENABLE_SPMD_RULE"):
+            attr_names = ["padding_idx", "is_sparse"]
+            return infer_with_spmd(
+                dist_op, [ids_name, w_name], [out_name], attr_names, "embedding"
+            )
+
         ids_dims_mapping = op_dist_attr.get_input_dims_mapping(ids_name)
         w_dims_mapping = op_dist_attr.get_input_dims_mapping(w_name)
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)

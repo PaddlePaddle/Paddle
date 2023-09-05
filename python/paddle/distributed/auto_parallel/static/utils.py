@@ -2533,6 +2533,13 @@ def infer_with_spmd(
     # these names should be replaced when using spmd rule.
     if rule_name == "transpose":
         attrs["perm"] = attrs.pop("axis")
+    if rule_name == "reduction":
+        attrs["axis"] = attrs.pop("dim")
+        op_desc = dist_op.serial_op.desc
+        if attrs["axis"] == [] and op_desc.attr("reduce_all") is True:
+            attrs["axis"] = list(range(len(input_specs[0].shape)))
+    if rule_name == "embedding":
+        attrs["sparse"] = attrs.pop("is_sparse")
 
     rule = get_spmd_rule(rule_name)
     fw_result = rule.infer_forward(input_specs, attrs)

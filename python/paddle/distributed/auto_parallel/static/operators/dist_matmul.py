@@ -13,6 +13,7 @@
 # limitations under the License
 
 import copy
+import os
 
 from paddle.common_ops_import import check_dtype, check_variable_and_dtype
 from paddle.distributed.auto_parallel.static.cost.comm_op_cost import (
@@ -43,6 +44,7 @@ from ..utils import (
     _get_corresponding_rank,
     compute_compatible_and_update_dim_mapping,
     compute_compatible_dims_mapping,
+    infer_with_spmd,
     is_dim_replicate,
     is_dim_shard,
     is_valid_list_index,
@@ -108,6 +110,14 @@ def _update_dims_mapping_for_matmul(dist_op):
     x_name = op_desc.input('X')[0]
     y_name = op_desc.input('Y')[0]
     out_name = op_desc.output('Out')[0]
+    if os.getenv("ENABLE_SPMD_RULE"):
+        if op_desc.type() == "matmul_v2":
+            attr_names = ['trans_x', 'trans_y']
+        elif op_desc.type() == "matmul":
+            attr_names = ['transpose_x', 'transpose_y']
+        return infer_with_spmd(
+            dist_op, [x_name, y_name], [out_name], attr_names, "matmul"
+        )
     trans_x = None
     trans_y = None
     if op_desc.type() == "matmul_v2":

@@ -42,8 +42,10 @@ REGISTER_SPMD_RULE(mean, ReductionSPMDRule);
 REGISTER_SPMD_RULE(min, ReductionSPMDRule);
 REGISTER_SPMD_RULE(prod, ReductionSPMDRule);
 REGISTER_SPMD_RULE(sum, ReductionSPMDRule);
+REGISTER_SPMD_RULE(reduction, ReductionSPMDRule);
 
 // elementwise rule
+REGISTER_SPMD_RULE(elementwise, ElementwiseSPMDRule);
 REGISTER_SPMD_RULE(add, ElementwiseSPMDRule);
 REGISTER_SPMD_RULE(assign, ElementwiseSPMDRule);
 REGISTER_SPMD_RULE(assign_out_, ElementwiseSPMDRule);
