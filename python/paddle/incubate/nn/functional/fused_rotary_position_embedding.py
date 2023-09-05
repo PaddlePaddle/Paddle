@@ -49,13 +49,13 @@ def fused_rotary_position_embedding(q, k=None, v=None, sin=None, cos=None):
             >>> import paddle
             >>> from paddle.incubate.nn.functional import fused_rotary_position_embedding
 
-            >>> q = paddle.randn([1, 1, 4, 10], dtype='float16')
-            >>> k = paddle.randn([1, 1, 4, 10], dtype='float16')
-            >>> v = paddle.randn([1, 1, 4, 10], dtype='float16')
+            >>> q = paddle.randn([1, 1, 4, 10], dtype="float32")
+            >>> k = paddle.randn([1, 1, 4, 10], dtype="float32")
+            >>> v = paddle.randn([1, 1, 4, 10], dtype="float32")
             >>> out_q, out_k, out_v = fused_rotary_position_embedding(q, k, v)
 
-            >>> x = paddle.randn([1, 1, 1, 10], dtype='float16')
-            >>> y = paddle.randn([1, 1, 1, 10], dtype='float16')
+            >>> x = paddle.randn([1, 1, 1, 10], dtype="float32")
+            >>> y = paddle.randn([1, 1, 1, 10], dtype="float32")
             >>> sin = paddle.sin(x)
             >>> cos = paddle.cos(y)
             >>> out_q, out_k, out_v = fused_rotary_position_embedding(q, k, v, sin=sin, cos=cos)
