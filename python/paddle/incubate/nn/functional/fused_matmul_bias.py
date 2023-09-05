@@ -44,6 +44,7 @@ def fused_matmul_bias(
             >>> # doctest: +SKIP('fused_gemm_epilogue is only supported when CUDA version >= 11.6')
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
+            >>> paddle.set_device('gpu')
             >>> from paddle.incubate.nn.functional import fused_matmul_bias
 
             >>> x = paddle.randn([3, 5])
@@ -93,6 +94,7 @@ def fused_linear(x, weight, bias=None, transpose_weight=False, name=None):
             >>> # doctest: +SKIP('fused_gemm_epilogue is only supported when CUDA version >= 11.6')
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
+            >>> paddle.set_device('gpu')
             >>> from paddle.incubate.nn.functional import fused_linear
 
             >>> x = paddle.randn([3, 4])
@@ -130,6 +132,7 @@ def fused_linear_activation(
             >>> # doctest: +SKIP('fused_gemm_epilogue is only supported when CUDA version >= 11.6')
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
+            >>> paddle.set_device('gpu')
             >>> from paddle.incubate.nn.functional import fused_linear_activation
 
             >>> x = paddle.randn([3, 4])

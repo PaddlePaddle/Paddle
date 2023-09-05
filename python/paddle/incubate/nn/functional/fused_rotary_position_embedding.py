@@ -47,6 +47,7 @@ def fused_rotary_position_embedding(q, k=None, v=None, sin=None, cos=None):
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
+            >>> paddle.set_device('gpu')
             >>> from paddle.incubate.nn.functional import fused_rotary_position_embedding
 
             >>> q = paddle.randn([1, 1, 4, 10], dtype="float32")

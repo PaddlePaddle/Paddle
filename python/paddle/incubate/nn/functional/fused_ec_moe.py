@@ -39,6 +39,7 @@ def fused_ec_moe(
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
+            >>> paddle.set_device('gpu')
             >>> from paddle.incubate.nn.functional import fused_ec_moe
 
             >>> x = paddle.randn([10, 128, 1024])
