@@ -1038,7 +1038,7 @@ class FusedMultiTransformer(Layer):
 
     .. code-block:: python
 
-        >>> # doctest: +SKIP('it seems as a process')
+        >>> # doctest: +SKIP('This is not an example')
         >>> if pre_layer_norm:
         ...     out = layer_norm(x)
         ...     out = qkv_linear(out) + qkv_bias
@@ -1190,7 +1190,7 @@ class FusedMultiTransformer(Layer):
             >>> attn_mask = paddle.rand((2, 1, 4, 4))
             >>> encoder_layers = FusedMultiTransformer(128, 2, 512, num_layers=1)
             >>> enc_output = encoder_layers(enc_input, attn_mask)
-            >>> print(enc_output)
+            >>> print(enc_output.shape)
             [2, 4, 128]
     """
 
