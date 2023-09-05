@@ -29,7 +29,7 @@ namespace phi {
 class DenseTensor;
 namespace distributed {
 
-static int64_t DefaultTimeout = 30*60*1000;
+static int64_t DefaultTimeout = 30 * 60 * 1000;
 
 class NCCLCommTask : public CommTask {
  public:
@@ -53,7 +53,7 @@ class NCCLCommTask : public CommTask {
   bool IsCompleted() override;
   bool IsSuccess() override;
 
-  std::string GetTraceMsg() override; 
+  std::string GetTraceMsg() override;
   void SetException(std::exception_ptr exception) override;
   void CheckAndSetException() override;
   std::exception_ptr CheckCommErrors() override;

@@ -116,9 +116,9 @@ void MasterDaemon::_do_check(SocketType socket) {
 
   auto iter = _store.find(key);
   if (iter != _store.end()) {
-      tcputils::send_value<ReplyType>(socket, ReplyType::READY);
+    tcputils::send_value<ReplyType>(socket, ReplyType::READY);
   } else {
-      tcputils::send_value<ReplyType>(socket, ReplyType::NOT_READY);
+    tcputils::send_value<ReplyType>(socket, ReplyType::NOT_READY);
   }
 }
 
@@ -437,9 +437,9 @@ bool TCPStore::check(const std::string& key) {
   VLOG(3) << "TCPStore check.";
   auto response = _client->receive_value<ReplyType>();
   if (response == ReplyType::READY) {
-      return true;
+    return true;
   } else {
-      return false;
+    return false;
   }
 }
 

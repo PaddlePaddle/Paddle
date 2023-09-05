@@ -23,9 +23,9 @@
 #include "paddle/phi/core/distributed/check/static_check.h"
 #include "paddle/phi/core/distributed/comm_task_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_task.h"
-#include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/distributed/nccl_tools.h"
 #include "paddle/phi/core/distributed/trace_utils.h"
+#include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
 
@@ -41,13 +41,13 @@ constexpr int64_t kWaitBlockTImeout = 10;
 namespace paddle {
 namespace distributed {
 
+using phi::distributed::GetTraceEndKey;
+using phi::distributed::GetTraceStartKey;
 using phi::distributed::IsP2POP;
-using phi::distributed::ToNCCLRedType;
-using phi::distributed::SerializeNCCLUniqueId;
 using phi::distributed::NCCLDTypeToString;
 using phi::distributed::NCCLRedTypeToString;
-using phi::distributed::GetTraceStartKey;
-using phi::distributed::GetTraceEndKey;
+using phi::distributed::SerializeNCCLUniqueId;
+using phi::distributed::ToNCCLRedType;
 uint64_t ProcessGroupNCCL::s_group_call_counter = 0;
 
 ProcessGroupNCCL::NCCLTask::NCCLTask(const Place& place,
@@ -108,8 +108,9 @@ ProcessGroupNCCL::ProcessGroupNCCL(
     int size,
     int gid,
     int64_t timeout)
-    : ProcessGroupWithStream(rank, size, gid), store_(store), pg_timeout_(timeout) {
-    }
+    : ProcessGroupWithStream(rank, size, gid),
+      store_(store),
+      pg_timeout_(timeout) {}
 
 void ProcessGroupNCCL::GroupStart() {
   NCCL_CHECK(phi::dynload::ncclGroupStart());
@@ -246,12 +247,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
 
         int64_t numel = in_tensor.numel();
         if (rank_ == 1) {
-            numel += 200;
+          numel += 200;
         }
         NCCL_CHECK(
             phi::dynload::ncclAllReduce(in_tensor.data(),
                                         out_tensor->data(),
-                                        //in_tensor.numel(),
+                                        // in_tensor.numel(),
                                         numel,
                                         phi::ToNCCLDataType(in_tensor.dtype()),
                                         ToNCCLRedType(opts.reduce_op),
@@ -422,7 +423,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
         NCCL_CHECK(
             phi::dynload::ncclBroadcast(in_tensor.data(),
                                         out_tensor->data(),
-                                        //in_tensor.numel(),
+                                        // in_tensor.numel(),
                                         numel,
                                         phi::ToNCCLDataType(in_tensor.dtype()),
                                         root,
@@ -998,16 +999,16 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
                                                        comm_type);
 
   if (!FLAGS_enable_async_trace) {
-      fn(nccl_comm, nccl_stream, p2p_target_rank);
+    fn(nccl_comm, nccl_stream, p2p_target_rank);
   } else {
-      comm_task->StartRecord();
-      fn(nccl_comm, nccl_stream, p2p_target_rank);
-      comm_task->EndRecord();
-      comm_task->SetStore(store_);
+    comm_task->StartRecord();
+    fn(nccl_comm, nccl_stream, p2p_target_rank);
+    comm_task->EndRecord();
+    comm_task->SetStore(store_);
 
-      auto& comm_task_manager = phi::distributed::CommTaskManager::GetInstance();
-      comm_task_manager.CommTaskEnqueue(std::move(comm_task));
-      VLOG(1) << "debug enqueue task " << static_cast<int>(comm_type);
+    auto& comm_task_manager = phi::distributed::CommTaskManager::GetInstance();
+    comm_task_manager.CommTaskEnqueue(std::move(comm_task));
+    VLOG(1) << "debug enqueue task " << static_cast<int>(comm_type);
   }
 
   if (!use_calc_stream) {

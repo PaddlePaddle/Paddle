@@ -25,7 +25,8 @@ enum TraceEventType {
   TraceEventEnd,
 };
 
-using TraceMap = std::map<uint64_t, std::map<int, std::pair<std::string, TraceEventType>>>;
+using TraceMap =
+    std::map<uint64_t, std::map<int, std::pair<std::string, TraceEventType>>>;
 
 inline std::string GetTraceStartKey(const std::string& backend, int rank) {
   return backend + "_" + std::to_string(rank) + "_trace_start";
@@ -53,17 +54,23 @@ inline bool UpdateTraceMsg(std::shared_ptr<Store> store,
                            const std::string& key,
                            uint64_t seq,
                            const std::string& comm_type) {
-  VLOG(1) << "update trace msg key: " << key << ", type " << comm_type << ", seq " << seq;
+  VLOG(1) << "update trace msg key: " << key << ", type " << comm_type
+          << ", seq " << seq;
   std::vector<uint8_t> value(comm_type.size() + sizeof(seq) + 1);
-  VLOG(1) << "update trace msg key: " << key << ", type " << comm_type << ", seq " << seq;
+  VLOG(1) << "update trace msg key: " << key << ", type " << comm_type
+          << ", seq " << seq;
   memcpy(value.data(), &seq, sizeof(seq));
-  VLOG(1) << "update trace msg key: " << key << ", type " << comm_type << ", seq " << seq;
+  VLOG(1) << "update trace msg key: " << key << ", type " << comm_type
+          << ", seq " << seq;
   memcpy(value.data() + sizeof(seq), comm_type.data(), comm_type.size());
-  VLOG(1) << "update trace msg key: " << key << ", type " << comm_type << ", seq " << seq;
+  VLOG(1) << "update trace msg key: " << key << ", type " << comm_type
+          << ", seq " << seq;
   try {
-    VLOG(0) << "update trace msg key: " << key << ", type " << comm_type << ", seq " << seq;
+    VLOG(0) << "update trace msg key: " << key << ", type " << comm_type
+            << ", seq " << seq;
     store->set(key, value);
-    VLOG(0) << "update trace msg key: " << key << ", type " << comm_type << ", seq " << seq;
+    VLOG(0) << "update trace msg key: " << key << ", type " << comm_type
+            << ", seq " << seq;
     return true;
   } catch (...) {
     LOG(ERROR) << "Store is down while updating trace msg, with seq: " << seq
@@ -102,8 +109,7 @@ inline std::string RanksToString(const std::vector<int>& ranks) {
   return result;
 }
 
-inline std::string AnalyzeTraceMsg(
-    const TraceMap& trace_map) {
+inline std::string AnalyzeTraceMsg(const TraceMap& trace_map) {
   uint64_t lag_seq = trace_map.begin()->first;
   std::vector<int> start_ranks;
   std::vector<int> end_ranks;
@@ -115,7 +121,8 @@ inline std::string AnalyzeTraceMsg(
     }
   }
 
-  VLOG(0) << "debug start_ranks size: " << start_ranks.size() << ", end_ranks size: " << end_ranks.size();
+  VLOG(0) << "debug start_ranks size: " << start_ranks.size()
+          << ", end_ranks size: " << end_ranks.size();
   std::string result =
       "\n\t The lagging/dead/mismatched ranks that has desync problem are:";
   if (start_ranks.size()) {
@@ -149,8 +156,8 @@ inline std::string GenerateTraceMsg(std::shared_ptr<Store> store,
     {
       std::string trace_start_key = GetTraceStartKey(backend, rank);
       if (!store->check(trace_start_key)) {
-          VLOG(0) << "check empty trace msg key: " << trace_start_key;
-          continue;
+        VLOG(0) << "check empty trace msg key: " << trace_start_key;
+        continue;
       }
 
       std::string comm_type;
@@ -158,8 +165,8 @@ inline std::string GenerateTraceMsg(std::shared_ptr<Store> store,
         return result;
       }
       VLOG(0) << "generate trace msg key: " << trace_start_key;
-      trace_map[seq_start].emplace(
-          rank, std::make_pair(comm_type, TraceEventStart));
+      trace_map[seq_start].emplace(rank,
+                                   std::make_pair(comm_type, TraceEventStart));
       if (rank == curr_rank) {
         curr_seq = seq_start;
         curr_comm_type = std::move(comm_type);
@@ -168,8 +175,8 @@ inline std::string GenerateTraceMsg(std::shared_ptr<Store> store,
     {
       std::string trace_end_key = GetTraceEndKey(backend, rank);
       if (!store->check(trace_end_key)) {
-          VLOG(0) << "check empty trace msg key: " << trace_end_key;
-          continue;
+        VLOG(0) << "check empty trace msg key: " << trace_end_key;
+        continue;
       }
 
       uint64_t seq = 0;
@@ -179,10 +186,12 @@ inline std::string GenerateTraceMsg(std::shared_ptr<Store> store,
         return result;
       }
       VLOG(0) << "generate trace msg key: " << trace_end_key;
-      VLOG(0) << "generate trace msg seq_start: " << seq_start << ", seq: " << seq;
+      VLOG(0) << "generate trace msg seq_start: " << seq_start
+              << ", seq: " << seq;
       if (seq == seq_start) {
         trace_map[seq][rank].second = TraceEventEnd;
-        VLOG(0) << "generate trace seq: " << seq << ", rank: " << rank << ", event end";
+        VLOG(0) << "generate trace seq: " << seq << ", rank: " << rank
+                << ", event end";
       }
     }
   }

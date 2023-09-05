@@ -90,7 +90,7 @@ void NCCLCommTask::CheckAndSetException() {
   exception_ = exception_ptr;
   if (exception_) {
     LOG(ERROR) << "Found async exception when checking for nccl errors: " +
-        GetExceptionMsgFromExceptionPtr(exception_);
+                      GetExceptionMsgFromExceptionPtr(exception_);
   }
 }
 
@@ -145,22 +145,16 @@ std::exception_ptr NCCLCommTask::CheckCommErrors() {
   NCCL_CHECK(
       phi::dynload::ncclCommGetAsyncError(nccl_comm_, &nccl_async_error));
   if (nccl_async_error != ncclSuccess) {
-    return std::make_exception_ptr(
-        std::runtime_error("NCCL communicator has error: " +
-                           GetNCCLErrorDetail(nccl_async_error) +
-                           "task info: " + 
-                           GetTraceMsg()));
+    return std::make_exception_ptr(std::runtime_error(
+        "NCCL communicator has error: " + GetNCCLErrorDetail(nccl_async_error) +
+        "task info: " + GetTraceMsg()));
   }
   return nullptr;
 }
 
-bool NCCLCommTask::IsStarted() {
-  return CudaEventQuery(nccl_start_event_);
-}
+bool NCCLCommTask::IsStarted() { return CudaEventQuery(nccl_start_event_); }
 
-bool NCCLCommTask::IsCompleted() {
-  return CudaEventQuery(nccl_end_event_);
-}
+bool NCCLCommTask::IsCompleted() { return CudaEventQuery(nccl_end_event_); }
 
 bool NCCLCommTask::IsSuccess() {
   if (GetException()) {
@@ -172,8 +166,12 @@ bool NCCLCommTask::IsSuccess() {
 
 bool NCCLCommTask::IsTimeout() {
   auto current_timepoint = std::chrono::steady_clock::now();
-  VLOG(1) << "debug check timeout " << timeout_.count() << ", interval " << std::chrono::duration_cast<std::chrono::milliseconds>(current_timepoint - start_time_).count(); 
-  return std::chrono::duration_cast<std::chrono::milliseconds>(current_timepoint - start_time_) >= timeout_;
+  VLOG(1) << "debug check timeout " << timeout_.count() << ", interval "
+          << std::chrono::duration_cast<std::chrono::milliseconds>(
+                 current_timepoint - start_time_)
+                 .count();
+  return std::chrono::duration_cast<std::chrono::milliseconds>(
+             current_timepoint - start_time_) >= timeout_;
 }
 
 void NCCLCommTask::SetException(std::exception_ptr exception) {
@@ -199,24 +197,22 @@ void NCCLCommTask::AbortComm() {
 }
 
 std::string NCCLCommTask::GetTraceMsg() {
-    auto current_timepoint = std::chrono::steady_clock::now();
-    auto time_elapsed =
-        std::chrono::duration_cast<std::chrono::milliseconds>(
-                current_timepoint - start_time_);
-    return "\n\tFind Timeout task local detail, "
-        "global_rank: " + std::to_string(global_rank_) + 
-        ", group_id: " + std::to_string(gid_) + 
-        ", local_rank: " + std::to_string(rank_) +
-        ", size: " + std::to_string(size_) +
-        ", seq: " + std::to_string(seq_) + 
-        ", comm_type: " + CommTypeToString(comm_type_) +
-        ", numel: " + std::to_string(numel_) +
-        ", sync_op: " + std::to_string(sync_op_) +
-        ", use_calc_stream: " + std::to_string(use_calc_stream_) +
-        ", started: " + std::to_string(IsStarted()) +
-        ", completed: " + std::to_string(IsCompleted()) +
-        ", timeoutd: " + std::to_string(IsTimeout()) +
-        ", time_elapsed: " + std::to_string(time_elapsed.count());
+  auto current_timepoint = std::chrono::steady_clock::now();
+  auto time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+      current_timepoint - start_time_);
+  return "\n\tFind Timeout task local detail, "
+         "global_rank: " +
+         std::to_string(global_rank_) + ", group_id: " + std::to_string(gid_) +
+         ", local_rank: " + std::to_string(rank_) +
+         ", size: " + std::to_string(size_) + ", seq: " + std::to_string(seq_) +
+         ", comm_type: " + CommTypeToString(comm_type_) +
+         ", numel: " + std::to_string(numel_) +
+         ", sync_op: " + std::to_string(sync_op_) +
+         ", use_calc_stream: " + std::to_string(use_calc_stream_) +
+         ", started: " + std::to_string(IsStarted()) +
+         ", completed: " + std::to_string(IsCompleted()) +
+         ", timeoutd: " + std::to_string(IsTimeout()) +
+         ", time_elapsed: " + std::to_string(time_elapsed.count());
 }
 
 }  // namespace distributed

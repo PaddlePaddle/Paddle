@@ -85,6 +85,5 @@ inline std::string CommTypeToString(CommType CommType) {
   return "UNKNOWN";
 }
 
-
 }  //  namespace distributed
 }  // namespace phi

@@ -43,12 +43,12 @@ class CommTask {
         gid_(gid),
         numel_(numel),
         comm_type_(comm_type) {
-            const char* global_rank = std::getenv("PADDLE_TRAINER_ID");
-            PADDLE_ENFORCE_NOT_NULL(
-                    global_rank,
-                    phi::errors::NotFound(
-                        "The environment variable 'PADDLE_TRAINER_ID' cannot be found."));
-            global_rank_ = std::atoi(global_rank);
+    const char* global_rank = std::getenv("PADDLE_TRAINER_ID");
+    PADDLE_ENFORCE_NOT_NULL(
+        global_rank,
+        phi::errors::NotFound(
+            "The environment variable 'PADDLE_TRAINER_ID' cannot be found."));
+    global_rank_ = std::atoi(global_rank);
   }
   virtual ~CommTask() = default;
 
@@ -66,12 +66,8 @@ class CommTask {
   std::chrono::time_point<std::chrono::steady_clock> GetStartTime() {
     return start_time_;
   }
-  std::shared_ptr<Store> GetStore() {
-      return store_;
-  }
-  void SetStore(std::shared_ptr<Store> store) {
-      store_ = store;
-  }
+  std::shared_ptr<Store> GetStore() { return store_; }
+  void SetStore(std::shared_ptr<Store> store) { store_ = store; }
 
   virtual std::string GetTraceMsg() {
     PADDLE_THROW(
