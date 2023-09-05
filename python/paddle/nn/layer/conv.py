@@ -515,7 +515,6 @@ class Conv1DTranspose(_ConvNd):
             >>> print(y)
             Tensor(shape=[1, 1, 5], dtype=float32, place=Place(cpu), stop_gradient=False,
             [[[60., 16., 99., 75., 4. ]]])
-
     """
 
     def __init__(
