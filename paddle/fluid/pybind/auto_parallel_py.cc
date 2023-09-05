@@ -32,6 +32,7 @@
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/r_to_p_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/r_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/s_to_r_reshard_function.h"
 
@@ -155,6 +156,10 @@ void BindAutoParallel(py::module *m) {
 
   py::class_<phi::distributed::SToRReshardFunction>(
       *m, "SToRReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::RToPReshardFunction>(
+      *m, "RToPReshardFunction", ReshardFunction)
       .def(py::init<>());
 
   py::class_<ProcessMesh>(*m, "ProcessMesh")
@@ -338,6 +343,10 @@ void BindAutoParallel(py::module *m) {
       .def("_is_partial", &TensorDistAttr::is_partial)
       .def("_partial_dims", &TensorDistAttr::partial_dims)
       .def("_clean_partial_dims", &TensorDistAttr::clean_partial_dims)
+      .def("_set_partial_dims",
+           [](TensorDistAttr &self, const std::vector<int64_t> &dims) {
+             self.set_partial_status(dims);
+           })
       .def("_clean_partial_status", &TensorDistAttr::clean_partial_status);
 
   py::class_<SPMDRuleBase>(*m, "SPMDRuleBase")

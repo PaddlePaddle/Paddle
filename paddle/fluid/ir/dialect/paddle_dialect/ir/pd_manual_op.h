@@ -34,7 +34,7 @@ paddle::dialect::AddNOp, paddle::dialect::SplitGradOp, paddle::dialect::IfOp
 namespace paddle {
 namespace dialect {
 
-class AddNOp : public ir::Op<AddNOp, OpYamlInfoInterface> {
+class AddNOp : public ir::Op<AddNOp, OpYamlInfoInterface, InferMetaInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd.add_n"; }

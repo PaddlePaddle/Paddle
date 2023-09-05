@@ -68,7 +68,7 @@ void RToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
           << " process participate in.";
 
   std::vector<int64_t> split_num_vec =
-      BalancedSplit(in.dims()[split_axis], num_of_process);
+      BalancedSplit(in.dims()[static_cast<int>(split_axis)], num_of_process);
   IntArray sections(split_num_vec);
 
   std::vector<DenseTensor> split_out_vec;
