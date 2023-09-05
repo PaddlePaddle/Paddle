@@ -17,8 +17,8 @@
 #include <string>
 #include <unordered_map>
 
-#include "paddle/cinn/hlir/dialect/jit_kernel_op.h"
-#include "paddle/cinn/hlir/dialect/runtime_dialect.h"
+#include "paddle/cinn/hlir/dialect/runtime_dialect/ir/jit_kernel_op.h"
+#include "paddle/cinn/hlir/dialect/runtime_dialect/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/program.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/program.h"

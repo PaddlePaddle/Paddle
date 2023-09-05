@@ -123,45 +123,6 @@ void ProgramInterpreter::RunImpl() {
 #endif
 }
 
-FetchList ProgramInterpreter::Run(
-    const std::vector<std::string>& feed_names,
-    const std::vector<phi::DenseTensor>& feed_tensors) {
-  SetDeviceId(place_);
-  CheckCUDAGraphBeforeRun(feed_names);
-
-#ifdef PADDLE_WITH_DNNL
-  platform::AttachPointerHashToMKLDNNKey(this, place_);
-#endif
-
-  bool is_build = is_build_;
-  Prepare(feed_names, feed_tensors, is_build);
-
-  if (is_build) {
-    RunImpl();
-  }
-
-  if (HasLocalScope()) {
-    ClearLoDTensorArrayInLocalScope();
-  }
-
-  // return Fetch Tensors
-  auto* fetch_var = local_scope_->FindVar(interpreter::kFetchVarName);
-  if (fetch_var) {
-    auto fetch_list = std::move(*fetch_var->GetMutable<framework::FetchList>());
-#ifdef PADDLE_WITH_CUDA
-    if (platform::IsCUDAGraphCapturing()) {
-      PADDLE_ENFORCE_EQ(fetch_list.empty(),
-                        true,
-                        platform::errors::InvalidArgument(
-                            "Cannot fetch data when using CUDA Graph."));
-    }
-#endif
-    return fetch_list;
-  } else {
-    return {};
-  }
-}
-
 FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
                                   bool need_fetch) {
   SetDeviceId(place_);
@@ -209,6 +170,47 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
       HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
   auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
   if (fetch_var && need_fetch) {
+    auto fetch_list = std::move(*fetch_var->GetMutable<framework::FetchList>());
+#ifdef PADDLE_WITH_CUDA
+    if (platform::IsCUDAGraphCapturing()) {
+      PADDLE_ENFORCE_EQ(fetch_list.empty(),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "Cannot fetch data when using CUDA Graph."));
+    }
+#endif
+    return fetch_list;
+  } else {
+    return {};
+  }
+}
+
+FetchList ProgramInterpreter::Run(
+    const std::vector<std::string>& feed_names,
+    const std::vector<phi::DenseTensor>& feed_tensors) {
+  SetDeviceId(place_);
+  CheckCUDAGraphBeforeRun(feed_names);
+
+#ifdef PADDLE_WITH_DNNL
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+#endif
+
+  bool is_build = is_build_;
+  Prepare(feed_names, feed_tensors, is_build);
+
+  if (is_build) {
+    RunImpl();
+  }
+
+  if (HasLocalScope()) {
+    ClearLoDTensorArrayInLocalScope();
+  }
+
+  // return Fetch Tensors
+  Scope* inner_scope =
+      HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
+  auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
+  if (fetch_var) {
     auto fetch_list = std::move(*fetch_var->GetMutable<framework::FetchList>());
 #ifdef PADDLE_WITH_CUDA
     if (platform::IsCUDAGraphCapturing()) {
