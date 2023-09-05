@@ -48,7 +48,7 @@ MAIN_DIST_BRANCH_TEMPLATE = """
     // 2. Create API Output & Prepare Dist and Dense Output{}
     // 3. Infer DistTensor's Global Shape{}
     // 4. Select Kernel{}
-    // 5. Reshard Input{}
+    // 5. Reshard Input{}\n
     // 6. PrepareData (DataTransform & Prepare Dist and Dense Input){}
     // 7. Infer Local DenseTensor Meta{}
     // 8. DenseTensor Kernel Call{}
