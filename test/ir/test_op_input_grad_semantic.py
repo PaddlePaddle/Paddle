@@ -20,7 +20,7 @@ from paddle import ir
 paddle.enable_static()
 
 
-def get_ir_program():
+def get_ir_program_0():
     main_program, start_program = (
         paddle.static.Program(),
         paddle.static.Program(),
@@ -30,21 +30,40 @@ def get_ir_program():
             shape=[3, 4], dtype='float32', value=2.0
         )
         index = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=1.0)
-        axis = paddle.tensor.fill_constant(
-            shape=[1], dtype='int32', value=2.0
-        )
+        axis = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=2.0)
         out = paddle.gather(x, index, axis)
     newir_program = ir.translate_to_new_ir(main_program.desc)
     return newir_program
 
 
+def get_ir_program_1():
+    main_program, start_program = (
+        paddle.static.Program(),
+        paddle.static.Program(),
+    )
+    with paddle.static.program_guard(main_program, start_program):
+        x = paddle.tensor.fill_constant(
+            shape=[3, 4], dtype='float32', value=2.0
+        )
+        y = paddle.tensor.fill_constant(
+            shape=[3, 4], dtype='float32', value=3.0
+        )
+        out = paddle.multiply(x, y)
+    newir_program = ir.translate_to_new_ir(main_program.desc)
+    return newir_program
+
+
 class TestOpInputGradSemantic(unittest.TestCase):
-    def test_op_input_grad_semantic(self):
-        newir_program = get_ir_program()
+    def test_gatherop_input_grad_semantic(self):
+        newir_program = get_ir_program_0()
         op = newir_program.block().ops[-1]
-        print(op.get_input_names())
-        print(op.get_output_names())
-        print(op.get_input_grad_semantics())
+        self.assertEqual(op.get_input_grad_semantics(), [True, False, False])
+
+    def test_multiplyop_input_grad_semantic(self):
+        newir_program = get_ir_program_1()
+        op = newir_program.block().ops[-1]
+        self.assertEqual(op.get_input_grad_semantics(), [True, True])
+
 
 if __name__ == "__main__":
     unittest.main()
