@@ -366,6 +366,29 @@ void BindAutoParallel(py::module *m) {
              }
              return self.InferForward(ctx);
            })
+      .def("infer_forward", /*for replicate and defaultDP only*/
+           [](const phi::distributed::SpmdRule &self,
+              const std::vector<DistTensorSpec> &input_specs,
+              const std::vector<DistTensorSpec> &output_specs) {
+             phi::distributed::InferSpmdContext ctx;
+             paddle::small_vector<phi::distributed::DistMetaTensor,
+                                  phi::kInputSmallVectorSize>
+                 ins;
+             for (auto &spec : input_specs) {
+               ins.emplace_back(phi::distributed::DistMetaTensor(
+                   phi::make_ddim(spec.shape()), spec.dist_attr()));
+             }
+             ctx.EmplaceBackInputs(ins);
+             paddle::small_vector<phi::distributed::DistMetaTensor,
+                                  phi::kInputSmallVectorSize>
+                 outs;
+             for (auto &spec : output_specs) {
+               outs.emplace_back(phi::distributed::DistMetaTensor(
+                   phi::make_ddim(spec.shape()), spec.dist_attr()));
+             }
+             ctx.EmplaceBackInputs(outs);
+             return self.InferForward(ctx);
+           })
       .def("infer_backward",
            [](const phi::distributed::SpmdRule &self,
               const std::vector<DistTensorSpec> &input_specs,
@@ -383,6 +406,29 @@ void BindAutoParallel(py::module *m) {
              for (auto &attr : attrs) {
                ctx.EmplaceBackAttr(attr);
              }
+             return self.InferBackward(ctx);
+           })
+      .def("infer_backward", /*for replicate and defaultDP only*/
+           [](const phi::distributed::SpmdRule &self,
+              const std::vector<DistTensorSpec> &input_specs,
+              const std::vector<DistTensorSpec> &output_specs) {
+             phi::distributed::InferSpmdContext ctx;
+             paddle::small_vector<phi::distributed::DistMetaTensor,
+                                  phi::kInputSmallVectorSize>
+                 ins;
+             for (auto &spec : input_specs) {
+               ins.emplace_back(phi::distributed::DistMetaTensor(
+                   phi::make_ddim(spec.shape()), spec.dist_attr()));
+             }
+             ctx.EmplaceBackInputs(ins);
+             paddle::small_vector<phi::distributed::DistMetaTensor,
+                                  phi::kInputSmallVectorSize>
+                 outs;
+             for (auto &spec : output_specs) {
+               outs.emplace_back(phi::distributed::DistMetaTensor(
+                   phi::make_ddim(spec.shape()), spec.dist_attr()));
+             }
+             ctx.EmplaceBackInputs(outs);
              return self.InferBackward(ctx);
            });
 

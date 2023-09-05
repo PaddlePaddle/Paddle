@@ -37,7 +37,7 @@ SpmdInfo ReplicatedSpmdInferForward(
     const std::vector<const DistMetaTensor*>& ins,
     const std::vector<const DistMetaTensor*>& outs);
 
-SpmdInfo ReplicatedInferBackward(
+SpmdInfo ReplicatedSpmdInferBackward(
     const std::vector<const DistMetaTensor*>& ins,
     const std::vector<const DistMetaTensor*>& outs);
 

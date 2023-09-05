@@ -41,7 +41,7 @@ SpmdInfo DefaultDataParallelSpmdInferForward(
     const std::vector<const DistMetaTensor*>& ins,
     const std::vector<const DistMetaTensor*>& outs);
 
-SpmdInfo DefaultDataParallelInferBackward(
+SpmdInfo DefaultDataParallelSpmdInferBackward(
     const std::vector<const DistMetaTensor*>& ins,
     const std::vector<const DistMetaTensor*>& outs);
 

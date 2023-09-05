@@ -29,7 +29,7 @@ using phi::distributed::auto_parallel::str_join;
 ////////////////// Utils Functions //////////////////
 std::vector<int64_t> GetDefaultDataParallelDimsmapping(
     const int64_t batch_axis_dim, const int ndim) {
-  std::vector<int64_t> dims_mapping(-1, ndim);
+  std::vector<int64_t> dims_mapping(ndim, -1);
   dims_mapping[0] = batch_axis_dim;
   return dims_mapping;
 }
@@ -98,8 +98,7 @@ SpmdInfo DefaultDataParallelSpmdInferForward(
 
   return {dst_input_dist_attrs, output_dist_attrs};
 }
-
-SpmdInfo DefaultDataParallelSpmdBackward(
+SpmdInfo DefaultDataParallelSpmdInferBackward(
     const std::vector<const DistMetaTensor*>& ins,
     const std::vector<const DistMetaTensor*>& outs) {
   // step1: Build Einsum Notation for input tensor's batch axis
