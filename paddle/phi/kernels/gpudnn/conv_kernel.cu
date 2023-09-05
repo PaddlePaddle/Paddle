@@ -626,29 +626,6 @@ void DepthwiseConvCudnnKernel(const Context& dev_ctx,
                      out);
 }
 
-template <typename T, typename Context>
-void DepthwiseConvGPUKernel(const Context& dev_ctx,
-                            const DenseTensor& input,
-                            const DenseTensor& filter,
-                            const std::vector<int>& strides,
-                            const std::vector<int>& paddings,
-                            const std::string& padding_algorithm,
-                            int groups,
-                            const std::vector<int>& dilations,
-                            const std::string& data_format,
-                            DenseTensor* out) {
-  ConvCudnnKernel<T>(dev_ctx,
-                     input,
-                     filter,
-                     strides,
-                     paddings,
-                     padding_algorithm,
-                     dilations,
-                     groups,
-                     data_format,
-                     out);
-}
-
 }  // namespace phi
 
 #if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
@@ -672,13 +649,6 @@ PD_REGISTER_KERNEL(depthwise_conv2d,
                    phi::DepthwiseConvCudnnKernel,
                    float,
                    phi::dtype::float16) {}
-PD_REGISTER_KERNEL(depthwise_conv2d,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::DepthwiseConvGPUKernel,
-                   float,
-                   phi::dtype::float16) {}
-
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(conv2d,
