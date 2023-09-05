@@ -24,7 +24,6 @@
 #include "paddle/ir/dialect/control_flow/ir/cf_ops.h"
 
 TEST(if_op_test, base) {
-  std::cout << "start_test_end!" << std::endl;
   ir::IrContext* ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   ctx->GetOrRegisterDialect<ir::ControlFlowDialect>();
@@ -55,7 +54,6 @@ TEST(if_op_test, base) {
       std::vector<int64_t>{3}, true, phi::DataType::BOOL);
   builder.Build<ir::YieldOp>(std::vector<ir::OpResult>{full_op_2.out()});
 
-  program.Print(std::cout);
-
-  std::cout << "test_end!" << std::endl;
+  std::stringstream ss;
+  program.Print(ss);
 }
