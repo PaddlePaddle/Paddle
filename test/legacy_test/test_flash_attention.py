@@ -428,131 +428,131 @@ class TestFlashAttentionAPIPrecision(unittest.TestCase):
         out_.backward()
         np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
         np.testing.assert_allclose(q.grad.numpy(), q_.grad.numpy(), rtol=5e-03, atol=1e-03)
-# class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
-#     def setUp(self):
-#         self.place = paddle.CUDAPlace(0)
-#         self.shape = (2, 128, 8, 16)
-#         self.dtype = paddle.float16
-#         self.dropout = 0.0
-#         self.causal = False
-#         self.return_softmax = False
-#         self.use_sdp_kernel = False
+class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (2, 128, 8, 16)
+        self.dtype = paddle.float16
+        self.dropout = 0.0
+        self.causal = False
+        self.return_softmax = False
+        self.use_sdp_kernel = False
 
 
-# class TestFlashAttentionAPITest2(TestFlashAttentionAPI):
-#     def setUp(self):
-#         self.place = paddle.CUDAPlace(0)
-#         self.shape = (2, 256, 8, 16)
-#         self.dtype = paddle.float16
-#         self.dropout = 0.0
-#         self.causal = False
-#         self.return_softmax = True
-#         self.use_sdp_kernel = False
+class TestFlashAttentionAPITest2(TestFlashAttentionAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (2, 256, 8, 16)
+        self.dtype = paddle.float16
+        self.dropout = 0.0
+        self.causal = False
+        self.return_softmax = True
+        self.use_sdp_kernel = False
 
 
-# class TestFlashAttentionAPITest3(TestFlashAttentionAPI):
-#     def setUp(self):
-#         self.place = paddle.CUDAPlace(0)
-#         self.shape = (2, 512, 8, 16)
-#         self.dtype = paddle.float16
-#         self.dropout = 0.0
-#         self.causal = True
-#         self.return_softmax = False
-#         self.use_sdp_kernel = False
+class TestFlashAttentionAPITest3(TestFlashAttentionAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (2, 512, 8, 16)
+        self.dtype = paddle.float16
+        self.dropout = 0.0
+        self.causal = True
+        self.return_softmax = False
+        self.use_sdp_kernel = False
 
 
-# class TestFlashAttentionAPITest4(TestFlashAttentionAPI):
-#     def setUp(self):
-#         self.place = paddle.CUDAPlace(0)
-#         self.shape = (8, 1024, 16, 128)
-#         self.dtype = paddle.float16
-#         self.dropout = 0.0
-#         self.causal = False
-#         self.return_softmax = False
-#         self.use_sdp_kernel = False
+class TestFlashAttentionAPITest4(TestFlashAttentionAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (8, 1024, 16, 128)
+        self.dtype = paddle.float16
+        self.dropout = 0.0
+        self.causal = False
+        self.return_softmax = False
+        self.use_sdp_kernel = False
 
 
-# class TestFlashAttentionAPITest5(TestFlashAttentionAPI):
-#     def setUp(self):
-#         self.place = paddle.CUDAPlace(0)
-#         self.shape = (8, 1024, 16, 256)
-#         self.dtype = paddle.float16
-#         self.dropout = 0.0
-#         self.causal = False
-#         self.return_softmax = False
-#         self.use_sdp_kernel = False
+class TestFlashAttentionAPITest5(TestFlashAttentionAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (8, 1024, 16, 256)
+        self.dtype = paddle.float16
+        self.dropout = 0.0
+        self.causal = False
+        self.return_softmax = False
+        self.use_sdp_kernel = False
 
 
-# class TestMathAttentionAPITest(TestFlashAttentionAPI):
-#     def setUp(self):
-#         self.place = paddle.CUDAPlace(0)
-#         self.shape = (8, 1024, 16, 128)
-#         self.dtype = paddle.float16
-#         self.dropout = 0.0
-#         self.causal = False
-#         self.return_softmax = False
-#         self.use_sdp_kernel = True
-#         self.use_sdp_api = False
-#         self.enable_math = True
-#         self.enable_flash = False
-#         self.enable_mem_efficient = False
+class TestMathAttentionAPITest(TestFlashAttentionAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (8, 1024, 16, 128)
+        self.dtype = paddle.float16
+        self.dropout = 0.0
+        self.causal = False
+        self.return_softmax = False
+        self.use_sdp_kernel = True
+        self.use_sdp_api = False
+        self.enable_math = True
+        self.enable_flash = False
+        self.enable_mem_efficient = False
 
 
-# class TestSDPAttentionAPITest(TestFlashAttentionAPI):
-#     def setUp(self):
-#         self.place = paddle.CUDAPlace(0)
-#         self.shape = (8, 1024, 16, 128)
-#         self.dtype = paddle.float16
-#         self.dropout = 0.0
-#         self.causal = False
-#         self.return_softmax = False
-#         self.use_sdp_kernel = True
-#         self.use_sdp_api = True
-#         self.enable_math = True
-#         self.enable_flash = False
-#         self.enable_mem_efficient = False
+class TestSDPAttentionAPITest(TestFlashAttentionAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (8, 1024, 16, 128)
+        self.dtype = paddle.float16
+        self.dropout = 0.0
+        self.causal = False
+        self.return_softmax = False
+        self.use_sdp_kernel = True
+        self.use_sdp_api = True
+        self.enable_math = True
+        self.enable_flash = False
+        self.enable_mem_efficient = False
 
 
-# class TestFlashAttrnionWithMaskAPI(TestFlashAttentionWithMaskAPI):
-#     def setUp(self):
-#         self.place = paddle.CUDAPlace(0)
-#         self.shape = (8, 1024, 16, 128)
-#         self.dtype = paddle.float16
-#         self.dropout = 0.0
-#         self.causal = False
+class TestFlashAttrnionWithMaskAPI(TestFlashAttentionWithMaskAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (8, 1024, 16, 128)
+        self.dtype = paddle.float16
+        self.dropout = 0.0
+        self.causal = False
 
 
-# class TestFlashAttrnionWithMaskAPI1(TestFlashAttentionWithMaskAPI):
-#     def setUp(self):
-#         self.place = paddle.CUDAPlace(0)
-#         self.shape = (16, 1, 146, 146)
-#         self.dtype = paddle.float16
-#         self.dropout = 0.0
-#         self.causal = False
+class TestFlashAttrnionWithMaskAPI1(TestFlashAttentionWithMaskAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (16, 1, 146, 146)
+        self.dtype = paddle.float16
+        self.dropout = 0.0
+        self.causal = False
 
-# class TestFlashAttrnionWithMaskAPI2(TestFlashAttentionWithMaskAPI):
-#     def setUp(self):
-#         self.place = paddle.CUDAPlace(0)
-#         self.shape = (16, 1, 397, 397)
-#         self.dtype = paddle.float16
-#         self.dropout = 0.0
-#         self.causal = False
+class TestFlashAttrnionWithMaskAPI2(TestFlashAttentionWithMaskAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (16, 1, 397, 397)
+        self.dtype = paddle.float16
+        self.dropout = 0.0
+        self.causal = False
 
-# class TestFlashAttrnionWithMaskAPI3(TestFlashAttentionWithMaskAPI):
-#     def setUp(self):
-#         self.place = paddle.CUDAPlace(0)
-#         self.shape = (1, 32, 1016, 1016)
-#         self.dtype = paddle.float16
-#         self.dropout = 0.0
-#         self.causal = False
+class TestFlashAttrnionWithMaskAPI3(TestFlashAttentionWithMaskAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (1, 32, 1016, 1016)
+        self.dtype = paddle.float16
+        self.dropout = 0.0
+        self.causal = False
 
-# class TestFlashAttrnionWithMaskAPI4(TestFlashAttentionWithMaskAPI):
-#     def setUp(self):
-#         self.place = paddle.CUDAPlace(0)
-#         self.shape = (1, 32, 953, 953)
-#         self.dtype = paddle.float16
-#         self.dropout = 0.0
-#         self.causal = False
+class TestFlashAttrnionWithMaskAPI4(TestFlashAttentionWithMaskAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (1, 32, 953, 953)
+        self.dtype = paddle.float16
+        self.dropout = 0.0
+        self.causal = False
 
 if __name__ == '__main__':
     unittest.main()
