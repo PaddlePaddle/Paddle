@@ -13,10 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_manual_api.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/api_builder.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_api.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"
-#include "paddle/ir/core/builtin_op.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 
 namespace paddle {
 namespace dialect {
@@ -26,20 +24,22 @@ ir::OpResult embedding_grad(ir::OpResult x,
                             ir::OpResult out_grad,
                             int64_t padding_idx,
                             bool sparse) {
-  if (sparse) {
-    paddle::dialect::EmbeddingGradSparseOp embedding_grad_sparse_op =
-        APIBuilder::Instance()
-            .GetBuilder()
-            ->Build<paddle::dialect::EmbeddingGradSparseOp>(
-                x, weight, out_grad, padding_idx, sparse);
-    return embedding_grad_sparse_op.result(0);
+  if (weight.type().isa<paddle::dialect::DenseTensorType>()) {
+    if (sparse) {
+      return paddle::dialect::embedding_grad_sparse(
+          x, weight, out_grad, padding_idx, sparse);
+    } else {
+      return paddle::dialect::embedding_grad_dense(
+          x, weight, out_grad, padding_idx, sparse);
+    }
   } else {
-    paddle::dialect::EmbeddingGradDenseOp embedding_grad_dense_op =
-        APIBuilder::Instance()
-            .GetBuilder()
-            ->Build<paddle::dialect::EmbeddingGradDenseOp>(
-                x, weight, out_grad, padding_idx, sparse);
-    return embedding_grad_dense_op.result(0);
+    if (sparse) {
+      return paddle::dialect::sparse_weight_embedding_grad_sparse(
+          x, weight, out_grad, padding_idx, sparse);
+    } else {
+      return paddle::dialect::sparse_weight_embedding_grad_dense(
+          x, weight, out_grad, padding_idx, sparse);
+    }
   }
 }
 

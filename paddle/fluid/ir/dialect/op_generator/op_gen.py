@@ -500,6 +500,7 @@ class OpInfoParser:
         input_types_map = {
             'Tensor': 'paddle::dialect::DenseTensorType',
             'Tensor[]': 'ir::VectorType<paddle::dialect::DenseTensorType>',
+            'SelectedRows': 'paddle::dialect::SelectedRowsType',
         }
         type_list = []
         for input_info in self.op_yaml_item['inputs']:

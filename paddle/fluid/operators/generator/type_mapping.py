@@ -16,11 +16,13 @@
 input_types_map = {
     'Tensor': 'const Tensor&',
     'Tensor[]': 'const std::vector<Tensor>&',
+    'SelectedRows': 'const SelectedRows&',
 }
 
 optional_input_types_map = {
     'Tensor': 'const paddle::optional<Tensor>&',
     'Tensor[]': 'const paddle::optional<std::vector<Tensor>>&',
+    'SelectedRows': 'const paddle::optional<SelectedRows>&',
 }
 
 attr_types_map = {

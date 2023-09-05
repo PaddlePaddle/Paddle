@@ -75,6 +75,8 @@ SPECIAL_STATIC_ONLY_APIS = [
     'assign_value',
     'set_value_',
     'embedding_grad_sparse',
+    'sparse_weight_embedding_grad_dense',
+    'sparse_weight_embedding_grad_sparse',
     'add_n_with_kernel',
     'print',
     'send_v2',
