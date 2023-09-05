@@ -30,6 +30,7 @@ std::shared_ptr<equation::Graph> GenerateEquationGraph(
 std::unordered_map<AnchorTensor, FakeOpPlaceHolders> PartitionIGroups(
     const cinn::hlir::framework::Graph::Group& group,
     const equation::Graph& equations) {
+  // Yifan
   ADT_TODO();  // Trival code
 }
 
@@ -91,11 +92,11 @@ std::shared_ptr<KGroup> GenerateKGroups(
 }
 
 eqaution::Graph BuildSdSubGraph(const AnchorTensor& anchor_tensor,
-                                const m_expr::ScheduleDescriptor& sd) {
+                                const m_expr::ScheduleIterators& sd) {
   ADT_TODO();  // Trival code
 }
 
-equation::GraphView MakeSdEqautionGraphView(
+equation::GraphView MakeSdEquationGraphView(
     const std::shared_ptr<IGroup>& igroup, const ScheduleIterators& sd_iters) {
   const eqaution::Graph& sub_graph =
       BuildSdSubGraph(igroup->anchor_tensor(), sd_iters);
@@ -134,7 +135,7 @@ cinn::adt::m_expr::MapExpr GenerateMapExpr(
 cinn::adt::m_expr::MapExpr GenerateMapExpr(
     const std::shared_ptr<IGroup>& igroup,
     const m_expr::ScheduleDescriptor& sd) {
-  auto sd_equation_graph_view = MakeSdEqautionGraphView(igroup, sd);
+  auto sd_equation_graph_view = MakeSdEquationGraphView(igroup, sd);
 
   auto get_tensor_expr =
       MakeGetterTensorIndexExpr(igroup, sd_equation_graph_view);

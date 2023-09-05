@@ -12,25 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/adt/kgroup.h"
+#pragma once
+
+#include "paddle/cinn/adt/equation_value.h"
+#include "paddle/cinn/adt/m_ir.h"
 
 namespace cinn::adt {
 
-using AnchorTensor = eqaution::Variable;
+using ScheduleIterators = List<equation::IterVar>;
+// [(ScheduleDescriptor, [OpNode])]
+using Schedule4MergedOps = List<Tuple<ScheduleIterators, List<m_ir::Op>>>;
 
-std::size_t GetTensorNumel(cinn::hlir::framework::NodeData* tensor) {
-  // Yifan
-  ADT_TODO();
-}
-
-ScheduleDescriptor KGroup::GetDefaultScheduleDescriptor(
-    const std::shared_ptr<IGroup>& igroup) const {
-  const std::shared_ptr<AnchorTensor>& anchor_tensor = igroup->anchor_tensor();
-  cinn::hlir::framework::NodeData* tensor = igroup->GetTensor();
-
-  CHECK_EQ(GetTensorNumel(tensor) % 64, 0);
-  return {{cinn::adt::m_expr::S0x{}, GetTensorNumel(tensor) / 64},
-          {cinn::adt::m_expr::S1x{}, 64}};
-}
+Schedule4MergedOps GenerateClusterOpsForLoopFuse(
+    const m_ir::MapIR& map_ir,
+    const ScheduleIterators& sd_iters,
+    const std::function<const m_expr::ScheduleDescriptor&(
+        const equation::IterVar&)>& GetScheduleType,
+    const std::function<TensorIndexExpr(
+        const cinn::hlir::framework::NodeData*)>& GetTensorIndexes);
 
 }  // namespace cinn::adt
