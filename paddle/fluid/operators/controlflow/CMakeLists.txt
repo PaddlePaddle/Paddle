@@ -10,7 +10,10 @@ cc_library(
   conditional_block_op
   SRCS conditional_block_op.cc
   DEPS executor standalone_executor)
-cc_library(pylayer_op SRCS pylayer_op.cc)
+cc_library(
+  pylayer_op
+  SRCS pylayer_op.cc
+  DEPS standalone_executor)
 cc_library(
   op_variant
   SRCS op_variant.cc
