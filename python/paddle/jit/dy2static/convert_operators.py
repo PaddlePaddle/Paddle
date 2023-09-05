@@ -15,6 +15,7 @@
 import re
 
 import paddle
+from paddle.autograd.py_layer import PyLayerMeta
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.dygraph.base import (
     _convert_into_variable,
@@ -22,6 +23,7 @@ from paddle.fluid.dygraph.base import (
 )
 from paddle.fluid.framework import Variable, core, default_main_program
 
+from .py_layer import StaticPyLayer
 from .utils import (
     RETURN_NO_VALUE_VAR_NAME,
     Dygraph2StaticException,
@@ -41,23 +43,30 @@ def convert_attr(x, attr):
 
 
 def convert_load(x):
-    if in_declarative_mode() and isinstance(x, paddle.fluid.core.eager.Tensor):
-        """
-        TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.
-        """
-        return _convert_into_variable(x)
+    if in_declarative_mode():
+        if isinstance(x, paddle.fluid.core.eager.Tensor):
+            """
+            TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.
+            """
+            return _convert_into_variable(x)
 
-    # get the new output of the var
-    if in_declarative_mode() and isinstance(x, Variable):
-        cur_block = default_main_program().current_block()
+        # convert dygraph `PyLayer` into StaticPyLayer
+        if isinstance(x, PyLayerMeta):
+            return StaticPyLayer(x)
 
-        from paddle.jit.dy2static.program_translator import ProgramTranslator
+        # get the new output of the var
+        if isinstance(x, Variable):
+            cur_block = default_main_program().current_block()
 
-        new_var = ProgramTranslator.get_instance()._inplace_map.get(
-            cur_block.program, x.desc.id()
-        )
-        if new_var is not None:
-            return new_var
+            from paddle.jit.dy2static.program_translator import (
+                ProgramTranslator,
+            )
+
+            new_var = ProgramTranslator.get_instance()._inplace_map.get(
+                cur_block.program, x.desc.id()
+            )
+            if new_var is not None:
+                return new_var
 
     return x
 

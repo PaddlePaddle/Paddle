@@ -704,10 +704,18 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
         ops->emplace_back(depend_desc);
         VLOG(4) << "add depend op";
       }
-      if (n->Name() == "while" || n->Name() == "while_grad" ||
-          n->Name() == "conditional_block" ||
-          n->Name() == "conditional_block_grad" || n->Name() == "recurrent" ||
-          n->Name() == "recurrent_grad") {
+
+      const std::unordered_set<std::string> control_flow_ops = {
+          "while",
+          "while_grad",
+          "conditional_block",
+          "conditional_block_grad",
+          "recurrent",
+          "recurrent_grad",
+          "pylayer",
+          "pylayer_grad"};
+
+      if (control_flow_ops.count(n->Name())) {
         VLOG(1) << "Update control op attr: skip_eager_deletion_vars";
         UpdateControlOpSkipEagerDeletionVars(*n, graph, graph_idx, n->Name());
       }
