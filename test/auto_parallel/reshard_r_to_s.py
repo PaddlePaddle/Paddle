@@ -61,6 +61,7 @@ class TestReshardRToS:
 
         if out_shape[self._shard] % 2 == 0:
             out_shape[self._shard] = out_shape[self._shard] // 2
+            np.testing.assert_equal(out.numpy(), input_tensor.numpy())
         else:
             out_shape[self._shard] = (
                 out_shape[self._shard] // 2
