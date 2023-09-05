@@ -48,17 +48,17 @@ class ChunkTimer:
         self.reset()
 
     def reset(self):
-        self.begin = time.time()
+        self.begin = time.time_ns()
         self.records.clear()
 
     def start(self, name):
         paddle.device.cuda.synchronize()
-        t = time.time()
+        t = time.time_ns()
         self.records.append([name, t, None])
 
     def end(self, name):
         paddle.device.cuda.synchronize()
-        t = time.time()
+        t = time.time_ns()
         self.records[-1][-1] = t
 
     def export_info(self):
