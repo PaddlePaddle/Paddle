@@ -153,9 +153,15 @@ Operation* CreateOperation(const OpCall& op_call,
     std::vector<Value> ir_values =
         GetIrValuesByDrrTensors(inputs, *res_match_ctx);
     // TODO(zyfncg): support attr in build op.
-    op = rewriter.Build<paddle::dialect::ReshapeOp>(
-        ir_values[0].dyn_cast<ir::OpResult>(),
-        ir_values[1].dyn_cast<ir::OpResult>());
+    if (ir_values.size() > 1) {
+      op = rewriter.Build<paddle::dialect::ReshapeOp>(
+          ir_values[0].dyn_cast<ir::OpResult>(),
+          ir_values[1].dyn_cast<ir::OpResult>());
+    } else {
+      op = rewriter.Build<paddle::dialect::ReshapeOp>(
+          ir_values[0].dyn_cast<ir::OpResult>(),
+          GetAttr<std::vector<int64_t>>("shape", op_call, src_match_ctx));
+    }
     res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
                                std::make_shared<IrValue>(op->result(0)));
     res_match_ctx->BindIrValue(op_call.outputs()[1]->name(),
@@ -184,14 +190,6 @@ Operation* CreateOperation(const OpCall& op_call,
         GetIrValuesByDrrTensors(inputs, *res_match_ctx);
     op = rewriter.Build<paddle::dialect::FullOp>(
         CreateAttributeMap(op_call, src_match_ctx));
-    res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
-                               std::make_shared<IrValue>(op->result(0)));
-  } else if (op_call.name() == "pd.full_int_array") {
-    const auto& inputs = op_call.inputs();
-    std::vector<Value> ir_values =
-        GetIrValuesByDrrTensors(inputs, *res_match_ctx);
-    op = rewriter.Build<paddle::dialect::FullIntArrayOp>(
-        GetAttr<std::vector<int64_t>>("value", op_call, src_match_ctx));
     res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
                                std::make_shared<IrValue>(op->result(0)));
   } else if (op_call.name() == "pd.fused_gemm_epilogue") {

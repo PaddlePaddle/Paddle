@@ -14,6 +14,7 @@
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -21,9 +22,18 @@
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"
 #include "paddle/fluid/ir/drr/api/drr_pattern_base.h"
+#include "paddle/fluid/ir/transforms/constant_folding_pass.h"
 #include "paddle/ir/pass/pass.h"
 #include "paddle/ir/pass/pass_manager.h"
 #include "paddle/ir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(full_int_array, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(reshape, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(fetch, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(transpose, CPU, ALL_LAYOUT);
 
 class MultiHeadMatmulFusePattern
     : public ir::drr::DrrPatternBase<MultiHeadMatmulFusePattern> {
@@ -164,10 +174,8 @@ class MultiHeadMatmulFusePattern
           auto matmul_1_in_2 = match_ctx.Tensor("matmul_1_in_2").Shape();
           return {-1, 3, matmul_1_in_2.at(1)};
         });
-    const auto &full_int_array_5 =
-        res.Op("pd.full_int_array", {{"value", reshape_5_shape}});
-    const auto &reshape_5 = res.Op("pd.reshape");
-    reshape_5({&res.Tensor("concat_1_out"), &full_int_array_5()},
+    const auto &reshape_5 = res.Op("pd.reshape", {{"shape", reshape_5_shape}});
+    reshape_5({&res.Tensor("concat_1_out")},
               {&res.Tensor("reshape_5_out"), &res.NoneTensor()});
 
     // Bias combine.
@@ -180,14 +188,10 @@ class MultiHeadMatmulFusePattern
     res.Tensor("concat_2_out") = concat_2(res.Tensor("combine_2_out"));
     const auto &reshape_6_shape = res.Attr(
         [](const ir::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
-          //   std::vector<int64_t> new_shape;
-          //   auto add_1_in_2_shape = match_ctx.Tensor("add_1_in_2").Shape();
           return {3, -1};
         });
-    const auto &full_int_array_6 =
-        res.Op("pd.full_int_array", {{"value", reshape_6_shape}});
-    const auto &reshape_6 = res.Op("pd.reshape");
-    reshape_6({&res.Tensor("concat_2_out"), &full_int_array_6()},
+    const auto &reshape_6 = res.Op("pd.reshape", {{"shape", reshape_6_shape}});
+    reshape_6({&res.Tensor("concat_2_out")},
               {&res.Tensor("reshape_6_out"), &res.NoneTensor()});
 
     const auto &head_number =
@@ -359,6 +363,7 @@ TEST(DrrTest, AttentionFuse) {
 
   ir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<AttentionFusePass>());
+  //   pm.AddPass(ir::CreateConstantFoldingPass());
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
