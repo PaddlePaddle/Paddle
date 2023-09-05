@@ -1,4 +1,4 @@
-set(TEST_PRIM_PURE_NEW_IR_CASES test_prim_program)
+set(TEST_PRIM_PURE_NEW_IR_CASES test_prim_program test_prim_simpnet)
 
 foreach(target ${TEST_PRIM_PURE_NEW_IR_CASES})
   py_test_modules(${target} MODULES ${target} ENVS GLOG_v=1
