@@ -740,9 +740,7 @@ def OpInputGradSemanticCheck(op_info, op_info_items):
             bwd_output_list_new.append(bwd_output[:-5])  # cut _grad
 
         bwd_fwd_input_list = bwd_op_info.forward_input_name_list
-        if (
-            bwd_fwd_input_list is not None
-        ):  # set_value, set_value_with_tensor, set_value_grad is not supported
+        if bwd_fwd_input_list is not None:
             assert (
                 len(bwd_fwd_input_list) == num_inputs
             ), "Configuration of forward op and backward op is not match."
