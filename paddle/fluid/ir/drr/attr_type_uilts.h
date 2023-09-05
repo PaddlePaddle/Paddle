@@ -36,6 +36,7 @@ PD_SPECIALIZE_CppTypeToIrAttribute(int32_t, Int32Attribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(int64_t, Int64Attribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(float, FloatAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(const std::string&, StrAttribute);
+PD_SPECIALIZE_CppTypeToIrAttribute(std::string, StrAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(phi::DataType,
                                    paddle::dialect::DataTypeAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(phi::Place, paddle::dialect::PlaceAttribute);
@@ -52,6 +53,14 @@ template <typename T>
 struct IrAttrTypeCast {
   static T To(const ir::Attribute& attr) {
     return attr.dyn_cast<typename CppTypeToIrAttribute<T>::type>().data();
+  }
+};
+
+template <>
+struct IrAttrTypeCast<std::string> {
+  static std::string To(const ir::Attribute& attr) {
+    return attr.dyn_cast<typename CppTypeToIrAttribute<std::string>::type>()
+        .AsString();
   }
 };
 
