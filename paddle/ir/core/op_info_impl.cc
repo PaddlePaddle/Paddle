@@ -14,6 +14,7 @@
 
 #include "paddle/ir/core/op_info_impl.h"
 #include "paddle/ir/core/dialect.h"
+#include "paddle/ir/core/interface_support.h"
 
 namespace ir {
 OpInfo OpInfoImpl::Create(Dialect *dialect,
@@ -99,25 +100,8 @@ bool OpInfoImpl::HasInterface(TypeId interface_id) const {
 }
 
 void *OpInfoImpl::GetInterfaceImpl(TypeId interface_id) const {
-  if (num_interfaces_ > 0) {
-    const details::InterfaceValue *p_first_interface =
-        reinterpret_cast<const details::InterfaceValue *>(
-            reinterpret_cast<const char *>(this) -
-            sizeof(TypeId) * num_traits_ -
-            sizeof(details::InterfaceValue) * num_interfaces_);
-    size_t left = 0, right = num_interfaces_;
-    while (left < right) {
-      size_t mid = (left + right) / 2;
-      if ((p_first_interface + mid)->type_id() == interface_id) {
-        return (p_first_interface + mid)->model();
-      } else if ((p_first_interface + mid)->type_id() < interface_id) {
-        left = mid + 1;
-      } else {
-        right = mid;
-      }
-    }
-  }
-  return nullptr;
+  return ir::details::LookUp<OpInfoImpl>(
+      interface_id, num_interfaces_, num_traits_, this);
 }
 
 void OpInfoImpl::Destroy() {

@@ -123,19 +123,11 @@ class Op : public OpBase {
   // Returns an interface map containing the interfaces registered to this
   // operation.
   static std::vector<details::InterfaceValue> GetInterfaceMap() {
-    constexpr size_t interfaces_num = std::tuple_size<InterfaceList>::value;
-    std::vector<details::InterfaceValue> interfaces_map(interfaces_num);
-    ConstructInterfacesOrTraits<ConcreteOp, InterfaceList>::interface(
-        interfaces_map.data());
-    return interfaces_map;
+    return ir::details::GetInterfaceMap<ConcreteOp, InterfaceList>();
   }
 
   static std::vector<TypeId> GetTraitSet() {
-    constexpr size_t traits_num = std::tuple_size<TraitList>::value;
-    std::vector<TypeId> trait_set(traits_num);
-    auto p_first_trait = trait_set.data();
-    ConstructInterfacesOrTraits<ConcreteOp, TraitList>::trait(p_first_trait);
-    return trait_set;
+    return ir::details::GetTraitSet<ConcreteOp, TraitList>();
   }
 
   // Checking that the derived class does not define any member by comparing

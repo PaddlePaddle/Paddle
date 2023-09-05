@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/ir/core/interface_support.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/type.h"
 #include "paddle/ir/core/type_base.h"
@@ -23,6 +24,8 @@ namespace ir {
 class InFlightDiagnostic;
 class Location;
 class MLIRContext;
+template <typename ConcreteInterface>
+class TypeInterfaceBase;
 
 namespace detail {
 
@@ -64,6 +67,8 @@ class StorageHelperBase : public BaseT {
                                  TraitOrInterface...>;
   using HasTraitFn = bool (*)(TypeId);
   using Storage = StorageT;
+  using InterfaceList =
+      typename Filter<TypeInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
 
   /// Utility for easy access to the storage instance.
   const Storage *storage() const {
@@ -86,7 +91,7 @@ class StorageHelperBase : public BaseT {
   static std::vector<details::InterfaceValue> interface_map() {
     std::vector<details::InterfaceValue> a;
     return a;
-    // return detail::InterfaceMap::template get<Traits<ConcreteT>...>();
+    // return ir::details::GetInterfaceMap<ConcreteT, InterfaceList>();
   }
 
   /// Get or create a new ConcreteT instance within the ctx.

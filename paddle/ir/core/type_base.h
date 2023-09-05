@@ -83,8 +83,8 @@ class IR_API AbstractType {
   /// if it was registered to this type, null otherwise. This should not be used
   /// directly.
   ///
-  template <typename Interface>
-  typename Interface::Concept *GetInterfaceImpl() const;
+  template <typename InterfaceT>
+  typename InterfaceT::Concept *GetInterfaceImpl() const;
 
  private:
   ///

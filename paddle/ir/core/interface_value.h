@@ -21,19 +21,18 @@ namespace ir {
 namespace details {
 class IR_API InterfaceValue {
  public:
-  // ConcreteOp -> Concrete?
-  template <typename ConcreteOp, typename T>
+  template <typename ConcreteT, typename T>
   static InterfaceValue get() {
     InterfaceValue val;
     val.type_id_ = TypeId::get<T>();
-    val.model_ = malloc(sizeof(typename T::template Model<ConcreteOp>));
+    val.model_ = malloc(sizeof(typename T::template Model<ConcreteT>));
     if (val.model_ == nullptr) {
       throw("Alloc memory for interface failed.");
     }
     static_assert(std::is_trivially_destructible<
-                      typename T::template Model<ConcreteOp>>::value,
+                      typename T::template Model<ConcreteT>>::value,
                   "interface models must be trivially destructible");
-    new (val.model_) typename T::template Model<ConcreteOp>();
+    new (val.model_) typename T::template Model<ConcreteT>();
     return val;
   }
   TypeId type_id() const { return type_id_; }

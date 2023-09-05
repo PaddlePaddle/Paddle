@@ -126,8 +126,7 @@ IR_API std::ostream &operator<<(std::ostream &os, Type type);
 ///
 /// \brief This class represents the base of a type interface.
 ///
-
-template <typename ConcreteInterface> /*ShapedTypeInterface*/
+template <typename ConcreteInterface>
 class TypeInterfaceBase : public ir::Type {
  public:
   TypeInterfaceBase() : Type() {}

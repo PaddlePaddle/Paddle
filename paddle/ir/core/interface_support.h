@@ -13,16 +13,13 @@
 // limitations under the License.
 
 #pragma once
-#include <type_traits>
 
 #include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/interface_value.h"
-#include "paddle/ir/core/operation.h"
 
 namespace ir {
-
-// ConcreteOp -> Concrete？
-template <typename ConcreteOp, typename... Args>
+namespace details {
+template <typename ConcreteT, typename... Args>
 class ConstructInterfacesOrTraits {
  public:
   /// Construct method for interfaces.
@@ -45,7 +42,7 @@ class ConstructInterfacesOrTraits {
   template <typename T>
   static void PlacementConstrctInterface(
       details::InterfaceValue *&p_interface) {  // NOLINT
-    p_interface->swap(details::InterfaceValue::get<ConcreteOp, T>());
+    p_interface->swap(details::InterfaceValue::get<ConcreteT, T>());
     VLOG(6) << "New a interface: id["
             << (p_interface->type_id()).AsOpaquePointer() << "].";
     ++p_interface;
@@ -60,21 +57,66 @@ class ConstructInterfacesOrTraits {
   }
 };
 
-// ConcreteOp -> Concrete？
 /// Specialized for tuple type.
-template <typename ConcreteOp, typename... Args>
-class ConstructInterfacesOrTraits<ConcreteOp, std::tuple<Args...>> {
+template <typename ConcreteT, typename... Args>
+class ConstructInterfacesOrTraits<ConcreteT, std::tuple<Args...>> {
  public:
   /// Construct method for interfaces.
   static details::InterfaceValue *interface(
       details::InterfaceValue *p_interface) {
-    return ConstructInterfacesOrTraits<ConcreteOp, Args...>::interface(
+    return ConstructInterfacesOrTraits<ConcreteT, Args...>::interface(
         p_interface);
   }
 
   /// Construct method for traits.
   static TypeId *trait(TypeId *p_trait) {
-    return ConstructInterfacesOrTraits<ConcreteOp, Args...>::trait(p_trait);
+    return ConstructInterfacesOrTraits<ConcreteT, Args...>::trait(p_trait);
   }
 };
+
+template <typename T>
+void *LookUp(const TypeId &interface_id,
+             const uint32_t num_interfaces,
+             const uint32_t num_traits,
+             const T *t) {
+  if (num_interfaces > 0) {
+    const details::InterfaceValue *p_first_interface =
+        reinterpret_cast<const details::InterfaceValue *>(
+            reinterpret_cast<const char *>(t) - sizeof(TypeId) * num_traits -
+            sizeof(details::InterfaceValue) * num_interfaces);
+    size_t left = 0, right = num_interfaces;
+    while (left < right) {
+      size_t mid = (left + right) / 2;
+      if ((p_first_interface + mid)->type_id() == interface_id) {
+        return (p_first_interface + mid)->model();
+      } else if ((p_first_interface + mid)->type_id() < interface_id) {
+        left = mid + 1;
+      } else {
+        right = mid;
+      }
+    }
+  }
+  return nullptr;
+}
+
+template <typename ConcreteT, typename InterfaceList>
+std::vector<details::InterfaceValue> GetInterfaceMap() {
+  constexpr size_t interfaces_num = std::tuple_size<InterfaceList>::value;
+  std::vector<details::InterfaceValue> interfaces_map(interfaces_num);
+  ConstructInterfacesOrTraits<ConcreteT, InterfaceList>::interface(
+      interfaces_map.data());
+  return interfaces_map;
+}
+
+template <typename ConcreteT, typename TraitList>
+std::vector<TypeId> GetTraitSet() {
+  constexpr size_t traits_num = std::tuple_size<TraitList>::value;
+  std::vector<TypeId> trait_set(traits_num);
+  auto p_first_trait = trait_set.data();
+  ConstructInterfacesOrTraits<ConcreteT, TraitList>::trait(p_first_trait);
+  return trait_set;
+}
+
+}  // namespace details
+
 }  // namespace ir
