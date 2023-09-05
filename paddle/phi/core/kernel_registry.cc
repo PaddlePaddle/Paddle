@@ -1,3 +1,17 @@
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
 #include <cstring>
@@ -11,15 +25,14 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/extended_tensor.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/kernel_utils.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/type_defs.h"
-#include "paddle/phi/core/kernel_registry.h"
 
+namespace phi {
 
-namespace phi{
-
-   template <typename Return_, typename... Args_>
+template <typename Return_, typename... Args_>
 struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
   using Args = std::tuple<Args_...>;
   enum : std::size_t { Arity = sizeof...(Args_) };
@@ -255,90 +268,87 @@ enum class RegType : uint8_t {
   OUTER,
 };
 
+KernelRegistrar::KernelRegistrar(RegType reg_type,
+                                 const char* kernel_name_cstr,
+                                 const char* backend_cstr,
+                                 DataLayout layout,
+                                 DataType dtype,
+                                 KernelArgsParseFn args_parse_fn,
+                                 KernelArgsDefFn args_def_fn,
+                                 KernelFn kernel_fn,
+                                 void* variadic_kernel_fn) {
+  ConstructKernel(reg_type,
+                  kernel_name_cstr,
+                  backend_cstr,
+                  layout,
+                  dtype,
+                  args_parse_fn,
+                  args_def_fn,
+                  kernel_fn,
+                  variadic_kernel_fn);
+}
 
 KernelRegistrar::KernelRegistrar(RegType reg_type,
-                  const char* kernel_name_cstr,
-                  const char* backend_cstr,
-                  DataLayout layout,
-                  DataType dtype,
-                  KernelArgsParseFn args_parse_fn,
-                  KernelArgsDefFn args_def_fn,
-                  KernelFn kernel_fn,
-                  void* variadic_kernel_fn){
-                    ConstructKernel(reg_type,
+                                 const char* kernel_name_cstr,
+                                 const char* backend_cstr,
+                                 DataLayout layout,
+                                 KernelArgsParseFn args_parse_fn,
+                                 KernelArgsDefFn args_def_fn,
+                                 KernelFn kernel_fn,
+                                 void* variadic_kernel_fn) {
+  for (size_t dtype = static_cast<size_t>(DataType::BOOL);
+       dtype != static_cast<size_t>(DataType::NUM_DATA_TYPES);
+       dtype++) {
+    // NOTE(zhiqiu): why skip these types, because fluid kernel has no kernel
+    // of these type.
+    if (dtype == static_cast<size_t>(DataType::UINT32) ||
+        dtype == static_cast<size_t>(DataType::UINT64) ||
+        dtype == static_cast<size_t>(DataType::UINT16)) {
+      continue;
+    }
+    // NOTE(zhoushunjie): Only the strings kernels can support pstring dtype
+    constexpr char strings_kernels_prefix[] = "strings_";
+    if (dtype == static_cast<size_t>(DataType::PSTRING) &&
+        strncmp(kernel_name_cstr,
+                strings_kernels_prefix,
+                strlen(strings_kernels_prefix))) {
+      continue;
+    }
+    ConstructKernel(reg_type,
                     kernel_name_cstr,
                     backend_cstr,
                     layout,
-                    dtype,
+                    static_cast<DataType>(dtype),
                     args_parse_fn,
                     args_def_fn,
                     kernel_fn,
                     variadic_kernel_fn);
-                }
-
-KernelRegistrar::KernelRegistrar(RegType reg_type,
-                  const char* kernel_name_cstr,
-                  const char* backend_cstr,
-                  DataLayout layout,
-                  KernelArgsParseFn args_parse_fn,
-                  KernelArgsDefFn args_def_fn,
-                  KernelFn kernel_fn,
-                  void* variadic_kernel_fn) {
-    for (size_t dtype = static_cast<size_t>(DataType::BOOL);
-         dtype != static_cast<size_t>(DataType::NUM_DATA_TYPES);
-         dtype++) {
-      // NOTE(zhiqiu): why skip these types, because fluid kernel has no kernel
-      // of these type.
-      if (dtype == static_cast<size_t>(DataType::UINT32) ||
-          dtype == static_cast<size_t>(DataType::UINT64) ||
-          dtype == static_cast<size_t>(DataType::UINT16)) {
-        continue;
-      }
-      // NOTE(zhoushunjie): Only the strings kernels can support pstring dtype
-      constexpr char strings_kernels_prefix[] = "strings_";
-      if (dtype == static_cast<size_t>(DataType::PSTRING) &&
-          strncmp(kernel_name_cstr,
-                  strings_kernels_prefix,
-                  strlen(strings_kernels_prefix))) {
-        continue;
-      }
-      ConstructKernel(reg_type,
-                      kernel_name_cstr,
-                      backend_cstr,
-                      layout,
-                      static_cast<DataType>(dtype),
-                      args_parse_fn,
-                      args_def_fn,
-                      kernel_fn,
-                      variadic_kernel_fn);
-    }
   }
+}
 
 void KernelRegistrar::ConstructKernel(RegType reg_type,
-                       const char* kernel_name_cstr,
-                       const char* backend_cstr,
-                       DataLayout layout,
-                       DataType dtype,
-                       KernelArgsParseFn args_parse_fn,
-                       KernelArgsDefFn args_def_fn,
-                       KernelFn kernel_fn,
-                       void* variadic_kernel_fn) {
-    std::string kernel_name(kernel_name_cstr);
-    KernelKey kernel_key(
-        paddle::experimental::StringToBackend(backend_cstr), layout, dtype);
-    Kernel kernel(kernel_fn, variadic_kernel_fn);
-    if (kernel.GetKernelRegisteredType() == KernelRegisteredType::FUNCTION) {
-      args_parse_fn(kernel_key, kernel.mutable_args_def());
-    }
-    args_def_fn(kernel_key, &kernel);
-    if (reg_type == RegType::INNER) {
-      KernelFactory::Instance().kernels()[kernel_name][kernel_key] = kernel;
-    } else {
-      CustomKernelMap::Instance().RegisterCustomKernel(
-          kernel_name, kernel_key, kernel);
-    }
+                                      const char* kernel_name_cstr,
+                                      const char* backend_cstr,
+                                      DataLayout layout,
+                                      DataType dtype,
+                                      KernelArgsParseFn args_parse_fn,
+                                      KernelArgsDefFn args_def_fn,
+                                      KernelFn kernel_fn,
+                                      void* variadic_kernel_fn) {
+  std::string kernel_name(kernel_name_cstr);
+  KernelKey kernel_key(
+      paddle::experimental::StringToBackend(backend_cstr), layout, dtype);
+  Kernel kernel(kernel_fn, variadic_kernel_fn);
+  if (kernel.GetKernelRegisteredType() == KernelRegisteredType::FUNCTION) {
+    args_parse_fn(kernel_key, kernel.mutable_args_def());
   }
+  args_def_fn(kernel_key, &kernel);
+  if (reg_type == RegType::INNER) {
+    KernelFactory::Instance().kernels()[kernel_name][kernel_key] = kernel;
+  } else {
+    CustomKernelMap::Instance().RegisterCustomKernel(
+        kernel_name, kernel_key, kernel);
+  }
+}
 
-                
-
-} // namespace phi
+}  // namespace phi

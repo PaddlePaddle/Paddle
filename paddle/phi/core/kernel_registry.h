@@ -47,34 +47,34 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)>;
 struct KernelRegistrar {
  public:
   KernelRegistrar(RegType,
-                  const char* ,
-                  const char* ,
-                  DataLayout ,
-                  DataType ,
-                  KernelArgsParseFn ,
-                  KernelArgsDefFn ,
-                  KernelFn ,
-                  void* );
+                  const char*,
+                  const char*,
+                  DataLayout,
+                  DataType,
+                  KernelArgsParseFn,
+                  KernelArgsDefFn,
+                  KernelFn,
+                  void*);
 
   KernelRegistrar(RegType,
-                  const char* ,
-                  const char* ,
-                  DataLayout ,
-                  KernelArgsParseFn ,
-                  KernelArgsDefFn ,
-                  KernelFn ,
-                  void* ); 
+                  const char*,
+                  const char*,
+                  DataLayout,
+                  KernelArgsParseFn,
+                  KernelArgsDefFn,
+                  KernelFn,
+                  void*);
 
  private:
-  void ConstructKernel(RegType ,
-                       const char* ,
-                       const char* ,
+  void ConstructKernel(RegType,
+                       const char*,
+                       const char*,
                        DataLayout,
-                       DataType ,
-                       KernelArgsParseFn ,
-                       KernelArgsDefFn ,
-                       KernelFn ,
-                       void* ) ;
+                       DataType,
+                       KernelArgsParseFn,
+                       KernelArgsDefFn,
+                       KernelFn,
+                       void*);
 };
 
 /**
