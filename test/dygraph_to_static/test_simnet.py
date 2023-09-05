@@ -121,7 +121,6 @@ simnet_process = FakeReaderProcessor(
 )
 
 
-@test_and_compare_with_new_ir(True)
 def train(conf_dict, to_static):
     """
     train process
@@ -178,6 +177,7 @@ def train(conf_dict, to_static):
 
 
 class TestSimnet(unittest.TestCase):
+    @test_and_compare_with_new_ir(True)
     def test_dygraph_static_same_loss(self):
         if fluid.is_compiled_with_cuda():
             fluid.set_flags({"FLAGS_cudnn_deterministic": True})
