@@ -32,6 +32,7 @@
 #include "paddle/cinn/hlir/framework/convert_to_dialect.h"
 #include "paddle/cinn/hlir/framework/new_ir_compiler.h"
 
+using cinn::hlir::framework::newir::Group;
 using cinn::hlir::framework::newir::GroupPtr;
 
 using ProgramInfo =

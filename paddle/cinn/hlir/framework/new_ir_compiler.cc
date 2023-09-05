@@ -127,16 +127,15 @@ std::shared_ptr<Scope> BuildScope(const Target& target,
   std::unordered_set<::ir::Value> visited;
   auto scope = std::make_shared<Scope>();
 
-  auto create_var = [&](const std::string& name_prefix, ::ir::Value value) {
+  auto create_var = [&](::ir::Value value) {
     if (visited.count(value) > 0) return;
     visited.emplace(value);
 
-    std::string name =
-        name_prefix + std::to_string(std::hash<::ir::Value>()(value));
+    std::string name = CompatibleInfo::ValueName(value);
     auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
     auto* var = scope->Var<Tensor>(name);
     auto& tensor = absl::get<Tensor>(*var);
-    // NOTE: can be replaced with phi::vectorized ?
+
     std::vector<Shape::dim_t> shape;
     for (auto i = 0; i < type_info.dims().size(); ++i) {
       shape.push_back(Shape::dim_t(type_info.dims()[i]));
@@ -146,14 +145,12 @@ std::shared_ptr<Scope> BuildScope(const Target& target,
   };
 
   for (auto it = program.block()->begin(); it != program.block()->end(); ++it) {
-    for (auto i = 0; i < (*it)->num_operands(); ++i) {
-      auto in_value = (*it)->operand_source(i);
-      create_var(CompatibleInfo::kInputPrefix, in_value);
+    for (auto& oprand : (*it)->operands()) {
+      create_var(oprand.source());
     }
 
-    for (auto i = 0; i < (*it)->num_results(); ++i) {
-      auto out_value = (*it)->result(i);
-      create_var(CompatibleInfo::kOutputPrefix, out_value);
+    for (auto& result : (*it)->results()) {
+      create_var(result);
     }
   }
   return scope;
