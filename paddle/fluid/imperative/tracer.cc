@@ -38,7 +38,7 @@
 PHI_DECLARE_bool(use_mkldnn);
 PHI_DECLARE_string(tracer_mkldnn_ops_on);
 PHI_DECLARE_string(tracer_mkldnn_ops_off);
-PD_DECLARE_bool(use_stride_kernel);
+PHI_DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace imperative {
@@ -56,7 +56,7 @@ thread_local AmpLevel Tracer::amp_level_ = AmpLevel::O0;
 
 thread_local phi::DataType Tracer::amp_dtype_ = phi::DataType::FLOAT32;
 
-static std::shared_ptr<Tracer> g_current_tracer(nullptr);
+static thread_local std::shared_ptr<Tracer> g_current_tracer(nullptr);
 
 const std::shared_ptr<Tracer>& GetCurrentTracer() { return g_current_tracer; }
 

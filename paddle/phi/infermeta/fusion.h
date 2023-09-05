@@ -213,6 +213,11 @@ void BNActXPUInferMeta(const MetaTensor& x,
                        MetaTensor* y,
                        MetaConfig config = MetaConfig());
 
+void AddCMulXPUInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         const MetaTensor& w,
+                         MetaTensor* out);
+
 void FusedScaleBiasReluConvBnstatsInferMeta(
     const MetaTensor& x,
     const MetaTensor& w,

@@ -79,7 +79,7 @@ void GraphSendRecvGradOpKernelLaunchHelper(
     DenseTensor* x_grad,
     const DenseTensor* dst_count = nullptr,
     const DenseTensor* out = nullptr) {
-  const int& index_size = dst_index.dims()[0];
+  const int& index_size = dst_index.dims()[0];  // NOLINT
 
   ctx.template Alloc<T>(x_grad);
   T* p_output = x_grad->data<T>();

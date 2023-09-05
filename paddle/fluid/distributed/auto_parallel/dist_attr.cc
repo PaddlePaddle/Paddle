@@ -378,13 +378,13 @@ std::string OperatorDistAttr::to_string() const {
 }
 
 void OperatorDistAttr::from_proto(const OperatorDistAttrProto& proto) {
-  for (int64_t i = 0; i < proto.input_dist_attrs_size(); ++i) {
+  for (int i = 0; i < proto.input_dist_attrs_size(); ++i) {
     TensorDistAttr dist_attr;
     std::string name = proto.input_dist_attrs(i).name();
     dist_attr.from_proto(proto.input_dist_attrs(i).tensor_dist_attr());
     input_dist_attrs_[name] = dist_attr;
   }
-  for (int64_t i = 0; i < proto.output_dist_attrs_size(); ++i) {
+  for (int i = 0; i < proto.output_dist_attrs_size(); ++i) {
     TensorDistAttr dist_attr;
     std::string name = proto.output_dist_attrs(i).name();
     dist_attr.from_proto(proto.output_dist_attrs(i).tensor_dist_attr());

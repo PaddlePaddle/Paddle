@@ -695,7 +695,8 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param output_tensor_names The name of the Tensor that needs to be marked
   ///
   void MarkTrtEngineOutputs(
-      const std::vector<std::string>& output_tensor_names = {});
+      const std::vector<std::string>& output_tensor_names = {},
+      const bool trt_mark_output_with_id = false);
   ///
   /// \brief Turn on the TensorRT memory optimization.
   ///
@@ -1237,6 +1238,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool trt_use_varseqlen_{false};
   bool trt_with_interleaved_{false};
   bool trt_mark_output_{false};
+  bool trt_mark_output_with_id_{false};
   std::vector<std::string> trt_output_tensor_names_{};
   std::string tensorrt_transformer_posid_{""};
   std::string tensorrt_transformer_maskid_{""};
