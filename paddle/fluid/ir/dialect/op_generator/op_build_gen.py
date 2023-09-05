@@ -13,9 +13,9 @@
 # limitations under the License.
 
 # generator build function
-_INFERMETA_NEED_META_CONFIG = {'SplitInferMeta'}
+_INFERMETA_NEED_META_CONFIG = {'SplitInferMeta', 'SumInferMeta'}
 
-_PREPARE_DATA_WITH_UNKNOW_ATTRIBUTE = {'SplitOp'}
+_PREPARE_DATA_WITH_UNKNOW_ATTRIBUTE = {'SplitOp', 'SumOp'}
 
 OP_BUILD_TEMPLATE = """
 void {op_name}::Build({build_args}) {{

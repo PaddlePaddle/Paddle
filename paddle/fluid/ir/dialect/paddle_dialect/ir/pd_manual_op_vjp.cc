@@ -52,45 +52,5 @@ std::vector<std::vector<ir::OpResult>> SumOp::Vjp(
   return res;
 }
 
-std::vector<std::vector<ir::OpResult>> SplitOp::Vjp(
-    ir::Operation* op,
-    const std::vector<std::vector<ir::OpResult>>& out_grads,
-    const std::vector<std::vector<bool>>& stop_gradients) {
-  SplitOp op_obj = op->dyn_cast<SplitOp>();
-
-  VLOG(6) << "Prepare inputs of split_grad";
-
-  std::vector<Tensor> out_grad;
-  for (size_t idx = 0; idx < out_grads[0].size(); idx++) {
-    out_grad.emplace_back(
-        std::make_shared<primitive::LazyTensor>(out_grads[0][idx]));
-  }
-
-  VLOG(6) << "Vjp prepare Prepare attributes of split_grad";
-
-  Tensor axis(std::make_shared<primitive::LazyTensor>(op_obj.axis()));
-
-  VLOG(6) << "Vjp prepare call split's vjp inteface";
-
-  std::vector<std::vector<Tensor>> tensor_res =
-      primitive::split_vjp(out_grad, axis, stop_gradients);
-
-  VLOG(6) << "Vjp prepare stop gradient of split_grad";
-
-  std::vector<std::vector<ir::OpResult>> res(tensor_res.size());
-  for (size_t i = 0; i < tensor_res.size(); ++i) {
-    res[i].resize(tensor_res[i].size());
-    for (size_t j = 0; j < tensor_res[i].size(); ++j) {
-      if (tensor_res[i][j].defined()) {
-        res[i][j] = std::static_pointer_cast<primitive::LazyTensor>(
-                        tensor_res[i][j].impl())
-                        ->getValue()
-                        .dyn_cast<ir::OpResult>();
-      }
-    }
-  }
-  return res;
-}
-
 }  // namespace dialect
 }  // namespace paddle

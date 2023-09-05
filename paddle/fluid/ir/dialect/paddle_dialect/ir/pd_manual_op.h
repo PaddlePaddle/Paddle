@@ -14,7 +14,7 @@
 
 #ifdef GET_MANUAL_OP_LIST
 #undef GET_MANUAL_OP_LIST
-paddle::dialect::AddNOp, paddle::dialect::SplitOp, paddle::dialect::SplitGradOp
+paddle::dialect::AddNOp, paddle::dialect::SplitGradOp
 
 #else
 
@@ -52,42 +52,6 @@ class AddNOp : public ir::Op<AddNOp, OpYamlInfoInterface> {
   static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 
-class SplitOp
-    : public ir::
-          Op<SplitOp, OpYamlInfoInterface, InferMetaInterface, VjpInterface> {
- public:
-  using Op::Op;
-  static const char *name() { return "pd.split"; }
-  static constexpr const char **attributes_name = nullptr;
-  static constexpr uint32_t attributes_num = 0;
-  static OpInfoTuple GetOpInfo();
-  static void Build(ir::Builder &builder,             // NOLINT
-                    ir::OperationArgument &argument,  // NOLINT
-                    ir::OpResult x_,
-                    const std::vector<int64_t> &sections,
-                    int axis);
-  static void Build(ir::Builder &builder,             // NOLINT
-                    ir::OperationArgument &argument,  // NOLINT
-                    ir::OpResult x_,
-                    ir::OpResult sections_,
-                    ir::OpResult axis_);
-  static void Build(ir::Builder &builder,             // NOLINT
-                    ir::OperationArgument &argument,  // NOLINT
-                    ir::OpResult x_,
-                    ir::AttributeMap attributes);
-  void Verify();
-  ir::Value x() { return operand_source(0); }
-  ir::Value sections() { return operand_source(1); }
-  ir::Value axis() { return operand_source(2); }
-  ir::OpResult out() { return result(0); }
-
-  static void InferMeta(phi::InferMetaContext *infer_meta);
-  static std::vector<std::vector<ir::OpResult>> Vjp(
-      ir::Operation *op,
-      const std::vector<std::vector<ir::OpResult>> &out_grads,
-      const std::vector<std::vector<bool>> &stop_gradients);
-};
-
 class SplitGradOp : public ir::Op<SplitGradOp, OpYamlInfoInterface> {
  public:
   using Op::Op;
@@ -115,7 +79,6 @@ class SplitGradOp : public ir::Op<SplitGradOp, OpYamlInfoInterface> {
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SplitOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
 
 #endif
