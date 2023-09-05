@@ -35,7 +35,6 @@ std::unique_ptr<Program> NewIRCompiler::Build() {
        ++it) {
     std::vector<::ir::Operation*> ops = {*it};
     groups.push_back(std::make_shared<newir::Group>(ops));
-    groups.back()->fn_name = CompatibleInfo::GroupOpsName(groups.back()->ops);
   }
   VLOG(4) << "Groups size: " << groups.size();
   return std::move(Build(groups));
@@ -103,23 +102,20 @@ std::vector<std::unique_ptr<Instruction>> NewIRCompiler::BuildInstructions(
     const std::vector<newir::GroupPtr>& groups) {
   std::vector<std::unique_ptr<Instruction>> instructions;
   for (int idx = 0; idx < groups.size(); ++idx) {
-    // TODO(Aurelius84): only support single op in groups
-    auto& op = *(groups[idx]->ops[0]);
-
     auto& fn_name = groups[idx]->fn_name;
-    auto instr = std::unique_ptr<Instruction>(
-        new Instruction(target_,
-                        scope_.get(),
-                        CompatibleInfo::InputNames(op),
-                        CompatibleInfo::OutputNames(op),
-                        fn_name));
+    auto instr =
+        std::unique_ptr<Instruction>(new Instruction(target_,
+                                                     scope_.get(),
+                                                     groups[idx]->input_names,
+                                                     groups[idx]->output_names,
+                                                     fn_name));
     VLOG(1) << "Lookup kernel name: " << fn_name;
     auto* fn_ptr = compiler_->Lookup(fn_name);
     CHECK(fn_ptr);
     instr->SetLoweredFunc(reinterpret_cast<void*>(fn_ptr), fn_name);
     // As some instruction like reduce, will generate more than one kernel.
     // So try to find the rest kernel, if it exists.
-    // SetSubKernels(instr.get(), op_func_name);
+    // SetSubKernels(instr.get(), fn_name);
     instr->Finalize();
     instructions.push_back(std::move(instr));
   }
