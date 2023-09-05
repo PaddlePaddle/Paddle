@@ -360,6 +360,7 @@ class OpInfoParser:
                 return None
         else:
             return None
+
     def cross_check(self, name_list, type_list, optional_list=None):
         assert len(name_list) == len(
             type_list
@@ -719,6 +720,7 @@ def to_pascal_case(s):
     else:
         return "".join([word.capitalize() for word in words]) + ""
 
+
 def OpInputGradSemanticCheck(op_info, op_info_items):
     input_grad_semantic_list = []
     num_inputs = len(op_info.input_name_list)
@@ -735,11 +737,15 @@ def OpInputGradSemanticCheck(op_info, op_info_items):
         bwd_output_list = bwd_op_info.output_name_list
         bwd_output_list_new = []
         for bwd_output in bwd_output_list:
-            bwd_output_list_new.append(bwd_output[:-5]) # cut _grad
+            bwd_output_list_new.append(bwd_output[:-5])  # cut _grad
 
         bwd_fwd_input_list = bwd_op_info.forward_input_name_list
-        if bwd_fwd_input_list is not None:     # set_value, set_value_with_tensor, set_value_grad is not supported
-            assert len(bwd_fwd_input_list) == num_inputs, "Configuration of forward op and backward op is not match."
+        if (
+            bwd_fwd_input_list is not None
+        ):  # set_value, set_value_with_tensor, set_value_grad is not supported
+            assert (
+                len(bwd_fwd_input_list) == num_inputs
+            ), "Configuration of forward op and backward op is not match."
             for i in range(num_inputs):
                 if bwd_fwd_input_list[i] in bwd_output_list_new:
                     input_grad_semantic_list.append("true")
@@ -750,6 +756,7 @@ def OpInputGradSemanticCheck(op_info, op_info_items):
 
     return input_grad_semantic_list
 
+
 def OpMutableAttributeGradSemanticCheck(op_info, op_info_items):
     mutable_attribute_grad_semantic_list = []
     fwd_mutable_attribute_list = op_info.mutable_attribute_name_list
@@ -757,7 +764,9 @@ def OpMutableAttributeGradSemanticCheck(op_info, op_info_items):
     # get backward op
     bwd_op_name = op_info.backward_name
     if (bwd_op_name is None) or (bwd_op_name not in op_info_items.keys()):
-        mutable_attribute_grad_semantic_list = ["false" for i in range(len(fwd_mutable_attribute_list))]
+        mutable_attribute_grad_semantic_list = [
+            "false" for i in range(len(fwd_mutable_attribute_list))
+        ]
     else:
         bwd_op_info = op_info_items[bwd_op_name]
 
@@ -772,9 +781,10 @@ def OpMutableAttributeGradSemanticCheck(op_info, op_info_items):
             if fwd_mutable_attribute_list[i] in bwd_output_list_new:
                 mutable_attribute_grad_semantic_list.append("true")
             else:
-                mutable_attribute_grad_semantic_list.append("false")        
+                mutable_attribute_grad_semantic_list.append("false")
 
     return mutable_attribute_grad_semantic_list
+
 
 def OpGenerator(
     op_yaml_files,
@@ -864,9 +874,13 @@ def OpGenerator(
             op_interfaces += ["paddle::dialect::VjpInterface"]
         exclusive_interface_str = gen_exclusive_interface_str(op_info)
 
-         # check op inputs and mutable_attributes grad semantics
-        input_grad_semantic_list = OpInputGradSemanticCheck(op_info, op_info_items)
-        mutable_attribute_grad_semantic_list = OpMutableAttributeGradSemanticCheck(op_info, op_info_items)
+        # check op inputs and mutable_attributes grad semantics
+        input_grad_semantic_list = OpInputGradSemanticCheck(
+            op_info, op_info_items
+        )
+        mutable_attribute_grad_semantic_list = (
+            OpMutableAttributeGradSemanticCheck(op_info, op_info_items)
+        )
 
         # If op has inplace info, we will generate inplace op and non-inplace op.
         for op_name in op_info.op_phi_name:
@@ -1057,7 +1071,9 @@ def OpGenerator(
                         optional='false',
                         no_need_buffer='false',
                         is_mutable_attribute='true',
-                        with_grad_semantic=mutable_attribute_grad_semantic_list[idx],
+                        with_grad_semantic=mutable_attribute_grad_semantic_list[
+                            idx
+                        ],
                     )
                 )
             if len(input_info_list) > 0:
