@@ -43,26 +43,30 @@ def convert_attr(x, attr):
 
 
 def convert_load(x):
-    if in_declarative_mode() and isinstance(x, paddle.fluid.core.eager.Tensor):
-        """
-        TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.
-        """
-        return _convert_into_variable(x)
+    if in_declarative_mode():
+        if isinstance(x, paddle.fluid.core.eager.Tensor):
+            """
+            TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.
+            """
+            return _convert_into_variable(x)
 
-    if in_declarative_mode() and isinstance(x, PyLayerMeta):
-        return StaticPyLayer(x)
+        # convert dygraph `PyLayer` into StaticPyLayer
+        if isinstance(x, PyLayerMeta):
+            return StaticPyLayer(x)
 
-    # get the new output of the var
-    if in_declarative_mode() and isinstance(x, Variable):
-        cur_block = default_main_program().current_block()
+        # get the new output of the var
+        if isinstance(x, Variable):
+            cur_block = default_main_program().current_block()
 
-        from paddle.jit.dy2static.program_translator import ProgramTranslator
+            from paddle.jit.dy2static.program_translator import (
+                ProgramTranslator,
+            )
 
-        new_var = ProgramTranslator.get_instance()._inplace_map.get(
-            cur_block.program, x.desc.id()
-        )
-        if new_var is not None:
-            return new_var
+            new_var = ProgramTranslator.get_instance()._inplace_map.get(
+                cur_block.program, x.desc.id()
+            )
+            if new_var is not None:
+                return new_var
 
     return x
 
