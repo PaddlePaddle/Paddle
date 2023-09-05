@@ -571,7 +571,6 @@ class TrtConvertFlashMultiHeadMatmulWeightInputTest(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
@@ -581,7 +580,6 @@ class TrtConvertFlashMultiHeadMatmulWeightInputTest(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)
         yield self.create_inference_config(), (1, 5), (1e-3, 1e-3)
-
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
