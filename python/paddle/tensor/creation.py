@@ -40,6 +40,7 @@ from ..framework import (
     convert_np_dtype_to_dtype_,
     core,
     in_dynamic_mode,
+    in_new_ir_mode,
 )
 
 __all__ = []
@@ -822,6 +823,16 @@ def full_like(x, fill_value, dtype=None, name=None):
             [[2. 2. 2.]
              [2. 2. 2.]]
     """
+
+    if in_new_ir_mode():
+        if dtype is None:
+            dtype = x.dtype
+        else:
+            if not isinstance(dtype, core.DataType):
+                dtype = paddle.ir.core.convert_np_dtype_to_dtype_(dtype)
+        place = _current_expected_place()
+        return _C_ops.full_like(x, fill_value, dtype, place)
+
     if dtype is None:
         dtype = x.dtype
     else:

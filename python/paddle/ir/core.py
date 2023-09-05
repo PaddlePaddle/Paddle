@@ -15,10 +15,36 @@
 
 import numpy as np
 
+from paddle.fluid.core import VarDesc
 from paddle.fluid.libpaddle import DataType
 from paddle.fluid.libpaddle.ir import Program, set_global_program
 
 from ..fluid.wrapped_decorator import signature_safe_contextmanager
+
+vartype_int_to_datatype_int = {
+    0: 1,  # bool
+    1: 5,  # int16
+    2: 7,  # int32
+    3: 9,  # int64
+    4: 15,  # float16
+    5: 10,  # float32
+    6: 11,  # float64
+    22: 16,  # bf16
+}
+vartype_to_datatype = {
+    VarDesc.VarType.FP32: DataType.FLOAT32,
+    VarDesc.VarType.FP64: DataType.FLOAT64,
+    VarDesc.VarType.FP16: DataType.FLOAT16,
+    VarDesc.VarType.BF16: DataType.BFLOAT16,
+    VarDesc.VarType.INT32: DataType.INT32,
+    VarDesc.VarType.INT16: DataType.INT16,
+    VarDesc.VarType.INT64: DataType.INT64,
+    VarDesc.VarType.BOOL: DataType.BOOL,
+    VarDesc.VarType.UINT8: DataType.UINT8,
+    VarDesc.VarType.INT8: DataType.INT8,
+    VarDesc.VarType.COMPLEX64: DataType.COMPLEX64,
+    VarDesc.VarType.COMPLEX128: DataType.COMPLEX128,
+}
 
 np_type_to_paddle_type = {
     np.dtype("float32"): DataType.FLOAT32,
