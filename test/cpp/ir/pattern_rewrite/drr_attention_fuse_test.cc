@@ -96,9 +96,12 @@ class MultiHeadMatmulFusePattern
                 {"transpose_y", src.Attr("matmul_4_transpose_y")}});
     src.Tensor("matmul_4_out") =
         matmul_4(src.Tensor("scale_out"), src.Tensor("transpose_2_out"));
+    const auto &add_4 = src.Op("pd.add");
+    src.Tensor("add_4_out") =
+        add_4(src.Tensor("matmul_4_out"), src.Tensor("add_4_in_2"));
     const auto &softmax =
         src.Op("pd.softmax", {{"axis", src.Attr("softmax_axis")}});
-    src.Tensor("softmax_out") = softmax(src.Tensor("matmul_4_out"));
+    src.Tensor("softmax_out") = softmax(src.Tensor("add_4_out"));
     const auto &matmul_5 =
         src.Op("pd.matmul",
                {{"transpose_x", src.Attr("matmul_5_transpose_x")},
@@ -146,6 +149,47 @@ class MultiHeadMatmulFusePattern
     // Result Pattern.
     //
     ir::drr::ResultPattern res = src.ResultPattern();
+    // W combine.
+    const auto &combine_1 = res.Op("builtin.combine");
+    combine_1({&res.Tensor("matmul_1_in_2"),
+               &res.Tensor("matmul_2_in_2"),
+               &res.Tensor("matmul_3_in_2")},
+              {&res.Tensor("combine_1_out")});
+    const auto &concat_axis = res.Attr(
+        [](const ir::drr::MatchContext &match_ctx) -> int { return 0; });
+    const auto &concat_1 = res.Op("pd.concat", {{"axis", concat_axis}});
+    res.Tensor("concat_1_out") = concat_1(res.Tensor("combine_1_out"));
+    const auto &reshape_5_shape = res.Attr(
+        [](const ir::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
+          auto matmul_1_in_2 = match_ctx.Tensor("matmul_1_in_2").Shape();
+          return {-1, 3, matmul_1_in_2.at(1)};
+        });
+    const auto &full_int_array_5 =
+        res.Op("pd.full_int_array", {{"value", reshape_5_shape}});
+    const auto &reshape_5 = res.Op("pd.reshape");
+    reshape_5({&res.Tensor("concat_1_out"), &full_int_array_5()},
+              {&res.Tensor("reshape_5_out"), &res.NoneTensor()});
+
+    // Bias combine.
+    const auto &combine_2 = res.Op("builtin.combine");
+    combine_2({&res.Tensor("add_1_in_2"),
+               &res.Tensor("add_2_in_2"),
+               &res.Tensor("add_3_in_2")},
+              {&res.Tensor("combine_2_out")});
+    const auto &concat_2 = res.Op("pd.concat", {{"axis", concat_axis}});
+    res.Tensor("concat_2_out") = concat_2(res.Tensor("combine_2_out"));
+    const auto &reshape_6_shape = res.Attr(
+        [](const ir::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
+          //   std::vector<int64_t> new_shape;
+          //   auto add_1_in_2_shape = match_ctx.Tensor("add_1_in_2").Shape();
+          return {3, -1};
+        });
+    const auto &full_int_array_6 =
+        res.Op("pd.full_int_array", {{"value", reshape_6_shape}});
+    const auto &reshape_6 = res.Op("pd.reshape");
+    reshape_6({&res.Tensor("concat_2_out"), &full_int_array_6()},
+              {&res.Tensor("reshape_6_out"), &res.NoneTensor()});
+
     const auto &head_number =
         res.Attr([](const ir::drr::MatchContext &match_ctx) -> int {
           const auto &full_int_array_1_value =
@@ -159,8 +203,11 @@ class MultiHeadMatmulFusePattern
     const auto &multihead_matmul =
         res.Op("pd.multihead_matmul",
                {{"head_number", head_number}, {"alpha", alpha}});
-    res.Tensor("transpose_4_out") =
-        multihead_matmul(res.Tensor("matmul_1_in_1"));
+    multihead_matmul({&res.Tensor("matmul_1_in_1"),
+                      &res.Tensor("reshape_5_out"),
+                      &res.Tensor("reshape_6_out"),
+                      &res.Tensor("add_4_in_2")},
+                     {&res.Tensor("reshape_4_out")});
   }
 };
 
@@ -193,67 +240,59 @@ class AttentionFusePass : public ir::Pass {
 };
 
 void BuildProgram(ir::Builder &builder) {  // NOLINT
-  paddle::dialect::FullOp full_input_op =
+  paddle::dialect::FullOp matmul_1_in_1 =
       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{1, 300, 256},
                                              0.9,
                                              phi::DataType::FLOAT32,
                                              phi::CPUPlace());
   // The first path to matmul with scale (q).
-  paddle::dialect::FullOp full_mat3_y_op =
+  paddle::dialect::FullOp matmul_1_in_2 =
       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{256, 256},
                                              1.1,
                                              phi::DataType::FLOAT32,
                                              phi::CPUPlace());
 
-  paddle::dialect::MatmulOp matmul_op3 =
-      builder.Build<paddle::dialect::MatmulOp>(
-          full_input_op.out(), full_mat3_y_op.out(), false, false);
+  paddle::dialect::MatmulOp matmul_1 = builder.Build<paddle::dialect::MatmulOp>(
+      matmul_1_in_1.out(), matmul_1_in_2.out(), false, false);
 
-  paddle::dialect::FullOp full_eleadd3_y_op =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{256},
-                                             1.5,
-                                             phi::DataType::FLOAT32,
-                                             phi::CPUPlace());
+  paddle::dialect::FullOp add_1_in_2 = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{256}, 1.5, phi::DataType::FLOAT32, phi::CPUPlace());
 
-  paddle::dialect::AddOp add_op3 = builder.Build<paddle::dialect::AddOp>(
-      matmul_op3.out(), full_eleadd3_y_op.out());
+  paddle::dialect::AddOp add_1 =
+      builder.Build<paddle::dialect::AddOp>(matmul_1.out(), add_1_in_2.out());
 
-  paddle::dialect::ReshapeOp reshape_op3 =
+  paddle::dialect::ReshapeOp reshape_1 =
       builder.Build<paddle::dialect::ReshapeOp>(
-          add_op3.out(), std::vector<int64_t>{0, 0, 8, 32});
+          add_1.out(), std::vector<int64_t>{0, 0, 8, 32});
 
-  paddle::dialect::TransposeOp transpose_op3 =
-      builder.Build<paddle::dialect::TransposeOp>(reshape_op3.out(),
+  paddle::dialect::TransposeOp transpose_1 =
+      builder.Build<paddle::dialect::TransposeOp>(reshape_1.out(),
                                                   std::vector<int>{0, 2, 1, 3});
 
-  paddle::dialect::ScaleOp scale_op1 = builder.Build<paddle::dialect::ScaleOp>(
-      transpose_op3.out(), 0.1767766922712326, 0.0, true);
+  paddle::dialect::ScaleOp scale_op = builder.Build<paddle::dialect::ScaleOp>(
+      transpose_1.out(), 0.1767766922712326, 0.0, true);
 
   // The second path to matmul (k).
-  paddle::dialect::FullOp full_mat2_y_op =
+  paddle::dialect::FullOp matmul_2_in_2 =
       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{256, 256},
                                              1.1,
                                              phi::DataType::FLOAT32,
                                              phi::CPUPlace());
 
-  paddle::dialect::MatmulOp matmul_op2 =
-      builder.Build<paddle::dialect::MatmulOp>(
-          full_input_op.out(), full_mat2_y_op.out(), false, false);
+  paddle::dialect::MatmulOp matmul_2 = builder.Build<paddle::dialect::MatmulOp>(
+      matmul_1_in_1.out(), matmul_2_in_2.out(), false, false);
 
-  paddle::dialect::FullOp full_eleadd2_y_op =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{256},
-                                             1.5,
-                                             phi::DataType::FLOAT32,
-                                             phi::CPUPlace());
-  paddle::dialect::AddOp add_op2 = builder.Build<paddle::dialect::AddOp>(
-      matmul_op2.out(), full_eleadd2_y_op.out());
+  paddle::dialect::FullOp add_2_in_2 = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{256}, 1.5, phi::DataType::FLOAT32, phi::CPUPlace());
+  paddle::dialect::AddOp add_op2 =
+      builder.Build<paddle::dialect::AddOp>(matmul_2.out(), add_2_in_2.out());
 
-  paddle::dialect::ReshapeOp reshape_op2 =
+  paddle::dialect::ReshapeOp reshape_2 =
       builder.Build<paddle::dialect::ReshapeOp>(
           add_op2.out(), std::vector<int64_t>{0, 0, 8, 32});
 
-  paddle::dialect::TransposeOp transpose_op2 =
-      builder.Build<paddle::dialect::TransposeOp>(reshape_op2.out(),
+  paddle::dialect::TransposeOp transpose_2 =
+      builder.Build<paddle::dialect::TransposeOp>(reshape_2.out(),
                                                   std::vector<int>{0, 2, 1, 3});
 
   // The third path to matmul (v).
@@ -264,44 +303,50 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
                                              phi::CPUPlace());
   paddle::dialect::MatmulOp matmul_op1 =
       builder.Build<paddle::dialect::MatmulOp>(
-          full_input_op.out(), full_mat1_y_op.out(), false, false);
+          matmul_1_in_1.out(), full_mat1_y_op.out(), false, false);
 
-  paddle::dialect::FullOp full_eleadd1_y_op =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{256},
-                                             1.5,
-                                             phi::DataType::FLOAT32,
-                                             phi::CPUPlace());
+  paddle::dialect::FullOp add_3_in_2 = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{256}, 1.5, phi::DataType::FLOAT32, phi::CPUPlace());
 
-  paddle::dialect::AddOp add_op1 = builder.Build<paddle::dialect::AddOp>(
-      matmul_op1.out(), full_eleadd1_y_op.out());
+  paddle::dialect::AddOp add_3 =
+      builder.Build<paddle::dialect::AddOp>(matmul_op1.out(), add_3_in_2.out());
 
-  paddle::dialect::ReshapeOp reshape_op1 =
+  paddle::dialect::ReshapeOp reshape_3 =
       builder.Build<paddle::dialect::ReshapeOp>(
-          add_op1.out(), std::vector<int64_t>{0, 0, 8, 32});
+          add_3.out(), std::vector<int64_t>{0, 0, 8, 32});
 
-  paddle::dialect::TransposeOp transpose_op1 =
-      builder.Build<paddle::dialect::TransposeOp>(reshape_op1.out(),
+  paddle::dialect::TransposeOp transpose_3 =
+      builder.Build<paddle::dialect::TransposeOp>(reshape_3.out(),
                                                   std::vector<int>{0, 2, 1, 3});
 
   // softmax(qk)v
-  paddle::dialect::MatmulOp matmul_op4 =
-      builder.Build<paddle::dialect::MatmulOp>(
-          scale_op1.out(), transpose_op2.out(), false, true);
-  paddle::dialect::SoftmaxOp softmax_op1 =
-      builder.Build<paddle::dialect::SoftmaxOp>(matmul_op4.out(), -1);
+  paddle::dialect::MatmulOp matmul_4 = builder.Build<paddle::dialect::MatmulOp>(
+      scale_op.out(), transpose_2.out(), false, true);
+
+  paddle::dialect::FullOp add_4_in_2 = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{1, 8, 300, 300},
+      1.5,
+      phi::DataType::FLOAT32,
+      phi::CPUPlace());
+
+  paddle::dialect::AddOp add_4 =
+      builder.Build<paddle::dialect::AddOp>(matmul_4.out(), add_4_in_2.out());
+
+  paddle::dialect::SoftmaxOp softmax_op =
+      builder.Build<paddle::dialect::SoftmaxOp>(add_4.out(), -1);
   paddle::dialect::MatmulOp matmul_op5 =
       builder.Build<paddle::dialect::MatmulOp>(
-          softmax_op1.out(), transpose_op1.out(), false, false);
+          softmax_op.out(), transpose_3.out(), false, false);
 
-  paddle::dialect::TransposeOp transpose_op4 =
+  paddle::dialect::TransposeOp transpose_4 =
       builder.Build<paddle::dialect::TransposeOp>(matmul_op5.out(),
                                                   std::vector<int>{0, 2, 1, 3});
 
-  paddle::dialect::ReshapeOp reshape_op4 =
+  paddle::dialect::ReshapeOp reshape_4 =
       builder.Build<paddle::dialect::ReshapeOp>(
-          transpose_op4.out(), std::vector<int64_t>{0, 0, 256});
+          transpose_4.out(), std::vector<int64_t>{0, 0, 256});
 
-  builder.Build<paddle::dialect::FetchOp>(reshape_op4.out(), "out", 0);
+  builder.Build<paddle::dialect::FetchOp>(reshape_4.out(), "out", 0);
 }
 
 TEST(DrrTest, AttentionFuse) {
@@ -310,12 +355,12 @@ TEST(DrrTest, AttentionFuse) {
   ir::Program program(ctx);
   ir::Builder builder = ir::Builder(ctx, program.block());
   BuildProgram(builder);
-  EXPECT_EQ(program.block()->size(), 31u);
+  EXPECT_EQ(program.block()->size(), 33u);
 
   ir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<AttentionFusePass>());
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
-  EXPECT_EQ(program.block()->size(), 31u);
+  EXPECT_EQ(program.block()->size(), 20u);
 }

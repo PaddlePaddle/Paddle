@@ -811,6 +811,17 @@ void FusedRopeInferMeta(const MetaTensor& q,
                         MetaTensor* out_k,
                         MetaTensor* out_v);
 
+void MultiheadMatmulInferMeta(const MetaTensor& input,
+                              const MetaTensor& w,
+                              const MetaTensor& bias,
+                              const MetaTensor& bias_qk,
+                              const bool transpose_q,
+                              const bool transpose_k,
+                              const bool transpose_v,
+                              const float alpha,
+                              const int head_number,
+                              MetaTensor* out);
+
 void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        const MetaTensor& cache_kv,
                                        const MetaTensor& bias,

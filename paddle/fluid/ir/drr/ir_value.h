@@ -29,6 +29,10 @@ class IrShape {
 
   bool operator==(const IrShape& other) const { return *dims_ == *other.dims_; }
 
+  int size() const { return dims_->size(); }
+
+  int64_t at(int idx) const { return dims_->at(idx); }
+
  private:
   const phi::DDim* dims_;
 };

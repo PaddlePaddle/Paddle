@@ -22,6 +22,10 @@ bool ShapeInterface::operator==(const ShapeInterface& other) const {
   return *shape_ == *other.shape_;
 }
 
+int ShapeInterface::size() const { return shape_->size(); }
+
+int64_t ShapeInterface::at(int idx) const { return shape_->at(idx); }
+
 bool DtypeInterface::operator==(const DtypeInterface& other) const {
   return *dtype_ == *other.dtype_;
 }

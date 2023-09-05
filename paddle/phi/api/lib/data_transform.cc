@@ -16,12 +16,12 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/contiguous_kernel.h"
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
 
-DECLARE_bool(use_stride_kernel);
+PHI_DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace experimental {

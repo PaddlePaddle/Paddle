@@ -84,15 +84,15 @@ const OpRunTimeInfo& OpYamlInfoParser::OpRuntimeInfo() const {
   return std::get<3>(op_info_tuple_);
 }
 
-const std::map<std::string, int>& OpYamlInfoParser::InputName2Id() const {
+const std::map<std::string, uint32_t>& OpYamlInfoParser::InputName2Id() const {
   return input_name2id_;
 }
 
-const std::map<std::string, int>& OpYamlInfoParser::OutputName2Id() const {
+const std::map<std::string, uint32_t>& OpYamlInfoParser::OutputName2Id() const {
   return output_name2id_;
 }
 
-const std::vector<int>& OpYamlInfoParser::NoNeedBufferIds() const {
+const std::vector<uint32_t>& OpYamlInfoParser::NoNeedBufferIds() const {
   return no_need_buffer_ids_;
 }
 
@@ -116,6 +116,17 @@ const std::string& OpYamlInfoParser::InplaceName(
   }
   PADDLE_THROW(phi::errors::PreconditionNotMet(
       "Can not find inplace input of [%s].", out_name));
+}
+
+std::unordered_map<uint32_t, uint32_t> OpYamlInfoParser::GetInplaceIdMap()
+    const {
+  std::unordered_map<uint32_t, uint32_t> inplace_id_map;
+  auto& inplace_info = std::get<3>(op_info_tuple_).inplace;
+  for (const auto& info : inplace_info) {
+    inplace_id_map[OutputName2Id().at(info.first)] =
+        InputName2Id().at(info.second);
+  }
+  return inplace_id_map;
 }
 
 bool OpYamlInfoParser::HasView(const std::string& out_name) const {

@@ -28,7 +28,9 @@ const drr::OpCall &PatternGraph::AddOpCall(
   owned_op_call_.push_back(op_call);
   for (const auto *input : op_call->inputs()) {
     const auto &tensor_name = input->name();
-    IR_ENFORCE(id2owned_tensor_.count(tensor_name));
+    IR_ENFORCE(id2owned_tensor_.count(tensor_name),
+               "intput tensor [%s] not exist.",
+               tensor_name);
     id2owned_tensor_.at(tensor_name)->AddConsumer(op_call.get());
 
     if (input->producer() == nullptr) {
@@ -163,6 +165,9 @@ void GraphTopo::WalkGraphNodesTopoOrder(
 
   // init queue
   for (const auto &tensor_name : inputs_tensor) {
+    IR_ENFORCE(id2owned_tensor.count(tensor_name),
+               "Drr input tensor [%s] must exists in pattern graph.",
+               tensor_name);
     for (const auto &tensor_comsumer :
          id2owned_tensor.at(tensor_name).get()->consumers()) {
       opcall_dependent[tensor_comsumer].erase(tensor_name);
