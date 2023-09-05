@@ -1062,8 +1062,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
             }
 
           } else if (new_in_type.isa<dialect::AllocatedSelectedRowsType>()) {
-            PADDLE_THROW(phi::errors::Unimplemented(
-                "only support allocated selected tensor type for now"));
+            // do nothing here
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(
                 "only support allocated dense tensor type for now"));
