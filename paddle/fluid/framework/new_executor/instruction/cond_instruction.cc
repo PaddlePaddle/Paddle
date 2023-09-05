@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
+#include "paddle/fluid/framework/new_executor/new_ir_interpreter.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/interface/infermeta.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
@@ -33,10 +34,11 @@
 #include "paddle/ir/core/value.h"
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_manual_op.h"
 namespace paddle {
 namespace framework {
 
-PhiKernelInstruction::PhiKernelInstruction(
+CondInstruction::CondInstruction(
     size_t id,
     const platform::Place& place,
     ir::Operation* op,
@@ -84,7 +86,7 @@ PhiKernelInstruction::PhiKernelInstruction(
       op, nullptr, place, GetExecutionStream(), GetStreamPriority()));
   VLOG(6) << "finish process device context";
 
-  // Scope* inner_scope = local_scope == nullptr ? scope : local_scope;
+  Scope* inner_scope = local_scope == nullptr ? scope : local_scope;
   // InitInputsOutputsIds(
   //     op, inner_scope, value_2_var_name, var_name_2_id, variable_2_var_name);
   VLOG(6) << "finish process inputs outputs index";
@@ -97,9 +99,21 @@ PhiKernelInstruction::PhiKernelInstruction(
   //   SetNoNeedBuffer(no_need_buffer_values);
   //   VLOG(6) << "finish process no need buffer";
 
-  if (op->isa<ir::IfOp>) }
+  if (op->isa<paddle::dialect::IfOp>()) {
+    auto if_op = op->dyn_cast<paddle::dialect::IfOp>();
 
-void PhiKernelInstruction::Run() {
+    auto true_branch_block = if_op.true_block();
+    auto false_branch_block = if_op.false_block();
+
+    true_branch_inter =
+        new NewIRInterpreter(place, {}, true_branch_block, inner_scope, {});
+
+    false_branch_inter =
+        new NewIRInterpreter(place, {}, false_branch_block, inner_scope, {});
+  }
+}
+
+void CondInstruction::Run() {
   if (cond_var->Get<phi::DenseTensor>().data<bool>()[0]) {
     true_branch_inter->Run({}, false);
   } else {

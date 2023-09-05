@@ -41,9 +41,11 @@ class CondInstruction : public InstructionBase {
 
   void Run() override;
 
-  const std::string& Name() const override { return "cond_instruction"; }
+  const std::string& Name() const override { return cond_name_; }
 
  private:
+  std::string cond_name_{"cond_instruction"};
+
   Variable* cond_var;
 
   InterpreterBaseImpl* true_branch_inter;
