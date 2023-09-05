@@ -41,7 +41,10 @@ void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                  const T *A,
                                  const T *B,
                                  T beta,
-                                 T *C) const {}
+                                 T *C) const {
+  PADDLE_THROW(
+      phi::errors::Unimplemented("Blas::GEMM is not supported on MUSA now!"));
+}
 
 template <>
 template <>
@@ -54,7 +57,10 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                         const phi::dtype::float16 *A,
                                         const phi::dtype::float16 *B,
                                         phi::dtype::float16 beta,
-                                        phi::dtype::float16 *C) const {}
+                                        phi::dtype::float16 *C) const {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Blas::GEMM for dtype float16 is not supported on MUSA now!"));
+}
 
 template <>
 template <>
@@ -67,7 +73,10 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                         const phi::dtype::bfloat16 *A,
                                         const phi::dtype::bfloat16 *B,
                                         phi::dtype::bfloat16 beta,
-                                        phi::dtype::bfloat16 *C) const {}
+                                        phi::dtype::bfloat16 *C) const {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Blas::GEMM for dtype bfloat16 is not supported on MUSA now!"));
+}
 
 template <>
 template <>
@@ -80,7 +89,10 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                         const phi::dtype::complex<float> *A,
                                         const phi::dtype::complex<float> *B,
                                         phi::dtype::complex<float> beta,
-                                        phi::dtype::complex<float> *C) const {}
+                                        phi::dtype::complex<float> *C) const {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Blas::GEMM for dtype complex<float> is not supported on MUSA now!"));
+}
 
 template <>
 template <>
@@ -93,7 +105,10 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                         const phi::dtype::complex<double> *A,
                                         const phi::dtype::complex<double> *B,
                                         phi::dtype::complex<double> beta,
-                                        phi::dtype::complex<double> *C) const {}
+                                        phi::dtype::complex<double> *C) const {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Blas::GEMM for dtype complex<double> is not supported on MUSA now!"));
+}
 
 template <>
 template <typename T>
@@ -109,7 +124,10 @@ void Blas<phi::GPUContext>::GEMM(bool transA,
                                  int ldb,
                                  T beta,
                                  T *C,
-                                 int ldc) const {}
+                                 int ldc) const {
+  PADDLE_THROW(
+      phi::errors::Unimplemented("Blas::GEMM is not supported on MUSA now!"));
+}
 
 template <>
 template <>
@@ -125,7 +143,10 @@ inline void Blas<phi::GPUContext>::GEMM(bool transA,
                                         int ldb,
                                         phi::dtype::float16 beta,
                                         phi::dtype::float16 *C,
-                                        int ldc) const {}
+                                        int ldc) const {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Blas::GEMM for dtype float16 is not supported on MUSA now!"));
+}
 
 template <>
 template <>
@@ -141,19 +162,31 @@ inline void Blas<phi::GPUContext>::GEMM(bool transA,
                                         int ldb,
                                         phi::dtype::bfloat16 beta,
                                         phi::dtype::bfloat16 *C,
-                                        int ldc) const {}
+                                        int ldc) const {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Blas::GEMM for dtype bfloat16 is not supported on MUSA now!"));
+}
 
 template <>
 template <typename T>
-void Blas<phi::GPUContext>::AXPY(int n, T alpha, const T *x, T *y) const {}
+void Blas<phi::GPUContext>::AXPY(int n, T alpha, const T *x, T *y) const {
+  PADDLE_THROW(
+      phi::errors::Unimplemented("Blas::AXPY is not supported on MUSA now!"));
+}
 
 template <>
 template <typename T>
-void Blas<phi::GPUContext>::SCAL(int n, const T alpha, T *x) const {}
+void Blas<phi::GPUContext>::SCAL(int n, const T alpha, T *x) const {
+  PADDLE_THROW(
+      phi::errors::Unimplemented("Blas::SCAL is not supported on MUSA now!"));
+}
 
 template <>
 template <typename T>
-void Blas<phi::GPUContext>::VCOPY(int n, const T *x, T *y) const {}
+void Blas<phi::GPUContext>::VCOPY(int n, const T *x, T *y) const {
+  PADDLE_THROW(
+      phi::errors::Unimplemented("Blas::VCOPY is not supported on MUSA now!"));
+}
 
 template <>
 template <typename T>
@@ -164,7 +197,10 @@ void Blas<phi::GPUContext>::GEMV(bool trans_a,
                                  const T *A,
                                  const T *B,
                                  T beta,
-                                 T *C) const {}
+                                 T *C) const {
+  PADDLE_THROW(
+      phi::errors::Unimplemented("Blas::GEMV is not supported on MUSA now!"));
+}
 
 template <>
 template <>
@@ -175,7 +211,10 @@ inline void Blas<phi::GPUContext>::GEMV(bool trans_a,
                                         const phi::dtype::float16 *A,
                                         const phi::dtype::float16 *B,
                                         phi::dtype::float16 beta,
-                                        phi::dtype::float16 *C) const {}
+                                        phi::dtype::float16 *C) const {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Blas::GEMV for dtype float16 is not supported on MUSA now!"));
+}
 
 template <>
 template <>
@@ -186,7 +225,10 @@ inline void Blas<phi::GPUContext>::GEMV(bool trans_a,
                                         const phi::dtype::bfloat16 *A,
                                         const phi::dtype::bfloat16 *B,
                                         phi::dtype::bfloat16 beta,
-                                        phi::dtype::bfloat16 *C) const {}
+                                        phi::dtype::bfloat16 *C) const {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Blas::GEMV for dtype bfloat16 is not supported on MUSA now!"));
+}
 
 template <>
 template <typename T>
@@ -202,7 +244,10 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                         T *C,
                                         int batchCount,
                                         int64_t strideA,
-                                        int64_t strideB) const {}
+                                        int64_t strideB) const {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Blas::BatchedGEMM is not supported on MUSA now!"));
+}
 
 template <>
 template <>
@@ -218,7 +263,10 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                phi::dtype::bfloat16 *C,
                                                int batchCount,
                                                int64_t strideA,
-                                               int64_t strideB) const {}
+                                               int64_t strideB) const {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Blas::BatchedGEMM for dtype bfloat16 is not supported on MUSA now!"));
+}
 
 template <>
 template <typename T>
@@ -232,7 +280,10 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                         const T **B,
                                         T beta,
                                         T **C,
-                                        int batchCount) const {}
+                                        int batchCount) const {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Blas::BatchedGEMM is not supported on MUSA now!"));
+}
 
 #if defined(__MUSACC__)
 template <>
@@ -247,7 +298,10 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                const double **B,
                                                double beta,
                                                double **C,
-                                               int batchCount) const {}
+                                               int batchCount) const {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Blas::BatchedGEMM is not supported on MUSA now!"));
+}
 
 template <>
 template <>
@@ -261,7 +315,10 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                const float **B,
                                                float beta,
                                                float **C,
-                                               int batchCount) const {}
+                                               int batchCount) const {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Blas::BatchedGEMM for dtype float is not supported on MUSA now!"));
+}
 
 template <>
 template <>
@@ -275,7 +332,10 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                const phi::dtype::float16 **B,
                                                phi::dtype::float16 beta,
                                                phi::dtype::float16 **C,
-                                               int batchCount) const {}
+                                               int batchCount) const {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Blas::BatchedGEMM for dtype float16 is not supported on MUSA now!"));
+}
 
 template <>
 template <>
@@ -289,7 +349,10 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                const phi::dtype::bfloat16 **B,
                                                phi::dtype::bfloat16 beta,
                                                phi::dtype::bfloat16 **C,
-                                               int batchCount) const {}
+                                               int batchCount) const {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Blas::BatchedGEMM for bfloat16 is not supported on MUSA now!"));
+}
 #endif
 
 template <>
@@ -304,12 +367,18 @@ void Blas<phi::GPUContext>::TRSM(CBLAS_SIDE side,
                                  const T *A,
                                  int lda,
                                  T *B,
-                                 int ldb) const {}
+                                 int ldb) const {
+  PADDLE_THROW(
+      phi::errors::Unimplemented("Blas::TRSM is not supported on MUSA now!"));
+}
 
 template <>
 template <typename T>
 void Blas<phi::GPUContext>::BatchedGETRF(
-    int n, T **a, int *ipiv, int *info, int batch_size) const {}
+    int n, T **a, int *ipiv, int *info, int batch_size) const {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Blas::BatchedGETRF is not supported on MUSA now!"));
+}
 
 template <>
 template <typename T>
@@ -318,12 +387,18 @@ void Blas<phi::GPUContext>::BatchedGETRI(int n,
                                          const int *ipiv,
                                          T **a_inv,
                                          int *info,
-                                         int batch_size) const {}
+                                         int batch_size) const {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Blas::BatchedGETRI is not supported on MUSA now!"));
+}
 
 template <>
 template <typename T>
 void Blas<phi::GPUContext>::BatchedMatInv(
-    int n, const T **a, T **a_inv, int *info, int batch_size) const {}
+    int n, const T **a, T **a_inv, int *info, int batch_size) const {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Blas::BatchedMatInv is not supported on MUSA now!"));
+}
 
 template <>
 template <typename T>
@@ -336,7 +411,10 @@ void Blas<phi::GPUContext>::BatchedGETRS(CBLAS_TRANSPOSE trans,
                                          T **b,
                                          int ldb,
                                          int *info,
-                                         int batch_size) const {}
+                                         int batch_size) const {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Blas::BatchedGETRS is not supported on MUSA now!"));
+}
 
 template <>
 template <typename T>
@@ -351,7 +429,10 @@ void Blas<phi::GPUContext>::BatchedTRSM(CBLAS_SIDE side,
                                         int lda,
                                         T **B,
                                         int ldb,
-                                        int batch_size) const {}
+                                        int batch_size) const {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Blas::BatchedTRSM is not supported on MUSA now!"));
+}
 
 }  // namespace funcs
 }  // namespace phi

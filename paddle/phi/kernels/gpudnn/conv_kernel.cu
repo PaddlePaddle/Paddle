@@ -358,7 +358,6 @@ void ConvCudnnKernel(const Context& ctx,
                      int groups,
                      const std::string& data_format,
                      DenseTensor* output) {
-  std::cout << "===============start conv2d==============\n";
   ctx.template Alloc<T>(output);
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
@@ -579,7 +578,6 @@ void ConvCudnnKernel(const Context& ctx,
   if (channel_last && compute_format == phi::backends::gpu::DataLayout::kNCHW) {
     TransToChannelLast<Context, T>(ctx, &transformed_output, output);
   }
-  std::cout << "===============end conv2d==============\n";
 }
 
 template <typename T, typename Context>
