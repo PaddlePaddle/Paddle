@@ -455,9 +455,10 @@ def _p2p_helper(
 
 
 class P2pHelper:
-    def __init__(self, use_cache=True):
+    def __init__(self, use_cache=True, chunk_timer=None):
         self._send_recv_meta = SendRecvMeta()
         self._use_cache = use_cache
+        self._chunk_timer = None
 
     def _send_meta(self, output_tensor):
         if not self._send_recv_meta.has_send_meta:
@@ -473,6 +474,8 @@ class P2pHelper:
             self._send_recv_meta.has_recv_meta = self._use_cache
 
     def recv_forward(self, pp_first_stage, sync_recv=True):
+        if self._chunk_timer is not None:
+            self._chunk_timer.start("recv_forward")
         global _timers
         if _timers is not None:
             _timers("recv_forward").start()
@@ -491,9 +494,13 @@ class P2pHelper:
             )
         if _timers is not None:
             _timers("recv_forward").stop()
+        if self._chunk_timer is not None:
+            self._chunk_timer.end()
         return input_tensor
 
     def recv_backward(self, pp_last_stage, sync_recv=True):
+        if self._chunk_timer is not None:
+            self._chunk_timer.start("recv_backward")
         global _timers
         if _timers is not None:
             _timers("recv_backward").start()
@@ -510,9 +517,13 @@ class P2pHelper:
             )
         if _timers is not None:
             _timers("recv_backward").stop()
+        if self._chunk_timer is not None:
+            self._chunk_timer.end()
         return output_tensor_grad
 
     def send_forward(self, output_tensor, pp_last_stage):
+        if self._chunk_timer is not None:
+            self._chunk_timer.start("send_forward")
         global _timers
         if _timers is not None:
             _timers("send_forward").start()
@@ -528,8 +539,12 @@ class P2pHelper:
             )
         if _timers is not None:
             _timers("send_forward").stop()
+        if self._chunk_timer is not None:
+            self._chunk_timer.end()
 
     def send_backward(self, input_tensor_grad, pp_first_stage):
+        if self._chunk_timer is not None:
+            self._chunk_timer.start("send_backward")
         global _timers
         if _timers is not None:
             _timers("send_backward").start()
@@ -543,8 +558,12 @@ class P2pHelper:
             )
         if _timers is not None:
             _timers("send_backward").stop()
+        if self._chunk_timer is not None:
+            self._chunk_timer.end()
 
     def send_forward_recv_backward(self, output_tensor, pp_last_stage):
+        if self._chunk_timer is not None:
+            self._chunk_timer.start("send_forward_recv_backward")
         global _timers
         if _timers is not None:
             _timers("send_forward_recv_backward").start()
@@ -560,9 +579,13 @@ class P2pHelper:
             )
         if _timers is not None:
             _timers("send_forward_recv_backward").stop()
+        if self._chunk_timer is not None:
+            self._chunk_timer.end()
         return output_tensor_grad
 
     def send_backward_recv_forward(self, input_tensor_grad, pp_first_stage):
+        if self._chunk_timer is not None:
+            self._chunk_timer.start("send_backward_recv_forward")
         global _timers
         if _timers is not None:
             _timers("send_backward_recv_forward").start()
@@ -578,11 +601,17 @@ class P2pHelper:
             )
         if _timers is not None:
             _timers("send_backward_recv_forward").stop()
+        if self._chunk_timer is not None:
+            self._chunk_timer.end()
         return input_tensor
 
     def send_forward_backward_recv_forward_backward(
         self, output_tensor, input_tensor_grad, recv_prev, recv_next
     ):
+        if self._chunk_timer is not None:
+            self._chunk_timer.start(
+                "send_forward_backward_recv_forward_backward"
+            )
         # always have to send dytpe info to downstream
         global _timers
         if _timers is not None:
@@ -602,10 +631,14 @@ class P2pHelper:
         )
         if _timers is not None:
             _timers("send_forward_backward_recv_forward_backward").stop()
+        if self._chunk_timer is not None:
+            self._chunk_timer.end()
         return input_tensor, output_tensor_grad
 
     def send_forward_recv_forward(self, output_tensor, recv_prev):
         # always have to send dytpe info to downstream
+        if self._chunk_timer is not None:
+            self._chunk_timer.start("send_forward_recv_forward")
         global _timers
         if _timers is not None:
             _timers("send_forward_recv_forward").start()
@@ -624,9 +657,13 @@ class P2pHelper:
         )
         if _timers is not None:
             _timers("send_forward_recv_forward").stop()
+        if self._chunk_timer is not None:
+            self._chunk_timer.end()
         return input_tensor
 
     def send_backward_recv_backward(self, input_tensor_grad, recv_next):
+        if self._chunk_timer is not None:
+            self._chunk_timer.start("send_backward_recv_backward")
         global _timers
         if _timers is not None:
             _timers("send_backward_recv_backward").start()
@@ -640,6 +677,8 @@ class P2pHelper:
         )
         if _timers is not None:
             _timers("send_backward_recv_backward").stop()
+        if self._chunk_timer is not None:
+            self._chunk_timer.end()
         return output_tensor_grad
 
     def __repr__(self):

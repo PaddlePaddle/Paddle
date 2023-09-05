@@ -13,6 +13,7 @@
 
 import os
 import sys
+import time
 from collections import defaultdict
 
 import paddle
@@ -34,6 +35,38 @@ from .pp_utils.utils import HOOK_ACTION, FusedCommBuffer, assign_group_by_size
 __all__ = []
 
 g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
+
+
+class ChunkTimer:
+    def __init__(self, group):
+        self.rank = group.get_group_rank(paddle.distributed.get_rank())
+        self.group = group
+        self.reset()
+
+    def begin(self):
+        paddle.distributed.barrier(self.group)
+        self.reset()
+
+    def reset(self):
+        self.begin = time.time()
+        self.records.clear()
+
+    def start(self, name):
+        paddle.device.cuda.synchronize()
+        t = time.time()
+        self.records.append([name, t, None])
+
+    def end(self, name):
+        paddle.device.cuda.synchronize()
+        t = time.time()
+        self.records[-1][-1] = t
+
+    def export_info(self):
+        return {
+            "rank": self.rank,
+            "begin": self.begin,
+            "records": self.records,
+        }
 
 
 # assume only the first stage and last stage need data, and data consumption are ordred;
@@ -151,6 +184,14 @@ class PipelineParallel(MetaParallelBase):
         ]
         self._using_cache = self._strategy.pipeline_configs['p2p_cache_shape']
 
+        self._enable_chunk_timer = self._strategy.pipeline_configs[
+            'enable_chunk_timer'
+        ]
+        if self._enable_chunk_timer:
+            self._chunk_timer = ChunkTimer()
+        else:
+            self._chunk_timer = None
+
         self.num_stages = self._hcg.get_pipe_parallel_world_size()
         self.stage_id = self._hcg.get_stage_id()
         self.pp_group = self._hcg.get_pipe_parallel_group()
@@ -204,7 +245,7 @@ class PipelineParallel(MetaParallelBase):
         )
 
         # construct pipeline meta info
-        self._p2p_helper = p2p.P2pHelper(self._using_cache)
+        self._p2p_helper = p2p.P2pHelper(self._using_cache, self._chunk_timer)
 
         self.global_rank = self._hcg.get_global_rank()
         self.micro_batch_id = 0
@@ -233,6 +274,12 @@ class PipelineParallel(MetaParallelBase):
             self.register_allreduce_overlap_hook(
                 self._layers, self.dp_group, self.accumulate_steps, True
             )
+
+    def _export_chunk_timer_info(self):
+        if self._chunk_timer is not None:
+            return self._chunk_timer.export_info()
+        else:
+            return None
 
     def is_pipeline_first_stage(self, ignore_virtual=False):
         if not ignore_virtual:
@@ -333,6 +380,8 @@ class PipelineParallel(MetaParallelBase):
         # this strategy is inspired by:
         # https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/schedules.py
 
+        if self._chunk_timer is not None:
+            self._chunk_timer.begin()
         self.scaler = scaler
 
         # store total loss of entire batch
@@ -564,6 +613,8 @@ class PipelineParallel(MetaParallelBase):
         return self.train_loss
 
     def _forward_step(self, input_tensor, micro_dataset, chunk_id=None):
+        if self._chunk_timer is not None:
+            self._chunk_timer.start("forward_step")
         if self._enable_timer:
             self.timers("forward_step").start()
         if self.is_pipeline_first_stage():
@@ -601,6 +652,8 @@ class PipelineParallel(MetaParallelBase):
             self.micro_batch_id += 1
         if self._enable_timer:
             self.timers("forward_step").stop()
+        if self._chunk_timer is not None:
+            self._chunk_timer.end()
         return output_tensor
 
     def _check_micro_batch_data_valid(self, micro_batch_data):
@@ -614,6 +667,8 @@ class PipelineParallel(MetaParallelBase):
             ), f"expected micro_batch_size {self.micro_batch_size} but get {micro_batch_size}"
 
     def _backward_step(self, input_tensor, output_tensor, output_tensor_grad):
+        if self._chunk_timer is not None:
+            self._chunk_timer.start("backward_step")
         if self._enable_timer:
             self.timers("backward_step").start()
         with paddle.amp.auto_cast(enable=False):
@@ -647,6 +702,8 @@ class PipelineParallel(MetaParallelBase):
                     input_tensor_grad = input_tensor.grad
             if self._enable_timer:
                 self.timers("backward_step").stop()
+            if self._chunk_timer is not None:
+                self._chunk_timer.end()
             return input_tensor_grad
 
     def _broadcast_final_loss(self):
@@ -883,6 +940,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
         assert (
             self._using_cache
         ), "cache should be enabled for pipeline with interleave"
+
+        if self._chunk_timer is not None:
+            self._chunk_timer.begin()
 
         # init some attributes for this batch run
         self.scaler = scaler
