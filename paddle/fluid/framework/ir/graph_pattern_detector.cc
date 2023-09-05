@@ -72,10 +72,12 @@ PDNode *PDPattern::RetrieveNode(const std::string &id) const {
 }
 
 void PDPattern::AddEdge(PDNode *a, PDNode *b) {
-  PADDLE_ENFORCE_NOT_NULL(
-      a, platform::errors::NotFound("PDNode %s is not found.", a->name()));
-  PADDLE_ENFORCE_NOT_NULL(
-      b, platform::errors::NotFound("PDNode %s is not found.", b->name()));
+  PADDLE_ENFORCE_NOT_NULL(a,
+                          platform::errors::NotFound("PDNode %s is not found.",
+                                                     a->name()));  // NOLINT
+  PADDLE_ENFORCE_NOT_NULL(b,
+                          platform::errors::NotFound("PDNode %s is not found.",
+                                                     b->name()));  // NOLINT
   PADDLE_ENFORCE_NE(a,
                     b,
                     platform::errors::PermissionDenied(

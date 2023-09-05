@@ -904,7 +904,8 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
     }
   }
 
-  VLOG(4) << "End run " << place << " " << op->DebugStringEx(local_scope);
+  VLOG(4) << "End run " << place << " "
+          << op->DebugStringEx(local_scope);  // NOLINT
 
   if (!instr_node.InplaceBackMap().empty()) {
     platform::RecordEvent inplaceback_event(
@@ -928,7 +929,7 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
     instr_node.DeviceContext().Wait();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
-    VLOG(4) << "Operator(" << op->Type()
+    VLOG(4) << "Operator(" << op->Type()  // NOLINT
             << "): context wait and get last error";
 #endif
   }

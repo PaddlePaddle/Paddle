@@ -32,7 +32,7 @@ template <typename T>
 void BackupTensor(const CPUContext& dev_ctx,
                   DenseTensor* dst,
                   DenseTensor* src) {
-  dst->Resize(src->dims());
+  dst->Resize(src->dims());  // NOLINT
   dev_ctx.Alloc<T>(dst);
   Copy(dev_ctx, *src, dev_ctx.GetPlace(), false, dst);
 }
@@ -250,7 +250,7 @@ struct GRUGradCell : GradCell<T> {
     gru_value.gate_weight = weight_hh->data<T>();
 
     gru_grad.gate_grad = grad_gate->data<T>();
-    gru_grad.reset_output_grad = grad_state->data<T>();
+    gru_grad.reset_output_grad = grad_state->data<T>();  // NOLINT
     gru_grad.prev_out_grad = grad_pre_hidden->data<T>();
     gru_grad.output_grad = grad_hidden->data<T>();
     gru_grad.gate_weight_grad = grad_weight_hh->data<T>();
@@ -314,9 +314,9 @@ struct LSTMGradCell : GradCell<T> {
     lstm_value.gate_value = gate_tensor->data<T>();
     lstm_value.state_value = state_tensor->data<T>();
     lstm_value.state_active_value = act_state_tensor->data<T>();
-    lstm_value.prev_state_value = pre_state->data<T>();
+    lstm_value.prev_state_value = pre_state->data<T>();  // NOLINT
 
-    lstm_grad.state_grad = grad_state->data<T>();
+    lstm_grad.state_grad = grad_state->data<T>();  // NOLINT
     lstm_grad.gate_grad = grad_gate->data<T>();
     lstm_grad.output_grad = grad_hidden->data<T>();
     lstm_grad.prev_state_grad = grad_pre_state->data<T>();

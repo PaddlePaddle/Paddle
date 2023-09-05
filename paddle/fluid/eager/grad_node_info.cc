@@ -126,7 +126,7 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
   } else if (phi::distributed::DistTensor::classof(fwd_out.impl().get())) {
     // TODO(chenweihang): DistTensor contains global and local meta, here
     // only set the local meta now, we should set global meta later
-    dense_tensor =
+    dense_tensor =  // NOLINT
         &(static_cast<phi::distributed::DistTensor*>(fwd_out.impl().get())
               ->value());
   } else {
