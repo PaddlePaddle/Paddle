@@ -176,7 +176,7 @@ class {} : public egr::GradNodeBase {{
 GRAD_FUNCTION_TEMPLATE = """
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}::operator()(paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {{
   VLOG(3) << \"Running AD API GRAD: \" << \"{}\";
-  egr::memcheck(\"{} begin..\");
+  egr::memcheck(\"{}1..\");
   // Fill Zero For GradIn Tensors
 {}
   // Apply Gradient Hooks
@@ -205,7 +205,7 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
   // Create Grad Node
 {}
   VLOG(4) << \"Finish AD API GRAD: {}";
-  egr::memcheck(\"{}2 end..\");
+  egr::memcheck(\"{}2..\");
   // LOG IF DEBUG
   {}
   // Return
@@ -217,7 +217,7 @@ FORWARD_FUNCTION_TEMPLATE = """
 {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << \"Running AD API: \" << \"{}\";
-  egr::memcheck(\"{} begin..\");
+  egr::memcheck(\"{}1..\");
   // Dygraph Record Event
 {}
   // AMP Logic
@@ -254,7 +254,7 @@ FORWARD_FUNCTION_TEMPLATE = """
 {}
 
   VLOG(4) << \"Finish AD API: {}";
-  egr::memcheck(\"{}2 end..\");
+  egr::memcheck(\"{}2..\");
   // LOG IF DEBUG
   {}
   // Returns
