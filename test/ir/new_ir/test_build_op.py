@@ -39,7 +39,7 @@ def get_ir_program():
 class TestBuildOp(unittest.TestCase):
     def test_build_mean_op(self):
         newir_program = get_ir_program()
-        tanh_out = newir_program.block().ops[-1].result(0)
+        tanh_out = newir_program.global_block().ops[-1].result(0)
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
         with paddle.ir.core.program_guard(newir_program):
             out = paddle.mean(tanh_out)
@@ -58,7 +58,7 @@ class TestBuildOp(unittest.TestCase):
 class TestBuildOp2(unittest.TestCase):
     def test_build_add_n_op(self):
         newir_program = get_ir_program()
-        tanh_out = newir_program.block().ops[-1].result(0)
+        tanh_out = newir_program.global_block().ops[-1].result(0)
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
         with paddle.ir.core.program_guard(newir_program):
             out1 = paddle.mean(tanh_out)
@@ -80,8 +80,8 @@ class TestBuildOp3(unittest.TestCase):
     def test_insertion_point(self):
         newir_program = get_ir_program()
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-        add_op = newir_program.block().ops[-2]
-        tanh_op = newir_program.block().ops[-1]
+        add_op = newir_program.global_block().ops[-2]
+        tanh_op = newir_program.global_block().ops[-1]
         add_out = add_op.result(0)
         tanh_operand = tanh_op.operands()[0]
 
@@ -105,7 +105,7 @@ class TestBuildOp3(unittest.TestCase):
 class TestBuildOp4(unittest.TestCase):
     def test_build_concat_op(self):
         newir_program = get_ir_program()
-        tanh_out = newir_program.block().ops[-1].result(0)
+        tanh_out = newir_program.global_block().ops[-1].result(0)
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
         with paddle.ir.core.program_guard(newir_program):
             out = paddle.concat([tanh_out, tanh_out], 0)

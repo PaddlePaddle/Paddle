@@ -18,6 +18,8 @@ import numpy as np
 from paddle.fluid.libpaddle import DataType
 from paddle.fluid.libpaddle.ir import Program, set_global_program
 
+from .._ir_ops import get_parameter, set_parameter
+from ..fluid import unique_name
 from ..fluid.wrapped_decorator import signature_safe_contextmanager
 
 np_type_to_paddle_type = {
@@ -249,3 +251,36 @@ def program_guard(main_program, startup_program=None):
         switch_main_program(main_program)
         if startup_program is not None:
             switch_startup_program(startup_program)
+
+
+def create_parameter(
+    dtype,
+    shape,
+    **kwargs,
+):
+    if 'initializer' not in kwargs:
+        raise ValueError(
+            "initializer is None, if you want to create parameter, please pass its initializer."
+        )
+    if dtype is not None:
+        if not isinstance(dtype, DataType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+    op_result_name = unique_name.generate('parameter')
+    startup_program = default_startup_program()
+    main_program = default_main_program()
+
+    with program_guard(default_main_program()):
+        param = get_parameter(op_result_name, dtype, shape)
+        trainable = kwargs.get('trainable', True)
+        param.stop_gradient = not trainable
+        param.is_persistable = True
+
+    with program_guard(startup_program):
+        initializer = kwargs['initializer']
+        init_result = initializer(
+            param, param.get_defining_op().get_parent_block()
+        )
+        init_result.is_persistable = True
+        set_parameter(init_result, op_result_name)
+
+    return param

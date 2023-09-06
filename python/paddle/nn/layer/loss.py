@@ -593,7 +593,12 @@ class MSELoss(Layer):
         if in_dygraph_mode():
             square_out = paddle._C_ops.square(paddle.subtract(input, label))
         else:
-            square_out = paddle.square(paddle.subtract(input, label))
+            if paddle.ir.core._use_new_ir_api():
+                square_out = paddle._ir_ops.square(
+                    paddle.subtract(input, label)
+                )
+            else:
+                square_out = paddle.square(paddle.subtract(input, label))
         if self.reduction == 'none':
             return square_out
 

@@ -275,12 +275,15 @@ def GenBuildAttributes(
 def GenBuildOutputs(
     op_input_name_list,
     op_input_type_list,
+    op_input_optional_list,
     op_mutable_attribute_name_list,
     op_mutable_attribute_type_list,
     op_output_name_list,
     op_output_type_list,
     op_output_size_list,
+    op_output_optional_list,
     op_infer_meta_map,
+    op_inplace_map,
     mutable_attr_is_input=False,
 ):
     build_output_str = '  VLOG(4) << "Builder construction outputs";\n'
@@ -288,13 +291,32 @@ def GenBuildOutputs(
   VLOG(4) << "Builder construction  dense_{name}";
   phi::DenseTensor dense_{name}(std::make_unique<paddle::experimental::DefaultAllocator>(paddle::platform::CPUPlace()).get(),
                                 phi::DenseTensorMeta(paddle::dialect::TransToPhiDataType({name}.dtype()),
-                                                     {name}.dims(),
-                                                     {name}.data_layout(),
-                                                     {name}.lod(),
-                                                     {name}.offset()));
+                                                    {name}.dims(),
+                                                    {name}.data_layout(),
+                                                    {name}.lod(),
+                                                    {name}.offset()));
+
   VLOG(4) << "Builder construction  meta_{name}";
   phi::MetaTensor meta_{name}(&dense_{name});
 """
+
+    CREATE_OPTIONAL_INPUT_METATENSOR_TEMPLATE = """
+  phi::MetaTensor meta_{name};
+  if ({name}_.impl() != nullptr) {{
+    paddle::dialect::DenseTensorType {name} = {name}_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    VLOG(4) << "Builder construction  dense_{name}";
+    phi::DenseTensor dense_{name}(std::make_unique<paddle::experimental::DefaultAllocator>(paddle::platform::CPUPlace()).get(),
+                                    phi::DenseTensorMeta(paddle::dialect::TransToPhiDataType({name}.dtype()),
+                                                        {name}.dims(),
+                                                        {name}.data_layout(),
+                                                        {name}.lod(),
+                                                        {name}.offset()));
+    VLOG(4) << "Builder construction  meta_{name}";
+    meta_{name} = phi::MetaTensor(&dense_{name});
+  }}
+
+"""
+
     CREATE_INPUT_VEC_METATENSOR_TEMPLATE = """  std::vector<phi::DenseTensor> vec_dense_{name};
   for (size_t i=0; i < static_cast<size_t>({name}.size()); i++) {{
     vec_dense_{name}.push_back(phi::DenseTensor(std::make_unique<paddle::experimental::DefaultAllocator>(paddle::platform::CPUPlace()).get(),
@@ -340,9 +362,10 @@ def GenBuildOutputs(
             )
         # is a Tensor
         else:
-            build_output_str += "  paddle::dialect::DenseTensorType {name} = {name}_.type().dyn_cast<paddle::dialect::DenseTensorType>(); (void){name};\n".format(
-                name=op_input_name_list[idx]
-            )
+            if op_input_optional_list[idx] == 'false':
+                build_output_str += "  paddle::dialect::DenseTensorType {name} = {name}_.type().dyn_cast<paddle::dialect::DenseTensorType>(); (void){name};\n".format(
+                    name=op_input_name_list[idx]
+                )
 
     # Prepare mutable attributes
     if mutable_attr_is_input:
@@ -394,9 +417,21 @@ def GenBuildOutputs(
                     )
                 # is a Tensor
                 else:
-                    build_output_str += CREATE_INPUT_METATENSOR_TEMPLATE.format(
-                        name=op_infer_meta_map['param'][idx]
+                    input_index = op_input_name_list.index(
+                        op_infer_meta_map['param'][idx]
                     )
+                    if op_input_optional_list[input_index] == 'true':
+                        build_output_str += (
+                            CREATE_OPTIONAL_INPUT_METATENSOR_TEMPLATE.format(
+                                name=op_infer_meta_map['param'][idx]
+                            )
+                        )
+                    else:
+                        build_output_str += (
+                            CREATE_INPUT_METATENSOR_TEMPLATE.format(
+                                name=op_infer_meta_map['param'][idx]
+                            )
+                        )
 
             infer_meta_args.append("meta_" + op_infer_meta_map['param'][idx])
         # is attribute
@@ -434,6 +469,18 @@ def GenBuildOutputs(
   ir::Type {name}_dense_tensor_type = paddle::dialect::DenseTensorType::get(ir::IrContext::Instance(), paddle::dialect::TransToIrDataType(dense_{name}.dtype()), dense_{name}.dims(), dense_{name}.layout(), dense_{name}.lod(), dense_{name}.offset());
   argument_outputs.push_back({name}_dense_tensor_type);
 """
+
+    CREATE_OUTPUT_INPLACE_OPTIONAL_DENSE_TENSOR_TEMPLATE = """
+  if ({input_name}_.impl() != nullptr) {{
+    ir::Type {output_name}_dense_tensor_type = paddle::dialect::DenseTensorType::get(ir::IrContext::Instance(), paddle::dialect::TransToIrDataType(dense_{output_name}.dtype()), dense_{output_name}.dims(), dense_{output_name}.layout(), dense_{output_name}.lod(), dense_{output_name}.offset());
+    argument_outputs.push_back({output_name}_dense_tensor_type);
+  }} else {{
+    ir::Type {output_name}_type;
+    argument_outputs.push_back({output_name}_type);
+  }}
+
+"""
+
     CREATE_OUTPUT_VEC_DENSE_TENSOR_TEMPLATE = """
   std::vector<ir::Type> {name}_types;
   for (size_t i=0; i < static_cast<size_t>({output_size}); i++) {{
@@ -451,9 +498,23 @@ def GenBuildOutputs(
             )
         # is a Tensor
         else:
-            build_output_str += CREATE_OUTPUT_DENSE_TENSOR_TEMPLATE.format(
-                name=op_output_name_list[idx]
+            output_name = op_output_name_list[idx]
+            has_input_inplace = (
+                op_inplace_map is not None
+                and output_name in op_inplace_map.keys()
             )
+            if op_output_optional_list[idx] == 'true' and has_input_inplace:
+                # is a inplace optional output
+                build_output_str += (
+                    CREATE_OUTPUT_INPLACE_OPTIONAL_DENSE_TENSOR_TEMPLATE.format(
+                        input_name=op_inplace_map[output_name],
+                        output_name=output_name,
+                    )
+                )
+            else:
+                build_output_str += CREATE_OUTPUT_DENSE_TENSOR_TEMPLATE.format(
+                    name=output_name
+                )
 
     build_output_str += "  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());\n"
 
@@ -464,6 +525,7 @@ def gen_build_func_str(
     op_class_name,
     op_input_name_list,
     op_input_type_list,
+    op_input_optional_list,
     op_attribute_name_list,
     op_attribute_type_list,
     op_attribute_build_arg_type_list,
@@ -477,7 +539,9 @@ def gen_build_func_str(
     op_output_name_list,
     op_output_type_list,
     op_output_size_list,
+    op_output_optional_list,
     op_infer_meta_map,
+    op_inplace_map,
     muta_attr_is_input=False,
     attr_args_is_map=False,
 ):
@@ -532,12 +596,15 @@ def gen_build_func_str(
     build_outputs_str = GenBuildOutputs(
         op_input_name_list,
         op_input_type_list,
+        op_input_optional_list,
         op_mutable_attribute_name_list,
         op_mutable_attribute_type_list,
         op_output_name_list,
         op_output_type_list,
         op_output_size_list,
+        op_output_optional_list,
         op_infer_meta_map,
+        op_inplace_map,
         muta_attr_is_input,
     )
 

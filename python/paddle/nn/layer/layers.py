@@ -1599,6 +1599,11 @@ class Layer:
 
             _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
             params[name] = value
+        elif isinstance(value, paddle.ir.OpResult) and value.is_persistable:
+            if params is None:
+                raise ValueError("super().__init__() should be called first")
+            _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
+            params[name] = value
         elif params is not None and name in params:
             if value is not None:
                 raise TypeError(

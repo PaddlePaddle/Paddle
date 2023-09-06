@@ -821,7 +821,10 @@ def subtract(x, y, name=None):
     if in_dynamic_mode():
         return _C_ops.subtract(x, y)
     else:
-        return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
+        if paddle.ir.core._use_new_ir_api():
+            return paddle._ir_ops.subtract(x, y)
+        else:
+            return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
 
 
 @inplace_apis_in_dygraph_only

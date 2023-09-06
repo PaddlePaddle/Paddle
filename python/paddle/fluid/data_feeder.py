@@ -44,6 +44,21 @@ _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.COMPLEX128: 'complex128',
 }
 
+_PADDLE_NEW_IR_DTYPE_2_NUMPY_DTYPE = {
+    core.DataType.BOOL: 'bool',
+    core.DataType.FLOAT16: 'float16',
+    core.DataType.UINT16: 'uint16',
+    core.DataType.FLOAT32: 'float32',
+    core.DataType.FLOAT64: 'float64',
+    core.DataType.INT8: 'int8',
+    core.DataType.INT16: 'int16',
+    core.DataType.INT32: 'int32',
+    core.DataType.INT64: 'int64',
+    core.DataType.UINT8: 'uint8',
+    core.DataType.COMPLEX64: 'complex64',
+    core.DataType.COMPLEX128: 'complex128',
+}
+
 
 def convert_float_to_uint16(data, data_format="NCHW"):
     if data.size == 0:
@@ -75,6 +90,9 @@ def convert_dtype(dtype):
     if isinstance(dtype, core.VarDesc.VarType):
         if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
             return _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
+    if isinstance(dtype, core.DataType):
+        if dtype in _PADDLE_NEW_IR_DTYPE_2_NUMPY_DTYPE:
+            return _PADDLE_NEW_IR_DTYPE_2_NUMPY_DTYPE[dtype]
     elif isinstance(dtype, type):
         # This branch is for NumPy scalar types
         if dtype in [
@@ -128,7 +146,14 @@ def convert_dtype(dtype):
 def check_variable_and_dtype(
     input, input_name, expected_dtype, op_name, extra_message=''
 ):
-    check_type(input, input_name, Variable, op_name, extra_message)
+    import paddle
+
+    if paddle.ir.core._use_new_ir_api():
+        check_type(
+            input, input_name, paddle.ir.OpResult, op_name, extra_message
+        )
+    else:
+        check_type(input, input_name, Variable, op_name, extra_message)
     check_dtype(input.dtype, input_name, expected_dtype, op_name, extra_message)
 
 

@@ -80,9 +80,10 @@ class XavierInitializer(Initializer):
         Returns:
             The initialization op
         """
-        block = self._check_block(block)
+        import paddle
 
-        assert isinstance(block, framework.Block)
+        block = self._check_block(block)
+        assert isinstance(block, (framework.Block, paddle.ir.Block))
         check_variable_and_dtype(
             var,
             "Out",
@@ -147,19 +148,29 @@ class XavierInitializer(Initializer):
         else:
             if self._uniform:
                 limit = math.sqrt(6.0 / float(fan_in + fan_out))
-                op = block.append_op(
-                    type="uniform_random",
-                    inputs={},
-                    outputs={"Out": out_var},
-                    attrs={
-                        "shape": out_var.shape,
-                        "dtype": out_dtype,
-                        "min": -limit,
-                        "max": limit,
-                        "seed": self._seed,
-                    },
-                    stop_gradient=True,
-                )
+                if paddle.ir.core._use_new_ir_api():
+                    return paddle._ir_ops.uniform(
+                        var.shape,
+                        var.dtype,
+                        -limit,
+                        limit,
+                        self._seed,
+                        _current_expected_place(),
+                    )
+                else:
+                    op = block.append_op(
+                        type="uniform_random",
+                        inputs={},
+                        outputs={"Out": out_var},
+                        attrs={
+                            "shape": out_var.shape,
+                            "dtype": out_dtype,
+                            "min": -limit,
+                            "max": limit,
+                            "seed": self._seed,
+                        },
+                        stop_gradient=True,
+                    )
             else:
                 std = math.sqrt(2.0 / float(fan_in + fan_out))
                 op = block.append_op(

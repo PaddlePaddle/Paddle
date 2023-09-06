@@ -48,10 +48,15 @@ class ConstantInitializer(Initializer):
         Returns:
             The initialization op
         """
+        import paddle
+
         block = self._check_block(block)
 
-        assert isinstance(var, (framework.Variable, framework.EagerParamBase))
-        assert isinstance(block, framework.Block)
+        assert isinstance(
+            var,
+            (framework.Variable, framework.EagerParamBase, paddle.ir.OpResult),
+        )
+        assert isinstance(block, (framework.Block, paddle.ir.Block))
 
         if in_dygraph_mode():
             place = _current_expected_place()
@@ -62,6 +67,13 @@ class ConstantInitializer(Initializer):
             )
             return None
         else:
+            if paddle.ir.core._use_new_ir_api():
+                place = _current_expected_place()
+                if self._force_cpu:
+                    place = core.CPUPlace()
+                return paddle._ir_ops.full(
+                    var.shape, float(self._value), var.dtype, place
+                )
             op = block.append_op(
                 type="fill_constant",
                 outputs={"Out": var},

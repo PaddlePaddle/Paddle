@@ -26,5 +26,9 @@ namespace dialect {
 ir::OpResult split_grad(std::vector<ir::OpResult> out_grads, ir::OpResult axis);
 
 ir::OpResult split_grad(std::vector<ir::OpResult> out_grads, int axis);
+ir::OpResult get_parameter(const std::string& name,
+                           phi::DataType dtype,
+                           const std::vector<int64_t>& shape);
+void set_parameter(ir::OpResult parameter, const std::string& name);
 }  // namespace dialect
 }  // namespace paddle

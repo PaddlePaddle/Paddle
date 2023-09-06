@@ -46,6 +46,9 @@ class IrChange:
             paddle.framework.default_main_program = (
                 paddle.ir.core.default_main_program
             )
+            paddle.framework.default_startup_program = (
+                paddle.ir.core.default_startup_program
+            )
 
     def _switch_to_old_ir(self):
         if not paddle.ir.core._use_new_ir_api():

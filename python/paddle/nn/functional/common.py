@@ -1953,6 +1953,13 @@ def linear(x, weight, bias=None, name=None):
             'linear',
         )
 
+        if paddle.ir.core._use_new_ir_api():
+            out = paddle._ir_ops.matmul(x, weight, False, False)
+            if bias is not None:
+                return paddle._ir_ops.add(out, bias)
+            else:
+                return out
+
         inputs = {'X': [x], 'Y': [weight]}
         attrs = {'trans_x': False, 'trans_y': False}
         tmp = helper.create_variable_for_type_inference(dtype)

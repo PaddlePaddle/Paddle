@@ -34,9 +34,10 @@ vjp_interface_declare_gen_op_list = [
     "matmul",
     "erf",
     "multiply",
-    "subtract",
     "pow",
     "rsqrt",
+    "subtract",
+    "square",
 ]
 vjp_interface_implementation_gen_op_list = [
     "tanh",
@@ -52,4 +53,5 @@ vjp_interface_implementation_gen_op_list = [
     "subtract",
     "pow",
     "rsqrt",
+    "square",
 ]
