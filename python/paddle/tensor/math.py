@@ -15,6 +15,7 @@
 math functions
 """
 
+
 import numpy as np
 
 import paddle
@@ -34,6 +35,8 @@ from ..framework import (
     convert_np_dtype_to_dtype_,
     core,
     in_dynamic_mode,
+    in_dynamic_or_new_ir_mode,
+    in_new_ir_mode,
 )
 from .creation import _complex_to_real_dtype
 from .layer_function_generator import generate_layer_fn, templatedoc
@@ -264,6 +267,10 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
             return _C_ops.scale(x, scale, float(bias), bias_after_scale)
         out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
         return dygraph_utils._append_activation_in_dygraph(out, act)
+    elif in_new_ir_mode():
+        if act is None:
+            return _C_ops.scale(x, scale, float(bias), bias_after_scale)
+        raise ValueError("act is not implement in new ir of scale api.")
     else:
         check_variable_and_dtype(
             x,
@@ -1956,14 +1963,11 @@ def add_n(inputs, name=None):
             [[8. , 10., 12.],
              [14., 16., 18.]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_new_ir_mode():
         if isinstance(inputs, Variable):
             inputs = [inputs]
         return _C_ops.add_n(inputs)
     else:
-        if paddle.ir.core._use_new_ir_api():
-            return paddle._ir_ops.add_n(inputs)
-
         helper = LayerHelper('add_n', **locals())
         check_type(inputs, 'inputs', (Variable, tuple, list), 'add_n')
         if isinstance(inputs, (list, tuple)):
