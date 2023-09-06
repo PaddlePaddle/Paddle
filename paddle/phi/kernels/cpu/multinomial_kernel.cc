@@ -29,7 +29,7 @@ void MultinomialKernel(const Context& dev_ctx,
   auto* in_data = x.data<T>();
   int64_t* out_data = dev_ctx.template Alloc<int64_t>(out);
   auto in_dims = x.dims();
-  int64_t in_rank = in_dims.size();
+  int in_rank = in_dims.size();
   const int64_t num_categories = in_dims[in_rank - 1];
   const int64_t num_distributions = in_rank > 1 ? in_dims[in_rank - 2] : 1;
 

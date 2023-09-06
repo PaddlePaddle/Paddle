@@ -92,14 +92,13 @@ class ConstantFoldingPattern : public ir::RewritePattern {
     }
 
     // Execute program
-    paddle::framework::interpreter::ExecutionConfig exe_config;
-    exe_config.create_local_scope = false;
+    exe_config_.create_local_scope = false;
     paddle::framework::InterpreterCore core(
         phi::CPUPlace{},
         fetch_var_names,
         paddle::dialect::PdOpLowerToKernelPass(temp_program.get()),
         &scope_,
-        exe_config);
+        exe_config_);
 
     paddle::framework::FetchList fetch_list = core.Run({});
 
@@ -112,6 +111,7 @@ class ConstantFoldingPattern : public ir::RewritePattern {
 
     std::string param_name =
         "@constant_folding_pass@_" + std::to_string(suffix_++);
+    exe_config_.skip_gc_vars.insert(param_name);
 
     auto* param_var = scope_.Var(param_name);
     auto* param_tensor = param_var->GetMutable<phi::DenseTensor>();
@@ -180,12 +180,10 @@ class ConstantFoldingPattern : public ir::RewritePattern {
   }
 
  private:
-  static size_t suffix_;
-  static paddle::framework::Scope scope_;
+  inline static size_t suffix_{0};
+  inline static paddle::framework::Scope scope_{};
+  inline static paddle::framework::interpreter::ExecutionConfig exe_config_{};
 };
-
-size_t ConstantFoldingPattern::suffix_ = 0;
-paddle::framework::Scope ConstantFoldingPattern::scope_ = {};
 
 class ConstantFoldingPass : public ir::Pass {
  public:

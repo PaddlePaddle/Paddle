@@ -1112,8 +1112,8 @@ struct AddNOpTranscriber : public OpTranscriber {
     }
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      IR_THROW(
-          "Op assign_value should have corresponding OpInfo pd.assign_value_");
+      IR_THROW("Op assign_value should have corresponding OpInfo %s",
+               target_op_name);
     }
 
     return op_info;
@@ -1699,6 +1699,7 @@ OpTranslator::OpTranslator() {
   special_handlers["cast"] = CastOpTranscriber();
   special_handlers["feed"] = FeedOpTranscriber();
   special_handlers["data"] = DataOpTranscriber();
+  special_handlers["fetch"] = FetchOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
   special_handlers["fill_constant"] = FillConstantTranscriber();
   special_handlers["grad_add"] = GradAddOpTranscriber();

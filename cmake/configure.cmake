@@ -201,6 +201,10 @@ if(WITH_DISTRIBUTE)
   add_definitions(-DPADDLE_WITH_DISTRIBUTE)
 endif()
 
+if(WITH_GFLAGS)
+  add_definitions(-DPADDLE_WITH_GFLAGS)
+endif()
+
 if(WITH_PSCORE)
   add_definitions(-DPADDLE_WITH_PSCORE)
 endif()

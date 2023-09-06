@@ -20,6 +20,7 @@
 
 #include "paddle/ir/core/enforce.h"
 #include "paddle/ir/pass/analysis_manager.h"
+#include "paddle/ir/pass/pass_registry.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace ir {
@@ -77,7 +78,7 @@ class IR_API Pass {
 
   virtual ~Pass();
 
-  std::string name() const { return pass_info().name; }
+  const std::string& name() const { return pass_info().name; }
 
   const detail::PassInfo& pass_info() const { return pass_info_; }
 

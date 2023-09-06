@@ -19,6 +19,7 @@
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/hlir/framework/visualize_helper.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/backends/codegen_cuda_host.h"
@@ -29,11 +30,11 @@
 #include "paddle/cinn/runtime/flags.h"
 #endif
 
-DECLARE_string(cinn_source_code_save_path);
-DECLARE_string(cinn_dump_group_lowered_func);
-DECLARE_string(cinn_dump_group_source_code);
-DECLARE_string(cinn_dump_group_ptx);
-DECLARE_string(cinn_dump_group_instruction);
+PD_DECLARE_string(cinn_source_code_save_path);
+PD_DECLARE_string(cinn_dump_group_lowered_func);
+PD_DECLARE_string(cinn_dump_group_source_code);
+PD_DECLARE_string(cinn_dump_group_ptx);
+PD_DECLARE_string(cinn_dump_group_instruction);
 
 namespace cinn {
 namespace backends {

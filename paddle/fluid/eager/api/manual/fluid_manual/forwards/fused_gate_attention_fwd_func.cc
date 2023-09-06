@@ -301,8 +301,9 @@ fused_gate_attention_dygraph_function(
                                         p_autograd_GateOut,
                                         p_autograd_Out);
       // Create GradOpNode
-      auto grad_node = std::shared_ptr<fused_gate_attentionGradNodeCompat>(
-          new fused_gate_attentionGradNodeCompat(9, 12));
+      auto grad_node =
+          std::shared_ptr<fused_gate_attentionGradNodeCompat>(  // NOLINT
+              new fused_gate_attentionGradNodeCompat(9, 12));
 
       bool merge_qkv = true;
       if (attrs.count("merge_qkv")) {
