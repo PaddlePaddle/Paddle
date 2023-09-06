@@ -31,7 +31,7 @@ from paddle.nn import ClipGradByGlobalNorm, clip
 
 from ...base.topology import ParallelMode
 from ...utils.hybrid_parallel_util import (
-    fused_allreduce_gradients,
+    fused_allreduce_gradients_with_group,
     unwrap_optimizer,
 )
 from ...utils.log_util import logger
@@ -271,6 +271,8 @@ class HybridParallelOptimizer:
 
         self._sharding_enable = self._hcg.get_sharding_parallel_world_size() > 1
 
+        self._sep_enabled = self._hcg.get_sep_parallel_world_size() > 1
+
         if (
             isinstance(self._inner_opt._grad_clip, ClipGradByGlobalNorm)
             and not self._use_dp_mode
@@ -425,6 +427,18 @@ class HybridParallelOptimizer:
                             moment2, src_rank, mp_group, mp_configs.sync_mode
                         )
 
+    def _fused_allreduce_gradients(self, parameter_list):
+        if (not self._dp_enable) and (not self._sep_enabled):
+            return
+        group = None
+        if self._dp_enable:
+            group = self._hcg.get_data_parallel_group()
+        if self._sep_enabled:
+            sep_group = self._hcg.get_sep_parallel_group()
+            dp_sep_group = self._hcg.get_dp_sep_parallel_group()
+            group = sep_group if group is None else dp_sep_group
+        fused_allreduce_gradients_with_group(parameter_list, group)
+
     @no_grad()
     @framework.dygraph_only
     def step(self):
@@ -433,8 +447,7 @@ class HybridParallelOptimizer:
             assert isinstance(self._inner_opt, DygraphShardingOptimizer)
             self._inner_opt.reduce_gradients(list(parameters_list), self._hcg)
 
-        if self._dp_enable:
-            fused_allreduce_gradients(list(parameters_list), self._hcg)
+        self._fused_allreduce_gradients(list(parameters_list))
 
         self._step(parameters_list)
 
@@ -455,8 +468,7 @@ class HybridParallelOptimizer:
             assert isinstance(self._inner_opt, DygraphShardingOptimizer)
             self._inner_opt.reduce_gradients(list(parameter_list), self._hcg)
 
-        if self._dp_enable:
-            fused_allreduce_gradients(list(parameter_list), self._hcg)
+        self._fused_allreduce_gradients(list(parameter_list))
 
         return self._inner_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set

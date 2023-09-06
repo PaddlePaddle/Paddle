@@ -161,7 +161,13 @@ class PipelineParallel(MetaParallelBase):
         self.stage_id = self._hcg.get_stage_id()
         self.global_rank = self._hcg.get_global_rank()
         self.pp_group = self._hcg.get_pipe_parallel_group()
+
         self.dp_group = self._hcg.get_data_parallel_group()
+
+        # fused sep and dp
+        if self._hcg.get_sep_parallel_world_size() > 1:
+            self.dp_group = self._hcg.get_dp_sep_parallel_group()
+
         self.sharding_group = self._hcg.get_sharding_parallel_group()
 
         self._virtual_pp_world_size = None
