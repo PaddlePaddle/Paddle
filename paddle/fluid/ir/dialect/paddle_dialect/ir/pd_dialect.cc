@@ -51,8 +51,6 @@ void PaddleDialect::initialize() {
   RegisterOps<paddle::dialect::AddNOp,
               paddle::dialect::AddN_Op,
               paddle::dialect::AddNWithKernelOp,
-              paddle::dialect::FusedGemmEpilogueOp,
-              paddle::dialect::FusedGemmEpilogueGradOp,
               paddle::dialect::SplitGradOp>();
 
   RegisterInterfaces<ParameterConvertInterface>();
