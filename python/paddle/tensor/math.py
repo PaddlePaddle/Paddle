@@ -34,6 +34,7 @@ from ..framework import (
     convert_np_dtype_to_dtype_,
     core,
     in_dynamic_mode,
+    in_dynamic_or_new_ir_mode,
 )
 from .creation import _complex_to_real_dtype
 from .layer_function_generator import generate_layer_fn, templatedoc
@@ -818,13 +819,10 @@ def subtract(x, y, name=None):
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [ 4.  ,  inf., -inf.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_new_ir_mode():
         return _C_ops.subtract(x, y)
     else:
-        if paddle.ir.core._use_new_ir_api():
-            return paddle._ir_ops.subtract(x, y)
-        else:
-            return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
+        return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
 
 
 @inplace_apis_in_dygraph_only

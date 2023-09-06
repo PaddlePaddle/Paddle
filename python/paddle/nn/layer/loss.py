@@ -16,7 +16,7 @@ import paddle
 
 # TODO: define loss functions of neural network
 from paddle import fluid, in_dynamic_mode
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import in_dynamic_or_new_ir_mode
 
 from .. import functional as F
 from .layers import Layer
@@ -590,15 +590,10 @@ class MSELoss(Layer):
                 label, 'label', ['float32', 'float64'], 'MSELoss'
             )
 
-        if in_dygraph_mode():
+        if in_dynamic_or_new_ir_mode():
             square_out = paddle._C_ops.square(paddle.subtract(input, label))
         else:
-            if paddle.ir.core._use_new_ir_api():
-                square_out = paddle._ir_ops.square(
-                    paddle.subtract(input, label)
-                )
-            else:
-                square_out = paddle.square(paddle.subtract(input, label))
+            square_out = paddle.square(paddle.subtract(input, label))
         if self.reduction == 'none':
             return square_out
 

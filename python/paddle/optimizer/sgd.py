@@ -14,12 +14,11 @@
 
 import warnings
 
-import paddle
 from paddle import _C_ops
 
 from ..fluid import framework
 from ..fluid.dygraph import no_grad
-from ..fluid.framework import in_dygraph_mode
+from ..fluid.framework import in_dynamic_or_new_ir_mode
 from .optimizer import Optimizer
 
 __all__ = []
@@ -130,7 +129,7 @@ class SGD(Optimizer):
         )
 
         lr = self._create_param_lr(param_and_grad)
-        if in_dygraph_mode():
+        if in_dynamic_or_new_ir_mode():
             _C_ops.sgd_(
                 param_and_grad[0],
                 lr,
@@ -140,15 +139,6 @@ class SGD(Optimizer):
             )
             return None
         else:
-            if paddle.ir.core._use_new_ir_api():
-                paddle._ir_ops.sgd_(
-                    param_and_grad[0],
-                    lr,
-                    param_and_grad[1],
-                    master_weight,
-                    find_master,
-                )
-                return None
             assert isinstance(block, framework.Block)
             # create the optimize op
             inputs = {

@@ -18,7 +18,7 @@ import paddle
 from paddle import _C_ops
 from paddle.common_ops_import import Variable, default_main_program
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.framework import core, in_dynamic_mode
+from paddle.framework import core, in_dynamic_mode, in_new_ir_mode
 from paddle.tensor.creation import full
 
 from ...fluid.data_feeder import (
@@ -1939,6 +1939,13 @@ def linear(x, weight, bias=None, name=None):
     if in_dynamic_mode():
         # TODO(jiabin): using addmm for fast forward route
         return _C_ops.linear(x, weight, bias)
+
+    elif in_new_ir_mode():
+        out = paddle._ir_ops.matmul(x, weight, False, False)
+        if bias is not None:
+            return paddle._ir_ops.add(out, bias)
+        else:
+            return out
     else:
         helper = LayerHelper('linear', **locals())
         dtype = x.dtype
@@ -1952,13 +1959,6 @@ def linear(x, weight, bias=None, name=None):
             ["uint16", 'float16', 'float32', 'float64'],
             'linear',
         )
-
-        if paddle.ir.core._use_new_ir_api():
-            out = paddle._ir_ops.matmul(x, weight, False, False)
-            if bias is not None:
-                return paddle._ir_ops.add(out, bias)
-            else:
-                return out
 
         inputs = {'X': [x], 'Y': [weight]}
         attrs = {'trans_x': False, 'trans_y': False}

@@ -18,7 +18,11 @@ from paddle import _C_ops
 
 from ...fluid import core, framework, unique_name
 from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid.framework import _current_expected_place, in_dygraph_mode
+from ...fluid.framework import (
+    _current_expected_place,
+    in_dygraph_mode,
+    in_new_ir_mode,
+)
 from .initializer import Initializer
 
 __all__ = []
@@ -145,32 +149,32 @@ class XavierInitializer(Initializer):
             else:
                 out_var._share_underline_tensor_to(var)
             return None
-        else:
+        elif in_new_ir_mode():
             if self._uniform:
                 limit = math.sqrt(6.0 / float(fan_in + fan_out))
-                if paddle.ir.core._use_new_ir_api():
-                    return paddle._ir_ops.uniform(
-                        var.shape,
-                        var.dtype,
-                        -limit,
-                        limit,
-                        self._seed,
-                        _current_expected_place(),
-                    )
-                else:
-                    op = block.append_op(
-                        type="uniform_random",
-                        inputs={},
-                        outputs={"Out": out_var},
-                        attrs={
-                            "shape": out_var.shape,
-                            "dtype": out_dtype,
-                            "min": -limit,
-                            "max": limit,
-                            "seed": self._seed,
-                        },
-                        stop_gradient=True,
-                    )
+                return paddle._ir_ops.uniform(
+                    var.shape,
+                    var.dtype,
+                    -limit,
+                    limit,
+                    self._seed,
+                    _current_expected_place(),
+                )
+        else:
+            if self._uniform:
+                op = block.append_op(
+                    type="uniform_random",
+                    inputs={},
+                    outputs={"Out": out_var},
+                    attrs={
+                        "shape": out_var.shape,
+                        "dtype": out_dtype,
+                        "min": -limit,
+                        "max": limit,
+                        "seed": self._seed,
+                    },
+                    stop_gradient=True,
+                )
             else:
                 std = math.sqrt(2.0 / float(fan_in + fan_out))
                 op = block.append_op(

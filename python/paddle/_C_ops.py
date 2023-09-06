@@ -16,7 +16,18 @@ from paddle.fluid import core
 
 __all__ = []
 
-UNIFIED_APIS = ['mean']
+UNIFIED_APIS = [
+    'mean',
+    'matmul',
+    'add',
+    'full_',
+    'full',
+    'full',
+    'uniform',
+    'subtract',
+    'sgd_',
+    'square',
+]
 
 for name in dir(core.eager.ops):
     globals()[name] = getattr(core.eager.ops, name)

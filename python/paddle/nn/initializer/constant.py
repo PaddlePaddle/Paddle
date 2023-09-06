@@ -15,7 +15,11 @@
 from paddle import _C_ops
 
 from ...fluid import core, framework
-from ...fluid.framework import _current_expected_place, in_dygraph_mode
+from ...fluid.framework import (
+    _current_expected_place,
+    in_dygraph_mode,
+    in_dynamic_or_new_ir_mode,
+)
 
 # TODO: define the initializers of Constant in neural network
 from .initializer import Initializer
@@ -58,22 +62,20 @@ class ConstantInitializer(Initializer):
         )
         assert isinstance(block, (framework.Block, paddle.ir.Block))
 
-        if in_dygraph_mode():
+        if in_dynamic_or_new_ir_mode():
             place = _current_expected_place()
             if self._force_cpu:
                 place = core.CPUPlace()
-            _C_ops.full_(
-                var, var.shape, str(float(self._value)), var.dtype, place
-            )
-            return None
-        else:
-            if paddle.ir.core._use_new_ir_api():
-                place = _current_expected_place()
-                if self._force_cpu:
-                    place = core.CPUPlace()
-                return paddle._ir_ops.full(
+            if in_dygraph_mode():
+                _C_ops.full_(
+                    var, var.shape, float(self._value), var.dtype, place
+                )
+                return None
+            else:
+                return _C_ops.full(
                     var.shape, float(self._value), var.dtype, place
                 )
+        else:
             op = block.append_op(
                 type="fill_constant",
                 outputs={"Out": var},
