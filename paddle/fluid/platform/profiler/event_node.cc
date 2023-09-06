@@ -52,7 +52,9 @@ void NodeTrees::BuildTrees(
     const std::vector<CudaRuntimeTraceEventNode*>& runtime_event_nodes,
     const std::vector<DeviceTraceEventNode*>& device_event_nodes,
     const std::vector<MemTraceEventNode*>& mem_event_nodes,
-    const std::vector<OperatorSupplementEventNode*>& op_supplement_events) {
+    const std::vector<OperatorSupplementEventNode*>& op_supplement_events,
+    const std::vector<CommunicationSupplementEventNode*>&
+        comm_supplement_events) {
   // separate Host Event Nodes into different threads
   std::map<uint64_t, std::vector<HostTraceEventNode*>>
       thread2host_event_nodes;  // used to store HostTraceEventNodes per thread
@@ -69,6 +71,11 @@ void NodeTrees::BuildTrees(
                                          // OperatorSupplementEventNode
                                          // per
                                          // thread
+  std::map<uint64_t, std::vector<CommunicationSupplementEventNode*>>
+      thread2comm_supplement_event_nodes;  // used to store
+                                           // CommunicationSupplementEventNode
+                                           // per
+                                           // thread
   std::map<uint32_t, CudaRuntimeTraceEventNode*>
       correlation_id2runtime_event_node;  // used to store the relation between
                                           // correlation id and runtime node
@@ -104,6 +111,11 @@ void NodeTrees::BuildTrees(
   for (auto op_supplement_event : op_supplement_events) {
     thread2op_supplement_event_nodes[op_supplement_event->ThreadId()].push_back(
         op_supplement_event);
+  }
+  // construct thread2comm_supplement_event_nodes
+  for (auto comm_supplement_event : comm_supplement_events) {
+    thread2comm_supplement_event_nodes[comm_supplement_event->ThreadId()]
+        .push_back(comm_supplement_event);
   }
   // sort host event nodes and runtime event nodes according to start_ns and
   // end_ns
@@ -163,6 +175,18 @@ void NodeTrees::BuildTrees(
               });
   }
 
+  for (auto& event_node : thread2comm_supplement_event_nodes) {
+    std::sort(event_node.second.begin(),
+              event_node.second.end(),
+              [](CommunicationSupplementEventNode* node1,
+                 CommunicationSupplementEventNode* node2) {
+                if (node1->TimeStampNs() <= node2->TimeStampNs()) {
+                  return true;
+                }
+                return false;
+              });
+  }
+
   // construct trees
   std::set<uint64_t> thread_set;
   for (auto& event_node : thread2host_event_nodes) {
@@ -177,13 +201,17 @@ void NodeTrees::BuildTrees(
   for (auto& event_node : thread2op_supplement_event_nodes) {
     thread_set.insert(event_node.first);
   }
+  for (auto& event_node : thread2comm_supplement_event_nodes) {
+    thread_set.insert(event_node.first);
+  }
 
   for (auto item : thread_set) {
     thread_event_trees_map_[item] =
         BuildTreeRelationship(thread2host_event_nodes[item],
                               thread2runtime_event_nodes[item],
                               thread2mem_event_nodes[item],
-                              thread2op_supplement_event_nodes[item]);
+                              thread2op_supplement_event_nodes[item],
+                              thread2comm_supplement_event_nodes[item]);
   }
 }
 
@@ -191,7 +219,8 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
     std::vector<HostTraceEventNode*> host_event_nodes,
     std::vector<CudaRuntimeTraceEventNode*> runtime_event_nodes,
     std::vector<MemTraceEventNode*> mem_event_nodes,
-    std::vector<OperatorSupplementEventNode*> op_supplement_events) {
+    std::vector<OperatorSupplementEventNode*> op_supplement_events,
+    std::vector<CommunicationSupplementEventNode*> comm_supplement_events) {
   // a stack used for analyse relationship
   auto node_stack = std::vector<HostTraceEventNode*>();
   // root node, top level
@@ -368,6 +397,36 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
     }
   }
 
+  // build relationship between host event node and comm supplement node
+  for (auto it = post_order_nodes.begin(); it < post_order_nodes.end(); ++it) {
+    int comm_supplement_count = 0;
+    bool hasenter = false;
+    std::vector<CommunicationSupplementEventNode*>::iterator firstposition;
+    std::vector<CommunicationSupplementEventNode*>::iterator lastposition =
+        comm_supplement_events.end();
+    for (auto comm_supplement_it = comm_supplement_events.begin();
+         comm_supplement_it < comm_supplement_events.end();
+         ++comm_supplement_it) {
+      if ((*comm_supplement_it)->TimeStampNs() >= (*it)->StartNs() &&
+          (*comm_supplement_it)->TimeStampNs() <= (*it)->EndNs()) {
+        if (!hasenter) {
+          firstposition = comm_supplement_it;
+          hasenter = true;
+        }
+        (*it)->SetCommunicationSupplementNode(*comm_supplement_it);
+        comm_supplement_count += 1;
+      } else {
+        if ((*comm_supplement_it)->TimeStampNs() > (*it)->EndNs()) {
+          lastposition = comm_supplement_it;
+          break;
+        }
+      }
+    }
+    if (hasenter) {
+      comm_supplement_events.erase(firstposition, lastposition);
+    }
+  }
+
   return root_node;
 }
 
@@ -420,8 +479,9 @@ void NodeTrees::HandleTrees(
     std::function<void(CudaRuntimeTraceEventNode*)> runtime_event_node_handle,
     std::function<void(DeviceTraceEventNode*)> device_event_node_handle,
     std::function<void(MemTraceEventNode*)> mem_event_node_handle,
-    std::function<void(OperatorSupplementEventNode*)>
-        op_supplement_node_handle) {
+    std::function<void(OperatorSupplementEventNode*)> op_supplement_node_handle,
+    std::function<void(CommunicationSupplementEventNode*)>
+        comm_supplement_node_handle) {
   // using different user-defined function to handle different nodes
   const std::map<uint64_t, std::vector<HostTraceEventNode*>>
       thread2host_event_nodes = Traverse(true);
@@ -446,6 +506,10 @@ void NodeTrees::HandleTrees(
       if ((*hostnode)->GetOperatorSupplementEventNode()) {
         op_supplement_node_handle(
             (*hostnode)->GetOperatorSupplementEventNode());
+      }
+      if ((*hostnode)->GetCommunicationSupplementEventNode()) {
+        comm_supplement_node_handle(
+            (*hostnode)->GetCommunicationSupplementEventNode());
       }
     }
   }

@@ -34,6 +34,15 @@ class TraceEventCollector : public phi::TraceEventCollector {
     return op_supplement_events_;
   }
 
+  void AddCommunicationSupplementEvent(CommunicationSupplementEvent&& event) {
+    comm_supplement_events_.push_back(event);
+  }
+
+  const std::list<CommunicationSupplementEvent>& CommunicationSupplementEvents()
+      const {
+    return comm_supplement_events_;
+  }
+
   void ClearAll() {
     thread_names_.clear();
     host_events_.clear();
@@ -41,10 +50,12 @@ class TraceEventCollector : public phi::TraceEventCollector {
     device_events_.clear();
     mem_events_.clear();
     op_supplement_events_.clear();
+    comm_supplement_events_.clear();
   }
 
  private:
   std::list<OperatorSupplementEvent> op_supplement_events_;
+  std::list<CommunicationSupplementEvent> comm_supplement_events_;
 };
 
 }  // namespace platform

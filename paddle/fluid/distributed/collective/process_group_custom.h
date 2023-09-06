@@ -33,6 +33,17 @@ namespace distributed {
 
 using Place = phi::Place;
 
+enum class CommunicationType {
+  Allreduce = 0,
+  Broadcast = 1,
+  Recv = 2,
+  Reduce_OP = 3,
+  Reduce_DST = 4,
+  Send = 5,
+  Barrier = 6,
+  Scatter = 7,
+  Gather = 8
+};
 class ProcessGroupCustom final : public ProcessGroupWithStream {
  public:
   class XCCLTask final : public ProcessGroupWithStream::TaskStream,
@@ -216,6 +227,10 @@ class ProcessGroupCustom final : public ProcessGroupWithStream {
       bool use_calc_stream);
 
   void BroadcastUniqueXCCLID(phi::ccl::CCLRootId* nccl_id);
+  void BuildCommunicationField(std::vector<Place> places,
+                               std::string key,
+                               int i,
+                               bool use_calc_stream);
 
   void CreateXCCLEnvCache(const Place& place, const std::string& place_key);
 
@@ -268,6 +283,9 @@ class ProcessGroupCustom final : public ProcessGroupWithStream {
   std::mutex mutex_;
   std::unordered_map<std::string, std::vector<phi::CustomContext*>>
       places_to_ctx_;
+
+  std::vector<int64_t> comm_group_;
+  std::vector<int64_t> comm_type_;
 };
 
 }  //  namespace distributed
