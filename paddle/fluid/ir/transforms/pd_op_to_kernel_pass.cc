@@ -623,7 +623,6 @@ void HandleForSpecialOp(
   std::vector<ir::OpResult> vec_inputs;
   std::vector<ir::Type> op_output_types;
   if (op_item->name() == "builtin.combine") {
-    std::vector<phi::Place> out_places;
     // Copy op inputs
     std::vector<ir::Type> vec_inner_types;
     if (op_item->num_operands() > 0) {
@@ -642,15 +641,6 @@ void HandleForSpecialOp(
         auto new_in = map_value_pair->at(cur_in);
         vec_inputs.push_back(new_in);
         vec_inner_types.push_back(new_in.type());
-        if (new_in.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
-          out_places.push_back(
-              new_in.type()
-                  .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
-                  .place());
-        } else {
-          PADDLE_THROW(phi::errors::Unimplemented(
-              "only support dense tensor type for now"));
-        }
       }
     }
     // Copy op output type
@@ -692,7 +682,6 @@ void HandleForSpecialOp(
   }
 
   if (op_item->name() == "builtin.split") {
-    std::vector<phi::Place> out_places(op_item->num_results());
     if (op_item->num_operands() > 0) {
       for (size_t i = 0; i < op_item->num_operands(); ++i) {
         auto cur_in = op_item->operand_source(i);
