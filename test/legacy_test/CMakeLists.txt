@@ -1280,6 +1280,9 @@ set(STATIC_BUILD_TESTS
     test_c_embedding_op
     test_decayed_adagrad_op
     test_decoupled_py_reader
+    test_distributed_fused_lamb_op_with_clip
+    test_distributed_fused_lamb_op_without_clip
+    test_distributed_fused_lamb_op_with_gradient_merge
     test_eig_op
     test_eigh_op
     test_fake_quantize_op
