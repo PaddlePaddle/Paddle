@@ -63,6 +63,7 @@ class TestVjpPrim(unittest.TestCase):
     def test_divide_grad_prim_case1(self):
         newir_program = get_ir_divide_program()
         paddle.framework.core._set_prim_backward_enabled(True)
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
         dout = newir_program.block().ops[-2].result(0)
         out_grads = [[dout]]
         stop_gradients = [[False], [False]]
@@ -83,9 +84,9 @@ class TestVjpPrim(unittest.TestCase):
             "pd.full",
             "pd.elementwise_pow",
             "pd.divide",
-            "pd.multiply",
             "pd.full",
             "pd.scale",
+            "pd.multiply",
             "pd.full_int_array",
             "pd.sum",
             "pd.full_int_array",
@@ -101,6 +102,7 @@ class TestVjpPrim(unittest.TestCase):
         for idx, op in enumerate(newir_program.block().ops):
             self.assertEqual(op.name(), all_op_names[idx])
         paddle.framework.core._set_prim_backward_enabled(False)
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
     def test_divide_grad_no_prim(self):
         newir_program = get_ir_divide_program()
@@ -123,6 +125,7 @@ class TestVjpPrim(unittest.TestCase):
     def test_sum_grad_prim(self):
         newir_program = get_ir_sum_program()
         paddle.framework.core._set_prim_backward_enabled(True)
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
         dout = newir_program.block().ops[-3].result(0)
         out_grads = [[dout]]
         stop_gradients = [[False], [True]]
@@ -147,6 +150,7 @@ class TestVjpPrim(unittest.TestCase):
         for idx, op in enumerate(newir_program.block().ops):
             self.assertEqual(op.name(), all_op_names[idx])
         paddle.framework.core._set_prim_backward_enabled(False)
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
     def test_sum_grad_no_prim(self):
         newir_program = get_ir_sum_program()

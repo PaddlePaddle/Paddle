@@ -49,6 +49,8 @@ void PaddleDialect::initialize() {
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"  // NOLINT
       >();
   RegisterOps<paddle::dialect::AddNOp,
+              paddle::dialect::AddN_Op,
+              paddle::dialect::AddNWithKernelOp,
               paddle::dialect::FusedGemmEpilogueOp,
               paddle::dialect::FusedGemmEpilogueGradOp,
               paddle::dialect::SplitGradOp>();
