@@ -199,7 +199,8 @@ void RenameAndGetOutputs(
           PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
       if (same_hierarchy_conv2d_num_map[input_var_name] > 0) {
         (*output_names_with_id)
-            .insert(out_var_name + std::to_string(var2id[out_var_name]));
+            .insert(RenameVarBeUnique(out_var_name,
+                                      std::to_string(var2id[out_var_name])));
         (*output_names).insert(out_var_name);
       } else if (filter_shape[2] == 1 && filter_shape[3] == 1 &&
                  strides[0] == 1 && strides[1] == 1 && paddings[0] == 0 &&
