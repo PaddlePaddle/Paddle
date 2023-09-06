@@ -35,7 +35,8 @@ OpInfoTuple AddNOp::GetOpInfo() {
                   "ir::VectorType<paddle::dialect::DenseTensorType>",
                   false,
                   false,
-                  false)};
+                  false,
+                  true)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       OpOutputInfo("out", "paddle::dialect::DenseTensorType", false, false)};
@@ -159,7 +160,8 @@ OpInfoTuple AddN_Op::GetOpInfo() {
           "ir::VectorType<paddle::dialect::DenseTensorType>",
           false,
           false,
-          false)};
+          false,
+          true)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       paddle::dialect::OpOutputInfo(
@@ -286,7 +288,8 @@ OpInfoTuple AddNWithKernelOp::GetOpInfo() {
           "ir::VectorType<paddle::dialect::DenseTensorType>",
           false,
           false,
-          false)};
+          false,
+          true)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       paddle::dialect::OpOutputInfo(
@@ -416,9 +419,14 @@ OpInfoTuple SplitGradOp::GetOpInfo() {
                   "ir::VectorType<paddle::dialect::DenseTensorType>",
                   false,
                   false,
-                  false),
-      OpInputInfo(
-          "axis", "paddle::dialect::ScalarAttribute", false, false, true)};
+                  false,
+                  true),
+      OpInputInfo("axis",
+                  "paddle::dialect::ScalarAttribute",
+                  false,
+                  false,
+                  true,
+                  false)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       OpOutputInfo("x_grad", "paddle::dialect::DenseTensorType", false, false)};
