@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 
 #include "paddle/phi/infermeta/spmd_rules/default_data_parallel.h"
+#include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 #include "paddle/phi/infermeta/spmd_rules/matmul.h"
 #include "paddle/phi/infermeta/spmd_rules/replicated.h"
 
@@ -44,6 +45,16 @@ namespace distributed {
 PD_REGISTER_SPMD_RULE(matmul,
                       PD_INFER_SPMD(phi::distributed::MatmulInferSpmd),
                       PD_INFER_SPMD(phi::distributed::MatmulInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    elementwise_unary,
+    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    elementwise_binary,
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
 
 // default data parallel rule
 PD_REGISTER_SPMD_RULE(
