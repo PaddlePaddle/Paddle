@@ -37,6 +37,10 @@ PHI_DEFINE_EXPORTED_bool(use_stride_kernel,
                          true,
                          "Whether to use strdie kernel if op support stride.");
 
+PHI_DEFINE_EXPORTED_string(stride_kernel_blacklist,
+                           "",
+                           "It controls the strided kernel subset do not use.");
+
 PD_DECLARE_int32(low_precision_op_list);
 PD_DECLARE_bool(enable_api_kernel_fallback);
 PD_DECLARE_bool(run_kp_kernel);
