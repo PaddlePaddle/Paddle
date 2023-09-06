@@ -49,35 +49,35 @@ enum class RegType : uint8_t {
 };
 struct KernelRegistrar {
  public:
-  KernelRegistrar(RegType,
-                  const char*,
-                  const char*,
-                  DataLayout,
-                  DataType,
-                  KernelArgsParseFn,
-                  KernelArgsDefFn,
-                  KernelFn,
-                  void*);
+  KernelRegistrar(RegType reg_type,
+                  const char* kernel_name_cstr,
+                  const char* backend_cstr,
+                  DataLayout layout,
+                  DataType dtype,
+                  KernelArgsParseFn args_parse_fn,
+                  KernelArgsDefFn args_def_fn,
+                  KernelFn kernel_fn,
+                  void* variadic_kernel_fn);
 
-  KernelRegistrar(RegType,
-                  const char*,
-                  const char*,
-                  DataLayout,
-                  KernelArgsParseFn,
-                  KernelArgsDefFn,
-                  KernelFn,
-                  void*);
+  KernelRegistrar(RegType reg_type,
+                  const char* kernel_name_cstr,
+                  const char* backend_cstr,
+                  DataLayout layout,
+                  KernelArgsParseFn args_parse_fn,
+                  KernelArgsDefFn args_def_fn,
+                  KernelFn kernel_fn,
+                  void* variadic_kernel_fn);
 
  private:
-  void ConstructKernel(RegType,
-                       const char*,
-                       const char*,
-                       DataLayout,
-                       DataType,
-                       KernelArgsParseFn,
-                       KernelArgsDefFn,
-                       KernelFn,
-                       void*);
+  void ConstructKernel(RegType reg_type,
+                       const char* kernel_name_cstr,
+                       const char* backend_cstr,
+                       DataLayout layout,
+                       DataType dtype,
+                       KernelArgsParseFn args_parse_fn,
+                       KernelArgsDefFn args_def_fn,
+                       KernelFn kernel_fn,
+                       void* variadic_kernel_fn);
 };
 
 /**
