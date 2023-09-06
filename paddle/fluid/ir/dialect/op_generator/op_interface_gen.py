@@ -34,14 +34,6 @@ OP_VJP_FORWARD_MULTI_INPUT_TEMPLATE = """
             std::make_shared<primitive::LazyTensor>(combine_op_obj.inputs()[idx]));
     }}"""
 
-OP_VJP_FORWARD_OPTIONAL_INPUT_TEMPLATE = """
-    if (op_obj.{input_name}().type() == None){{
-        paddle::optional<Tensor> {input_name};
-    }}
-    else{{
-        paddle::optional<Tensor> {input_name} = paddle::make_optional<Tensor>(std::make_shared<primitive::LazyTensor>(op_obj.{input_name}()));
-    }}"""
-
 OP_VJP_FORWARD_OUTPUT_GRAD_TEMPLATE = """
     Tensor {output_grad_name}(std::make_shared<primitive::LazyTensor>(out_grads[{idx1}][{idx2}]));"""
 
