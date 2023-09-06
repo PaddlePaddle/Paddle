@@ -70,8 +70,6 @@ class IR_API Block {
   bool HasOneUse() const;
   BlockOperand *first_use_addr() { return &first_use_; }
 
-  void ResetOpListOrder(const OpListType &new_op_list);
-
  private:
   Block(Block &) = delete;
   Block &operator=(const Block &) = delete;
@@ -79,8 +77,6 @@ class IR_API Block {
   // Allow access to 'SetParent'.
   friend class Region;
   void SetParent(Region *parent, Region::iterator position);
-
-  static bool TopoOrderCheck(const OpListType &op_list);
 
  private:
   Region *parent_;  // not owned
