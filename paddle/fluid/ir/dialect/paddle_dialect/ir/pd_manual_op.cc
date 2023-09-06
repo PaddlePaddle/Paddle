@@ -180,7 +180,6 @@ void AddN_Op::Build(ir::Builder &builder,
 
   VLOG(4) << "Builder construction outputs";
   ir::VectorType inputs = inputs_.type().dyn_cast<ir::VectorType>();
-  (void)inputs;
   std::vector<phi::DenseTensor> vec_dense_inputs;
   for (size_t i = 0; i < static_cast<size_t>(inputs.size()); i++) {
     vec_dense_inputs.push_back(phi::DenseTensor(
@@ -308,7 +307,6 @@ void AddNWithKernelOp::Build(ir::Builder &builder,
 
   VLOG(4) << "Builder construction outputs";
   ir::VectorType inputs = inputs_.type().dyn_cast<ir::VectorType>();
-  (void)inputs;
   std::vector<phi::DenseTensor> vec_dense_inputs;
   for (size_t i = 0; i < static_cast<size_t>(inputs.size()); i++) {
     vec_dense_inputs.push_back(phi::DenseTensor(
