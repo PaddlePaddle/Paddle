@@ -32,10 +32,27 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
             return b
 
         def generate_input2():
-            a = np.random.random([3]).astype(np.float32)
+            a = np.random.random([1,1,3]).astype(np.float32)
             return a
 
         ops_config = [
+
+            {
+                "op_type": "set_value",
+                "op_inputs": {
+                    "Input": ["input_data"],
+                    "ValueTensor": ["update_data"],
+                },
+                "op_outputs": {"Out": ["input_data"]},
+                "op_attrs": {
+                    "axes": [1],
+                    "starts": [0],
+                    "ends": [1],
+                    "steps": [1],
+                    "decrease_axes":[]
+                },
+            },
+
             {
                 "op_type": "relu",
                 "op_inputs": {
@@ -45,21 +62,6 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
                 "op_attrs": {},
             },
 
-            {
-                "op_type": "set_value",
-                "op_inputs": {
-                    "Input": ["output_data"],
-                    "ValueTensor": ["update_data"],
-                },
-                "op_outputs": {"Out": ["output_data"]},
-                "op_attrs": {
-                    "axes": [0],
-                    "starts": [0],
-                    "ends": [1],
-                    "steps": [1],
-                    "decrease_axes":[0]
-                },
-            },
         ]
         ops = self.generate_op_config(ops_config)
         program_config = ProgramConfig(
@@ -78,15 +80,15 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1,3,3],
-                "update_data": [3],
+                "update_data": [1,1,3],
             }
             self.dynamic_shape.max_input_shape = {
                 "input_data": [1,3,3],
-                "update_data": [3],
+                "update_data": [1,1,3],
             }
             self.dynamic_shape.opt_input_shape = {
                 "input_data": [1,3,3],
-                "update_data": [3],
+                "update_data":[1,1,3],
             }
 
         def clear_dynamic_shape():
@@ -113,18 +115,6 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-5, 1e-4)
-<<<<<<< HEAD
-        # self.trt_param.precision = paddle_infer.PrecisionType.Half
-        # yield self.create_inference_config(), generate_trt_nodes_num(
-        #     attrs, True
-        # ), (1e-3, 1e-3)
-=======
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), (1e-3, 1e-3)
->>>>>>> develop
 
     def test(self):
         self.run_test()
