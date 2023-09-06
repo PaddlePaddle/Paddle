@@ -99,7 +99,7 @@ class ConstantFoldingPattern : public ir::RewritePattern {
                                             fetch_var_names,
                                             kernel_program->block(),
                                             &scope_,
-                                            exe_config);
+                                            exe_config_);
 
     paddle::framework::FetchList fetch_list = core.Run({});
 

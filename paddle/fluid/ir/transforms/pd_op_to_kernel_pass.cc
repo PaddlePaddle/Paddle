@@ -1087,19 +1087,13 @@ ir::Operation* BuildPhiKernelOp(
   return op;
 }
 
-std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
-                                                   phi::Place place) {
-  auto program = std::make_unique<ir::Program>(ir::IrContext::Instance());
-
-  auto block = prog->block();
-
-  ir::IrContext* ctx = ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleKernelDialect>();
-
-  std::unordered_map<ir::Operation*, ir::Operation*> map_op_pair;
-  std::unordered_map<ir::Value, ir::OpResult> map_value_pair;
-
+void ProcessBlock(
+    const phi::Place& place,
+    ir::Block* block,
+    ir::Program* program,
+    ir::IrContext* ctx,
+    std::unordered_map<ir::Operation*, ir::Operation*>* map_op_pair,
+    std::unordered_map<ir::Value, ir::OpResult>* map_value_pair) {
   auto skip_feed_names = GetSkipFeedNames(block);
 
   for (auto op_item : *block) {
@@ -1111,8 +1105,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
 
     // HandleSpecialOp
     if (SpecialLowerOps.count(op_item->name())) {
-      HandleForSpecialOp(
-          op_item, program.get(), ctx, &map_op_pair, &map_value_pair);
+      HandleForSpecialOp(op_item, program, ctx, map_op_pair, map_value_pair);
       continue;
     }
 
@@ -1123,7 +1116,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     auto kernel_fn_str = GetKernelFnStr(op_info_parser.get());
 
     auto kernel_key = GetKernelKey(
-        op_item, place, kernel_fn_str, map_value_pair, op_info_parser.get());
+        op_item, place, kernel_fn_str, *map_value_pair, op_info_parser.get());
     VLOG(6) << "kernel type " << kernel_key;
 
     // build output type
@@ -1137,9 +1130,9 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
                                        place,
                                        op_info_parser.get(),
                                        ctx,
-                                       &map_op_pair,
-                                       &map_value_pair,
-                                       program.get());
+                                       map_op_pair,
+                                       map_value_pair,
+                                       program);
 
     // build op
     ir::Operation* op = BuildPhiKernelOp(kernel_fn_str,
@@ -1147,14 +1140,30 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
                                          vec_inputs,
                                          op_output_types,
                                          op_item,
-                                         program.get(),
+                                         program,
                                          ctx,
-                                         &map_op_pair,
-                                         &map_value_pair);
+                                         map_op_pair,
+                                         map_value_pair);
 
     AddShadowFeed(
-        place, op_item, op, program.get(), ctx, &map_op_pair, &map_value_pair);
+        place, op_item, op, program, ctx, map_op_pair, map_value_pair);
   }
+}
+
+std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
+                                                   phi::Place place) {
+  auto program = std::make_unique<ir::Program>(ir::IrContext::Instance());
+
+  auto block = prog->block();
+
+  ir::IrContext* ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleKernelDialect>();
+
+  std::unordered_map<ir::Operation*, ir::Operation*> map_op_pair;
+  std::unordered_map<ir::Value, ir::OpResult> map_value_pair;
+
+  ProcessBlock(place, block, program.get(), ctx, &map_op_pair, &map_value_pair);
 
   return program;
 }
