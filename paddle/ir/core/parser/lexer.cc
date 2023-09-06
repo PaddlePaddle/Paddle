@@ -14,8 +14,6 @@
 
 #include "paddle/ir/core/parser/lexer.h"
 
-using std::string;
-
 Token Lexer::ConsumeToken() {
   SkipWhitespace();
   if (auto token = LexIdentifer()) {
@@ -60,7 +58,7 @@ std::unique_ptr<Token> Lexer::LexIdentifer() {
   if ((!isalpha(is.peek()) && is.peek() != '_') || IsEndTag(is.peek())) {
     return nullptr;
   }
-  string token_identifier = "";
+  std::string token_identifier = "";
   while (isalnum(is.peek()) || is.peek() == '_' || is.peek() == '.') {
     token_identifier += GetChar();
   }
@@ -73,7 +71,7 @@ std::unique_ptr<Token> Lexer::LexNumberOrArraow() {
     return nullptr;
   }
 
-  string token_digit = "";
+  std::string token_digit = "";
   token_digit += GetChar();
 
   if (token_digit[0] == '-' && is.peek() == '>') {
@@ -109,7 +107,7 @@ std::unique_ptr<Token> Lexer::LexEndTagOrNullVal() {
   if (!IsEndTag(is.peek())) {
     return nullptr;
   }
-  string token_end = "";
+  std::string token_end = "";
   token_end += GetChar();
   if ((token_end[0] == '<' && (is.peek() != '<' && is.peek() != '#')) ||
       token_end[0] != '<') {
@@ -117,7 +115,7 @@ std::unique_ptr<Token> Lexer::LexEndTagOrNullVal() {
     return endtag_token;
   }
   if (is.peek() == '<') {
-    string token_null_val = "";
+    std::string token_null_val = "";
     GetChar();
     while (is.peek() != '>') {
       token_null_val += GetChar();
@@ -128,7 +126,7 @@ std::unique_ptr<Token> Lexer::LexEndTagOrNullVal() {
         new Token{"<<" + token_null_val + ">>", NULL_});
     return null_token;
   } else {
-    string token_attrnull = "";
+    std::string token_attrnull = "";
     while (is.peek() != '>') {
       token_attrnull += GetChar();
     }
@@ -143,7 +141,7 @@ std::unique_ptr<Token> Lexer::LexValueId() {
   if (is.peek() != '%') {
     return nullptr;
   }
-  string token_valueid = "";
+  std::string token_valueid = "";
   token_valueid += GetChar();
 
   while (isdigit(is.peek())) {
@@ -167,7 +165,7 @@ std::unique_ptr<Token> Lexer::LexOpName() {
     return nullptr;
   }
   GetChar();
-  string token_opname = "";
+  std::string token_opname = "";
   while (is.peek() != '"') {
     token_opname += GetChar();
   }
