@@ -221,7 +221,7 @@ std::set<std::string> CollectTensorNeedsWrite(const Expr* e) {
     }
     return false;
   };
-  IrNodesCollector collector(std::move(teller), std::move(handler), true);
+  IrNodesCollector collector(std::move(teller), std::move(handler), false);
   collector.Visit(e);
   return tensor_written;
 }
