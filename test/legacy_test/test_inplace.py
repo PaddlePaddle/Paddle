@@ -861,7 +861,7 @@ class TestDygraphInplaceNanToNum(TestDygraphInplace):
         self.np_compare = np_array_equal_with_nan
 
     def test_forward_version(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
             self.assertEqual(var.inplace_version, 0)
 
@@ -877,7 +877,7 @@ class TestDygraphInplaceNanToNum(TestDygraphInplace):
     def test_backward_error(self):
         # It raises an error because the inplace operator will result
         # in incorrect gradient computation.
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
             var_a.stop_gradient = False
 
@@ -920,7 +920,7 @@ class TestDygraphInplaceLcm(TestDygraphInplace):
         return paddle.lcm(var, self.y)
 
     def test_forward_version(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
             self.assertEqual(var.inplace_version, 0)
 
@@ -961,7 +961,7 @@ class TestDygraphInplaceLdexp(TestDygraphInplaceWithContinuous):
         pass
 
     def test_forward_version(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
             self.assertEqual(var.inplace_version, 0)
 
@@ -977,7 +977,7 @@ class TestDygraphInplaceLdexp(TestDygraphInplaceWithContinuous):
     def test_backward_error(self):
         # It raises an error because the inplace operator will result
         # in incorrect gradient computation.
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             var_a = paddle.to_tensor(self.input_var_numpy).astype("float64")
             var_a.stop_gradient = False
 
@@ -1039,7 +1039,7 @@ class TestDygraphInplaceWhereBroadcast(TestDygraphInplaceWithContinuous):
         return paddle.where(var > self.y, var, self.y)
 
     def test_forward_version(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
             self.assertEqual(var.inplace_version, 0)
 
@@ -1055,7 +1055,7 @@ class TestDygraphInplaceWhereBroadcast(TestDygraphInplaceWithContinuous):
     def test_backward_error(self):
         # It raises an error because the inplace operator will result
         # in incorrect gradient computation.
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
             var_a.stop_gradient = False
 
@@ -1344,7 +1344,7 @@ class TestDygraphInplaceCumsum(TestDygraphInplaceWithContinuous):
     def test_backward_error(self):
         # It raises an error because the inplace operator will result
         # in incorrect gradient computation.
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             var_a = paddle.to_tensor(self.input_var_numpy).astype("float64")
             var_a.stop_gradient = False
 
@@ -1364,7 +1364,7 @@ class TestDygraphInplaceCumsum(TestDygraphInplaceWithContinuous):
                 loss.backward()
 
     def test_forward_version(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
             self.assertEqual(var.inplace_version, 0)
 
@@ -1388,7 +1388,7 @@ class TestDygraphInplaceCumprod(TestDygraphInplace):
     def test_backward_error(self):
         # It raises an error because the inplace operator will result
         # in incorrect gradient computation.
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
             var_a.stop_gradient = False
 
@@ -1408,7 +1408,7 @@ class TestDygraphInplaceCumprod(TestDygraphInplace):
                 loss.backward()
 
     def test_forward_version(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
             self.assertEqual(var.inplace_version, 0)
 
