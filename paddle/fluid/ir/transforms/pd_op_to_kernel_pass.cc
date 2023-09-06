@@ -155,34 +155,67 @@ bool SkipFeedOp(ir::Operation* op, const std::set<std::string>& feed_names) {
       op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString());
 }
 
-std::vector<phi::DenseTensor> GetFakeTensorList(ir::Value new_input_tmp) {
-  std::vector<phi::DenseTensor> vec_res;
+std::vector<std::shared_ptr<phi::TensorBase>> GetFakeTensorList(
+    ir::Value new_input_tmp) {
+  std::vector<std::shared_ptr<phi::TensorBase>> vec_res;
   auto input_type = new_input_tmp.type();
-  std::vector<dialect::AllocatedDenseTensorType> types;
+
+  auto build_fake_dense_tensor =
+      [](const dialect::AllocatedDenseTensorType& type) {
+        auto ptr = new phi::Allocation(nullptr, 0, type.place());
+
+        std::shared_ptr<phi::Allocation> holder(ptr);
+
+        auto dtype = TransToPhiDataType(type.dtype());
+
+        phi::DenseTensorMeta meta(
+            dtype, type.dims(), type.data_layout(), type.lod(), type.offset());
+
+        return std::make_shared<phi::DenseTensor>(holder, meta);
+      };
+
+  auto build_fake_selected_rows =
+      [](const dialect::AllocatedSelectedRowsType& type) {
+        auto ptr = new phi::Allocation(nullptr, 0, type.place());
+
+        std::shared_ptr<phi::Allocation> holder(ptr);
+
+        auto dtype = TransToPhiDataType(type.dtype());
+
+        phi::DenseTensorMeta meta(
+            dtype, type.dims(), type.data_layout(), type.lod(), type.offset());
+
+        std::vector<int64_t> rows;
+        int64_t height = 0;
+        rows.clear();
+
+        auto sr = std::make_shared<phi::SelectedRows>(rows, height);
+
+        phi::DenseTensor dense_tensor(holder, meta);
+        *(sr->mutable_value()) = dense_tensor;
+
+        return sr;
+      };
+
   if (input_type.isa<dialect::AllocatedDenseTensorType>()) {
-    types.push_back(input_type.dyn_cast<dialect::AllocatedDenseTensorType>());
+    vec_res.push_back(build_fake_dense_tensor(
+        input_type.dyn_cast<dialect::AllocatedDenseTensorType>()));
+  } else if (input_type.isa<dialect::AllocatedSelectedRowsType>()) {
+    vec_res.push_back(build_fake_selected_rows(
+        input_type.dyn_cast<dialect::AllocatedSelectedRowsType>()));
   } else if (input_type.isa<ir::VectorType>()) {
     auto vec_inner_types = input_type.dyn_cast<ir::VectorType>().data();
     for (size_t i = 0; i < vec_inner_types.size(); ++i) {
-      types.push_back(
-          vec_inner_types[0].dyn_cast<dialect::AllocatedDenseTensorType>());
+      if (vec_inner_types[0].isa<dialect::AllocatedDenseTensorType>()) {
+        vec_res.push_back(build_fake_dense_tensor(
+            vec_inner_types[0].dyn_cast<dialect::AllocatedDenseTensorType>()));
+      } else if (vec_inner_types[0].isa<dialect::AllocatedSelectedRowsType>()) {
+        vec_res.push_back(build_fake_selected_rows(
+            vec_inner_types[0].dyn_cast<dialect::AllocatedSelectedRowsType>()));
+      }
     }
   }
 
-  for (auto& type : types) {
-    auto ptr = new phi::Allocation(nullptr, 0, type.place());
-
-    std::shared_ptr<phi::Allocation> holder(ptr);
-
-    auto dtype = TransToPhiDataType(type.dtype());
-
-    phi::DenseTensorMeta meta(
-        dtype, type.dims(), type.data_layout(), type.lod(), type.offset());
-
-    phi::DenseTensor fake_tensor(holder, meta);
-
-    vec_res.push_back(fake_tensor);
-  }
   return vec_res;
 }
 
@@ -521,7 +554,7 @@ phi::KernelKey GetKernelKey(
 
       auto fake_tensors = GetFakeTensorList(new_input_tmp);
       for (auto& fake_tensor : fake_tensors) {
-        kernel_key_parser.AssignKernelKeySet(fake_tensor);
+        kernel_key_parser.AssignKernelKeySet(*fake_tensor);
       }
 
       // Because we can't make sure the place when build data op

@@ -40,10 +40,10 @@ class NewIRCompiler final {
 
   std::unique_ptr<Program> Build();
 
+  std::unique_ptr<Program> Build(const std::vector<newir::GroupPtr>& groups);
+
  private:
   CINN_DISALLOW_COPY_AND_ASSIGN(NewIRCompiler);
-
-  std::unique_ptr<Program> Build(const std::vector<newir::GroupPtr>& groups);
 
   std::vector<ir::LoweredFunc> GetOpFunc(const ::ir::Operation& op, int idx);
 
