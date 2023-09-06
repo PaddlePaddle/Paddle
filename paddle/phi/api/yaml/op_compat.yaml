@@ -1167,6 +1167,10 @@
 - op : full (fill_constant)
   outputs :
     out : Out
+  int_array:
+    shape :
+      data_type : int64_t
+      support_tensor : true
   extra :
     attrs : [bool use_mkldnn = false]
 
