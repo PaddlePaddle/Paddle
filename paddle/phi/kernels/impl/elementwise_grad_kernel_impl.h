@@ -44,11 +44,17 @@ void AddGradImpl(const Context& dev_ctx,
       x_grad->dims() == out_grad.dims()) {
     VLOG(4) << "Special case when y_grad is not needed and x_grad doesn't "
                "reduce";
+    if (x_grad->Holder() == nullptr || x_grad->capacity() == 0) {
+      x_grad->set_layout(out_grad.layout());
+    }
     phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   } else if (x_grad == nullptr && y_grad != nullptr &&
              y_grad->dims() == out_grad.dims()) {
     VLOG(4) << "Special case when x_grad is not needed and y_grad doesn't "
                "reduce";
+    if (y_grad->Holder() == nullptr || y_grad->capacity() == 0) {
+      y_grad->set_layout(out_grad.layout());
+    }
     phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, y_grad);
   } else {
     grad_func(dev_ctx, x, y, *out, out_grad, x_grad, y_grad, axis);
