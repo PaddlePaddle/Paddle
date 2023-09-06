@@ -23,6 +23,9 @@ using ScheduleIterators = List<equation::IterVar>;
 namespace op_cluster {
 
 DEFINE_ADT_TAG(tAsOutput);
+DEFINE_ADT_TAG(tBreak);
+DEFINE_ADT_TAG(tMergable);
+DEFINE_ADT_TAG(tHasReadWriteDependence);
 
 class SdOpStmtNodes final {
  public:
@@ -46,19 +49,20 @@ class SdOpStmtNodes final {
       const std::function<const ScheduleIterators&(const m_ir::Tensor&)>&
           SdIterators4Tensor) const;
 
-  bool HasDependence(const SdOpStmtNodes& that,
-                     const std::function<const m_expr::SchedulePolicy&(
-                         const equation::IterVar&)>& GetSchedulePolicy) const;
+  bool HasReadWriteDependence(const SdOpStmtNodes& that) const;
 
   void MergeThisToThat(const SdOpStmtNodes& that);
 
  private:
-  template <typename DoEachT>
-  bool AggregateTensorPair(const SdOpStmtNodes& that,
-                           const DoEachT& DoEach) const;
+  template <template <typename> class ReturnTag, typename DoEachT>
+  ReturnTag<bool> AggregateTensorPair(const SdOpStmtNodes& that,
+                                      const DoEachT& DoEach) const;
 
   template <typename DoEachT>
   void VisitEachTensor(const DoEachT& DoEach) const;
+
+  template <template <typename> class ReturnTag, typename DoEachT>
+  ReturnTag<bool> ForEachTensor(const DoEachT& DoEach) const;
 
   std::unordered_map<m_ir::Tensor, tAsOutput<bool>> GetTensor2AsOutput() const;
 
@@ -73,8 +77,8 @@ OpClusters GenerateClusterOpsForLoopFuse(
     const ScheduleIterators& sd_iters,
     const std::function<const m_expr::ScheduleDescriptor&(
         const equation::IterVar&)>& GetScheduleType,
-    const std::function<TensorIndexExpr(
-        const cinn::hlir::framework::NodeData*)>& GetTensorIndexes);
+    const std::function<TensorIndexExpr(const m_ir::Tensor&)>&
+        GetTensorIndexes);
 
 }  // namespace op_cluster
 
