@@ -3039,6 +3039,26 @@ class OpTest(unittest.TestCase):
                         no_grad_set,
                     )
                 print("New IR gradient ends...........")
+
+                fp32_analytic_grads = []
+                for grad in new_ir_grad:
+                    if grad.dtype == np.uint16:
+                        grad = convert_uint16_to_float(grad)
+                        max_relative_error = (
+                            0.01
+                            if max_relative_error < 0.01
+                            else max_relative_error
+                        )
+                    fp32_analytic_grads.append(grad)
+                new_ir_grad = fp32_analytic_grads
+
+                if self.is_float16_op():
+                    max_relative_error = (
+                        0.001
+                        if max_relative_error < 0.001
+                        else max_relative_error
+                    )
+
                 self._assert_is_close(
                     numeric_grads,
                     new_ir_grad,
