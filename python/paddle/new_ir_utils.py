@@ -15,10 +15,8 @@
 
 import paddle
 
-from .fluid.wrapped_decorator import signature_safe_contextmanager
 
-
-class IrChange:
+class IrGuard:
     def __init__(self):
         old_flag = paddle.fluid.framework.get_flags("FLAGS_enable_new_ir_api")
         paddle.fluid.framework.set_flags({"FLAGS_enable_new_ir_api": False})
@@ -32,6 +30,14 @@ class IrChange:
                 please set FLAGS_enable_new_ir_api = false"
             )
         paddle.fluid.framework.set_flags(old_flag)
+
+    def __enter__(self):
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+        self._switch_to_new_ir()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+        self._switch_to_old_ir()
 
     def _switch_to_new_ir(self):
         if paddle.ir.core._use_new_ir_api():
@@ -64,15 +70,3 @@ class IrChange:
                 "IrChange._switch_to_old_ir only work when paddle.ir.core._use_new_ir_api() is false, \
                 please set FLAGS_enable_new_ir_api = false"
             )
-
-
-@signature_safe_contextmanager
-def _newir_guard():
-    ir_change = IrChange()
-    paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-    ir_change._switch_to_new_ir()
-    try:
-        yield
-    finally:
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
-        ir_change._switch_to_old_ir()
