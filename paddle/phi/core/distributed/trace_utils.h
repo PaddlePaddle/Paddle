@@ -119,13 +119,13 @@ inline std::string AnalyzeTraceMsg(const TraceMap& trace_map, int gid) {
   std::string result = "\n\t The ranks that has desync problem are: ";
   if (start_ranks.size()) {
     result += "[" + RanksToString(start_ranks) +
-              "] joined but do not finish collective ring_id: " +
+              "] joined but do not finish collective group_id: " +
               std::to_string(gid) + ", seq: " + std::to_string(lag_seq);
   }
   if (end_ranks.size()) {
     result += ", ranks [" + RanksToString(end_ranks) +
               "] finished collective seq: " + std::to_string(lag_seq) +
-              ", but didnt join collective ring_id: " + std::to_string(gid) +
+              ", but didnt join collective group_id: " + std::to_string(gid) +
               ", seq: " + std::to_string(lag_seq + 1);
   }
   return result;
@@ -179,7 +179,7 @@ inline std::string GenerateTraceMsg(std::shared_ptr<Store> store,
   }
   result += "\n\t Problem summary: rank: " + std::to_string(curr_rank) +
             " timeout at collective: " + curr_comm_type +
-            ", ring_id: " + std::to_string(group_id) +
+            ", group_id: " + std::to_string(group_id) +
             ", seq: " + std::to_string(curr_seq);
   result += AnalyzeTraceMsg(trace_map, group_id);
   return result;
