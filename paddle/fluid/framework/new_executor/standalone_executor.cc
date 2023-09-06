@@ -41,6 +41,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                        Scope* scope)
     : place_(place), plan_(plan), scope_(scope) {
   int64_t micro_batch_num = plan_.MicroBatchNum();
+  vec_force_events_to_wait_.resize(micro_batch_num);
   for (int64_t i = 0; i < micro_batch_num; ++i) {
     micro_batch_scopes_.emplace_back(&scope->NewScope());
   }
@@ -129,6 +130,14 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                             micro_batch_scopes_[micro_batch_id],
                                             execution_config));
       interpretercores_.back()->SetCopyProgram(program);
+
+      // Note(lizhiyu): Add mannual event info
+      auto prog_inter = const_cast<ProgramInterpreter*>(
+          static_cast<const ProgramInterpreter*>(
+              interpretercores_.back()->Impl()));
+      prog_inter->SetForceEventsToWaitInfo(
+          &(vec_force_events_to_wait_[micro_batch_id]));
+
       // NOTE(lizhiyu): Now we only check backward subprogram. After static
       // build strategy is completely, we should
       //                check all the program in the PP strategy.
@@ -181,6 +190,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
 
     VLOG(6) << "Run job (" << job_idx << "), type = " << job_type
             << ", micro_batch_id =" << job->MicroBatchId();
+
     // Note(sonder): Share build results don't work for new IR now.
     if (type_to_first_id.count(job_type) != 0 &&
         !FLAGS_enable_new_ir_in_executor) {

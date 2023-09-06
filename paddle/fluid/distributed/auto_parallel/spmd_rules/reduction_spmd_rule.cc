@@ -26,7 +26,7 @@ std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
 ReductionSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
                                 const paddle::framework::AttributeMap& attrs) {
   // step0: Verify Input Args Based on Elementwise Logic
-  int64_t ninputs = input_specs.size();
+  int64_t ninputs = static_cast<int64_t>(input_specs.size());
   PADDLE_ENFORCE_EQ(
       ninputs,
       1,
@@ -42,7 +42,7 @@ ReductionSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
 
   // get einsum notation for input
-  int64_t ndim = input_specs[0].shape().size();
+  int64_t ndim = static_cast<int64_t>(input_specs[0].shape().size());
   std::vector<std::string> input_axes_vec;
   std::string input_axes = alphabet.substr(0, ndim);
   input_axes_vec.emplace_back(input_axes);
