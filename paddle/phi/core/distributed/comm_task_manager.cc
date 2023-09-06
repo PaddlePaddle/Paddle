@@ -51,6 +51,7 @@ std::list<std::unique_ptr<CommTask>> CommTaskManager::comm_task_list_;
 CommTaskManager::CommTaskManager() {
   terminated_.store(false);
   comm_task_loop_thread_ = std::thread(&CommTaskManager::CommTaskLoop, this);
+  LOG(INFO) << "CommTaskManager init success.";
 }
 CommTaskManager::~CommTaskManager() {
   terminated_.store(true);
@@ -59,6 +60,7 @@ CommTaskManager::~CommTaskManager() {
     comm_task_loop_thread_.join();
     comm_task_list_cv_.notify_one();
   }
+  LOG(INFO) << "CommTaskManager destruct success.";
 }
 
 void CommTaskManager::CommTaskEnqueue(std::unique_ptr<CommTask> comm_task) {
@@ -83,6 +85,7 @@ void CommTaskManager::CommTaskLoop() {
         exception_msg += GenerateTraceMsg((*task)->GetStore(),
                                           (*task)->GetBackend(),
                                           (*task)->GetRank(),
+                                          (*task)->GetGid(),
                                           (*task)->GetSize());
         LOG(ERROR) << exception_msg;
         std::exception_ptr exception_ptr =
@@ -93,8 +96,8 @@ void CommTaskManager::CommTaskLoop() {
 
       if (!(*task)->GetTraceUpdated() && (*task)->IsStarted() &&
           !terminated_.load() && !store_error_) {
-        std::string trace_key =
-            GetTraceStartKey((*task)->GetBackend(), (*task)->GetRank());
+        std::string trace_key = GetTraceStartKey(
+            (*task)->GetBackend(), (*task)->GetRank(), (*task)->GetGid());
         store_error_ =
             !UpdateTraceMsg((*task)->GetStore(),
                             trace_key,
@@ -106,8 +109,8 @@ void CommTaskManager::CommTaskLoop() {
       if ((*task)->IsCompleted()) {
         if (!(*task)->GetTraceUpdated() && !terminated_.load() &&
             !store_error_) {
-          std::string trace_key =
-              GetTraceStartKey((*task)->GetBackend(), (*task)->GetRank());
+          std::string trace_key = GetTraceStartKey(
+              (*task)->GetBackend(), (*task)->GetRank(), (*task)->GetGid());
           store_error_ =
               !UpdateTraceMsg((*task)->GetStore(),
                               trace_key,
@@ -116,8 +119,8 @@ void CommTaskManager::CommTaskLoop() {
           (*task)->SetTraceUpdated();
         }
         if (!terminated_.load() && !store_error_) {
-          std::string trace_key =
-              GetTraceEndKey((*task)->GetBackend(), (*task)->GetRank());
+          std::string trace_key = GetTraceEndKey(
+              (*task)->GetBackend(), (*task)->GetRank(), (*task)->GetGid());
           store_error_ =
               !UpdateTraceMsg((*task)->GetStore(),
                               trace_key,

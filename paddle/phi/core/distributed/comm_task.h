@@ -34,6 +34,7 @@ class CommTask {
            int rank = -1,
            int size = 0,
            int gid = 0,
+           uint64_t seq = 0,
            int64_t numel = 0,
            CommType comm_type = CommType::UNKNOWN)
       : backend_(backend),
@@ -41,6 +42,7 @@ class CommTask {
         rank_(rank),
         size_(size),
         gid_(gid),
+        seq_(seq),
         numel_(numel),
         comm_type_(comm_type) {
     const char* global_rank = std::getenv("PADDLE_TRAINER_ID");
@@ -138,8 +140,8 @@ class CommTask {
   int rank_;
   int size_;
   int gid_;
-  int64_t numel_;
   uint64_t seq_{0};
+  int64_t numel_;
   CommType comm_type_;
   bool start_trace_updated_{false};
 

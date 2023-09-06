@@ -15,7 +15,9 @@
 #pragma once
 
 #include "glog/logging.h"
+#include "paddle/fluid/string/split.h"
 #include "paddle/phi/core/distributed/store/store.h"
+#include "paddle/utils/string/split.h"
 
 namespace phi {
 namespace distributed {
@@ -28,12 +30,18 @@ enum TraceEventType {
 using TraceMap =
     std::map<uint64_t, std::map<int, std::pair<std::string, TraceEventType>>>;
 
-inline std::string GetTraceStartKey(const std::string& backend, int rank) {
-  return backend + "_" + std::to_string(rank) + "_trace_start";
+inline std::string GetTraceStartKey(const std::string& backend,
+                                    int rank,
+                                    int gid) {
+  return backend + "_" + std::to_string(rank) + "_" + std::to_string(gid) +
+         "_trace_start";
 }
 
-inline std::string GetTraceEndKey(const std::string& backend, int rank) {
-  return backend + "_" + std::to_string(rank) + "_trace_end";
+inline std::string GetTraceEndKey(const std::string& backend,
+                                  int rank,
+                                  int gid) {
+  return backend + "_" + std::to_string(rank) + "_" + std::to_string(gid) +
+         "_trace_end";
 }
 
 inline std::string GetExceptionMsgFromExceptionPtr(
@@ -96,7 +104,7 @@ inline std::string RanksToString(const std::vector<int>& ranks) {
   return result;
 }
 
-inline std::string AnalyzeTraceMsg(const TraceMap& trace_map) {
+inline std::string AnalyzeTraceMsg(const TraceMap& trace_map, int gid) {
   uint64_t lag_seq = trace_map.begin()->first;
   std::vector<int> start_ranks;
   std::vector<int> end_ranks;
@@ -110,14 +118,15 @@ inline std::string AnalyzeTraceMsg(const TraceMap& trace_map) {
 
   std::string result = "\n\t The ranks that has desync problem are: ";
   if (start_ranks.size()) {
-    result +=
-        "[" + RanksToString(start_ranks) +
-        "] joined but do not finish collective seq: " + std::to_string(lag_seq);
+    result += "[" + RanksToString(start_ranks) +
+              "] joined but do not finish collective ring_id: " +
+              std::to_string(gid) + ", seq: " + std::to_string(lag_seq);
   }
   if (end_ranks.size()) {
     result += ", ranks [" + RanksToString(end_ranks) +
               "] finished collective seq: " + std::to_string(lag_seq) +
-              ", but didnt join collective seq: " + std::to_string(lag_seq + 1);
+              ", but didnt join collective ring_id: " + std::to_string(gid) +
+              ", seq: " + std::to_string(lag_seq + 1);
   }
   return result;
 }
@@ -125,6 +134,7 @@ inline std::string AnalyzeTraceMsg(const TraceMap& trace_map) {
 inline std::string GenerateTraceMsg(std::shared_ptr<Store> store,
                                     const std::string& backend,
                                     int curr_rank,
+                                    int group_id,
                                     int world_size) {
   std::string result;
   TraceMap trace_map;
@@ -135,7 +145,7 @@ inline std::string GenerateTraceMsg(std::shared_ptr<Store> store,
   for (int rank = 0; rank < world_size; ++rank) {
     uint64_t seq_start = 0;
     {
-      std::string trace_start_key = GetTraceStartKey(backend, rank);
+      std::string trace_start_key = GetTraceStartKey(backend, rank, group_id);
       if (!store->check(trace_start_key)) {
         continue;
       }
@@ -152,7 +162,7 @@ inline std::string GenerateTraceMsg(std::shared_ptr<Store> store,
       }
     }
     {
-      std::string trace_end_key = GetTraceEndKey(backend, rank);
+      std::string trace_end_key = GetTraceEndKey(backend, rank, group_id);
       if (!store->check(trace_end_key)) {
         continue;
       }
@@ -169,8 +179,9 @@ inline std::string GenerateTraceMsg(std::shared_ptr<Store> store,
   }
   result += "\n\t Problem summary: rank: " + std::to_string(curr_rank) +
             " timeout at collective: " + curr_comm_type +
+            ", ring_id: " + std::to_string(group_id) +
             ", seq: " + std::to_string(curr_seq);
-  result += AnalyzeTraceMsg(trace_map);
+  result += AnalyzeTraceMsg(trace_map, group_id);
   return result;
 }
 

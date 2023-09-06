@@ -71,8 +71,6 @@ class NCCLCommTask : public CommTask {
 
   unsigned int cuda_event_flags_ = cudaEventDisableTiming;
 
-  uint64_t seq_;
-  int64_t numel_;
   bool sync_op_;
   bool use_calc_stream_;
 
