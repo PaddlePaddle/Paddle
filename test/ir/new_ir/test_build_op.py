@@ -124,7 +124,7 @@ class TestBuildOp4(unittest.TestCase):
 class TestBuildOp5(unittest.TestCase):
     def test_build_split_op(self):
         newir_program = get_ir_program()
-        tanh_out = newir_program.block().ops[-1].result(0)
+        tanh_out = newir_program.global_block().ops[-1].result(0)
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
         with paddle.ir.core.program_guard(newir_program):
             out = paddle.split(tanh_out, [2, 2], 0)

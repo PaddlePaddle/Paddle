@@ -1317,7 +1317,7 @@ class Optimizer:
             with paddle.static.program_guard(program, startup_program):
                 if paddle.ir.core._use_new_ir_api():
                     params_grads = []
-                    grads = paddle.autograd.grad(
+                    grads = paddle.autograd.ir_backward.grad(
                         loss, parameter_list, no_grad_vars=act_no_grad_set
                     )
                     for index, grad in enumerate(grads):
