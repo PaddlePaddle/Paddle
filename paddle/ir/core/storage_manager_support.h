@@ -102,8 +102,7 @@ class StorageHelperBase : public BaseT {
   /// IDs of any of the traits defined by the storage user.
   static HasTraitFn getHasTraitFn() {
     return [](TypeId id) {
-      return storage_helper_base_impl::hasTrait<TraitOrInterface...>(
-          id);  // 需要 filter
+      return storage_helper_base_impl::hasTrait<TraitOrInterface...>(id);
     };
   }
 };

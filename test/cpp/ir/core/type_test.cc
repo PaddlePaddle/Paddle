@@ -289,6 +289,18 @@ TEST(shapedtype_test, shapedtype_test) {
   ir::Dialect *test_dialect = ctx->GetOrRegisterDialect<TestDialect>();
   EXPECT_EQ(test_dialect != nullptr, true);
 
-  // paddle::dialect::InferMetaInterface interface =
-  //   op->dyn_cast<paddle::dialect::InferMetaInterface>();
+  ir::Type fp32_dtype = ir::Float32Type::get(ctx);
+  phi::DDim dims = {2, 2};
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+
+  ir::DenseTensorType shaped_type =
+      ir::DenseTensorType::get(ctx, fp32_dtype, dims, data_layout, lod, offset);
+
+  EXPECT_EQ(shaped_type.dtype().isa<ir::Float32Type>(), true);
+  EXPECT_EQ(shaped_type.dims(), dims);
+  EXPECT_EQ(shaped_type.data_layout(), data_layout);
+  EXPECT_EQ(shaped_type.lod(), lod);
+  EXPECT_EQ(shaped_type.offset(), offset);
 }

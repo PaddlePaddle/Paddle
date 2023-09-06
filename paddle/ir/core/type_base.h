@@ -111,7 +111,19 @@ class IR_API AbstractType {
 
   /// A collection of the interfaces registered to this type.
   std::vector<details::InterfaceValue> interface_map_;
+
+  /// Interface will be recorded by std::pair<TypeId, void*> currently.
+  uint32_t num_interfaces_ = 0;
+
+  /// Trait will be recorded by TypeId.
+  uint32_t num_traits_ = 0;
 };
+
+template <typename InterfaceT>
+typename InterfaceT::Concept *AbstractType::GetInterfaceImpl() const {
+  void *model = GetInterfaceImpl(TypeId::get<InterfaceT>());
+  return reinterpret_cast<typename InterfaceT::Concept *>(model);
+}
 
 struct TypeManager;
 
