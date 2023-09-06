@@ -418,11 +418,15 @@ const char *FusedGemmEpilogueOp::attributes_name[3] = {
 OpInfoTuple FusedGemmEpilogueOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
       paddle::dialect::OpInputInfo(
-          "x", "paddle::dialect::DenseTensorType", false, false, false),
+          "x", "paddle::dialect::DenseTensorType", false, false, false, false),
       paddle::dialect::OpInputInfo(
-          "y", "paddle::dialect::DenseTensorType", false, false, false),
-      paddle::dialect::OpInputInfo(
-          "bias", "paddle::dialect::DenseTensorType", false, false, false)};
+          "y", "paddle::dialect::DenseTensorType", false, false, false, false),
+      paddle::dialect::OpInputInfo("bias",
+                                   "paddle::dialect::DenseTensorType",
+                                   false,
+                                   false,
+                                   false,
+                                   false)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {
       paddle::dialect::OpAttributeInfo("trans_x", "ir::BoolAttribute", ""),
       paddle::dialect::OpAttributeInfo("trans_y", "ir::BoolAttribute", ""),
@@ -641,16 +645,21 @@ const char *FusedGemmEpilogueGradOp::attributes_name[3] = {
 OpInfoTuple FusedGemmEpilogueGradOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
       paddle::dialect::OpInputInfo(
-          "x", "paddle::dialect::DenseTensorType", false, false, false),
+          "x", "paddle::dialect::DenseTensorType", false, false, false, false),
       paddle::dialect::OpInputInfo(
-          "y", "paddle::dialect::DenseTensorType", false, false, false),
+          "y", "paddle::dialect::DenseTensorType", false, false, false, false),
       paddle::dialect::OpInputInfo("reserve_space",
                                    "paddle::dialect::DenseTensorType",
                                    true,
                                    false,
+                                   false,
                                    false),
-      paddle::dialect::OpInputInfo(
-          "out_grad", "paddle::dialect::DenseTensorType", false, false, false)};
+      paddle::dialect::OpInputInfo("out_grad",
+                                   "paddle::dialect::DenseTensorType",
+                                   false,
+                                   false,
+                                   false,
+                                   false)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {
       paddle::dialect::OpAttributeInfo("trans_x", "ir::BoolAttribute", ""),
       paddle::dialect::OpAttributeInfo("trans_y", "ir::BoolAttribute", ""),
