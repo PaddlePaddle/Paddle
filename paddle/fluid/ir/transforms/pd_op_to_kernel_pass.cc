@@ -893,8 +893,19 @@ std::vector<ir::OpResult> BuildOpInputList(
           for (size_t j = 0; j < pre_define_op->num_operands(); ++j) {
             auto in_i = map_value_pair->at(pre_define_op->operand_source(j));
             auto in_i_type = in_i.type();
-            auto place =
-                in_i_type.dyn_cast<dialect::AllocatedDenseTensorType>().place();
+            phi::Place place;
+            if (in_i_type.isa<dialect::AllocatedDenseTensorType>()) {
+              place = in_i_type.dyn_cast<dialect::AllocatedDenseTensorType>()
+                          .place();
+            } else if (in_i_type.isa<dialect::AllocatedSelectedRowsType>()) {
+              place = in_i_type.dyn_cast<dialect::AllocatedSelectedRowsType>()
+                          .place();
+            } else {
+              PADDLE_THROW(phi::errors::Unimplemented(
+                  "builtin.combine Input type only support "
+                  "VectorType<DenseTensorType> and "
+                  "VectorType<SelectedRowsType>"));
+            }
 
             // get input args def type
             auto args_def = kernel.args_def();
@@ -911,12 +922,27 @@ std::vector<ir::OpResult> BuildOpInputList(
                       << kernel_key.backend();
               // build memcopy op
               auto out_place = phi::TransToPhiPlace(kernel.InputAt(i).backend);
-              auto out_type = dialect::AllocatedDenseTensorType::get(
-                  ctx,
-                  out_place,
-                  pre_define_op->operand_source(j)
-                      .type()
-                      .dyn_cast<dialect::DenseTensorType>());
+              ir::Type out_type;
+              if (in_i_type.isa<dialect::AllocatedDenseTensorType>()) {
+                out_type = dialect::AllocatedDenseTensorType::get(
+                    ctx,
+                    out_place,
+                    pre_define_op->operand_source(j)
+                        .type()
+                        .dyn_cast<dialect::DenseTensorType>());
+              } else if (in_i_type.isa<dialect::AllocatedSelectedRowsType>()) {
+                out_type = dialect::AllocatedSelectedRowsType::get(
+                    ctx,
+                    out_place,
+                    pre_define_op->operand_source(j)
+                        .type()
+                        .dyn_cast<dialect::SelectedRowsType>());
+              } else {
+                PADDLE_THROW(phi::errors::Unimplemented(
+                    "builtin.combine Input type only support "
+                    "VectorType<DenseTensorType> and "
+                    "VectorType<SelectedRowsType>"));
+              }
               in_i = AddPlaceTransferOp(
                   in_i, out_type, place, out_place, kernel_key, program);
 
