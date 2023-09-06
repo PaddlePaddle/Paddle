@@ -139,7 +139,7 @@ TEST(IrParserTest, StartupProgram) {
   program->Print(ss);
   std::unique_ptr<ir::Program> parser_program = ir::Program::Parse(ss, ctx);
   std::stringstream ssp;
-  program->Print(ssp);
+  parser_program->Print(ssp);
 
   EXPECT_TRUE(ssp.str() == ss.str());
 }
