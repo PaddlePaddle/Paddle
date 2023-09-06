@@ -18,6 +18,7 @@
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/trait/inplace.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_parser.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_attribute.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_dialect.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_type.h"
 #include "paddle/ir/core/builtin_op.h"
@@ -198,6 +199,20 @@ std::unordered_map<ir::Operation*, std::string> GetInplaceOps(
         upper_op_attrs.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
     VLOG(6) << "analyse op: " << upper_op_name;
 
+    // NOTE(zhangbo): add_grad cpu kernel can't do inplace, for the reason shown
+    // in the function: CommonElementwiseBroadcastBackward
+    // (paddle/phi/kernels/funcs/elementwise_grad_base.h)
+    if ((upper_op_name == "pd.add_grad") &&
+        (upper_op_attrs.at("kernel_key")
+             .dyn_cast<paddle::dialect::KernelAttribute>()
+             .data()
+             .backend() == phi::Backend::CPU)) {
+      for (size_t i = 0; i < op->num_results(); ++i) {
+        visited_values.insert(op->result(i));
+      }
+      continue;
+    }
+
     if (upper_op_attrs.count("is_inplace") != 0 &&
         upper_op_attrs.at("is_inplace").dyn_cast<ir::BoolAttribute>().data()) {
       VLOG(6) << upper_op_name << " is already an inplace op.";
@@ -289,7 +304,7 @@ class InplacePass : public ir::Pass {
 
   void Run(ir::Operation* op) override {
     auto module_op = op->dyn_cast<ir::ModuleOp>();
-    IR_ENFORCE(module_op, "DcePass should run on module op.");
+    IR_ENFORCE(module_op, "InplacePass should run on module op.");
     auto* block = module_op.block();
 
     auto inplace_ops = GetInplaceOps(block);
