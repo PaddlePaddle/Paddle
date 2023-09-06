@@ -134,6 +134,8 @@ def prune_by_vpp(tuner_cfg, cur_cfg, history_cfgs=None):
             return True
         if pp_degree == 1 and vpp_degree != 1:
             return True
+        if pp_degree <= 2 and vpp_degree != 1:
+            return True
 
     vpp_degree_candidates = tuner_cfg.get("vpp_degree", None)
     if vpp_degree_candidates == "auto":
@@ -141,6 +143,16 @@ def prune_by_vpp(tuner_cfg, cur_cfg, history_cfgs=None):
     if vpp_degree_candidates:
         if vpp_degree not in vpp_degree_candidates:
             return True
+
+    cfgs = same_cfgs_beside("vpp_degree", cur_cfg, history_cfgs)
+    if cfgs:
+        for cfg in cfgs:
+            # memory prune
+            if (
+                cfg["vpp_degree"] > vpp_degree
+                and cfg.get("max_mem_usage") == "OOM"
+            ):
+                return True
     return False
 
 
@@ -197,6 +209,13 @@ def prune_by_mbs(tuner_cfg, cur_cfg, history_cfgs=None):
             ):
                 return True
 
+            # memory prune
+            if (
+                cfg["micro_batch_size"] < micro_batch_size
+                and cfg.get("max_mem_usage") == "OOM"
+            ):
+                return True
+
     return False
 
 
@@ -247,6 +266,13 @@ def prune_by_sharding(tuner_cfg, cur_cfg, history_cfgs):
             ):
                 return True
 
+            # memory prune
+            if (
+                cfg["sharding_stage"] > sharding_stage
+                and cfg.get("max_mem_usage") == "OOM"
+            ):
+                return True
+
     if sharding_degree == 1:
         cfgs = same_cfgs_beside("sharding_stage", cur_cfg, history_cfgs)
         if cfgs:
@@ -294,6 +320,13 @@ def prune_by_recompute(tuner_cfg, cur_cfg, history_cfgs):
                 not cfg["use_recompute"]
                 and use_recompute
                 and cfg.get("time", -1) > 0
+            ):
+                return True
+
+            if (
+                cfg["use_recompute"]
+                and not use_recompute
+                and cfg.get("max_mem_usage") == "OOM"
             ):
                 return True
 

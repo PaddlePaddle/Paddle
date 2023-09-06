@@ -43,7 +43,7 @@ def dist_degree(mode, num_gpus, num_nodes):
 
     elif mode == "pp":
         if num_nodes > 1:
-            results = list(range(1, num_nodes + 1))
+            results = list(range(num_nodes + 1, 0, -1))
         else:
             results = divisor(num_gpus, reverse=True)
     elif mode == "mp":
@@ -103,14 +103,14 @@ def default_candidates(tuner_cfg):
         candidates["sharding_degree"] = [1]
 
     if tuner_cfg.get("sharding_stage", None) == "auto":
-        candidates["sharding_stage"] = [1, 2, 3]
+        candidates["sharding_stage"] = [3, 2, 1]
     elif tuner_cfg.get("sharding_stage", None):
         candidates["sharding_stage"] = tuner_cfg.get("sharding_stage")
     else:
         candidates["sharding_stage"] = [None]
 
     if tuner_cfg.get("use_recompute", None) == "auto":
-        candidates["use_recompute"] = [False, True]
+        candidates["use_recompute"] = [True, False]
     elif tuner_cfg.get("use_recompute", None):
         candidates["use_recompute"] = tuner_cfg.get("use_recompute")
     else:
@@ -127,7 +127,7 @@ def default_candidates(tuner_cfg):
 
     if tuner_cfg.get("micro_batch_size", None) == "auto":
         candidates["micro_batch_size"] = list(
-            range(tuner_cfg["model_cfg"]["global_batch_size"], 0, -1)
+            range(1, tuner_cfg["model_cfg"]["global_batch_size"])
         )
     elif tuner_cfg.get("micro_batch_size", None):
         candidates["micro_batch_size"] = tuner_cfg.get("micro_batch_size")
@@ -152,27 +152,27 @@ def search_all(tuner_cfg):
     recompute_granularity_candidates = candidates["recompute_granularity"]
     all_cfgs = list(
         itertools.product(
-            dp_degree_candidates,
+            mp_degree_candidates,
             sharding_degree_candidates,
             sharding_stage_candidates,
             mbs_candidates,
             pp_degree_candidates,
             vpp_degree_candidates,
-            mp_degree_candidates,
             use_recompute_candidates,
             recompute_granularity_candidates,
+            dp_degree_candidates,
         )
     )
     mapping = {
-        0: "dp_degree",
+        0: "mp_degree",
         1: "sharding_degree",
         2: "sharding_stage",
         3: "micro_batch_size",
         4: "pp_degree",
         5: "vpp_degree",
-        6: "mp_degree",
-        7: "use_recompute",
-        8: "recompute_granularity",
+        6: "use_recompute",
+        7: "recompute_granularity",
+        8: "dp_degree",
     }
     new_all_cfgs = []
     for cfg in all_cfgs:

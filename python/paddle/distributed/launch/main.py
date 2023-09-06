@@ -523,6 +523,7 @@ def launch():
         auto_tuner.add_cfg(cur_cfg)
 
         while cur_cfg:
+            task_start_time = time.time()
             ctx = copy.deepcopy(raw_ctx)
             if is_first_task:
                 ctx.max_time_per_task = warmup_time
@@ -573,6 +574,18 @@ def launch():
             c = controllers.init(ctx)
             c.run()
 
+            task_end_time = time.time()
+            cur_cfg["exec_time"] = round(task_end_time - task_start_time, 2)
+            ctx.logger.info(
+                "Task: job_id {}, log_dir {}, config {} ends in {}s".format(
+                    task_job_id, log_dir, cur_cfg, cur_cfg["exec_time"]
+                )
+            )
+            logger.info(
+                "Task: job_id {}, log_dir {}, config {} ends in {}s".format(
+                    task_job_id, log_dir, cur_cfg, cur_cfg["exec_time"]
+                )
+            )
             # process generated result
 
             metric, mem, err = read_log(
@@ -583,6 +596,7 @@ def launch():
             )
             # sync sigint
             timeout_flag = True
+            OOM_flag = err & (1 << 1)
 
             if nnodes > 1:
                 import socket
@@ -595,7 +609,6 @@ def launch():
                     ip = '127.0.0.1'
                 assert ip != '127.0.0.1'
                 path = f"auto_tuner/{job_id}/{ip}"
-                OOM_flag = err & (1 << 1)
                 if OOM_flag:
                     client.put(path, "OOM".encode('latin-1'))
                     ctx.logger.info(f"Put OOM to {path}")
@@ -622,6 +635,7 @@ def launch():
 
                 if "OOM" in status:
                     timeout_flag = False
+                    OOM_flag = True
                 elif "OK" not in status:
                     timeout_flag = False
 
@@ -633,7 +647,7 @@ def launch():
                 # for pruner use
                 cur_cfg['time'] = -1
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = None
-                cur_cfg["max_mem_usage"] = mem
+                cur_cfg["max_mem_usage"] = mem if not OOM_flag else "OOM"
 
             if err & (1 << 1):
                 ctx.logger.warning(f"Out of memory for parameters: {log_dir}")
@@ -651,18 +665,18 @@ def launch():
                 logger.warning(
                     f"Read memory usage failed for parameters: {log_dir}"
                 )
-                cur_cfg["max_mem_usage"] = None
+                cur_cfg["max_mem_usage"] = None if not OOM_flag else "OOM"
 
             if not err and timeout_flag:
                 # for pruner use
                 cur_cfg['time'] = metric
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = metric
-                cur_cfg["max_mem_usage"] = mem
+                cur_cfg["max_mem_usage"] = mem if not OOM_flag else "OOM"
 
             if not err and not timeout_flag:
                 cur_cfg['time'] = -1
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = None
-                cur_cfg["max_mem_usage"] = None
+                cur_cfg["max_mem_usage"] = None if not OOM_flag else "OOM"
 
             # record history
             cur_cfg['job_id'] = job_id
@@ -757,7 +771,7 @@ def launch():
                 raise ValueError(
                     "Get best config failed. Currently there are no appropriate configs."
                 )
-        assert best_cfg
+        assert best_cfg and best_cfg["time"] != -1
 
         end_time = time.time()
         ctx.logger.info(f"AutoTuner ends in {end_time-start_time}s.")
