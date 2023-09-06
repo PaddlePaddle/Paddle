@@ -17,6 +17,7 @@ import logging
 import os
 
 import yaml
+from has_custom_vjp_op_list import has_custom_vjp_op_list
 from op_build_gen import gen_build_func_str
 from op_interface_gen import (
     gen_exclusive_interface_str,
@@ -54,6 +55,7 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/fluid/ir/dialect/paddle_dialect/interface/infermeta.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/interface/vjp.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/trait/inplace.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/trait/custom_vjp.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_manual_op.h"
@@ -793,6 +795,9 @@ def OpGenerator(
             op_interfaces += ["paddle::dialect::VjpInterface"]
         exclusive_interface_str = gen_exclusive_interface_str(op_info)
 
+        if op_info.op_phi_name[0] in has_custom_vjp_op_list:
+            op_traits += ["paddle::dialect::CustomVjpTrait"]
+
         # If op has inplace info, we will generate inplace op and non-inplace op.
         for op_name in op_info.op_phi_name:
             if op_name in _NO_NEED_GEN_OPS:
@@ -809,6 +814,8 @@ def OpGenerator(
 
             if op_name[-1] == "_":
                 op_traits += ["paddle::dialect::InplaceTrait"]
+            if op_name == "gelu":
+                op_traits += ["paddle::dialect::CustomVjpTrait"]
 
             op_traits_str = ""
             if len(op_traits) > 0:
