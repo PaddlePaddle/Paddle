@@ -289,15 +289,13 @@ def GenBuildOutputs(
     build_output_str = '  VLOG(4) << "Builder construction outputs";\n'
     CREATE_INPUT_METATENSOR_TEMPLATE = """
   VLOG(4) << "Builder construction  dense_{name}";
-  phi::DenseTensor dense_{name}(std::make_unique<paddle::experimental::DefaultAllocator>(paddle::platform::CPUPlace()).get(),
-                                phi::DenseTensorMeta(paddle::dialect::TransToPhiDataType({name}.dtype()),
-                                                    {name}.dims(),
-                                                    {name}.data_layout(),
-                                                    {name}.lod(),
-                                                    {name}.offset()));
-
+  paddle::dialect::IrMetaTensor ir_meta_tensor_{name}(paddle::dialect::TransToPhiDataType({name}.dtype()),
+                                                      {name}.dims(),
+                                                      {name}.data_layout(),
+                                                      {name}.lod(),
+                                                      {name}.offset());
   VLOG(4) << "Builder construction  meta_{name}";
-  phi::MetaTensor meta_{name}(&dense_{name});
+  phi::MetaTensor meta_{name}(&ir_meta_tensor_{name});
 """
 
     CREATE_OPTIONAL_INPUT_METATENSOR_TEMPLATE = """
@@ -305,30 +303,28 @@ def GenBuildOutputs(
   if ({name}_.impl() != nullptr) {{
     paddle::dialect::DenseTensorType {name} = {name}_.type().dyn_cast<paddle::dialect::DenseTensorType>();
     VLOG(4) << "Builder construction  dense_{name}";
-    phi::DenseTensor dense_{name}(std::make_unique<paddle::experimental::DefaultAllocator>(paddle::platform::CPUPlace()).get(),
-                                    phi::DenseTensorMeta(paddle::dialect::TransToPhiDataType({name}.dtype()),
+    paddle::dialect::IrMetaTensor ir_meta_tensor_{name}(paddle::dialect::TransToPhiDataType({name}.dtype()),
                                                         {name}.dims(),
                                                         {name}.data_layout(),
                                                         {name}.lod(),
-                                                        {name}.offset()));
+                                                        {name}.offset());
     VLOG(4) << "Builder construction  meta_{name}";
-    meta_{name} = phi::MetaTensor(&dense_{name});
+    meta_{name} = phi::MetaTensor(&ir_meta_tensor_{name});
   }}
 
 """
 
-    CREATE_INPUT_VEC_METATENSOR_TEMPLATE = """  std::vector<phi::DenseTensor> vec_dense_{name};
+    CREATE_INPUT_VEC_METATENSOR_TEMPLATE = """  std::vector<paddle::dialect::IrMetaTensor> vec_ir_meta_tensor_{name};
   for (size_t i=0; i < static_cast<size_t>({name}.size()); i++) {{
-    vec_dense_{name}.push_back(phi::DenseTensor(std::make_unique<paddle::experimental::DefaultAllocator>(paddle::platform::CPUPlace()).get(),
-                                                phi::DenseTensorMeta(paddle::dialect::TransToPhiDataType({name}[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
+    vec_ir_meta_tensor_{name}.push_back(paddle::dialect::IrMetaTensor(paddle::dialect::TransToPhiDataType({name}[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
                                                                      {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
                                                                      {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().data_layout(),
                                                                      {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
-                                                                     {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().offset())));
+                                                                     {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().offset()));
   }}
   std::vector<phi::MetaTensor> vec_meta_{name};
-  for (size_t i=0; i < vec_dense_{name}.size(); i++) {{
-    vec_meta_{name}.push_back(phi::MetaTensor(&vec_dense_{name}[i]));
+  for (size_t i=0; i < vec_ir_meta_tensor_{name}.size(); i++) {{
+    vec_meta_{name}.push_back(phi::MetaTensor(&vec_ir_meta_tensor_{name}[i]));
   }}
 
   std::vector<const phi::MetaTensor*> meta_{name};

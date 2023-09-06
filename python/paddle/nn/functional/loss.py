@@ -1594,9 +1594,9 @@ def poisson_nll_loss(
             + 0.5 * paddle.log(2 * math.pi * label)
         )
         loss_out += paddle.where(
-            stirling_approx <= 1,
-            paddle.zeros_like(stirling_approx),
+            label > 1,
             stirling_approx,
+            paddle.zeros_like(stirling_approx),
         )
     if reduction == 'mean':
         loss_out = paddle.mean(loss_out)
