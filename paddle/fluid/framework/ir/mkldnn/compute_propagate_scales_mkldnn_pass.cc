@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/compute_propagate_scales_mkldnn_pass.h"
 
-#include <float.h>
+#include <cfloat>
 
 #include <algorithm>
 
