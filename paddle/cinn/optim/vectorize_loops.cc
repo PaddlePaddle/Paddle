@@ -185,7 +185,7 @@ class CudaVectorizer : public IRMutator<Expr *> {
   const Var iter_var_;  // the loop var of the vecotrized loop
   const int factor_;    // the factor for vectorize
 
-  TensorWriteTeller write_teller_;
+  std::set<std::string> write_teller_;
   TensorVectorizeTeller vectorized_teller_;
 
   absl::flat_hash_map<std::string, Var> tensor2vectorized_vars_;
@@ -215,7 +215,7 @@ class CudaVectorizer : public IRMutator<Expr *> {
   }
 
   void Visit(Expr *expr) {
-    write_teller_.Collect(expr);
+    write_teller_ = ir::CollectTensorNeedsWrite(expr);
     vectorized_teller_.Collect(expr);
     IRMutator<Expr *>::Visit(expr, expr);
   }
