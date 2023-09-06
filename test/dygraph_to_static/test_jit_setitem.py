@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+import paddle.nn.functional as F
 
 
 class TestSetItemBase(unittest.TestCase):
@@ -233,7 +234,7 @@ class TestCase14(TestSetItemBase):
 class TestCase15(TestSetItemBase):
     # Test gradient of value tensor
     def init_func(self):
-        def foo():
+        def foo(x, H, W):
             B, _, _, C = x.shape
             pad_list = paddle.zeros([4], dtype="int32")
             pad_list[3] = H // 2
