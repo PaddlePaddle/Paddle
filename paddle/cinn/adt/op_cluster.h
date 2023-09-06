@@ -38,15 +38,6 @@ class SdOpStmtNodes final {
 
   const m_expr::ScheduleIterators& sd_iters() const { return sd_iters_; }
 
-  void AddOpStmtNode(
-      const m_ir::OpStmtNode& op_stmt_node,
-      const std::function<const ScheduleIterators&(const m_ir::OpStmtNode&)>&
-          SdIters4Op,
-      const std::function<const m_expr::SchedulePolicy&(
-          const equation::IterVar&)>& GetSchedulePolicy) {
-    ADT_TODO();
-  }
-
   bool IsMergableTo(
       const SdOpStmtNodes& that,
       const std::function<const ScheduleIterators&(const m_ir::Tensor&)>&
