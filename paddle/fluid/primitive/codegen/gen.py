@@ -62,7 +62,7 @@ VJPS = [
     'slice_grad',
     'transpose_grad',
 ]
-VJP_COMPS = ['divide_grad', 'sum_grad']
+VJP_COMPS = ['divide_grad', 'sum_grad', 'gelu_grad']
 BACKENDS = [
     'add_n',
     'mean',
