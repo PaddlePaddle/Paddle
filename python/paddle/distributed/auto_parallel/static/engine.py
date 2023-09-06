@@ -54,10 +54,8 @@ from .process_group import get_all_process_groups, new_process_group
 
 class Engine:
     """
-    An Engine object can provide the full power of auto parallel to users.
-    With the help of it, users can easily obtain the abilities of the
-    distributed training and inference. It also support the dynamic graph and
-    static graph at the same time.
+    An High-Level API for auto parallel, which could be used for distributed Training (engine.fit) and Inferenced (engine.predict).
+    Static graph mode is supported natively, Dynamic graph mode is also supported under `@to_static <https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/api/paddle/jit/to_static_cn.html#to-static>`_ .
 
     Args:
         model (paddle.nn.Layer, optional): The model is an instance of
