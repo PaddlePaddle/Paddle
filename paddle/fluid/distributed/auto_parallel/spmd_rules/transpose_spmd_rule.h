@@ -32,8 +32,14 @@ class TransposeSPMDRule : public SPMDRuleBase {
                const paddle::framework::AttributeMap& attrs) override;
 
   std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
-  InferBackward(const std::vector<DistTensorSpec>& output_specs,
+  InferBackward(const std::vector<DistTensorSpec>& input_specs,
+                const std::vector<DistTensorSpec>& output_specs,
                 const paddle::framework::AttributeMap& attrs) override;
+
+ private:
+  std::string GetOutputNotation(int64_t input_ndim,
+                                const std::string& input_axes,
+                                const paddle::framework::AttributeMap& attrs);
 };
 }  // namespace auto_parallel
 }  // namespace distributed
