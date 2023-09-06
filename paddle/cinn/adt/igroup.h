@@ -30,14 +30,14 @@ class IGroup final {
   IGroup(const IGroup&) = delete;
   IGroup(IGroup&&) = delete;
 
-  explicit IGroup(const std::shared_ptr<MapIR>& map_ir,
+  explicit IGroup(const std::shared_ptr<m_ir::MapIRList>& map_irs,
                   const std::shared_ptr<AnchorTensor>& anchor_tensor,
                   const std::shared_ptr<equation::Graph>& equation_graph)
-      : map_ir_(map_ir),
+      : map_irs_(map_irs),
         anchor_tensor_(anchor_tensor),
         equation_graph_(equation_graph) {}
 
-  const std::shared_ptr<m_ir::MapIR>& map_ir() const { return map_ir_; }
+  const std::shared_ptr<m_ir::MapIRList>& map_irs() const { return map_irs_; }
 
   const std::shared_ptr<AnchorTensor>& anchor_tensor() const {
     return anchor_tensor_;
@@ -49,7 +49,7 @@ class IGroup final {
 
  private:
   std::shared_ptr<AnchorTensor> anchor_tensor_;
-  std::shared_ptr<m_ir::MapIR> map_ir_;
+  std::shared_ptr<m_ir::MapIRList> map_irs_;
   std::shared_ptr<equation::Graph> equation_graph_;
   equation::IndexExprInferContext index_expr_infer_ctx_;
 };

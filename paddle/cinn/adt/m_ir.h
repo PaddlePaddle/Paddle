@@ -1,4 +1,4 @@
-// Copyright (c) 2023 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,81 +14,65 @@
 
 #pragma once
 
-#include <string>
+#include <list>
 
-#include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/m_expr.h"
 
-namespace cinn::hlir::framework {
-class Node;
+namespace cinn::adt {
+
+using ScheduleIterators = List<equation::IterVar>;
+
 }
 
-namespace cinn {
-namespace adt {
-namespace m_ir {
+namespace cinn::adt::m_ir {
 
-// SSAShadowTensor = (tSSAShadow Name, const Graph::NodeData*)
-class SSAShadowTensor final : public Tuple<tSSAShadow<Name>, m_expr::Tensor> {
+DEFINE_ADT_TAG(tAsOutput);
+DEFINE_ADT_TAG(tBreak);
+
+class MapIR final {
  public:
-  using Tuple<tSSAShadow<Name>, m_expr::Tensor>::Tuple;
-};
-OVERLOAD_OPERATOR_EQ_NE(tSSAShadow<Name>, TagEqual);
-OVERLOAD_OPERATOR_EQ_NE(SSAShadowTensor, TupleEqual);
+  MapIR(const m_expr::OpStmtNode& op, const ScheduleIterators& sd_iters)
+      : ops_{ops}, sd_iters_(sd_iters) {}
 
-OVERRIDE_TAG_GET_HASH_VALUE(tSSAShadow<Name>);
+  const std::list<m_expr::OpStmtNode>& ops() const { return ops_; }
 
-inline std::size_t GetHashValue(const SSAShadowTensor& shadow_tensor) {
-  const auto& [shadow_name, tensor] = shadow_tensor.tuple();
-  return hash_combine(GetHashValue(shadow_name), tensor);
-}
+  const m_expr::ScheduleIterators& sd_iters() const { return sd_iters_; }
 
-// Tensor = const Graph::NodeData* | SSAShadowTensor
-DEFINE_ADT_UNION(Tensor, m_expr::Tensor, SSAShadowTensor);
-OVERRIDE_UNION_GET_HASH_VALUE(Tensor);
-OVERLOAD_OPERATOR_EQ_NE(Tensor, UnionEqual);
+  bool IsMergableTo(
+      const MapIR& that,
+      const std::function<const ScheduleIterators&(const m_expr::Tensor&)>&
+          SdIterators4Tensor) const;
 
-// Arg = Tensor
-using Arg = Tensor;
+  bool HasReadWriteDependence(const MapIR& that) const;
 
-// Op = const Graph::Node*
-using Op = const cinn::hlir::framework::Node*;
+  void MergeThisToThat(const MapIR& that);
 
-// OpStmtNode = (Op, In [Arg], Out [Arg])
-class OpStmtNode final : public Tuple<Op, In<List<Arg>>, Out<List<Arg>>> {
- public:
-  using Tuple<Op, In<List<Arg>>, Out<List<Arg>>>::Tuple;
+ private:
+  template <typename DoEachT>
+  tBreak<bool> AggregateTensorPair(const MapIR& that,
+                                   const DoEachT& DoEach) const;
 
-  bool operator==(const OpstmtNode& other) const {
-    return &this->tuple() == &other.tuple();
-  }
-};
+  template <typename DoEachT>
+  void VisitEachTensor(const DoEachT& DoEach) const;
 
-inline std::size_t GetHashValue(const OpStmtNode& op_stmt_node) {
-  return &op_stmt_node.tuple();
-}
+  template <typename DoEachT>
+  tBreak<bool> ForEachTensor(const DoEachT& DoEach) const;
 
-// MapIR = [OpStmtNode]
-using MapIR = List<OpStmtNode>;
+  std::unordered_map<m_expr::Tensor, tAsOutput<bool>> GetTensor2AsOutput()
+      const;
 
-}  // namespace m_ir
-}  // namespace adt
-}  // namespace cinn
-
-namespace std {
-
-template <>
-struct hash<cinn::adt::m_ir::Tensor> {
-  std::size_t operator()(const cinn::adt::m_ir::Tensor& tensor) const {
-    return cinn::adt::m_ir::GetHashValue(tensor);
-  }
+  std::list<m_expr::OpStmtNode> ops_;
+  ScheduleIterators sd_iters_;
 };
 
-template <>
-struct hash<cinn::adt::m_ir::OpStmtNode> {
-  std::size_t operator()(
-      const cinn::adt::m_ir::OpStmtNode& op_stmt_node) const {
-    return cinn::adt::m_ir::GetHashValue(op_stmt_node);
-  }
-};
+using MapIRList = std::list<MapIR>;
 
-}  // namespace std
+MapIRList GenerateClusterOpsForLoopFuse(
+    const List<m_expr::OpStmtNode>& op_stmt_nodes,
+    const ScheduleIterators& sd_iters,
+    const std::function<const m_expr::ScheduleDescriptor&(
+        const equation::IterVar&)>& GetScheduleType,
+    const std::function<TensorIndexExpr(const m_expr::Tensor&)>&
+        GetTensorIndexes);
+
+}  // namespace cinn::adt::m_ir

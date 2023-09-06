@@ -43,7 +43,7 @@ std::vector<std::shared_ptr<IGroup>> AssembleIGroups(
   ADT_TODO();  // Trival code
 }
 
-m_ir::MapIR GenerateMapIR(
+std::shared_ptr<m_ir::MapIRList> GenerateMapIRList(
     const cinn::hlir::framework::Graph::Group& group,
     const std::shared_ptr<equation::Graph>& equation_graph,
     const AnchorTensor& anchor_tensor,
@@ -69,7 +69,7 @@ std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
       anchor_tensor2_igroup,
       [&](const auto& anchor_tensor, const auto& fake_op_placeholders) {
         return std::pair{
-            GenerateMapIR(
+            GenerateMapIRList(
                 group, equation_graph, anchor_tensor, fake_op_placeholders),
             GenerateMapIREquations(
                 group, equation_graph, anchor_tensor, fake_op_placeholders)};
@@ -130,7 +130,10 @@ cinn::adt::m_expr::MapExpr GenerateMapExpr(
     const std::shared_ptr<IGroup>& igroup,
     const m_expr::ScheduleDescriptor& sd,
     const std::functoin<TensorIndexExpr(
-        const cinn::hlir::framework::NodeData*)>& tensor_indexes) {}
+        const cinn::hlir::framework::NodeData*)>& tensor_indexes) {
+  // Non-trival here
+  ADT_TODO();
+}
 
 cinn::adt::m_expr::MapExpr GenerateMapExpr(
     const std::shared_ptr<IGroup>& igroup,
