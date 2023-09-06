@@ -46,8 +46,8 @@ class TestNewIR(unittest.TestCase):
         self.clip_norm = 0.2
         self.dataset = FakeDataset(self.batch_size * self.batch_num)
         os.environ['FLAGS_new_executor_micro_batching'] = 'True'
-        os.environ['FLAGS_embedding_deterministic'] = '1'
-        os.environ['FLAGS_cudnn_deterministic'] = '1'
+        paddle.set_flags({'FLAGS_embedding_deterministic': 1})
+        paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
 
     def init(self, engine):
         paddle.seed(2021)
@@ -78,14 +78,18 @@ class TestNewIR(unittest.TestCase):
             ),
         )
 
+    def enable_new_ir(self, flag):
+        paddle.set_flags({'FLAGS_enable_new_ir_in_executor': flag})  # for c++
+        os.environ['FLAGS_enable_new_ir_in_executor'] = str(flag)  # for python
+
     def test_dp(self):
-        os.environ['FLAGS_enable_new_ir_in_executor'] = 'False'
+        self.enable_new_ir(False)
         engine_dp_prog = self.get_engine("dp")
         out_dp_prog = engine_dp_prog.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
 
-        os.environ['FLAGS_enable_new_ir_in_executor'] = 'True'
+        self.enable_new_ir(True)
         engine_dp_ir = self.get_engine("dp")
         out_dp_ir = engine_dp_ir.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
@@ -96,13 +100,13 @@ class TestNewIR(unittest.TestCase):
         )
 
     def test_mp(self):
-        os.environ['FLAGS_enable_new_ir_in_executor'] = 'False'
+        self.enable_new_ir(False)
         engine_mp_prog = self.get_engine("mp")
         out_mp_prog = engine_mp_prog.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
 
-        os.environ['FLAGS_enable_new_ir_in_executor'] = 'True'
+        self.enable_new_ir(True)
         engine_mp_ir = self.get_engine("mp")
         out_mp_ir = engine_mp_ir.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
@@ -114,13 +118,13 @@ class TestNewIR(unittest.TestCase):
 
     def test_pp(self):
         # navie pipeline parallel without schedule
-        os.environ['FLAGS_enable_new_ir_in_executor'] = 'False'
+        self.enable_new_ir(False)
         engine_pp_prog = self.get_engine("pp")
         out_pp_prog = engine_pp_prog.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
 
-        os.environ['FLAGS_enable_new_ir_in_executor'] = 'True'
+        self.enable_new_ir(True)
         # send_v2/recv_v2 dynamic_shape is True
         engine_pp_ir = self.get_engine("pp")
         out_pp_ir = engine_pp_ir.fit(
