@@ -64,8 +64,11 @@ Block::UseIterator Block::use_end() const { return Block::UseIterator(); }
 bool Block::HasOneUse() const { return first_use_ && !first_use_.next_use(); }
 
 void Block::ResetOpListOrder(const OpListType &new_op_list) {
+  IR_ENFORCE(new_op_list.size() == ops_.size(),
+             "The size of new_op_list not same with ops_.");
   IR_ENFORCE(TopoOrderCheck(new_op_list),
              "The new_op_list is not in topological order.");
+
   ops_.clear();
   for (Operation *op : new_op_list) {
     push_back(op);

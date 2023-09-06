@@ -592,6 +592,10 @@ py_test_modules(
 py_test_modules(test_install_check MODULES test_install_check ENVS
                 FLAGS_cudnn_deterministic=1)
 set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
+py_test_modules(test_install_check_new_ir MODULES test_install_check ENVS
+                FLAGS_cudnn_deterministic=1 FLAGS_enable_new_ir_in_executor=1)
+set_tests_properties(test_install_check_new_ir PROPERTIES LABELS
+                                                          "RUN_TYPE=DIST")
 
 if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
   py_test_modules(test_fused_gemm_epilogue_op MODULES
@@ -1290,6 +1294,7 @@ set(STATIC_BUILD_TESTS
     test_fuse_bn_act_pass
     test_fused_feedforward_op
     test_fused_feedforward_pass
+    test_fused_layernorm_op
     test_imperative_optimizer
     test_lamb_op
     test_layer_norm_op
