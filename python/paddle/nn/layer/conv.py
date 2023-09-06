@@ -21,6 +21,7 @@ from paddle import get_flags
 from ...device import (
     get_cudnn_version,
     is_compiled_with_cuda,
+    is_compiled_with_musa,
     is_compiled_with_rocm,
 )
 from ...utils import convert_to_list
@@ -177,7 +178,7 @@ class _ConvNd(Layer):
             and out_channels % in_channels == 0
         ):
             self._op_type = 'depthwise_conv2d'
-            if is_compiled_with_rocm():
+            if is_compiled_with_rocm() or is_compiled_with_musa():
                 self._use_cudnn = True
             else:
                 self._use_cudnn = False

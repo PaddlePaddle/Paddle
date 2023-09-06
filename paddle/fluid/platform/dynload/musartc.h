@@ -14,8 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <mtrtc.h>
-
 #include <mutex>  // NOLINT
 
 #include "paddle/phi/backends/dynload/musartc.h"

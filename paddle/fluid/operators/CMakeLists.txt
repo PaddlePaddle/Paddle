@@ -93,7 +93,7 @@ endif()
 set(OP_HEADER_DEPS ${OP_HEADER_DEPS} phi phi_utils static_prim_api get_expected_kernel_func)
 
 if (WITH_MUSA)
-  register_operators(EXCLUDES stft_op cross_entropy_op gru_op batch_norm_op inplace_abn_op gaussian_random_batch_size_like_op top_k_op py_func_op dgc_op generated_op1 generated_op2 generated_op3 generated_op4 load_combine_op lstm_op run_program_op quantize_linear_op recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op activation_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS} processgroup_comm_utils)
+  register_operators(EXCLUDES stft_op cross_entropy_op gru_op inplace_abn_op gaussian_random_batch_size_like_op top_k_op py_func_op dgc_op generated_op1 generated_op2 generated_op3 generated_op4 load_combine_op lstm_op run_program_op quantize_linear_op recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op activation_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS} processgroup_comm_utils)
 else()
   register_operators(EXCLUDES py_func_op dgc_op generated_op1 generated_op2 generated_op3 generated_op4 load_combine_op lstm_op run_program_op quantize_linear_op
           recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op activation_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS} processgroup_comm_utils)

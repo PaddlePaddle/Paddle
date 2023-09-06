@@ -105,6 +105,14 @@ PD_REGISTER_KERNEL(batch_norm_infer,
                    float,
                    phi::dtype::float16) {}
 #endif
+#ifdef PADDLE_WITH_MUSA
+PD_REGISTER_KERNEL(batch_norm_infer,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::BatchNormInferKernel,
+                   float,
+                   phi::dtype::float16) {}
+#endif
 #ifdef PADDLE_WITH_XPU
 PD_REGISTER_KERNEL(batch_norm_infer,
                    XPU,

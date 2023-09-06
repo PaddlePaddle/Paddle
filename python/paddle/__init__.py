@@ -386,6 +386,7 @@ from .device import is_compiled_with_ipu  # noqa: F401
 from .device import is_compiled_with_cinn  # noqa: F401
 from .device import is_compiled_with_cuda  # noqa: F401
 from .device import is_compiled_with_rocm  # noqa: F401
+from .device import is_compiled_with_musa  # noqa: F401
 from .device import is_compiled_with_custom_device  # noqa: F401
 
 # high-level api

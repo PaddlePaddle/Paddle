@@ -948,6 +948,13 @@ def conv2d(
     ):
         l_type = 'depthwise_conv2d'
 
+    if (
+        num_channels == groups
+        and num_filters % num_channels == 0
+        and core.is_compiled_with_musa()
+    ):
+        l_type = 'depthwise_conv2d'
+
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()
 
