@@ -692,30 +692,6 @@ nvinfer1::DimsExprs LookupTableV2InferMeta(
   output.d[x_dims.nbDims] = weight_dims.d[1];
   return output;
 }
-nvinfer1::DimsExprs PadInferMeta(
-    int output_index,
-    const nvinfer1::DimsExprs* inputs,
-    int nb_inputs,
-    nvinfer1::IExprBuilder& expr_builder,  // NOLINT
-    const framework::OpDesc& op_desc) {
-  const auto x_dims = inputs[0];
-  auto paddings = PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
-
-  nvinfer1::DimsExprs output;
-  output.nbDims = x_dims.nbDims;
-  for (int i = 0; i < x_dims.nbDims; ++i) {
-    output.d[i] = expr_builder.operation(
-
-      nvinfer1::DimensionOperation::kSUM,
-      *expr_builder.operation(nvinfer1::DimensionOperation::kSUM, 
-                              *x_dims.d[i], 
-                              *expr_builder.constant(paddings[2 * i])),
-                              *expr_builder.constant(paddings[2 * i + 1])
-      );
-
-  }
-  return output;
-}
 
 nvinfer1::DimsExprs Conv2dTransposeInferMeta(
     int output_index,
@@ -794,6 +770,30 @@ nvinfer1::DimsExprs Conv2dTransposeInferMeta(
       (iw - 1) * strides[1] - pad_w0 - pad_w1 + (kw - 1) * dilations[1] + 1;
 
   return VecExprWrapper2DimsExprs(output_dims_wrap);
+}
+
+nvinfer1::DimsExprs PadInferMeta(
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
+    nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+    const framework::OpDesc& op_desc) {
+  const auto x_dims = inputs[0];
+  auto paddings =
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+
+  nvinfer1::DimsExprs output;
+  output.nbDims = x_dims.nbDims;
+  for (int i = 0; i < x_dims.nbDims; ++i) {
+    output.d[i] = expr_builder.operation(
+
+        nvinfer1::DimensionOperation::kSUM,
+        *expr_builder.operation(nvinfer1::DimensionOperation::kSUM,
+                                *x_dims.d[i],
+                                *expr_builder.constant(paddings[2 * i])),
+        *expr_builder.constant(paddings[2 * i + 1]));
+  }
+  return output;
 }
 
 PD_REGISTER_DYNAMIC_INFER_META_FN(gather_nd, GatherNdInferMeta);
