@@ -73,7 +73,7 @@ class Tuple {
       : tuple_(
             std::make_shared<std::tuple<Ts...>>(std::forward<Args>(args)...)) {}
 
-  const std::tuple<Ts...>& tuple() const { return tuple_; }
+  const std::tuple<Ts...>& tuple() const { return *tuple_; }
 
   template <std::size_t I>
   const auto& Get() const {
@@ -233,6 +233,20 @@ DEFINE_ADT_BINARY(Mod);
   }                                                          \
   inline bool operator!=(const type& lhs, const type& rhs) { \
     return !(lhs == rhs);                                    \
+  }
+
+template <typename T>
+std::size_t TagHashValue(const T& tag) {
+  return std::hash<std::decay_t<decltype(tag.value())>>()(tag.value());
+}
+
+#define OVERRIDE_TAG_GET_HASH_VALUE(cls) \
+  inline std::size_t GetHashValue(const cls& tag) { return TagHashValue(tag); }
+
+#define OVERRIDE_UNION_GET_HASH_VALUE(cls)                                 \
+  inline std::size_t GetHashValue(const cls& union_obj) {                  \
+    return std::visit([](const auto& impl) { return GetHashValue(impl); }, \
+                      union_obj.variant());                                \
   }
 
 using Name = std::string;

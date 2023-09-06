@@ -31,10 +31,21 @@ namespace m_ir {
 class SSAShadowTensor final : public Tuple<tSSAShadow<Name>, m_expr::Tensor> {
  public:
   using Tuple<tSSAShadow<Name>, m_expr::Tensor>::Tuple;
+};
+OVERLOAD_OPERATOR_EQ_NE(tSSAShadow<Name>, TagEqual);
+OVERLOAD_OPERATOR_EQ_NE(SSAShadowTensor, TupleEqual);
+
+OVERRIDE_TAG_GET_HASH_VALUE(tSSAShadow<Name>);
+
+inline std::size_t GetHashValue(const SSAShadowTensor& shadow_tensor) {
+  const auto& [shadow_name, tensor] = shadow_tensor.tuple();
+  return hash_combine(GetHashValue(shadow_name), tensor);
 }
 
 // Tensor = const Graph::NodeData* | SSAShadowTensor
 DEFINE_ADT_UNION(Tensor, m_expr::Tensor, SSAShadowTensor);
+OVERRIDE_UNION_GET_HASH_VALUE(Tensor);
+OVERLOAD_OPERATOR_EQ_NE(Tensor, UnionEqual);
 
 // Arg = Tensor
 using Arg = Tensor;
@@ -46,7 +57,15 @@ using Op = const cinn::hlir::framework::Node*;
 class OpStmtNode final : public Tuple<Op, In<List<Arg>>, Out<List<Arg>>> {
  public:
   using Tuple<Op, In<List<Arg>>, Out<List<Arg>>>::Tuple;
+
+  bool operator==(const OpstmtNode& other) const {
+    return &this->tuple() == &other.tuple();
+  }
 };
+
+inline std::size_t GetHashValue(const OpStmtNode& op_stmt_node) {
+  return &op_stmt_node.tuple();
+}
 
 // MapIR = [OpStmtNode]
 using MapIR = List<OpStmtNode>;
@@ -54,3 +73,22 @@ using MapIR = List<OpStmtNode>;
 }  // namespace m_ir
 }  // namespace adt
 }  // namespace cinn
+
+namespace std {
+
+template <>
+struct hash<cinn::adt::m_ir::Tensor> {
+  std::size_t operator()(const cinn::adt::m_ir::Tensor& tensor) const {
+    return cinn::adt::m_ir::GetHashValue(tensor);
+  }
+};
+
+template <>
+struct hash<cinn::adt::m_ir::OpStmtNode> {
+  std::size_t operator()(
+      const cinn::adt::m_ir::OpStmtNode& op_stmt_node) const {
+    return cinn::adt::m_ir::GetHashValue(op_stmt_node);
+  }
+};
+
+}  // namespace std

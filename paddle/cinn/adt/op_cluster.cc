@@ -65,7 +65,7 @@ ReturnTag<bool> SdOpStmtNodes::AggregateTensorPair(
   auto that_tensor2as_output = that.GetTensor2AsOutput();
 
   return ForEachTensor<ReturnTag>(
-      [&](const auto& this_tenosr, const auto& this_as_output) {
+      [&](const auto& this_tensor, const auto& this_as_output) {
         const auto& pair = that_tensor2as_output.find(this_tensor);
         if (pair != that_tensor2as_output.end()) {
           const auto& [that_tensor, that_as_output] = *pair;
@@ -130,18 +130,20 @@ void SdOpStmtNodes::MergeThisToThat(const SdOpStmtNodes& that) {
 
 template <typename DoEachT>
 void VisitEachOpStmtNode(const m_ir::MapIR& map_ir, const DoEachT& DoEach) {
-  ADT_TODO();
-}
-
-const cinn::hlir::framework::Node* GetIteratorOpKey(
-    const OpStmtNode& op_stmt_node) {
-  // Yifan
-  ADT_TODO();
+  for (const auto& op_stmt_node : *map_ir) {
+    DoEach(op_stmt_node);
+  }
 }
 
 template <typename DoEachT>
 void VisitEachTensor(const OpStmtNode& op, const DoEachT& DoEach) {
-  ADT_TODO();
+  const auto& [op, inputs, outputs] = op.tuple();
+  for (const auto& input : inputs.value()) {
+    DoEach(input);
+  }
+  for (const auto& output : outputs.value()) {
+    DoEach(output);
+  }
 }
 
 void CollectTensorIndexIterators(const TensorIndexExpr& tensor_index_expr,
@@ -254,10 +256,13 @@ ScheduleIterators GetTensorScheduleIterators(
       tensor_index_sd_iters, sd_iters, GetSchedulePolicy);
 }
 
+// Schedule Iterator always be aligned
 ScheduleIterators MergeScheduleIterators(
     const ScheduleIterators& op_schedule_iterators,
     const ScheduleIterators& tensor_schedule_iterators) {
-  ADT_TODO();
+  return op_schedule_iterators->size() > tensor_schedule_iterators->size()
+             ? op_schedule_iterators
+             : tensor_schedule_iterators;
 }
 
 ScheduleIterators GenerateScheduleIterators(
@@ -281,9 +286,8 @@ ScheduleIterators GenerateScheduleIterators(
   return op_schedule_iterators;
 }
 
-std::pair<
-    std::function<const ScheduleIterators&(const cinn::hlir::framework::Node*)>,
-    std::function<const ScheduleIterators&(const m_ir::Tensor&)>>
+std::pair<std::function<const ScheduleIterators&(const m_ir::OpStmtNode&)>,
+          std::function<const ScheduleIterators&(const m_ir::Tensor&)>>
 MakeGetterSdIters(const m_ir::MapIR& map_ir,
                   const ScheduleIterators& sd_iters,
                   const std::function<const m_expr::SchedulePolicy&(
@@ -291,36 +295,41 @@ MakeGetterSdIters(const m_ir::MapIR& map_ir,
                   const std::function<TensorIndexExpr(const m_ir::Tensor&)>&
                       GetTensorIndexes) {
   using Op2ItersCache =
-      std::unordered_map<const cinn::hlir::framework::Node*, ScheduleIterators>;
+      std::unordered_map<const m_ir::OpStmtNode, ScheduleIterators>;
   const auto& op2sd_iters = std::make_shared<Op2ItersCache>();
   using Tensor2ItersCache = std::unordered_map<m_ir::Tensor, ScheduleIterators>;
   const auto& tensor2sd_iters = std::make_shared<Tensor2ItersCache>();
 
   VisitEachOpStmtNode(map_ir, [&](const OpStmtNode& op) {
-    const auto& key = GetIteratorOpKey(op);
     const auto& value = GenerateScheduleIterators(op,
                                                   sd_iters,
                                                   GetSchedulePolicy,
                                                   GetTensorIndexes,
                                                   tensor2sd_iters.get());
-    CHECK(op2sd_iters->emplace(key, value).second);
+    CHECK(op2sd_iters->emplace(op, value).second);
   });
 
-  return std::pair{[op2sd_iters](const cinn::hlir::framework::Node* op) {
-                     return op2sd_iters->at(op);
-                   },
-                   [tensor2sd_iters](const m_ir::Tensor& tensor) {
-                     return tensor2sd_iters->at(tensor);
-                   }};
+  return std::pair{
+      [op2sd_iters](const m_ir::OpStmtNode& op) { return op2sd_iters->at(op); },
+      [tensor2sd_iters](const m_ir::Tensor& tensor) {
+        return tensor2sd_iters->at(tensor);
+      }};
 }
 
 OpClusters GenerateOpClusters(
     const m_ir::MapIR& map_ir,
-    const std::function<const ScheduleIterators&(
-        const cinn::hlir::framework::Node*)>& SdIters4Op,
+    const std::function<const ScheduleIterators&(const m_ir::OpStmtNode&)>&
+        SdIters4Op,
     const std::function<const m_expr::SchedulePolicy&(
         const equation::IterVar&)>& GetSchedulePolicy) {
-  ADT_TODO();
+  OpClusters op_clusters{};
+
+  VisitEachOpStmtNode(map_ir, [&](const auto& op_stmt_node) {
+    op_clusters.emplace_back(
+        SdOpStmtNodes{op_stmt_node, SdIters4Op(op_stmt_node)});
+  });
+
+  return op_clusters;
 }
 
 // Reorder and merge
@@ -357,6 +366,7 @@ bool MergePrevToNext4LoopFuse(
   const auto& MergePrevToNext = [&](auto iter) {
     CHECK(iter != std::prev(op_clusters->end()));
     CHECK(iter != op_clusters->begin());
+    // Reorder process: prev, iter, next -> iter, merge(prev, next)
     MergeSrcToDst(*std::prev(iter), *std::next(iter));
   };
 
@@ -432,8 +442,8 @@ bool MergeNextOrPrev4LoopFuse(
 
 OpClusters ReorderAndMergeOpCluster4LoopFuse(
     const m_ir::MapIR& map_ir,
-    const std::function<const ScheduleIterators&(
-        const cinn::hlir::framework::Node*)>& SdIters4Op,
+    const std::function<const ScheduleIterators&(const m_ir::OpStmtNode&)>&
+        SdIters4Op,
     const std::function<const ScheduleIterators&(const m_ir::Tensor&)>&
         SdIters4Tensor,
     const std::function<const m_expr::SchedulePolicy&(
