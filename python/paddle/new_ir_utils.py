@@ -68,6 +68,7 @@ class IrChange:
 
 @signature_safe_contextmanager
 def _newir_guard():
+    paddle.enable_static()
     ir_change = IrChange()
     paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
     ir_change._switch_to_new_ir()
@@ -76,3 +77,4 @@ def _newir_guard():
     finally:
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
         ir_change._switch_to_old_ir()
+        paddle.disable_static()

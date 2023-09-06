@@ -21,14 +21,26 @@ import paddle
 import paddle.framework.dtype as dtypes
 from paddle.fluid import core
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle.framework import in_new_ir_mode
 from paddle.static import Program, program_guard
 
 
 def fill_any_like_wrapper(x, value, out_dtype=None, name=None):
     if isinstance(out_dtype, int):
-        tmp_dtype = dtypes.dtype(out_dtype)
+        if not in_new_ir_mode():
+            tmp_dtype = dtypes.dtype(out_dtype)
+        else:
+            from paddle.fluid.libpaddle import DataType
+
+            tmp_dtype = DataType(
+                paddle.ir.core.vartype_int_to_datatype_int[out_dtype]
+            )
     else:
         tmp_dtype = out_dtype
+        if in_new_ir_mode() and isinstance(
+            out_dtype, paddle.framework.core.VarDesc.VarType
+        ):
+            tmp_dtype = paddle.ir.core.vartype_to_datatype[tmp_dtype]
     return paddle.full_like(x, value, tmp_dtype, name)
 
 
