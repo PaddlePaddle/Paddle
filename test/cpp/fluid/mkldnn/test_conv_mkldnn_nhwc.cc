@@ -30,6 +30,7 @@
 USE_OP_ITSELF(conv2d);
 PD_DECLARE_KERNEL(conv2d, OneDNN, ONEDNN);
 
+template <typename DataType>
 void AddVarToScope(const std::string var_name,
                    paddle::framework::Scope* scope,
                    const paddle::framework::DDim& dims) {
@@ -39,16 +40,16 @@ void AddVarToScope(const std::string var_name,
 
   phi::DenseTensor tmp_tensor;
   auto* tmp_data =
-      tmp_tensor.mutable_data<float>(dims, paddle::platform::CPUPlace());
+      tmp_tensor.mutable_data<DataType>(dims, paddle::platform::CPUPlace());
   auto* tensor = scope->Var(var_name)->GetMutable<phi::DenseTensor>();
-  tensor->mutable_data<float>(dims, paddle::platform::CPUPlace());
+  tensor->mutable_data<DataType>(dims, paddle::platform::CPUPlace());
   for (auto i = 0; i < tensor->numel(); ++i) {
-    tmp_data[i] = static_cast<float>(dist(engine));
+    tmp_data[i] = static_cast<DataType>(dist(engine));
   }
   paddle::framework::TensorCopySync(
       tmp_tensor, paddle::platform::CPUPlace(), tensor);
 }
-TEST(test_conv2d_output, hnwc_shape) {
+TEST(test_conv2d_output, fp32) {
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace cpu_place;
 
@@ -58,9 +59,9 @@ TEST(test_conv2d_output, hnwc_shape) {
   conv2d_op.SetInput("Filter", {"conv2d-Y"});
   conv2d_op.SetOutput("Output", {"conv2d-Out"});
 
-  AddVarToScope("conv2d-X", &scope, {1, 3, 224, 224});
-  AddVarToScope("conv2d-Y", &scope, {64, 3, 7, 7});
-  AddVarToScope("conv2d-Out", &scope, {1, 64, 218, 218});
+  AddVarToScope<float>("conv2d-X", &scope, {1, 3, 224, 224});
+  AddVarToScope<float>("conv2d-Y", &scope, {64, 3, 7, 7});
+  AddVarToScope<float>("conv2d-Out", &scope, {1, 64, 218, 218});
 
   const std::vector<int> strides({1, 1});
   const std::vector<int> paddings({1, 1});
@@ -72,6 +73,37 @@ TEST(test_conv2d_output, hnwc_shape) {
   conv2d_op.SetAttr("dilations", dilations);
   conv2d_op.SetAttr("groups", groups);
   conv2d_op.SetAttr("use_mkldnn", true);
+
+  auto op = paddle::framework::OpRegistry::CreateOp(conv2d_op);
+
+  op->Run(scope, cpu_place);
+}
+TEST(test_conv2d_output, int8) {
+  paddle::framework::Scope scope;
+  paddle::platform::CPUPlace cpu_place;
+
+  paddle::framework::OpDesc conv2d_op(nullptr);
+  conv2d_op.SetType("conv2d");
+  conv2d_op.SetInput("Input", {"conv2d-X"});
+  conv2d_op.SetInput("Filter", {"conv2d-Y"});
+  conv2d_op.SetOutput("Output", {"conv2d-Out"});
+
+  AddVarToScope<int8_t>("conv2d-X", &scope, {1, 3, 224, 224});
+  AddVarToScope<int8_t>("conv2d-Y", &scope, {64, 3, 7, 7});
+  AddVarToScope<int8_t>("conv2d-Out", &scope, {1, 64, 218, 218});
+
+  const std::vector<int> strides({1, 1});
+  const std::vector<int> paddings({1, 1});
+  const std::vector<int> dilations({1, 1});
+  const int groups = 1;
+
+  conv2d_op.SetAttr("strides", strides);
+  conv2d_op.SetAttr("paddings", paddings);
+  conv2d_op.SetAttr("dilations", dilations);
+  conv2d_op.SetAttr("groups", groups);
+  conv2d_op.SetAttr("use_mkldnn", true);
+  conv2d_op.SetAttr("mkldnn_data_type", std::string("int8"));
+  conv2d_op.SetAttr("force_fp32_output", false);
 
   auto op = paddle::framework::OpRegistry::CreateOp(conv2d_op);
 
