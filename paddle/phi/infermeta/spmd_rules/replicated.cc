@@ -37,34 +37,23 @@ SpmdInfo ReplicatedSpmdInferForward(
     const std::vector<const DistMetaTensor*>& ins,
     const std::vector<const DistMetaTensor*>& outs) {
   // step1: Build Einsum Notation for input tensor's batch axis
-  VLOG(4) << "ReplicatedSpmd Here1:";
   int64_t ninputs = ins.size();
   int64_t noutputs = outs.size();
-  VLOG(4) << "noutputs: " << noutputs;
-  VLOG(4) << "ninputs: " << ninputs;
 
   // Step2: Unshard Output's Dims Mapping.
-  VLOG(4) << "ReplicatedSpmd Here2:";
   std::vector<TensorDistAttr> output_dist_attrs;
   for (int64_t i = 0; i < noutputs; i++) {
-    VLOG(4) << "ReplicatedSpmd forloop:";
     VLOG(4) << outs[i]->dist_attr().to_string();
     VLOG(4) << outs[i]->dims().to_str();
-    VLOG(4) << "000000";
     int ndim = outs[i]->dims().size();
-    VLOG(4) << "1111111";
     TensorDistAttr dist_attr_dst =
         CopyTensorDistAttrForOutput(ins[0]->dist_attr());
-    VLOG(4) << "2222222";
     std::vector<int64_t> dst_dims_maping = GetReplicatedDimsmapping(ndim);
-    VLOG(4) << "33333333";
     dist_attr_dst.set_dims_mapping(dst_dims_maping);
-    VLOG(4) << "44444444";
     output_dist_attrs.emplace_back(dist_attr_dst);
   }
 
   // Step3: Merge and get Inputs' Batch Axis New Dims Mapping.
-  VLOG(4) << "ReplicatedSpmd Here3:";
   std::vector<TensorDistAttr> dst_input_dist_attrs;
   for (int64_t i = 0; i < ninputs; i++) {
     int ndim = ins[i]->dims().size();

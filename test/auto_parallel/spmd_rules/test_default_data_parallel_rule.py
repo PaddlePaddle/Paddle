@@ -57,7 +57,7 @@ class TestDefaultDataParallelSPMDRule(unittest.TestCase):
             out2_shape, out2_tensor_dist_attr
         )
 
-    def test_replicated_infer_forward(self):
+    def test_default_dp_infer_forward(self):
         # 2 inputs 2 outputs, sharded batch axis
         result_dist_attrs = self.rule.infer_forward(
             [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
@@ -86,23 +86,24 @@ class TestDefaultDataParallelSPMDRule(unittest.TestCase):
         self.assertEqual(len(result_dist_attrs[1]), 3)
 
         self.assertEqual(result_dist_attrs[0][0].dims_mapping, [-1, -1, -1, -1])
-        self.assertEqual(result_dist_attrs[0][1].dims_mapping, [-1, -1])
-        self.assertEqual(result_dist_attrs[1][0].dims_mapping, [-1, -1, -1, -1])
-        self.assertEqual(result_dist_attrs[1][1].dims_mapping, [-1, -1, -1])
+        self.assertEqual(result_dist_attrs[1][0].dims_mapping, [-1, -1])
+        self.assertEqual(result_dist_attrs[1][1].dims_mapping, [-1, -1, -1, -1])
+        self.assertEqual(result_dist_attrs[1][2].dims_mapping, [-1, -1, -1])
 
         # conflict
-        self.y_dist_tensor_specs.set_dims_mapping([1, -1, -1, -1])
+        self.x_dist_tensor_spec.set_dims_mapping([0, -1, -1, -1])
+        self.y_dist_tensor_spec.set_dims_mapping([1, -1, -1, -1])
         with self.assertRaises(NotImplementedError):
             result_dist_attrs = self.rule.infer_forward(
                 [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
                 [self.out1_dist_tensor_spec, self.out2_dist_tensor_spec],
             )
 
-    def test_replicated_infer_backward(self):
+    def test_default_dp_infer_backward(self):
         # replicated out1 from [-1, 0, 1, -1]  to [0, -1, -1, -1]
         # replicated out1 from [0, 1, -1]  to [0, -1, -1]
-        self.out1_dist_tensor_specs.set_dims_mapping([-1, 0, 1, -1])
-        self.out2_dist_tensor_specs.set_dims_mapping([0, 1, -1])
+        self.out1_dist_tensor_spec.set_dims_mapping([-1, 0, 1, -1])
+        self.out2_dist_tensor_spec.set_dims_mapping([0, 1, -1])
 
         result_dist_attrs = self.rule.infer_backward(
             [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
@@ -118,8 +119,8 @@ class TestDefaultDataParallelSPMDRule(unittest.TestCase):
         self.assertEqual(result_dist_attrs[1][1].dims_mapping, [0, -1, -1])
 
         # batch axis unsharded
-        self.out1_dist_tensor_specs.set_dims_mapping([-1, 0, 1, -1])
-        self.out2_dist_tensor_specs.set_dims_mapping([-1, 1, -1])
+        self.out1_dist_tensor_spec.set_dims_mapping([-1, 0, 1, -1])
+        self.out2_dist_tensor_spec.set_dims_mapping([-1, 1, -1])
 
         result_dist_attrs = self.rule.infer_backward(
             [self.x_dist_tensor_spec, self.y_dist_tensor_spec],

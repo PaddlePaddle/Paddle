@@ -81,12 +81,6 @@ const std::pair<int, int>& InferSpmdContext::InputRangeAt(size_t idx) const {
 const std::vector<const DistMetaTensor*> InferSpmdContext::InputsBetween(
     size_t start, size_t end) const {
   std::vector<const DistMetaTensor*> result;
-  // If vector only contains one input that is not initialized,
-  // we should return a empty vector
-  if (end - start == 1 && !inputs_.at(start).initialized()) {
-    return result;
-  }
-
   result.reserve(end - start);
   for (size_t i = start; i < end; ++i) {
     auto& in = inputs_.at(i);
