@@ -1042,12 +1042,19 @@ std::unique_ptr<OpYamlInfoParser> GetOpYamlInfoParser(ir::Operation* op) {
   return op_info_parser;
 }
 
-std::string GetKernelFnStr(const OpYamlInfoParser* op_info_parser) {
+std::string GetKernelFnStr(const OpYamlInfoParser* op_info_parser,
+                           ir::Operation* op_item) {
   std::string kernel_fn_str;
   if (op_info_parser != nullptr) {
     kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func[0];
   }
 
+  if (op_item->name() == "pd.add_n_" ||
+      op_item->name() == "pd.add_n_with_kernel") {
+    if (op_item->result(0).type().isa<dialect::SelectedRowsType>()) {
+      kernel_fn_str = "add_n_sr";
+    }
+  }
   return kernel_fn_str;
 }
 
@@ -1135,7 +1142,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
 
     auto op_info_parser = GetOpYamlInfoParser(op_item);
 
-    auto kernel_fn_str = GetKernelFnStr(op_info_parser.get());
+    auto kernel_fn_str = GetKernelFnStr(op_info_parser.get(), op_item);
 
     auto kernel_key = GetKernelKey(
         op_item, place, kernel_fn_str, map_value_pair, op_info_parser.get());
