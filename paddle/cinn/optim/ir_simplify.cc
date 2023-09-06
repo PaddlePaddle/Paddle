@@ -294,7 +294,7 @@ struct SimplifyBlocksMutator : public ir::IRMutator<> {
   void Visit(const Block* op, Expr* expr) override {
     auto* node = expr->As<ir::Block>();
 
-    if (node->stmts.size() == 1) {
+    if (node->stmts.size() == 1 && node->stmts[0].As<ir::Block>()) {
       VLOG(6) << "Simplify size-1 ir::Block";
       *expr = node->stmts[0];
       Visit(expr, expr);
@@ -315,6 +315,14 @@ struct SimplifyBlocksMutator : public ir::IRMutator<> {
         }
       }
       expr->As<ir::Block>()->stmts = stmts;
+    }
+  }
+
+  void Visit(const ScheduleBlock* op, Expr* expr) override {
+    auto* node = expr->As<ir::ScheduleBlock>();
+    if (node->body.As<Block>()) {
+      CHECK(node->body.As<Block>()->stmts.size() == 1);
+      node->body = node->body.As<Block>()->stmts[0];
     }
   }
 };
