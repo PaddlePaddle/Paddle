@@ -429,30 +429,14 @@ const char *Conv2dFusionOpTest::attributes_name[10] = {  // NOLINT
 
 OpInfoTuple Conv2dFusionOpTest::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
-      OpInputInfo("input",
-                  "paddle::dialect::DenseTensorType",
-                  false,
-                  false,
-                  false,
-                  true),
-      OpInputInfo("filter",
-                  "paddle::dialect::DenseTensorType",
-                  false,
-                  false,
-                  false,
-                  true),
-      OpInputInfo("bias",
-                  "paddle::dialect::DenseTensorType",
-                  false,
-                  false,
-                  false,
-                  true),
-      OpInputInfo("residual",
-                  "paddle::dialect::DenseTensorType",
-                  true,
-                  false,
-                  false,
-                  true)};
+      OpInputInfo(
+          "input", "paddle::dialect::DenseTensorType", false, false, false),
+      OpInputInfo(
+          "filter", "paddle::dialect::DenseTensorType", false, false, false),
+      OpInputInfo(
+          "bias", "paddle::dialect::DenseTensorType", false, false, false),
+      OpInputInfo(
+          "residual", "paddle::dialect::DenseTensorType", true, false, false)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {
       OpAttributeInfo("strides", "ir::ArrayAttribute<ir::Int32Attribute>", ""),
       OpAttributeInfo(
