@@ -460,8 +460,7 @@ void DistributedFusedLambInitOpKernel(
       }
 
       VLOG(10) << "Found " << dtype << " parameter " << i << " shape=["
-               << p_out->dims() << "] numel=" << numel
-               << " grad.initialized()="
+               << p_out->dims() << "] numel=" << numel << " grad.initialized()="
                << (g_out->initialized() ? "true" : "false");
 
       info->param_t = p_out;
