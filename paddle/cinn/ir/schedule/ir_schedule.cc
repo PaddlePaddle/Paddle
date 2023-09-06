@@ -41,7 +41,7 @@
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/utils/string.h"
 
-DECLARE_int32(cinn_error_message_level);
+PD_DECLARE_int32(cinn_error_message_level);
 
 namespace cinn {
 namespace ir {

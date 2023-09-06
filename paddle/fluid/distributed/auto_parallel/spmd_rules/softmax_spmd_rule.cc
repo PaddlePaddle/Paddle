@@ -33,7 +33,7 @@ SoftmaxSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
           input_specs_size));
 
   auto x_shape = input_specs[0].shape();
-  int x_ndim = x_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
   auto x_dist_attr_src = input_specs[0].dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
 

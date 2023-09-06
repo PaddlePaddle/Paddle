@@ -39,8 +39,8 @@ OpInfoTuple AddNOp::GetOpInfo() {
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       OpOutputInfo("out", "paddle::dialect::DenseTensorType", false, false)};
-  paddle::dialect::OpRunTimeInfo run_time_info =
-      OpRunTimeInfo("", {""}, {""}, {""}, {""}, {}, {}, {});
+  paddle::dialect::OpRunTimeInfo run_time_info = OpRunTimeInfo(
+      "AddNInferMeta", {"inputs"}, {"add_n"}, {"inputs"}, {}, {}, {}, {});
 
   return std::make_tuple(inputs, attributes, outputs, run_time_info, "add_n");
 }
