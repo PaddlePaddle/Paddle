@@ -27,7 +27,7 @@ std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
 SplitSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
                             const paddle::framework::AttributeMap& attrs) {
   // step0: Verify Input Args Based on Elementwise Logic
-  int64_t ninputs = input_specs.size();
+  int64_t ninputs = static_cast<int64_t>(input_specs.size());
   PADDLE_ENFORCE_EQ(
       ninputs,
       1,
@@ -37,7 +37,7 @@ SplitSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   VerifySpecs(input_specs, "split");
 
   // step1: Build Einsum Notation
-  int64_t ndim = input_specs[0].shape().size();
+  int64_t ndim = static_cast<int64_t>(input_specs[0].shape().size());
   int64_t noutput = 0;
   // split api uses num or sections as attribute
   if (attrs.find("num") != attrs.end()) {
@@ -45,7 +45,7 @@ SplitSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   } else if (attrs.find("sections") != attrs.end()) {
     std::vector<int64_t> sections =
         ExtractAttr<std::vector<int64_t>>("sections", attrs);
-    noutput = sections.size();
+    noutput = static_cast<int64_t>(sections.size());
   }
   int64_t axis = ExtractAttr<int>("axis", attrs);
   if (axis < 0) {

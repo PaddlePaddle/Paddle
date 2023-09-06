@@ -376,7 +376,7 @@ void FFTC2RGradInferMeta(const MetaTensor& x,
   out->set_dtype(ToComplexType(x.dtype()));
 
   phi::DDim out_dim = x.dims();
-  const int64_t last_fft_axis = axes.back();
+  const int last_fft_axis = static_cast<int>(axes.back());
   if (last_dim_size > 0) {
     out_dim.at(last_fft_axis) = last_dim_size / 2 + 1;
   } else if (config.is_runtime) {
@@ -623,7 +623,7 @@ void InstanceNormGradInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument(
           "The X@GRAD in InstanceNormGradInferMeta can't be nullptr."));
   const auto x_dims = x.dims();
-  const int C = x_dims[1];
+  const int C = static_cast<int>(x_dims[1]);
   x_grad->set_dims(x_dims);
   x_grad->set_dtype(x.dtype());
   x_grad->set_layout(x.layout());
@@ -652,7 +652,7 @@ void InstanceNormDoubleGradInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument(
           "The DX in InstanceNormDoubleGradInferMeta can't be nullptr."));
   const auto x_dims = x.dims();
-  const int C = x_dims[1];
+  const int C = static_cast<int>(x_dims[1]);
   dx->set_dims(x_dims);
   dx->set_dtype(x.dtype());
   dx->set_layout(x.layout());
@@ -1165,12 +1165,12 @@ void TransposeGradInferMeta(const MetaTensor& x,
   std::vector<int> formated_axis = axis;
   for (size_t i = 0; i < axis.size(); i++) {
     if (axis[i] < 0) {
-      formated_axis[i] = axis[i] + x_rank;
+      formated_axis[i] = static_cast<int>(axis[i] + x_rank);
     }
   }
 
   std::vector<int> reversed_axis(axis);
-  for (size_t i = 0; i < formated_axis.size(); i++) {
+  for (int i = 0; i < static_cast<int>(formated_axis.size()); i++) {
     reversed_axis[formated_axis[i]] = i;
   }
 
@@ -1240,7 +1240,7 @@ void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
   if (axis < 0) axis += (rank + 1);
 
   auto vec = phi::vectorize<int>(input_dims[0]);
-  vec.insert(vec.begin() + axis, input_dims.size());
+  vec.insert(vec.begin() + axis, static_cast<int>(input_dims.size()));
   x_grad->set_dims(phi::make_ddim(vec));
   x_grad->set_dtype(out_grad[0]->dtype());
 }
