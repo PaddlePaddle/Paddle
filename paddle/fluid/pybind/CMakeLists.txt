@@ -295,10 +295,18 @@ if(WITH_PYTHON)
 
   add_executable(eager_legacy_op_function_generator
                  eager_legacy_op_function_generator.cc)
+  if(WITH_MUSA)
+    target_link_options(eager_legacy_op_function_generator PRIVATE
+                        -Wl,-rpath,/usr/lib/x86_64-linux-gnu/)
+  endif()
   target_link_libraries(eager_legacy_op_function_generator
                         ${OP_FUNCTION_GENERETOR_DEPS})
   if(NOT WIN32)
     add_executable(kernel_signature_generator kernel_signature_generator.cc)
+    if(WITH_MUSA)
+      target_link_options(kernel_signature_generator PRIVATE
+                          -Wl,-rpath,/usr/lib/x86_64-linux-gnu/)
+    endif()
     target_link_libraries(kernel_signature_generator
                           ${OP_FUNCTION_GENERETOR_DEPS})
   endif()
