@@ -510,7 +510,7 @@ class Xdoctester(DocTester):
 
             if len(summary_nocodes):
                 logger.warning(
-                    ">>> %d apis could not run test or don't have sample codes in env: %s",
+                    ">>> %d apis don't have sample codes or could not run test in env: %s",
                     len(summary_nocodes),
                     self._test_capacity,
                 )
@@ -518,7 +518,7 @@ class Xdoctester(DocTester):
 
             if len(summary_timeout):
                 logger.warning(
-                    ">>> %d sample codes ran timeout in env: %s",
+                    ">>> %d sample codes ran timeout or error in env: %s",
                     len(summary_timeout),
                     self._test_capacity,
                 )

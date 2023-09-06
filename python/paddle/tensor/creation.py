@@ -102,6 +102,25 @@ def create_global_var(
             >>> import paddle
             >>> print(1+1)
             3
+
+
+        .. code-block:: python
+            :name: e3
+
+            >>> # fail in timeout
+            >>> import os
+            ... for i in range(3):
+            ...     pass
+            llll
+
+        .. code-block:: python
+            :name: e4
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> print(1+1)
+            2
+
     """
     # TODO:
     check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_global_var')
@@ -184,10 +203,17 @@ def create_parameter(
 
     Examples:
         .. code-block:: python
+            :name: e1
 
-            >>> import paddle
+            >>> import paddle SOME SYNTAX
             >>> paddle.enable_static()
             >>> W = paddle.create_parameter(shape=[784, 200], dtype='float32')
+
+        .. code-block:: python
+            :name: e2
+
+            >>> print(1+1)
+            2
     """
     # TODO
     check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_parameter')
@@ -311,6 +337,7 @@ def linspace(start, stop, num, dtype=None, name=None):
             >>> data = paddle.linspace(0, 10, 5, 'float32')
             >>> print(data.numpy())
             [0. 2.5 5. 7.5 10.]
+
             >>> data = paddle.linspace(0, 10, 1, 'float32')
             >>> print(data.numpy())
             [0.]
