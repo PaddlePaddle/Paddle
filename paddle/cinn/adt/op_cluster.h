@@ -14,18 +14,20 @@
 
 #pragma once
 
+#include <list>
+
 #include "paddle/cinn/adt/m_ir.h"
 
 namespace cinn::adt {
 
 using ScheduleIterators = List<equation::IterVar>;
 
-namespace op_cluster {
+}
+
+namespace cinn::adt::op_cluster {
 
 DEFINE_ADT_TAG(tAsOutput);
 DEFINE_ADT_TAG(tBreak);
-DEFINE_ADT_TAG(tMergable);
-DEFINE_ADT_TAG(tHasReadWriteDependence);
 
 class SdOpStmtNodes final {
  public:
@@ -36,11 +38,12 @@ class SdOpStmtNodes final {
 
   const m_expr::ScheduleIterators& sd_iters() const { return sd_iters_; }
 
-  void AddOpStmtNode(const m_ir::OpStmtNode& op_stmt_node,
-                     const std::function<const ScheduleIterators&(
-                         const cinn::hlir::framework::Node*)>& SdIters4Op,
-                     const std::function<const m_expr::SchedulePolicy&(
-                         const equation::IterVar&)>& GetSchedulePolicy) {
+  void AddOpStmtNode(
+      const m_ir::OpStmtNode& op_stmt_node,
+      const std::function<const ScheduleIterators&(const m_ir::OpStmtNode&)>&
+          SdIters4Op,
+      const std::function<const m_expr::SchedulePolicy&(
+          const equation::IterVar&)>& GetSchedulePolicy) {
     ADT_TODO();
   }
 
@@ -54,15 +57,15 @@ class SdOpStmtNodes final {
   void MergeThisToThat(const SdOpStmtNodes& that);
 
  private:
-  template <template <typename> class ReturnTag, typename DoEachT>
-  ReturnTag<bool> AggregateTensorPair(const SdOpStmtNodes& that,
-                                      const DoEachT& DoEach) const;
+  template <typename DoEachT>
+  tBreak<bool> AggregateTensorPair(const SdOpStmtNodes& that,
+                                   const DoEachT& DoEach) const;
 
   template <typename DoEachT>
   void VisitEachTensor(const DoEachT& DoEach) const;
 
-  template <template <typename> class ReturnTag, typename DoEachT>
-  ReturnTag<bool> ForEachTensor(const DoEachT& DoEach) const;
+  template <typename DoEachT>
+  tBreak<bool> ForEachTensor(const DoEachT& DoEach) const;
 
   std::unordered_map<m_ir::Tensor, tAsOutput<bool>> GetTensor2AsOutput() const;
 
@@ -80,6 +83,4 @@ OpClusters GenerateClusterOpsForLoopFuse(
     const std::function<TensorIndexExpr(const m_ir::Tensor&)>&
         GetTensorIndexes);
 
-}  // namespace op_cluster
-
-}  // namespace cinn::adt
+}  // namespace cinn::adt::op_cluster

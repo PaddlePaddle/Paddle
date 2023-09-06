@@ -22,30 +22,30 @@ namespace cinn::adt::op_cluster {
 
 template <typename DoEachT>
 void SdOpStmtNodes::VisitEachTensor(const DoEachT& DoEach) const {
-  ForEachTensor<tBreak>([&](const auto& tensor, const auto& as_output) {
+  ForEachTensor([&](const auto& tensor, const auto& as_output) {
     DoEach(tensor, as_output);
     return tBreak{false};
   });
 }
 
-template <template <typename> class ReturnTag, typename DoEachT>
-ReturnTag<bool> SdOpStmtNodes::ForEachTensor(const DoEachT& DoEach) const {
+template <typename DoEachT>
+tBreak<bool> SdOpStmtNodes::ForEachTensor(const DoEachT& DoEach) const {
   for (const auto& op_node : ops_) {
     const auto& [op, inputs, outputs] = op_node.tuple();
     for (const auto& input : inputs.value()) {
-      const auto& tag = DoEach(input, false);
+      tBreak<bool> tag = DoEach(input, false);
       if (tag.value()) {
         return tag;
       }
     }
     for (const auto& output : outputs.value()) {
-      const auto& tag = DoEach(output, true);
+      tBreak<bool> tag = DoEach(output, true);
       if (tag.value()) {
         return tag;
       }
     }
   }
-  return ReturnTag<bool>{false};
+  return tBreak<bool>{false};
 }
 
 std::unordered_map<m_ir::Tensor, tAsOutput<bool>>
@@ -59,23 +59,23 @@ SdOpStmtNodes::GetTensor2AsOutput() const {
   return ret;
 }
 
-template <template <typename> class ReturnTag, typename DoEachT>
-ReturnTag<bool> SdOpStmtNodes::AggregateTensorPair(
-    const SdOpStmtNodes& that, const DoEachT& DoEach) const {
+template <typename DoEachT>
+tBreak<bool> SdOpStmtNodes::AggregateTensorPair(const SdOpStmtNodes& that,
+                                                const DoEachT& DoEach) const {
   auto that_tensor2as_output = that.GetTensor2AsOutput();
 
-  return ForEachTensor<ReturnTag>(
-      [&](const auto& this_tensor, const auto& this_as_output) {
-        const auto& pair = that_tensor2as_output.find(this_tensor);
-        if (pair != that_tensor2as_output.end()) {
-          const auto& [that_tensor, that_as_output] = *pair;
-          const auto& tag = DoEach(this_tensor, this_as_output, that_as_output);
-          if (tag.value()) {
-            return tag;
-          }
-        }
-        return ReturnTag{false};
-      });
+  return ForEachTensor([&](const auto& this_tensor,
+                           const auto& this_as_output) {
+    const auto& pair = that_tensor2as_output.find(this_tensor);
+    if (pair != that_tensor2as_output.end()) {
+      const auto& [that_tensor, that_as_output] = *pair;
+      tBreak<bool> tag = DoEach(this_tensor, this_as_output, that_as_output);
+      if (tag.value()) {
+        return tag;
+      }
+    }
+    return tBreak<bool>{false};
+  });
 }
 
 bool SdOpStmtNodes::IsMergableTo(
@@ -95,15 +95,20 @@ bool SdOpStmtNodes::IsMergableTo(
     return this_as_output.value() || that_as_output.value();
   };
 
-  return !AggregateTensorPair<tMergable>(
-              that,
-              [&](const auto& tensor,
-                  tAsOutput<bool> this_as_output,
-                  tAsOutput<bool> that_as_output) -> tMergable<bool> {
-                return CheckBroadcast(tensor) &&
-                       CheckWrite(this_as_output, that_as_output);
-              })
-              .value();
+  bool mergable = true;
+  AggregateTensorPair(that,
+                      [&](const auto& tensor,
+                          tAsOutput<bool> this_as_output,
+                          tAsOutput<bool> that_as_output) {
+                        if (CheckBroadcast(tensor) &&
+                            CheckWrite(this_as_output, that_as_output)) {
+                          mergable = false;
+                          return tBreak{true};
+                        } else {
+                          return tBreak{false};
+                        }
+                      });
+  return mergable;
 }
 
 bool SdOpStmtNodes::HasReadWriteDependence(const SdOpStmtNodes& that) const {
@@ -112,15 +117,21 @@ bool SdOpStmtNodes::HasReadWriteDependence(const SdOpStmtNodes& that) const {
     return this_as_output.value() || that_as_output.value();
   };
 
-  return !AggregateTensorPair<tHasReadWriteDependence>(
-              that,
-              [&](const auto& tensor,
-                  tAsOutput<bool> this_as_output,
-                  tAsOutput<bool> that_as_output)
-                  -> tHasReadWriteDependence<bool> {
-                return CheckWrite(this_as_output, that_as_output);
-              })
-              .value();
+  bool has_read_write_dependence = false;
+
+  AggregateTensorPair(that,
+                      [&](const auto& tensor,
+                          tAsOutput<bool> this_as_output,
+                          tAsOutput<bool> that_as_output) {
+                        if (CheckWrite(this_as_output, that_as_output)) {
+                          has_read_write_dependence = true;
+                          return tBreak{true};
+                        } else {
+                          return tBreak{false};
+                        }
+                      });
+
+  return has_read_write_dependence;
 }
 
 void SdOpStmtNodes::MergeThisToThat(const SdOpStmtNodes& that) {
