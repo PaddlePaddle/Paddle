@@ -1005,6 +1005,7 @@ XPUOpMap& get_kl2_ops() {
       {"sequence_conv_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"sequence_unpad", XPUKernelSet({phi::DataType::FLOAT32})},
       // Fused op
+      {"squeeze_excitation_block", XPUKernelSet({phi::DataType::FLOAT32})},
       {"resnet_basic_block_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"resnet_basic_block", XPUKernelSet({phi::DataType::FLOAT32})},
       {"fused_gemm_epilogue",
