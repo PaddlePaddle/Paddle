@@ -919,6 +919,7 @@ inline void NewIRRunProgramGradAPI(
     const std::vector<paddle::Tensor> &params,
     const std::vector<paddle::Tensor> &out_grad,
     const std::vector<paddle::Tensor> &middles,
+    const std::vector<paddle::Tensor> &out,
     const std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     const paddle::framework::AttributeMap &attrs,
     std::vector<paddle::Tensor *> &x_grad,      // NOLINT
@@ -952,6 +953,8 @@ inline void NewIRRunProgramGradAPI(
       PADDLE_GET_CONST(std::vector<::ir::Value>, attrs.at("bx"));
   auto forward_middle_values =
       PADDLE_GET_CONST(std::vector<::ir::Value>, attrs.at("bm"));
+  auto forward_output_values =
+      PADDLE_GET_CONST(std::vector<::ir::Value>, attrs.at("bo"));
   auto x_grad_values =
       PADDLE_GET_CONST(std::vector<::ir::Value>, attrs.at("bx_g"));
   auto p_grad_values =
@@ -980,7 +983,8 @@ inline void NewIRRunProgramGradAPI(
                                           middles,
                                           forward_middle_values,
                                           global_inner_scope);
-
+    details::ShareTensorsIntoScopeByValue(
+        backward_global_block, out, forward_output_values, global_inner_scope);
     auto kernel_backward_program =
         paddle::dialect::PdOpLowerToKernelPass(backward_program, place);
     interpreter_core = paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
@@ -1248,6 +1252,7 @@ class NewIRGradNodeRunProgram : public egr::GradNodeBase {
         VLOG(4) << "global_inner_scope SetCanReused";
       }
       middles_.clear();
+      outputs_.clear();
     }
   }
   // Functor: perform backward computations
@@ -1304,6 +1309,7 @@ class NewIRGradNodeRunProgram : public egr::GradNodeBase {
                            params_,
                            hooked_grads[0],
                            middles_,
+                           outputs_,
                            step_scope_,
                            attrs_,
                            x_grad_ptr,
@@ -1319,6 +1325,7 @@ class NewIRGradNodeRunProgram : public egr::GradNodeBase {
     x_.clear();
     params_.clear();
     middles_.clear();
+    outputs_.clear();
     SetIsTensorWrappersCleared(true);
   }
 
@@ -1330,6 +1337,8 @@ class NewIRGradNodeRunProgram : public egr::GradNodeBase {
   void SetFwdX(const std::vector<paddle::Tensor> &tensors) { x_ = tensors; }
 
   std::vector<paddle::Tensor> &GetMiddle() { return middles_; }
+
+  std::vector<paddle::Tensor> &GetOutputs() { return outputs_; }
 
   void SetFwdParams(const std::vector<paddle::Tensor> &tensors) {
     params_ = tensors;
@@ -1401,6 +1410,7 @@ class NewIRGradNodeRunProgram : public egr::GradNodeBase {
   std::vector<paddle::Tensor> x_;
   std::vector<paddle::Tensor> params_;
   std::vector<paddle::Tensor> middles_;
+  std::vector<paddle::Tensor> outputs_;
   std::vector<paddle::framework::Scope *> step_scope_;
 
   // Attribute Map

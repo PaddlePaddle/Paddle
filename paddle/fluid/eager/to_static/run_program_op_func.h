@@ -200,6 +200,8 @@ inline void newir_run_program_ad_func(
   // Create Middle Output for GradNode.
   auto middle_size =
       PADDLE_GET_CONST(std::vector<::ir::Value>, attrs.at("fm")).size();
+  auto output_size =
+      PADDLE_GET_CONST(std::vector<::ir::Value>, attrs.at("fo")).size();
   auto middles = std::vector<paddle::Tensor*>();
   std::shared_ptr<NewIRGradNodeRunProgram> grad_node;
   VLOG(2) << "start run run_program with require_any_grad = "
@@ -209,8 +211,14 @@ inline void newir_run_program_ad_func(
     // Create GradOpNode (1 means [out_grad], 2 means [x_grad, paramx_grad])
     grad_node = std::make_shared<NewIRGradNodeRunProgram>(1, 2);
     grad_node->GetMiddle().resize(middle_size);
+    grad_node->GetOutputs().resize(output_size);
     for (size_t i = 0; i < middle_size; ++i) {
+      grad_node->GetMiddle()[i] =
+          paddle::Tensor(std::make_shared<phi::DenseTensor>());
       middles.push_back(&grad_node->GetMiddle()[i]);
+    }
+    for (size_t i = 0; i < output_size; ++i) {
+      grad_node->GetOutputs()[i] = *out[i];
     }
   }
 

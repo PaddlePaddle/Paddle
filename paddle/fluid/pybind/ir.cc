@@ -545,9 +545,11 @@ SplitedResult ForwardBackwardSplit(
   VLOG(1) << "Start Prepare data structures.";
   std::vector<ir::Value> forward_inputs, forward_outputs, forward_inputs_grads,
       forward_outputs_grads;
+
   auto op_result_to_value = [](const ir::OpResult &r) {
     return Value(r.value_impl());
   };
+
   std::transform(op_result_forward_inputs.begin(),
                  op_result_forward_inputs.end(),
                  std::back_inserter(forward_inputs),
@@ -565,12 +567,19 @@ SplitedResult ForwardBackwardSplit(
                  std::back_inserter(forward_outputs_grads),
                  op_result_to_value);
 
+  std::vector<ir::Value> forward_in_out_values;
+  for (auto &v : std::vector<std::vector<ir::Value> *>(
+           {&forward_inputs, &forward_outputs})) {
+    forward_in_out_values.insert(
+        forward_in_out_values.end(), v->begin(), v->end());
+  }
+
   std::vector<ir::Value> fx, fp, fm, fo, bx, bp, bm, bo_g, bx_g, bp_g, bo;
   ir::IrContext *ctx = ir::IrContext::Instance();
   auto forward_program = std::make_shared<Program>(ctx);
   auto backward_program = std::make_shared<Program>(ctx);
   auto middle_values = AnalysisMiddleVariable(
-      program, forward_inputs, forward_range, backward_range);
+      program, forward_in_out_values, forward_range, backward_range);
   std::unordered_map<ir::Value, ir::Value> forward_value_map;
   std::unordered_map<ir::Value, ir::Value> backward_value_map;
   ir::Builder backward_builder = ir::Builder(ctx, backward_program->block());
@@ -641,9 +650,8 @@ SplitedResult ForwardBackwardSplit(
   };
 
   counter = 0;
+  std::for_each(forward_outputs.begin(), forward_outputs.end(), create_data_fn);
   std::for_each(forward_inputs.begin(), forward_inputs.end(), create_data_fn);
-  // std::for_each(forward_outputs.begin(), forward_outputs.end(),
-  // create_data_fn);
   std::for_each(middle_values.begin(), middle_values.end(), create_data_fn);
   std::for_each(forward_outputs_grads.begin(),
                 forward_outputs_grads.end(),
@@ -690,7 +698,7 @@ SplitedResult ForwardBackwardSplit(
   mapping_value(forward_outputs, forward_value_map, fo);           // write 'bm'
   mapping_value(forward_inputs_grads, backward_value_map, bx_g);   // write 'bm'
   mapping_value(forward_outputs_grads, backward_value_map, bo_g);  // write 'bm'
-  // mapping_value(forward_outputs, backward_value_map, bo);  // write 'bm'
+  mapping_value(forward_outputs, backward_value_map, bo);          // write 'bm'
 
   std::map<std::string, std::vector<ir::Value>> attr = {{"fx", fx},
                                                         {"fp", fp},
