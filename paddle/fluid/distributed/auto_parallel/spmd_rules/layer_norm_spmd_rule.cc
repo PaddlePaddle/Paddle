@@ -34,9 +34,9 @@ LayerNormSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   auto x_shape = input_specs[0].shape();
   auto scale_shape = input_specs[1].shape();
   auto bias_shape = input_specs[2].shape();
-  int x_ndim = x_shape.size();
-  int scale_ndim = scale_shape.size();
-  int bias_ndim = bias_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
+  int scale_ndim = static_cast<int>(scale_shape.size());
+  int bias_ndim = static_cast<int>(bias_shape.size());
 
   PADDLE_ENFORCE_EQ(
       scale_ndim,

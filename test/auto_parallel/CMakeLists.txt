@@ -85,6 +85,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_reshard_r_to_s MODULES test_reshard_r_to_s)
   set_tests_properties(test_reshard_r_to_s
                        PROPERTIES LABELS "RUN_TYPE=EXECLUSIVE" TIMEOUT 100)
+  py_test_modules(test_reshard_r_to_p MODULES test_reshard_r_to_p)
+  set_tests_properties(test_reshard_r_to_p
+                       PROPERTIES LABELS "RUN_TYPE=EXECLUSIVE" TIMEOUT 100)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
@@ -102,6 +105,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   set_tests_properties(test_selective_recompute PROPERTIES TIMEOUT 50)
   py_test_modules(test_tuning_recompute MODULES test_tuning_recompute)
   set_tests_properties(test_tuning_recompute PROPERTIES TIMEOUT 300)
+  py_test_modules(test_tuning_recompute_with_amp MODULES
+                  test_tuning_recompute_with_amp)
+  set_tests_properties(test_tuning_recompute_with_amp PROPERTIES TIMEOUT 60)
   py_test_modules(test_fused_linear_pass MODULES test_fused_linear_pass)
   set_tests_properties(test_fused_linear_pass PROPERTIES TIMEOUT 40)
   py_test_modules(test_align_tool MODULES test_align_tool)
