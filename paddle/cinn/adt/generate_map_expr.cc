@@ -112,7 +112,7 @@ cinn::adt::m_expr::MapExpr MergeMapExpr(const std::shared_ptr<KGroup>& kgroup,
 using TensorIndex = Variable;
 using TensorIndexExpr = Value;
 
-std::functoin<TensorIndexExpr(const cinn::hlir::framework::NodeData*)>
+std::functoin<const TensorIndexExpr&(const m_expr::Tensor&)>
 MakeGetterTensorIndexExpr(const std::shared_ptr<IGroup>& igroup,
                           const eqaution::GraphView& sd_equation_graph_view) {
   equation::GraphView igroup_view = igroup->GetDefaultGraphView();
@@ -120,7 +120,7 @@ MakeGetterTensorIndexExpr(const std::shared_ptr<IGroup>& igroup,
   auto ctx = std::make_shared<equation::IndexExprInferContext>();
   eqaution::value::SolveEquations(
       merged_view, igroup->anchor_tensor(), ctx.get());
-  return [ctx](const cinn::hlir::framework::NodeData* tensor) {
+  return [ctx](const m_expr::Tensor& tensor) {
     const auto index = ctx->GetIndex(tensor);
     return ctx->GetValue(index);
   }
@@ -129,8 +129,8 @@ MakeGetterTensorIndexExpr(const std::shared_ptr<IGroup>& igroup,
 cinn::adt::m_expr::MapExpr GenerateMapExpr(
     const std::shared_ptr<IGroup>& igroup,
     const m_expr::ScheduleDescriptor& sd,
-    const std::functoin<TensorIndexExpr(
-        const cinn::hlir::framework::NodeData*)>& tensor_indexes) {
+    const std::functoin<const TensorIndexExpr&(const m_expr::Tensor&)>&
+        tensor_indexes) {
   // Non-trival here
   ADT_TODO();
 }

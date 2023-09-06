@@ -72,7 +72,7 @@ MapIRList GenerateClusterOpsForLoopFuse(
     const ScheduleIterators& sd_iters,
     const std::function<const m_expr::ScheduleDescriptor&(
         const equation::IterVar&)>& GetScheduleType,
-    const std::function<TensorIndexExpr(const m_expr::Tensor&)>&
+    const std::function<const TensorIndexExpr&(const m_expr::Tensor&)>&
         GetTensorIndexes);
 
 }  // namespace cinn::adt::m_ir

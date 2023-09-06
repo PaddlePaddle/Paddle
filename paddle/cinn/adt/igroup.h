@@ -45,7 +45,7 @@ class IGroup final {
 
   GraphView GetDefaultGraphView() const { ADT_TODO(); }
 
-  cinn::hlir::framework::NodeData* GetTensor(const Index& index) const;
+  const m_expr::Tensor& GetTensor(const Index& index) const;
 
  private:
   std::shared_ptr<AnchorTensor> anchor_tensor_;

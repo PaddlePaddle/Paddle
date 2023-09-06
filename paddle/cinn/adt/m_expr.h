@@ -147,9 +147,11 @@ class Kernel final
 using TensorIndexExpr = equation::Value;
 // MapExpr = Kernel
 class MapExpr final
-    : public Tuple<Kernel, std::function<TensorIndexExpr(const Tensor&)>> {
+    : public Tuple<Kernel,
+                   std::function<const TensorIndexExpr&(const Tensor&)>> {
  public:
-  using Tuple<Kernel, std::function<TensorIndexExpr(const Tensor&)>>::Tuple;
+  using Tuple<Kernel,
+              std::function<const TensorIndexExpr&(const Tensor&)>>::Tuple;
 };
 
 }  // namespace m_expr

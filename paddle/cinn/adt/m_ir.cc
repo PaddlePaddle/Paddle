@@ -258,7 +258,7 @@ ScheduleIterators GetTensorScheduleIterators(
     const ScheduleIterators& sd_iters,
     const std::function<const m_expr::SchedulePolicy&(
         const equation::IterVar&)>& GetSchedulePolicy,
-    const std::function<TensorIndexExpr(const m_expr::Tensor&)>&
+    const std::function<const TensorIndexExpr&(const m_expr::Tensor&)>&
         GetTensorIndexes) {
   const auto& tensor_index_sd_iters =
       GetTensorIndexIterators(GetTensorIndexes(tensor));
@@ -281,7 +281,7 @@ ScheduleIterators GenerateScheduleIterators(
     const ScheduleIterators& sd_iters,
     const std::function<const m_expr::SchedulePolicy&(
         const equation::IterVar&)>& GetSchedulePolicy,
-    const std::function<TensorIndexExpr(const m_expr::Tensor&)>&
+    const std::function<const TensorIndexExpr&(const m_expr::Tensor&)>&
         GetTensorIndexes,
     std::unordered_map<m_expr::Tensor, ScheduleIterators>* tensor2sd_iters) {
   ScheduleIterators op_schedule_iterators;
@@ -300,12 +300,13 @@ ScheduleIterators GenerateScheduleIterators(
 
 std::pair<std::function<const ScheduleIterators&(const m_expr::OpStmtNode&)>,
           std::function<const ScheduleIterators&(const m_expr::Tensor&)>>
-MakeGetterSdIters(const List<m_expr::OpStmtNode>& op_stmt_nodes,
-                  const ScheduleIterators& sd_iters,
-                  const std::function<const m_expr::SchedulePolicy&(
-                      const equation::IterVar&)>& GetSchedulePolicy,
-                  const std::function<TensorIndexExpr(const m_expr::Tensor&)>&
-                      GetTensorIndexes) {
+MakeGetterSdIters(
+    const List<m_expr::OpStmtNode>& op_stmt_nodes,
+    const ScheduleIterators& sd_iters,
+    const std::function<const m_expr::SchedulePolicy&(
+        const equation::IterVar&)>& GetSchedulePolicy,
+    const std::function<const TensorIndexExpr&(const m_expr::Tensor&)>&
+        GetTensorIndexes) {
   using Op2ItersCache =
       std::unordered_map<const m_expr::OpStmtNode, ScheduleIterators>;
   const auto& op2sd_iters = std::make_shared<Op2ItersCache>();
@@ -479,7 +480,7 @@ MapIRList GenerateClusterOpsForLoopFuse(
     const ScheduleIterators& sd_iters,
     const std::function<const m_expr::SchedulePolicy&(
         const equation::IterVar&)>& GetSchedulePolicy,
-    const std::function<TensorIndexExpr(const m_expr::Tensor&)>&
+    const std::function<const TensorIndexExpr&(const m_expr::Tensor&)>&
         GetTensorIndexes) {
   const auto& [SdIters4Op, SdIters4Tensor] = MakeGetterSdIters(
       op_stmt_nodes, sd_iters, GetSchedulePolicy, GetTensorIndexes);

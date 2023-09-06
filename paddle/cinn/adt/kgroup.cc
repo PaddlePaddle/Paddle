@@ -18,7 +18,7 @@ namespace cinn::adt {
 
 using AnchorTensor = eqaution::Variable;
 
-std::size_t GetTensorNumel(cinn::hlir::framework::NodeData* tensor) {
+std::size_t GetTensorNumel(const m_expr::Tensor& tensor) {
   // Yifan
   ADT_TODO();
 }
@@ -26,7 +26,7 @@ std::size_t GetTensorNumel(cinn::hlir::framework::NodeData* tensor) {
 ScheduleDescriptor KGroup::GetDefaultScheduleDescriptor(
     const std::shared_ptr<IGroup>& igroup) const {
   const std::shared_ptr<AnchorTensor>& anchor_tensor = igroup->anchor_tensor();
-  cinn::hlir::framework::NodeData* tensor = igroup->GetTensor();
+  const m_expr::Tensor& tensor = igroup->GetTensor();
 
   CHECK_EQ(GetTensorNumel(tensor) % 64, 0);
   return {{cinn::adt::m_expr::S0x{}, GetTensorNumel(tensor) / 64},

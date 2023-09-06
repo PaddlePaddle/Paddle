@@ -18,6 +18,7 @@
 
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/equation_value.h"
+#include "paddle/cinn/adt/m_expr.h"
 
 namespace cinn::adt::equation {
 
@@ -41,25 +42,23 @@ class IndexExprInferContext final {
   }
 
   void AddTensorIndex2Tensor(const Index& index,
-                             cinn::hlir::framework::NodeData* tensor_ptr) {
+                             const m_expr::Tensor& tensor_ptr) {
     CHECK(tensor_index2tensor_.emplace(index, tensor_ptr).second);
     CHECK(tensor2tensor_index_.emplace(tensor_ptr, index).second);
   }
 
-  cinn::hlir::framework::NodeData* GetTensor(const Index& index) const {
+  const m_expr::Tensor& GetTensor(const Index& index) const {
     return tensor_index2tensor_.at(index);
   }
 
-  const Index GetIndex(cinn::hlir::framework::NodeData* tensor_ptr) const {
-    return tensor2tensor_index_.at(tensor_ptr);
+  const Index GetIndex(const m_expr::Tensor& tensor) const {
+    return tensor2tensor_index_.at(tensor);
   }
 
  private:
   std::unordered_map<const Variable, Value> map_;
-  std::unordered_map<const Index, cinn::hlir::framework::NodeData*>
-      tensor_index2tensor_;
-  std::unordered_map<cinn::hlir::framework::NodeData*, const Index>
-      tensor2tensor_index_;
+  std::unordered_map<const Index, const m_expr::Tensor> tensor_index2tensor_;
+  std::unordered_map<const m_expr::Tensor, const Index> tensor2tensor_index_;
 };
 
 }  // namespace cinn::adt::equation
