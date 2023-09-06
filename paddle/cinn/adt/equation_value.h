@@ -60,41 +60,55 @@ struct Undefined final {
 template <typename IteratorsT>
 struct IndexDot : public Tuple<IteratorsT, Constant> {
   using Tuple<IteratorsT, Constant>::Tuple;
+
+  const IteratorsT& GetIterators() const { return std::get<0>(this->tuple()); }
 };
 
 template <typename IteratorsT>
 struct IndexUnDot : public Tuple<IteratorsT, Constant> {
   using Tuple<IteratorsT, Constant>::Tuple;
+
+  const IteratorsT& GetIterators() const { return std::get<0>(this->tuple()); }
 };
 
 // ConstantAdd T = Add T Constant
 template <typename T>
 struct ConstantAdd final : public Add<T, Constant> {
   using Add<T, Constant>::Add;
+
+  const T& GetArg0() const { return std::get<0>(this->tuple()); }
 };
 
 // ConstantDiv T = Div T Constant
 template <typename T>
 struct ConstantDiv final : public Div<T, Constant> {
   using Div<T, Constant>::Div;
+
+  const T& GetArg0() const { return std::get<0>(this->tuple()); }
 };
 
 // ConstantMod T = Mod T Constant
 template <typename T>
 struct ConstantMod final : public Mod<T, Constant> {
   using Mod<T, Constant>::Mod;
+
+  const T& GetArg0() const { return std::get<0>(this->tuple()); }
 };
 
 // ListGetItem T ConstantT = (T, ConstantT)
 template <typename T, typename ConstantT>
 struct ListGetItem final : public Tuple<T, ConstantT> {
   using Tuple<T, ConstantT>::Tuple;
+
+  const T& GetList() const { return std::get<0>(this->tuple()); }
 };
 
 // PtrGetItem T = (tPointer UniqueId, T)
 template <typename T>
 struct PtrGetItem final : public Tuple<tPointer<UniqueId>, T> {
   using Tuple<tPointer<UniqueId>, T>::Tuple;
+
+  const T& GetArg1() const { return std::get<1>(this->tuple()); }
 };
 
 DEFINE_ADT_UNION(Value,

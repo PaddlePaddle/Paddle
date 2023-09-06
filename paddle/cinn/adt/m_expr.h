@@ -18,6 +18,7 @@
 
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/equation_value.h"
+#include "paddle/cinn/adt/schedule_descriptor.h"
 
 namespace cinn {
 namespace hlir {
@@ -31,29 +32,6 @@ class NodeData;
 namespace cinn {
 namespace adt {
 namespace m_expr {
-
-class AutoSize final {};
-
-// ScheduleSize = Int64 | AutoSize
-DEFINE_ADT_UNION(ScheduleSize, std::int64_t, AutoSize);
-
-// S(Spatial): S0 = BlockIdx; S1 = ThreadIdx
-// ScheduleType = S0x | S0y | S0z | S1x | S1y | S1z | Temporal | Vectorize |
-// Unroll
-class S0x final {};
-class S0y final {};
-class S0z final {};
-class S1x final {};
-class S1y final {};
-class S1z final {};
-class Temporal final {};
-class Vectorize final {};
-class Unroll final {};
-DEFINE_ADT_UNION(
-    ScheduleType, S0x, S0y, S0z, S1x, S1y, S1z, Temporal, Vectorize, Unroll);
-
-// ScheduleDescriptor = [(ScheduleType, ScheduleSize)]
-using ScheduleDescriptor = List<Tuple<ScheduleType, ScheduleSize>>;
 
 // Offset = Int64
 using Offset = std::int64_t;
