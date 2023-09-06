@@ -324,6 +324,7 @@ struct SimplifyBlocksMutator : public ir::IRMutator<> {
       CHECK(node->body.As<Block>()->stmts.size() == 1);
       node->body = node->body.As<Block>()->stmts[0];
     }
+    Visit(&node->body, &node->body);
   }
 };
 
