@@ -330,6 +330,10 @@ const AbstractAttribute &AbstractAttribute::lookup(TypeId type_id,
   return *abstract_attribute;
 }
 
+void *AbstractType::GetInterfaceImpl(TypeId interface_id) const {
+  return nullptr;  // interface_map_.lookup<T>(TypeId interface_id);
+}
+
 template <typename InterfaceT>
 typename InterfaceT::Concept *AbstractType::GetInterfaceImpl() const {
   void *model = GetInterfaceImpl(TypeId::get<InterfaceT>());

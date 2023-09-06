@@ -15,4 +15,4 @@
 #include "paddle/ir/core/builtin_type_interfaces.h"
 #include "paddle/ir/core/type_id.h"
 
-// IR_DEFINE_EXPLICIT_TYPE_ID(ir::ShapedTypeInterface)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::ShapedTypeInterface)

@@ -24,8 +24,7 @@ namespace dialect {
 class AllocatedDenseTensorType
     : public ir::Type::TypeBase<AllocatedDenseTensorType,
                                 ir::Type,
-                                AllocatedDenseTensorTypeStorage,
-                                ir::ShapedTypeInterface> {
+                                AllocatedDenseTensorTypeStorage> {
  public:
   using Base::Base;
 
@@ -66,8 +65,7 @@ class AllocatedDenseTensorType
 class AllocatedSelectedRowsType
     : public ir::Type::TypeBase<AllocatedSelectedRowsType,
                                 ir::Type,
-                                AllocatedSelectedRowsTypeStorage,
-                                ir::ShapedTypeInterface> {
+                                AllocatedSelectedRowsTypeStorage> {
  public:
   using Base::Base;
 

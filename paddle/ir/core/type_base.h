@@ -101,6 +101,8 @@ class IR_API AbstractType {
         dialect_(dialect),
         interface_map_(std::move(interface_map)) {}
 
+  void *GetInterfaceImpl(TypeId interface_id) const;
+
   /// A unique identifier of the derived Type class.
   const TypeId type_id_;
 
@@ -121,10 +123,9 @@ struct TypeManager;
 /// be included. So that, non-parametric type can be constructed by TypeStorage
 /// directly but parametric type should be constructed by Derived TypeStorage.
 ///
-class IR_API TypeStorage
-    : public StorageManager::StorageBase {  // StorageUniquer::BaseStorage
-  friend StorageManager;                    // StorageUniquer
-  friend TypeManager;                       // TypeUniquer
+class IR_API TypeStorage : public StorageManager::StorageBase {
+  friend StorageManager;
+  friend TypeManager;
 
  public:
   ///

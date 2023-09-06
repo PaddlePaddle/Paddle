@@ -15,6 +15,7 @@
 #pragma once
 
 #include <vector>
+#include "paddle/ir/core/cast_utils.h"
 #include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/type.h"
 #include "paddle/phi/core/tensor_base.h"
@@ -71,7 +72,7 @@ namespace ir {
 class ShapedTypeInterface : public ir::TypeInterfaceBase<ShapedTypeInterface> {
  public:
   using DDim = phi::DDim;
-  using DataType = phi::DataType;
+  using DataType = ir::Type;
   struct Concept {
     /// Defined these methods with the interface.
     explicit Concept(DataType (*get_element_type)(ir::Type),
@@ -85,11 +86,11 @@ class ShapedTypeInterface : public ir::TypeInterfaceBase<ShapedTypeInterface> {
   template <class ConcreteType>
   struct Model : public Concept {
     static inline DataType getElementType(ir::Type type) {
-      return static_cast<ConcreteType>(type).dtype();
+      return (::ir::cast<ConcreteType>(type)).dtype();
     }
 
     static inline DDim getShape(ir::Type type) {
-      return static_cast<ConcreteType>(type).dims();
+      return (::ir::cast<ConcreteType>(type)).dims();
     }
 
     Model() : Concept(getElementType, getShape) {}
@@ -153,3 +154,5 @@ class ShapedTypeInterface : public ir::TypeInterfaceBase<ShapedTypeInterface> {
 };
 
 }  // namespace ir
+
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::ShapedTypeInterface)

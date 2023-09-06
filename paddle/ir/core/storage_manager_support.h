@@ -89,9 +89,7 @@ class StorageHelperBase : public BaseT {
   /// Returns an interface map for the interfaces registered to this storage
   /// user.
   static std::vector<details::InterfaceValue> interface_map() {
-    std::vector<details::InterfaceValue> a;
-    return a;
-    // return ir::details::GetInterfaceMap<ConcreteT, InterfaceList>();
+    return ir::details::GetInterfaceMap<ConcreteT, InterfaceList>();
   }
 
   /// Get or create a new ConcreteT instance within the ctx.

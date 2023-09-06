@@ -38,10 +38,8 @@ namespace ir {
 // NOTE(dev): Currently Int8 are not considered as a cached member
 // in IrContextImpl because it is not widely used.
 
-class IR_API VectorType : public ir::Type::TypeBase<VectorType,
-                                                    ir::Type,
-                                                    VectorTypeStorage,
-                                                    ir::ShapedTypeInterface> {
+class IR_API VectorType
+    : public ir::Type::TypeBase<VectorType, ir::Type, VectorTypeStorage> {
  public:
   using Base::Base;
 

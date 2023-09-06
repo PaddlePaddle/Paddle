@@ -89,6 +89,10 @@ class IR_API OpInfo {
   OpInfoImpl *impl_{nullptr};
 };
 
+///
+/// \brief Returns an instance of the concept object for the given interface if
+/// it was registered to this operation, null otherwise.
+///
 template <typename InterfaceT>
 typename InterfaceT::Concept *OpInfo::GetInterfaceImpl() const {
   void *model = GetInterfaceImpl(TypeId::get<InterfaceT>());

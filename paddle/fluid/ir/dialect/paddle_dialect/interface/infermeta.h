@@ -20,6 +20,7 @@ namespace paddle {
 namespace dialect {
 class InferMetaInterface : public ir::OpInterfaceBase<InferMetaInterface> {
  public:
+  /// Defined these methods with the interface.
   struct Concept {
     explicit Concept(void (*infer_meta)(phi::InferMetaContext *))
         : infer_meta_(infer_meta) {}
@@ -28,7 +29,7 @@ class InferMetaInterface : public ir::OpInterfaceBase<InferMetaInterface> {
 
   template <class ConcreteOp>
   struct Model : public Concept {
-    static void InferMeta(phi::InferMetaContext *infer_meta) {
+    static inline void InferMeta(phi::InferMetaContext *infer_meta) {
       return ConcreteOp::InferMeta(infer_meta);
     }
 
