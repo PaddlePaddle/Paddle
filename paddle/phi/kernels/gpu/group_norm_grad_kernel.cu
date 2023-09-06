@@ -17,16 +17,18 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/group_norm_utils.h"
 
 namespace phi {
 
-template <typename T, typename AccT, int flags>
+template <typename T, typename AccT, int flags, int VecSize = 2>
 __global__ void GroupNormBackwardGetMeanAndVar(const T* x,
                                                const T* scale,
                                                const T* bias,
                                                const T* d_y,
+                                               int acc_size,
                                                int N,
                                                int C,
                                                int W,
@@ -38,53 +40,97 @@ __global__ void GroupNormBackwardGetMeanAndVar(const T* x,
                                                AccT* d_var,
                                                T* d_scale,
                                                T* d_bias) {
-  int hid = blockIdx.x;
+  int aid = blockIdx.x;
   int bid = blockIdx.y;
 
   int stride = C;
   int cw_size = C * W;
-  int index = bid * imsize * C + hid * W * C;
+  int hwc_size = imsize * C;
+  int index = bid * imsize * C + acc_size * aid * C;
+  int cal_size = (imsize - acc_size * aid) < acc_size
+                     ? ((imsize - acc_size * aid) * C)
+                     : (acc_size * C);
+  using VecType = phi::AlignedVector<T, VecSize>;
 
-  for (int idx = threadIdx.x; idx < C; idx += blockDim.x) {
+  for (int idx = threadIdx.x * VecSize; idx < C; idx += blockDim.x * VecSize) {
     int gid = idx / group_size;
     int ccid = idx;
 
-    T x_scale = (flags & kHasScale) ? scale[ccid] : static_cast<T>(1);
-    T x_bias = (flags & kHasBias) ? bias[ccid] : static_cast<T>(0);
-    T x_scale_inv = static_cast<T>(0);
-    if (x_scale != static_cast<T>(0))
-      x_scale_inv = static_cast<T>(1.0) / x_scale;
-    AccT d_mean_data = static_cast<AccT>(0);
-    AccT d_var_data = static_cast<AccT>(0);
-    AccT d_scale_data = static_cast<AccT>(0);
-    AccT d_bias_data = static_cast<AccT>(0);
-
-    for (int gsid = ccid; gsid < cw_size; gsid += stride) {
-      AccT val, dval;
-
-      int cur_idx = index + gsid;
-      val = static_cast<AccT>(x[cur_idx]) - static_cast<AccT>(x_bias);
-      dval = static_cast<AccT>(d_y[cur_idx]);
-
-      d_var_data += val * dval;
-      d_mean_data += dval * static_cast<AccT>(x_scale);
-
-      val = val * static_cast<AccT>(x_scale_inv);
-      d_bias_data += dval;
-      d_scale_data += val * dval;
-    }
-
-    phi::CudaAtomicAdd(&(d_mean[bid * groups + gid]),
-                       static_cast<AccT>(d_mean_data));
-    phi::CudaAtomicAdd(&(d_var[bid * groups + gid]),
-                       static_cast<AccT>(d_var_data));
+    T x_scale[VecSize];
+    T x_bias[VecSize];
+    T x_scale_inv[VecSize];
+    AccT d_mean_data[VecSize];
+    AccT d_var_data[VecSize];
+    AccT d_scale_data[VecSize];
+    AccT d_bias_data[VecSize];
+    T x_data[VecSize];
+    T d_y_data[VecSize];
 
     if (flags & kHasScale) {
-      phi::CudaAtomicAdd(&(d_scale[ccid]), static_cast<T>(d_scale_data));
+      VecType* scale_vec = reinterpret_cast<VecType*>(x_scale);
+      scale_vec[0] = *(reinterpret_cast<const VecType*>(scale + ccid));
+      VecType* bias_vec = reinterpret_cast<VecType*>(x_bias);
+      bias_vec[0] = *(reinterpret_cast<const VecType*>(bias + ccid));
     }
-    if (flags & kHasBias) {
-      phi::CudaAtomicAdd(&(d_bias[ccid]), static_cast<T>(d_bias_data));
+#pragma unroll
+    for (int nx = 0; nx < VecSize; ++nx) {
+      if ((flags & kHasScale) == 0) {
+        x_scale[nx] = static_cast<T>(1);
+        x_bias[nx] = static_cast<T>(0);
+      }
+      x_scale_inv[nx] = static_cast<T>(0);
+      if (x_scale[nx] != static_cast<T>(0)) {
+        x_scale_inv[nx] = static_cast<T>(1.0) / x_scale[nx];
+      }
+      d_mean_data[nx] = static_cast<AccT>(0);
+      d_var_data[nx] = static_cast<AccT>(0);
+      d_scale_data[nx] = static_cast<AccT>(0);
+      d_bias_data[nx] = static_cast<AccT>(0);
     }
+
+    for (int gsid = ccid; gsid < cal_size; gsid += stride) {
+      AccT val[VecSize], dval[VecSize];
+      int cur_idx = index + gsid;
+
+      VecType* x_vec = reinterpret_cast<VecType*>(x_data);
+      x_vec[0] = *(reinterpret_cast<const VecType*>(x + cur_idx));
+      VecType* d_y_vec = reinterpret_cast<VecType*>(d_y_data);
+      d_y_vec[0] = *(reinterpret_cast<const VecType*>(d_y + cur_idx));
+
+#pragma unroll
+      for (int nx = 0; nx < VecSize; ++nx) {
+        val[nx] = static_cast<AccT>(x_data[nx]) - static_cast<AccT>(x_bias[nx]);
+        dval[nx] = static_cast<AccT>(d_y_data[nx]);
+
+        d_var_data[nx] += val[nx] * dval[nx];
+        d_mean_data[nx] += dval[nx] * static_cast<AccT>(x_scale[nx]);
+
+        val[nx] = val[nx] * static_cast<AccT>(x_scale_inv[nx]);
+        d_bias_data[nx] += dval[nx];
+        d_scale_data[nx] += val[nx] * dval[nx];
+      }
+    }
+
+    AccT out_mean = static_cast<AccT>(0);
+    AccT out_var = static_cast<AccT>(0);
+#pragma unroll
+    for (int nx = 0; nx < VecSize; ++nx) {
+      out_mean += d_mean_data[nx];
+      out_var += d_var_data[nx];
+
+      if (flags & kHasScale) {
+        phi::CudaAtomicAdd(&(d_scale[ccid + nx]),
+                           static_cast<T>(d_scale_data[nx]));
+      }
+      if (flags & kHasBias) {
+        phi::CudaAtomicAdd(&(d_bias[ccid + nx]),
+                           static_cast<T>(d_bias_data[nx]));
+      }
+    }
+    phi::CudaAtomicAdd(&(d_mean[bid * groups + gid]),
+                       static_cast<AccT>(out_mean));
+    phi::CudaAtomicAdd(&(d_var[bid * groups + gid]),
+                       static_cast<AccT>(out_var));
   }
 }
 
@@ -430,30 +476,35 @@ void GroupNormGradKernel(const Context& dev_ctx,
 
     int flags =
         (scale_data != nullptr) * kHasScale + (bias_data != nullptr) * kHasBias;
+
+    constexpr const int vec_size = 2;
+    constexpr const int acc_size = 128;
 #ifdef __HIPCC__
-    int block_size_nhwc = std::max(std::min(256, C), 64);
+    int block_size_nhwc = std::max(std::min(256, C / 2), 64);
 #else
-    int block_size_nhwc = std::min(1024, C);
+    int block_size_nhwc = std::min(1024, C / 2);
 #endif
-    dim3 grid_nhwc(x_dims[1], x_dims[0], 1);
+    dim3 grid_nhwc(((imsize + acc_size - 1) / acc_size), x_dims[0], 1);
     dim3 block_nhwc(block_size_nhwc, 1, 1);
-    UNROLL_ALL_CASES_BACKWARD(flags,
-                              GroupNormBackwardGetMeanAndVar,
-                              y_data,
-                              scale_data,
-                              bias_data,
-                              dy_data,
-                              x_dims[0],
-                              C,
-                              W,
-                              imsize,
-                              groups,
-                              group_size,
-                              epsilon,
-                              temp_mean_data,
-                              temp_var_data,
-                              d_scale_data,
-                              d_bias_data);
+    UNROLL_ALL_CASES_VEC(flags,
+                         GroupNormBackwardGetMeanAndVar,
+                         y_data,
+                         scale_data,
+                         bias_data,
+                         dy_data,
+                         acc_size,
+                         x_dims[0],
+                         C,
+                         W,
+                         imsize,
+                         groups,
+                         group_size,
+                         epsilon,
+                         temp_mean_data,
+                         temp_var_data,
+                         d_scale_data,
+                         d_bias_data);
+
     if (d_x_data != nullptr) {
       UNROLL_ALL_CASES(flags,
                        GroupNormBackward,

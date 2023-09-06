@@ -968,15 +968,15 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
     dim3 grid_get(input_ddim[1], input_ddim[0], 1);
     dim3 threads_get(block_size_nhwc, 1, 1);
     phi::GroupNormForwardGetMeanAndVar<T, AccT>
-        <<<grid, threads, 0, stream>>>(input,
-                                       input_ddim[0],
-                                       C,
-                                       W,
-                                       image_size,
-                                       groups,
-                                       group_size,
-                                       mean,
-                                       temp_variance);
+        <<<grid_get, threads_get, 0, stream>>>(input,
+                                               input_ddim[0],
+                                               C,
+                                               W,
+                                               image_size,
+                                               groups,
+                                               group_size,
+                                               mean,
+                                               temp_variance);
 
     auto* device_ctx = static_cast<phi::GPUContext*>(
         paddle::platform::DeviceContextPool::Instance().Get(
@@ -1117,6 +1117,7 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
   } else {
     set_zero_AccT(dev_ctx, mean, static_cast<AccT>(0));
     set_zero_AccT(dev_ctx, &temp_var, static_cast<AccT>(0));
+
 #ifdef __HIPCC__
     int block_size_nhwc = std::max(std::min(256, (groups * W)), 64);
 #else
