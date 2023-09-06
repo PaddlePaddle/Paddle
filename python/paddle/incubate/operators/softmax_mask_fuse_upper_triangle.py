@@ -46,7 +46,9 @@ def softmax_mask_fuse_upper_triangle(x):
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> import paddle.incubate as incubate
+
             >>> paddle.seed(1)
+            >>> paddle.set_device("gpu")
             >>> x = paddle.rand((1, 1, 32, 32))
 
             >>> rst = incubate.softmax_mask_fuse_upper_triangle(x)
