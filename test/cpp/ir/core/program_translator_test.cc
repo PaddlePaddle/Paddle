@@ -120,11 +120,10 @@ TEST(IrParserTest, MainProgram) {
 
   std::stringstream ss;
   program->Print(ss);
-  ir::IrParser *parser = new ir::IrParser(ctx, ss);
-  std::unique_ptr<ir::Program> parser_program = parser->ParseProgram();
+  std::unique_ptr<ir::Program> parser_program = ir::Program::Parse(ss, ctx);
   std::stringstream ssp;
-  parser_program->Print(ssp);
-  delete parser;
+  program->Print(ssp);
+
   EXPECT_TRUE(ssp.str() == ss.str());
 }
 
@@ -138,10 +137,9 @@ TEST(IrParserTest, StartupProgram) {
 
   std::stringstream ss;
   program->Print(ss);
-  ir::IrParser *parser = new ir::IrParser(ctx, ss);
-  std::unique_ptr<ir::Program> parser_program = parser->ParseProgram();
+  std::unique_ptr<ir::Program> parser_program = ir::Program::Parse(ss, ctx);
   std::stringstream ssp;
-  parser_program->Print(ssp);
-  delete parser;
+  program->Print(ssp);
+
   EXPECT_TRUE(ssp.str() == ss.str());
 }

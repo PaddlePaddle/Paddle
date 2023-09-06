@@ -343,4 +343,9 @@ Type Type::Parse(std::istream& is, IrContext* ctx) {
   return parser.ParseType();
 }
 
+std::unique_ptr<Program> Program::Parse(std::istream& is, IrContext* ctx) {
+  IrParser parser(ctx, is);
+  return parser.ParseProgram();
+}
+
 }  // namespace ir

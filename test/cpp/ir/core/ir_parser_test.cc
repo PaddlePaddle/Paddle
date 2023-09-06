@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gtest/gtest.h>
-
 #include <fstream>
 #include <iostream>
+
+#include "gtest/gtest.h"
 
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/operator.h"
@@ -109,10 +109,8 @@ bool ParserTest::ConsumeTestTask(TestTask* test_task, ir::IrContext* ctx) {
     auto attr = ir::Attribute::Parse(is_par, ctx);
     attr.Print(os);
   } else if (test_type == ProgramTest) {
-    parser.reset(new ir::IrParser(ctx, is_par));
-    printer.reset(new ir::IrPrinter(os));
-    auto program = parser->ParseProgram();
-    printer->PrintProgram(program.get());
+    auto program = ir::Program::Parse(is_par, ctx);
+    program->Print(os);
   } else if (test_type == TypeTest) {
     auto type = ir::Type::Parse(is_par, ctx);
     type.Print(os);
