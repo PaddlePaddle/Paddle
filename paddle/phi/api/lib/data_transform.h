@@ -21,8 +21,10 @@ limitations under the License. */
 #include "paddle/phi/core/sparse_csr_tensor.h"
 
 namespace phi {
+class DeviceContext;
 namespace distributed {
 class DistTensor;
+class TensorDistAttr;
 }  // namespace distributed
 }  // namespace phi
 
@@ -173,9 +175,19 @@ inline bool NeedTransformPlace(const phi::Place& src_place,
 
 /* ------------------ for auto parallel ----------------------- */
 
-// TODO(chenweihang): impl Reshard input and output function
+std::shared_ptr<phi::distributed::DistTensor> ReshardDistTensor(
+    phi::DeviceContext* dev_ctx,
+    const Tensor& tensor,
+    const phi::distributed::TensorDistAttr& dist_attr);
+
 std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
     const Tensor& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel);
+
+std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
+    const std::shared_ptr<phi::distributed::DistTensor>& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag,
     bool is_stride_kernel);

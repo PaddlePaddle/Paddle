@@ -16,8 +16,8 @@
 #include "paddle/fluid/framework/new_executor/feed_fetch_utils.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/program_interpreter.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/flags.h"
 
 #include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
 
@@ -29,10 +29,7 @@
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
 PHI_DECLARE_bool(enable_new_ir_api);
-
-PADDLE_DEFINE_EXPORTED_bool(new_ir_apply_inplace_pass,
-                            true,
-                            "new ir kernel program apply inplace pass.");
+PHI_DECLARE_bool(new_ir_apply_inplace_pass);
 
 namespace paddle {
 namespace framework {
@@ -41,6 +38,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                        Scope* scope)
     : place_(place), plan_(plan), scope_(scope) {
   int64_t micro_batch_num = plan_.MicroBatchNum();
+  vec_force_events_to_wait_.resize(micro_batch_num);
   for (int64_t i = 0; i < micro_batch_num; ++i) {
     micro_batch_scopes_.emplace_back(&scope->NewScope());
   }
@@ -129,6 +127,14 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                             micro_batch_scopes_[micro_batch_id],
                                             execution_config));
       interpretercores_.back()->SetCopyProgram(program);
+
+      // Note(lizhiyu): Add mannual event info
+      auto prog_inter = const_cast<ProgramInterpreter*>(
+          static_cast<const ProgramInterpreter*>(
+              interpretercores_.back()->Impl()));
+      prog_inter->SetForceEventsToWaitInfo(
+          &(vec_force_events_to_wait_[micro_batch_id]));
+
       // NOTE(lizhiyu): Now we only check backward subprogram. After static
       // build strategy is completely, we should
       //                check all the program in the PP strategy.
@@ -181,6 +187,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
 
     VLOG(6) << "Run job (" << job_idx << "), type = " << job_type
             << ", micro_batch_id =" << job->MicroBatchId();
+
     // Note(sonder): Share build results don't work for new IR now.
     if (type_to_first_id.count(job_type) != 0 &&
         !FLAGS_enable_new_ir_in_executor) {

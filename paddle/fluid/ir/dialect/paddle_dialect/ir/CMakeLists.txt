@@ -183,7 +183,7 @@ add_custom_target(ops_api_gen ALL DEPENDS ${ops_api_source_file})
 
 cc_library(
   pd_dialect_core
-  SRCS pd_attribute.cc pd_type.cc
+  SRCS pd_attribute.cc pd_type.cc pd_meta_tensor.cc
   DEPS phi pd_interface pd_trait type_info)
 cc_library(
   pd_dialect_op
