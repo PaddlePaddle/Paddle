@@ -1082,6 +1082,9 @@ def convert_np_dtype_to_dtype_(np_dtype):
         core.VarDesc.VarType / core.DataType : The data type in Paddle.
 
     """
+    if in_new_ir_mode():
+        return ir.core.convert_np_dtype_to_dtype_(np_dtype)
+
     # Convert the data type string to numpy data type.
     if isinstance(np_dtype, str) and np_dtype == "bfloat16":
         dtype = np.uint16
