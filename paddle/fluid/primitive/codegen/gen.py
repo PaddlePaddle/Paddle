@@ -128,7 +128,6 @@ BACKENDS = [
     'roll',
     'scatter',
     'scatter_nd_add',
-    'dropout',
 ]
 
 
