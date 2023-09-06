@@ -38,6 +38,8 @@ vjp_interface_declare_gen_op_list = [
     "pow",
     "rsqrt",
     "dropout",
+    'exp',
+    'expand',
 ]
 vjp_interface_implementation_gen_op_list = [
     "tanh",
@@ -54,4 +56,6 @@ vjp_interface_implementation_gen_op_list = [
     "pow",
     "rsqrt",
     "dropout",
+    'exp',
+    'expand',
 ]
