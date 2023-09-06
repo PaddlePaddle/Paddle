@@ -18,9 +18,9 @@
 #include "paddle/ir/core/parser/lexer.h"
 #include "paddle/ir/core/program.h"
 
-using OpResultMap = std::map<string, ir::OpResult>;
+using OpResultMap = std::map<std::string, ir::OpResult>;
 using AttributeMap = std::unordered_map<std::string, ir::Attribute>;
-using OpAttributeInfoMap = std::map<string, string>;
+using OpAttributeInfoMap = std::map<std::string, std::string>;
 
 namespace ir {
 class IrParser {
@@ -49,13 +49,13 @@ class IrParser {
 
   OpInfo ParseOpInfo();
 
-  std::vector<std::string> ParseOpResultIndex();
+  std::vector<std::string> ParseOpResultList();
 
   std::vector<OpResult> ParseOpRandList();
 
   AttributeMap ParseAttributeMap();
 
-  std::vector<Type> ParseFunctionTypeList();
+  std::vector<Type> ParseTypeList();
 
   OpResult GetNullValue();
 
@@ -63,9 +63,9 @@ class IrParser {
 
   Attribute ParseAttribute();
 
-  string GetErrorLocationInfo();
+  std::string GetErrorLocationInfo();
 
-  void ConsumeAToken(string expect_token_val);
+  void ConsumeAToken(std::string expect_token_val);
 };
 
 }  // namespace ir

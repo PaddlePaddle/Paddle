@@ -62,7 +62,7 @@ IntArrayAttribute IntArrayAttribute::Parse(ir::IrParser &parser) {  // NOLINT
 }
 
 // Parse a DataTypeAttribute
-// DataTypeAttribute ->  bool|uint8|int8|uint16|int16|uint32
+// DataTypeAttribute :=  bool|uint8|int8|uint16|int16|uint32
 //                       |int32|uint64|int64|float32|complex64
 //                       |complex128|Undefined|psting|flaot16
 //                       |bfloat16|num_data_types|all_dtype
@@ -94,7 +94,7 @@ DataTypeAttribute DataTypeAttribute::Parse(ir::IrParser &parser) {  // NOLINT
 }
 
 // Parse a PlaceAttribute
-// PlaceAttribute   ->    Place(cpu)|Place(gpu:0)|Place(gpu_pinned)
+// PlaceAttribute   :=    Place(cpu)|Place(gpu:0)|Place(gpu_pinned)
 //                        |Place(xpu:0)|Place(ipu:0)|Place(:0)|undefined
 PlaceAttribute PlaceAttribute::Parse(ir::IrParser &parser) {  // NOLINT
   std::unordered_map<std::string, phi::Place> StringToPlace{
@@ -122,7 +122,7 @@ PlaceAttribute PlaceAttribute::Parse(ir::IrParser &parser) {  // NOLINT
 }
 
 // Parse a DataLayoutAttribute
-// DataLayoutAttribute  ->   NHWC|NCHW|Undefined(0)|ONEDNN
+// DataLayoutAttribute  :=   NHWC|NCHW|Undefined(0)|ONEDNN
 //                           |SPARSE_COO|SPARSE_CSR|NDHWC
 //                           |NCDHW|PSTRING_UNION|STRIDED
 DataLayoutAttribute DataLayoutAttribute::Parse(

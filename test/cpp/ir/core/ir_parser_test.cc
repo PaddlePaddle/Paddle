@@ -12,10 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <fstream>
-#include <iostream>
-
 #include <gtest/gtest.h>
+
 #include <fstream>
 #include <iostream>
 
@@ -35,9 +33,6 @@
 
 using PaddleDialect = paddle::dialect::PaddleDialect;
 using AttributeStorage = ir::AttributeStorage;
-using string = std::string;
-using std::ifstream;
-using std::stringstream;
 
 enum TestType {
   AttributeTest = 0,
@@ -48,10 +43,10 @@ enum TestType {
 class TestTask {
  public:
   TestType test_type;
-  string test_info;
+  std::string test_info;
 
  public:
-  TestTask(TestType test_type, string test_info) {
+  TestTask(TestType test_type, std::string test_info) {
     this->test_info = test_info;
     this->test_type = test_type;
   }
@@ -59,10 +54,10 @@ class TestTask {
 
 class ParserTest {
  private:
-  ifstream& test_text;
+  std::ifstream& test_text;
 
  public:
-  explicit ParserTest(ifstream& test_text) : test_text(test_text) {}
+  explicit ParserTest(std::ifstream& test_text) : test_text(test_text) {}
   TestTask* GetTestTask();
   bool ConsumeTestTask(TestTask* test_task, ir::IrContext* ctx);
 };
@@ -71,7 +66,7 @@ TestTask* ParserTest::GetTestTask() {
   if (test_text.peek() == EOF) {
     return nullptr;
   }
-  string test_info;
+  std::string test_info;
   while (test_text.peek() != '/') {
     test_text.get();
   }
@@ -79,7 +74,7 @@ TestTask* ParserTest::GetTestTask() {
     test_text.get();
   }
   test_text.get();
-  string test_type_info;
+  std::string test_type_info;
   while (test_text.peek() != '\n') {
     test_type_info += test_text.get();
   }
@@ -98,18 +93,18 @@ TestTask* ParserTest::GetTestTask() {
 }
 
 bool ParserTest::ConsumeTestTask(TestTask* test_task, ir::IrContext* ctx) {
-  string test_info = test_task->test_info;
+  std::string test_info = test_task->test_info;
   TestType test_type = test_task->test_type;
   std::unique_ptr<ir::IrPrinter> printer;
   std::unique_ptr<ir::IrParser> parser;
-  stringstream is(test_info);
+  std::stringstream is(test_info);
   parser.reset(new ir::IrParser(ctx, is));
-  std::vector<string> before_parser_tokens;
+  std::vector<std::string> before_parser_tokens;
   while (parser->PeekToken().token_type_ != EOF_) {
     before_parser_tokens.push_back(parser->ConsumeToken().val_);
   }
-  stringstream is_par(test_info);
-  stringstream os;
+  std::stringstream is_par(test_info);
+  std::stringstream os;
   if (test_type == AttributeTest) {
     auto attr = ir::Attribute::Parse(is_par, ctx);
     attr.Print(os);
@@ -123,7 +118,7 @@ bool ParserTest::ConsumeTestTask(TestTask* test_task, ir::IrContext* ctx) {
     type.Print(os);
   }
   parser.reset(new ir::IrParser(ctx, os));
-  std::vector<string> after_parser_tokens;
+  std::vector<std::string> after_parser_tokens;
   while (parser->PeekToken().token_type_ != EOF_) {
     auto str = parser->ConsumeToken().val_;
     after_parser_tokens.push_back(str);

@@ -14,7 +14,6 @@
 
 #pragma once
 #include <string>
-using std::string;
 
 enum Token_type {
   EOF_ = -1,
@@ -30,10 +29,10 @@ enum Token_type {
 
 struct Token {
  public:
-  string val_;
+  std::string val_;
   Token_type token_type_;
   Token() = default;
-  Token(const string& val, Token_type token_type) {
+  Token(const std::string& val, Token_type token_type) {
     val_ = val;
     token_type_ = token_type;
   }

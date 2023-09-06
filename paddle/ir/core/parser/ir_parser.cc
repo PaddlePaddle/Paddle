@@ -17,8 +17,6 @@
 #include "paddle/ir/core/builtin_dialect.h"
 #include "paddle/ir/core/builtin_type.h"
 
-using std::vector;
-
 namespace ir {
 IrParser::IrParser(IrContext* ctx, std::istream& is) {
   lexer.reset(new Lexer{is});
@@ -31,7 +29,7 @@ Token IrParser::ConsumeToken() {
   return token;
 }
 
-string IrParser::GetErrorLocationInfo() {
+std::string IrParser::GetErrorLocationInfo() {
   return "The error occurred in line " + std::to_string(lexer->GetLine()) +
          ", column " + std::to_string(lexer->GetColumn());
 }
@@ -44,16 +42,21 @@ Token IrParser::PeekToken() {
   return token;
 }
 
-void IrParser::ConsumeAToken(string expect_token_val) {
-  string token_val = ConsumeToken().val_;
+void IrParser::ConsumeAToken(std::string expect_token_val) {
+  std::string token_val = ConsumeToken().val_;
   IR_ENFORCE(token_val == expect_token_val,
              "The token value of expectation is " + expect_token_val + " ,not" +
                  token_val + "." + GetErrorLocationInfo());
 }
 
+// Type := BuiltinType | OtherDialectsDefineType
+// BuiltinType := <<NULL TYPE>> | bf16 | f16 | f32 | f64
+//             := | b | i8 | u8 | i16 | i32 | i64 | index | c64
+//             := | c128 | VectorType
+// VectorType := '[' Type(,Type)* ']'
 Type IrParser::ParseType() {
   Token type_token = PeekToken();
-  string type_val = type_token.val_;
+  std::string type_val = type_token.val_;
   if (type_val == "<<NULL TYPE>>") {
     ConsumeToken();
     return Type(nullptr);
@@ -108,7 +111,7 @@ Type IrParser::ParseType() {
     }
     return VectorType::get(ctx, vec_type);
   } else {
-    IR_ENFORCE(type_val.find('.') != string::npos,
+    IR_ENFORCE(type_val.find('.') != std::string::npos,
                "No function parsing " + type_val + " exists!" +
                    GetErrorLocationInfo());
     auto dialect_name = type_val.substr(0, type_val.find('.'));
@@ -116,37 +119,44 @@ Type IrParser::ParseType() {
     return dialect->ParseType(*this);
   }
 }
+
+// Attribute := BuiltinAttribute | OtherDialectsDefineAttribute
+// BuiltinAttribute := Bool | String | Float | Double | Int32 |
+//                  := | Int64 | Pointer | ArrayAttribute
+// ArrayAttribute   := '[' Atribute(,Attribute)* ']'
 Attribute IrParser::ParseAttribute() {
   auto parenthesis_token = ConsumeToken();
   if (parenthesis_token.val_ == "true" || parenthesis_token.val_ == "false") {
     return builder->bool_attr(parenthesis_token.val_ == "true");
   }
-  string attribute_type = PeekToken().val_;
+  std::string attribute_type = PeekToken().val_;
   if (attribute_type == "String") {
     ConsumeAToken("String");
     ConsumeAToken(")");
-    string val = ConsumeToken().val_;
+    std::string val = ConsumeToken().val_;
     return builder->str_attr(val);
   } else if (attribute_type == "Float") {
     ConsumeAToken("Float");
     ConsumeAToken(")");
-    string val = ConsumeToken().val_;
+    std::string val = ConsumeToken().val_;
     return builder->float_attr(atof(val.c_str()));
   } else if (attribute_type == "Double") {
     ConsumeAToken("Double");
     ConsumeAToken(")");
-    string val = ConsumeToken().val_;
+    std::string val = ConsumeToken().val_;
     return builder->double_attr(atof(val.c_str()));
   } else if (attribute_type == "Int32") {
     ConsumeAToken("Int32");
     ConsumeAToken(")");
-    string val = ConsumeToken().val_;
+    std::string val = ConsumeToken().val_;
     return builder->int32_attr(atoi(val.c_str()));
   } else if (attribute_type == "Int64") {
     ConsumeAToken("Int64");
     ConsumeAToken(")");
-    string val = ConsumeToken().val_;
+    std::string val = ConsumeToken().val_;
     return builder->int64_attr(atoll(val.c_str()));
+  } else if (attribute_type == "Pointer") {
+    IR_THROW("This attribute is not currently supported by parser");
   } else if (attribute_type == "Array") {
     ConsumeAToken("Array");
     ConsumeAToken(")");
@@ -169,20 +179,25 @@ Attribute IrParser::ParseAttribute() {
   }
 }
 
+// Program := [ParameterList]ModuleOp
+// ModuleOp := Region
 std::unique_ptr<Program> IrParser::ParseProgram() {
   std::unique_ptr<Program> program(new Program{ctx});
-  ParseBlock(*program->block());
+  auto top_level_op = program->module_op();
+  auto& region = top_level_op->region(0);
+  ParseRegion(region);
+
   return program;
 }
 
+// Region := Block
 void IrParser::ParseRegion(Region& region) {  // NOLINT
-  while (PeekToken().token_type_ != EOF_) {
-    Block* block = new Block{};
-    ParseBlock(*block);
-    region.push_back(block);
-  }
+  ParseBlock(*region.front());
+  IR_ENFORCE(PeekToken().val_ != "{",
+             "Only one block in a region is supported");
 }
 
+// Block := "{" {Operation} "}"
 void IrParser::ParseBlock(Block& block) {  // NOLINT
   ConsumeAToken("{");
   while (PeekToken().val_ != "}") {
@@ -192,8 +207,11 @@ void IrParser::ParseBlock(Block& block) {  // NOLINT
   ConsumeAToken("}");
 }
 
+// Operation := OpResultList ":=" Opname "(" OprandList ? ")" AttributeMap ":"
+// FunctionType
+// FunctionType := "(" TypeList ")"  "->" TypeList
 Operation* IrParser::ParseOperation() {
-  std::vector<string> opresultindex = ParseOpResultIndex();
+  std::vector<std::string> opresultindex = ParseOpResultList();
   ConsumeAToken("=");
 
   OpInfo opinfo = ParseOpInfo();
@@ -204,31 +222,34 @@ Operation* IrParser::ParseOperation() {
 
   ConsumeAToken(":");
   ConsumeAToken("(");
-  while (ConsumeToken().token_type_ != ARRAOW) {
-  }
+  ParseTypeList();
+  ConsumeAToken(")");
+  ConsumeAToken("->");
 
-  vector<Type> type_vector = ParseFunctionTypeList();
+  std::vector<Type> type_vector = ParseTypeList();
 
   Operation* op =
       Operation::Create(inputs, attributeMap, type_vector, opinfo, 0);
 
   for (uint32_t i = 0; i < op->num_results(); i++) {
-    string key_t = opresultindex[i];
+    std::string key_t = opresultindex[i];
     opresultmap[key_t] = op->result(i);
   }
 
   return op;
 }
 
-vector<string> IrParser::ParseOpResultIndex() {
-  std::vector<string> opresultindex{};
+// OpResultList := ValueList
+// ValueList := ValueId(,ValueId)*
+std::vector<std::string> IrParser::ParseOpResultList() {
+  std::vector<std::string> opresultindex{};
   ConsumeAToken("(");
   Token index_token = ConsumeToken();
   while (index_token.val_ != ")") {
     if (index_token.token_type_ == NULL_) {
       opresultindex.push_back("null");
     } else {
-      string str = index_token.val_;
+      std::string str = index_token.val_;
       opresultindex.push_back(str);
     }
     if (ConsumeToken().val_ == ")") break;
@@ -238,18 +259,22 @@ vector<string> IrParser::ParseOpResultIndex() {
   return opresultindex;
 }
 
+// OpName := "\"" StringIdentifer "." StringIdentifer "\""
 OpInfo IrParser::ParseOpInfo() {
   Token opname_token = ConsumeToken();
-  string opname = opname_token.val_.substr(1, opname_token.val_.size() - 2);
+  std::string opname =
+      opname_token.val_.substr(1, opname_token.val_.size() - 2);
   return ctx->GetRegisteredOpInfo(opname);
 }
 
-vector<OpResult> IrParser::ParseOpRandList() {
+// OprandList := ValueList
+// ValueList := ValueId(,ValueId)*
+std::vector<OpResult> IrParser::ParseOpRandList() {
   ConsumeAToken("(");
   std::vector<OpResult> inputs{};
   Token ind_token = ConsumeToken();
   while (ind_token.val_ != ")") {
-    string t = "";
+    std::string t = "";
     if (ind_token.token_type_ == NULL_) {
       inputs.push_back(GetNullValue());
     } else {
@@ -265,6 +290,8 @@ vector<OpResult> IrParser::ParseOpRandList() {
   return inputs;
 }
 
+// AttributeMap := "{" AttributeEntry,(,AttributeEntry)* "}"
+// AttributeEntry := StringIdentifer:Attribute
 AttributeMap IrParser::ParseAttributeMap() {
   AttributeMap attribute_map{};
   ConsumeAToken("{");
@@ -272,7 +299,7 @@ AttributeMap IrParser::ParseAttributeMap() {
   while (key_token.val_ != "}") {
     ConsumeAToken(":");
     attribute_map[key_token.val_] = ParseAttribute();
-    string token_val = ConsumeToken().val_;
+    std::string token_val = ConsumeToken().val_;
     if (token_val == "}") {
       break;
     } else if (token_val == ",") {
@@ -286,12 +313,14 @@ AttributeMap IrParser::ParseAttributeMap() {
   return attribute_map;
 }
 
-vector<Type> IrParser::ParseFunctionTypeList() {
+// TypeList := Type(,Type)*
+std::vector<Type> IrParser::ParseTypeList() {
   std::vector<Type> type_vector{};
-  while (PeekToken().val_ != "(" && PeekToken().val_ != "}") {
+  while (PeekToken().val_ != "(" && PeekToken().val_ != "}" &&
+         PeekToken().val_ != ")") {
     type_vector.push_back(ParseType());
     if (PeekToken().val_ == "}" || PeekToken().val_ == "(" ||
-        PeekToken().token_type_ == EOF_)
+        PeekToken().val_ == ")" || PeekToken().token_type_ == EOF_)
       break;
     ConsumeAToken(",");
   }

@@ -98,7 +98,7 @@ TEST(IrParserTest, AddAttribute) {
   ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
   ctx->GetOrRegisterDialect<TestParserDialect>();
 
-  string op_str =
+  std::string op_str =
       " (%0) = \"builtin.get_parameter\" () "
       "{parameter_name:(String)conv2d_0.w_0,test:(tp.char)a} : () -> "
       "pd.tensor<64x3x7x7xf32>";
