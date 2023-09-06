@@ -392,6 +392,10 @@ def _insert_sync_for_fthenb_1f1b(program):
                     offset += 1
 
             if op.type == 'recv_v2':
+                # Optimizing PP load by moving all recv_v2 ops from calc stream to newly created
+                # recv streams. We create a recv stream for each ring id. This will enable the
+                # executor to response any cross-device data sending request fast enough to
+                # partially hide data transfer time between devices.
                 ring_id = op.attr('ring_id')
                 recv_stream_name = "recv_stream[rid=%s]" % str(ring_id)
                 op.dist_attr.execution_stream = recv_stream_name
