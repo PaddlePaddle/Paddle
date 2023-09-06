@@ -502,7 +502,7 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
             raise ValueError("q should not be empty")
     elif isinstance(q, paddle.Tensor):
         if len(q.shape) > 1:
-            raise ValueError("q should be a 1-D tensor")
+            raise ValueError("q should be a 0-D tensor or a 1-D tensor")
         elif len(q.shape) == 0:
             q = [q]
     else:

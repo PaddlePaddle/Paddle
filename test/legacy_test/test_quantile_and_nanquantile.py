@@ -118,7 +118,7 @@ class TestQuantileAndNanquantile(unittest.TestCase):
             paddle_res.numpy(), np_res, rtol=1e-05, equal_nan=True
         )
 
-    def paddle_test_backward(self):
+    def test_backward(self):
         def check_grad(x, q, axis, target_gard, apis=None):
             for op, _ in apis or API_list:
                 x = paddle.to_tensor(x, dtype='float32', stop_gradient=False)
