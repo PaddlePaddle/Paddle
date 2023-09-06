@@ -93,7 +93,10 @@ TEST(assist_struct_test, symbolic_dim_table) {
   EXPECT_FALSE(symbolTable.lookup<ir::dialect::SymbolicDim>("S1"));
 }
 
-TEST(assist_struct_test, symbolic_dim_mgr) {
+TEST(assist_struct_test, symbolic_dim_mgr_simple) {
+  /******************************************************/
+  /* Mgr simple version, only SymbolicDim related func. */
+  /******************************************************/
   ir::IrContext *ctx = ir::IrContext::Instance();
   ir::Program program(ctx);
   ctx->GetOrRegisterDialect<ir::dialect::ShapeDialect>();
@@ -139,6 +142,175 @@ TEST(assist_struct_test, symbolic_dim_mgr) {
   EXPECT_EQ(symDimMgr.getRootSymbolicDim(symDimS1), symDimS0);
   EXPECT_TRUE(symDimMgr.isSymbolicDimEqual(symDimS0, symDimS1));
   EXPECT_FALSE(symDimMgr.isSymbolicDimEqual(symDimS0, symDimC10));
+}
+
+TEST(assist_struct_test, symbolic_dim_mgr_complex) {
+  /***************************************************************/
+  /* Mgr with constraintOp, and SymbolicDimProduct related func. */
+  /***************************************************************/
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  ir::Program program(ctx);
+  ctx->GetOrRegisterDialect<ir::dialect::ShapeDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ir::Builder builder = ir::Builder(ctx, program.block());
+
+  ir::dialect::SymbolicDim symDimS0 = builder.Build<ir::dialect::SymbolicDim>(
+      "S0", -100000, false, false, true, true);
+  ir::dialect::SymbolicDim symDimS1 = builder.Build<ir::dialect::SymbolicDim>(
+      "S1", -100000, false, false, true, true);
+  ir::dialect::SymbolicDim symDimS2 = builder.Build<ir::dialect::SymbolicDim>(
+      "S2", -100000, false, false, true, true);
+  ir::dialect::SymbolicDim symDimS3 = builder.Build<ir::dialect::SymbolicDim>(
+      "S3", -100000, false, false, true, true);
+  ir::dialect::SymbolicDim symDimS4 = builder.Build<ir::dialect::SymbolicDim>(
+      "S4", -100000, false, false, true, true);
+  ir::dialect::SymbolicDim symDimS5 = builder.Build<ir::dialect::SymbolicDim>(
+      "S5", -100000, false, false, true, true);
+  ir::dialect::SymbolicDim symDimS6 = builder.Build<ir::dialect::SymbolicDim>(
+      "S6", -100000, false, false, true, true);
+  ir::dialect::SymbolicDim symDimS7 = builder.Build<ir::dialect::SymbolicDim>(
+      "S7", -100000, false, false, true, true);
+  ir::dialect::SymbolicDim symDimS8 = builder.Build<ir::dialect::SymbolicDim>(
+      "S8", -100000, false, false, true, true);
+  ir::dialect::SymbolicDim symDimS9 = builder.Build<ir::dialect::SymbolicDim>(
+      "S9", -100000, false, false, true, true);
+  ir::dialect::SymbolicDim symDimS10 = builder.Build<ir::dialect::SymbolicDim>(
+      "S10", -100000, false, false, true, true);
+  ir::dialect::SymbolicDim symDimS11 = builder.Build<ir::dialect::SymbolicDim>(
+      "S11", -100000, false, false, true, true);
+  ir::dialect::SymbolicDim symDimS12 = builder.Build<ir::dialect::SymbolicDim>(
+      "S12", -100000, false, false, true, false);
+  ir::dialect::SymbolicDim symDimC10 = builder.Build<ir::dialect::SymbolicDim>(
+      "C10", 10, true, false, true, true);
+  ir::dialect::SymbolicDim symDimC20 = builder.Build<ir::dialect::SymbolicDim>(
+      "C20", 20, true, false, true, true);
+
+  ir::OpResult dimOpS0 = builder.Build<ir::dialect::DimOp>("S0").out();
+  ir::OpResult dimOpS1 = builder.Build<ir::dialect::DimOp>("S1").out();
+  ir::OpResult dimOpS2 = builder.Build<ir::dialect::DimOp>("S2").out();
+  ir::OpResult dimOpS3 = builder.Build<ir::dialect::DimOp>("S3").out();
+  ir::OpResult dimOpS4 = builder.Build<ir::dialect::DimOp>("S4").out();
+  ir::OpResult dimOpS5 = builder.Build<ir::dialect::DimOp>("S5").out();
+  ir::OpResult dimOpS6 = builder.Build<ir::dialect::DimOp>("S6").out();
+  ir::OpResult dimOpS7 = builder.Build<ir::dialect::DimOp>("S7").out();
+  ir::OpResult dimOpS8 = builder.Build<ir::dialect::DimOp>("S8").out();
+  ir::OpResult dimOpS9 = builder.Build<ir::dialect::DimOp>("S9").out();
+  ir::OpResult dimOpS10 = builder.Build<ir::dialect::DimOp>("S10").out();
+  ir::OpResult dimOpS11 = builder.Build<ir::dialect::DimOp>("S11").out();
+  ir::OpResult dimOpC10 = builder.Build<ir::dialect::DimOp>("C10").out();
+  ir::OpResult dimOpC20 = builder.Build<ir::dialect::DimOp>("C20").out();
+  ir::OpResult constant =
+      builder
+          .Build<ir::ConstantOp>(ir::Int32Attribute::get(ctx, 2),
+                                 ir::Int32Type::get(ctx))
+          ->result(0);
+
+  // Mark S1 == S2.
+  builder.Build<ir::dialect::TieProductEqualOp>(
+      2, 2, std::vector<ir::OpResult>{constant, dimOpS1, dimOpS2, constant});
+  // Mark S0 * S1 == S2 * S3, For check S0 == S3.
+  builder.Build<ir::dialect::TieProductEqualOp>(
+      2, 2, std::vector<ir::OpResult>{dimOpS0, dimOpS1, dimOpS2, dimOpS3});
+  // Mark S4 * S0 * S1 == S2 * S3 * S5, For check S4 == S5.
+  builder.Build<ir::dialect::TieProductEqualOp>(
+      3,
+      3,
+      std::vector<ir::OpResult>{
+          dimOpS4, dimOpS0, dimOpS1, dimOpS2, dimOpS3, dimOpS5});
+  // For check S6 == C10 * C20.
+  builder.Build<ir::dialect::TieProductEqualOp>(
+      1, 2, std::vector<ir::OpResult>{dimOpS6, dimOpC10, dimOpC20});
+  // Mark C10 * S0 * S1 == S2 * S3 * S7, for check C10 == S7.
+  builder.Build<ir::dialect::TieProductEqualOp>(
+      3,
+      3,
+      std::vector<ir::OpResult>{
+          dimOpC10, dimOpS0, dimOpS1, dimOpS2, dimOpS3, dimOpS7});
+
+  // Mark S8 * S9 == S10 * S11, for unsimplify product case
+  builder.Build<ir::dialect::TieProductEqualOp>(
+      2, 2, std::vector<ir::OpResult>{dimOpS8, dimOpS9, dimOpS10, dimOpS11});
+
+  ir::SymbolicDimMgr symDimMgr(program.module_op());
+
+  symDimMgr.load();
+
+  // For check indirect equality: S1 * S4 == S2 * S5
+  ir::SymbolicDimProduct symDimProductLhs;
+  ir::SymbolicDimProduct symDimProductRhs;
+
+  symDimProductLhs.symbols.push_back(symDimS1);
+  symDimProductLhs.symbols.push_back(symDimS4);
+
+  symDimProductRhs.symbols.push_back(symDimS2);
+  symDimProductRhs.symbols.push_back(symDimS5);
+
+  // For uncompletely simplied product check: S8 * S9 * S12 == S10 * S11 * S12
+  ir::SymbolicDimProduct symDimProductLhs_;
+  ir::SymbolicDimProduct symDimProductRhs_;
+
+  symDimProductLhs_.symbols.push_back(symDimS8);
+  symDimProductLhs_.symbols.push_back(symDimS9);
+  symDimProductLhs_.symbols.push_back(symDimS12);
+
+  symDimProductRhs_.symbols.push_back(symDimS10);
+  symDimProductRhs_.symbols.push_back(symDimS11);
+  symDimProductRhs_.symbols.push_back(symDimS12);
+
+  // For check simplifySymbolicDimProduct, {factor = 1, Sym = {S7}} => {factor =
+  // 10}
+  ir::SymbolicDimProduct symDimProductS7;
+  symDimProductS7.symbols.push_back(symDimS7);
+  ir::SymbolicDimProduct simplifiedProductS7 =
+      symDimMgr.simplifySymbolicDimProduct(symDimProductS7);
+
+  // For check simplifySymbolicDimProductPair, X * Y * Y, Y * Y * Z => X, Z
+  ir::SymbolicDimProduct symDimProductPairLhs;
+  ir::SymbolicDimProduct symDimProductPairRhs;
+  ir::SymbolicDimProduct newLhs, newRhs;
+  symDimProductPairLhs.symbols.push_back(symDimS4);
+  symDimProductPairLhs.symbols.push_back(symDimS1);
+  symDimProductPairLhs.symbols.push_back(symDimS2);
+  symDimProductPairRhs.symbols.push_back(symDimS1);
+  symDimProductPairRhs.symbols.push_back(symDimS2);
+  symDimProductPairRhs.symbols.push_back(symDimS3);
+
+  std::tie(newLhs, newRhs) = symDimMgr.simplifySymbolicDimProductPair(
+      symDimProductPairLhs, symDimProductPairRhs);
+
+  // For check symbolicDimProductDivide, {S4 * S1 * C20} / {S1 * C10} => {factor
+  // = 2 Sym = {S4}}
+  ir::SymbolicDimProduct symDimProductDivLhs;
+  ir::SymbolicDimProduct symDimProductDivRhs;
+  symDimProductDivLhs.symbols.push_back(symDimS4);
+  symDimProductDivLhs.symbols.push_back(symDimS1);
+  symDimProductDivLhs.symbols.push_back(symDimC20);
+  symDimProductDivRhs.symbols.push_back(symDimS1);
+  symDimProductDivRhs.symbols.push_back(symDimC10);
+
+  ir::SymbolicDimProduct *divRes = symDimMgr.symbolicDimProductDivide(
+      symDimProductDivLhs, symDimProductDivRhs);
+
+  EXPECT_TRUE(symDimMgr.isSymbolicDimEqual(symDimS1, symDimS2));
+  EXPECT_TRUE(symDimMgr.isSymbolicDimEqual(symDimS0, symDimS3));
+  EXPECT_TRUE(symDimMgr.isSymbolicDimEqual(symDimS4, symDimS5));
+  EXPECT_EQ(symDimS6.getValue(), 200);
+  EXPECT_EQ(symDimMgr.symbolTable().lookup<ir::dialect::SymbolicDim>("C20"),
+            symDimC20);
+  EXPECT_EQ(symDimS7.getValue(), symDimC10.getValue());
+  EXPECT_EQ(simplifiedProductS7.factor, 10);
+  EXPECT_EQ(simplifiedProductS7.symbols.size(), static_cast<size_t>(0));
+  EXPECT_EQ(newLhs.symbols.size(), static_cast<size_t>(1));
+  EXPECT_EQ(newRhs.symbols.size(), static_cast<size_t>(1));
+  EXPECT_EQ(newLhs.symbols[0], symDimMgr.getRootSymbolicDim(symDimS4));
+  EXPECT_EQ(newRhs.symbols[0], symDimMgr.getRootSymbolicDim(symDimS3));
+  EXPECT_EQ(divRes->factor, 2);
+  EXPECT_EQ(divRes->symbols.size(), static_cast<size_t>(1));
+  EXPECT_EQ(divRes->symbols[0], symDimMgr.getRootSymbolicDim(symDimS4));
+  EXPECT_TRUE(
+      symDimMgr.isSymbolicDimProductEqual(symDimProductLhs, symDimProductRhs));
+  EXPECT_TRUE(symDimMgr.isSymbolicDimProductEqual(symDimProductLhs_,
+                                                  symDimProductRhs_));
 }
 
 TEST(assist_struct_test, dim) {

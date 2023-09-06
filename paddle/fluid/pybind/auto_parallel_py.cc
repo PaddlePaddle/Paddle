@@ -33,6 +33,7 @@
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/r_to_p_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/r_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/s_to_r_reshard_function.h"
 
@@ -156,6 +157,10 @@ void BindAutoParallel(py::module *m) {
 
   py::class_<phi::distributed::SToRReshardFunction>(
       *m, "SToRReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::RToPReshardFunction>(
+      *m, "RToPReshardFunction", ReshardFunction)
       .def(py::init<>());
 
   py::class_<ProcessMesh>(*m, "ProcessMesh")
@@ -339,6 +344,10 @@ void BindAutoParallel(py::module *m) {
       .def("_is_partial", &TensorDistAttr::is_partial)
       .def("_partial_dims", &TensorDistAttr::partial_dims)
       .def("_clean_partial_dims", &TensorDistAttr::clean_partial_dims)
+      .def("_set_partial_dims",
+           [](TensorDistAttr &self, const std::vector<int64_t> &dims) {
+             self.set_partial_status(dims);
+           })
       .def("_clean_partial_status", &TensorDistAttr::clean_partial_status);
 
   py::class_<SPMDRuleBase>(*m, "SPMDRuleBase")
@@ -509,6 +518,16 @@ void BindAutoParallel(py::module *m) {
       .def_property("scheduling_priority",
                     &OperatorDistAttr::scheduling_priority,
                     &OperatorDistAttr::set_scheduling_priority)
+      .def_property("force_record_event",
+                    &OperatorDistAttr::force_record_event,
+                    &OperatorDistAttr::set_force_record_event)
+      .def_property("events_to_wait",
+                    &OperatorDistAttr::events_to_wait,
+                    &OperatorDistAttr::set_events_to_wait,
+                    pybind11::return_value_policy::reference)
+      .def_property("event_to_record",
+                    &OperatorDistAttr::event_to_record,
+                    &OperatorDistAttr::set_event_to_record)
       .def_property("annotated",
                     &OperatorDistAttr::annotated,
                     &OperatorDistAttr::set_annotated)

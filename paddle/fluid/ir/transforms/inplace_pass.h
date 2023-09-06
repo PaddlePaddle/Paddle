@@ -14,18 +14,13 @@
 
 #pragma once
 
-#include <cstdint>
-#include <vector>
+#include <memory>
+#include "paddle/ir/core/dll_decl.h"
 
-namespace phi {
-class DenseTensor;
-class DeviceContext;
+namespace ir {
 
-namespace distributed {
+class Pass;
 
-DenseTensor ReshardAllGatherFunctor(DeviceContext* dev_ctx,
-                                    const DenseTensor& input,
-                                    const std::vector<int64_t>& process_ids);
+std::unique_ptr<Pass> CreateInplacePass();
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace ir

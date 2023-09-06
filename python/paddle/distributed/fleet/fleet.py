@@ -370,21 +370,26 @@ class Fleet:
         return self
 
     def _init_hybrid_parallel_env(self):
-        """initialize the hybrid environment"""
+        """initialize the hybrid environment."""
         self.hybrid_configs = self._user_defined_strategy.hybrid_configs
         self.dp_degree = self.hybrid_configs["dp_degree"]
         self.mp_degree = self.hybrid_configs["mp_degree"]
         self.pp_degree = self.hybrid_configs["pp_degree"]
+        self.sep_degree = self.hybrid_configs["sep_degree"]
         self.sharding_degree = self.hybrid_configs["sharding_degree"]
 
         assert self.mp_degree >= 0, "mp_degree should be greater or equal to 0"
         assert self.pp_degree >= 0, "pp_degree should be greater or equal to 0"
+        assert (
+            self.sep_degree >= 0
+        ), "sep_degree should be greater or equal to 0"
         assert (
             self.sharding_degree >= 0
         ), "sharding_degree should be greater or equal to 0"
 
         self.mp_degree = max(self.mp_degree, 1)
         self.pp_degree = max(self.pp_degree, 1)
+        self.sep_degree = max(self.sep_degree, 1)
 
         if self.dp_degree < 0:
             nranks = paddle.distributed.get_world_size()
@@ -397,6 +402,7 @@ class Fleet:
             "pp": ['pipe', self.pp_degree],
             "sharding": ['sharding', self.sharding_degree],
             "mp": ['model', self.mp_degree],
+            "sep": ["sep", self.sep_degree],
         }
 
         order = self._user_defined_strategy.hybrid_parallel_order

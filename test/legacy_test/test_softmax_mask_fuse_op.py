@@ -81,6 +81,27 @@ class TestSoftmaxMaskFuseOp0(OpTest):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
+class TestSoftmaxMaskFuseOp01(OpTest):
+    def setUp(self):
+        self.op_type = "fused_softmax_mask"
+        self.python_api = paddle.incubate.softmax_mask_fuse
+        x = np.random.random((1, 1, 8, 32)).astype("float16")
+        mask = np.random.randint(0, 2, (1, 1, 8, 32)).astype("float32")
+        mask_input = np.where(mask == 1, -10000.0, mask)
+        self.inputs = {'X': x, 'Mask': mask_input}
+        rst = _get_softmax(x, mask_input)
+        self.outputs = {'Out': rst}
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CUDAPlace(0))
+
+    def test_check_grad(self):
+        self.check_grad_with_place(core.CUDAPlace(0), ["X"], "Out")
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestDropoutBiasFuseOp3(unittest.TestCase):
     def test_static_result(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):

@@ -1238,6 +1238,8 @@
     func : index_sample
     data_type : x
   backward : index_sample_grad
+  data_transform :
+    skip_transform : index
 
 - op : index_select
   args : (Tensor x, Tensor index, int axis = 0)
@@ -1248,6 +1250,8 @@
     func : index_select
     data_type : x
   backward : index_select_grad
+  data_transform :
+    skip_transform : index
 
 - op : index_select_strided
   args : (Tensor x, int64_t index, int axis = 0)

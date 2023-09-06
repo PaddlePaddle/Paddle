@@ -40,6 +40,11 @@ void TensorUnfoldGradKernel(const Context& dev_ctx,
                        }));
   }
   DenseTensor tmp;
+  tmp.set_layout(out_grad.layout());
+  tmp.set_lod(out_grad.lod());
+  tmp.set_type(out_grad.dtype());
+  tmp.Resize(out_grad.dims());
+
   TensorUnfoldKernel<Context>(dev_ctx, *input_grad, axis, size, step, &tmp);
   PD_VISIT_ALL_TYPES(out_grad.dtype(), "TensorUnfoldGradKernel", ([&] {
                        phi::StridedCopyKernel<data_t, Context>(
