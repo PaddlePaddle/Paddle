@@ -12,8 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/ir/dialect/paddle_dialect/trait/custom_vjp.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/trait/inplace.h"
+#pragma once
 
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::InplaceTrait)
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomVjpTrait)
+#include "paddle/ir/core/op_base.h"
+
+namespace paddle {
+namespace dialect {
+class CustomVjpTrait : public ir::OpTraitBase<CustomVjpTrait> {
+ public:
+  explicit CustomVjpTrait(ir::Operation *op)
+      : ir::OpTraitBase<CustomVjpTrait>(op) {}
+};
+
+}  // namespace dialect
+}  // namespace paddle
+
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CustomVjpTrait)
