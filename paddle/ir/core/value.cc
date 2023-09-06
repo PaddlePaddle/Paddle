@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/ir/core/value.h"
+
+#include <cstddef>
+
 #include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/value_impl.h"
@@ -126,6 +129,12 @@ bool Value::use_empty() const { return !first_use(); }
 bool Value::HasOneUse() const {
   CHECK_VALUE_NULL_IMPL(HasOneUse);
   return impl_->HasOneUse();
+}
+
+size_t Value::use_count() const {
+  size_t count = 0;
+  for (auto it = use_begin(); it != use_end(); ++it) count++;
+  return count;
 }
 
 void Value::ReplaceUsesWithIf(
