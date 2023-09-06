@@ -172,7 +172,7 @@ scalar_type_maps = {
     'bool': 'ir::BoolAttribute',
 }
 
-PD_MANUAL_OP_LIST = {'add_n', 'split_grad'}
+PD_MANUAL_OP_LIST = {'add_n', 'add_n_', 'add_n_with_kernel', 'split_grad'}
 
 
 def to_phi_and_fluid_op_name(op_item):
