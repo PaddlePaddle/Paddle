@@ -159,42 +159,32 @@ def shard_layer(
     This function converts all model parameters to DistTensor parameters
     according to the `shard_fn` specified. It could also control the input or
     output of the module by specifying the `input_fn` and `output_fn`.
-
     Args:
         model(nn.Layer): Model constructed by users using paddle.nn.Layer.
         process_mesh(ProcessMesh): ProcessMesh information to be placed in this model.
         shard_fn(Callable): Function for splitting model parameters. If not specified, by default we copy all parameters of the model across ProcessMesh.
         input_fn(Callable): Specify the partition distribution of the input, input_fn will serve for the Layer as forward_pre_hook.By default we do not do any partitioning.
         ouput_fn(Callable): Specify the partition distribution of the output, output_fn will serve for the Layer as forward_post_hook. By default we do not do any partitioning.
-
     Returns:
         model:model with DistTensor parameters
-
     Examples:
-
         ..code-block:: python
-
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
-
             >>> class MLP(paddle.nn.Layer):
             ...     def __init__(self, ):
             ...         super.__init__()
             ...         self.fc1 = nn.Linear(8, 8)
             ...         elf.fc2 = nn.Linear(8, 8)
-
             ...     def forward(self, input):
             ...         return self.fc2(self.fc1(input))
-
             >>> def shard_params_func(model_name, model):
             ...     dist_attr = dist.TensorDistAttr(shard_spec==['x', 'y'], mesh=mesh)
             ...     if model_name == 'fc1':
             ...         model.weight = dist.shard_tensor(model.weight, dist_attr)
-
             >>> model = MLP()
             >>> model = dist.shard_layer(model, shard_params_func)
-
             >>> print(model)
     """
     # Ensure that process_mesh is not an empty object
@@ -216,7 +206,7 @@ def shard_layer(
     else:
         # apply shard_fn to submodules
         for name, submod in model.named_parameters():
-            shard_fn(name, submod)
+            shard_fn(name, submod, process_mesh)
 
     # register input_fn as model forward pre hook
     if input_fn is not None:

@@ -126,21 +126,6 @@ class TestShardLayer(unittest.TestCase):
         def output_fn(layer, input, output):
             return output * 2
 
-        # Shard the model
-        model = dist.shard_layer(
-            model,
-            process_mesh=mesh,
-            shard_fn=shard_fn,
-            input_fn=input_fn,
-            output_fn=output_fn,
-        )
-
-        # Verify the parameters
-        for name, param in model.named_parameters():
-            if param is not None:
-                self.assertIsInstance(param, paddle.Tensor)
-                self.assertTrue(param.shape == [13, 5] or param.shape == [5])
-
         # Verify input_fn
         input_fn_handle = model.register_forward_pre_hook(input_fn)
 
@@ -171,6 +156,21 @@ class TestShardLayer(unittest.TestCase):
 
         # hook change the linear's output to output * 2, so out0 is equal to out1 * 2.
         assert (out0.numpy() == (out1.numpy()) * 2).any()
+
+        # Shard the model
+        model = dist.shard_layer(
+            model,
+            process_mesh=mesh,
+            shard_fn=shard_fn,
+            input_fn=input_fn,
+            output_fn=output_fn,
+        )
+
+        # Verify the parameters
+        for name, param in model.named_parameters():
+            if param is not None:
+                self.assertIsInstance(param, paddle.Tensor)
+                self.assertTrue(param.shape == [13, 5] or param.shape == [5])
 
 
 if __name__ == '__main__':
