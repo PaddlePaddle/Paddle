@@ -102,14 +102,14 @@ void TopoSort4IGroup(
     std::unordered_map<Variable, FakeOpPlaceHolders>* index2IGroup) {
   std::vector<cinn::hlir::framework::Node*> sorted_ops = group.nodes;
   for (auto& [index, igroup] : *index2IGroup) {
-    FakeOpPlaceHolders tmp_op_placeholder;
+    FakeOpPlaceHolders tmp_igroup;
     for (const auto& sorted_op : sorted_ops) {
       auto iter = std::find(igroup->begin(), igroup->end(), sorted_op);
       if (iter != igroup->end()) {
-        tmp_op_placeholder->emplace_back(sorted_op);
+        tmp_igroup->emplace_back(sorted_op);
       }
     }
-    igroup = std::move(tmp_op_placeholder);
+    igroup = std::move(tmp_igroup);
   }
 }
 
