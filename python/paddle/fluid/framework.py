@@ -55,6 +55,8 @@ __all__ = [
     'xpu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
+    'in_new_ir_mode',
+    'in_dynamic_or_new_ir_mode',
     'is_compiled_with_cinn',
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
@@ -102,6 +104,7 @@ class GlobalThreadLocal(threading.local):
         if name == '_dygraph_tracer_':
             global _dygraph_tracer_
             _dygraph_tracer_ = val
+            core._switch_tracer(val)
         self.__dict__[name] = val
 
 
@@ -207,6 +210,59 @@ def in_dygraph_mode():
 
     """
     return global_var._dygraph_tracer_ is not None
+
+
+def in_new_ir_mode():
+    """
+
+    This API checks whether paddle runs in static graph mode and use new ir api.
+
+    Returns:
+        bool: Whether paddle runs in static graph mode and use new ir api.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> print(paddle.framework.in_new_ir_mode())
+            False
+
+            >>> paddle.enable_static()
+            >>> paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+            >>> print(paddle.framework.in_new_ir_mode())
+            True
+
+    """
+    return ir.core._use_new_ir_api() and not in_dygraph_mode()
+
+
+def in_dynamic_or_new_ir_mode():
+    """
+
+    This API checks whether paddle runs in dynamic graph or new ir mode.
+
+    Returns:
+        bool: Whether paddle runs in static graph mode and use new ir api.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> print(paddle.framework.in_dynamic_or_new_ir_mode())
+            True
+
+            >>> paddle.enable_static()
+            >>> print(paddle.framework.in_dynamic_or_new_ir_mode())
+            False
+
+            >>> paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+            >>> print(paddle.framework.in_dynamic_or_new_ir_mode())
+            True
+
+    """
+    return in_dygraph_mode() or in_new_ir_mode()
 
 
 global_ipu_index = -1
@@ -7604,14 +7660,10 @@ def dygraph_guard_if_declarative():
 def _dygraph_guard(tracer):
     tmp_tracer = global_var._dygraph_tracer_
     global_var._dygraph_tracer_ = tracer
-    if tracer is not None:
-        core._switch_tracer(tracer)
 
     try:
         yield
     finally:
-        if tmp_tracer is not None:
-            core._switch_tracer(tmp_tracer)
         global_var._dygraph_tracer_ = tmp_tracer
 
 
@@ -7622,8 +7674,6 @@ def _static_guard():
     try:
         yield
     finally:
-        if tmp_tracer is not None:
-            core._switch_tracer(tmp_tracer)
         global_var._dygraph_tracer_ = tmp_tracer
 
 

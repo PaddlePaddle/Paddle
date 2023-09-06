@@ -172,7 +172,7 @@ scalar_type_maps = {
     'bool': 'ir::BoolAttribute',
 }
 
-_NO_NEED_GEN_OPS = {'add_n', 'split_grad'}
+_NO_NEED_GEN_OPS = {'add_n', 'add_n_', 'add_n_with_kernel', 'split_grad'}
 
 
 def to_phi_and_fluid_op_name(op_item):
@@ -856,7 +856,7 @@ def OpGenerator(
                     op_infer_meta_map,
                     muta_attr_is_input=False,
                 )
-                if len(op_attribute_name_list) > 1:
+                if len(op_attribute_name_list) > 0:
                     (
                         build_args_with_attr_is_map_for_declare,
                         build_func_with_attr_is_map,
