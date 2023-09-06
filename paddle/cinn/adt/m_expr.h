@@ -42,21 +42,23 @@ class SharedMemoryType final {};
 DEFINE_ADT_UNION(MemoryType, GlobalMemoryType, SharedMemoryType);
 
 // TempStorage = (tVar Name, Offset, MemoryType)
-using TempStorage = Tuple<tVar<Name>, Offset, MemoryType>;
+class TempStorage final : public Tuple<tVar<Name>, Offset, MemoryType> {
+ public:
+  using Tuple<tVar<Name>, Offset, MemoryType>::Tuple;
+};
 
-// Tensor = const Graph::NodeData*
-using Tensor = const hlir::framework::NodeData*;
+// SSAShadowTensor = (tSSAShadow Name, const Graph::NodeData*)
+using SSAShadowTensor = m_ir::SSAShadowTensor;
 
-// TensorOrBuf = Tensor | TempStorage
-DEFINE_ADT_UNION(TensorOrBuf, Tensor, TempStorage);
+// Tensor = const Graph::NodeData* | SSAShadowTensor | TempStorage
+DEFINE_ADT_UNION(Tensor,
+                 const hlir::framework::NodeData*,
+                 SSAShadowTensor,
+                 TempStorage);
 
-// TensorArg = (TensorOrBuf, TensorIndexExpr)
+// Arg = (Tensor, TensorIndexExpr)
 using TensorIndexExpr = equation::Value;
-using TensorArg = Tuple<TensorOrBuf, TensorIndexExpr>;
-
-// Arg T = TensorArg | T
-template <typename T>
-DEFINE_ADT_UNION(Arg, TensorArg, T);
+using Arg = Tuple<Tensor, TensorIndexExpr>;
 
 // MemoryBarrier = {}    // (Sync Thread)
 class MemoryBarrier final {};
@@ -72,14 +74,15 @@ DEFINE_ADT_UNION(Op,
                  BuiltinReduceRelatedOp,
                  MemoryBarrier);
 
-// OpExpr = (Op, In [Arg OpExpr])
-class OpExpr final : public Tuple<Op, In<Arg<OpExpr>>> {
+// OpStmtNode = (Op, In [Arg], Out [Arg])
+class OpStmtNode final : public Tuple<Op, In<List<Arg>>, Out<List<Arg>>> {
  public:
-  using Tuple<Op, In<Arg<OpExpr>>>::Tuple;
-};
+  using Tuple<Op, In<List<Arg>>, Out<List<Arg>>>::Tuple;
 
-// OpStmtNode = (Op, In [Arg OpExpr], Out [TensorArg])
-using OpStmtNode = Tuple<Op, In<List<Arg<OpExpr>>>, Out<List<TensorArg>>>;
+  bool operator==(const OpstmtNode& other) const {
+    return &this->tuple() == &other.tuple();
+  }
+};
 
 // MapNode T = (ScheduleDescriptor, [T])
 template <typename T>
