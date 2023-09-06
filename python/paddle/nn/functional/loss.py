@@ -2647,6 +2647,7 @@ def cross_entropy(
             dy_ret = cross_entropy_loss(
                                         input,
                                         label)
+
             print(dy_ret)
             # Tensor(shape=[], dtype=float64, place=Place(gpu:0), stop_gradient=True,
             #        5.34043430)
