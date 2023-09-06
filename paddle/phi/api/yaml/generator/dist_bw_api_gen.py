@@ -16,12 +16,7 @@ import argparse
 
 import yaml
 from backward_api_gen import BackwardAPI
-from dist_api_gen import (
-    VECTOR_DIST_META_IN_DECL_TEMPLATE,
-    VECTOR_DIST_META_IN_TEMPLATE,
-    VECTOR_DIST_META_OUT_DECL_TEMPLATE,
-    DistForwardAPI,
-)
+from dist_api_gen import DistForwardAPI
 
 ######################
 # Code Gen Templates #
@@ -163,85 +158,6 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
     # override BaseAPI's method
     def gene_api_declaration(self) -> str:
         return BackwardAPI.gene_api_declaration(self)
-
-    def generate_infer_global_shape_code(self) -> str:
-        input_names = self.inputs['names']
-        attr_names = self.attrs['names']
-
-        # 1. get infer meta func name
-        infer_meta = self.infer_meta
-        infer_meta_func_code = infer_meta['func']
-
-        # 2. get meta tensor input args
-        infer_meta_params = (
-            infer_meta['param']
-            if infer_meta['param'] is not None
-            else input_names + attr_names
-        )
-        input_meta_code = ""
-        input_args_code = ""
-        for param in infer_meta_params:
-            if param in input_names:
-                if self.inputs['input_info'][param] == "const Tensor&":
-                    input_args_code += SINGLE_DIST_META_IN_TEMPLATE.format(
-                        param
-                    )
-                elif (
-                    self.inputs['input_info'][param]
-                    == "const std::vector<Tensor>&"
-                ):
-                    input_args_code += VECTOR_DIST_META_IN_TEMPLATE.format(
-                        param
-                    )
-                    input_meta_code += VECTOR_DIST_META_IN_DECL_TEMPLATE.format(
-                        name=param
-                    )
-                else:
-                    raise ValueError(
-                        f"{self.api} : Param of infer_spmd error : {self.inputs['input_info'][param]} type is not supported."
-                    )
-            elif param in attr_names:
-                input_args_code = input_args_code + param + ", "
-            elif isinstance(param, str):
-                input_args_code = input_args_code + "\"" + param + "\", "
-            elif isinstance(param, bool):
-                input_args_code = input_args_code + str(param).lower() + ", "
-            else:
-                input_args_code = input_args_code + str(param) + ", "
-
-        # 3. get meta tensor output args
-        output_decl_code = ""
-        output_args_code = ""
-        for i, out_name in enumerate(self.dist_output_args):
-            if self.outputs['types'][i] == 'std::vector<Tensor>':
-                output_decl_code += VECTOR_DIST_META_OUT_DECL_TEMPLATE.format(
-                    name=out_name
-                )
-                if len(self.dense_output_args) == 1:
-                    output_args_code += f"{out_name}_meta_ptr_vec, "
-                else:
-                    output_args_code += (
-                        f"{out_name} ? {out_name}_meta_ptr_vec : nullptr, "
-                    )
-            else:
-                output_decl_code += SINGLE_DIST_META_OUT_DECL_TEMPLATE.format(
-                    out_name, out_name
-                )
-                if len(self.dense_output_args) == 1:
-                    output_args_code += f"&meta_{out_name}, "
-                else:
-                    output_args_code += (
-                        f"{out_name} ? &meta_{out_name} : nullptr, "
-                    )
-        output_args_code = output_args_code[:-2]
-
-        return (
-            output_decl_code
-            + input_meta_code
-            + INFER_GLOBAL_SHAPE_TEMPLATE.format(
-                infer_meta_func_code, input_args_code, output_args_code
-            )
-        )
 
     def generate_auto_paralel_branch(self) -> str:
         # if no tensor input, do not genetate auto parallel branch
