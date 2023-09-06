@@ -13,6 +13,10 @@
 # limitations under the License.
 
 # generator build function
+_INFERMETA_NEED_META_CONFIG = {'SplitInferMeta'}
+
+_PREPARE_DATA_WITH_UNKNOW_ATTRIBUTE = {'SplitOp'}
+
 OP_BUILD_TEMPLATE = """
 void {op_name}::Build({build_args}) {{
 {get_attributes}
@@ -129,6 +133,7 @@ mutable_attribute_phi_type_maps = {
     'float': 'phi::DataType::FLOAT32',
     'std::vector<int64_t>': 'phi::DataType::INT64',
     'const std::vector<int64_t>&': 'phi::DataType::INT64',
+    'bool': 'phi::DataType::BOOL',
 }
 
 
@@ -191,7 +196,7 @@ def GenBuildAttributes(
 ):
     INTARRAY_STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = {op_attribute_type}::get(ir::IrContext::Instance(), phi::IntArray({attr}));
 """
-    SCALAR_STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = TransToIrAttribute({attr}, ir::IrContext::Instance());
+    SCALAR_STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = paddle::dialect::TransToIrAttribute({attr}, ir::IrContext::Instance());
 """
     STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = {op_attribute_type}::get(ir::IrContext::Instance(), {attr});
 """
@@ -272,6 +277,7 @@ def GenBuildAttributes(
 
 
 def GenBuildOutputs(
+    op_class_name,
     op_input_name_list,
     op_input_type_list,
     op_mutable_attribute_name_list,
@@ -285,27 +291,25 @@ def GenBuildOutputs(
     build_output_str = '  VLOG(4) << "Builder construction outputs";\n'
     CREATE_INPUT_METATENSOR_TEMPLATE = """
   VLOG(4) << "Builder construction  dense_{name}";
-  phi::DenseTensor dense_{name}(std::make_unique<paddle::experimental::DefaultAllocator>(paddle::platform::CPUPlace()).get(),
-                                phi::DenseTensorMeta(TransToPhiDataType({name}.dtype()),
-                                                     {name}.dims(),
-                                                     {name}.data_layout(),
-                                                     {name}.lod(),
-                                                     {name}.offset()));
+  paddle::dialect::IrMetaTensor ir_meta_tensor_{name}(paddle::dialect::TransToPhiDataType({name}.dtype()),
+                                                      {name}.dims(),
+                                                      {name}.data_layout(),
+                                                      {name}.lod(),
+                                                      {name}.offset());
   VLOG(4) << "Builder construction  meta_{name}";
-  phi::MetaTensor meta_{name}(&dense_{name});
+  phi::MetaTensor meta_{name}(&ir_meta_tensor_{name});
 """
-    CREATE_INPUT_VEC_METATENSOR_TEMPLATE = """  std::vector<phi::DenseTensor> vec_dense_{name};
+    CREATE_INPUT_VEC_METATENSOR_TEMPLATE = """  std::vector<paddle::dialect::IrMetaTensor> vec_ir_meta_tensor_{name};
   for (size_t i=0; i < static_cast<size_t>({name}.size()); i++) {{
-    vec_dense_{name}.push_back(phi::DenseTensor(std::make_unique<paddle::experimental::DefaultAllocator>(paddle::platform::CPUPlace()).get(),
-                                                phi::DenseTensorMeta(TransToPhiDataType({name}[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
+    vec_ir_meta_tensor_{name}.push_back(paddle::dialect::IrMetaTensor(paddle::dialect::TransToPhiDataType({name}[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
                                                                      {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
                                                                      {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().data_layout(),
                                                                      {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
-                                                                     {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().offset())));
+                                                                     {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().offset()));
   }}
   std::vector<phi::MetaTensor> vec_meta_{name};
-  for (size_t i=0; i < vec_dense_{name}.size(); i++) {{
-    vec_meta_{name}.push_back(phi::MetaTensor(&vec_dense_{name}[i]));
+  for (size_t i=0; i < vec_ir_meta_tensor_{name}.size(); i++) {{
+    vec_meta_{name}.push_back(phi::MetaTensor(&vec_ir_meta_tensor_{name}[i]));
   }}
 
   std::vector<const phi::MetaTensor*> meta_{name};
@@ -316,6 +320,40 @@ def GenBuildOutputs(
 
     CREATE_INTARRAY_MUTABLE_ATTRIBUE_TEMPLATE = """  std::vector<int64_t> {name} = {name}_.owner()->dyn_cast<paddle::dialect::FullIntArrayOp>().attributes().at("value").dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData(); (void){name};\n"""
     CREATE_SCALAR_MUTABLE_ATTRIBUE_TEMPLATE = """  {dtype} {name} = {name}_.owner()->dyn_cast<paddle::dialect::FullOp>().attributes().at("value").dyn_cast<paddle::dialect::ScalarAttribute>().data().to<{dtype}>(); (void){name};\n"""
+
+    CREATE_INTARRAY_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::IntArray {name};
+  if ({name}_.owner()->info().id() == ir::TypeId::get<paddle::dialect::FullIntArrayOp>()) {{
+    {name} = std::move(phi::IntArray({name}_.owner()
+                          ->dyn_cast<paddle::dialect::FullIntArrayOp>()
+                          .attributes()
+                          .at("value")
+                          .dyn_cast<paddle::dialect::IntArrayAttribute>()
+                          .data()
+                          .GetData()));
+  }}
+  else {{
+    PADDLE_ENFORCE(
+        {name}_.type().isa<ir::VectorType>(),
+        phi::errors::PreconditionNotMet("section Type should be VectorType."));
+    size_t {name}_size = {name}_.type().dyn_cast<ir::VectorType>().size();
+    {name} = std::move(phi::IntArray(std::vector<int64_t>({name}_size, -1)));
+    {name}.SetFromTensor(true);
+  }}\n"""
+
+    CREATE_SCALAR_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::Scalar {name};
+  if ({name}_.owner()->info().id() == ir::TypeId::get<paddle::dialect::FullOp>()) {{
+    {name} = std::move(phi::Scalar({name}_.owner()
+                                  ->dyn_cast<paddle::dialect::FullOp>()
+                                  .attributes()
+                                  .at("value")
+                                  .dyn_cast<paddle::dialect::ScalarAttribute>()
+                                  .data()
+                                  .to<int>()));
+  }}
+  else {{
+    {name} = std::move(phi::Scalar(-1));
+    {name}.SetFromTensor(true);
+  }}\n"""
 
     CREATE_OUTPUT_METATENSOR_TEMPLATE = """  phi::DenseTensor dense_{name};
   phi::MetaTensor meta_{name}(&dense_{name});
@@ -349,19 +387,30 @@ def GenBuildOutputs(
             attr_dtype = op_mutable_attribute_type_list[idx]
             # int_array
             if attr_dtype[0] == "paddle::dialect::IntArrayAttribute":
-                build_output_str += (
-                    CREATE_INTARRAY_MUTABLE_ATTRIBUE_TEMPLATE.format(
+                if op_class_name in _PREPARE_DATA_WITH_UNKNOW_ATTRIBUTE:
+                    build_output_str += CREATE_INTARRAY_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE.format(
                         name=op_mutable_attribute_name_list[idx]
                     )
-                )
+                else:
+                    build_output_str += (
+                        CREATE_INTARRAY_MUTABLE_ATTRIBUE_TEMPLATE.format(
+                            name=op_mutable_attribute_name_list[idx]
+                        )
+                    )
             # scalar
             elif attr_dtype[0] == "paddle::dialect::ScalarAttribute":
-                build_output_str += (
-                    CREATE_SCALAR_MUTABLE_ATTRIBUE_TEMPLATE.format(
+                if op_class_name in _PREPARE_DATA_WITH_UNKNOW_ATTRIBUTE:
+                    build_output_str += CREATE_SCALAR_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE.format(
                         name=op_mutable_attribute_name_list[idx],
                         dtype=attr_dtype[1],
                     )
-                )
+                else:
+                    build_output_str += (
+                        CREATE_SCALAR_MUTABLE_ATTRIBUE_TEMPLATE.format(
+                            name=op_mutable_attribute_name_list[idx],
+                            dtype=attr_dtype[1],
+                        )
+                    )
             # string
             elif attr_dtype[0] == "ir::StrAttribute":
                 build_output_str += ""
@@ -422,21 +471,31 @@ def GenBuildOutputs(
     CREATE_INFER_META_FUNC_TEMPLATE = """
   phi::{func}({args});
 """
-    build_output_str += CREATE_INFER_META_FUNC_TEMPLATE.format(
-        func=op_infer_meta_map['func'], args=", ".join(infer_meta_args)
-    )
+    CREATE_INFER_META_FUNC_WITH_METACINFIG_TEMPLATE = """
+  phi::{func}({args}, phi::MetaConfig(false, false));
+"""
+    if op_infer_meta_map['func'] in _INFERMETA_NEED_META_CONFIG:
+        build_output_str += (
+            CREATE_INFER_META_FUNC_WITH_METACINFIG_TEMPLATE.format(
+                func=op_infer_meta_map['func'], args=", ".join(infer_meta_args)
+            )
+        )
+    else:
+        build_output_str += CREATE_INFER_META_FUNC_TEMPLATE.format(
+            func=op_infer_meta_map['func'], args=", ".join(infer_meta_args)
+        )
 
     # use dense_{name} or vec_dense_{name} to create Outputs type
     build_output_str += "\n  std::vector<ir::Type> argument_outputs;"
 
     CREATE_OUTPUT_DENSE_TENSOR_TEMPLATE = """
-  ir::Type {name}_dense_tensor_type = paddle::dialect::DenseTensorType::get(ir::IrContext::Instance(), TransToIrDataType(dense_{name}.dtype()), dense_{name}.dims(), dense_{name}.layout(), dense_{name}.lod(), dense_{name}.offset());
+  ir::Type {name}_dense_tensor_type = paddle::dialect::DenseTensorType::get(ir::IrContext::Instance(), paddle::dialect::TransToIrDataType(dense_{name}.dtype()), dense_{name}.dims(), dense_{name}.layout(), dense_{name}.lod(), dense_{name}.offset());
   argument_outputs.push_back({name}_dense_tensor_type);
 """
     CREATE_OUTPUT_VEC_DENSE_TENSOR_TEMPLATE = """
   std::vector<ir::Type> {name}_types;
   for (size_t i=0; i < static_cast<size_t>({output_size}); i++) {{
-    {name}_types.push_back(paddle::dialect::DenseTensorType::get(ir::IrContext::Instance(), TransToIrDataType(vec_dense_{name}[i].dtype()), vec_dense_{name}[i].dims(), vec_dense_{name}[i].layout(), vec_dense_{name}[i].lod(), vec_dense_{name}[i].offset()));
+    {name}_types.push_back(paddle::dialect::DenseTensorType::get(ir::IrContext::Instance(), paddle::dialect::TransToIrDataType(vec_dense_{name}[i].dtype()), vec_dense_{name}[i].dims(), vec_dense_{name}[i].layout(), vec_dense_{name}[i].lod(), vec_dense_{name}[i].offset()));
   }}
   ir::Type {name}_vector_type = ir::VectorType::get(ir::IrContext::Instance(), {name}_types);
   argument_outputs.push_back({name}_vector_type);
@@ -529,6 +588,7 @@ def gen_build_func_str(
         op_non_mutable_attribute_type_list,
     )
     build_outputs_str = GenBuildOutputs(
+        op_class_name,
         op_input_name_list,
         op_input_type_list,
         op_mutable_attribute_name_list,

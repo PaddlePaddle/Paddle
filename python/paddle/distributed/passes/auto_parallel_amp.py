@@ -728,7 +728,7 @@ class AMPPass(PassBase):
 
             if is_train:
                 self._update_backward_cast_ops()
-                self._cast_loss()
+                self._cast_loss(self.amp_dtype)
 
             if is_train and self.amp_dtype == "float16":
                 self._init_amp_var()
@@ -913,7 +913,7 @@ class AMPPass(PassBase):
                 world_process_group.ranks,
             )
 
-    def _cast_loss(self):
+    def _cast_loss(self, target_dtype):
         main_block = paddle.static.default_main_program().global_block()
         main_block._sync_with_cpp()
 
@@ -957,11 +957,18 @@ class AMPPass(PassBase):
             )
 
             # backward
-            first_backward_op = main_block.ops[loss_op_idx + 2]
-            assert (
-                first_backward_op.type == "fill_constant"
-                and int(first_backward_op.all_attrs()[OP_ROLE_KEY]) == 257
-            )
+            first_backward_op = None
+            insert_op_offset = 3
+            for idx, op in enumerate(main_block.ops[loss_op_idx:]):
+                if op.type == "fill_constant" and is_loss_grad_op(op):
+                    first_backward_op = op
+                    insert_op_offset = idx + 1
+                    break
+                if is_backward_op(op):
+                    break
+
+            assert first_backward_op is not None, "There is not loss_grad op."
+
             cast_loss_grad = main_block.create_var(
                 name=unique_name.generate(tmp_name + "@GRAD"),
                 shape=loss.shape,
@@ -984,13 +991,13 @@ class AMPPass(PassBase):
                 self.dist_context,
             )
             cast_grad_op = main_block._insert_op(
-                loss_op_idx + 3,
+                loss_op_idx + insert_op_offset,
                 type='cast',
                 inputs={'X': [cast_loss_grad]},
                 outputs={'Out': [pre_grad_name]},
                 attrs={
                     "in_dtype": core.VarDesc.VarType.FP32,
-                    "out_dtype": _str_to_dtype(self.amp_dtype),
+                    "out_dtype": _str_to_dtype(target_dtype),
                     "op_role": OpRole.Backward,
                 },
             )
@@ -1002,6 +1009,7 @@ class AMPPass(PassBase):
             )
             loss_op = cast_op
             loss = cast_loss
+            self.set_attr("loss", loss)
         self._loss = loss
         main_block._sync_with_cpp()
 
@@ -1053,11 +1061,16 @@ class AMPPass(PassBase):
             )
 
             # backward
-            first_backward_op = main_block.ops[loss_op_idx + 2]
-            assert (
-                first_backward_op.type == "fill_constant"
-                and int(first_backward_op.all_attrs()[OP_ROLE_KEY]) == 257
-            )
+            first_backward_op = None
+            for op in main_block.ops[loss_op_idx:]:
+                if op.type == "fill_constant" and is_loss_grad_op(op):
+                    first_backward_op = op
+                    break
+                if is_backward_op(op):
+                    break
+
+            assert first_backward_op is not None, "There is not loss_grad op."
+
             scaled_loss_grad = main_block.create_var(
                 name=unique_name.generate("scaled_loss") + "@GRAD",
                 shape=loss.shape,

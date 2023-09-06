@@ -41,14 +41,14 @@ const char RecurrentBase::kStates[] = "states";                 // NOLINT
 const char RecurrentBase::kStepBlock[] = "sub_block";           // NOLINT
 const char RecurrentBase::kReverse[] = "reverse";               // NOLINT
 const char RecurrentBase::kIsTrain[] = "is_train";              // NOLINT
-const char RecurrentBase::kSkipEagerDeletionVars[] =
-    "skip_eager_deletion_vars";  // NOLINT
+const char RecurrentBase::kSkipEagerDeletionVars[] =            // NOLINT
+    "skip_eager_deletion_vars";
 #define GRAD_SUFFIX "@GRAD"
 const char RecurrentBase::kInputGrads[] = "inputs" GRAD_SUFFIX;      // NOLINT
 const char RecurrentBase::kOutputGrads[] = "outputs" GRAD_SUFFIX;    // NOLINT
 const char RecurrentBase::kParamGrads[] = "parameters" GRAD_SUFFIX;  // NOLINT
-const char RecurrentBase::kInitStateGrads[] =
-    "initial_states" GRAD_SUFFIX;  // NOLINT
+const char RecurrentBase::kInitStateGrads[] =                        // NOLINT
+    "initial_states" GRAD_SUFFIX;
 
 static void ClearStepScopes(const platform::DeviceContext &dev_ctx,
                             framework::Scope *parent_scope,

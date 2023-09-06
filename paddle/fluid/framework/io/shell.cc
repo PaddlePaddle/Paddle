@@ -117,7 +117,7 @@ static int shell_popen_fork_internal(const char* real_cmd,
   int child_pid = -1;
   // Too frequent calls to fork() makes openmpi very slow. Use vfork() instead.
   // But vfork() is very dangerous. Be careful.
-  if ((child_pid = vfork()) < 0) {
+  if ((child_pid = vfork()) < 0) {  // NOLINT
     return -1;
   }
 
@@ -127,7 +127,7 @@ static int shell_popen_fork_internal(const char* real_cmd,
     return child_pid;
   }
 
-  int child_std_end = do_read ? 1 : 0;
+  int child_std_end = do_read ? 1 : 0;  // NOLINT
   close(parent_end);
 
   if (child_end != child_std_end) {
@@ -152,7 +152,7 @@ static int shell_popen_fork_internal(const char* real_cmd,
 
 static int read_from_pipe(FILE* fp, std::string* output) {
   std::array<char, 4096> buf;
-  while (1) {
+  while (true) {
     int n = fread(buf.data(), 1, 4096, fp);
     if (n <= 0) {
       break;

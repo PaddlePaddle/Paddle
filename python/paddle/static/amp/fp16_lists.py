@@ -98,7 +98,7 @@ def _get_sys_unsupported_list(dtype):
     elif isinstance(
         paddle.framework._current_expected_place(), paddle.CustomPlace
     ):
-        device = 'CUSTOM_DEVICE'
+        device = paddle.framework._current_expected_place().get_device_type()
     else:
         device = 'GPU'
     all_ops, _, sys_unsupported_list = core.op_supported_infos(device, var_type)

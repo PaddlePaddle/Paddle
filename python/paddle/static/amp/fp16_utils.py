@@ -365,18 +365,18 @@ def fp16_guard():
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            import paddle
-            import paddle.nn.functional as F
-            paddle.enable_static()
-            data = paddle.static.data(name='X', shape=[None, 1, 28, 28], dtype='float32')
-            conv2d = paddle.static.nn.conv2d(input=data, num_filters=6, filter_size=3)
+            >>> import numpy as np
+            >>> import paddle
+            >>> import paddle.nn.functional as F
+            >>> paddle.enable_static()
+            >>> data = paddle.static.data(name='X', shape=[None, 1, 28, 28], dtype='float32')
+            >>> conv2d = paddle.static.nn.conv2d(input=data, num_filters=6, filter_size=3)
 
-            with paddle.static.amp.fp16_guard():
-                bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
-                pool = F.max_pool2d(bn, kernel_size=2, stride=2)
-                hidden = paddle.static.nn.fc(pool, size=10)
-                loss = paddle.mean(hidden)
+            >>> with paddle.static.amp.fp16_guard():
+            ...     bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
+            ...     pool = F.max_pool2d(bn, kernel_size=2, stride=2)
+            ...     hidden = paddle.static.nn.fc(pool, size=10)
+            ...     loss = paddle.mean(hidden)
     """
     with framework.name_scope(prefix=_fp16_guard_pattern):
         yield
@@ -642,6 +642,10 @@ def cast_model_to_fp16(
 
     def need_process(op):
         need_process = True
+        if op.type in ["set_value"]:
+            # NOTE(zoooo0820): OP set_value has attribute "dtype", but its output type is
+            # determined by the input.dtype instead of attribute. So, here we still process it.
+            return need_process
         if op.type in ["create_py_reader", "read"]:
             need_process = False
         else:

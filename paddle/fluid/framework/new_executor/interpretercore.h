@@ -15,7 +15,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
 
-DECLARE_bool(new_executor_use_local_scope);
+PD_DECLARE_bool(new_executor_use_local_scope);
 
 namespace ir {
 class Program;
@@ -51,9 +51,6 @@ class InterpreterCore {
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true);
-
-  paddle::framework::FetchList BetaRun(
-      const std::vector<std::string>& feed_names, bool need_fetch = true);
 
   void ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src);
 

@@ -231,7 +231,7 @@ class CrossEntropyLoss(Layer):
 
             where, N is the number of samples and C is the number of categories.
 
-            2.3.2. If the 'weight' parameter is not 'None', the weighted average value of the previous result will be returned
+            2.3.2. If the ``weight`` parameter is ``None`` , the weighted average value of the previous result will be returned
 
             1. Hard labels (soft_label = False)
 
@@ -302,6 +302,7 @@ class CrossEntropyLoss(Layer):
     Examples:
 
         .. code-block:: python
+            :name: code-example1
 
             >>> # hard labels
             >>> import paddle
@@ -321,6 +322,7 @@ class CrossEntropyLoss(Layer):
             5.33697682)
 
         .. code-block:: python
+            :name: code-example2
 
             >>> # soft labels
             >>> import paddle

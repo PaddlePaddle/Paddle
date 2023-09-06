@@ -63,11 +63,7 @@ void GraphSendRecvGradOpCUDAKernelLaunchHelper(
   const IndexT* s_index = src_index.data<IndexT>();
   const IndexT* d_index = dst_index.data<IndexT>();
 
-#ifdef PADDLE_WITH_HIP
-  int block = 256;
-#else
   int block = 1024;
-#endif
   int64_t n = slice_size * index_size;
   int64_t max_grid_dimx = ctx.GetCUDAMaxGridDimSize()[0];
   int64_t grid_tmp = (n + block - 1) / block;

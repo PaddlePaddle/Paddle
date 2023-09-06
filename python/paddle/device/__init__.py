@@ -875,23 +875,25 @@ class stream_guard:
 
 
 def synchronize(device=None):
-    '''
+    """
     Wait for the compute on the given device to finish.
     Parameters:
         device(str|paddle.CUDAPlace(n)|paddle.XPUPlace(n)|paddle.CustomPlace(n)): The device which want to wait for.  If device is None, the device is the current device. Default: None.
             It can be ``gpu``, ``gpu:x``, ``xpu``, ``xpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevicec,
             where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.XPUPlace(n) or paddle.CustomPlace(n).
     Examples:
-        .. code-block:: python
-            # required: custom_device
-            import paddle
 
-            paddle.set_device('custom_cpu')
-            paddle.device.synchronize()
-            paddle.device.synchronize("custom_cpu:0")
-            place = paddle.CustomPlace('custom_cpu', 0)
-            paddle.device.synchronize(place)
-    '''
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> import paddle
+
+            >>> paddle.set_device('custom_cpu')
+            >>> paddle.device.synchronize()
+            >>> paddle.device.synchronize("custom_cpu:0")
+            >>> place = paddle.CustomPlace('custom_cpu', 0)
+            >>> paddle.device.synchronize(place)
+    """
 
     if device is None:
         place = paddle.framework._current_expected_place()

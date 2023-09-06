@@ -50,7 +50,8 @@ void OutputProcess(framework::ir::Graph *graph,
                    const std::unordered_set<framework::ir::Node *> &trt_outputs,
                    phi::Backend backend,
                    phi::DataType precision,
-                   const std::unordered_set<std::string> &blacklist) {
+                   const std::unordered_set<std::string> &blacklist,
+                   const std::unordered_set<std::string> &whitelist) {
   framework::BlockDesc *block_desc{nullptr};
   int suffix = 0;
   std::unordered_map<framework::ir::Node *, framework::ir::Node *>
@@ -86,7 +87,8 @@ void OutputProcess(framework::ir::Graph *graph,
                   phi::TransToPhiKernelName(next_op->Op()->Type()),
                   backend,
                   precision,
-                  blacklist)) {
+                  blacklist,
+                  whitelist)) {
             InsertCastOp(graph,
                          var_node,
                          next_op,
@@ -363,6 +365,8 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
       static_cast<phi::DataType>(Get<int>("model_precision"));
   auto mixed_black_list =
       Get<std::unordered_set<std::string>>("mixed_black_list");
+  auto mixed_white_list =
+      Get<std::unordered_set<std::string>>("mixed_white_list");
 
   std::set<std::string> output_names;
   std::set<std::string> output_names_with_id;
@@ -371,6 +375,41 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   // record the origin output data type
   std::vector<int> origin_outputs_dtype;
   std::map<std::string, int> map_origin_outputs_dtype;
+
+  // Mark TensorRT output nodes as trt outputs
+  auto mark_output = Get<bool>("mark_output");
+  auto output_tensor_name =
+      Get<std::vector<std::string>>("output_tensor_names");
+  auto mark_output_with_id = Get<bool>("mark_output_with_id");
+
+  if (mark_output) {
+    VLOG(1) << "begin to mark output ...";
+    for (auto node : subgraph) {
+      if (node->NodeType() == Node::Type::kOperation) {
+        for (auto *x : node->outputs) {
+          if (std::count(parameters.begin(), parameters.end(), x->Name()) > 0)
+            continue;
+          std::string name_with_id = x->Name() + std::to_string(x->id());
+          if (((!mark_output_with_id && std::count(output_tensor_name.begin(),
+                                                   output_tensor_name.end(),
+                                                   x->Name()) > 0) ||
+               (mark_output_with_id && std::count(output_tensor_name.begin(),
+                                                  output_tensor_name.end(),
+                                                  name_with_id) > 0)) &&
+              !x->outputs.empty()) {
+            VLOG(3) << "output " << x->Name() << " has been marked";
+            output_names.insert(x->Name());
+            output_names_with_id.insert(name_with_id);
+            origin_name_output_rank[x->Name()] = x->Var()->GetShape().size();
+            trt_outputs.insert(x);
+            map_origin_outputs_dtype[x->Name()] =
+                static_cast<int>(x->Var()->GetDataType());
+          }
+        }
+      }
+    }
+  }
+
   for (auto *x : node->outputs) {
     output_names.insert(x->Name());
     output_names_with_id.insert(x->Name() + std::to_string(x->id()));
@@ -380,8 +419,12 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
         static_cast<int>(x->Var()->GetDataType());
   }
 
-  OutputProcess(
-      graph, trt_outputs, phi::Backend::GPU, model_precision, mixed_black_list);
+  OutputProcess(graph,
+                trt_outputs,
+                phi::Backend::GPU,
+                model_precision,
+                mixed_black_list,
+                mixed_white_list);
 
   std::unordered_map<std::string, std::string> output_name_map;
   std::unordered_map<std::string, framework::ir::Node *> graph_var_map;

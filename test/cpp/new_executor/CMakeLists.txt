@@ -4,7 +4,7 @@ if(NOT WIN32)
   cc_test(
     standalone_executor_new_ir_test
     SRCS standalone_executor_new_ir_test.cc
-    DEPS phi_kernel_adaptor pd_dialect ir)
+    DEPS phi_kernel_adaptor pd_dialect pd_kernel_dialect ir)
 endif()
 
 set(OPS

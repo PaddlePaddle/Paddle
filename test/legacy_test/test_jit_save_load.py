@@ -647,7 +647,13 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
             self.temp_dir.name, "multi_inout1.output_spec2/model"
         )
         output_spec = net.forward.outputs[:1]
-        paddle.jit.save(net, model_path, (input_x,), output_spec=output_spec)
+        paddle.jit.save(
+            net,
+            model_path,
+            net.forward.inputs,
+            output_spec=output_spec,
+            input_names_after_prune=[input_x.name],
+        )
         # 2. load again
         infer_layer2 = paddle.jit.load(model_path)
         # 3. predict
@@ -945,9 +951,11 @@ class TestJitSaveMultiCases(unittest.TestCase):
             layer,
             model_path,
             input_spec=[
-                InputSpec(shape=[None, 784], dtype='float32', name="image")
+                InputSpec(shape=[None, 784], dtype='float32', name="image"),
+                True,
             ],
             output_spec=[out],
+            input_names_after_prune=["image"],
         )
 
         self.verify_inference_correctness(
@@ -967,9 +975,11 @@ class TestJitSaveMultiCases(unittest.TestCase):
             layer,
             model_path,
             input_spec=[
-                InputSpec(shape=[None, 784], dtype='float32', name="image")
+                InputSpec(shape=[None, 784], dtype='float32', name="image"),
+                True,
             ],
             output_spec=output_spec,
+            input_names_after_prune=["image"],
         )
 
         self.verify_inference_correctness(
@@ -1082,9 +1092,11 @@ class TestJitSaveMultiCases(unittest.TestCase):
                 layer,
                 model_path,
                 input_spec=[
-                    InputSpec(shape=[None, 784], dtype='float32', name="image")
+                    InputSpec(shape=[None, 784], dtype='float32', name="image"),
+                    True,
                 ],
                 output_spec=[out],
+                input_names_after_prune=["image"],
             )
 
 

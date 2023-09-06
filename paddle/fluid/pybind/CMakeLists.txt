@@ -41,6 +41,7 @@ set(PYBIND_DEPS
     phi_kernel_adaptor
     pd_dialect
     program_translator
+    pd_inplace_pass
     ir
     new_profiler
     jit_layer
@@ -57,18 +58,7 @@ if(WITH_PSCORE)
   endif()
 endif()
 if(WITH_RPC)
-  set(PYBIND_DEPS
-      ${PYBIND_DEPS}
-      paddle_rpc
-      brpc
-      ssl
-      crypto
-      protobuf
-      zlib
-      leveldb
-      snappy
-      phi
-      glog)
+  set(PYBIND_DEPS ${PYBIND_DEPS} paddle_rpc ${EXTERNAL_BRPC_DEPS} zlib phi)
 endif()
 if(WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
@@ -536,6 +526,7 @@ if(WITH_PYTHON)
   #                PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
   # endif()
 
+  add_dependencies(${SHARD_LIB_NAME} ops_api_gen)
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     add_dependencies(${SHARD_LIB_NAME} legacy_eager_codegen)
     add_dependencies(${SHARD_LIB_NAME} eager_legacy_op_function_generator_cmd)
