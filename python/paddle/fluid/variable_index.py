@@ -18,6 +18,7 @@ from . import unique_name
 from . import core
 import paddle
 import warnings
+import itertools
 
 
 MAX_INTEGER = 2**31 - 1
@@ -869,16 +870,24 @@ def _setitem_static(x, indices, values):
         'decrease_axes': decrease_axes,
         'none_axes': none_axes,
     }
+
+    value_tensor = None
+    StartsTensorList = None
+    EndsTensorList = None
+    StepsTensorList = None
+
     if paddle.utils._contain_var(starts):
-        inputs['StartsTensorList'] = paddle.utils._convert_to_tensor_list(
-            starts
-        )
+        StartsTensorList = paddle.utils._convert_to_tensor_list(starts)
+        inputs['StartsTensorList'] = StartsTensorList
         del attrs['starts']
+
     if paddle.utils._contain_var(ends):
-        inputs['EndsTensorList'] = paddle.utils._convert_to_tensor_list(ends)
+        EndsTensorList = paddle.utils._convert_to_tensor_list(ends)
+        inputs['EndsTensorList'] = EndsTensorList
         del attrs['ends']
     if paddle.utils._contain_var(steps):
-        inputs['StepsTensorList'] = paddle.utils._convert_to_tensor_list(steps)
+        StepsTensorList = paddle.utils._convert_to_tensor_list(steps)
+        inputs['StepsTensorList'] = StepsTensorList
         del attrs['steps']
 
     if not has_advanced_index:
@@ -899,6 +908,8 @@ def _setitem_static(x, indices, values):
 
         elif isinstance(values, Variable):
             inputs["ValueTensor"] = values
+            value_tensor = values
+
         else:
             raise TypeError(
                 "Only support to assign an integer, float, numpy.ndarray or "
@@ -909,8 +920,14 @@ def _setitem_static(x, indices, values):
 
         # step3.1: Only basic indexing, use OP set_value to set value.
         if paddle.in_dynamic_mode():
-            x._bump_inplace_version()
-            output = x
+            return paddle._legacy_C_ops.set_value_(
+                x,
+                value_tensor,
+                StartsTensorList,
+                EndsTensorList,
+                StepsTensorList,
+                *itertools.chain.from_iterable(attrs.items())
+            )
         else:
             helper = paddle.fluid.layer_helper.LayerHelper(
                 'set_value', **locals()
@@ -924,21 +941,20 @@ def _setitem_static(x, indices, values):
                 output = helper.create_variable_for_type_inference(
                     dtype=x.dtype
                 )
-        cur_block = default_main_program().current_block()
-        cur_block.append_op(
-            type="set_value",
-            inputs=inputs,
-            outputs={'Out': output},
-            attrs=attrs,
-            inplace_map={"Input": "Out"},
-        )
+            cur_block = default_main_program().current_block()
+            cur_block.append_op(
+                type="set_value",
+                inputs=inputs,
+                outputs={'Out': output},
+                attrs=attrs,
+                inplace_map={"Input": "Out"},
+            )
 
-        if not paddle.in_dynamic_mode():
             # map var to the new output
             paddle.jit.api.ProgramTranslator.get_instance()._inplace_map.add(
                 cur_block.program, x.desc.id(), output
             )
-        return output
+            return output
     else:
         # step3.2: Case for there are advanced indexing.
         #   1. get __getitem__ result of basic indexing;
@@ -965,53 +981,49 @@ def _setitem_static(x, indices, values):
         ) = deal_advanced_index(sub_tensor, advanced_index, True)
         if not isinstance(values, Variable):
             values = paddle.assign(values).astype(transed_sub_tensor.dtype)
-        transed_sub_tensor = transed_sub_tensor.index_put(
-            adjusted_advanced_index, values
-        )
 
-        # NOTE(zoooo0820): now basic indexing of __getitem__ will return a new Tensor both in dynamic and static mode
-        # After strided is ready and basic indexing returns view of Tensor in dynamic mode. The code shoule be changed
-        # for dynamic mode.
         if paddle.in_dynamic_mode():
-            transed_sub_tensor.index_put_(adjusted_advanced_index, values)
+            return transed_sub_tensor.index_put_(
+                adjusted_advanced_index, values
+            )
         else:
             transed_sub_tensor = transed_sub_tensor.index_put(
                 adjusted_advanced_index, values
             )
 
-        transback_sub_tensor = transed_sub_tensor.transpose(transback_dim)
+            transback_sub_tensor = transed_sub_tensor.transpose(transback_dim)
 
-        inputs["ValueTensor"] = transback_sub_tensor
-        if paddle.in_dynamic_mode():
-            x._bump_inplace_version()
-            output = x
-        else:
-            helper = paddle.fluid.layer_helper.LayerHelper(
-                'set_value', **locals()
-            )
-            if helper.main_program.current_block_idx != 0:
-                # not in global block, we should create a global variable.
-                output = helper._create_global_variable_for_type_inference(
-                    dtype=x.dtype
-                )
+            inputs["ValueTensor"] = transback_sub_tensor
+            if paddle.in_dynamic_mode():
+                x._bump_inplace_version()
+                output = x
             else:
-                output = helper.create_variable_for_type_inference(
-                    dtype=x.dtype
+                helper = paddle.fluid.layer_helper.LayerHelper(
+                    'set_value', **locals()
                 )
-        cur_block = default_main_program().current_block()
-        cur_block.append_op(
-            type="set_value",
-            inputs=inputs,
-            outputs={'Out': output},
-            attrs=attrs,
-            inplace_map={"Input": "Out"},
-        )
-        if not paddle.in_dynamic_mode():
-            # map var to the new output
-            paddle.jit.api.ProgramTranslator.get_instance()._inplace_map.add(
-                cur_block.program, x.desc.id(), output
+                if helper.main_program.current_block_idx != 0:
+                    # not in global block, we should create a global variable.
+                    output = helper._create_global_variable_for_type_inference(
+                        dtype=x.dtype
+                    )
+                else:
+                    output = helper.create_variable_for_type_inference(
+                        dtype=x.dtype
+                    )
+            cur_block = default_main_program().current_block()
+            cur_block.append_op(
+                type="set_value",
+                inputs=inputs,
+                outputs={'Out': output},
+                attrs=attrs,
+                inplace_map={"Input": "Out"},
             )
-        return output
+            if not paddle.in_dynamic_mode():
+                # map var to the new output
+                paddle.jit.api.ProgramTranslator.get_instance()._inplace_map.add(
+                    cur_block.program, x.desc.id(), output
+                )
+            return output
 
 
 def get_tensor_with_basic_indexing(
