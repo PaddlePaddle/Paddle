@@ -125,7 +125,6 @@ def graph_send_recv(
             [[0. , 2. , 3. ],
              [2. , 8. , 10.],
              [0. , 0. , 0. ]])
-
     """
 
     if pool_type not in ["sum", "mean", "max", "min"]:
