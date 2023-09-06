@@ -48,6 +48,7 @@ class TestFullOp(unittest.TestCase):
     """Test fill_any_like op(whose API is full_like) for attr out."""
 
     def test_attr_tensor_API(self):
+        paddle.enable_static()
         startup_program = Program()
         train_program = Program()
         with program_guard(train_program, startup_program):
@@ -75,6 +76,7 @@ class TestFullOp(unittest.TestCase):
                 not (out_np - np.full_like(img, fill_value)).any(),
                 msg="full_like output is wrong, out = " + str(out_np),
             )
+        paddle.disable_static()
 
     def test_full_like_imperative(self):
         paddle.disable_static()

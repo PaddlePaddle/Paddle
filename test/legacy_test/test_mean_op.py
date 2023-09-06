@@ -75,8 +75,10 @@ class TestMeanOp_ZeroDim(OpTest):
 
 class TestMeanOpError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input type of mean_op must be Variable.
+
             input1 = 12
             self.assertRaises(TypeError, paddle.mean, input1)
             # The input dtype of mean_op must be float16, float32, float64.
@@ -88,6 +90,7 @@ class TestMeanOpError(unittest.TestCase):
                 name='input3', shape=[-1, 4], dtype="float16"
             )
             paddle.nn.functional.softmax(input3)
+        paddle.disable_static()
 
 
 @unittest.skipIf(
