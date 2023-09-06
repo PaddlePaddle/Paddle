@@ -642,6 +642,10 @@ def cast_model_to_fp16(
 
     def need_process(op):
         need_process = True
+        if op.type in ["set_value"]:
+            # NOTE(zoooo0820): OP set_value has attribute "dtype", but its output type is
+            # determined by the input.dtype instead of attribute. So, here we still process it.
+            return need_process
         if op.type in ["create_py_reader", "read"]:
             need_process = False
         else:
