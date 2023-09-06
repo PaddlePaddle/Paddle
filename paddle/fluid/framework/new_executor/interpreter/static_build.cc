@@ -322,9 +322,9 @@ void FakeInitializeTensorBase(const platform::DeviceContext& dev_ctx,
 void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
                                           const phi::Place& place,
                                           Scope* scope,
-                                          bool is_last_op) {
+                                          bool is_skip) {
   const std::string& op_type = op.Type();
-  if (OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
+  if (OpsCanSkipedFakeAllocInStaticBuild.count(op_type) || is_skip) {
     return;
   }
 
@@ -364,9 +364,6 @@ void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
       }
     }
   } else if (op_type == "conditional_block") {
-    if (is_last_op) {
-      return;
-    }
     const std::string out_var_info_before_build = op.OutVarInfoString(scope);
     op.RunPreStaticBuild(*scope, place);
     const std::string out_var_info_after_build = op.OutVarInfoString(scope);
@@ -458,7 +455,7 @@ void FakeInitializeOutputsForFunctionKernel(
         phi::Backend backend = tensor_arg_def.backend;
         if (backend == phi::Backend::UNDEFINED) {
           if (op_type == "adam" || op_type == "adamw" ||
-              op_type == "merged_adam") {
+              op_type == "merged_adam" || op_type == "lamb") {
             phi::TensorBase* beta1_pow = GetTensorFormVar(
                 runtime_ctx.inputs.find("Beta1Pow")->second.at(0));
             phi::TensorBase* beta2_pow = GetTensorFormVar(

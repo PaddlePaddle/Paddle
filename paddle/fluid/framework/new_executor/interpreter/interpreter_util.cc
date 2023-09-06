@@ -531,7 +531,7 @@ void HandleOperatorBase(const platform::Place& place,
                         OpFuncNode* op_func_node,
                         Scope* scope,
                         bool static_build,
-                        bool is_last_op) {
+                        bool is_skip_fake_init) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
   // input, output is prepared. set the other attributes.
@@ -542,7 +542,7 @@ void HandleOperatorBase(const platform::Place& place,
     if (OperatorBasesMustRunInStaticBuild.count(op->Type())) {
       op->Run(*scope, place);
     }
-    FakeInitializeOutputsForOperatorBase(*op, place, scope, is_last_op);
+    FakeInitializeOutputsForOperatorBase(*op, place, scope, is_skip_fake_init);
   } else {
     op->Run(*scope, place);  // Run without data transformer.
   }
@@ -685,16 +685,25 @@ void BuildOpFuncList(const platform::Place& place,
       if (dynamic_cast<framework::OperatorWithKernel*>(op) == nullptr) {
         VLOG(4) << "HandleOperatorBase";
         // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
-        bool is_last_op = i == ops.size() - 1;
-        if (i == ops.size() - 2 && ops.back()->Type() == "fetch_v2") {
-          is_last_op = true;
+        bool is_skil_fake_init = false;
+        if (op->Type() == "conditional_block") {
+          // Note(sonder): skip fake init for conditional_block when there is no
+          // op with kernel after it.
+          is_skil_fake_init = true;
+          for (size_t j = 0; j < ops.size(); ++j) {
+            if (dynamic_cast<framework::OperatorWithKernel*>(ops[j].get()) !=
+                nullptr) {
+              is_skil_fake_init = false;
+              break;
+            }
+          }
         }
         HandleOperatorBase(place,
                            ops[i],
                            &op_func_node,
                            local_scope,
                            static_build,
-                           is_last_op);
+                           is_skil_fake_init);
         vec_func_list->emplace_back(op_func_node);
       } else {
         VLOG(4) << "OP is not null";
