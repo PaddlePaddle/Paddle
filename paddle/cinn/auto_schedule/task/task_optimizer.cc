@@ -40,7 +40,7 @@
 #include "paddle/cinn/backends/cuda_util.h"
 #endif
 
-DECLARE_bool(auto_schedule_use_cost_model);
+PD_DECLARE_bool(auto_schedule_use_cost_model);
 
 namespace cinn {
 namespace auto_schedule {

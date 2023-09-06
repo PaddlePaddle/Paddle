@@ -85,7 +85,7 @@ void Flatten::set_inputs(const std::vector<DimTrans*>& dims) {
 
 std::string Flatten::to_string() {
   std::string ret_str("Flatten(");
-  for (int64_t i = 0, n = input_dims_.size(); i < n; ++i) {
+  for (int i = 0, n = static_cast<int>(input_dims_.size()); i < n; ++i) {
     ret_str += input_dims_[i]->to_string();
     if (i < n - 1) {
       ret_str += ",";
@@ -125,7 +125,7 @@ int64_t Split::local_splitted_shape_value() {
 std::string Split::to_string() {
   std::string ret_str("Split(");
   ret_str += input_dim_trans_->to_string() + ", (";
-  for (int64_t i = 0, n = splitted_shape_.size(); i < n; ++i) {
+  for (int i = 0, n = static_cast<int>(splitted_shape_.size()); i < n; ++i) {
     ret_str += std::to_string(splitted_shape_[i]);
     if (i < n - 1) {
       ret_str += ",";
@@ -161,9 +161,9 @@ DimTrans* make_split(DimTrans* dim,
     std::vector<int64_t> new_shape;
     // map between from idx in shape to new_shape
     std::vector<int64_t> idx_map(shape.size(), -1);
-    for (int64_t i = 0, n = shape.size(); i < n; ++i) {
+    for (int i = 0, n = static_cast<int>(shape.size()); i < n; ++i) {
       if (shape[id] != 1) {
-        idx_map[i] = new_shape.size();
+        idx_map[i] = static_cast<int64_t>(new_shape.size());
         new_shape.emplace_back(shape[i]);
       }
     }
@@ -173,7 +173,8 @@ DimTrans* make_split(DimTrans* dim,
 }
 
 void CleanUp() {
-  for (int64_t i = 0, n = all_dim_trans.size(); i < n; i++) {
+  int n = static_cast<int>(all_dim_trans.size());
+  for (int i = 0; i < n; i++) {
     if (all_dim_trans[i]) {
       delete all_dim_trans[i];
       all_dim_trans[i] = nullptr;
@@ -210,8 +211,8 @@ DimTrans* GetDimTrans(DimTrans* dim_trans,
   } else if (type == DimTrans::Type::FLATTEN) {
     Flatten* flatten = dynamic_cast<Flatten*>(dim_trans);
     const std::vector<DimTrans*>& inputs = flatten->inputs();
-    int64_t nmesh = (*shardable)[0].size();
-    for (int64_t i = 1, n = inputs.size(); i < n; i++) {
+    int64_t nmesh = (*shardable)[0].size();  // NOLINT
+    for (int i = 1, n = static_cast<int>(inputs.size()); i < n; i++) {
       DimTrans* input = inputs[i];
       if (input->type() == DimTrans::Type::INPUTDIM) {
         InputDim* inputdim = dynamic_cast<InputDim*>(input);
@@ -252,7 +253,7 @@ DimTrans* GetDimTrans(DimTrans* dim_trans,
                           phi::errors::InvalidArgument(
                               "The returned dim_trans must be INPUTDIM."));
         InputDim* inputdim = dynamic_cast<InputDim*>(dim);
-        int64_t nmesh = mesh_shape.size();
+        int64_t nmesh = static_cast<int64_t>(mesh_shape.size());
         int64_t input_axis = inputdim->input_dim();
 
         // Check whether the sharded dim can be sharded on
@@ -295,13 +296,15 @@ std::vector<std::vector<int64_t>> InferFromDimTrans(
   const std::vector<int64_t>& mesh_shape = mesh.shape();
 
   std::set<int64_t> sharded_input_dims;
-  for (int64_t i = 0, n = input_dims_mapping.size(); i < n; ++i) {
+  for (int64_t i = 0, n = static_cast<int64_t>(input_dims_mapping.size());
+       i < n;
+       ++i) {
     if (input_dims_mapping[i] > -1) {
       sharded_input_dims.insert(i);
     }
   }
-  int64_t ndim = input_shape.size();
-  int64_t nmesh = mesh_shape.size();
+  int64_t ndim = static_cast<int64_t>(input_shape.size());
+  int64_t nmesh = static_cast<int64_t>(mesh_shape.size());
   std::vector<std::vector<bool>> shardable(ndim,
                                            std::vector<bool>(nmesh, true));
 
@@ -319,7 +322,7 @@ std::vector<std::vector<int64_t>> InferFromDimTrans(
 
   // get the map from sharded input dimensions to output dimensions.
   std::vector<int64_t> dim_map_src2tgt(ndim, -1);
-  for (int64_t i = 0, n = dim_trans.size(); i < n; i++) {
+  for (int64_t i = 0, n = static_cast<int64_t>(dim_trans.size()); i < n; i++) {
     DimTrans* dim = GetDimTrans(dim_trans[i],
                                 &shardable,
                                 &seen_input_dims,
