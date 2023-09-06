@@ -64,7 +64,9 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
       platform::errors::Fatal(
           "scope must not be null when applying constant folding."));
 
-  std::vector<std::string> blacklist{"feed", "fetch", "ms_deform_attn", "matrix_multiply", "save"};
+  std::vector<std::string> blacklist{"feed", "fetch", "ms_deform_attn", "matrix_multiply", "save", 
+                                    // 这俩个主要是给显示量化用的
+                                    "quantize_linear", "dequantize_linear"};
 
   int folded_op_num = 0;
 
