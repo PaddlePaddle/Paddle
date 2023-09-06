@@ -30,6 +30,22 @@ bool compareSymbolicDimNames(const std::string& lhs, const std::string& rhs) {
   return (lhs[0] < rhs[0]) || (lhs[0] == rhs[0] && lhsIdx < rhsIdx);
 }
 
+bool compareSymbolicDimProduct(const SymbolicDimProduct& lhs,
+                               const SymbolicDimProduct& rhs) {
+  if (lhs.symbols.size() < rhs.symbols.size()) return true;
+  if (lhs.symbols.size() == rhs.symbols.size()) {
+    for (size_t idx = 0; idx < lhs.symbols.size(); ++idx) {
+      const std::string lhsName =
+          const_cast<SymbolicDim&>(lhs.symbols[idx]).getSymName();
+      const std::string rhsName =
+          const_cast<SymbolicDim&>(rhs.symbols[idx]).getSymName();
+      if (compareSymbolicDimNames(lhsName, rhsName)) return true;
+      if (lhsName != rhsName) return false;
+    }
+  }
+  return false;
+}
+
 const std::string SymbolTable::insert(ir::Operation* symbol) {
   std::string name;
   if (symbol->name() == "shape.SymbolicDim") {
@@ -47,9 +63,9 @@ const std::string SymbolTable::insert(ir::Operation* symbol) {
 }
 
 bool SymbolicDimMgr::load() {
-  for (auto op_it = m_.block()->begin(); op_it != m_.block()->end(); op_it++) {
-    symbolTable_.insert(*op_it);
-    SymbolicDim op = (*op_it)->dyn_cast<SymbolicDim>();
+  for (auto op_ : *(m_.block())) {
+    symbolTable_.insert(op_);
+    SymbolicDim op = op_->dyn_cast<SymbolicDim>();
     if (!op) continue;
     symbolDimUnionSet_[op] = op;
     symbolNameSet_.insert(op.getSymName());
@@ -420,5 +436,276 @@ bool SymbolicDimMgr::isSymbolicDimProductEqual(const SymbolicDimProduct& lhs,
   if (newLhs == newRhs) return true;
   IR_ENFORCE(updateProductEqualityMap(), "Update product equality map failed.");
   return isMultipleOfKnownSymbolicDimProductEqualPair(newLhs, newRhs);
+}
+
+bool SymbolicDimMgr::save() {
+  using Name2SymbolFn = std::function<SymbolicDim(const std::string&)>;
+  auto updateAttrs = [&](ir::ArrayAttribute attrs, Name2SymbolFn fn) {
+    std::vector<ir::Attribute> newAttrs;
+    for (ir::Attribute attr : attrs.AsVector()) {
+      auto sym = fn(attr.dyn_cast<ir::StrAttribute>().AsString());
+      assert(sym);
+      SymbolicDim root = getRootSymbolicDim(sym);
+      ir::Attribute rootSymbol =
+          ir::StrAttribute::get(m_->ir_context(), root.getSymName());
+      newAttrs.push_back(rootSymbol);
+    }
+    return ir::ArrayAttribute::get(m_->ir_context(), newAttrs);
+  };
+
+  // TODO(liujinnan): update attributes attached in DenseTensorType
+  for (auto op : *(m_.block())) {
+    if (!op->HasAttribute(SymbolicDim::getSymbolicDimAttrName())) continue;
+    auto attrs = op->attribute<ir::ArrayAttribute>(
+        SymbolicDim::getSymbolicDimAttrName());
+    auto symbolicShapeAttr = updateAttrs(attrs, [&](const std::string& name) {
+      return symbolTable_.lookup<SymbolicDim>(name);
+    });
+    op->set_attribute(SymbolicDim::getSymbolicDimAttrName(), symbolicShapeAttr);
+  }
+  if (!updateProductEqualityMap()) {
+    return false;
+  }
+  std::unordered_set<SymbolicDim, SymDimHasher> usedSymbolicOps;
+  std::vector<std::string> usedSymbolNames;
+  // TODO(liujinnan): collect uses in value.
+  auto collectUsedSymbols = [&](ir::ArrayAttribute attrs) {
+    for (ir::Attribute attr : attrs.AsVector()) {
+      auto sym = symbolTable_.lookup<SymbolicDim>(
+          attr.dyn_cast<ir::StrAttribute>().AsString());
+      assert(sym);
+      if (usedSymbolicOps.insert(sym).second)
+        usedSymbolNames.push_back(sym.getSymName());
+    }
+  };
+  for (auto op : *(m_.block())) {
+    if (!op->HasAttribute(SymbolicDim::getSymbolicDimAttrName())) continue;
+    auto attrs = op->attribute<ir::ArrayAttribute>(
+        SymbolicDim::getSymbolicDimAttrName());
+    collectUsedSymbols(attrs);
+  }
+
+  for (auto& p : symbolDimUnionSet_) {
+    if (!usedSymbolicOps.count(p.first)) {
+      m_.block()->erase(*(p.first.operation()));
+    }
+  }
+
+  std::vector<SymbolicDimProduct> candidates;
+  for (auto& outter : productEqualityMap_) {
+    if (std::any_of(
+            outter.first.symbols.begin(),
+            outter.first.symbols.end(),
+            [&](SymbolicDim sym) { return usedSymbolicOps.count(sym) == 0; }))
+      candidates.push_back(outter.first);
+  }
+
+  for (auto& prod : candidates) productEqualityMap_.erase(prod);
+  for (auto& outter : productEqualityMap_) {
+    std::vector<SymbolicDimProduct> candidates;
+    for (auto& inner : outter.second) {
+      if (std::any_of(
+              inner.first.symbols.begin(),
+              inner.first.symbols.end(),
+              [&](SymbolicDim sym) { return usedSymbolicOps.count(sym) == 0; }))
+        candidates.push_back(outter.first);
+    }
+    for (auto& prod : candidates) outter.second.erase(prod);
+  }
+
+  std::sort(usedSymbolNames.begin(),
+            usedSymbolNames.end(),
+            [&](const std::string& lhs, const std::string& rhs) {
+              return compareSymbolicDimNames(lhs, rhs);
+            });
+  int numNonConstDims = 0;
+  std::unordered_map<std::string, std::string> nameMapping;
+  for (const auto& name : usedSymbolNames) {
+    if (name.size() > 0 && name[0] == 'C') {
+      nameMapping[name] = name;
+    } else {
+      nameMapping[name] = ("S" + std::to_string(numNonConstDims++));
+    }
+  }
+
+  std::unordered_map<std::string, SymbolicDim> name2Symbol;
+  for (SymbolicDim op : usedSymbolicOps) {
+    auto name = op.getSymName();
+    op.updateSymName(nameMapping[name]);
+    name2Symbol[name] = op;
+  }
+
+  for (auto op : *(m_.block())) {
+    if (!op->HasAttribute(SymbolicDim::getSymbolicDimAttrName())) continue;
+    auto attrs = op->attribute<ir::ArrayAttribute>(
+        SymbolicDim::getSymbolicDimAttrName());
+    auto symbolicShapeAttr = updateAttrs(
+        attrs, [&](const std::string& name) { return name2Symbol[name]; });
+    op->set_attribute(SymbolicDim::getSymbolicDimAttrName(), symbolicShapeAttr);
+  }
+
+  // TODO(liujinnan): update attributes attached to values.
+
+  return saveShapeConstraintGraph();
+}
+
+bool SymbolicDimMgr::saveShapeConstraintGraph() {
+  auto op_it = m_.block()->rbegin();
+  while (op_it != m_.block()->rend()) {
+    if (((*op_it)->name() == "shape.SymbolicDim") ||
+        ((*op_it)->name() == "shape.tie_shape"))
+      op_it++;
+    else
+      op_it = decltype(op_it)(m_.block()->erase(*(*op_it)));
+  }
+
+  ir::Builder builder = ir::Builder(m_->ir_context(), m_.block());
+  auto build_operands = [&](const ir::SymbolicDimProduct& prod) {
+    std::vector<ir::OpResult> values;
+
+    if (prod.factor != 1) {
+      values.push_back(
+          builder
+              .Build<ir::ConstantOp>(
+                  ir::Int32Attribute::get(m_->ir_context(), prod.factor),
+                  ir::Int32Type::get(m_->ir_context()))
+              ->result(0));
+    }
+    for (SymbolicDim sym : prod.symbols) {
+      values.push_back(
+          builder.Build<ir::dialect::DimOp>(sym.getSymName()).out());
+    }
+    return values;
+  };
+  std::vector<SymbolicDimProduct> sortedProductVec;
+  for (auto& p : productEqualityMap_) sortedProductVec.push_back(p.first);
+  std::sort(sortedProductVec.begin(),
+            sortedProductVec.end(),
+            compareSymbolicDimProduct);
+  for (auto& x : sortedProductVec) {
+    for (auto& y : sortedProductVec) {
+      if (!compareSymbolicDimProduct(x, y)) continue;
+      if (!productEqualityMap_[x][y]) continue;
+      auto lhsOperands = build_operands(x);
+      auto rhsOperands = build_operands(y);
+      builder.Build<ir::dialect::TieProductEqualOp>(lhsOperands, rhsOperands);
+    }
+  }
+  return true;
+}
+
+// TODO(liujinnan): Acceess ShapedType.
+bool ShapeAnalysis::isSameNumElements(ir::Value lhs, ir::Value rhs) {
+  if (lhs == rhs) return true;
+
+  auto lhsTy = lhs.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  auto rhsTy = rhs.type().dyn_cast<paddle::dialect::DenseTensorType>();
+
+  int lhsRank = lhsTy.dims().size();
+  int rhsRank = rhsTy.dims().size();
+
+  return isProductEqual(lhs, 0, lhsRank, rhs, 0, rhsRank);
+}
+
+bool ShapeAnalysis::isProductEqual(
+    Value lhs, int lhsFrom, int lhsTo, Value rhs, int rhsFrom, int rhsTo) {
+  std::vector<int> lhsDimIdxs, rhsDimIdxs;
+  lhsDimIdxs.reserve(lhsTo - lhsFrom);
+  rhsDimIdxs.reserve(rhsTo - rhsFrom);
+  for (int i = lhsFrom; i < lhsTo; ++i) lhsDimIdxs.push_back(i);
+  for (int i = rhsFrom; i < rhsTo; ++i) rhsDimIdxs.push_back(i);
+
+  return isProductEqual(lhs, lhsDimIdxs, rhs, rhsDimIdxs);
+}
+
+SymbolicDimShapeAnalysis::SymbolicDimShapeAnalysis(ir::Operation* op)
+    : op_(op), mgr_(op->dyn_cast<ir::ModuleOp>()) {
+  mgr_.load();
+  for (uint32_t r_idx = 0; r_idx < op->num_regions(); r_idx++) {
+    for (auto b_it = op->region(r_idx).begin(); b_it != op->region(r_idx).end();
+         b_it++) {
+      for (auto op_it = (*b_it)->begin(); op_it != (*b_it)->end(); op_it++) {
+        auto tieShapeOp = (*op_it)->dyn_cast<ir::dialect::TieShapeOp>();
+        if (!tieShapeOp) continue;
+        ir::Value result = tieShapeOp.getValue();
+        auto& symbols = value2SymDims_[result];
+        auto attrs = tieShapeOp
+                         .attribute<ir::ArrayAttribute>(
+                             SymbolicDim::getSymbolicDimAttrName())
+                         .AsVector();
+        for (const auto& attr : attrs) {
+          auto symOp = mgr_.symbolTable().lookup<SymbolicDim>(
+              attr.dyn_cast<ir::StrAttribute>().AsString());
+          if (!symOp) continue;
+          symbols.push_back(symOp);
+        }
+      }
+    }
+  }
+}
+
+SymbolicDimShapeAnalysis::~SymbolicDimShapeAnalysis() { mgr_.save(); }
+
+// TODO(liujinnan): Acceess ShapedType.
+bool SymbolicDimShapeAnalysis::isShapeEqual(ir::Value lhs, ir::Value rhs) {
+  if (lhs == rhs) return true;
+
+  auto lhsTy = lhs.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  auto rhsTy = rhs.type().dyn_cast<paddle::dialect::DenseTensorType>();
+
+  if (!phi::contain_unknown_dim(lhsTy.dims()) &&
+      !phi::contain_unknown_dim(rhsTy.dims())) {
+    return lhsTy.dims() == rhsTy.dims();
+  }
+
+  auto lhsIt = value2SymDims_.find(lhs);
+  auto rhsIt = value2SymDims_.find(rhs);
+
+  if (lhsIt == value2SymDims_.end() || rhsIt == value2SymDims_.end() ||
+      lhsIt->second.size() != rhsIt->second.size())
+    return false;
+
+  std::vector<SymbolicDim> lhsSyms;
+  std::vector<SymbolicDim> rhsSyms;
+  for (auto sym : lhsIt->second) {
+    lhsSyms.push_back(mgr_.getRootSymbolicDim(sym));
+  }
+  for (auto sym : rhsIt->second) {
+    rhsSyms.push_back(mgr_.getRootSymbolicDim(sym));
+  }
+  return lhsSyms == rhsSyms;
+}
+
+// TODO(liujinnan): Acceess ShapedType.
+bool SymbolicDimShapeAnalysis::isProductEqual(Value lhs,
+                                              std::vector<int> lhsDimIdxs,
+                                              Value rhs,
+                                              std::vector<int> rhsDimIdxs) {
+  SymbolicDimProduct lhsProd;
+  SymbolicDimProduct rhsProd;
+
+  auto buildSymbolicDimProduct =
+      [&](SymbolicDimProduct& prod, Value value, std::vector<int> dimIdxs) {
+        auto ty = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+        auto it = value2SymDims_.find(value);
+        for (int idx : dimIdxs) {
+          if (ty.dims()[idx] == -100000) {
+            if (it == value2SymDims_.end() ||
+                static_cast<int>(it->second.size()) <= idx)
+              return false;
+            prod.symbols.push_back(it->second[idx]);
+          } else {
+            prod.factor *= ty.dims()[idx];
+          }
+        }
+        return true;
+      };
+
+  if (!buildSymbolicDimProduct(lhsProd, lhs, lhsDimIdxs) ||
+      !buildSymbolicDimProduct(rhsProd, rhs, rhsDimIdxs)) {
+    return false;
+  }
+
+  return mgr_.isSymbolicDimProductEqual(lhsProd, rhsProd);
 }
 }  // namespace ir

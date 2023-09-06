@@ -54,6 +54,10 @@ class IR_API SymbolicDim : public Op<SymbolicDim> {
   bool isDynamic();
   bool merge(SymbolicDim other);
 
+  static const std::string getSymbolicDimAttrName() {
+    return "SymbolicDimAttr";
+  }
+
   void Verify() {}
 };
 
@@ -82,20 +86,39 @@ class IR_API TieProductEqualOp : public Op<TieProductEqualOp> {
 
   static constexpr uint32_t attributes_num = 2;
   static const char *attributes_name[attributes_num];
-  // attr operand_segment_sizes
+
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
                     int64_t lhs_len,
                     int64_t rhs_len,
                     const std::vector<ir::OpResult> &inputs);
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    const std::vector<ir::OpResult> &lhs,
+                    const std::vector<ir::OpResult> &rhs);
   std::vector<ir::Value> getLhs();
   std::vector<ir::Value> getRhs();
   void Verify() {}
 };
 
+class IR_API TieShapeOp : public Op<TieShapeOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "shape.tie_shape"; }
+
+  static constexpr uint32_t attributes_num = 1;
+  static const char *attributes_name[attributes_num];
+
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    const ir::OpResult &input);
+  ir::Value getValue();
+  void Verify() {}
+};
 }  // namespace dialect
 }  // namespace ir
 
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::dialect::SymbolicDim);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::dialect::DimOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::dialect::TieProductEqualOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::dialect::TieShapeOp);

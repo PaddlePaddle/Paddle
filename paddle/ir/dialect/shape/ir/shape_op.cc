@@ -172,6 +172,21 @@ void TieProductEqualOp::Build(Builder &builder,
   argument.inputs = inputs;
 }
 
+void TieProductEqualOp::Build(Builder &builder,
+                              OperationArgument &argument,
+                              const std::vector<ir::OpResult> &lhs,
+                              const std::vector<ir::OpResult> &rhs) {
+  ir::Attribute attr_lhs_len =
+      ir::Int64Attribute::get(ir::IrContext::Instance(), lhs.size());
+  argument.AddAttribute("lhs_len", attr_lhs_len);
+  ir::Attribute attr_rhs_len =
+      ir::Int64Attribute::get(ir::IrContext::Instance(), rhs.size());
+  argument.AddAttribute("rhs_len", attr_rhs_len);
+
+  argument.inputs = lhs;
+  argument.inputs.insert(argument.inputs.end(), rhs.begin(), rhs.end());
+}
+
 std::vector<ir::Value> TieProductEqualOp::getLhs() {
   int64_t lhs_len = attribute<ir::Int64Attribute>("lhs_len").data();
   std::vector<ir::Value> res;
@@ -190,9 +205,21 @@ std::vector<ir::Value> TieProductEqualOp::getRhs() {
   return res;
 }
 
+const char *TieShapeOp::attributes_name[attributes_num] = {
+    SymbolicDim::getSymbolicDimAttrName().c_str()};  // NOLINT
+
+void TieShapeOp::Build(Builder &builder,
+                       OperationArgument &argument,
+                       const ir::OpResult &input) {
+  argument.inputs = {input};
+}
+
+ir::Value TieShapeOp::getValue() { return operand_source(0); }
+
 }  // namespace dialect
 }  // namespace ir
 
 IR_DEFINE_EXPLICIT_TYPE_ID(ir::dialect::SymbolicDim)
 IR_DEFINE_EXPLICIT_TYPE_ID(ir::dialect::DimOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(ir::dialect::TieProductEqualOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::dialect::TieShapeOp)

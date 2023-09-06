@@ -227,12 +227,70 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
       std::vector<ir::OpResult>{
           dimOpC10, dimOpS0, dimOpS1, dimOpS2, dimOpS3, dimOpS7});
 
-  // Mark S8 * S9 == S10 * S11, for unsimplify product case
+  // For unsimplify product case: S8 * S9 == S10 * S11
   builder.Build<ir::dialect::TieProductEqualOp>(
       2, 2, std::vector<ir::OpResult>{dimOpS8, dimOpS9, dimOpS10, dimOpS11});
 
-  ir::SymbolicDimMgr symDimMgr(program.module_op());
+  ir::AttributeMap attr_map;
+  std::vector<ir::OpResult> op_inputs = {};
 
+  ir::Type fp32_dtype = ir::Float32Type::get(ctx);
+  phi::DDim dims = {-100000, -100000, -100000, -100000, -100000, -100000};
+  phi::DDim dims_ = {-100000, -100000, -100000, -100000, -100000, 10, 20};
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+
+  std::vector<ir::Type> op_output_types = {
+      paddle::dialect::DenseTensorType::get(
+          ctx, fp32_dtype, dims, data_layout, lod, offset)};
+  std::vector<ir::Type> op_output_types_ = {
+      paddle::dialect::DenseTensorType::get(
+          ctx, fp32_dtype, dims_, data_layout, lod, offset)};
+  ir::Operation *op =
+      ir::Operation::Create(op_inputs, attr_map, op_output_types, ir::OpInfo());
+  ir::OpResult res = op->result(0);
+
+  ir::Operation *op_ = ir::Operation::Create(
+      op_inputs, attr_map, op_output_types_, ir::OpInfo());
+  ir::OpResult res_ = op_->result(0);
+
+  ir::dialect::TieShapeOp tieShapeOp =
+      builder.Build<ir::dialect::TieShapeOp>(res);
+  ir::dialect::TieShapeOp tieShapeOp_ =
+      builder.Build<ir::dialect::TieShapeOp>(res_);
+
+  ir::Attribute attrS0 = ir::StrAttribute::get(ctx, "S0");
+  ir::Attribute attrS1 = ir::StrAttribute::get(ctx, "S1");
+  ir::Attribute attrS2 = ir::StrAttribute::get(ctx, "S2");
+  ir::Attribute attrS3 = ir::StrAttribute::get(ctx, "S3");
+  ir::Attribute attrS4 = ir::StrAttribute::get(ctx, "S4");
+  ir::Attribute attrS5 = ir::StrAttribute::get(ctx, "S5");
+  ir::Attribute attrS6 = ir::StrAttribute::get(ctx, "S6");
+  ir::Attribute attrS7 = ir::StrAttribute::get(ctx, "S7");
+  ir::Attribute attrS8 = ir::StrAttribute::get(ctx, "S8");
+  ir::Attribute attrS9 = ir::StrAttribute::get(ctx, "S9");
+  ir::Attribute attrS10 = ir::StrAttribute::get(ctx, "S10");
+  ir::Attribute attrS11 = ir::StrAttribute::get(ctx, "S11");
+  ir::Attribute attrC10 = ir::StrAttribute::get(ctx, "C10");
+  ir::Attribute attrC20 = ir::StrAttribute::get(ctx, "C20");
+
+  std::vector<ir::Attribute> newAttrs = {
+      attrS0, attrS1, attrS2, attrS3, attrS4, attrS5};
+  std::vector<ir::Attribute> newAttrsRef = {
+      attrS0, attrS1, attrS1, attrS0, attrS2, attrS2};
+  std::vector<ir::Attribute> newAttrs_ = {
+      attrS6, attrS7, attrS8, attrS9, attrS10, attrS11, attrC10, attrC20};
+
+  auto arrayAttr = ir::ArrayAttribute::get(ctx, newAttrs);
+  auto arrayAttrRef = ir::ArrayAttribute::get(ctx, newAttrsRef);
+  auto arrayAttr_ = ir::ArrayAttribute::get(ctx, newAttrs_);
+  tieShapeOp->set_attribute(ir::dialect::SymbolicDim::getSymbolicDimAttrName(),
+                            arrayAttr);
+  tieShapeOp_->set_attribute(ir::dialect::SymbolicDim::getSymbolicDimAttrName(),
+                             arrayAttr_);
+
+  ir::SymbolicDimMgr symDimMgr(program.module_op());
   symDimMgr.load();
 
   // For check indirect equality: S1 * S4 == S2 * S5
@@ -311,6 +369,18 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
       symDimMgr.isSymbolicDimProductEqual(symDimProductLhs, symDimProductRhs));
   EXPECT_TRUE(symDimMgr.isSymbolicDimProductEqual(symDimProductLhs_,
                                                   symDimProductRhs_));
+  symDimMgr.save();
+  ir::SymbolicDimMgr symDimMgr_(program.module_op());
+  symDimMgr_.load();
+  auto attrs = tieShapeOp.attribute<ir::ArrayAttribute>(
+      ir::dialect::SymbolicDim::getSymbolicDimAttrName());
+  EXPECT_FALSE(symDimMgr_.symbolTable().lookup<ir::dialect::SymbolicDim>("S7"));
+  EXPECT_EQ(symDimMgr_.symbolTable()
+                .lookup<ir::dialect::TieProductEqualOp>("tie_product_equal")
+                .size(),
+            static_cast<size_t>(1));
+
+  EXPECT_EQ(attrs.AsVector(), arrayAttrRef.AsVector());
 }
 
 TEST(assist_struct_test, dim) {
@@ -363,4 +433,169 @@ TEST(assist_struct_test, tie_product_equal) {
             tie_product_equal);
   EXPECT_EQ(lhs, lhs_ref);
   EXPECT_EQ(rhs, rhs_ref);
+}
+
+TEST(assist_struct_test, tie_shape) {
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  ir::Program program(ctx);
+  ctx->GetOrRegisterDialect<ir::dialect::ShapeDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+
+  ir::Builder builder = ir::Builder(ctx, program.block());
+
+  ir::AttributeMap attr_map;
+  std::vector<ir::OpResult> op_inputs = {};
+
+  ir::Type fp32_dtype = ir::Float32Type::get(ctx);
+  phi::DDim dims = {-100000, 2};
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+
+  std::vector<ir::Type> op_output_types = {
+      paddle::dialect::DenseTensorType::get(
+          ctx, fp32_dtype, dims, data_layout, lod, offset)};
+  ir::Operation *op =
+      ir::Operation::Create(op_inputs, attr_map, op_output_types, ir::OpInfo());
+  ir::OpResult res = op->result(0);
+
+  ir::dialect::TieShapeOp tieShapeOp =
+      builder.Build<ir::dialect::TieShapeOp>(res);
+  ir::Value tieShapeOpValue = tieShapeOp.getValue();
+
+  ir::Attribute attrS0 = ir::StrAttribute::get(ctx, "S0");
+  ir::Attribute attrS1 = ir::StrAttribute::get(ctx, "S1");
+
+  std::vector<ir::Attribute> newAttrs = {attrS0, attrS1};
+
+  auto arrayAttr = ir::ArrayAttribute::get(ctx, newAttrs);
+  tieShapeOp->set_attribute(ir::dialect::SymbolicDim::getSymbolicDimAttrName(),
+                            arrayAttr);
+
+  std::vector<ir::Attribute> arrAttrVec =
+      tieShapeOp
+          ->attribute<ir::ArrayAttribute>(
+              ir::dialect::SymbolicDim::getSymbolicDimAttrName())
+          .AsVector();
+
+  EXPECT_EQ(tieShapeOpValue, res);
+  EXPECT_EQ(arrAttrVec.size(), static_cast<size_t>(2));
+  EXPECT_EQ(arrAttrVec[0].dyn_cast<ir::StrAttribute>(), attrS0);
+  EXPECT_EQ(arrAttrVec[1].dyn_cast<ir::StrAttribute>(), attrS1);
+  EXPECT_TRUE(tieShapeOp->HasAttribute(
+      ir::dialect::SymbolicDim::getSymbolicDimAttrName()));
+}
+
+TEST(assist_struct_test, shape_analysis) {
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  ir::Program program(ctx);
+  ctx->GetOrRegisterDialect<ir::dialect::ShapeDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+
+  ir::Builder builder = ir::Builder(ctx, program.block());
+
+  ir::AttributeMap attr_map;
+  std::vector<ir::OpResult> op_inputs = {};
+
+  ir::Type fp32_dtype = ir::Float32Type::get(ctx);
+  phi::DDim dims_D_2 = {-100000, 2};
+  phi::DDim dims_2_2 = {2, 2};
+  phi::DDim dims_D = {-100000};
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+
+  // same shape with dynamic: value1 == value2
+  std::vector<ir::Type> op1_output_types = {
+      paddle::dialect::DenseTensorType::get(
+          ctx, fp32_dtype, dims_D_2, data_layout, lod, offset)};
+  ir::Operation *op1 = ir::Operation::Create(
+      op_inputs, attr_map, op1_output_types, ir::OpInfo());
+  ir::OpResult value1 = op1->result(0);
+
+  std::vector<ir::Type> op2_output_types = {
+      paddle::dialect::DenseTensorType::get(
+          ctx, fp32_dtype, dims_D_2, data_layout, lod, offset)};
+  ir::Operation *op2 = ir::Operation::Create(
+      op_inputs, attr_map, op2_output_types, ir::OpInfo());
+  ir::OpResult value2 = op2->result(0);
+
+  // same shape with static: value3 == value4
+  std::vector<ir::Type> op3_output_types = {
+      paddle::dialect::DenseTensorType::get(
+          ctx, fp32_dtype, dims_2_2, data_layout, lod, offset)};
+  ir::Operation *op3 = ir::Operation::Create(
+      op_inputs, attr_map, op3_output_types, ir::OpInfo());
+  ir::OpResult value3 = op3->result(0);
+
+  std::vector<ir::Type> op4_output_types = {
+      paddle::dialect::DenseTensorType::get(
+          ctx, fp32_dtype, dims_2_2, data_layout, lod, offset)};
+  ir::Operation *op4 = ir::Operation::Create(
+      op_inputs, attr_map, op4_output_types, ir::OpInfo());
+  ir::OpResult value4 = op4->result(0);
+
+  // one dimension with dynamic: value5 != value1 != value3
+  std::vector<ir::Type> op5_output_types = {
+      paddle::dialect::DenseTensorType::get(
+          ctx, fp32_dtype, dims_D, data_layout, lod, offset)};
+  ir::Operation *op5 = ir::Operation::Create(
+      op_inputs, attr_map, op5_output_types, ir::OpInfo());
+  ir::OpResult value5 = op5->result(0);
+
+  ir::dialect::TieShapeOp tieShapeOp1 =
+      builder.Build<ir::dialect::TieShapeOp>(value1);
+  ir::dialect::TieShapeOp tieShapeOp2 =
+      builder.Build<ir::dialect::TieShapeOp>(value2);
+  ir::dialect::TieShapeOp tieShapeOp3 =
+      builder.Build<ir::dialect::TieShapeOp>(value3);
+  ir::dialect::TieShapeOp tieShapeOp4 =
+      builder.Build<ir::dialect::TieShapeOp>(value4);
+  ir::dialect::TieShapeOp tieShapeOp5 =
+      builder.Build<ir::dialect::TieShapeOp>(value5);
+
+  builder.Build<ir::dialect::SymbolicDim>("C2", 2, true, false, true, true);
+  ir::dialect::SymbolicDim symDimS0 = builder.Build<ir::dialect::SymbolicDim>(
+      "S0", -100000, false, false, true, true);
+  ir::dialect::SymbolicDim symDimS1 = builder.Build<ir::dialect::SymbolicDim>(
+      "S1", -100000, false, false, true, true);
+  ir::dialect::SymbolicDim symDimS2 = builder.Build<ir::dialect::SymbolicDim>(
+      "S2", -100000, false, false, true, true);
+
+  ir::Attribute attrS0 = ir::StrAttribute::get(ctx, "S0");
+  ir::Attribute attrS1 = ir::StrAttribute::get(ctx, "S1");
+  ir::Attribute attrS2 = ir::StrAttribute::get(ctx, "S2");
+  ir::Attribute attrC2 = ir::StrAttribute::get(ctx, "C2");
+
+  auto attrOp1 = ir::ArrayAttribute::get(ctx, {attrS0, attrC2});
+  auto attrOp2 = ir::ArrayAttribute::get(ctx, {attrS1, attrC2});
+  auto attrOp3 = ir::ArrayAttribute::get(ctx, {attrC2, attrC2});
+  auto attrOp4 = ir::ArrayAttribute::get(ctx, {attrC2, attrC2});
+  auto attrOp5 = ir::ArrayAttribute::get(ctx, {attrS2});
+
+  tieShapeOp1->set_attribute(ir::dialect::SymbolicDim::getSymbolicDimAttrName(),
+                             attrOp1);
+  tieShapeOp2->set_attribute(ir::dialect::SymbolicDim::getSymbolicDimAttrName(),
+                             attrOp2);
+  tieShapeOp3->set_attribute(ir::dialect::SymbolicDim::getSymbolicDimAttrName(),
+                             attrOp3);
+  tieShapeOp4->set_attribute(ir::dialect::SymbolicDim::getSymbolicDimAttrName(),
+                             attrOp4);
+  tieShapeOp5->set_attribute(ir::dialect::SymbolicDim::getSymbolicDimAttrName(),
+                             attrOp5);
+
+  ir::SymbolicDimShapeAnalysis shapeAnalysis(program.module_op());
+  EXPECT_TRUE(shapeAnalysis.isShapeEqual(value3, value4));
+  EXPECT_FALSE(shapeAnalysis.isShapeEqual(value1, value2));
+  EXPECT_FALSE(shapeAnalysis.isShapeEqual(value1, value3));
+  EXPECT_FALSE(shapeAnalysis.isShapeEqual(value1, value5));
+  EXPECT_FALSE(shapeAnalysis.isShapeEqual(value3, value5));
+  EXPECT_TRUE(shapeAnalysis.isProductEqual(value1, {1}, value3, {0}));
+  EXPECT_TRUE(shapeAnalysis.isSameNumElements(value4, value3));
+
+  shapeAnalysis.symbolicDimMgr().mapSymbolicDimEqual(symDimS0, symDimS1);
+  shapeAnalysis.symbolicDimMgr().mapSymbolicDimEqual(symDimS0, symDimS2);
+
+  EXPECT_TRUE(shapeAnalysis.isShapeEqual(value1, value2));
+  EXPECT_FALSE(shapeAnalysis.isShapeEqual(value1, value5));
 }

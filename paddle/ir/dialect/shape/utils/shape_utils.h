@@ -14,7 +14,9 @@
 
 #pragma once
 
+#include <algorithm>
 #include <functional>
+#include <iterator>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -112,7 +114,7 @@ class SymbolicDimMgr {
   SymbolicDimProduct* symbolicDimProductDivide(const SymbolicDimProduct& x,
                                                const SymbolicDimProduct& y);
 
-  bool save();  // TODO(liujinnan): load constraint func
+  bool save();
 
   bool isSymbolicDimProductEqual(const SymbolicDimProduct& lhs,
                                  const SymbolicDimProduct& rhs);
@@ -124,8 +126,7 @@ class SymbolicDimMgr {
   bool updateProductEqualityMap();
   bool isMultipleOfKnownSymbolicDimProductEqualPair(
       const SymbolicDimProduct& lhs, const SymbolicDimProduct& rhs);
-  bool saveShapeConstraintGraph();  // TODO(liujinnan): load & save
-                                    // shape_constraint_func
+  bool saveShapeConstraintGraph();
   bool loadShapeConstraintGraph();
 
  private:
@@ -148,5 +149,44 @@ class SymbolicDimMgr {
       SymProductHasher>;
   SymbolicDimProductMap productEqualityMap_;
   bool productEqualityMapUpdated_ = true;
+};
+
+class ShapeAnalysis {
+ public:
+  virtual ~ShapeAnalysis() = default;
+
+  virtual bool isShapeEqual(ir::Value lhs, ir::Value rhs) = 0;
+
+  virtual bool isProductEqual(ir::Value lhs,
+                              std::vector<int> lhsDimIdxs,
+                              ir::Value rhs,
+                              std::vector<int> rhsDimIdxs) = 0;
+  virtual bool isProductEqual(ir::Value lhs,
+                              int lhsFrom,
+                              int lhsTo,
+                              ir::Value rhs,
+                              int rhsFrom,
+                              int rhsTo);
+  virtual bool isSameNumElements(ir::Value lhs, ir::Value rhs);
+};
+
+class SymbolicDimShapeAnalysis : public ShapeAnalysis {
+ public:
+  explicit SymbolicDimShapeAnalysis(ir::Operation* op);
+  ~SymbolicDimShapeAnalysis();
+
+  SymbolicDimMgr& symbolicDimMgr() { return mgr_; }
+  const SymbolicDimMgr& symbolicDimMgr() const { return mgr_; }
+  bool isShapeEqual(ir::Value lhs, ir::Value rhs) override;
+
+  bool isProductEqual(ir::Value lhs,
+                      std::vector<int> lhsDimIdxs,
+                      ir::Value rhs,
+                      std::vector<int> rhsDimIdxs) override;
+
+ private:
+  ir::Operation* op_;
+  SymbolicDimMgr mgr_;
+  std::unordered_map<ir::Value, std::vector<SymbolicDim>> value2SymDims_;
 };
 }  // namespace ir
