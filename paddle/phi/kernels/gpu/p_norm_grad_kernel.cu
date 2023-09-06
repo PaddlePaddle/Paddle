@@ -127,6 +127,11 @@ void PNormGradKernel(const Context& dev_ctx,
 
   std::vector<const DenseTensor*> inputs = {x_ptr, out_ptr, out_grad_ptr};
 
+  if (std::is_same<T, phi::dtype::float16>::value ||
+      std::is_same<T, phi::dtype::bfloat16>::value) {
+    epsilon = 10e-8;
+  }
+
   if (porder == INFINITY || porder == -INFINITY) {
     auto functor = InfinityNormGradTensorDirectCUDAFunctor<T>();
     funcs::BroadcastKernel<T>(dev_ctx, inputs, &outputs, functor);
