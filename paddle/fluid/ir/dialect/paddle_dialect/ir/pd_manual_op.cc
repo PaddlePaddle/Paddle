@@ -161,7 +161,8 @@ OpInfoTuple AddN_Op::GetOpInfo() {
           "ir::VectorType<paddle::dialect::DenseTensorType>",
           false,
           false,
-          false)};
+          false,
+          true)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       paddle::dialect::OpOutputInfo(
@@ -288,7 +289,8 @@ OpInfoTuple AddNWithKernelOp::GetOpInfo() {
           "ir::VectorType<paddle::dialect::DenseTensorType>",
           false,
           false,
-          false)};
+          false,
+          true)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       paddle::dialect::OpOutputInfo(
