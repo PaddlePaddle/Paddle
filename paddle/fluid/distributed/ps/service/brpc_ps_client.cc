@@ -34,49 +34,53 @@ class Variable;
 namespace paddle {
 namespace distributed {
 
-DEFINE_int32(pserver_push_dense_merge_limit,
-             12,
-             "limit max push_dense local merge requests");
+PD_DEFINE_int32(pserver_push_dense_merge_limit,
+                12,
+                "limit max push_dense local merge requests");
 
-DEFINE_int32(pserver_push_sparse_merge_limit,
-             12,
-             "limit max push_sparse local merge requests");
+PD_DEFINE_int32(pserver_push_sparse_merge_limit,
+                12,
+                "limit max push_sparse local merge requests");
 
-DEFINE_int32(pserver_pull_dense_limit,
-             12,
-             "limit max push_sparse local merge requests");
+PD_DEFINE_int32(pserver_pull_dense_limit,
+                12,
+                "limit max push_sparse local merge requests");
 
-DEFINE_int32(pserver_async_push_dense_interval_ms,
-             10,
-             "async push_dense to server interval");
+PD_DEFINE_int32(pserver_async_push_dense_interval_ms,
+                10,
+                "async push_dense to server interval");
 
-DEFINE_int32(pserver_async_push_sparse_interval_ms,
-             10,
-             "async push_sparse to server interval");
+PD_DEFINE_int32(pserver_async_push_sparse_interval_ms,
+                10,
+                "async push_sparse to server interval");
 
-DEFINE_bool(pserver_scale_gradient_by_merge,
-            false,
-            "scale dense gradient when merged");
+PD_DEFINE_bool(pserver_scale_gradient_by_merge,
+               false,
+               "scale dense gradient when merged");
 
-DEFINE_int32(pserver_communicate_compress_type,
-             0,
-             "none:0 snappy:1 gzip:2 zlib:3 lz4:4");
+PD_DEFINE_int32(pserver_communicate_compress_type,
+                0,
+                "none:0 snappy:1 gzip:2 zlib:3 lz4:4");
 
-DEFINE_int32(pserver_max_async_call_num,
-             13,
-             "max task num in async_call_server");
+PD_DEFINE_int32(pserver_max_async_call_num,
+                13,
+                "max task num in async_call_server");
 
-DEFINE_int32(pserver_timeout_ms, 500000, "pserver request server timeout_ms");
+PD_DEFINE_int32(pserver_timeout_ms,
+                500000,
+                "pserver request server timeout_ms");
 
-DEFINE_int32(pserver_connect_timeout_ms,
-             10000,
-             "pserver connect server timeout_ms");
+PD_DEFINE_int32(pserver_connect_timeout_ms,
+                10000,
+                "pserver connect server timeout_ms");
 
-DEFINE_int32(pserver_sparse_merge_thread, 1, "pserver sparse merge thread num");
+PD_DEFINE_int32(pserver_sparse_merge_thread,
+                1,
+                "pserver sparse merge thread num");
 
-DEFINE_int32(pserver_sparse_table_shard_num,
-             1000,
-             "sparse table shard for save & load");
+PD_DEFINE_int32(pserver_sparse_table_shard_num,
+                1000,
+                "sparse table shard for save & load");
 
 inline size_t get_sparse_shard(uint32_t shard_num,
                                uint32_t server_num,
@@ -140,7 +144,7 @@ int32_t BrpcPsClient::StartFlClientService(const std::string &self_endpoint) {
 
   if (_fl_server.Start(self_endpoint.c_str(), &options) != 0) {
     VLOG(0) << "fl-ps > StartFlClientService failed. Try again.";
-    auto ip_port = paddle::string::Split(self_endpoint, ':');
+    auto ip_port = ::paddle::string::Split(self_endpoint, ':');
     std::string ip = ip_port[0];
     int port = std::stoi(ip_port[1]);
     std::string int_ip_port = GetIntTypeEndpoint(ip, port);
@@ -202,8 +206,7 @@ int32_t BrpcPsClient::InitializeFlWorker(const std::string &self_endpoint) {
   options.protocol = "baidu_std";
   options.timeout_ms = FLAGS_pserver_timeout_ms;
   options.connection_type = "pooled";
-  options.connect_timeout_ms =
-      paddle::distributed::FLAGS_pserver_connect_timeout_ms;
+  options.connect_timeout_ms = FLAGS_pserver_connect_timeout_ms;
   options.max_retry = 3;
   // 获取 coordinator 列表，并连接
   std::string coordinator_ip_port;
@@ -336,11 +339,11 @@ int32_t BrpcPsClient::Initialize() {
     auto table_id = worker_param.downpour_table_param(i).table_id();
     if (type == PS_DENSE_TABLE) {
       _push_dense_task_queue_map[table_id] =
-          paddle::framework::MakeChannel<DenseAsyncTask *>();
+          ::paddle::framework::MakeChannel<DenseAsyncTask *>();
     }
     if (type == PS_SPARSE_TABLE) {
       _push_sparse_task_queue_map[table_id] =
-          paddle::framework::MakeChannel<SparseAsyncTask *>();
+          ::paddle::framework::MakeChannel<SparseAsyncTask *>();
       _push_sparse_merge_count_map[table_id] = 0;
     }
   }
@@ -446,7 +449,7 @@ std::future<int32_t> BrpcPsClient::PrintTableStat(uint32_t table_id) {
         int ret = 0;
         uint64_t feasign_size = 0;
         uint64_t mf_size = 0;
-        paddle::framework::BinaryArchive ar;
+        ::paddle::framework::BinaryArchive ar;
         auto *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
         for (size_t i = 0; i < request_call_num; ++i) {
           if (closure->check_response(i, PS_PRINT_TABLE_STAT) != 0) {

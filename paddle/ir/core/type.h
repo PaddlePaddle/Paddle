@@ -97,6 +97,27 @@ IR_API std::ostream &operator<<(std::ostream &os, Type type);
 
 }  // namespace ir
 
+///
+/// \brief This class represents the base of a type interface.
+///
+
+// template <typename ConcreteType>
+// class TypeInterface : public ir::DialectInterface<ConcreteType, Type> {
+//  public:
+//   using Base = TypeInterface<ConcreteType>;
+//   using DialectInterfaceBase = ir::DialectInterface<ConcreteType, Type>;
+//   using DialectInterfaceBase::Base;
+
+//  private:
+//   /// Returns the impl interface instance for the given type.
+//   static typename InterfaceBase::Concept *getInterfaceFor(Type type) {
+//     return type.getAbstractType().getInterface<ConcreteType>();
+//   }
+
+//   /// Allow access to 'getInterfaceFor'.
+//   friend InterfaceBase;
+// };
+
 namespace std {
 ///
 /// \brief Enable hashing Type.

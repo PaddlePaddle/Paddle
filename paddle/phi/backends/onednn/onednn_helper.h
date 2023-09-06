@@ -156,6 +156,12 @@ inline void AppendKey(std::string* key, const T& num) {
 
 template <>
 inline void AppendKey(std::string* key,
+                      const dnnl::memory::format_kind& format) {
+  key->append(std::to_string(static_cast<int>(format)));
+}
+
+template <>
+inline void AppendKey(std::string* key,
                       const dnnl::memory::format_tag& format) {
   key->append(std::to_string(static_cast<int>(format)));
 }
@@ -169,6 +175,25 @@ inline void AppendKey(std::string* key,
 template <>
 inline void AppendKey(std::string* key, const dnnl::algorithm& algorithm) {
   key->append(std::to_string(static_cast<int>(algorithm)));
+}
+
+template <>
+inline void AppendKey(std::string* key, const dnnl::memory::dims& dims) {
+  for (size_t i = 0; i < dims.size(); i++) {
+    AppendKey(key, static_cast<int64_t>(dims[i]));
+  }
+}
+
+template <>
+inline void AppendKey(std::string* key, const dnnl::memory::desc& md) {
+  AppendKey(key, md.get_dims());
+  AppendKey(key, md.get_data_type());
+  AppendKey(key, md.get_format_kind());
+  AppendKey(key, md.get_inner_blks());
+  AppendKey(key, md.get_inner_idxs());
+  AppendKey(key, md.get_inner_nblks());
+  AppendKey(key, md.get_padded_dims());
+  AppendKey(key, md.get_strides());
 }
 
 template <>

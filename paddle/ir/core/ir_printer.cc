@@ -59,6 +59,8 @@ void BasicIrPrinter::PrintType(Type type) {
     os << "i32";
   } else if (type.isa<Int64Type>()) {
     os << "i64";
+  } else if (type.isa<IndexType>()) {
+    os << "index";
   } else if (type.isa<Complex64Type>()) {
     os << "c64";
   } else if (type.isa<Complex128Type>()) {
@@ -319,6 +321,11 @@ std::ostream& operator<<(std::ostream& os, Type type) {
 
 std::ostream& operator<<(std::ostream& os, Attribute attr) {
   attr.Print(os);
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Program& prog) {
+  prog.Print(os);
   return os;
 }
 

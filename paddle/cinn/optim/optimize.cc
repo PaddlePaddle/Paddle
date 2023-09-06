@@ -23,7 +23,6 @@
 #include "paddle/cinn/optim/eliminate_broadcast_in_forloop.h"
 #include "paddle/cinn/optim/extern_call_process.h"
 #include "paddle/cinn/optim/fold_cinn_call_arguments.h"
-#include "paddle/cinn/optim/if_simplify.h"
 #include "paddle/cinn/optim/insert_debug_log_callee.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/lower_function_call_bind_vars.h"
@@ -78,9 +77,6 @@ Expr Optimize(Expr e,
   // Simplify already contains CastSimplify
   Simplify(&copied);
   VLOG(10) << "After Optimize Simplify:" << copied;
-
-  IfSimplify(&copied);
-  VLOG(10) << "After Optimize IfSimplify:" << copied;
 
   if (runtime_debug_info) {
     LOG(WARNING) << "Turn on runtime debug information output";

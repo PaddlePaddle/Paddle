@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
 
@@ -30,12 +31,37 @@ class Net(paddle.nn.Layer):
 
 
 class TestBackwardWithoutParams(unittest.TestCase):
+    @test_and_compare_with_new_ir(False)
     def test_run(self):
         net = Net()
 
         x = paddle.ones([2, 2])
         x.stop_gradient = False
         out = net(x)
+        loss = paddle.mean(out)
+        loss.backward()
+        np.testing.assert_equal(x.grad.numpy(), np.full(x.shape, 0.25))
+
+
+class ZeroSizeNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        y = paddle.randn((0,))
+        out = paddle.nn.functional.relu(x)
+        y.stop_gradient = True
+        return y, out
+
+
+class TestZeroSizeNet(unittest.TestCase):
+    @test_and_compare_with_new_ir(False)
+    def test_run(self):
+        net = ZeroSizeNet()
+        x = paddle.ones([2, 2])
+        x.stop_gradient = False
+        _, out = net(x)
         loss = paddle.mean(out)
         loss.backward()
         np.testing.assert_equal(x.grad.numpy(), np.full(x.shape, 0.25))

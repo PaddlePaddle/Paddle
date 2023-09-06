@@ -21,6 +21,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/phi/common/reduce_type.h"
 #include "paddle/phi/core/distributed/auto_parallel/auto_parallel.pb.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
@@ -29,21 +30,6 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
-namespace auto_parallel {
-
-constexpr const char* kDefault = "default";
-
-enum class ReduceType : std::uint8_t {
-  SUM = 0,
-  AVG,
-  MAX,
-  MIN,
-  PRODUCT,
-  ANY,
-  ALL
-};
-constexpr const char* ReduceTypeStrings[] = {
-    "SUM", "AVG", "MAX", "MIN", "PRODUCT", "ANY", "ALL"};
 
 class TensorDistAttr {
  public:
@@ -81,7 +67,7 @@ class TensorDistAttr {
 
   // by each dim
   void set_partial_status(const std::vector<int64_t>& dims,
-                          const ReduceType& type = ReduceType::SUM);
+                          const ReduceType& type = ReduceType::kRedSum);
   // all
   void clean_partial_status();
 
@@ -136,13 +122,15 @@ class TensorDistAttr {
   // in partial-support-stage-I partial will always be a runtime attribute,
   // there is not need to serialize it. support the partial serialization in
   // future partial-support-stage-II.
-  void from_proto(const TensorDistAttrProto& proto);
+  void from_proto(const auto_parallel::TensorDistAttrProto& proto);
 
-  TensorDistAttrProto to_proto() const;
+  auto_parallel::TensorDistAttrProto to_proto() const;
 
   std::string serialize_to_string();
 
   void parse_from_string(const std::string& data);
+
+  bool empty() const;
 
  private:
   static std::vector<std::string> fields_;
@@ -168,6 +156,5 @@ inline bool operator!=(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
   return !operator==(lhs, rhs);
 }
 
-}  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace phi

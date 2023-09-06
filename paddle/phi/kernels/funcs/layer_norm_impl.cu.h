@@ -42,11 +42,10 @@ template <typename T>
 using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
 inline static int GetDesiredBlockDim(int64_t block_dim) {
+  const int kMaxBlockDim = 512;
 #ifdef __HIPCC__
-  const int kMaxBlockDim = 256;
   const int lwarpSize = 64;
 #else
-  const int kMaxBlockDim = 512;
   const int lwarpSize = 32;
 #endif
   return block_dim >= kMaxBlockDim ? kMaxBlockDim : lwarpSize;
@@ -268,10 +267,10 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
         for (int it = 0; it < WARPS_N; ++it) {
           mu_local += smem[warp_m * WARPS_N + it];
         }
-        smem[warp_m] = mu_local;
+        smem[warp_m * WARPS_N] = mu_local;
       }
       __syncthreads();
-      mu_local = smem[warp_m];
+      mu_local = smem[warp_m * WARPS_N];
     }
 
     mu_local *= rn;
@@ -295,6 +294,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
     }
 
     if (WARPS_N > 1) {
+      __syncthreads();
       if (lane == 0) {
         smem[warp_m * WARPS_N + warp_n] = var_local;
       }
@@ -305,10 +305,10 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
         for (int it = 0; it < WARPS_N; ++it) {
           var_local += smem[warp_m * WARPS_N + it];
         }
-        smem[warp_m] = var_local;
+        smem[warp_m * WARPS_N] = var_local;
       }
       __syncthreads();
-      var_local = smem[warp_m];
+      var_local = smem[warp_m * WARPS_N];
     }
 
     // Note: to assure if it is right for double
@@ -1874,11 +1874,7 @@ static void LayerNormBackward(
     int64_t feature_size,
     const phi::GPUContext &dev_ctx) {
   auto stream = dev_ctx.stream();
-#ifdef __HIPCC__
-  const int kMaxBlockDim = 256;
-#else
   const int kMaxBlockDim = 512;
-#endif
   const int kMaxBlockNum = 128;
   int gradient_flag = ((d_x != nullptr ? 1 : 0) << 2) |
                       ((d_scale != nullptr ? 1 : 0) << 1) |

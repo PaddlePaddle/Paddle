@@ -129,6 +129,15 @@ class TestGetitemInDygraph(unittest.TestCase):
 
         np.testing.assert_allclose(y.numpy(), np_res)
 
+    def test_index_has_range(self):
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        np_res = np_data[:, range(3), 4]
+
+        x = paddle.to_tensor(np_data)
+        y = x[:, range(3), 4]
+
+        np.testing.assert_allclose(y.numpy(), np_res)
+
 
 class TestGetitemInStatic(unittest.TestCase):
     def setUp(self):
@@ -308,6 +317,19 @@ class TestGetitemInStatic(unittest.TestCase):
             y = _getitem_static(
                 x, (slice(None, None, None), [False, False, False, False], 4)
             )
+            res = self.exe.run(fetch_list=[y.name])
+
+        np.testing.assert_allclose(res[0], np_res)
+
+    def test_index_has_range(self):
+        # only one bool tensor with all False
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        np_res = np_data[:, range(3), 4]
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.to_tensor(np_data)
+            y = _getitem_static(x, (slice(None, None, None), range(3), 4))
             res = self.exe.run(fetch_list=[y.name])
 
         np.testing.assert_allclose(res[0], np_res)

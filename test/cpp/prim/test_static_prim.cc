@@ -28,7 +28,7 @@
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-DECLARE_bool(prim_enabled);
+PD_DECLARE_bool(prim_enabled);
 PHI_DECLARE_string(tensor_operants_mode);
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);

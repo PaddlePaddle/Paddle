@@ -33,7 +33,6 @@ USE_TRT_DYNAMIC_INFER_META_FN(conv2d);
 USE_TRT_DYNAMIC_INFER_META_FN(conv2d_transpose);
 USE_TRT_DYNAMIC_INFER_META_FN(p_norm);
 USE_TRT_DYNAMIC_INFER_META_FN(pad);
-
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

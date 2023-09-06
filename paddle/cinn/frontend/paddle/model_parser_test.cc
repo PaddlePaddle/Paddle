@@ -14,10 +14,10 @@
 
 #include "paddle/cinn/frontend/paddle/model_parser.h"
 
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
+#include "paddle/utils/flags.h"
 
-DEFINE_string(model_dir, "<NOTEXIST>", "model directory path");
+PD_DEFINE_string(model_dir, "<NOTEXIST>", "model directory path");
 
 namespace cinn::frontend::paddle {
 

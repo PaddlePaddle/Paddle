@@ -1126,7 +1126,7 @@ class TestLoadSliceVar(TranspilerTest):
         y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
         cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
-        optimizer = fluid.optimizer.RMSProp(learning_rate=0.1)
+        optimizer = paddle.optimizer.RMSProp(learning_rate=0.1)
         optimizer.minimize(avg_cost)
 
     def transpiler_test_impl(self):

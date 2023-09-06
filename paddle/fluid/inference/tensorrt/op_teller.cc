@@ -982,7 +982,6 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
         }
       }
-
       if (resize_inputs.find("OutSize") != resize_inputs.end()) {
         if (!with_dynamic_shape) {
           VLOG(3) << "Static shape don't support the OutSize for op_type "
@@ -1007,18 +1006,11 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 
-      auto align_corners =
-          PADDLE_GET_CONST(bool, desc.GetAttr("align_corners"));
-      if (align_corners != false) {
-        VLOG(3)
-            << "The bilinear_interp_v2 only supports align_corners with false.";
-        return false;
-      }
-
       bool has_scale_input_size =
           (resize_inputs.find("Scale") != resize_inputs.end());
 
-      if (has_scale_input_size && desc.Input("Scale").size() != 1) {
+      if (!has_scale_input_size ||
+          (has_scale_input_size && desc.Input("Scale").size() != 1)) {
         const std::vector<float> scale =
             PADDLE_GET_CONST(std::vector<float>, desc.GetAttr("scale"));
         if (scale.size() <= 1) {
@@ -2838,6 +2830,15 @@ if (dtype ==  framework::proto::VarType::BOOL)
       }
 #endif
     }
+    if (op_type == "quantize_linear" || op_type == "dequantize_linear") {
+#if !IS_TRT_VERSION_GE(8000)
+      VLOG(3) << "quantize / dequantize linear is not supported when TensorRT "
+                 "< 8.0";
+      return false;
+#else
+      return true;
+#endif
+    }
 
     if (op_type == "flip") {
       if (!with_dynamic_shape) {
@@ -3022,7 +3023,9 @@ if (dtype ==  framework::proto::VarType::BOOL)
       "cumsum",
       "unbind",
       "assign",
-      "flip"};
+      "flip",
+      "quantize_linear",
+      "dequantize_linear"};
 
   std::unordered_set<std::string> teller_set{
       "matrix_multiply",
@@ -3187,7 +3190,9 @@ if (dtype ==  framework::proto::VarType::BOOL)
       "cumsum",
       "unbind",
       "assign",
-      "flip"};
+      "flip",
+      "quantize_linear",
+      "dequantize_linear"};
 };
 
 struct GenericPluginTeller : public Teller {

@@ -15,7 +15,8 @@
 #include <gtest/gtest.h>
 #include <unordered_map>
 
-#include "paddle/fluid/ir/dialect/pd_type.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/ir/core/builtin_dialect.h"
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/ir/core/dialect.h"
@@ -88,6 +89,14 @@ TEST(type_test, built_in_type) {
   EXPECT_EQ(&bfp16_1.abstract_type(),
             &ir::AbstractType::lookup(bfp16_1.type_id(), ctx));
   EXPECT_EQ(ir::BFloat16Type::classof(bfp16_1), 1);
+
+  ir::Type index_1 = ir::IndexType::get(ctx);
+  ir::Type index_2 = ir::IndexType::get(ctx);
+  EXPECT_EQ(index_1, index_2);
+  EXPECT_EQ(index_1.type_id(), index_2.type_id());
+  EXPECT_EQ(&index_1.abstract_type(),
+            &ir::AbstractType::lookup(index_1.type_id(), ctx));
+  EXPECT_EQ(ir::IndexType::classof(index_1), 1);
 
   ir::Type fp16_1 = ir::Float16Type::get(ctx);
   ir::Type fp16_2 = ir::Float16Type::get(ctx);
@@ -201,6 +210,7 @@ IR_DEFINE_EXPLICIT_TYPE_ID(IntegerDialect)
 
 TEST(type_test, custom_type_dialect) {
   ir::IrContext *ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
 
   // Test 1: Test the function of IrContext to register Dialect.
   ctx->GetOrRegisterDialect<IntegerDialect>();
@@ -232,6 +242,7 @@ TEST(type_test, custom_type_dialect) {
 
 TEST(type_test, pd_dialect) {
   ir::IrContext *ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   ir::Type fp32_dtype = ir::Float32Type::get(ctx);
   phi::DDim dims = {2, 2};
   phi::DataLayout data_layout = phi::DataLayout::NCHW;

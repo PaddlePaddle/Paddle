@@ -70,6 +70,7 @@ PD_REGISTER_KERNEL(cumsum_grad,
                    phi::CumsumGradKernel,
                    float,
                    double,
+                   phi::dtype::float16,
                    int16_t,
                    int,
                    int64_t) {}
