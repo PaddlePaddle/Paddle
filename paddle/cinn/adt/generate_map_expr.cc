@@ -43,7 +43,7 @@ std::vector<std::shared_ptr<IGroup>> AssembleIGroups(
   ADT_TODO();  // Trival code
 }
 
-std::shared_ptr<m_ir::MapIRList> GenerateMapIRList(
+List<m_expr::OpStmt> GenerateMapIROpStmts(
     const cinn::hlir::framework::Graph::Group& group,
     const std::shared_ptr<equation::Graph>& equation_graph,
     const AnchorTensor& anchor_tensor,
@@ -69,7 +69,7 @@ std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
       anchor_tensor2_igroup,
       [&](const auto& anchor_tensor, const auto& fake_op_placeholders) {
         return std::pair{
-            GenerateMapIRList(
+            GenerateMapIROpStmts(
                 group, equation_graph, anchor_tensor, fake_op_placeholders),
             GenerateMapIREquations(
                 group, equation_graph, anchor_tensor, fake_op_placeholders)};

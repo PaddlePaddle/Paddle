@@ -107,41 +107,41 @@ DEFINE_ADT_UNION(Op,
 
 using Arg = Tensor;
 
-// OpStmtNode = (Op, In [Arg], Out [Arg])
-class OpStmtNode final : public Tuple<Op, In<List<Arg>>, Out<List<Arg>>> {
+// OpStmt = (Op, In [Arg], Out [Arg])
+class OpStmt final : public Tuple<Op, In<List<Arg>>, Out<List<Arg>>> {
  public:
   using Tuple<Op, In<List<Arg>>, Out<List<Arg>>>::Tuple;
 
-  bool operator==(const OpstmtNode& other) const {
+  bool operator==(const Opstmt& other) const {
     return &this->tuple() == &other.tuple();
   }
 };
 
-inline std::size_t GetHashValue(const OpStmtNode& op_stmt_node) {
+inline std::size_t GetHashValue(const OpStmt& op_stmt_node) {
   return &op_stmt_node.tuple();
 }
 
-// MapNode T = (ScheduleDescriptor, [T])
+// MapStmt T = (ScheduleDescriptor, [T])
 template <typename T>
-class MapNode final : public Tuple<ScheduleDescriptor, List<T>> {
+class MapStmt final : public Tuple<ScheduleDescriptor, List<T>> {
  public:
   using Tuple<ScheduleDescriptor, List<T>>::Tuple;
 };
 
-// Stmt = OpStmtNode | MapNode Stmt
-DEFINE_ADT_UNION(Stmt, OpStmtNode, MapNode<Stmt>);
+// Stmt = OpStmt | MapStmt Stmt
+DEFINE_ADT_UNION(Stmt, OpStmt, MapStmt<Stmt>);
 
-// IGroup = (MapStmtNode, tAnchor Tensor)
-class IGroup final : public Tuple<MapNode<Stmt>, tAnchor<Tensor>> {
+class AnchoredMapStmt final : public Tuple<MapStmt<Stmt>, tAnchor<Tensor>> {
  public:
-  using Tuple<MapNode<Stmt>, tAnchor<Tensor>>::Tuple;
+  using Tuple<MapStmt<Stmt>, tAnchor<Tensor>>::Tuple;
 };
 
-// Kernel = ([IGroup], In [Tensor], Out [Tensor])
+// Kernel = ([AnchoredMapStmt], In [Tensor], Out [Tensor])
 class Kernel final
-    : public Tuple<List<IGroup>, In<List<Tensor>>, Out<List<Tensor>>> {
+    : public Tuple<List<AnchoredMapStmt>, In<List<Tensor>>, Out<List<Tensor>>> {
  public:
-  using Tuple<List<IGroup>, In<List<Tensor>>, Out<List<Tensor>>>::Tuple;
+  using Tuple<List<AnchoredMapStmt>, In<List<Tensor>>, Out<List<Tensor>>>::
+      Tuple;
 };
 
 using TensorIndexExpr = equation::Value;
@@ -168,9 +168,8 @@ struct hash<cinn::adt::m_expr::Tensor> {
 };
 
 template <>
-struct hash<cinn::adt::m_expr::OpStmtNode> {
-  std::size_t operator()(
-      const cinn::adt::m_expr::OpStmtNode& op_stmt_node) const {
+struct hash<cinn::adt::m_expr::OpStmt> {
+  std::size_t operator()(const cinn::adt::m_expr::OpStmt& op_stmt_node) const {
     return cinn::adt::m_expr::GetHashValue(op_stmt_node);
   }
 };
