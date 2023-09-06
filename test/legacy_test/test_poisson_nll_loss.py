@@ -51,7 +51,9 @@ def ref_poisson_nll_loss(
         stirling_approx = (
             label * np.log(label) - label + 0.5 * np.log(2 * np.pi * label)
         )
-        loss_out += np.where(stirling_approx <= 1, 0, stirling_approx)
+        loss_out += np.where(
+            label > 1, stirling_approx, np.zeros_like(stirling_approx)
+        )
 
     if reduction == 'none':
         return loss_out
