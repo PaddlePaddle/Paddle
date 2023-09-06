@@ -103,8 +103,8 @@ void PaddleDialect::PrintAttribute(ir::Attribute attr, std::ostream &os) const {
 
 void PaddleDialect::PrintOperation(ir::Operation *op,
                                    ir::IrPrinter &printer) const {
-  if (op->isa<IfOp>()) {
-    printer.PrintFullOperation(op);
+  if (auto if_op = op->dyn_cast<IfOp>()) {
+    if_op.Print(printer);
   } else {
     printer.PrintGeneralOperation(op);
   }

@@ -56,4 +56,6 @@ TEST(if_op_test, base) {
 
   std::stringstream ss;
   program.Print(ss);
+
+  LOG(INFO) << ss.str();
 }

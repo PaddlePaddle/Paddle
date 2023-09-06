@@ -160,7 +160,8 @@ OpInfoTuple AddN_Op::GetOpInfo() {
           "ir::VectorType<paddle::dialect::DenseTensorType>",
           false,
           false,
-          false)};
+          false,
+          true)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       paddle::dialect::OpOutputInfo(
@@ -287,7 +288,8 @@ OpInfoTuple AddNWithKernelOp::GetOpInfo() {
           "ir::VectorType<paddle::dialect::DenseTensorType>",
           false,
           false,
-          false)};
+          false,
+          true)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       paddle::dialect::OpOutputInfo(
@@ -653,9 +655,17 @@ void IfOp::Print(ir::IrPrinter &printer) {
   printer.PrintOpOperands(op);
   os << " -> ";
   printer.PrintOpReturnType(op);
-  printer.PrintBlock(true_block());
-  os << " else ";
-  printer.PrintBlock(false_block());
+  os << "{";
+  for (auto item : *true_block()) {
+    os << "\n  ";
+    printer.PrintOperation(item);
+  }
+  os << "\n } else {";
+  for (auto item : *false_block()) {
+    os << "\n  ";
+    printer.PrintOperation(item);
+  }
+  os << "\n }";
 }
 void IfOp::Verify() {}
 }  // namespace dialect
