@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/adt/equation.h"
+#include "paddle/cinn/adt/group_partitioner.h"
 
 namespace cinn::adt {
 
@@ -30,8 +31,7 @@ std::shared_ptr<equation::Graph> GenerateEquationGraph(
 std::unordered_map<AnchorTensor, FakeOpPlaceHolders> PartitionIGroups(
     const cinn::hlir::framework::Graph::Group& group,
     const equation::Graph& equations) {
-  // Yifan
-  ADT_TODO();  // Trival code
+  return equation::PartitionGraph(group, equations);
 }
 
 template <typename DoEachT>
