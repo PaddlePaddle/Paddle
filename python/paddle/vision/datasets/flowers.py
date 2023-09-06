@@ -65,11 +65,11 @@ class Flowers(Dataset):
 
         .. code-block:: python
 
+            >>> # doctest: +TIMEOUT(60)
             >>> import itertools
             >>> import paddle.vision.transforms as T
             >>> from paddle.vision.datasets import Flowers
 
-            >>> # doctest: +TIMEOUT(60)
             >>> flowers = Flowers()
             >>> print(len(flowers))
             6149
