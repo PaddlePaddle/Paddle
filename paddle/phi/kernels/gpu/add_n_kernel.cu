@@ -58,6 +58,15 @@ void AddNKernel(const Context &dev_ctx,
                 const std::vector<const TensorBase *> &x,
                 DenseTensor *out) {
   const size_t in_num = x.size();
+  std::cout << "add_n kernel input 0 &&&&&&&&&&&&&&&&&&&&&&&&&&&&&  "
+            << x[0]->place() << std::endl;
+  std::cout << "add_n kernel input 1 &&&&&&&&&&&&&&&&&&&&&&&&&&&&&  "
+            << x[1]->place() << std::endl;
+  std::cout << "add_n kernel out.    &&&&&&&&&&&&&&&&&&&&&&&&&&&&&  " << out
+            << std::endl;
+  // std::cout << "add_n kernel out.    &&&&&&&&&&&&&&&&&&&&&&&&&&&&&  " <<
+  // out->place() << std::endl;
+
   for (int i = 0; i < in_num; ++i) {
     PADDLE_ENFORCE_EQ(
         x[i]->initialized(),
@@ -68,7 +77,6 @@ void AddNKernel(const Context &dev_ctx,
 
   constexpr size_t theory_sm_threads = 1024;
   auto stream = dev_ctx.stream();
-
   auto max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   auto sm_count = max_threads / theory_sm_threads;
   size_t tile_size = 0;
@@ -93,12 +101,33 @@ void AddNKernel(const Context &dev_ctx,
     }
   }
 
+  for (size_t i = 0; i < x.size(); i++) {
+    std::cout << "check =============================1 " << i << std::endl;
+    phi::DenseTensor tensor_tmp;
+    std::cout << "check =============================2 " << i << std::endl;
+    phi::Copy(
+        dev_ctx,
+        *(const_cast<DenseTensor *>(static_cast<const DenseTensor *>(x[i]))),
+        CPUPlace(),
+        true,
+        &tensor_tmp);
+    std::cout << "check =============================3 " << i << std::endl;
+    std::cout << sizeof(tensor_tmp.data()) << std::endl;
+    std::cout << "check =============================4 " << i << std::endl;
+    for (size_t ii = 0; ii < tensor_tmp.numel(); ii++) {
+      std::cout << (static_cast<T *>(tensor_tmp.data()))[ii] << "-";
+    }
+    std::cout << std::endl;
+  }
+
   if (!in_place && in_num >= 1 && DenseTensor::classof(x[0])) {
     auto &in_0_tensor = *(static_cast<const DenseTensor *>(x[0]));
     if (in_0_tensor.numel() > 0) {
       in_place = (in_0_tensor.data<T>() == out_ptr);
     }
   }
+  std::cout << "add_n kernel process 0.8 &&&&&&&&&&&&&&&&&&&&&&&&&&&&&  "
+            << std::endl;
 
   // Sum of two tensors
   if (in_num == 2 && DenseTensor::classof(x[0]) && DenseTensor::classof(x[1])) {
@@ -113,17 +142,46 @@ void AddNKernel(const Context &dev_ctx,
       auto in_0_e = EigenVector<T>::Flatten(in_0).template cast<MPType>();
       auto in_1_e = EigenVector<T>::Flatten(in_1).template cast<MPType>();
       result.device(place) = (in_0_e + in_1_e).template cast<T>();
+      std::cout << "add_n kernel process 0.88 &&&&&&&&&&&&&&&&&&&&&&&&&&&&&  "
+                << std::endl;
     } else if (length_0 && in_0.IsInitialized()) {
+      // std::cout << "add_n kernel process 0.86 &&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+      // " << std::endl;
       auto result = EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
       result.device(place) = EigenVector<T>::Flatten(in_0);
     } else if (length_1 && in_1.IsInitialized()) {
+      // std::cout << "add_n kernel process 0.88 &&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+      // " << std::endl;
       auto result = EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
       result.device(place) = EigenVector<T>::Flatten(in_1);
     }
+
+    std::cout << "check =============================1 " << std::endl;
+    phi::DenseTensor tensor_tmp_out;
+    std::cout << "check =============================2 " << std::endl;
+    phi::Copy(
+        dev_ctx,
+        *(const_cast<DenseTensor *>(static_cast<const DenseTensor *>(out))),
+        CPUPlace(),
+        true,
+        &tensor_tmp_out);
+    std::cout << "check =============================3 " << std::endl;
+    std::cout << sizeof(tensor_tmp_out.data()) << std::endl;
+    std::cout << "check =============================4 " << std::endl;
+    for (size_t ii = 0; ii < tensor_tmp_out.numel(); ii++) {
+      std::cout << (static_cast<T *>(tensor_tmp_out.data()))[ii] << "-";
+    }
+    std::cout << std::endl;
+
+    std::cout << "add_n kernel process 0.89 &&&&&&&&&&&&&&&&&&&&&&&&&&&&&  "
+              << std::endl;
     return;
   }
+
+  std::cout << "add_n kernel process 0.9 &&&&&&&&&&&&&&&&&&&&&&&&&&&&&  "
+            << std::endl;
 
   int start = in_place ? 1 : 0;
   if (!in_place) {
@@ -146,7 +204,6 @@ void AddNKernel(const Context &dev_ctx,
       selectrow_index.push_back(i);
     }
   }
-
   // compute select rows separately.
   if (!selectrow_index.empty()) {
     std::vector<const T *> sr_in_out_data;
@@ -227,6 +284,7 @@ void AddNKernel(const Context &dev_ctx,
                                                         in_data.size(),
                                                         dst_write | in_place);
   }
+  std::cout << "add_n kernel end &&&&&&&&&&&&&&&&&&&&&&&&&&&&&  " << std::endl;
 }
 
 }  // namespace phi

@@ -285,11 +285,16 @@ phi::DataType GetKernelDataTypeByYamlInfo(
     const std::unordered_map<ir::Value, ir::OpResult>& map_value_pair,
     const dialect::OpYamlInfoParser* op_info_parser) {
   auto& attr_map = op->attributes();
+  std::cout << "op name ================ " << op->name() << std::endl;
+  for (auto it = attr_map.begin(); it != attr_map.end(); ++it) {
+    std::cout << "Key------------------------ " << it->first << std::endl;
+  }
   auto& data_type_info = op_info_parser->OpRuntimeInfo().kernel_key_dtype;
   phi::DataType kernel_data_type = phi::DataType::UNDEFINED;
 
   for (size_t i = 0; i < data_type_info.size(); ++i) {
     auto slot_name = data_type_info[i];
+    std::cout << "slot name ************* " << slot_name << std::endl;
     auto& input_map = op_info_parser->InputName2Id();
 
     auto find_it = Str2PhiDataType.find(slot_name);
@@ -642,6 +647,11 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
         }
       }
       VLOG(6) << "Deep copy a new builtin op: " << op_item->name();
+
+      // combine op
+      op->Print(std::cout);
+      std::cout << std::endl;
+
       continue;
     }
 
@@ -759,9 +769,10 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     if (op_info_parser != nullptr) {
       kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func[0];
     }
+    VLOG(0) << "kernel_fn_str:" << kernel_fn_str;
     auto kernel_key =
         GetKernelKey(op_item, place, map_value_pair, op_info_parser.get());
-    VLOG(6) << "kernel type " << kernel_key;
+    VLOG(0) << "kernel type " << kernel_key;
 
     if (op_item->name() == "pd.load_combine") {
       kernel_key.set_dtype(phi::DataType::FLOAT32);
@@ -998,6 +1009,9 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
         {"op_name", ir::StrAttribute::get(ctx, op_item->name())},
         {"kernel_name", ir::StrAttribute::get(ctx, kernel_fn_str)},
         {"kernel_key", dialect::KernelAttribute::get(ctx, kernel_key)}};
+    std::cout << "op name  ========== 0 " << op_item->name() << std::endl;
+    std::cout << "kernel name  ========== 1 " << kernel_fn_str << std::endl;
+    std::cout << "kernel key ========== 2 " << kernel_key << std::endl;
     auto op_attr_map = op_item->attributes();
 
     for (auto& map_item : op_attr_map) {

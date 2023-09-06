@@ -128,6 +128,26 @@ void sum_grad(const Tensor& x,
   set_output<T>(x_grad_tmp, x_grad);
 }
 
+template <typename T>
+void gelu_grad(const Tensor& x,
+               const Tensor& out_grad,
+               bool approximate,
+               Tensor* x_grad) {
+  if (!x_grad) return;
+  // Scale only support fp32 attr in static graph mode, use elementwise_xx
+  // when precision is over fp32.
+
+  auto kAlpha = full<T>(x.shape, M_SQRT1_2, x.dtype());
+
+  auto kBeta_value = M_2_SQRTPI * M_SQRT1_2 * 0.5;
+  auto kBeta = full<T>(x.shape, kBeta_value, x.dtype());
+
+  auto cdf = scale<T>(scale<T>(erf<T>(multiply<T>(kAlpha, x)), 1., 1.), 0.5);
+  auto pdf = multiply<T>(kBeta, exp<T>(scale<T>(multiply<T>(x, x), -0.5)));
+  auto res = multiply<T>(add<T>(cdf, multiply<T>(x, pdf)), out_grad);
+  set_output<T>(res, x_grad);
+}
+
 }  // namespace details
 }  // namespace primitive
 }  // namespace paddle

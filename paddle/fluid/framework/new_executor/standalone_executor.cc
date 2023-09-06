@@ -101,6 +101,10 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       }
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
+
+      kernel_program->Print(std::cout);
+      std::cout << std::endl;
+
       interpretercores_.emplace_back(
           std::make_shared<InterpreterCore>(place_,
                                             fetch_var_names_,

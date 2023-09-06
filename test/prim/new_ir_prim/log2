@@ -1,0 +1,405 @@
+grep: warning: GREP_OPTIONS is deprecated; please use an alias or script
+W0901 09:00:35.230459 34612 ir_context.cc:283]  type already registered.
+I0901 09:00:35.230551 34612 pd_op_to_kernel_pass.cc:772] kernel_fn_str:data
+I0901 09:00:35.230562 34612 pd_op_to_kernel_pass.cc:775] kernel type (Undefined, Undefined(AnyLayout), float32)
+op name  ========== 0 pd.data
+kernel name  ========== 1 data
+kernel key ========== 2 (Undefined, Undefined(AnyLayout), float32)
+I0901 09:00:35.230659 34612 pd_op_to_kernel_pass.cc:772] kernel_fn_str:data
+I0901 09:00:35.230665 34612 pd_op_to_kernel_pass.cc:775] kernel type (Undefined, Undefined(AnyLayout), float32)
+op name  ========== 0 pd.data
+kernel name  ========== 1 data
+kernel key ========== 2 (Undefined, Undefined(AnyLayout), float32)
+I0901 09:00:35.230696 34612 pd_op_to_kernel_pass.cc:772] kernel_fn_str:data
+I0901 09:00:35.230701 34612 pd_op_to_kernel_pass.cc:775] kernel type (Undefined, Undefined(AnyLayout), float32)
+op name  ========== 0 pd.data
+kernel name  ========== 1 data
+kernel key ========== 2 (Undefined, Undefined(AnyLayout), float32)
+I0901 09:00:35.230731 34612 pd_op_to_kernel_pass.cc:772] kernel_fn_str:data
+I0901 09:00:35.230736 34612 pd_op_to_kernel_pass.cc:775] kernel type (Undefined, Undefined(AnyLayout), float32)
+op name  ========== 0 pd.data
+kernel name  ========== 1 data
+kernel key ========== 2 (Undefined, Undefined(AnyLayout), float32)
+I0901 09:00:35.230760 34612 pd_op_to_kernel_pass.cc:772] kernel_fn_str:data
+I0901 09:00:35.230765 34612 pd_op_to_kernel_pass.cc:775] kernel type (Undefined, Undefined(AnyLayout), float32)
+op name  ========== 0 pd.data
+kernel name  ========== 1 data
+kernel key ========== 2 (Undefined, Undefined(AnyLayout), float32)
+I0901 09:00:35.230790 34612 pd_op_to_kernel_pass.cc:772] kernel_fn_str:data
+I0901 09:00:35.230795 34612 pd_op_to_kernel_pass.cc:775] kernel type (Undefined, Undefined(AnyLayout), float32)
+op name  ========== 0 pd.data
+kernel name  ========== 1 data
+kernel key ========== 2 (Undefined, Undefined(AnyLayout), float32)
+I0901 09:00:35.230829 34612 pd_op_to_kernel_pass.cc:772] kernel_fn_str:divide
+op name ================ pd.divide
+I0901 09:00:35.230857 34612 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.divide
+kernel name  ========== 1 divide
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+I0901 09:00:35.230898 34612 pd_op_to_kernel_pass.cc:772] kernel_fn_str:full
+op name ================ pd.full
+Key------------------------ stop_gradient
+Key------------------------ place
+Key------------------------ shape
+Key------------------------ dtype
+Key------------------------ value
+slot name ************* dtype
+I0901 09:00:35.230917 34612 pd_op_to_kernel_pass.cc:775] kernel type (GPU, Undefined(AnyLayout), float32)
+op name  ========== 0 pd.full
+kernel name  ========== 1 full
+kernel key ========== 2 (GPU, Undefined(AnyLayout), float32)
+I0901 09:00:35.230948 34612 pd_op_to_kernel_pass.cc:772] kernel_fn_str:add
+op name ================ pd.add
+I0901 09:00:35.230960 34612 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.add
+kernel name  ========== 1 add
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+I0901 09:00:35.231009 34612 pd_op_to_kernel_pass.cc:772] kernel_fn_str:multiply
+op name ================ pd.multiply
+I0901 09:00:35.231021 34612 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.multiply
+kernel name  ========== 1 multiply
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+I0901 09:00:35.231050 34612 pd_op_to_kernel_pass.cc:772] kernel_fn_str:full
+op name ================ pd.full
+Key------------------------ stop_gradient
+Key------------------------ place
+Key------------------------ shape
+Key------------------------ dtype
+Key------------------------ value
+slot name ************* dtype
+I0901 09:00:35.231066 34612 pd_op_to_kernel_pass.cc:775] kernel type (GPU, Undefined(AnyLayout), float32)
+op name  ========== 0 pd.full
+kernel name  ========== 1 full
+kernel key ========== 2 (GPU, Undefined(AnyLayout), float32)
+I0901 09:00:35.231101 34612 pd_op_to_kernel_pass.cc:772] kernel_fn_str:multiply_grad
+op name ================ pd.multiply_grad
+Key------------------------ axis
+I0901 09:00:35.231125 34612 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.multiply_grad
+kernel name  ========== 1 multiply_grad
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+I0901 09:00:35.231165 34612 pd_op_to_kernel_pass.cc:772] kernel_fn_str:add_grad
+op name ================ pd.add_grad
+Key------------------------ axis
+I0901 09:00:35.231181 34612 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.add_grad
+kernel name  ========== 1 add_grad
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+ (%0) = "builtin.combine" (%1, %2) {} : (gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>) -> vec[gpu_tensor<4x16x16xf32>,gpu_tensor<4x16x16xf32>]
+I0901 09:00:35.231238 34612 pd_op_to_kernel_pass.cc:772] kernel_fn_str:add_n
+op name ================ pd.add_n
+I0901 09:00:35.231252 34612 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.add_n
+kernel name  ========== 1 add_n
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+I0901 09:00:35.231289 34612 pd_op_to_kernel_pass.cc:772] kernel_fn_str:divide_grad
+op name ================ pd.divide_grad
+Key------------------------ axis
+I0901 09:00:35.231307 34612 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.divide_grad
+kernel name  ========== 1 divide_grad
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+I0901 09:00:35.231343 34612 pd_op_to_kernel_pass.cc:772] kernel_fn_str:fetch
+op name ================ pd.fetch
+Key------------------------ col
+Key------------------------ name
+I0901 09:00:35.231355 34612 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.fetch
+kernel name  ========== 1 fetch
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+I0901 09:00:35.231380 34612 pd_op_to_kernel_pass.cc:772] kernel_fn_str:fetch
+op name ================ pd.fetch
+Key------------------------ col
+Key------------------------ name
+I0901 09:00:35.231392 34612 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.fetch
+kernel name  ========== 1 fetch
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+I0901 09:00:35.231415 34612 pd_op_to_kernel_pass.cc:772] kernel_fn_str:fetch
+op name ================ pd.fetch
+Key------------------------ col
+Key------------------------ name
+I0901 09:00:35.231426 34612 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.fetch
+kernel name  ========== 1 fetch
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+{
+ (%0) = "pd_kernel.phi_kernel" () {dtype:float32,kernel_key:<backend:Undefined|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:data,name:x,op_name:pd.data,place:Place(undefined:0),shape:IntArray[4,16,16],stop_gradient:array[0]} : () -> undefined_tensor<4x16x16xf32>
+ (%1) = "pd_kernel.phi_kernel" (%0) {kernel_key:<backend:GPU|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:shadow_feed,op_name:pd.shadow_feed} : (undefined_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>
+ (%2) = "pd_kernel.phi_kernel" () {dtype:float32,kernel_key:<backend:Undefined|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:data,name:y,op_name:pd.data,place:Place(undefined:0),shape:IntArray[4,16,16],stop_gradient:array[0]} : () -> undefined_tensor<4x16x16xf32>
+ (%3) = "pd_kernel.phi_kernel" (%2) {kernel_key:<backend:GPU|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:shadow_feed,op_name:pd.shadow_feed} : (undefined_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>
+ (%4) = "pd_kernel.phi_kernel" () {dtype:float32,kernel_key:<backend:Undefined|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:data,name:w,op_name:pd.data,place:Place(undefined:0),shape:IntArray[16]} : () -> undefined_tensor<16xf32>
+ (%5) = "pd_kernel.phi_kernel" (%4) {kernel_key:<backend:GPU|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:shadow_feed,op_name:pd.shadow_feed} : (undefined_tensor<16xf32>) -> gpu_tensor<16xf32>
+ (%6) = "pd_kernel.phi_kernel" () {dtype:float32,kernel_key:<backend:Undefined|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:data,name:b,op_name:pd.data,place:Place(undefined:0),shape:IntArray[16]} : () -> undefined_tensor<16xf32>
+ (%7) = "pd_kernel.phi_kernel" (%6) {kernel_key:<backend:GPU|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:shadow_feed,op_name:pd.shadow_feed} : (undefined_tensor<16xf32>) -> gpu_tensor<16xf32>
+ (%8) = "pd_kernel.phi_kernel" () {dtype:float32,kernel_key:<backend:Undefined|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:data,name:l1_w,op_name:pd.data,place:Place(undefined:0),shape:IntArray[4,16,32]} : () -> undefined_tensor<4x16x32xf32>
+ (%9) = "pd_kernel.phi_kernel" (%8) {kernel_key:<backend:GPU|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:shadow_feed,op_name:pd.shadow_feed} : (undefined_tensor<4x16x32xf32>) -> gpu_tensor<4x16x32xf32>
+ (%10) = "pd_kernel.phi_kernel" () {dtype:float32,kernel_key:<backend:Undefined|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:data,name:l2_w,op_name:pd.data,place:Place(undefined:0),shape:IntArray[4,32,16]} : () -> undefined_tensor<4x32x16xf32>
+ (%11) = "pd_kernel.phi_kernel" (%10) {kernel_key:<backend:GPU|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:shadow_feed,op_name:pd.shadow_feed} : (undefined_tensor<4x32x16xf32>) -> gpu_tensor<4x32x16xf32>
+ (%12) = "pd_kernel.phi_kernel" (%1, %3) {kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:divide,op_name:pd.divide} : (gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>
+ (%13) = "pd_kernel.phi_kernel" () {dtype:float32,kernel_key:<backend:GPU|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:full,op_name:pd.full,place:Place(gpu:0),shape:IntArray[4,16,16],stop_gradient:array[1],value:0.707107} : () -> gpu_tensor<4x16x16xf32>
+ (%14) = "pd_kernel.phi_kernel" (%12, %13) {kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:add,op_name:pd.add} : (gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>
+ (%15) = "pd_kernel.phi_kernel" (%12, %14) {kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:multiply,op_name:pd.multiply} : (gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>
+ (%16) = "pd_kernel.phi_kernel" () {dtype:float32,kernel_key:<backend:GPU|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:full,op_name:pd.full,place:Place(gpu:0),shape:IntArray[4,16,16],stop_gradient:array[1],value:1} : () -> gpu_tensor<4x16x16xf32>
+ (%17, %18) = "pd_kernel.phi_kernel" (%12, %14, %16) {axis:-1,kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:multiply_grad,op_name:pd.multiply_grad} : (gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>
+ (%19, %20) = "pd_kernel.phi_kernel" (%12, %13, %18) {axis:-1,kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:add_grad,op_name:pd.add_grad} : (gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>
+ (%21) = "builtin.combine" (%17, %19) {} : (gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>) -> vec[gpu_tensor<4x16x16xf32>,gpu_tensor<4x16x16xf32>]
+ (%22) = "pd_kernel.phi_kernel" (%21) {kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:add_n,op_name:pd.add_n} : (vec[gpu_tensor<4x16x16xf32>,gpu_tensor<4x16x16xf32>]) -> gpu_tensor<4x16x16xf32>
+ (%23, %24) = "pd_kernel.phi_kernel" (%1, %3, %12, %22) {axis:-1,kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:divide_grad,op_name:pd.divide_grad} : (gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>
+ (%25) = "pd_kernel.phi_kernel" (%15) {col:0,kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:fetch,name:fetch0,op_name:pd.fetch} : (gpu_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>
+ (%26) = "pd_kernel.phi_kernel" (%23) {col:1,kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:fetch,name:fetch1,op_name:pd.fetch} : (gpu_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>
+ (%27) = "pd_kernel.phi_kernel" (%24) {col:2,kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:fetch,name:fetch2,op_name:pd.fetch} : (gpu_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>
+}
+
+I0901 09:00:37.859601 34612 new_ir_interpreter.cc:917] New Executor is BetaRunning.
+W0901 09:00:37.860383 34612 gpu_resources.cc:119] Please NOTE: device: 0, GPU Compute Capability: 7.0, Driver API Version: 12.0, Runtime API Version: 11.2
+W0901 09:00:37.863952 34612 gpu_resources.cc:149] device: 0, cuDNN Version: 8.1.
+I0901 09:00:37.864106 34612 phi_kernel_instruction.cc:56] construct phi kernel instruction for: pd.shadow_feed
+I0901 09:00:37.864114 34612 phi_kernel_instruction.cc:85] finish process dist attributes
+I0901 09:00:37.864122 34612 phi_kernel_instruction.cc:88] finish process analyse kernel type
+I0901 09:00:37.864127 34612 phi_kernel_instruction.cc:92] finish process infer_meta_interface_
+I0901 09:00:37.864157 34612 phi_kernel_instruction.cc:102] finish process yaml_info_parser
+I0901 09:00:37.864179 34612 phi_kernel_instruction.cc:118] finish process infer meta context
+I0901 09:00:37.864192 34612 phi_kernel_instruction.cc:130] finish process select kernel
+I0901 09:00:37.864205 34612 phi_kernel_instruction.cc:145] finish process kernel context
+I0901 09:00:37.864218 34612 phi_kernel_instruction.cc:154] finish process device context
+I0901 09:00:37.864233 34612 phi_kernel_instruction.cc:159] finish process inputs outputs index
+I0901 09:00:37.864238 34612 phi_kernel_instruction.cc:167] finish process no need buffer
+I0901 09:00:37.864254 34612 phi_kernel_instruction.cc:56] construct phi kernel instruction for: pd.shadow_feed
+I0901 09:00:37.864259 34612 phi_kernel_instruction.cc:85] finish process dist attributes
+I0901 09:00:37.864262 34612 phi_kernel_instruction.cc:88] finish process analyse kernel type
+I0901 09:00:37.864266 34612 phi_kernel_instruction.cc:92] finish process infer_meta_interface_
+I0901 09:00:37.864276 34612 phi_kernel_instruction.cc:102] finish process yaml_info_parser
+I0901 09:00:37.864282 34612 phi_kernel_instruction.cc:118] finish process infer meta context
+I0901 09:00:37.864286 34612 phi_kernel_instruction.cc:130] finish process select kernel
+I0901 09:00:37.864292 34612 phi_kernel_instruction.cc:145] finish process kernel context
+I0901 09:00:37.864297 34612 phi_kernel_instruction.cc:154] finish process device context
+I0901 09:00:37.864305 34612 phi_kernel_instruction.cc:159] finish process inputs outputs index
+I0901 09:00:37.864308 34612 phi_kernel_instruction.cc:167] finish process no need buffer
+I0901 09:00:37.864318 34612 phi_kernel_instruction.cc:56] construct phi kernel instruction for: pd.shadow_feed
+I0901 09:00:37.864321 34612 phi_kernel_instruction.cc:85] finish process dist attributes
+I0901 09:00:37.864326 34612 phi_kernel_instruction.cc:88] finish process analyse kernel type
+I0901 09:00:37.864329 34612 phi_kernel_instruction.cc:92] finish process infer_meta_interface_
+I0901 09:00:37.864337 34612 phi_kernel_instruction.cc:102] finish process yaml_info_parser
+I0901 09:00:37.864342 34612 phi_kernel_instruction.cc:118] finish process infer meta context
+I0901 09:00:37.864347 34612 phi_kernel_instruction.cc:130] finish process select kernel
+I0901 09:00:37.864352 34612 phi_kernel_instruction.cc:145] finish process kernel context
+I0901 09:00:37.864357 34612 phi_kernel_instruction.cc:154] finish process device context
+I0901 09:00:37.864363 34612 phi_kernel_instruction.cc:159] finish process inputs outputs index
+I0901 09:00:37.864367 34612 phi_kernel_instruction.cc:167] finish process no need buffer
+I0901 09:00:37.864377 34612 phi_kernel_instruction.cc:56] construct phi kernel instruction for: pd.shadow_feed
+I0901 09:00:37.864380 34612 phi_kernel_instruction.cc:85] finish process dist attributes
+I0901 09:00:37.864385 34612 phi_kernel_instruction.cc:88] finish process analyse kernel type
+I0901 09:00:37.864388 34612 phi_kernel_instruction.cc:92] finish process infer_meta_interface_
+I0901 09:00:37.864406 34612 phi_kernel_instruction.cc:102] finish process yaml_info_parser
+I0901 09:00:37.864413 34612 phi_kernel_instruction.cc:118] finish process infer meta context
+I0901 09:00:37.864418 34612 phi_kernel_instruction.cc:130] finish process select kernel
+I0901 09:00:37.864423 34612 phi_kernel_instruction.cc:145] finish process kernel context
+I0901 09:00:37.864428 34612 phi_kernel_instruction.cc:154] finish process device context
+I0901 09:00:37.864434 34612 phi_kernel_instruction.cc:159] finish process inputs outputs index
+I0901 09:00:37.864437 34612 phi_kernel_instruction.cc:167] finish process no need buffer
+I0901 09:00:37.864446 34612 phi_kernel_instruction.cc:56] construct phi kernel instruction for: pd.shadow_feed
+I0901 09:00:37.864450 34612 phi_kernel_instruction.cc:85] finish process dist attributes
+I0901 09:00:37.864454 34612 phi_kernel_instruction.cc:88] finish process analyse kernel type
+I0901 09:00:37.864459 34612 phi_kernel_instruction.cc:92] finish process infer_meta_interface_
+I0901 09:00:37.864466 34612 phi_kernel_instruction.cc:102] finish process yaml_info_parser
+I0901 09:00:37.864471 34612 phi_kernel_instruction.cc:118] finish process infer meta context
+I0901 09:00:37.864475 34612 phi_kernel_instruction.cc:130] finish process select kernel
+I0901 09:00:37.864481 34612 phi_kernel_instruction.cc:145] finish process kernel context
+I0901 09:00:37.864485 34612 phi_kernel_instruction.cc:154] finish process device context
+I0901 09:00:37.864491 34612 phi_kernel_instruction.cc:159] finish process inputs outputs index
+I0901 09:00:37.864495 34612 phi_kernel_instruction.cc:167] finish process no need buffer
+I0901 09:00:37.864504 34612 phi_kernel_instruction.cc:56] construct phi kernel instruction for: pd.shadow_feed
+I0901 09:00:37.864508 34612 phi_kernel_instruction.cc:85] finish process dist attributes
+I0901 09:00:37.864512 34612 phi_kernel_instruction.cc:88] finish process analyse kernel type
+I0901 09:00:37.864516 34612 phi_kernel_instruction.cc:92] finish process infer_meta_interface_
+I0901 09:00:37.864523 34612 phi_kernel_instruction.cc:102] finish process yaml_info_parser
+I0901 09:00:37.864529 34612 phi_kernel_instruction.cc:118] finish process infer meta context
+I0901 09:00:37.864533 34612 phi_kernel_instruction.cc:130] finish process select kernel
+I0901 09:00:37.864538 34612 phi_kernel_instruction.cc:145] finish process kernel context
+I0901 09:00:37.864543 34612 phi_kernel_instruction.cc:154] finish process device context
+I0901 09:00:37.864548 34612 phi_kernel_instruction.cc:159] finish process inputs outputs index
+I0901 09:00:37.864552 34612 phi_kernel_instruction.cc:167] finish process no need buffer
+I0901 09:00:37.864562 34612 phi_kernel_instruction.cc:56] construct phi kernel instruction for: pd.divide
+I0901 09:00:37.864565 34612 phi_kernel_instruction.cc:85] finish process dist attributes
+I0901 09:00:37.864569 34612 phi_kernel_instruction.cc:88] finish process analyse kernel type
+I0901 09:00:37.864573 34612 phi_kernel_instruction.cc:92] finish process infer_meta_interface_
+I0901 09:00:37.864585 34612 phi_kernel_instruction.cc:102] finish process yaml_info_parser
+I0901 09:00:37.864591 34612 phi_kernel_instruction.cc:118] finish process infer meta context
+I0901 09:00:37.864602 34612 phi_kernel_instruction.cc:130] finish process select kernel
+I0901 09:00:37.864609 34612 phi_kernel_instruction.cc:145] finish process kernel context
+I0901 09:00:37.864614 34612 phi_kernel_instruction.cc:154] finish process device context
+I0901 09:00:37.864620 34612 phi_kernel_instruction.cc:159] finish process inputs outputs index
+I0901 09:00:37.864624 34612 phi_kernel_instruction.cc:167] finish process no need buffer
+I0901 09:00:37.864636 34612 phi_kernel_instruction.cc:56] construct phi kernel instruction for: pd.full
+I0901 09:00:37.864640 34612 phi_kernel_instruction.cc:85] finish process dist attributes
+I0901 09:00:37.864645 34612 phi_kernel_instruction.cc:88] finish process analyse kernel type
+I0901 09:00:37.864648 34612 phi_kernel_instruction.cc:92] finish process infer_meta_interface_
+I0901 09:00:37.864675 34612 phi_kernel_instruction.cc:102] finish process yaml_info_parser
+I0901 09:00:37.864686 34612 phi_kernel_instruction.cc:118] finish process infer meta context
+I0901 09:00:37.864692 34612 phi_kernel_instruction.cc:130] finish process select kernel
+I0901 09:00:37.864706 34612 phi_kernel_instruction.cc:145] finish process kernel context
+I0901 09:00:37.864711 34612 phi_kernel_instruction.cc:154] finish process device context
+I0901 09:00:37.864717 34612 phi_kernel_instruction.cc:159] finish process inputs outputs index
+I0901 09:00:37.864720 34612 phi_kernel_instruction.cc:167] finish process no need buffer
+I0901 09:00:37.864734 34612 phi_kernel_instruction.cc:56] construct phi kernel instruction for: pd.add
+I0901 09:00:37.864737 34612 phi_kernel_instruction.cc:85] finish process dist attributes
+I0901 09:00:37.864742 34612 phi_kernel_instruction.cc:88] finish process analyse kernel type
+I0901 09:00:37.864745 34612 phi_kernel_instruction.cc:92] finish process infer_meta_interface_
+I0901 09:00:37.864758 34612 phi_kernel_instruction.cc:102] finish process yaml_info_parser
+I0901 09:00:37.864763 34612 phi_kernel_instruction.cc:118] finish process infer meta context
+I0901 09:00:37.864773 34612 phi_kernel_instruction.cc:130] finish process select kernel
+I0901 09:00:37.864778 34612 phi_kernel_instruction.cc:145] finish process kernel context
+I0901 09:00:37.864784 34612 phi_kernel_instruction.cc:154] finish process device context
+I0901 09:00:37.864790 34612 phi_kernel_instruction.cc:159] finish process inputs outputs index
+I0901 09:00:37.864794 34612 phi_kernel_instruction.cc:167] finish process no need buffer
+I0901 09:00:37.864806 34612 phi_kernel_instruction.cc:56] construct phi kernel instruction for: pd.multiply
+I0901 09:00:37.864810 34612 phi_kernel_instruction.cc:85] finish process dist attributes
+I0901 09:00:37.864814 34612 phi_kernel_instruction.cc:88] finish process analyse kernel type
+I0901 09:00:37.864818 34612 phi_kernel_instruction.cc:92] finish process infer_meta_interface_
+I0901 09:00:37.864830 34612 phi_kernel_instruction.cc:102] finish process yaml_info_parser
+I0901 09:00:37.864836 34612 phi_kernel_instruction.cc:118] finish process infer meta context
+I0901 09:00:37.864845 34612 phi_kernel_instruction.cc:130] finish process select kernel
+I0901 09:00:37.864850 34612 phi_kernel_instruction.cc:145] finish process kernel context
+I0901 09:00:37.864856 34612 phi_kernel_instruction.cc:154] finish process device context
+I0901 09:00:37.864862 34612 phi_kernel_instruction.cc:159] finish process inputs outputs index
+I0901 09:00:37.864866 34612 phi_kernel_instruction.cc:167] finish process no need buffer
+I0901 09:00:37.864874 34612 phi_kernel_instruction.cc:56] construct phi kernel instruction for: pd.full
+I0901 09:00:37.864878 34612 phi_kernel_instruction.cc:85] finish process dist attributes
+I0901 09:00:37.864882 34612 phi_kernel_instruction.cc:88] finish process analyse kernel type
+I0901 09:00:37.864886 34612 phi_kernel_instruction.cc:92] finish process infer_meta_interface_
+I0901 09:00:37.864899 34612 phi_kernel_instruction.cc:102] finish process yaml_info_parser
+I0901 09:00:37.864907 34612 phi_kernel_instruction.cc:118] finish process infer meta context
+I0901 09:00:37.864912 34612 phi_kernel_instruction.cc:130] finish process select kernel
+I0901 09:00:37.864918 34612 phi_kernel_instruction.cc:145] finish process kernel context
+I0901 09:00:37.864923 34612 phi_kernel_instruction.cc:154] finish process device context
+I0901 09:00:37.864928 34612 phi_kernel_instruction.cc:159] finish process inputs outputs index
+I0901 09:00:37.864933 34612 phi_kernel_instruction.cc:167] finish process no need buffer
+I0901 09:00:37.864943 34612 phi_kernel_instruction.cc:56] construct phi kernel instruction for: pd.multiply_grad
+I0901 09:00:37.864946 34612 phi_kernel_instruction.cc:85] finish process dist attributes
+I0901 09:00:37.864950 34612 phi_kernel_instruction.cc:88] finish process analyse kernel type
+I0901 09:00:37.864954 34612 phi_kernel_instruction.cc:92] finish process infer_meta_interface_
+I0901 09:00:37.864974 34612 phi_kernel_instruction.cc:102] finish process yaml_info_parser
+I0901 09:00:37.864990 34612 phi_kernel_instruction.cc:118] finish process infer meta context
+I0901 09:00:37.865000 34612 phi_kernel_instruction.cc:130] finish process select kernel
+I0901 09:00:37.865011 34612 phi_kernel_instruction.cc:145] finish process kernel context
+I0901 09:00:37.865016 34612 phi_kernel_instruction.cc:154] finish process device context
+I0901 09:00:37.865025 34612 phi_kernel_instruction.cc:159] finish process inputs outputs index
+I0901 09:00:37.865029 34612 phi_kernel_instruction.cc:167] finish process no need buffer
+I0901 09:00:37.865042 34612 phi_kernel_instruction.cc:56] construct phi kernel instruction for: pd.add_grad
+I0901 09:00:37.865046 34612 phi_kernel_instruction.cc:85] finish process dist attributes
+I0901 09:00:37.865051 34612 phi_kernel_instruction.cc:88] finish process analyse kernel type
+I0901 09:00:37.865054 34612 phi_kernel_instruction.cc:92] finish process infer_meta_interface_
+I0901 09:00:37.865070 34612 phi_kernel_instruction.cc:102] finish process yaml_info_parser
+I0901 09:00:37.865078 34612 phi_kernel_instruction.cc:118] finish process infer meta context
+I0901 09:00:37.865087 34612 phi_kernel_instruction.cc:130] finish process select kernel
+I0901 09:00:37.865095 34612 phi_kernel_instruction.cc:145] finish process kernel context
+I0901 09:00:37.865099 34612 phi_kernel_instruction.cc:154] finish process device context
+I0901 09:00:37.865108 34612 phi_kernel_instruction.cc:159] finish process inputs outputs index
+I0901 09:00:37.865113 34612 phi_kernel_instruction.cc:167] finish process no need buffer
+I0901 09:00:37.865128 34612 phi_kernel_instruction.cc:56] construct phi kernel instruction for: pd.add_n
+I0901 09:00:37.865132 34612 phi_kernel_instruction.cc:85] finish process dist attributes
+I0901 09:00:37.865136 34612 phi_kernel_instruction.cc:88] finish process analyse kernel type
+I0901 09:00:37.865140 34612 phi_kernel_instruction.cc:92] finish process infer_meta_interface_
+I0901 09:00:37.865151 34612 phi_kernel_instruction.cc:102] finish process yaml_info_parser
+I0901 09:00:37.865155 34612 phi_kernel_instruction.cc:118] finish process infer meta context
+I0901 09:00:37.865164 34612 phi_kernel_instruction.cc:130] finish process select kernel
+I0901 09:00:37.865170 34612 phi_kernel_instruction.cc:145] finish process kernel context
+I0901 09:00:37.865175 34612 phi_kernel_instruction.cc:154] finish process device context
+I0901 09:00:37.865182 34612 phi_kernel_instruction.cc:159] finish process inputs outputs index
+I0901 09:00:37.865186 34612 phi_kernel_instruction.cc:167] finish process no need buffer
+I0901 09:00:37.865196 34612 phi_kernel_instruction.cc:56] construct phi kernel instruction for: pd.divide_grad
+I0901 09:00:37.865200 34612 phi_kernel_instruction.cc:85] finish process dist attributes
+I0901 09:00:37.865204 34612 phi_kernel_instruction.cc:88] finish process analyse kernel type
+I0901 09:00:37.865208 34612 phi_kernel_instruction.cc:92] finish process infer_meta_interface_
+I0901 09:00:37.865227 34612 phi_kernel_instruction.cc:102] finish process yaml_info_parser
+I0901 09:00:37.865234 34612 phi_kernel_instruction.cc:118] finish process infer meta context
+I0901 09:00:37.865243 34612 phi_kernel_instruction.cc:130] finish process select kernel
+I0901 09:00:37.865252 34612 phi_kernel_instruction.cc:145] finish process kernel context
+I0901 09:00:37.865257 34612 phi_kernel_instruction.cc:154] finish process device context
+I0901 09:00:37.865267 34612 phi_kernel_instruction.cc:159] finish process inputs outputs index
+I0901 09:00:37.865269 34612 phi_kernel_instruction.cc:167] finish process no need buffer
+I0901 09:00:37.865279 34612 phi_kernel_instruction.cc:56] construct phi kernel instruction for: pd.fetch
+I0901 09:00:37.865283 34612 phi_kernel_instruction.cc:85] finish process dist attributes
+I0901 09:00:37.865288 34612 phi_kernel_instruction.cc:88] finish process analyse kernel type
+I0901 09:00:37.865290 34612 phi_kernel_instruction.cc:92] finish process infer_meta_interface_
+I0901 09:00:37.865304 34612 phi_kernel_instruction.cc:102] finish process yaml_info_parser
+I0901 09:00:37.865316 34612 phi_kernel_instruction.cc:118] finish process infer meta context
+I0901 09:00:37.865326 34612 phi_kernel_instruction.cc:130] finish process select kernel
+I0901 09:00:37.865332 34612 phi_kernel_instruction.cc:145] finish process kernel context
+I0901 09:00:37.865337 34612 phi_kernel_instruction.cc:154] finish process device context
+I0901 09:00:37.865343 34612 phi_kernel_instruction.cc:159] finish process inputs outputs index
+I0901 09:00:37.865347 34612 phi_kernel_instruction.cc:167] finish process no need buffer
+I0901 09:00:37.865355 34612 phi_kernel_instruction.cc:56] construct phi kernel instruction for: pd.fetch
+I0901 09:00:37.865360 34612 phi_kernel_instruction.cc:85] finish process dist attributes
+I0901 09:00:37.865363 34612 phi_kernel_instruction.cc:88] finish process analyse kernel type
+I0901 09:00:37.865367 34612 phi_kernel_instruction.cc:92] finish process infer_meta_interface_
+I0901 09:00:37.865377 34612 phi_kernel_instruction.cc:102] finish process yaml_info_parser
+I0901 09:00:37.865382 34612 phi_kernel_instruction.cc:118] finish process infer meta context
+I0901 09:00:37.865387 34612 phi_kernel_instruction.cc:130] finish process select kernel
+I0901 09:00:37.865392 34612 phi_kernel_instruction.cc:145] finish process kernel context
+I0901 09:00:37.865397 34612 phi_kernel_instruction.cc:154] finish process device context
+I0901 09:00:37.865403 34612 phi_kernel_instruction.cc:159] finish process inputs outputs index
+I0901 09:00:37.865407 34612 phi_kernel_instruction.cc:167] finish process no need buffer
+I0901 09:00:37.865417 34612 phi_kernel_instruction.cc:56] construct phi kernel instruction for: pd.fetch
+I0901 09:00:37.865419 34612 phi_kernel_instruction.cc:85] finish process dist attributes
+I0901 09:00:37.865423 34612 phi_kernel_instruction.cc:88] finish process analyse kernel type
+I0901 09:00:37.865427 34612 phi_kernel_instruction.cc:92] finish process infer_meta_interface_
+I0901 09:00:37.865437 34612 phi_kernel_instruction.cc:102] finish process yaml_info_parser
+I0901 09:00:37.865442 34612 phi_kernel_instruction.cc:118] finish process infer meta context
+I0901 09:00:37.865446 34612 phi_kernel_instruction.cc:130] finish process select kernel
+I0901 09:00:37.865451 34612 phi_kernel_instruction.cc:145] finish process kernel context
+I0901 09:00:37.865456 34612 phi_kernel_instruction.cc:154] finish process device context
+I0901 09:00:37.865463 34612 phi_kernel_instruction.cc:159] finish process inputs outputs index
+I0901 09:00:37.865466 34612 phi_kernel_instruction.cc:167] finish process no need buffer
+I0901 09:00:37.865805 34612 new_ir_interpreter.cc:952] New ir interpreter is running in BetaRun mode with multi thread version.
+I0901 09:00:37.866343 34675 phi_kernel_instruction.cc:174] Run op pd.shadow_feed infer meta.
+I0901 09:00:37.866528 34675 phi_kernel_instruction.cc:176] Run op pd.shadow_feed kernel.
+I0901 09:00:37.866660 34675 phi_kernel_instruction.cc:174] Run op pd.shadow_feed infer meta.
+I0901 09:00:37.866688 34675 phi_kernel_instruction.cc:176] Run op pd.shadow_feed kernel.
+I0901 09:00:37.866732 34675 phi_kernel_instruction.cc:174] Run op pd.divide infer meta.
+I0901 09:00:37.866902 34675 phi_kernel_instruction.cc:176] Run op pd.divide kernel.
+I0901 09:00:37.866936 34675 phi_kernel_instruction.cc:174] Run op pd.shadow_feed infer meta.
+I0901 09:00:37.867023 34675 phi_kernel_instruction.cc:176] Run op pd.shadow_feed kernel.
+I0901 09:00:37.867090 34675 phi_kernel_instruction.cc:174] Run op pd.shadow_feed infer meta.
+I0901 09:00:37.867115 34675 phi_kernel_instruction.cc:176] Run op pd.shadow_feed kernel.
+I0901 09:00:37.867158 34675 phi_kernel_instruction.cc:174] Run op pd.shadow_feed infer meta.
+I0901 09:00:37.867215 34675 phi_kernel_instruction.cc:176] Run op pd.shadow_feed kernel.
+I0901 09:00:37.867262 34675 phi_kernel_instruction.cc:174] Run op pd.shadow_feed infer meta.
+I0901 09:00:37.867286 34675 phi_kernel_instruction.cc:176] Run op pd.shadow_feed kernel.
+I0901 09:00:37.867339 34675 phi_kernel_instruction.cc:174] Run op pd.full infer meta.
+I0901 09:00:37.867415 34675 phi_kernel_instruction.cc:176] Run op pd.full kernel.
+I0901 09:00:37.867451 34675 phi_kernel_instruction.cc:174] Run op pd.add infer meta.
+I0901 09:00:37.867518 34675 phi_kernel_instruction.cc:176] Run op pd.add kernel.
+I0901 09:00:37.867564 34675 phi_kernel_instruction.cc:174] Run op pd.multiply infer meta.
+I0901 09:00:37.867623 34675 phi_kernel_instruction.cc:176] Run op pd.multiply kernel.
+I0901 09:00:37.867660 34675 phi_kernel_instruction.cc:174] Run op pd.fetch infer meta.
+I0901 09:00:37.867810 34675 phi_kernel_instruction.cc:176] Run op pd.fetch kernel.
+I0901 09:00:37.867851 34675 phi_kernel_instruction.cc:174] Run op pd.full infer meta.
+I0901 09:00:37.867888 34675 phi_kernel_instruction.cc:176] Run op pd.full kernel.
+I0901 09:00:37.867923 34675 phi_kernel_instruction.cc:174] Run op pd.multiply_grad infer meta.
+I0901 09:00:37.868022 34675 phi_kernel_instruction.cc:176] Run op pd.multiply_grad kernel.
+I0901 09:00:37.868067 34675 phi_kernel_instruction.cc:174] Run op pd.add_grad infer meta.
+I0901 09:00:37.868117 34675 phi_kernel_instruction.cc:176] Run op pd.add_grad kernel.
+I0901 09:00:37.868152 34675 phi_kernel_instruction.cc:174] Run op pd.add_n infer meta.
+I0901 09:00:37.874341 34675 phi_kernel_instruction.cc:176] Run op pd.add_n kernel.
+terminate called after throwing an instance of 'phi::enforce::EnforceNotMet'
+  what():  (External) CUDA error(700), an illegal memory access was encountered. 
+  [Hint: 'cudaErrorIllegalAddress'. The device encountered a load or store instruction on an invalid memory address. This leaves the process in an inconsistentstate and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched. ] (at /mnt/pd/Paddle/paddle/phi/backends/gpu/gpu_context.cc:544)
+
+
+
+--------------------------------------
+C++ Traceback (most recent call last):
+--------------------------------------
+0   paddle::framework::ThreadPoolTempl<paddle::framework::StlThreadEnvironment>::WorkerLoop(int)
+1   paddle::framework::NewIRInterpreter::RunInstructionBaseAsync(unsigned long)
+2   paddle::framework::NewIRInterpreter::RunInstructionBase(paddle::framework::InstructionBase*)
+
+----------------------
+Error Message Summary:
+----------------------
+FatalError: `Process abort signal` is detected by the operating system.
+  [TimeInfo: *** Aborted at 1693558837 (unix time) try "date -d @1693558837" if you are using GNU date ***]
+  [SignalInfo: *** SIGABRT (@0x8734) received by PID 34612 (TID 0x7fce0dfff700) from PID 34612 ***]

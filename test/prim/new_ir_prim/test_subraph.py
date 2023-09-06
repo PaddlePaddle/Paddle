@@ -19,7 +19,10 @@ os.environ["FLAGS_enable_new_ir_api"] = "true"
 import numpy as np
 
 import paddle
-from paddle import _ir_ops, nn
+
+paddle.device.set_device("cpu")
+from paddle import nn
+from paddle._ir_ops import add, multiply
 from paddle.autograd.ir_backward import grad
 from paddle.decomposition import decompose
 from paddle.framework import core
@@ -27,15 +30,28 @@ from paddle.framework import core
 paddle.enable_static()
 
 
+def gelu_composite(x, approximate):
+    """define composite rule of op gelu"""
+    M_SQRT1_2 = (
+        0.70710678118654752440  # /* 1/sqrt(2) */ copy from gelu-kernel.cc
+    )
+
+    # gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
+    cdf = add(x, paddle.tensor.full(x.shape, M_SQRT1_2, x.dtype))
+    # out = x * cdf
+    out = multiply(x, cdf)
+    return out
+
+
 class SimpNet(nn.Layer):
     def __init__(self):
         super().__init__()
         self.layer_norm = nn.LayerNorm(
-            16, epsilon=1e-5, weight_attr=False, bias_attr=False
+            4, epsilon=1e-5, weight_attr=False, bias_attr=False
         )
-        self.linear1 = nn.Linear(16, 32)
+        self.linear1 = nn.Linear(4, 6)
         self.gelu = nn.GELU(approximate=True)
-        self.linear2 = nn.Linear(32, 16)
+        self.linear2 = nn.Linear(6, 4)
         self.dropout = nn.Dropout(0.1, mode="upscale_in_train")
 
     def forward(self, x, weight, bias, linear1_weight, linear2_weight):
@@ -44,7 +60,8 @@ class SimpNet(nn.Layer):
         #     x, x.shape[2:], weight=weight, bias=bias, epsilon=1e-05
         # )
         # x2 = _ir_ops.matmul(x, linear1_weight, False, False)
-        x3 = _ir_ops.gelu(x, None)
+        # x3 = _ir_ops.gelu(x, False)
+        x3 = gelu_composite(x, False)
         # breakpoint()
         # x4 = paddle.tensor.matmul(x3, linear2_weight)
         # breakpoint()
@@ -59,12 +76,12 @@ class SimpNet(nn.Layer):
 class TestPrimMode(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
-        self.shape_x = [4, 16, 16]
-        self.shape_y = [4, 16, 16]
-        self.shape_w = [16]
-        self.shape_b = [16]
-        self.shape_l1_w = [4, 16, 32]
-        self.shape_l2_w = [4, 32, 16]
+        self.shape_x = [2, 4, 4]
+        self.shape_y = [2, 4, 4]
+        self.shape_w = [4]
+        self.shape_b = [4]
+        self.shape_l1_w = [4, 4, 6]
+        self.shape_l2_w = [4, 6, 4]
         self.x = np.random.random(self.shape_x).astype("float32")
         self.y = np.random.random(self.shape_y).astype("float32")
         self.w = np.random.random(self.shape_w).astype("float32")
@@ -99,7 +116,7 @@ class TestPrimMode(unittest.TestCase):
 
             print(main_program)
 
-            exe = paddle.static.Executor()
+            exe = paddle.static.Executor(place=paddle.CPUPlace())
             # breakpoint()
             outs = exe.run(
                 feed={
@@ -132,9 +149,9 @@ class TestPrimMode(unittest.TestCase):
         return outs
 
     def test_prim_forward(self):
-        #     res_ref = self.base_net()
+        res_ref = self.base_net()
 
-        res = self.base_net("forward")
+        # res = self.base_net("forward")
 
     #     for ref, actual in zip(res_ref, res):
     #         np.testing.assert_allclose(ref, actual, rtol=1e-6)

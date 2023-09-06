@@ -1052,7 +1052,7 @@ void NewIRInterpreter::TraceRunInstructionList(
     auto instr_id = trace_execute_order_[idx];
     InstructionBase* instr_node = vec_instruction_base_.at(instr_id).get();
 
-    VLOG(6) << "Run InstructionBase " << instr_node->Name() << "[" << instr_id
+    VLOG(0) << "Run InstructionBase " << instr_node->Name() << "[" << instr_id
             << "]";
     RunInstructionBase(instr_node);
 
@@ -1229,12 +1229,13 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     if (!instr_node->IsArtificial()) {
       instr_node->Run();
       VLOG(4) << "done instruction node run";
-      CheckGC(instr_node);
-      VLOG(4) << "done CheckGC";
-      interpreter::LogDeviceMemoryStats(place_);
+      // CheckGC(instr_node);
+      // VLOG(4) << "done CheckGC";
+      // interpreter::LogDeviceMemoryStats(place_);
     }
     VLOG(5) << "after run kernel";
-    instr_node->RecordEvent(place_);
+    // instr_node->RecordEvent(place_);
+    VLOG(0) << "after run kernel end *************************************";
   } catch (platform::EnforceNotMet& ex) {
     LOG(WARNING) << instr_node->Name() << " raises an EnforceNotMet exception "
                  << platform::demangle(typeid(ex).name()) << ", " << ex.what();
@@ -1248,6 +1249,15 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
   } catch (...) {
     LOG(WARNING) << instr_node->Name() << " raises an unknown exception";
     exception_holder_.Catch(std::current_exception());
+  }
+  /*For profiling/benchmark only*/
+  if (FLAGS_benchmark) {
+    instr_node->DeviceContext().Wait();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
+    VLOG(4) << "Operator(" << instr_node->Name()
+            << "): context wait and get last error";
+#endif
   }
 }
 

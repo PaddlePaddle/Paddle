@@ -1,0 +1,302 @@
+grep: warning: GREP_OPTIONS is deprecated; please use an alias or script
+W0901 07:40:39.445514  9962 ir_context.cc:283]  type already registered.
+I0901 07:40:39.445606  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:data
+I0901 07:40:39.445618  9962 pd_op_to_kernel_pass.cc:775] kernel type (Undefined, Undefined(AnyLayout), float32)
+op name  ========== 0 pd.data
+kernel name  ========== 1 data
+kernel key ========== 2 (Undefined, Undefined(AnyLayout), float32)
+I0901 07:40:39.445714  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:data
+I0901 07:40:39.445720  9962 pd_op_to_kernel_pass.cc:775] kernel type (Undefined, Undefined(AnyLayout), float32)
+op name  ========== 0 pd.data
+kernel name  ========== 1 data
+kernel key ========== 2 (Undefined, Undefined(AnyLayout), float32)
+I0901 07:40:39.445751  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:data
+I0901 07:40:39.445757  9962 pd_op_to_kernel_pass.cc:775] kernel type (Undefined, Undefined(AnyLayout), float32)
+op name  ========== 0 pd.data
+kernel name  ========== 1 data
+kernel key ========== 2 (Undefined, Undefined(AnyLayout), float32)
+I0901 07:40:39.445785  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:data
+I0901 07:40:39.445791  9962 pd_op_to_kernel_pass.cc:775] kernel type (Undefined, Undefined(AnyLayout), float32)
+op name  ========== 0 pd.data
+kernel name  ========== 1 data
+kernel key ========== 2 (Undefined, Undefined(AnyLayout), float32)
+I0901 07:40:39.445816  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:data
+I0901 07:40:39.445822  9962 pd_op_to_kernel_pass.cc:775] kernel type (Undefined, Undefined(AnyLayout), float32)
+op name  ========== 0 pd.data
+kernel name  ========== 1 data
+kernel key ========== 2 (Undefined, Undefined(AnyLayout), float32)
+I0901 07:40:39.445847  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:data
+I0901 07:40:39.445853  9962 pd_op_to_kernel_pass.cc:775] kernel type (Undefined, Undefined(AnyLayout), float32)
+op name  ========== 0 pd.data
+kernel name  ========== 1 data
+kernel key ========== 2 (Undefined, Undefined(AnyLayout), float32)
+I0901 07:40:39.445888  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:divide
+op name ================ pd.divide
+I0901 07:40:39.445914  9962 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.divide
+kernel name  ========== 1 divide
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+I0901 07:40:39.445953  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:full
+op name ================ pd.full
+Key------------------------ stop_gradient
+Key------------------------ place
+Key------------------------ shape
+Key------------------------ dtype
+Key------------------------ value
+slot name ************* dtype
+I0901 07:40:39.445972  9962 pd_op_to_kernel_pass.cc:775] kernel type (GPU, Undefined(AnyLayout), float32)
+op name  ========== 0 pd.full
+kernel name  ========== 1 full
+kernel key ========== 2 (GPU, Undefined(AnyLayout), float32)
+I0901 07:40:39.446009  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:full
+op name ================ pd.full
+Key------------------------ stop_gradient
+Key------------------------ place
+Key------------------------ shape
+Key------------------------ dtype
+Key------------------------ value
+slot name ************* dtype
+I0901 07:40:39.446024  9962 pd_op_to_kernel_pass.cc:775] kernel type (GPU, Undefined(AnyLayout), float32)
+op name  ========== 0 pd.full
+kernel name  ========== 1 full
+kernel key ========== 2 (GPU, Undefined(AnyLayout), float32)
+I0901 07:40:39.446049  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:full
+op name ================ pd.full
+Key------------------------ stop_gradient
+Key------------------------ place
+Key------------------------ shape
+Key------------------------ dtype
+Key------------------------ value
+slot name ************* dtype
+I0901 07:40:39.446065  9962 pd_op_to_kernel_pass.cc:775] kernel type (GPU, Undefined(AnyLayout), float32)
+op name  ========== 0 pd.full
+kernel name  ========== 1 full
+kernel key ========== 2 (GPU, Undefined(AnyLayout), float32)
+I0901 07:40:39.446091  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:multiply
+op name ================ pd.multiply
+I0901 07:40:39.446115  9962 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.multiply
+kernel name  ========== 1 multiply
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+I0901 07:40:39.446146  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:erf
+op name ================ pd.erf
+I0901 07:40:39.446156  9962 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.erf
+kernel name  ========== 1 erf
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+I0901 07:40:39.446188  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:add
+op name ================ pd.add
+I0901 07:40:39.446200  9962 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.add
+kernel name  ========== 1 add
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+I0901 07:40:39.446226  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:multiply
+op name ================ pd.multiply
+I0901 07:40:39.446238  9962 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.multiply
+kernel name  ========== 1 multiply
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+I0901 07:40:39.446261  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:multiply
+op name ================ pd.multiply
+I0901 07:40:39.446272  9962 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.multiply
+kernel name  ========== 1 multiply
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+I0901 07:40:39.446297  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:full
+op name ================ pd.full
+Key------------------------ stop_gradient
+Key------------------------ place
+Key------------------------ shape
+Key------------------------ dtype
+Key------------------------ value
+slot name ************* dtype
+I0901 07:40:39.446312  9962 pd_op_to_kernel_pass.cc:775] kernel type (GPU, Undefined(AnyLayout), float32)
+op name  ========== 0 pd.full
+kernel name  ========== 1 full
+kernel key ========== 2 (GPU, Undefined(AnyLayout), float32)
+I0901 07:40:39.446348  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:multiply_grad
+op name ================ pd.multiply_grad
+Key------------------------ axis
+I0901 07:40:39.446364  9962 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.multiply_grad
+kernel name  ========== 1 multiply_grad
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+I0901 07:40:39.446399  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:multiply_grad
+op name ================ pd.multiply_grad
+Key------------------------ axis
+I0901 07:40:39.446413  9962 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.multiply_grad
+kernel name  ========== 1 multiply_grad
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+I0901 07:40:39.446449  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:add_grad
+op name ================ pd.add_grad
+Key------------------------ axis
+I0901 07:40:39.446463  9962 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.add_grad
+kernel name  ========== 1 add_grad
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+I0901 07:40:39.446496  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:erf_grad
+op name ================ pd.erf_grad
+slot name ************* out_grad
+I0901 07:40:39.446509  9962 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.erf_grad
+kernel name  ========== 1 erf_grad
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+I0901 07:40:39.446537  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:multiply_grad
+op name ================ pd.multiply_grad
+Key------------------------ axis
+I0901 07:40:39.446552  9962 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.multiply_grad
+kernel name  ========== 1 multiply_grad
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+ (%0) = "builtin.combine" (%1, %2) {} : (gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>) -> vec[gpu_tensor<4x16x16xf32>,gpu_tensor<4x16x16xf32>]
+I0901 07:40:39.446614  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:add_n
+op name ================ pd.add_n
+I0901 07:40:39.446631  9962 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.add_n
+kernel name  ========== 1 add_n
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+I0901 07:40:39.446668  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:divide_grad
+op name ================ pd.divide_grad
+Key------------------------ axis
+I0901 07:40:39.446686  9962 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.divide_grad
+kernel name  ========== 1 divide_grad
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+I0901 07:40:39.446720  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:fetch
+op name ================ pd.fetch
+Key------------------------ col
+Key------------------------ name
+I0901 07:40:39.446733  9962 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.fetch
+kernel name  ========== 1 fetch
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+I0901 07:40:39.446759  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:fetch
+op name ================ pd.fetch
+Key------------------------ col
+Key------------------------ name
+I0901 07:40:39.446771  9962 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.fetch
+kernel name  ========== 1 fetch
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+I0901 07:40:39.446794  9962 pd_op_to_kernel_pass.cc:772] kernel_fn_str:fetch
+op name ================ pd.fetch
+Key------------------------ col
+Key------------------------ name
+I0901 07:40:39.446805  9962 pd_op_to_kernel_pass.cc:775] kernel type (GPUDNN, NCHW, float32)
+op name  ========== 0 pd.fetch
+kernel name  ========== 1 fetch
+kernel key ========== 2 (GPUDNN, NCHW, float32)
+{
+ (%0) = "pd_kernel.phi_kernel" () {dtype:float32,kernel_key:<backend:Undefined|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:data,name:x,op_name:pd.data,place:Place(undefined:0),shape:IntArray[4,16,16],stop_gradient:array[0]} : () -> undefined_tensor<4x16x16xf32>
+ (%1) = "pd_kernel.phi_kernel" (%0) {kernel_key:<backend:GPU|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:shadow_feed,op_name:pd.shadow_feed} : (undefined_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>
+ (%2) = "pd_kernel.phi_kernel" () {dtype:float32,kernel_key:<backend:Undefined|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:data,name:y,op_name:pd.data,place:Place(undefined:0),shape:IntArray[4,16,16],stop_gradient:array[0]} : () -> undefined_tensor<4x16x16xf32>
+ (%3) = "pd_kernel.phi_kernel" (%2) {kernel_key:<backend:GPU|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:shadow_feed,op_name:pd.shadow_feed} : (undefined_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>
+ (%4) = "pd_kernel.phi_kernel" () {dtype:float32,kernel_key:<backend:Undefined|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:data,name:w,op_name:pd.data,place:Place(undefined:0),shape:IntArray[16]} : () -> undefined_tensor<16xf32>
+ (%5) = "pd_kernel.phi_kernel" (%4) {kernel_key:<backend:GPU|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:shadow_feed,op_name:pd.shadow_feed} : (undefined_tensor<16xf32>) -> gpu_tensor<16xf32>
+ (%6) = "pd_kernel.phi_kernel" () {dtype:float32,kernel_key:<backend:Undefined|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:data,name:b,op_name:pd.data,place:Place(undefined:0),shape:IntArray[16]} : () -> undefined_tensor<16xf32>
+ (%7) = "pd_kernel.phi_kernel" (%6) {kernel_key:<backend:GPU|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:shadow_feed,op_name:pd.shadow_feed} : (undefined_tensor<16xf32>) -> gpu_tensor<16xf32>
+ (%8) = "pd_kernel.phi_kernel" () {dtype:float32,kernel_key:<backend:Undefined|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:data,name:l1_w,op_name:pd.data,place:Place(undefined:0),shape:IntArray[4,16,32]} : () -> undefined_tensor<4x16x32xf32>
+ (%9) = "pd_kernel.phi_kernel" (%8) {kernel_key:<backend:GPU|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:shadow_feed,op_name:pd.shadow_feed} : (undefined_tensor<4x16x32xf32>) -> gpu_tensor<4x16x32xf32>
+ (%10) = "pd_kernel.phi_kernel" () {dtype:float32,kernel_key:<backend:Undefined|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:data,name:l2_w,op_name:pd.data,place:Place(undefined:0),shape:IntArray[4,32,16]} : () -> undefined_tensor<4x32x16xf32>
+ (%11) = "pd_kernel.phi_kernel" (%10) {kernel_key:<backend:GPU|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:shadow_feed,op_name:pd.shadow_feed} : (undefined_tensor<4x32x16xf32>) -> gpu_tensor<4x32x16xf32>
+ (%12) = "pd_kernel.phi_kernel" (%1, %3) {kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:divide,op_name:pd.divide} : (gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>
+ (%13) = "pd_kernel.phi_kernel" () {dtype:float32,kernel_key:<backend:GPU|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:full,op_name:pd.full,place:Place(gpu:0),shape:IntArray[1],stop_gradient:array[1],value:1} : () -> gpu_tensor<1xf32>
+ (%14) = "pd_kernel.phi_kernel" () {dtype:float32,kernel_key:<backend:GPU|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:full,op_name:pd.full,place:Place(gpu:0),shape:IntArray[1],stop_gradient:array[1],value:0.5} : () -> gpu_tensor<1xf32>
+ (%15) = "pd_kernel.phi_kernel" () {dtype:float32,kernel_key:<backend:GPU|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:full,op_name:pd.full,place:Place(gpu:0),shape:IntArray[4,16,16],stop_gradient:array[1],value:0.707107} : () -> gpu_tensor<4x16x16xf32>
+ (%16) = "pd_kernel.phi_kernel" (%12, %15) {kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:multiply,op_name:pd.multiply} : (gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>
+ (%17) = "pd_kernel.phi_kernel" (%16) {kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:erf,op_name:pd.erf} : (gpu_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>
+ (%18) = "pd_kernel.phi_kernel" (%13, %17) {kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:add,op_name:pd.add} : (gpu_tensor<1xf32>, gpu_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>
+ (%19) = "pd_kernel.phi_kernel" (%14, %18) {kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:multiply,op_name:pd.multiply} : (gpu_tensor<1xf32>, gpu_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>
+ (%20) = "pd_kernel.phi_kernel" (%12, %19) {kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:multiply,op_name:pd.multiply} : (gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>
+ (%21) = "pd_kernel.phi_kernel" () {dtype:float32,kernel_key:<backend:GPU|layout:Undefined(AnyLayout)|dtype:float32>,kernel_name:full,op_name:pd.full,place:Place(gpu:0),shape:IntArray[4,16,16],stop_gradient:array[1],value:1} : () -> gpu_tensor<4x16x16xf32>
+ (%22, %23) = "pd_kernel.phi_kernel" (%12, %19, %21) {axis:-1,kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:multiply_grad,op_name:pd.multiply_grad} : (gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>
+ (%24, %25) = "pd_kernel.phi_kernel" (%14, %18, %23) {axis:-1,kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:multiply_grad,op_name:pd.multiply_grad} : (gpu_tensor<1xf32>, gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>) -> gpu_tensor<1xf32>, gpu_tensor<4x16x16xf32>
+ (%26, %27) = "pd_kernel.phi_kernel" (%13, %17, %25) {axis:-1,kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:add_grad,op_name:pd.add_grad} : (gpu_tensor<1xf32>, gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>) -> gpu_tensor<1xf32>, gpu_tensor<4x16x16xf32>
+ (%28) = "pd_kernel.phi_kernel" (%16, %27) {kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:erf_grad,op_name:pd.erf_grad} : (gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>
+ (%29, %30) = "pd_kernel.phi_kernel" (%12, %15, %28) {axis:-1,kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:multiply_grad,op_name:pd.multiply_grad} : (gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>
+ (%31) = "builtin.combine" (%22, %29) {} : (gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>) -> vec[gpu_tensor<4x16x16xf32>,gpu_tensor<4x16x16xf32>]
+ (%32) = "pd_kernel.phi_kernel" (%31) {kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:add_n,op_name:pd.add_n} : (vec[gpu_tensor<4x16x16xf32>,gpu_tensor<4x16x16xf32>]) -> gpu_tensor<4x16x16xf32>
+ (%33, %34) = "pd_kernel.phi_kernel" (%1, %3, %12, %32) {axis:-1,kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:divide_grad,op_name:pd.divide_grad} : (gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>, gpu_tensor<4x16x16xf32>
+ (%35) = "pd_kernel.phi_kernel" (%20) {col:0,kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:fetch,name:fetch0,op_name:pd.fetch} : (gpu_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>
+ (%36) = "pd_kernel.phi_kernel" (%33) {col:1,kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:fetch,name:fetch1,op_name:pd.fetch} : (gpu_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>
+ (%37) = "pd_kernel.phi_kernel" (%34) {col:2,kernel_key:<backend:GPUDNN|layout:NCHW|dtype:float32>,kernel_name:fetch,name:fetch2,op_name:pd.fetch} : (gpu_tensor<4x16x16xf32>) -> gpu_tensor<4x16x16xf32>
+}
+
+I0901 07:40:41.832849  9962 new_ir_interpreter.cc:917] New Executor is BetaRunning.
+W0901 07:40:41.833617  9962 gpu_resources.cc:119] Please NOTE: device: 0, GPU Compute Capability: 7.0, Driver API Version: 12.0, Runtime API Version: 11.2
+W0901 07:40:41.837991  9962 gpu_resources.cc:149] device: 0, cuDNN Version: 8.1.
+I0901 07:40:41.839540  9962 new_ir_interpreter.cc:952] New ir interpreter is running in BetaRun mode with multi thread version.
+W0901 07:40:41.848520 10034 new_ir_interpreter.cc:1245] pd.divide_grad raises an exception std::bad_alloc, std::bad_alloc
+E
+======================================================================
+ERROR: test_prim_forward (__main__.TestPrimMode)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "test_subraph.py", line 137, in test_prim_forward
+    res = self.base_net("forward")
+  File "test_subraph.py", line 104, in base_net
+    outs = exe.run(
+  File "/mnt/pd/Paddle/build/python/paddle/fluid/executor.py", line 1625, in run
+    res = self._run_new_ir_impl(
+  File "/mnt/pd/Paddle/build/python/paddle/fluid/executor.py", line 1949, in _run_new_ir_impl
+    ret = new_exe.run(list(feed.keys()), return_numpy)
+  File "/mnt/pd/Paddle/build/python/paddle/fluid/executor.py", line 799, in run
+    tensors = self._new_exe.run(feed_names)._move_to_list()
+RuntimeError: std::exception
+
+----------------------------------------------------------------------
+Ran 1 test in 2.417s
+
+FAILED (errors=1)
+{
+ (%0) = "pd.data" () {dtype:float32,name:x,place:Place(undefined:0),shape:IntArray[4,16,16],stop_gradient:array[0]} : () -> pd.tensor<4x16x16xf32>
+ (%1) = "pd.data" () {dtype:float32,name:y,place:Place(undefined:0),shape:IntArray[4,16,16],stop_gradient:array[0]} : () -> pd.tensor<4x16x16xf32>
+ (%2) = "pd.data" () {dtype:float32,name:w,place:Place(undefined:0),shape:IntArray[16]} : () -> pd.tensor<16xf32>
+ (%3) = "pd.data" () {dtype:float32,name:b,place:Place(undefined:0),shape:IntArray[16]} : () -> pd.tensor<16xf32>
+ (%4) = "pd.data" () {dtype:float32,name:l1_w,place:Place(undefined:0),shape:IntArray[4,16,32]} : () -> pd.tensor<4x16x32xf32>
+ (%5) = "pd.data" () {dtype:float32,name:l2_w,place:Place(undefined:0),shape:IntArray[4,32,16]} : () -> pd.tensor<4x32x16xf32>
+ (%6) = "pd.divide" (%0, %1) {} : (pd.tensor<4x16x16xf32>, pd.tensor<4x16x16xf32>) -> pd.tensor<4x16x16xf32>
+ (%7) = "pd.full" () {dtype:float32,place:Place(gpu:0),shape:IntArray[1],stop_gradient:array[1],value:1} : () -> pd.tensor<1xf32>
+ (%8) = "pd.full" () {dtype:float32,place:Place(gpu:0),shape:IntArray[1],stop_gradient:array[1],value:0.5} : () -> pd.tensor<1xf32>
+ (%9) = "pd.full" () {dtype:float32,place:Place(gpu:0),shape:IntArray[4,16,16],stop_gradient:array[1],value:0.707107} : () -> pd.tensor<4x16x16xf32>
+ (%10) = "pd.multiply" (%6, %9) {} : (pd.tensor<4x16x16xf32>, pd.tensor<4x16x16xf32>) -> pd.tensor<4x16x16xf32>
+ (%11) = "pd.erf" (%10) {} : (pd.tensor<4x16x16xf32>) -> pd.tensor<4x16x16xf32>
+ (%12) = "pd.add" (%7, %11) {} : (pd.tensor<1xf32>, pd.tensor<4x16x16xf32>) -> pd.tensor<4x16x16xf32>
+ (%13) = "pd.multiply" (%8, %12) {} : (pd.tensor<1xf32>, pd.tensor<4x16x16xf32>) -> pd.tensor<4x16x16xf32>
+ (%14) = "pd.multiply" (%6, %13) {} : (pd.tensor<4x16x16xf32>, pd.tensor<4x16x16xf32>) -> pd.tensor<4x16x16xf32>
+ (%15) = "pd.full" () {dtype:float32,place:Place(gpu:0),shape:IntArray[4,16,16],stop_gradient:array[1],value:1} : () -> pd.tensor<4x16x16xf32>
+ (%16, %17) = "pd.multiply_grad" (%6, %13, %15) {axis:-1} : (pd.tensor<4x16x16xf32>, pd.tensor<4x16x16xf32>, pd.tensor<4x16x16xf32>) -> pd.tensor<4x16x16xf32>, pd.tensor<4x16x16xf32>
+ (%18, %19) = "pd.multiply_grad" (%8, %12, %17) {axis:-1} : (pd.tensor<1xf32>, pd.tensor<4x16x16xf32>, pd.tensor<4x16x16xf32>) -> pd.tensor<1xf32>, pd.tensor<4x16x16xf32>
+ (%20, %21) = "pd.add_grad" (%7, %11, %19) {axis:-1} : (pd.tensor<1xf32>, pd.tensor<4x16x16xf32>, pd.tensor<4x16x16xf32>) -> pd.tensor<1xf32>, pd.tensor<4x16x16xf32>
+ (%22) = "pd.erf_grad" (%10, %21) {} : (pd.tensor<4x16x16xf32>, pd.tensor<4x16x16xf32>) -> pd.tensor<4x16x16xf32>
+ (%23, %24) = "pd.multiply_grad" (%6, %9, %22) {axis:-1} : (pd.tensor<4x16x16xf32>, pd.tensor<4x16x16xf32>, pd.tensor<4x16x16xf32>) -> pd.tensor<4x16x16xf32>, pd.tensor<4x16x16xf32>
+ (%25) = "builtin.combine" (%16, %23) {} : (pd.tensor<4x16x16xf32>, pd.tensor<4x16x16xf32>) -> vec[pd.tensor<4x16x16xf32>,pd.tensor<4x16x16xf32>]
+ (%26) = "pd.add_n" (%25) {} : (vec[pd.tensor<4x16x16xf32>,pd.tensor<4x16x16xf32>]) -> pd.tensor<4x16x16xf32>
+ (%27, %28) = "pd.divide_grad" (%0, %1, %6, %26) {axis:-1} : (pd.tensor<4x16x16xf32>, pd.tensor<4x16x16xf32>, pd.tensor<4x16x16xf32>, pd.tensor<4x16x16xf32>) -> pd.tensor<4x16x16xf32>, pd.tensor<4x16x16xf32>
+}
+
+terminate called after throwing an instance of 'phi::enforce::EnforceNotMet'
+  what():  (External) CUDA error(700), an illegal memory access was encountered. 
+  [Hint: 'cudaErrorIllegalAddress'. The device encountered a load or store instruction on an invalid memory address. This leaves the process in an inconsistentstate and any further CUDA work will return the same error. To continue using CUDA, the process must be terminated and relaunched. ] (at /mnt/pd/Paddle/paddle/fluid/memory/allocation/stream_safe_cuda_allocator.cc:87)
+
+
+
+--------------------------------------
+C++ Traceback (most recent call last):
+--------------------------------------
+0   paddle::framework::ScopePool::Clear()
+1   paddle::framework::ScopePool::DeleteScope(paddle::framework::Scope*)
+2   paddle::framework::Scope::~Scope()
+3   std::_Sp_counted_base<(__gnu_cxx::_Lock_policy)2>::_M_release()
+4   paddle::framework::Variable::PlaceholderImpl<phi::DenseTensor>::~PlaceholderImpl()
+5   std::_Sp_counted_deleter<phi::Allocation*, std::function<void (phi::Allocation*)>, std::allocator<void>, (__gnu_cxx::_Lock_policy)2>::_M_dispose()
+6   paddle::memory::allocation::StatAllocator::FreeImpl(phi::Allocation*)
+7   paddle::memory::allocation::RetryAllocator::FreeImpl(phi::Allocation*)
+
+----------------------
+Error Message Summary:
+----------------------
+FatalError: `Process abort signal` is detected by the operating system.
+  [TimeInfo: *** Aborted at 1693554041 (unix time) try "date -d @1693554041" if you are using GNU date ***]
+  [SignalInfo: *** SIGABRT (@0x26ea) received by PID 9962 (TID 0x7f258194a0c0) from PID 9962 ***]

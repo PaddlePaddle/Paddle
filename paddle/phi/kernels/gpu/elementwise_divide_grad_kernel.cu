@@ -34,6 +34,10 @@ void DivideGradKernel(const Context& dev_ctx,
                       int axis,
                       DenseTensor* dx,
                       DenseTensor* dy) {
+  std::cout << "divide kernel input 0 &&&&&&&&&&&&&&&&&&&&&&&&&&&&&  "
+            << x.place() << std::endl;
+  std::cout << "divide kernel input 1 &&&&&&&&&&&&&&&&&&&&&&&&&&&&&  "
+            << x.place() << std::endl;
   const auto place = dev_ctx.GetPlace();
   if (dx != nullptr && dy != nullptr) {
     std::vector<const DenseTensor*> ins = {&dout, &x, &y};
