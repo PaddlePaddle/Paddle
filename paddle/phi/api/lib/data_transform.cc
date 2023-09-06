@@ -21,6 +21,8 @@ limitations under the License. */
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -597,15 +599,45 @@ void TransDataBackend(const phi::SelectedRows* tensor,
 
 /* ------------------ for auto parallel ----------------------- */
 
+std::shared_ptr<phi::distributed::DistTensor> ReshardDistTensor(
+    phi::DeviceContext* dev_ctx,
+    const Tensor& tensor,
+    const phi::distributed::TensorDistAttr& dist_attr) {
+  auto tensor_in = tensor.impl();
+  if (tensor_in) {
+    phi::distributed::DistTensor* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(tensor_in.get());
+    if (dist_tensor->dist_attr() != dist_attr) {
+      VLOG(6) << "Reshard tensor from " << dist_tensor->dist_attr() << " to "
+              << dist_attr;
+      auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
+                                                                 dist_attr);
+      return func->Eval(dev_ctx, *dist_tensor, dist_attr);
+    }
+    return std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in);
+  }
+  return nullptr;
+}
+
 std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
     const Tensor& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag,
     bool is_stride_kernel) {
-  const auto& tensor_in = input.impl();
-  if (tensor_in) {
-    phi::distributed::DistTensor* dist_tensor =
-        static_cast<phi::distributed::DistTensor*>(tensor_in.get());
+  return PrepareDataForDistTensor(
+      std::static_pointer_cast<phi::distributed::DistTensor>(input.impl()),
+      target_args_def,
+      transform_flag,
+      is_stride_kernel);
+}
+
+std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
+    const std::shared_ptr<phi::distributed::DistTensor>& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel) {
+  if (input) {
+    phi::distributed::DistTensor* dist_tensor = input.get();
     const phi::DenseTensor& dense_tensor = dist_tensor->value();
     if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
         (!NeedTransformPlace(
@@ -618,16 +650,18 @@ std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
                               transform_flag) &&
          !NeedTransform2Contiguous(is_stride_kernel,
                                    dense_tensor.meta().is_contiguous()))) {
-      return std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in);
+      return input;
     }
-    phi::DenseTensor out = TransformData(
-        dense_tensor, target_args_def, transform_flag, is_stride_kernel);
     // TODO(chenweihang): The global meta in DistTensor is not changed,
     // but the local meta in DenseTensor maybe changed, such as layout
     // change(NCHW->NHWC), so the new DistTensor's meta maybe not unified.
     VLOG(6) << "PrepareDataForDistTensor return transformed dist tensor";
-    return std::make_shared<phi::distributed::DistTensor>(
-        out, dist_tensor->dist_attr());
+    auto dist_out = std::make_shared<phi::distributed::DistTensor>(
+        dist_tensor->dims(), dist_tensor->dist_attr());
+    auto* out = dist_out->unsafe_mutable_value();
+    *out = TransformData(
+        dense_tensor, target_args_def, transform_flag, is_stride_kernel);
+    return dist_out;
   }
   return nullptr;
 }
