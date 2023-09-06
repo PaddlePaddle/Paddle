@@ -65,5 +65,7 @@ std::map<std::string, Expr> CollectTensorMap(
       return true;
     });
 
+std::vector<std::string> CollectUndefinedVars(const Expr* e);
+
 }  // namespace ir
 }  // namespace cinn
