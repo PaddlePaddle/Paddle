@@ -166,7 +166,7 @@ void RenameAndGetOutputs(
       for (int k = 0; k < in_var->arguments_size(); k++) {  // all the arguments
         const std::string arg_value = in_var->arguments(k);
         const std::string arg_value_with_id =
-            arg_value + std::to_string(var2id[arg_value]);
+            RenameVarBeUnique(arg_value, std::to_string(var2id[arg_value]));
         if (input_names_with_id.count(arg_value_with_id)) {
           replaced_names.push_back(arg_value);
           if (graph_var_map.count(arg_value)) {
@@ -214,7 +214,7 @@ void RenameAndGetOutputs(
       for (int k = 0; k < out_var->arguments_size(); k++) {
         const std::string arg_value = out_var->arguments(k);
         const std::string arg_value_with_id =
-            arg_value + std::to_string(var2id[arg_value]);
+            RenameVarBeUnique(arg_value, std::to_string(var2id[arg_value]));
         if (graph_var_map.count(arg_value)) {
           add_block_var(arg_value, arg_value_with_id);
         }
@@ -229,6 +229,11 @@ void RenameAndGetOutputs(
       }
     }
   }
+}
+
+std::string RenameVarBeUnique(std::string original_var_name,
+                              std::string var_id) {
+  return original_var_name + "_subgraph_" + var_id;
 }
 
 }  // namespace analysis
