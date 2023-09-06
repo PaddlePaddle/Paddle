@@ -119,14 +119,14 @@ inline std::string AnalyzeTraceMsg(const TraceMap& trace_map, int gid) {
   std::string result = "\n\t The ranks that has desync problem are: ";
   if (start_ranks.size()) {
     result += "[" + RanksToString(start_ranks) +
-              "] joined but do not finish collective group_id: " +
-              std::to_string(gid) + ", seq: " + std::to_string(lag_seq);
+              "] joined but do not finish collective seq: " +
+              std::to_string(lag_seq) + " in group_id: " + std::to_string(gid);
   }
   if (end_ranks.size()) {
     result += ", ranks [" + RanksToString(end_ranks) +
-              "] finished collective seq: " + std::to_string(lag_seq) +
-              ", but didnt join collective group_id: " + std::to_string(gid) +
-              ", seq: " + std::to_string(lag_seq + 1);
+              "] finished  collective seq: " + std::to_string(lag_seq) +
+              ", but didnt join seq: " + std::to_string(lag_seq + 1) +
+              " in group_id: " + std::to_string(gid);
   }
   return result;
 }
