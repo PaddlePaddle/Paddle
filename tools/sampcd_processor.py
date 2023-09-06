@@ -537,11 +537,16 @@ class Xdoctester(DocTester):
 
             if summary_failed or summary_timeout or summary_nocodes:
                 logger.warning(
-                    "Mistakes found in sample codes. Please recheck the sample codes."
+                    ">>> Mistakes found in sample codes in env: %s!",
+                    self._test_capacity,
                 )
+                logger.warning(">>> Please recheck the sample codes.")
                 log_exit(1)
 
-        logger.warning("Sample code check is successful!")
+        logger.warning(
+            ">>> Sample code check is successful in env: %s!",
+            self._test_capacity,
+        )
         logger.warning("----------------End of the Check--------------------")
 
 

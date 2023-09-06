@@ -621,7 +621,6 @@ def run_doctest(args, doctester: DocTester):
     # init logger
     init_logger(debug=args.debug, log_file=args.logf)
 
-    logger.info("API check -- Example Code")
     logger.info("----------------Codeblock Check Start--------------------")
 
     logger.info(">>> Check test mode ...")
