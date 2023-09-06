@@ -58,9 +58,12 @@ class TestReplicatedSPMDRule(unittest.TestCase):
     def test_replicated_infer_forward(self):
         # return all -1
         # 2 inputs 2 outputs
+        in_vec = [self.x_dist_tensor_spec, self.y_dist_tensor_spec]
+        out_vec = [self.out1_dist_tensor_spec, self.out2_dist_tensor_spec]
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
-            [self.out1_dist_tensor_spec, self.out2_dist_tensor_spec],
+            [(0, len(in_vec)), (len(in_vec), len(in_vec) + len(out_vec))],
+            in_vec + out_vec,
+            [],
         )
         self.assertEqual(len(result_dist_attrs), 2)
         self.assertEqual(len(result_dist_attrs[0]), 2)
@@ -72,9 +75,12 @@ class TestReplicatedSPMDRule(unittest.TestCase):
         self.assertEqual(result_dist_attrs[1][1].dims_mapping, [-1, -1, -1])
 
         # 1 inputs 2 outputs
+        in_vec = [self.y_dist_tensor_spec]
+        out_vec = [self.out1_dist_tensor_spec, self.out2_dist_tensor_spec]
         result_dist_attrs = self.rule.infer_forward(
-            [self.y_dist_tensor_spec],
-            [self.out1_dist_tensor_spec, self.out2_dist_tensor_spec],
+            [(0, len(in_vec)), (len(in_vec), len(in_vec) + len(out_vec))],
+            in_vec + out_vec,
+            [],
         )
         self.assertEqual(len(result_dist_attrs), 2)
         self.assertEqual(len(result_dist_attrs[0]), 1)
@@ -91,9 +97,12 @@ class TestReplicatedSPMDRule(unittest.TestCase):
         self.out2_dist_tensor_spec.set_dims_mapping([1, -1, 0])
         self.out2_dist_tensor_spec.set_process_mesh(process_mesh)
 
+        in_vec = [self.x_dist_tensor_spec, self.y_dist_tensor_spec]
+        out_vec = [self.out1_dist_tensor_spec, self.out2_dist_tensor_spec]
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
-            [self.out1_dist_tensor_spec, self.out2_dist_tensor_spec],
+            [(0, len(in_vec)), (len(in_vec), len(in_vec) + len(out_vec))],
+            in_vec + out_vec,
+            [],
         )
         self.assertEqual(len(result_dist_attrs), 2)
         self.assertEqual(len(result_dist_attrs[0]), 2)
@@ -105,13 +114,16 @@ class TestReplicatedSPMDRule(unittest.TestCase):
         self.assertEqual(result_dist_attrs[1][1].dims_mapping, [-1, -1, -1])
 
         # 1 inputs 3 outputs
+        in_vec = [self.y_dist_tensor_spec]
+        out_vec = [
+            self.x_dist_tensor_spec,
+            self.out1_dist_tensor_spec,
+            self.out2_dist_tensor_spec,
+        ]
         result_dist_attrs = self.rule.infer_backward(
-            [self.y_dist_tensor_spec],
-            [
-                self.x_dist_tensor_spec,
-                self.out1_dist_tensor_spec,
-                self.out2_dist_tensor_spec,
-            ],
+            [(0, len(in_vec)), (len(in_vec), len(in_vec) + len(out_vec))],
+            in_vec + out_vec,
+            [],
         )
         self.assertEqual(len(result_dist_attrs), 2)
         self.assertEqual(len(result_dist_attrs[0]), 1)
