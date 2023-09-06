@@ -117,6 +117,17 @@ DLL_EXPORT int fast_embedding(Context* ctx,
 template <typename T>
 DLL_EXPORT int fast_addcmul(
     Context* ctx, const T* w, const T* x, const T* y, T* z, int64_t len);
+                              
+template <typename T>
+DLL_EXPORT int fln_act_fusion(Context* ctx,
+                              const T* x,
+                              T* y,
+                              int64_t m,
+                              int64_t n,
+                              float eps,
+                              const float* scale,
+                              const float* bias,
+                              Activation_t& act);
 
 }  // namespace plugin
 }  // namespace api
