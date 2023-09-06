@@ -31,10 +31,10 @@ DEFINE_ADT_TAG(tBreak);
 
 class MapIR final {
  public:
-  MapIR(const m_expr::OpStmt& op, const ScheduleIterators& sd_iters)
-      : ops_{ops}, sd_iters_(sd_iters) {}
+  MapIR(const m_expr::OpStmt& op_stmt, const ScheduleIterators& sd_iters)
+      : op_stmts_{op_stmt}, sd_iters_(sd_iters) {}
 
-  const std::list<m_expr::OpStmt>& ops() const { return ops_; }
+  const std::list<m_expr::OpStmt>& op_stmts() const { return op_stmts_; }
 
   const m_expr::ScheduleIterators& sd_iters() const { return sd_iters_; }
 
@@ -61,7 +61,7 @@ class MapIR final {
   std::unordered_map<m_expr::Tensor, tAsOutput<bool>> GetTensor2AsOutput()
       const;
 
-  std::list<m_expr::OpStmt> ops_;
+  std::list<m_expr::OpStmt> op_stmts_;
   ScheduleIterators sd_iters_;
 };
 
@@ -70,8 +70,8 @@ using MapIRList = std::list<MapIR>;
 MapIRList GenerateClusterOpsForLoopFuse(
     const List<m_expr::OpStmt>& op_stmts,
     const ScheduleIterators& sd_iters,
-    const std::function<const m_expr::ScheduleDescriptor&(
-        const equation::IterVar&)>& GetScheduleType,
+    const std::function<const m_expr::SchedulePolicy&(
+        const equation::IterVar&)>& GetSchedulePolicy,
     const std::function<const TensorIndexExpr&(const m_expr::Tensor&)>&
         GetTensorIndexes);
 

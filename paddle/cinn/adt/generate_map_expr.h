@@ -23,7 +23,7 @@ namespace cinn::adt {
 class IGroup;
 class KGroup;
 
-cinn::adt::m_expr::MapExpr GenerateMapExpr(
+m_expr::MapExpr GenerateMapExpr(
     const cinn::hlir::framework::Graph::Group& group);
 
 }  // namespace cinn::adt

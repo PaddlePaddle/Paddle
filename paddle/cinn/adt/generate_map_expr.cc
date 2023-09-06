@@ -91,16 +91,10 @@ std::shared_ptr<KGroup> GenerateKGroups(
   ADT_TODO();  // Trival code
 }
 
-eqaution::Graph BuildSdSubGraph(const AnchorTensor& anchor_tensor,
-                                const m_expr::ScheduleIterators& sd) {
-  ADT_TODO();  // Trival code
-}
-
-equation::GraphView MakeSdEquationGraphView(
-    const std::shared_ptr<IGroup>& igroup, const ScheduleIterators& sd_iters) {
-  const eqaution::Graph& sub_graph =
-      BuildSdSubGraph(igroup->anchor_tensor(), sd_iters);
-  return sub_graph.GetWalker();
+std::pair<ScheduleIterators, equation::GraphView>
+MakeSdIteratorsAndEquationGraphView(const std::shared_ptr<IGroup>& igroup,
+                                    const ScheduleDescriptor& sd) {
+  ADT_TODO();
 }
 
 template <typename DoEachT>
@@ -126,28 +120,157 @@ MakeGetterTensorIndexExpr(const std::shared_ptr<IGroup>& igroup,
   }
 }
 
-cinn::adt::m_expr::MapExpr GenerateMapExpr(
-    const std::shared_ptr<IGroup>& igroup,
-    const m_expr::ScheduleDescriptor& sd,
-    const std::functoin<const TensorIndexExpr&(const m_expr::Tensor&)>&
-        tensor_indexes) {
-  // Non-trival here
+std::function<const m_expr::SchedulePolicy&(const equation::IterVar&)>
+MakeGetterSchedulePolicy(const m_expr::ScheduleIterators& sd_iters,
+                         const m_expr::ScheduleDescriptor& sd) {
   ADT_TODO();
 }
 
-cinn::adt::m_expr::MapExpr GenerateMapExpr(
-    const std::shared_ptr<IGroup>& igroup,
-    const m_expr::ScheduleDescriptor& sd) {
-  auto sd_equation_graph_view = MakeSdEquationGraphView(igroup, sd);
-
-  auto get_tensor_expr =
-      MakeGetterTensorIndexExpr(igroup, sd_equation_graph_view);
-
-  return GenerateMapExpr(igroup, sd, get_tensor_expr);
+template <typename DoEachT>
+void VisitEachStmt(const m_ir::MapIRList& map_irs, const DoEachT& DoEach) {
+  ADT_TODO();
 }
 
-cinn::adt::m_expr::MapExpr GenerateMapExpr(
-    const std::shared_ptr<KGroup>& kgroup) {
+m_expr::OpStmt MakeOpStmt(const m_ir::MapIR& map_ir,
+                          std::size_t outter_layer_sd_size) {
+  ADT_TODO();
+}
+
+ScheduleDescriptor MakeInnerScheduleDescriptor(
+    const m_ir::MapIRList& map_irs, std::size_t outter_layer_sd_size) {
+  ADT_TODO();
+}
+
+template <typename DoEachT>
+void VisitEachOpStmt(const m_ir::MapIR& map_ir, const DoEachT& DoEach) {
+  ADT_TODO();
+}
+
+List<m_expr::Stmt> MakeInnerLayerStmts(const std::shared_ptr<IGroup>& igroup,
+                                       const m_ir::MapIR& map_ir) {
+  List<m_expr::Stmt> ret;
+
+  VisitEachOpStmt(map_ir,
+                  [&](const auto& op_stmt) { ret->emplace_back(op_stmt); });
+
+  return ret;
+}
+
+m_expr::MapStmt<m_expr::Stmt> MakeInnerLayerMapStmt(
+    const std::shared_ptr<IGroup>& igroup,
+    const m_ir::MapIR& map_ir,
+    std::size_t outter_layer_sd_size) {
+  const auto& inner_schedule_descriptor =
+      MakeInnerScheduleDescriptor(map_irs, outter_layer_sd_size);
+
+  return {inner_schedule_descriptor, MakeInnerLayerStmts(igroup, map_ir)};
+}
+
+m_expr::Stmt MakeOutterLayerStmt(const std::shared_ptr<IGroup>& igroup,
+                                 const m_ir::MapIR& map_ir,
+                                 std::size_t outter_layer_sd_size) {
+  if (map_ir.op_stmts().size() == 1) {
+    return MakeOpStmt(map_ir, outter_layer_sd_size);
+  } else if (map_ir.op_stmts().size() > 1) {
+    return MakeInnerLayerMapStmt(igroup, map_ir, outter_layer_sd_size);
+  } else {
+    LOG(FATAL) << "Not Supported";
+  }
+}
+
+List<m_expr::Stmt> MakeOutterLayerStmts(const std::shared_ptr<IGroup>& igroup,
+                                        const m_ir::MapIRList& map_irs,
+                                        std::size_t outter_layer_sd_size) {
+  List<m_expr::Stmt> ret;
+
+  VisitEachStmt(map_irs, [&](const auto& map_ir) {
+    ret->emplace_back(
+        MakeOutterLayerStmt(igroup, map_ir, outter_layer_sd_size));
+  });
+
+  return ret;
+}
+
+ScheduleDescriptor MakeOutterScheduleDescriptor(
+    const m_ir::MapIRList& map_irs) {
+  ADT_TODO();
+}
+
+m_expr::MapStmt<m_expr::Stmt> MakeMapStmt(const std::shared_ptr<IGroup>& igroup,
+                                          const m_ir::MapIRList& map_irs) {
+  const auto& outter_schedule_descriptor =
+      MakeOutterScheduleDescriptor(map_irs);
+
+  return {outter_schedule_descriptor,
+          MakeOutterLayerStmts(
+              igroup, map_irs, outter_schedule_descriptor->size())};
+}
+
+m_expr::Tensor GetAnchorTensor(const std::shared_ptr<IGroup>& igroup) {
+  ADT_TODO();
+}
+
+m_expr::AnchoredMapStmt MakeAnchoredMapStmt(
+    const std::shared_ptr<IGroup>& igroup, const m_ir::MapIRList& map_irs) {
+  return {MakeMapStmt(igroup, map_irs), GetAnchorTensor(igroup)};
+}
+
+List<m_expr::AnchoredMapStmt> MakeAnchoredMapStmts(
+    const std::shared_ptr<IGroup>& igroup, const m_ir::MapIRList& map_irs) {
+  return {MakeAnchoredMapStmt(igroup, map_irs)};
+}
+
+List<m_expr::Tensor> MakeInputTensors(const std::shared_ptr<IGroup>& igroup,
+                                      const m_ir::MapIRList& map_irs) {
+  ADT_TODO();
+}
+
+List<m_expr::Tensor> MakeOutputTensors(const std::shared_ptr<IGroup>& igroup,
+                                       const m_ir::MapIRList& map_irs) {
+  ADT_TODO();
+}
+
+m_expr::Kernel MakeKernel(const std::shared_ptr<IGroup>& igroup,
+                          const m_ir::MapIRList& map_irs) {
+  return {MakeAnchoredMapStmts(igroup, map_irs),
+          MakeInputTensors(igroup, map_irs),
+          MakeOutputTensors(igroup, map_irs)};
+}
+
+m_expr::MapExpr MakeMapExpr(
+    const std::shared_ptr<IGroup>& igroup,
+    const m_ir::MapIRList& map_irs,
+    const std::functoin<const TensorIndexExpr&(const m_expr::Tensor&)>&
+        GetTensorIndexes) {
+  return {MakeKernel(igroup, map_irs), GetTensorIndexes};
+}
+
+m_expr::MapExpr GenerateMapExpr(
+    const std::shared_ptr<IGroup>& igroup,
+    const m_expr::ScheduleIterators& sd_iters,
+    const m_expr::ScheduleDescriptor& sd,
+    const std::functoin<const TensorIndexExpr&(const m_expr::Tensor&)>&
+        GetTensorIndexes) {
+  const auto& GetSchedulePolicy = MakeGetterSchedulePolicy(sd_iters, sd);
+
+  const auto& map_irs = m_ir::GenerateClusterOpsForLoopFuse(
+      igroup->op_stmts(), sd_iters, GetSchedulePolicy, GetTensorIndexes);
+
+  return MakeMapExpr(igroup, map_irs, GetTensorIndexes);
+}
+
+m_expr::MapExpr GenerateMapExpr(const std::shared_ptr<IGroup>& igroup,
+                                const m_expr::ScheduleDescriptor& sd) {
+  const auto& [schedule_iters, sd_equation_graph_view] =
+      MakeSdIteratorsAndEquationGraphView(igroup, sd);
+
+  const auto& get_tensor_expr =
+      MakeGetterTensorIndexExpr(igroup, sd_equation_graph_view);
+
+  return GenerateMapExpr(igroup, schedule_iters, sd, get_tensor_expr);
+}
+
+m_expr::MapExpr GenerateMapExpr(const std::shared_ptr<KGroup>& kgroup) {
   return MergeMapExpr(kgroup, [&](const std::shared_ptr<IGroup>& igroup) {
     auto sd = kgroup.GetDefaultScheduleDescriptor(igroup);
     return GenerateMapExpr(igroup, sd);
@@ -156,7 +279,7 @@ cinn::adt::m_expr::MapExpr GenerateMapExpr(
 
 }  // namespace
 
-cinn::adt::m_expr::MapExpr GenerateMapExpr(
+m_expr::MapExpr GenerateMapExpr(
     const cinn::hlir::framework::Graph::Group& group) {
   auto igroups = GenerateIGroups(group);
 
