@@ -1261,7 +1261,7 @@ class OpTest(unittest.TestCase):
         static_inputs = defaultdict(list)
         feed = {}
         for name, item in self.inputs.items():
-            if isinstance(item, list):
+            if isinstance(item, (list, tuple)):
                 for tup in item:
                     dtype = (
                         "bfloat16"
@@ -1355,9 +1355,7 @@ class OpTest(unittest.TestCase):
             # executor run
             executor = Executor(place)
             (outs,) = executor.run(
-                ir_program,
-                feed=feed,
-                fetch_list=fetch_list,
+                ir_program, feed=feed, fetch_list=[fetch_list]
             )
         return outs
 
@@ -2473,7 +2471,7 @@ class OpTest(unittest.TestCase):
                 or type(place) is paddle.fluid.libpaddle.CUDAPlace
             ):
                 print("New IR checker begins...........")
-                with paddle.new_ir_utils._newir_guard():
+                with paddle.new_ir_utils.IrGuard():
                     new_ir_checker = NewIRChecker(self, self.outputs)
                     new_ir_checker.check()
 
@@ -3020,6 +3018,7 @@ class OpTest(unittest.TestCase):
                     "Gradient Check On %s" % str(place),
                     atol=atol,
                 )
+
         # get new ir gradient
         if (
             self.op_type
@@ -3031,7 +3030,7 @@ class OpTest(unittest.TestCase):
                 or type(place) is paddle.fluid.libpaddle.CUDAPlace
             ):
                 print("New IR gradient begins...........")
-                with paddle.new_ir_utils._newir_guard():
+                with paddle.new_ir_utils.IrGuard():
                     new_ir_grad = self._get_ir_gradient(
                         inputs_to_check,
                         place,
@@ -3042,7 +3041,7 @@ class OpTest(unittest.TestCase):
                 print("New IR gradient ends...........")
                 self._assert_is_close(
                     numeric_grads,
-                    [new_ir_grad],
+                    new_ir_grad,
                     inputs_to_check,
                     max_relative_error,
                     "Gradient Check On %s" % str(place),
@@ -3448,23 +3447,38 @@ class OpTest(unittest.TestCase):
             args = OpTestUtils.assumption_assert_and_transform(
                 args, len(inputs_sig)
             )
+            grad_outputs = []
+            if user_defined_grad_outputs is not None:
+                # user_defined_grad_outputs here are numpy arrays
+                if not isinstance(user_defined_grad_outputs, list):
+                    user_defined_grad_outputs = [user_defined_grad_outputs]
+                for grad_out_value, idx in zip(
+                    user_defined_grad_outputs,
+                    range(len(user_defined_grad_outputs)),
+                ):
+                    grad_val = paddle.static.data(
+                        name='val_grad_%s' % idx,
+                        shape=grad_out_value.shape,
+                        dtype=grad_out_value.dtype,
+                    )
+                    grad_outputs.append(grad_val)
+                    feed.update({'val_grad_%s' % idx: grad_out_value})
+                # delete the inputs which no need to calculate grad
+                for no_grad_val in no_grad_set:
+                    del static_inputs[no_grad_val]
+
             ret_tuple = self.python_api(*args)
-            result = construct_output_dict_by_kernel_sig(ret_tuple, outputs_sig)
+            outputs = construct_output_dict_by_kernel_sig(
+                ret_tuple, outputs_sig
+            )
             if hasattr(self, "python_out_sig_sub_name"):
                 for key in self.python_out_sig_sub_name.keys():
                     for i in range(len(self.python_out_sig_sub_name[key])):
-                        result[key][0][i].name = self.python_out_sig_sub_name[
+                        outputs[key][0][i].name = self.python_out_sig_sub_name[
                             key
                         ][i]
             fetch_list = getattr(self, "fetch_list", [])
-            if len(fetch_list) == 0:
-                for var in result.items():
-                    if isinstance(var[1], list):
-                        for v in var[1]:
-                            fetch_list.append(v)
-                    else:
-                        fetch_list.append(var[1])
-            outputs = result
+
             outputs_valid = outputs
             grad_inputs = inputs_to_check
             if user_defined_grad_outputs is None:
@@ -3477,16 +3491,6 @@ class OpTest(unittest.TestCase):
                     grad_outputs=None,
                 )
             else:
-                # user_defined_grad_outputs here are numpy arrays
-                if not isinstance(user_defined_grad_outputs, list):
-                    user_defined_grad_outputs = [user_defined_grad_outputs]
-                grad_outputs = []
-                for grad_out_value in user_defined_grad_outputs:
-                    grad_outputs.append(paddle.to_tensor(grad_out_value))
-                # delete the inputs which no need to calculate grad
-                for no_grad_val in no_grad_set:
-                    del static_inputs[no_grad_val]
-
                 grad_inputs = ir_grad(
                     outputs=paddle.utils.flatten(outputs),
                     inputs=paddle.utils.flatten(static_inputs),
@@ -3496,7 +3500,7 @@ class OpTest(unittest.TestCase):
 
             # executor run
             executor = paddle.static.Executor()
-            (outs,) = executor.run(
+            outs = executor.run(
                 ir_program,
                 feed=feed,
                 fetch_list=fetch_list,
