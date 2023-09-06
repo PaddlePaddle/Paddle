@@ -1185,9 +1185,12 @@ struct ExpGradFunctor<ComplexType<T>>
 };
 
 template <typename T>
-struct Expm1 {
-  HOSTDEVICE T operator()(const T& val) const {
-    return exp(val) - static_cast<T>(1);
+struct Expm1 {};
+
+template <typename T>
+struct Expm1<ComplexType<T>> {
+  HOSTDEVICE ComplexType<T> operator()(const ComplexType<T>& val) const {
+    return exp(val) - static_cast<ComplexType<T>>(1);
   }
 };
 
