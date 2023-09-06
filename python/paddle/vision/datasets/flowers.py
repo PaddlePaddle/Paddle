@@ -69,6 +69,7 @@ class Flowers(Dataset):
             >>> import paddle.vision.transforms as T
             >>> from paddle.vision.datasets import Flowers
 
+            >>> # doctest: +TIMEOUT(60)
             >>> flowers = Flowers()
             >>> print(len(flowers))
             6149
