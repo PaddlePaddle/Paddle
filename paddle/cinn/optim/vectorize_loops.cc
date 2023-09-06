@@ -289,7 +289,7 @@ class CudaVectorizer : public IRMutator<Expr *> {
                   const std::vector<Expr> &indices,
                   bool is_store) {
     auto *node = tensor.As<ir::_Tensor_>();
-    bool is_const = !write_teller_.IsWrite(node->name);
+    bool is_const = !write_teller_.count(node->name);
 
     // generate the corresponding vector type
     Type scalar_type = tensor->type().ElementOf();
