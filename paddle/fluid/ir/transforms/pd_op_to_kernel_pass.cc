@@ -62,6 +62,12 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     "builtin.get_parameter",
     "pd.shadow_output"};
 
+const std::unordered_set<std::string> SpecialLowerOps = {
+    "builtin.combine",
+    "builtin.slice",
+    "builtin.split",
+};
+
 bool NeedFallBackCpu(const ir::Operation* op,
                      const std::string& kernel_fn_name,
                      const phi::KernelKey& kernel_key) {
@@ -1071,8 +1077,11 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     }
 
     // HandleSpecialOp
-    HandleForSpecialOp(
-        op_item, program.get(), ctx, &map_op_pair, &map_value_pair);
+    if (SpecialLowerOps.count(op_item->name())) {
+      HandleForSpecialOp(
+          op_item, program.get(), ctx, &map_op_pair, &map_value_pair);
+      continue;
+    }
 
     // Lower from PaddleDialect to KernelDialect
 
