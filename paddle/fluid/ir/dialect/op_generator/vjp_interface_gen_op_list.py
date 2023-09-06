@@ -29,5 +29,27 @@ vjp_interface_declare_gen_op_list = [
     "sum",
     "add",
     "concat",
+    "split",
+    "gelu",
+    "matmul",
+    "erf",
+    "multiply",
+    "subtract",
+    "pow",
+    "rsqrt",
 ]
-vjp_interface_implementation_gen_op_list = ["tanh", "mean", "divide", "add"]
+vjp_interface_implementation_gen_op_list = [
+    "tanh",
+    "mean",
+    "divide",
+    "add",
+    "concat",
+    "split",
+    "gelu",
+    "matmul",
+    "erf",
+    "multiply",
+    "subtract",
+    "pow",
+    "rsqrt",
+]

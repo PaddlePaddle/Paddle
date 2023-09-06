@@ -21,7 +21,6 @@
 #include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/instruction.h"
-#include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
@@ -33,8 +32,8 @@ namespace framework {
 class ParallelCompiler {
  public:
   struct Task {
-    Task(ParallelCompiler* compiler, CompilationContext* context, int group_id)
-        : pcompiler(compiler), context(context), group_id(group_id) {}
+    Task(int group_id, ParallelCompiler* compiler, CompilationContext* context)
+        : group_id(group_id), pcompiler(compiler), context(context) {}
     void Lowering();
     void CodegenAndJit();
     void BuildInstruction();

@@ -22,13 +22,13 @@
 
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 
-#include "paddle/fluid/ir/dialect/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/pd_op.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/program.h"
 
-#include "paddle/cinn/hlir/dialect/jit_kernel_op.h"
-#include "paddle/cinn/hlir/dialect/runtime_dialect.h"
+#include "paddle/cinn/hlir/dialect/runtime_dialect/ir/jit_kernel_op.h"
+#include "paddle/cinn/hlir/dialect/runtime_dialect/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/convert_to_dialect.h"
 #include "paddle/cinn/hlir/framework/new_ir_compiler.h"
 #include "paddle/cinn/utils/data_util.h"

@@ -5,7 +5,7 @@ cc_test_old(
   DEPS
   pd_op_to_kernel_pass
   program_translator
-  pd_dialect
+  pd_kernel_dialect
   phi_kernel_adaptor
   pd_trait
   ir

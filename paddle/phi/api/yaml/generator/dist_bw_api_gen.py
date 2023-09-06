@@ -25,14 +25,21 @@ from dist_api_gen import DistForwardAPI
 # 1. Create API Outputs
 SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput({});
-    auto dense_out = dist_out->mutable_value();
+    auto dense_out = const_cast<phi::DenseTensor*>(&dist_out->value());
+"""
+VECTOR_OUT_CREATION_TEMPLATE = """
+    auto dist_out = SetKernelDistOutput({name});
+    std::vector<phi::DenseTensor*> dense_out(dist_out.size());
+    for (size_t i=0; i<dist_out.size(); i++) {{
+        dense_out[i] = const_cast<phi::DenseTensor*>(&dist_out[i]->value());
+    }}
 """
 INPLACE_OUT_CREATION_TEMPLATE = """
     *{} = {};
 """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out_{} = SetKernelDistOutput({});
-    auto dense_out_{} = dist_out_{}->mutable_value();
+    auto dense_out_{} = const_cast<phi::DenseTensor*>(&dist_out_{}->value());
 """
 
 
@@ -52,6 +59,10 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
             if self.outputs['types'][0] == 'Tensor':
                 output_creation_code += SINGLE_OUT_CREATION_TEMPLATE.format(
                     self.outputs['names'][0]
+                )
+            elif self.outputs['types'][0] == 'std::vector<Tensor>':
+                output_creation_code += VECTOR_OUT_CREATION_TEMPLATE.format(
+                    name=self.outputs['names'][0]
                 )
             else:
                 self.vector_output_size_assertion_check()
@@ -138,7 +149,7 @@ def source_include(header_file_path, fw_header_file_path):
 #include <memory>
 
 #include "glog/logging.h"
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 
 #include "paddle/phi/api/lib/api_custom_impl.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
@@ -153,8 +164,8 @@ def source_include(header_file_path, fw_header_file_path):
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/api/profiler/supplement_tracing.h"
 
-DECLARE_bool(conv2d_disable_cudnn);
-DECLARE_int32(low_precision_op_list);
+PD_DECLARE_bool(conv2d_disable_cudnn);
+PD_DECLARE_int32(low_precision_op_list);
 """
 
 

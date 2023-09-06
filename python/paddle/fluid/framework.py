@@ -35,6 +35,7 @@ from .proto import framework_pb2, data_feed_pb2
 from . import core
 from . import unique_name
 from .. import ir
+from paddle.fluid.libpaddle import DataType
 import paddle.version as fluid_version
 import warnings
 import functools
@@ -54,6 +55,8 @@ __all__ = [
     'xpu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
+    'in_new_ir_mode',
+    'in_dynamic_or_new_ir_mode',
     'is_compiled_with_cinn',
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
@@ -101,6 +104,7 @@ class GlobalThreadLocal(threading.local):
         if name == '_dygraph_tracer_':
             global _dygraph_tracer_
             _dygraph_tracer_ = val
+            core._switch_tracer(val)
         self.__dict__[name] = val
 
 
@@ -157,6 +161,22 @@ extra_op_attrs = {
     "unique": ["is_sorted"],
 }
 
+paddle_type_to_proto_type = {
+    DataType.BOOL: core.VarDesc.VarType.BOOL,
+    DataType.FLOAT16: core.VarDesc.VarType.FP16,
+    DataType.UINT16: core.VarDesc.VarType.BF16,
+    DataType.FLOAT32: core.VarDesc.VarType.FP32,
+    DataType.FLOAT64: core.VarDesc.VarType.FP64,
+    DataType.INT8: core.VarDesc.VarType.INT8,
+    DataType.INT16: core.VarDesc.VarType.INT16,
+    DataType.INT32: core.VarDesc.VarType.INT32,
+    DataType.INT64: core.VarDesc.VarType.INT64,
+    DataType.UINT8: core.VarDesc.VarType.UINT8,
+    DataType.COMPLEX64: core.VarDesc.VarType.COMPLEX64,
+    DataType.COMPLEX128: core.VarDesc.VarType.COMPLEX128,
+}
+
+
 # FIXME(dev): We haven't fully verified eager mode on XPU et.al but
 # only GPU/CPU. Remove this after we improve this feature.
 _is_first_import_ = True
@@ -190,6 +210,59 @@ def in_dygraph_mode():
 
     """
     return global_var._dygraph_tracer_ is not None
+
+
+def in_new_ir_mode():
+    """
+
+    This API checks whether paddle runs in static graph mode and use new ir api.
+
+    Returns:
+        bool: Whether paddle runs in static graph mode and use new ir api.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> print(paddle.framework.in_new_ir_mode())
+            False
+
+            >>> paddle.enable_static()
+            >>> paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+            >>> print(paddle.framework.in_new_ir_mode())
+            True
+
+    """
+    return ir.core._use_new_ir_api() and not in_dygraph_mode()
+
+
+def in_dynamic_or_new_ir_mode():
+    """
+
+    This API checks whether paddle runs in dynamic graph or new ir mode.
+
+    Returns:
+        bool: Whether paddle runs in static graph mode and use new ir api.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> print(paddle.framework.in_dynamic_or_new_ir_mode())
+            True
+
+            >>> paddle.enable_static()
+            >>> print(paddle.framework.in_dynamic_or_new_ir_mode())
+            False
+
+            >>> paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+            >>> print(paddle.framework.in_dynamic_or_new_ir_mode())
+            True
+
+    """
+    return in_dygraph_mode() or in_new_ir_mode()
 
 
 global_ipu_index = -1
@@ -1015,40 +1088,34 @@ def convert_np_dtype_to_dtype_(np_dtype):
     else:
         dtype = np.dtype(np_dtype)
 
-    if ir.core._use_new_ir_api():
-        if dtype in ir.core.np_type_to_paddle_type.keys():
-            return ir.core.np_type_to_paddle_type[dtype]
-        else:
-            raise ValueError("Not supported numpy dtype %s" % dtype)
+    if dtype == np.float32:
+        return core.VarDesc.VarType.FP32
+    elif dtype == np.float64:
+        return core.VarDesc.VarType.FP64
+    elif dtype == np.float16:
+        return core.VarDesc.VarType.FP16
+    elif dtype == np.int32:
+        return core.VarDesc.VarType.INT32
+    elif dtype == np.int16:
+        return core.VarDesc.VarType.INT16
+    elif dtype == np.int64:
+        return core.VarDesc.VarType.INT64
+    elif dtype == np.bool_:
+        return core.VarDesc.VarType.BOOL
+    elif dtype == np.uint16:
+        # since there is still no support for bfloat16 in NumPy,
+        # uint16 is used for casting bfloat16
+        return core.VarDesc.VarType.BF16
+    elif dtype == np.uint8:
+        return core.VarDesc.VarType.UINT8
+    elif dtype == np.int8:
+        return core.VarDesc.VarType.INT8
+    elif dtype == np.complex64:
+        return core.VarDesc.VarType.COMPLEX64
+    elif dtype == np.complex128:
+        return core.VarDesc.VarType.COMPLEX128
     else:
-        if dtype == np.float32:
-            return core.VarDesc.VarType.FP32
-        elif dtype == np.float64:
-            return core.VarDesc.VarType.FP64
-        elif dtype == np.float16:
-            return core.VarDesc.VarType.FP16
-        elif dtype == np.int32:
-            return core.VarDesc.VarType.INT32
-        elif dtype == np.int16:
-            return core.VarDesc.VarType.INT16
-        elif dtype == np.int64:
-            return core.VarDesc.VarType.INT64
-        elif dtype == np.bool_:
-            return core.VarDesc.VarType.BOOL
-        elif dtype == np.uint16:
-            # since there is still no support for bfloat16 in NumPy,
-            # uint16 is used for casting bfloat16
-            return core.VarDesc.VarType.BF16
-        elif dtype == np.uint8:
-            return core.VarDesc.VarType.UINT8
-        elif dtype == np.int8:
-            return core.VarDesc.VarType.INT8
-        elif dtype == np.complex64:
-            return core.VarDesc.VarType.COMPLEX64
-        elif dtype == np.complex128:
-            return core.VarDesc.VarType.COMPLEX128
-        else:
-            raise ValueError("Not supported numpy dtype %s" % dtype)
+        raise ValueError("Not supported numpy dtype %s" % dtype)
 
 
 def dtype_is_floating(dtype):
@@ -7445,7 +7512,7 @@ def default_main_program():
             paddle.enable_static()
             # Sample Network:
             x = paddle.static.data(name='x', shape=[100, 100], dtype='float32')
-            y = paddle.static.data(name='x', shape=[100, 100], dtype='float32')
+            y = paddle.static.data(name='y', shape=[100, 100], dtype='float32')
             out = paddle.add(x, y)
 
             #print the number of blocks in the program, 1 in this case
@@ -7593,14 +7660,10 @@ def dygraph_guard_if_declarative():
 def _dygraph_guard(tracer):
     tmp_tracer = global_var._dygraph_tracer_
     global_var._dygraph_tracer_ = tracer
-    if tracer is not None:
-        core._switch_tracer(tracer)
 
     try:
         yield
     finally:
-        if tmp_tracer is not None:
-            core._switch_tracer(tmp_tracer)
         global_var._dygraph_tracer_ = tmp_tracer
 
 
@@ -7611,8 +7674,6 @@ def _static_guard():
     try:
         yield
     finally:
-        if tmp_tracer is not None:
-            core._switch_tracer(tmp_tracer)
         global_var._dygraph_tracer_ = tmp_tracer
 
 

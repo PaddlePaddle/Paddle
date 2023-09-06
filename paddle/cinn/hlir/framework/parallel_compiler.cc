@@ -27,11 +27,12 @@
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/hlir/framework/graph_compiler_util.h"
+#include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/runtime/flags.h"
 
-DECLARE_int32(cinn_parallel_compile_thread);
+PD_DECLARE_int32(cinn_parallel_compile_thread);
 
 namespace cinn {
 namespace hlir {
@@ -58,7 +59,7 @@ void ParallelCompiler::SplitTask() {
         context_->graph->fusion_groups.size() ==
             context_->lowered_funcs.size());
   for (int i = 0; i < context_->graph->fusion_groups.size(); ++i) {
-    tasks_.emplace_back(this, context_, i);
+    tasks_.emplace_back(i, this, context_);
   }
 }
 
@@ -114,20 +115,17 @@ void ParallelCompiler::Task::Lowering() {
   if (!context->lowered_funcs.empty()) {
     CHECK_EQ(context->lowered_funcs.size(),
              context->graph->fusion_groups.size());
-  }
-  auto& dtype_dict =
-      context->graph->GetMutableAttrs<absl::flat_hash_map<std::string, Type>>(
-          "inferdtype");
-  auto& shape_dict =
-      context->graph
-          ->GetMutableAttrs<absl::flat_hash_map<std::string, shape_t>>(
-              "infershape");
-
-  OpLowerer op_lowerer(dtype_dict, shape_dict, context->target);
-  if (!context->lowered_funcs.empty()) {
     pcompiler->result_.lowered_funcs[group_id] =
         context->lowered_funcs[group_id];
   } else {
+    auto& dtype_dict =
+        context->graph->GetMutableAttrs<absl::flat_hash_map<std::string, Type>>(
+            "inferdtype");
+    auto& shape_dict =
+        context->graph
+            ->GetMutableAttrs<absl::flat_hash_map<std::string, shape_t>>(
+                "infershape");
+    auto op_lowerer = CreateOpLowerer(dtype_dict, shape_dict, context->target);
     auto& group = context->graph->fusion_groups[group_id];
     VLOG(4) << "Start Lowering Group " << group_id << " at "
             << std::this_thread::get_id() << " :\n"
@@ -138,6 +136,8 @@ void ParallelCompiler::Task::Lowering() {
     CHECK_EQ(lowered_group.size(), 1) << "Lowerd Function Is Not Equal 1!";
     pcompiler->result_.lowered_funcs[group_id] = std::move(lowered_group);
   }
+  backends::CompilationInfoDumper::DumpLoweredFuncByGroupIndex(
+      pcompiler->result_.lowered_funcs[group_id].front(), group_id);
 }
 
 void ParallelCompiler::Task::CodegenAndJit() {
@@ -168,6 +168,8 @@ void ParallelCompiler::Task::CodegenAndJit() {
     }
     CHECK(!cuda_c.empty()) << "Compile CUDA C code failed from device module:\n"
                            << dmodule;
+    backends::CompilationInfoDumper::DumpSourceCodeByGroupIndex(cuda_c,
+                                                                group_id);
     pcompiler->result_.source_codes[group_id] = cuda_c;
 
     cinn::backends::SourceCodePrint::GetInstance()->write(cuda_c);
@@ -176,6 +178,7 @@ void ParallelCompiler::Task::CodegenAndJit() {
     backends::nvrtc::Compiler compiler;
     auto ptx = compiler(cuda_c);
     CHECK(!ptx.empty()) << "Compile PTX failed from source code:\n" << cuda_c;
+    backends::CompilationInfoDumper::DumpPtxCodeByGroupIndex(ptx, group_id);
     pcompiler->result_.source_ptxs[group_id] = ptx;
     // load cumodule
     cumodule = std::make_unique<CUDAModule>(ptx,
@@ -217,6 +220,7 @@ void ParallelCompiler::Task::BuildInstruction() {
   instr->SetLoweredFunc(reinterpret_cast<void*>(fn_ptr), group->GetFuncName());
 
   instr->Finalize();
+  backends::CompilationInfoDumper::DumpInstructionByGroupIndex(instr, group_id);
   pcompiler->result_.instructions[group_id] = std::move(instr);
 }
 

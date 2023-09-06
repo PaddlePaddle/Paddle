@@ -88,7 +88,7 @@ class PyVariableWrapperHook : public imperative::VariableWrapperHook {
     Py_INCREF(py_func_);
   }
 
-  ~PyVariableWrapperHook() override {
+  ~PyVariableWrapperHook() override {  // NOLINT
     py::gil_scoped_acquire gil;
     Py_DECREF(py_func_);
   }
@@ -976,8 +976,8 @@ void BindImperative(py::module *m_ptr) {
       "to_uva_tensor",
       [](const py::object &obj, int device_id) {
         const auto &tracer = imperative::GetCurrentTracer();
-        auto new_tensor = std::shared_ptr<imperative::VarBase>(
-            new imperative::VarBase(tracer->GenerateUniqueName()));
+        auto new_tensor =
+            std::make_shared<imperative::VarBase>(tracer->GenerateUniqueName());
         auto array = obj.cast<py::array>();
         if (py::isinstance<py::array_t<int32_t>>(array)) {
           SetUVATensorFromPyArray<int32_t>(new_tensor, array, device_id);
