@@ -1,5 +1,5 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-// SPDX-FileCopyrightText: Copyright (c) 1993-2022 NVIDIA CORPORATION &
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// SPDX-FileCopyrightText: Copyright (c) 1993-2023 NVIDIA CORPORATION &
 // AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
