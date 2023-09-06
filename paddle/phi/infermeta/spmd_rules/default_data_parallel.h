@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/type_defs.h"
+#include "paddle/phi/infermeta/spmd_rules/utils.h"
 
 namespace phi {
 namespace distributed {
@@ -44,6 +45,23 @@ SpmdInfo DefaultDataParallelSpmdInferForward(
 SpmdInfo DefaultDataParallelSpmdInferBackward(
     const std::vector<const DistMetaTensor*>& ins,
     const std::vector<const DistMetaTensor*>& outs);
+
+// For phi api
+template <typename... Args>
+SpmdInfo PhiDefaultDataParallelSpmdInferForward(const Args&... args) {
+  return detail::PhiSpmdVariadicArgumentParser<
+             DefaultDataParallelSpmdInferForward>()
+      .apply(args...)
+      .InferForward();
+}
+
+template <typename... Args>
+SpmdInfo PhiDefaultDataParallelSpmdInferBackward(const Args&... args) {
+  return detail::PhiSpmdVariadicArgumentParser<
+             DefaultDataParallelSpmdInferBackward>()
+      .apply(args...)
+      .InferBackward();
+}
 
 }  // namespace distributed
 }  // namespace phi
