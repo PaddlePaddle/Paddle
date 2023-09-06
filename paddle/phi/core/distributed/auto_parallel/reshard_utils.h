@@ -104,5 +104,30 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
     RESHARD_FUNCTOR_IMPL(dev_ctx, fn_name, dtype, __VA_ARGS__); \
   } while (0)
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#define RESHARD_FUNCTOR_WITHOUT_DTYPE(dev_ctx, fn_name, ...)          \
+  do {                                                                \
+    if (phi::CPUContext::classof(dev_ctx)) {                          \
+      fn_name(static_cast<const CPUContext&>(*dev_ctx), __VA_ARGS__); \
+    } else if (phi::GPUContext::classof(dev_ctx)) {                   \
+      fn_name(static_cast<const GPUContext&>(*dev_ctx), __VA_ARGS__); \
+    } else {                                                          \
+      PADDLE_THROW(phi::errors::Unimplemented(                        \
+          "The %s in reshard only supported on CPU and GPU for now.", \
+          #fn_name));                                                 \
+    }                                                                 \
+  } while (0)
+#else
+#define RESHARD_FUNCTOR_WITHOUT_DTYPE(dev_ctx, fn_name, ...)              \
+  do {                                                                    \
+    if (phi::CPUContext::classof(dev_ctx)) {                              \
+      fn_name(static_cast<const CPUContext&>(*dev_ctx), __VA_ARGS__);     \
+    } else {                                                              \
+      PADDLE_THROW(phi::errors::Unimplemented(                            \
+          "The %s in reshard only supported on CPU for now.", #fn_name)); \
+    }                                                                     \
+  } while (0)
+#endif
+
 }  // namespace distributed
 }  // namespace phi
