@@ -165,19 +165,25 @@ class OpConverter {
         it,
         platform::errors::Unimplemented("no OpConverter for optype [%s]",
                                         op_desc.Type()));
+    
+    std::string all_outpus_name = "(Outputs:";
+    std::string all_inpus_name = "(Inputs:";
+    for(auto it1 : op_desc.OutputNames()) {
+      for (auto it2 : op_desc.Output(it1)) {
+        all_outpus_name += it2;
+        all_outpus_name += ",";
+      }
+    }
+    all_outpus_name += ")";
+    for(auto it1 : op_desc.InputNames()) {
+      for (auto it2 : op_desc.Input(it1)) {
+        all_inpus_name += it2;
+        all_inpus_name += ",";
+      }
+    }
+    all_inpus_name += ")";
 
-std::cout << op_desc.Type() << "are converting" << std::endl;
-
-for(auto it1 : op_desc.InputNames())
-{
-  for (auto it2 : op_desc.Input(it1))
-  {
-    auto output_name = it2;
-    std::cout << output_name << std::endl;
-  }
-}
-
-std::cout << op_desc.InputNames().size() << std::endl;
+    std::cout << op_desc.Type() << all_inpus_name << all_outpus_name << " are to be converted to TensorRT layer." << std::endl;
 
     it->SetEngine(engine);
     engine->SetScope(&scope);
@@ -759,7 +765,7 @@ std::cout << op_desc.InputNames().size() << std::endl;
       for (int i = 0; i < tmp_dims.nbDims; i++)
         tmp_vec.push_back(tmp_dims.d[i]);
 
-      std::cout << output_tensor_names[i] << "'s dimension :["
+      std::cout << "Paddle-TRT inferred " << output_tensor_names[i] << "'s dimension is :["
               << string::join_strings(tmp_vec, ',') << "]" << std::endl;
       // The following check may cause errors in CI, but is necessary in the
       // // latest version.

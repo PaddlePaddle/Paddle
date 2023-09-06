@@ -98,8 +98,6 @@ std::vector<std::string> result = {
   "ldmap_routing_fusion",
   "ego_info_fusion",
   "cam2bev_modules",
-
-  
   "2d_traffic_light",
   "pts_det_traj_head",
   "admap_head",
@@ -133,7 +131,6 @@ if(nvtx && 0){
     }
 
 #ifdef PADDLE_WITH_NVTX
-if(nvtx)
     platform::CudaNvtxRangePush(op->Type() + "|" + op->OutputVars(true).front(),
                                 platform::NvtxRangeColor::Green);
 #endif
@@ -215,7 +212,6 @@ if (FLAGS_naive_executor_sync_op)
   }
 
 #ifdef PADDLE_WITH_NVTX
-if(nvtx)
     platform::CudaNvtxRangePop();
 #endif
 
