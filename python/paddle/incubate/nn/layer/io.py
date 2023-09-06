@@ -55,7 +55,7 @@ class ListenAndServ:
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP('ValueError: Operator "listen_and_serv" has not been registered.')
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> from paddle.incubate.nn.layer.io import ListenAndServ
             >>> import paddle
             >>> paddle.enable_static()
