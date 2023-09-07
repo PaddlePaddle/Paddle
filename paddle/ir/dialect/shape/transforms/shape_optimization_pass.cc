@@ -45,4 +45,4 @@ std::unique_ptr<Pass> CreateShapeOptimizationPass() {
 
 }  // namespace ir
 
-REGISTER_PASS(shape_optimization, ShapeOptimizationPass);
+REGISTER_IR_PASS(shape_optimization, ShapeOptimizationPass);
