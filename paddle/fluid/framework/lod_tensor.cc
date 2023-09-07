@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/lod_tensor.h"
 
-#include <stdint.h>
+#include <cstdint>
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/version.h"
