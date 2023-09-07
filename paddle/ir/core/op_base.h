@@ -215,6 +215,10 @@ class Op : public OpBase {
     return ConcreteOp(nullptr);
   }
 
+  static bool classof(const Operation *op) {
+    return op && op->info().id() == TypeId::get<ConcreteOp>();
+  }
+
   static std::vector<InterfaceValue> GetInterfaceMap() {
     constexpr size_t interfaces_num = std::tuple_size<InterfaceList>::value;
     std::vector<InterfaceValue> interfaces_map(interfaces_num);

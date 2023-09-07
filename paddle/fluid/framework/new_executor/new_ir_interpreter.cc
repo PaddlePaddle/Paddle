@@ -194,11 +194,10 @@ std::string NewIRInterpreter::GetNameById(int id) const {
   // typically when the target variable is not existed in the original program
   // desc, but created by interpretercore.
   // For example, created and used by d2h_copy or h2d_copy operator.
-  auto it = std::find_if(var_name_2_id_.begin(),
-                         var_name_2_id_.end(),
-                         [id](const auto& pair) { return pair.second == id; });
-  if (it != var_name_2_id_.end()) {
-    return it->first;
+
+  auto it = id_2_var_name_.find(id);
+  if (it != id_2_var_name_.end()) {
+    return it->second;
   }
   return "";
 }
@@ -925,6 +924,9 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                      &variable_2_var_name_,
                      &var_name_2_id_,
                      &variable_list_);
+
+    interpreter::BuildId2VarName(var_name_2_id_, &id_2_var_name_);
+
     VLOG(4) << "Done BuildScope";
     VLOG(4) << DebugValueInfo();
 
