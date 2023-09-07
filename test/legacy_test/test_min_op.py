@@ -19,8 +19,8 @@ from eager_op_test import check_out_dtype
 from test_sum_op import TestReduceOPTensorAxisBase
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class ApiMinTest(unittest.TestCase):
@@ -120,7 +120,7 @@ class TestMinWithTensorAxis2(TestReduceOPTensorAxisBase):
 
 class TestMinAPIWithEmptyTensor(unittest.TestCase):
     def test_empty_tensor(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             with self.assertRaises(ValueError):
                 data = np.array([], dtype=np.float32)
                 data = np.reshape(data, [0, 0, 0, 0, 0, 0, 0])

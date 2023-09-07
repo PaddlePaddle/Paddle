@@ -422,14 +422,14 @@ packages=['paddle',
           'paddle.inference',
           'paddle.inference.contrib',
           'paddle.inference.contrib.utils',
-          'paddle.fluid',
-          'paddle.fluid.dygraph',
-          'paddle.fluid.proto',
-          'paddle.fluid.proto.profiler',
-          'paddle.fluid.layers',
-          'paddle.fluid.incubate',
+          'paddle.base',
+          'paddle.base.dygraph',
+          'paddle.base.proto',
+          'paddle.base.proto.profiler',
+          'paddle.base.layers',
+          'paddle.base.incubate',
           'paddle.incubate.distributed.fleet',
-          'paddle.fluid.incubate.checkpoint',
+          'paddle.base.incubate.checkpoint',
           'paddle.amp',
           'paddle.cost_model',
           'paddle.hapi',
@@ -524,19 +524,19 @@ if not '${WIN32}':
     paddle_bins = ['${PADDLE_BINARY_DIR}/paddle/scripts/paddle']
 
 if os.name != 'nt':
-    package_data={'paddle.fluid': ['${FLUID_CORE_NAME}' + '.so']}
+    package_data={'paddle.base': ['${FLUID_CORE_NAME}' + '.so']}
 else:
-    package_data={'paddle.fluid': ['${FLUID_CORE_NAME}' + '.pyd', '${FLUID_CORE_NAME}' + '.lib']}
+    package_data={'paddle.base': ['${FLUID_CORE_NAME}' + '.pyd', '${FLUID_CORE_NAME}' + '.lib']}
 
-package_data['paddle.fluid'] += ['${PADDLE_BINARY_DIR}/python/paddle/cost_model/static_op_benchmark.json']
+package_data['paddle.base'] += ['${PADDLE_BINARY_DIR}/python/paddle/cost_model/static_op_benchmark.json']
 
 package_dir={
     '': '${PADDLE_BINARY_DIR}/python',
-    # The paddle.fluid.proto will be generated while compiling.
+    # The paddle.base.proto will be generated while compiling.
     # So that package points to other directory.
-    'paddle.fluid.proto.profiler': '${PADDLE_BINARY_DIR}/paddle/fluid/platform',
-    'paddle.fluid.proto': '${PADDLE_BINARY_DIR}/paddle/fluid/framework',
-    'paddle.fluid': '${PADDLE_BINARY_DIR}/python/paddle/fluid',
+    'paddle.base.proto.profiler': '${PADDLE_BINARY_DIR}/paddle/fluid/platform',
+    'paddle.base.proto': '${PADDLE_BINARY_DIR}/paddle/fluid/framework',
+    'paddle.base': '${PADDLE_BINARY_DIR}/python/paddle/base',
 }
 
 # put all thirdparty libraries in paddle.libs
@@ -706,14 +706,14 @@ package_dir['paddle.libs']=libs_path
 
 # change rpath of ${FLUID_CORE_NAME}.ext, add $ORIGIN/../libs/ to it.
 # The reason is that libwarpctc.ext, libiomp5.ext etc are in paddle.libs, and
-# ${FLUID_CORE_NAME}.ext is in paddle.fluid, thus paddle/fluid/../libs will pointer to above libraries.
+# ${FLUID_CORE_NAME}.ext is in paddle.base, thus paddle/fluid/../libs will pointer to above libraries.
 # This operation will fix https://github.com/PaddlePaddle/Paddle/issues/3213
 if '${CMAKE_BUILD_TYPE}' == 'Release':
     if os.name != 'nt':
         # only change rpath in Release mode, since in Debug mode, ${FLUID_CORE_NAME}.xx is too large to be changed.
         if "@APPLE@" == "1":
-            commands = ["install_name_tool -id '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
-            commands.append("install_name_tool -add_rpath '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so')
+            commands = ["install_name_tool -id '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
+            commands.append("install_name_tool -add_rpath '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so')
             if('${WITH_SHARED_PHI}' == 'ON'):
                 # change rpath of phi.ext for loading 3rd party libb
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
@@ -721,7 +721,7 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
                 # change rpath of ir.ext for loading 3rd party libb
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
         else:
-            commands = ["patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
+            commands = ["patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
             if('${WITH_SHARED_PHI}' == 'ON'):
                 # change rpath of phi.ext for loading 3rd party lib
                 commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")

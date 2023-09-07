@@ -22,8 +22,8 @@ import os
 import numpy as np
 
 import paddle
-from paddle.fluid import core, global_scope, program_guard
-from paddle.fluid.framework import dygraph_only
+from paddle.base import core, global_scope, program_guard
+from paddle.base.framework import dygraph_only
 from paddle.incubate import asp
 
 from .supported_layer_list import (
@@ -453,7 +453,7 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
         if (
             hasattr(model, "distributed_info_")
             and model.distributed_info_["sharding_degree"] > 1
-            and paddle.fluid.is_compiled_with_cuda()
+            and paddle.base.is_compiled_with_cuda()
         ):
             gpu_id = int(os.environ.get('FLAGS_selected_gpus', 0))
             place = paddle.CUDAPlace(gpu_id)
@@ -857,7 +857,7 @@ class ASPHelper:
         """
         optimizer.step()
         main_prog = paddle.static.default_main_program()
-        with paddle.fluid.dygraph.no_grad():
+        with paddle.base.dygraph.no_grad():
             ASPHelper._insert_sparse_mask_ops(
                 main_prog, optimizer._parameter_list
             )

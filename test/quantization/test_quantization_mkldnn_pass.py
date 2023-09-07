@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import IrGraph
+from paddle.base.framework import IrGraph
 from paddle.framework import core
 from paddle.static.quantization import (
     QuantInt8MkldnnPass,
@@ -156,7 +156,7 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
         test_reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=batch_size
         )
-        feeder = paddle.fluid.DataFeeder(feed_list=feeds, place=place)
+        feeder = paddle.base.DataFeeder(feed_list=feeds, place=place)
 
         # Training the model to get the weights value
         with paddle.static.scope_guard(scope):
