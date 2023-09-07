@@ -391,7 +391,7 @@ def nonzero(x, as_tuple=False):
     of `input`. Given a n-Dimensional `input` tensor with shape [x_1, x_2, ..., x_n], If
     as_tuple is False, we can get a output tensor with shape [z, n], where `z` is the
     number of all non-zero elements in the `input` tensor. If as_tuple is True, we can get
-    a 1-D tensor tuple of length `n`, and the shape of each 1-D tensor is [z, 1].
+    a 1-D tensor tuple of length `n`, and the shape of each 1-D tensor is [z].
 
     Args:
         x (Tensor): The input tensor variable.
@@ -418,12 +418,9 @@ def nonzero(x, as_tuple=False):
             out_z1_tuple = paddle.nonzero(x1, as_tuple=True)
             for out in out_z1_tuple:
                 print(out)
-            #[[0]
-            # [1]
-            # [2]]
-            #[[0]
-            # [1]
-            # [2]]
+            #[0, 1, 2]
+            #[0, 1, 2]
+
             out_z2 = paddle.nonzero(x2)
             print(out_z2)
             #[[1]
@@ -431,8 +428,7 @@ def nonzero(x, as_tuple=False):
             out_z2_tuple = paddle.nonzero(x2, as_tuple=True)
             for out in out_z2_tuple:
                 print(out)
-            #[[1]
-            # [3]]
+            #[1, 3]
 
     """
     list_out = []
@@ -470,14 +466,8 @@ def nonzero(x, as_tuple=False):
 
     if not as_tuple:
         return outs
-    elif rank == 1:
-        return (outs,)
     else:
-        for i in range(rank):
-            list_out.append(
-                paddle.slice(outs, axes=[1], starts=[i], ends=[i + 1])
-            )
-        return tuple(list_out)
+        return tuple(paddle.unbind(outs, 1))
 
 
 def sort(x, axis=-1, descending=False, name=None):
@@ -648,9 +638,8 @@ def where(condition, x=None, y=None, name=None):
 
             out = paddle.where(x>1)
             print(out)
-            #out: (Tensor(shape=[2, 1], dtype=int64, place=CPUPlace, stop_gradient=True,
-            #            [[2],
-            #             [3]]),)
+            #out: (Tensor(shape=[2], dtype=int64, place=CPUPlace, stop_gradient=True,
+            #            [2, 3]),)
     """
     if np.isscalar(x):
         x = paddle.full([1], x, np.array([x]).dtype.name)
