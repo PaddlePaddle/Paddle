@@ -1120,6 +1120,8 @@
     func : index_sample_grad
     data_type : out_grad
   no_need_buffer : x
+  data_transform :
+    skip_transform : index
 
 - backward_op : index_select_grad
   forward : index_select(Tensor x, Tensor index, int axis) -> Tensor(out)
@@ -1132,6 +1134,8 @@
     func : index_select_grad
     data_type : out_grad
   no_need_buffer : x
+  data_transform :
+    skip_transform : index
 
 - backward_op : index_select_strided_grad
   forward : index_select_strided(Tensor x, int64_t index, int axis) -> Tensor(out)

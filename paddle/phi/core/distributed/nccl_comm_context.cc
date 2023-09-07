@@ -37,6 +37,30 @@ NCCLCommContext::NCCLCommContext(int rank, int size, ncclUniqueId nccl_id)
 
 ncclComm_t NCCLCommContext::GetNcclComm() { return nccl_comm_; }
 
+gpuStream_t NCCLCommContext::GetStream() { return dev_ctx_->stream(); }
+
+phi::GPUContext* NCCLCommContext::GetDevContext() { return dev_ctx_.get(); }
+
+void NCCLCommContext::SetDevContext(
+    std::unique_ptr<phi::GPUContext>&& dev_ctx) {
+  dev_ctx_ = std::move(dev_ctx);
+}
+
+gpuEvent_t NCCLCommContext::GetComputeEvent() { return compute_event_.get(); }
+
+void NCCLCommContext::SetComputeEvent(
+    std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type>&&
+        compute_event) {
+  compute_event_ = std::move(compute_event);
+}
+
+gpuEvent_t NCCLCommContext::GetCommEvent() { return comm_event_.get(); }
+
+void NCCLCommContext::SetCommEvent(
+    std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type>&& comm_event) {
+  comm_event_ = std::move(comm_event);
+}
+
 void NCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
                                 const phi::DenseTensor& in_tensor,
                                 int root,

@@ -459,6 +459,7 @@ from . import hub  # noqa: F401
 from . import linalg  # noqa: F401
 from . import fft  # noqa: F401
 from . import signal  # noqa: F401
+from . import _ir_ops  # noqa: F401
 
 import paddle.text  # noqa: F401
 import paddle.vision  # noqa: F401
@@ -478,9 +479,10 @@ if is_compiled_with_cinn():
 
 disable_static()
 
-from .new_ir_utils import _switch_to_new_ir  # noqa: F401
+from .new_ir_utils import IrGuard  # noqa: F401
 
-_switch_to_new_ir()
+ir_change = IrGuard()
+ir_change._switch_to_new_ir()
 
 __all__ = [  # noqa
     'iinfo',
