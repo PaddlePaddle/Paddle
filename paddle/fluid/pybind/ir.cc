@@ -691,14 +691,17 @@ SplitedResult ForwardBackwardSplit(
   VLOG(1) << "Splited Program (fwd | bwd): \n" << print_stream.str();
 
   // construct all attributes we needed.
-  mapping_value(middle_values, forward_value_map, fm);             // write 'fm'
-  mapping_value(middle_values, backward_value_map, bm);            // write 'bm'
-  mapping_value(forward_inputs, forward_value_map, fx);            // write 'bm'
-  mapping_value(forward_inputs, backward_value_map, bx);           // write 'bm'
-  mapping_value(forward_outputs, forward_value_map, fo);           // write 'bm'
-  mapping_value(forward_inputs_grads, backward_value_map, bx_g);   // write 'bm'
-  mapping_value(forward_outputs_grads, backward_value_map, bo_g);  // write 'bm'
-  mapping_value(forward_outputs, backward_value_map, bo);          // write 'bm'
+
+  mapping_value(middle_values, forward_value_map, fm);    // write 'fm'
+  mapping_value(middle_values, backward_value_map, bm);   // write 'bm'
+  mapping_value(forward_inputs, forward_value_map, fx);   // write 'fx'
+  mapping_value(forward_inputs, backward_value_map, bx);  // write 'bx'
+  mapping_value(forward_outputs, forward_value_map, fo);  // write 'fo'
+  mapping_value(
+      forward_inputs_grads, backward_value_map, bx_g);  // write 'fx_g'
+  mapping_value(
+      forward_outputs_grads, backward_value_map, bo_g);    // write 'bo_g'
+  mapping_value(forward_outputs, backward_value_map, bo);  // write 'bo'
 
   std::map<std::string, std::vector<ir::Value>> attr = {{"fx", fx},
                                                         {"fp", fp},

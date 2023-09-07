@@ -21,7 +21,7 @@ import paddle
 import paddle.ir.core as ir_static
 from paddle import _legacy_C_ops
 from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
-from paddle.autograd.backward import grad
+from paddle.autograd.ir_backward import grad
 from paddle.fluid import core, framework, program_guard
 from paddle.fluid.compiler import BuildStrategy
 from paddle.fluid.data_feeder import check_type, convert_dtype
