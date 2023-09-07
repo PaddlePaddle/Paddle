@@ -104,7 +104,6 @@ void PaddleDialect::PrintAttribute(ir::Attribute attr, std::ostream &os) const {
   }
 }
 
-
 ir::Type PaddleDialect::ParseType(ir::IrParser &parser) {  // NOLINT
   parser.ConsumeAToken("pd.tensor");
   parser.ConsumeAToken("<");
@@ -150,6 +149,8 @@ ir::Attribute PaddleDialect::ParseAttribute(ir::IrParser &parser) {  // NOLINT
   } else {
     IR_THROW("No function to parse " + attribute_name + " exists!" +
              parser.GetErrorLocationInfo());
+  }
+}
 
 void PaddleDialect::PrintOperation(ir::Operation *op,
                                    ir::IrPrinter &printer) const {
@@ -157,7 +158,6 @@ void PaddleDialect::PrintOperation(ir::Operation *op,
     if_op.Print(printer);
   } else {
     printer.PrintGeneralOperation(op);
-
   }
 }
 

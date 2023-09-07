@@ -25,7 +25,6 @@ class PaddleDialect : public ir::Dialect {
 
   static const char* name() { return "pd"; }
 
-
   ir::Type ParseType(ir::IrParser& parser);            // NOLINT
   ir::Attribute ParseAttribute(ir::IrParser& parser);  // NOLINT
 
@@ -34,7 +33,6 @@ class PaddleDialect : public ir::Dialect {
 
   void PrintOperation(ir::Operation* op,
                       ir::IrPrinter& printer) const override;  // NOLINT
-
 
  private:
   void initialize();

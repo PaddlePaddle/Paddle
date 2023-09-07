@@ -145,7 +145,6 @@ class IR_API Dialect {
     IR_THROW("dialect has no registered attribute printing hook");
   }
 
-
   virtual Type ParseType(IrParser &parser) {  // NOLINT
     IR_THROW("dialect has no registered type parsing hook");
   }
