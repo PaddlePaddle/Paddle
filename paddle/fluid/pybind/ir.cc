@@ -29,7 +29,6 @@
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/api_builder.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/trait/custom_vjp.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/fluid/ir/transforms/inplace_pass.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
@@ -262,10 +261,7 @@ void BindOperation(py::module *m) {
       .def("replace_all_uses_with",
            [](Operation &self, const std::vector<OpResult> &op_results) {
              self.ReplaceAllUsesWith(op_results);
-           })
-      .def("has_custom_vjp", [](Operation &self) -> py::bool_ {
-        return self.info().HasTrait<paddle::dialect::CustomVjpTrait>();
-      });
+           });
 }
 
 void BindValue(py::module *m) {
