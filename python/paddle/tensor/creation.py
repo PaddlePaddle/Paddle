@@ -824,22 +824,17 @@ def full_like(x, fill_value, dtype=None, name=None):
              [2. 2. 2.]]
     """
 
-    if in_new_ir_mode():
-        if dtype is None:
-            dtype = x.dtype
-        else:
-            if not isinstance(dtype, core.DataType):
-                dtype = paddle.ir.core.convert_np_dtype_to_dtype_(dtype)
-        place = _current_expected_place()
-        return _C_ops.full_like(x, fill_value, dtype, place)
-
     if dtype is None:
         dtype = x.dtype
     else:
-        if not isinstance(dtype, core.VarDesc.VarType):
+        if not isinstance(dtype, [core.DataType, core.VarDesc.VarType]):
             dtype = convert_np_dtype_to_dtype_(dtype)
+
     if in_dynamic_mode():
         return _C_ops.full_like(x, fill_value, dtype, x.place)
+    elif in_new_ir_mode():
+        place = _current_expected_place()
+        return _C_ops.full_like(x, fill_value, dtype, place)
     else:
         helper = LayerHelper("full_like", **locals())
         check_variable_and_dtype(
