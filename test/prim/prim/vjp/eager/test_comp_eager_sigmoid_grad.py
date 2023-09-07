@@ -19,7 +19,7 @@ import parameterized as param
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.base import core
 
 
 @param.parameterized_class(

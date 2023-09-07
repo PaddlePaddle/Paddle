@@ -16,8 +16,8 @@
 import numpy as np
 
 from paddle.base.core import VarDesc
-from paddle.fluid.libpaddle import DataType
-from paddle.fluid.libpaddle.ir import Program, set_global_program
+from paddle.base.libpaddle import DataType
+from paddle.base.libpaddle.ir import Program, set_global_program
 
 from ..fluid.wrapped_decorator import signature_safe_contextmanager
 

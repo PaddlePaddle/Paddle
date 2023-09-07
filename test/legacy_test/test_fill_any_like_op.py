@@ -19,7 +19,7 @@ from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.framework.dtype as dtypes
-from paddle.fluid import core
+from paddle.base import core
 from paddle.framework import in_new_ir_mode
 
 

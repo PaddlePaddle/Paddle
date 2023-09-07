@@ -152,8 +152,8 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
       auto *filter_var = scope->FindLocalVar(filter_name);
       const auto &filter_tensor = filter_var->Get<phi::DenseTensor>();
       CHECK_EQ(filter_tensor.dims().size() == 4UL, true);
-      int oc = filter_tensor.dims()[0];
-      int ic = filter_tensor.dims()[1];
+      int oc = static_cast<int>(filter_tensor.dims()[0]);
+      int ic = static_cast<int>(filter_tensor.dims()[1]);
       bool cudnn_can_support =
           oc % CUDNN_ALIGNMENT == 0 && ic % CUDNN_ALIGNMENT == 0;
       if (!cudnn_can_support) {

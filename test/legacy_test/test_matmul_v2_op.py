@@ -19,8 +19,8 @@ from eager_op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
 from testsuite import create_op
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
@@ -494,12 +494,12 @@ create_test_bf16_class(TestMatMulOp17)
 
 class TestMatMulV2API(unittest.TestCase):
     def setUp(self):
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input_x = paddle.static.data(
                 name="input_x", shape=[4, 3], dtype="float32"
             )
@@ -512,9 +512,9 @@ class TestMatMulV2API(unittest.TestCase):
             x_np = np.random.random([4, 3]).astype("float32")
             y_np = np.random.random([3, 4]).astype("float32")
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"input_x": x_np, "input_y": y_np},
                 fetch_list=[result],
             )
@@ -525,7 +525,7 @@ class TestMatMulV2API(unittest.TestCase):
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 input_x = np.random.random([4, 3]).astype("float64")
                 input_y = np.random.random([3, 4]).astype("float64")
                 x = paddle.to_tensor(input_x)
@@ -536,7 +536,7 @@ class TestMatMulV2API(unittest.TestCase):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                with fluid.dygraph.guard(place):
+                with base.dygraph.guard(place):
                     input_x = np.random.random([4, 3]).astype("float16")
                     input_y = np.random.random([3, 4]).astype("float16")
                     x = paddle.to_tensor(input_x)
@@ -547,7 +547,7 @@ class TestMatMulV2API(unittest.TestCase):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                with fluid.dygraph.guard(place):
+                with base.dygraph.guard(place):
                     paddle.set_flags(
                         {'FLAGS_gemm_use_half_precision_compute_type': False}
                     )
@@ -573,7 +573,7 @@ class TestMatMulV2API(unittest.TestCase):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                with fluid.dygraph.guard(place):
+                with base.dygraph.guard(place):
                     paddle.set_flags(
                         {'FLAGS_gemm_use_half_precision_compute_type': True}
                     )
@@ -605,8 +605,8 @@ class TestComplexMatMulOp(OpTest):
         self.init_input_output()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
@@ -658,8 +658,8 @@ class TestComplexMatMulOpBroadcast(OpTest):
         self.init_input_output()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
@@ -720,8 +720,8 @@ class TestInt32MatmulOp(OpTest):
         self.init_input_output()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
@@ -746,8 +746,8 @@ class TestInt32MatMulOpBroadcast(OpTest):
         self.init_input_output()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
@@ -772,8 +772,8 @@ class TestInt64MatmulOp(OpTest):
         self.init_input_output()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
@@ -798,8 +798,8 @@ class TestInt64MatMulOpBroadcast(OpTest):
         self.init_input_output()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
