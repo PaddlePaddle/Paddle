@@ -1200,7 +1200,7 @@ VarDesc *OpDesc::FindVarRecursive(const std::string &name) {
   PADDLE_THROW(platform::errors::NotFound(
       "Not found Var(%s) from Block(%d) back into global Block.",
       name,
-      block_->ID()));
+      block_->ID()));  // NOLINT
 }
 
 CompileTimeInferShapeContext::CompileTimeInferShapeContext(

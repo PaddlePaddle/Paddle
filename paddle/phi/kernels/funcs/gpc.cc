@@ -893,7 +893,7 @@ void gpc_add_contour(gpc_polygon *p, gpc_vertex_list *new_contour, int hole) {
   /* Copy the old contour and hole data into the extended arrays */
   for (c = 0; c < p->num_contours; c++) {
     extended_hole[c] = p->hole[c];
-    extended_contour[c] = p->contour[c];
+    extended_contour[c] = p->contour[c];  // NOLINT
   }
 
   /* Copy the new contour and hole onto the end of the extended arrays */
@@ -905,7 +905,7 @@ void gpc_add_contour(gpc_polygon *p, gpc_vertex_list *new_contour, int hole) {
       new_contour->num_vertices * static_cast<int>(sizeof(gpc_vertex)),
       const_cast<char *>("contour addition"));
   for (v = 0; v < new_contour->num_vertices; v++) {
-    extended_contour[c].vertex[v] = new_contour->vertex[v];
+    extended_contour[c].vertex[v] = new_contour->vertex[v];  // NOLINT
   }
 
   /* Dispose of the old contour */
