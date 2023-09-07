@@ -15,7 +15,7 @@
 
 import numpy as np
 
-from paddle.fluid.core import VarDesc
+from paddle.base.core import VarDesc
 from paddle.fluid.libpaddle import DataType
 from paddle.fluid.libpaddle.ir import Program, set_global_program
 
