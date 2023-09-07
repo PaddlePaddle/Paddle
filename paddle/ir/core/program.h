@@ -52,6 +52,8 @@ class IR_API Program {
 
   void Print(std::ostream& os) const;
 
+  void Visualize() const;
+
   Block* block() { return module_.block(); }
   const Block* block() const { return module_op().block(); }
 
