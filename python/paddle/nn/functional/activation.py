@@ -1034,7 +1034,7 @@ def silu(x, name=None):
     Where :math:`x` is the input Tensor.
 
     Parameters:
-        x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64, complex64, complex128.
+        x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1057,17 +1057,7 @@ def silu(x, name=None):
         return _C_ops.silu(x)
     else:
         check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            'silu',
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'silu'
         )
         helper = LayerHelper("silu", **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
