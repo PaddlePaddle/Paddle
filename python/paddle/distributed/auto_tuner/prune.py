@@ -55,6 +55,11 @@ def prune_by_mp(tuner_cfg, cur_cfg, history_cfgs=None):
     mp_degree = cur_cfg.get("mp_degree", None)
     hidden_size = tuner_cfg["model_cfg"].get("hidden_size", None)
     vocab_size = tuner_cfg["model_cfg"].get("vocab_size", None)
+    num_attention_heads = tuner_cfg["model_cfg"].get(
+        "num_attention_heads", None
+    )
+    seq_length = tuner_cfg["model_cfg"].get("seq_length", None)
+    use_sequence_paralel = tuner_cfg.get("use_sequence_paralel", False)
 
     if mp_degree is None:
         return False
@@ -63,6 +68,12 @@ def prune_by_mp(tuner_cfg, cur_cfg, history_cfgs=None):
         return True
 
     if vocab_size and vocab_size % mp_degree != 0:
+        return True
+
+    if num_attention_heads and num_attention_heads % mp_degree != 0:
+        return True
+
+    if seq_length and seq_length % mp_degree != 0 and use_sequence_paralel:
         return True
 
     mp_degree_candidates = tuner_cfg.get("mp_degree", None)
