@@ -15,7 +15,7 @@
 import copy
 from collections import defaultdict
 
-from paddle.fluid import unique_name
+from paddle.base import unique_name
 from paddle.utils import gast
 
 from .base_transformer import (

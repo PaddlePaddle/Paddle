@@ -19,8 +19,8 @@ from eager_op_test import OpTest, convert_float_to_uint16
 from op import Operator
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 def fill_wrapper(shape, value=0.0):
@@ -328,9 +328,9 @@ class TestFillConstantAPI(unittest.TestCase):
             shape=shape_tensor_int64, dtype=np.float32, value=val2
         )
 
-        exe = fluid.Executor(place=fluid.CPUPlace())
+        exe = base.Executor(place=base.CPUPlace())
         res_1, res_2, res_3, res_4, res_5, res_6, res_7, res_8 = exe.run(
-            fluid.default_main_program(),
+            base.default_main_program(),
             feed={
                 "shape_tensor_int32": np.array([1, 2]).astype("int32"),
                 "shape_tensor_int64": np.array([1, 2]).astype("int64"),
@@ -366,13 +366,13 @@ class TestFillConstantAPI(unittest.TestCase):
 
 class TestFillConstantImperative(unittest.TestCase):
     def test_api(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             data1 = np.array([1, 2]).astype('int32')
             data2 = np.array([1.1]).astype('float32')
             data3 = np.array([88]).astype('int32')
-            shape = fluid.dygraph.to_variable(data1)
-            val = fluid.dygraph.to_variable(data2)
-            value = fluid.dygraph.to_variable(data3)
+            shape = base.dygraph.to_variable(data1)
+            val = base.dygraph.to_variable(data2)
+            value = base.dygraph.to_variable(data3)
             res1 = paddle.tensor.fill_constant(
                 shape=[1, 2], dtype='float32', value=1.1
             )
@@ -399,17 +399,17 @@ class TestFillConstantImperative(unittest.TestCase):
             )
 
     def test_nan(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             res = paddle.tensor.fill_constant([1], 'float32', np.nan)
             self.assertTrue(np.isnan(res.numpy().item(0)))
 
     def test_inf(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             res = paddle.tensor.fill_constant([1], 'float32', np.inf)
             self.assertTrue(np.isinf(res.numpy().item(0)))
 
     def test_ninf(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             res = paddle.tensor.fill_constant([1], 'float32', np.NINF)
             self.assertTrue(np.isinf(res.numpy().item(0)))
             self.assertEqual(np.NINF, res.numpy().item(0))

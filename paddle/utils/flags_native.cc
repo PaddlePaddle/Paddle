@@ -393,6 +393,10 @@ void ParseCommandLineFlags(int* pargc, char*** pargv) {
   for (size_t i = 0; i < argv_num; i++) {
     const std::string& argv = argvs[i];
 
+    if (argv.empty()) {
+      continue;
+    }
+
     if (argv.size() < 2 || argv[0] != '-') {
       LOG_FLAG_FATAL_ERROR("invalid commandline argument: \"" + argv + "\", " +
                            arg_format_help);
@@ -479,6 +483,43 @@ void ParseCommandLineFlags(int* pargc, char*** pargv) {
     exit_with_errors();
   }
 }
+
+template <typename T>
+T GetFromEnv(const std::string& name, const T& default_val) {
+  std::string value_str;
+  if (GetValueFromEnv(name, &value_str)) {
+    T value;
+    FlagType type = FlagTypeTraits<T>::Type;
+    Flag flag("tmp_" + name, "", "", type, &value, &value);
+    flag.SetValueFromString(value_str);
+    if (!ErrorStream().str().empty()) {
+      ErrorStream().str("");
+      LOG_FLAG_FATAL_ERROR("value \"" + value_str +
+                           "\" of environment"
+                           "variable \"" +
+                           name +
+                           "\" is invalid when "
+                           "using GetFromEnv with " +
+                           FlagType2String(type) + " type.");
+    }
+    return value;
+  } else {
+    return default_val;
+  }
+}
+
+#define INSTANTIATE_GET_FROM_ENV(type) \
+  template type GetFromEnv(const std::string& name, const type& default_val)
+
+INSTANTIATE_GET_FROM_ENV(bool);
+INSTANTIATE_GET_FROM_ENV(int32_t);
+INSTANTIATE_GET_FROM_ENV(uint32_t);
+INSTANTIATE_GET_FROM_ENV(int64_t);
+INSTANTIATE_GET_FROM_ENV(uint64_t);
+INSTANTIATE_GET_FROM_ENV(double);
+INSTANTIATE_GET_FROM_ENV(std::string);
+
+#undef INSTANTIATE_GET_FROM_ENV
 
 }  // namespace flags
 }  // namespace paddle
