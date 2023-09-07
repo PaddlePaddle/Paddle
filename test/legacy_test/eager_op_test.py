@@ -2919,7 +2919,6 @@ class OpTest(unittest.TestCase):
 
         if user_defined_grads is None and self.is_compared_with_fp32():
             self.enable_cal_ref_output()
-
             numeric_grads = self._get_gradient(
                 inputs_to_check,
                 place,
@@ -3162,7 +3161,6 @@ class OpTest(unittest.TestCase):
                 # delete the inputs which no need to calculate grad
                 for no_grad_val in no_grad_set:
                     del inputs[no_grad_val]
-
                 grad_inputs = paddle.grad(
                     outputs=paddle.utils.flatten(outputs),
                     inputs=paddle.utils.flatten(inputs),
@@ -3431,7 +3429,7 @@ class OpTest(unittest.TestCase):
             (
                 static_inputs,
                 attrs,
-                input_dict,
+                inputs_dict,
                 feed,
             ) = self.get_ir_input_attr_dict_and_feed(stop_gradient=False)
             # prepare args
@@ -3478,14 +3476,27 @@ class OpTest(unittest.TestCase):
             fetch_list = getattr(self, "fetch_list", [])
 
             outputs_valid = outputs
-            grad_inputs = inputs_to_check
+            loss_inputs = []
+            for input_name in inputs_to_check:
+                loss_inputs.append(inputs_dict[input_name])
+
             if user_defined_grad_outputs is None:
                 if len(outputs_valid) == 1:
                     for outputs_valid_key in outputs_valid:
                         loss = paddle.mean(outputs_valid[outputs_valid_key][0])
+                else:
+                    avg_sum = []
+                    for cur_loss in outputs_valid:
+                        cur_avg_loss = paddle.mean(outputs_valid[cur_loss][0])
+                        avg_sum.append(cur_avg_loss)
+                    loss_sum = paddle.add_n(avg_sum)
+                    loss = paddle.scale(
+                        loss_sum, scale=1.0 / float(len(avg_sum))
+                    )
+
                 grad_inputs = ir_grad(
                     outputs=paddle.utils.flatten(loss),
-                    inputs=paddle.utils.flatten(static_inputs),
+                    inputs=paddle.utils.flatten(loss_inputs),
                     grad_outputs=None,
                 )
             else:
