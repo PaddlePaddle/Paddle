@@ -228,7 +228,7 @@ PD_REGISTER_KERNEL(
     square, CPU, ALL_LAYOUT, phi::SquareKernel, float, double, int, int64_t) {}
 PD_REGISTER_ACTIVATION_KERNEL(softsign, SoftsignKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
-PD_REGISTER_ACTIVATION_KERNEL(logsigmoid, LogSigmoidKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(logsigmoid, LogSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hardsigmoid, HardSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(relu6, Relu6Kernel)

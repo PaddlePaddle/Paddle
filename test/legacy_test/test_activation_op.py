@@ -464,7 +464,13 @@ class TestLogSigmoid(TestActivation):
         self.init_shape()
 
         np.random.seed(2048)
-        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        if self.dtype is np.complex64 or self.dtype is np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
+        else:
+            x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         out = np.log(1 / (1 + np.exp(-x)))
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
@@ -475,6 +481,16 @@ class TestLogSigmoid(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
+
+
+class TestLogSigmoidComplex64(TestLogSigmoid):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestLogSigmoidComplex128(TestLogSigmoid):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestLogSigmoid_ZeroDim(TestLogSigmoid):
