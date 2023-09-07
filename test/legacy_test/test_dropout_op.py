@@ -19,8 +19,8 @@ import parameterized as param
 from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-from paddle import _C_ops, fluid, static
-from paddle.fluid import Program, core, program_guard
+from paddle import _C_ops, base, static
+from paddle.base import Program, core, program_guard
 from paddle.incubate.autograd import primapi
 
 
@@ -336,7 +336,7 @@ class TestFP16DropoutOp(OpTest):
 
         x = np.random.random(self.input_size).astype("float16")
         out = x * (1.0 - self.prob)
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.attrs = {
             'dropout_prob': self.prob,
             'fix_seed': self.fix_seed,
@@ -457,10 +457,10 @@ class TestDropoutOpWithSeedOnCPUPlace(unittest.TestCase):
                 attrs={'dropout_prob': 0.0},
                 outputs={'Out': x_out_var, 'Mask': mask_var},
             )
-            place = fluid.CPUPlace()
+            place = base.CPUPlace()
             if core.is_compiled_with_cuda():
-                place = fluid.CUDAPlace(0)
-            exe = fluid.Executor(place)
+                place = base.CUDAPlace(0)
+            exe = base.Executor(place)
             x_out, mask_out = exe.run(
                 main_program,
                 feed={},
@@ -477,8 +477,8 @@ class TestDropoutOpError(unittest.TestCase):
 
             def test_Variable():
                 # the input of dropout must be Variable.
-                x1 = fluid.create_lod_tensor(
-                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
+                x1 = base.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], base.CPUPlace()
                 )
                 paddle.nn.functional.dropout(x1, p=0.5)
 
@@ -498,13 +498,13 @@ class TestDropoutOpError(unittest.TestCase):
 class TestDropoutFAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
         paddle.enable_static()
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input = paddle.static.data(
                 name="input", shape=[-1, -1], dtype="float32"
             )
@@ -571,7 +571,7 @@ class TestDropoutFAPI(unittest.TestCase):
             res_np = in_np
             res_np2 = np.zeros_like(in_np)
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             res_list = [
                 res1,
                 res2,
@@ -587,19 +587,19 @@ class TestDropoutFAPI(unittest.TestCase):
             ]
             for res in res_list:
                 fetches = exe.run(
-                    fluid.default_main_program(),
+                    base.default_main_program(),
                     feed={"input": in_np},
                     fetch_list=[res],
                 )
                 np.testing.assert_allclose(fetches[0], res_np, rtol=1e-05)
             fetches2 = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"input": in_np},
                 fetch_list=[res10],
             )
             np.testing.assert_allclose(fetches2[0], res_np2, rtol=1e-05)
             fetches3 = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"input": in_np},
                 fetch_list=[res13],
             )
@@ -610,11 +610,11 @@ class TestDropoutFAPI(unittest.TestCase):
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 in_np = np.random.random([40, 40]).astype("float32")
                 res_np = in_np
                 res_np2 = np.zeros_like(in_np)
-                input = fluid.dygraph.to_variable(in_np)
+                input = base.dygraph.to_variable(in_np)
 
                 res1 = paddle.nn.functional.dropout(
                     x=input, p=0.0, training=False
@@ -722,8 +722,8 @@ class TestDropoutFAPIError(unittest.TestCase):
 
             def test_Variable():
                 # the input of dropout must be Variable.
-                x1 = fluid.create_lod_tensor(
-                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
+                x1 = base.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], base.CPUPlace()
                 )
                 paddle.nn.functional.dropout(x1, p=0.5)
 
@@ -731,8 +731,8 @@ class TestDropoutFAPIError(unittest.TestCase):
 
             def test_Variable2():
                 # the input of dropout must be Variable.
-                x1 = fluid.create_lod_tensor(
-                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
+                x1 = base.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], base.CPUPlace()
                 )
                 paddle.nn.functional.dropout(x1, p=0.5, axis=0)
 
@@ -815,16 +815,16 @@ class TestDropoutFAPIError(unittest.TestCase):
 class TestDropoutCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 input_np = np.random.random([40, 40]).astype("float32")
                 result_np = input_np
-                input = fluid.dygraph.to_variable(input_np)
+                input = base.dygraph.to_variable(input_np)
                 m = paddle.nn.Dropout(p=0.0)
                 m.eval()
                 result = m(input)
@@ -836,13 +836,13 @@ class TestDropoutCAPI(unittest.TestCase):
 class TestDropout2DFAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
         paddle.enable_static()
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 4, 5], dtype="float32"
             )
@@ -856,11 +856,11 @@ class TestDropout2DFAPI(unittest.TestCase):
             in_np = np.random.random([2, 3, 4, 5]).astype("float32")
             res_np = in_np
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             res_list = [res1, res2]
             for res in res_list:
                 fetches = exe.run(
-                    fluid.default_main_program(),
+                    base.default_main_program(),
                     feed={"input": in_np},
                     fetch_list=[res],
                 )
@@ -872,10 +872,10 @@ class TestDropout2DFAPI(unittest.TestCase):
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 in_np = np.random.random([2, 3, 4, 5]).astype("float32")
                 res_np = in_np
-                input = fluid.dygraph.to_variable(in_np)
+                input = base.dygraph.to_variable(in_np)
 
                 res1 = paddle.nn.functional.dropout2d(
                     x=input, p=0.0, training=False, data_format='NCHW'
@@ -916,16 +916,16 @@ class TestDropout2DFAPIError(unittest.TestCase):
 class TestDropout2DCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 input_np = np.random.random([2, 3, 4, 5]).astype("float32")
                 result_np = input_np
-                input = fluid.dygraph.to_variable(input_np)
+                input = base.dygraph.to_variable(input_np)
                 m = paddle.nn.Dropout2D(p=0.0)
                 m.eval()
                 result = m(input)
@@ -934,7 +934,7 @@ class TestDropout2DCAPI(unittest.TestCase):
                 )
 
     def test_static_fp16_with_gpu(self):
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             paddle.enable_static()
             with paddle.static.program_guard(
@@ -961,13 +961,13 @@ class TestDropout2DCAPI(unittest.TestCase):
 class TestDropout3DFAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
         paddle.enable_static()
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 4, 5, 6], dtype="float32"
             )
@@ -981,11 +981,11 @@ class TestDropout3DFAPI(unittest.TestCase):
             in_np = np.random.random([2, 3, 4, 5, 6]).astype("float32")
             res_np = in_np
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             res_list = [res1, res2]
             for res in res_list:
                 fetches = exe.run(
-                    fluid.default_main_program(),
+                    base.default_main_program(),
                     feed={"input": in_np},
                     fetch_list=[res],
                 )
@@ -997,10 +997,10 @@ class TestDropout3DFAPI(unittest.TestCase):
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 in_np = np.random.random([2, 3, 4, 5, 6]).astype("float32")
                 res_np = in_np
-                input = fluid.dygraph.to_variable(in_np)
+                input = base.dygraph.to_variable(in_np)
 
                 res1 = paddle.nn.functional.dropout3d(
                     x=input, p=0.0, training=False, data_format='NCDHW'
@@ -1041,16 +1041,16 @@ class TestDropout3DFAPIError(unittest.TestCase):
 class TestDropout3DCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 input_np = np.random.random([2, 3, 4, 5, 6]).astype("float32")
                 result_np = input_np
-                input = fluid.dygraph.to_variable(input_np)
+                input = base.dygraph.to_variable(input_np)
                 m = paddle.nn.Dropout3D(p=0.0)
                 m.eval()
                 result = m(input)
@@ -1062,12 +1062,12 @@ class TestDropout3DCAPI(unittest.TestCase):
 class TestAlphaDropoutFAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input = paddle.static.data(
                 name="input", shape=[40, 40], dtype="float32"
             )
@@ -1081,17 +1081,17 @@ class TestAlphaDropoutFAPI(unittest.TestCase):
             res_np = in_np
             res_np3 = np.zeros_like(in_np)
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             res_list = [res1, res2]
             for res in res_list:
                 fetches = exe.run(
-                    fluid.default_main_program(),
+                    base.default_main_program(),
                     feed={"input": in_np},
                     fetch_list=[res],
                 )
                 np.testing.assert_allclose(fetches[0], res_np, rtol=1e-05)
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"input": in_np},
                 fetch_list=[res3],
             )
@@ -1103,11 +1103,11 @@ class TestAlphaDropoutFAPI(unittest.TestCase):
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 in_np = np.random.random([40, 40]).astype("float32")
                 res_np = in_np
                 res_np3 = np.zeros_like(in_np)
-                input = fluid.dygraph.to_variable(in_np)
+                input = base.dygraph.to_variable(in_np)
 
                 res1 = paddle.nn.functional.alpha_dropout(x=input, p=0.0)
                 res2 = paddle.nn.functional.alpha_dropout(
@@ -1127,8 +1127,8 @@ class TestAlphaDropoutFAPIError(unittest.TestCase):
 
             def test_Variable():
                 # the input of dropout must be Variable.
-                x1 = fluid.create_lod_tensor(
-                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
+                x1 = base.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], base.CPUPlace()
                 )
                 paddle.nn.functional.alpha_dropout(x1, p=0.5)
 
@@ -1165,16 +1165,16 @@ class TestAlphaDropoutFAPIError(unittest.TestCase):
 class TestAlphaDropoutCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 input_np = np.random.random([40, 40]).astype("float32")
                 result_np = input_np
-                input = fluid.dygraph.to_variable(input_np)
+                input = base.dygraph.to_variable(input_np)
                 m = paddle.nn.AlphaDropout(p=0.0)
                 m.eval()
                 result = m(input)
@@ -1183,7 +1183,7 @@ class TestAlphaDropoutCAPI(unittest.TestCase):
                 )
 
     def test_static_fp16_gpu(self):
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
@@ -1260,9 +1260,9 @@ class TestDropoutWithDeterminateSeedGenerator(unittest.TestCase):
 class TestDropoutBackward(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def cal_grad_upscale_train(self, mask, prob):
         return mask.astype("float32") / (1 - prob)
@@ -1272,7 +1272,7 @@ class TestDropoutBackward(unittest.TestCase):
 
     def test_backward_downscale_in_infer(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 input = paddle.uniform([40, 40], dtype="float32")
                 input.stop_gradient = False
                 out, mask = _C_ops.dropout(
@@ -1287,7 +1287,7 @@ class TestDropoutBackward(unittest.TestCase):
 
     def test_backward_upscale_train(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 prob = 0.5
                 input = paddle.uniform([40, 40], dtype="float32")
                 input.stop_gradient = False
@@ -1304,7 +1304,7 @@ class TestDropoutBackward(unittest.TestCase):
 
     def test_backward_upscale_train_2(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 prob = 0.3
                 input = paddle.uniform([40, 40], dtype="float32")
                 input.stop_gradient = False
@@ -1356,7 +1356,7 @@ class TestDropOutWithProbTensor(unittest.TestCase):
 
     def run_dygraph(self, x):
         paddle.seed(2022)
-        with fluid.dygraph.guard(self.place):
+        with base.dygraph.guard(self.place):
             out = self.api_case(paddle.to_tensor(x))
         return out
 
@@ -1658,9 +1658,9 @@ class TestCompositeDropout(unittest.TestCase):
     def get_eager_desire(self, place):
         paddle.disable_static()
         paddle.seed(self.seed)
-        if isinstance(place, fluid.CPUPlace):
+        if isinstance(place, base.CPUPlace):
             paddle.set_device("cpu")
-        if isinstance(place, fluid.CUDAPlace):
+        if isinstance(place, base.CUDAPlace):
             paddle.set_device("gpu")
         core.set_prim_eager_enabled(False)
         input_ = paddle.to_tensor(
@@ -1682,7 +1682,7 @@ class TestCompositeDropout(unittest.TestCase):
         fwd_actual = []
         rev_actual = []
         mps = []
-        with paddle.fluid.framework._static_guard():
+        with paddle.base.framework._static_guard():
             for place in self.places:
                 paddle.seed(self.seed)
                 mp, sp = paddle.static.Program(), paddle.static.Program()
@@ -1738,9 +1738,9 @@ class TestCompositeDropout(unittest.TestCase):
         rev_actual = []
         paddle.disable_static()
         for place in self.places:
-            if isinstance(place, fluid.CPUPlace):
+            if isinstance(place, base.CPUPlace):
                 paddle.set_device("cpu")
-            if isinstance(place, fluid.CUDAPlace):
+            if isinstance(place, base.CUDAPlace):
                 paddle.set_device("gpu")
             paddle.seed(self.seed)
             input_ = paddle.to_tensor(
@@ -1779,7 +1779,7 @@ class TestCompositeDropout(unittest.TestCase):
         rev_actual = []
         paddle.disable_static()
         for place in self.places:
-            if not isinstance(place, fluid.CUDAPlace):
+            if not isinstance(place, base.CUDAPlace):
                 continue
             paddle.set_device("gpu")
             paddle.seed(self.seed)
@@ -1802,7 +1802,7 @@ class TestCompositeDropout(unittest.TestCase):
             rev_actual.append(grad[0].numpy())
         i = 0
         for place in self.places:
-            if not isinstance(self.places[i], fluid.CUDAPlace):
+            if not isinstance(self.places[i], base.CUDAPlace):
                 continue
             np.testing.assert_allclose(
                 self.fwd_desire[i].sum(),

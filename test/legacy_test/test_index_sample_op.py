@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestIndexSampleOp(OpTest):
@@ -211,9 +211,9 @@ class TestIndexSampleShape(unittest.TestCase):
         index = paddle.static.data(name='index', shape=[-1, 3], dtype='int32')
         output = paddle.index_sample(x=x, index=index)
 
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place=place)
-        exe.run(fluid.default_startup_program())
+        place = base.CPUPlace()
+        exe = base.Executor(place=place)
+        exe.run(base.default_startup_program())
 
         feed = {'x': x_np, 'index': index_np}
         res = exe.run(feed=feed, fetch_list=[output])
@@ -221,7 +221,7 @@ class TestIndexSampleShape(unittest.TestCase):
 
 class TestIndexSampleDynamic(unittest.TestCase):
     def test_result(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             x = paddle.to_tensor(
                 [
                     [1.0, 2.0, 3.0, 4.0],

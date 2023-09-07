@@ -13,19 +13,19 @@
 # limitations under the License.
 
 from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode
+from paddle.base.framework import _global_flags
 from paddle.device import (
     get_all_custom_device_type,
     is_compiled_with_cuda,
     is_compiled_with_rocm,
 )
-from paddle.fluid.framework import _global_flags
 from paddle.tensor.manipulation import reshape
 from paddle.tensor.math import _add_with_axis
 
+from ...base.data_feeder import check_dtype, check_variable_and_dtype
+from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
 from ...device import get_cudnn_version
-from ...fluid.data_feeder import check_dtype, check_variable_and_dtype
-from ...fluid.layer_helper import LayerHelper
 from ...framework import no_grad
 from ...tensor.manipulation import squeeze, unsqueeze
 from ...utils import (

@@ -104,7 +104,8 @@ FetchResultType ScopeBufferedSSAGraphExecutor::Run(
   if (VLOG_IS_ON(5)) {
     for (auto *scope : local_exec_scopes_) {
       VLOG(5) << "Left "
-              << string::HumanReadableSize(GetScopeVarMemorySize(scope))
+              << string::HumanReadableSize(
+                     GetScopeVarMemorySize(scope))  // NOLINT
               << " on scope " << scope << " before deleting";
     }
   }
@@ -118,7 +119,8 @@ FetchResultType ScopeBufferedSSAGraphExecutor::Run(
   if (VLOG_IS_ON(5)) {
     for (auto *scope : local_exec_scopes_) {
       VLOG(5) << "Left "
-              << string::HumanReadableSize(GetScopeVarMemorySize(scope))
+              << string::HumanReadableSize(
+                     GetScopeVarMemorySize(scope))  // NOLINT
               << " on scope " << scope << " after deleting";
     }
   }

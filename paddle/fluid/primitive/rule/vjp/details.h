@@ -39,10 +39,7 @@ void divide_grad(const Tensor& x,
                  Tensor* dy) {
   if (dy) {
     // dy = -(x/y^2) * dout
-    auto denominator =
-        elementwise_pow<T>(y, full<T>(y.shape(), 2.0, y.dtype(), y.place()));
-    auto dy_res = scale<T>(
-        multiply<T>(divide<T>(x, denominator), out_grad), -1.0, 0.0, true);
+    auto dy_res = -(x / y.pow(2.0)) * out_grad;
     if (x.dims() != y.dims()) {
       // Maybe need reduce here
       phi::DDim reduce_dim = get_reduce_dims(y.dims(), x.dims());
@@ -61,7 +58,7 @@ void divide_grad(const Tensor& x,
   if (dx) {
     // dx = (1/y) * dout
     auto one_tensor = full<T>(phi::vectorize(y.dims()), 1.0, y.dtype());
-    auto dx_res = multiply<T>(divide<T>(one_tensor, y), out_grad);
+    auto dx_res = one_tensor / y * out_grad;
     if (y.dims() != x.dims()) {
       // Maybe need reduce here
       auto reduce_dim = get_reduce_dims(x.dims(), y.dims());

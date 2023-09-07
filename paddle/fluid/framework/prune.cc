@@ -288,7 +288,7 @@ void prune_impl(const proto::ProgramDesc& input,
   for (size_t i = 0; i < should_run.size(); ++i) {
     if (should_run[i]) {
       auto* op = op_field->Add();
-      *op = input.blocks(block_id).ops(i);
+      *op = input.blocks(block_id).ops(static_cast<int>(i));
       if (HasSubBlock(*op)) {
         VLOG(2) << "Pruning op which has sub block: " << op->type();
         // create sub_block_dependent_vars here to help prune the sub block
@@ -504,7 +504,7 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
   // Step 2. Prune backward for each block.
   for (size_t i = 0; i < origin_clone.Size(); i++) {
     auto pruned = proto::BlockDesc();
-    auto origin = origin_clone.Proto()->mutable_blocks(i);
+    auto origin = origin_clone.Proto()->mutable_blocks(static_cast<int>(i));
 
     PruneBackwardImpl(origin, &pruned);
     // If pruned block contains no operator, it means the block is a

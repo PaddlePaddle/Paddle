@@ -24,7 +24,7 @@ void UnbindStridedKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          int axis,
                          std::vector<DenseTensor*> outs) {
-  int64_t num = outs.size();
+  int64_t num = static_cast<int64_t>(outs.size());
   int64_t start = 0;
 
   axis = axis < 0 ? axis + x.dims().size() : axis;

@@ -361,10 +361,10 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
   const DataLayout data_layout =
       phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
-  const int C =
+  const int C = static_cast<int>(
       ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
            ? x_dims[1]
-           : x_dims[x_dims.size() - 1]);
+           : x_dims[x_dims.size() - 1]));
 
   // has_scale_grad == has_bias_grad, judge has_scale_grad is enough
   if (has_scale_grad) {
@@ -504,10 +504,10 @@ void BatchNormDoubleGradOp::InferShape(
   const auto x_dims = ctx->GetInputDim("X");
   const DataLayout data_layout =
       phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
-  const int C =
+  const int C = static_cast<int>(
       ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
            ? x_dims[1]
-           : x_dims[x_dims.size() - 1]);
+           : x_dims[x_dims.size() - 1]));
 
   if (ctx->HasOutput("DX")) {
     ctx->SetOutputDim("DX", x_dims);

@@ -174,7 +174,7 @@ void NewIRInterpreter::reset_scope(Scope* new_scope) {
   var_scope_.SetScope(new_scope);
   scope_ = new_scope;
   for (size_t i = 0; i < variable_list_.size(); i++) {
-    const auto& var_name = GetNameById(i);
+    const auto& var_name = GetNameById(static_cast<int>(i));
     variable_list_[i] = new_scope->FindVar(var_name);
   }
   // The index should be assured valid, cause the InterpreterCore may not be
@@ -194,11 +194,10 @@ std::string NewIRInterpreter::GetNameById(int id) const {
   // typically when the target variable is not existed in the original program
   // desc, but created by interpretercore.
   // For example, created and used by d2h_copy or h2d_copy operator.
-  auto it = std::find_if(var_name_2_id_.begin(),
-                         var_name_2_id_.end(),
-                         [id](const auto& pair) { return pair.second == id; });
-  if (it != var_name_2_id_.end()) {
-    return it->first;
+
+  auto it = id_2_var_name_.find(id);
+  if (it != id_2_var_name_.end()) {
+    return it->second;
   }
   return "";
 }
@@ -759,17 +758,19 @@ void NewIRInterpreter::CheckGC(InstructionBase* instr) {
 #endif
 
   for (auto var_id : instr->GCCheckVars()) {
-    VLOG(4) << "GC:" << GetNameById(var_id) << ", id:" << var_id
-            << ", ref:" << refs_[var_id]->DynamicRef();
+    VLOG(4) << "GC:" << GetNameById(static_cast<int>(var_id))
+            << ", id:" << var_id << ", ref:" << refs_[var_id]->DynamicRef();
     bool is_ready = refs_[var_id]->CheckAndDecrease();
     // ignore all persistable var while GCphi
-    if (parameter_var_names_.count(GetNameById(var_id))) {
-      VLOG(4) << GetNameById(var_id) << " is a parameter, skip gc";
+    if (parameter_var_names_.count(GetNameById(static_cast<int>(var_id)))) {
+      VLOG(4) << GetNameById(static_cast<int>(var_id))
+              << " is a parameter, skip gc";
       continue;
     }
 
     if (is_ready) {
-      VLOG(6) << "Async delete variable with name : " << GetNameById(var_id);
+      VLOG(6) << "Async delete variable with name : "
+              << GetNameById(static_cast<int>(var_id));
       gc_->Add(refs_[var_id]->Var(), instr);
     }
   }
@@ -805,13 +806,13 @@ void NewIRInterpreter::CalculateLastLiveOps() {
     for (auto var_id : gc_check_vars) {
       Scope* inner_scope = InnerScope();
       paddle::framework::Variable* var =
-          inner_scope->FindVar(GetNameById(var_id));
+          inner_scope->FindVar(GetNameById(static_cast<int>(var_id)));
       if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>() ||
           var->IsType<LoDTensorArray>()) {
         last_live_ops_[var_id].insert(op_idx);
       } else {
-        VLOG(4) << "not clear " << GetNameById(var_id) << " after "
-                << instr->Name() << " because its type is "
+        VLOG(4) << "not clear " << GetNameById(static_cast<int>(var_id))
+                << " after " << instr->Name() << " because its type is "
                 << framework::ToTypeName(var->Type());
       }
     }
@@ -855,14 +856,15 @@ void NewIRInterpreter::CalculateLastLiveOps() {
         }
       }
       if (not_before_any) {
-        VLOG(6) << "last live op of var " << i << " " << GetNameById(i) << " : "
-                << item << " " << vec_instruction_base_[item]->Name();
+        VLOG(6) << "last live op of var " << i << " "
+                << GetNameById(static_cast<int>(i)) << " : " << item << " "
+                << vec_instruction_base_[item]->Name();
         minumum_last_live_ops.insert(item);
         vec_instruction_base_[item]->AddGCCheckVar(i);
       }
     }
     last_live_ops_[i] = minumum_last_live_ops;
-    var_ref_count_[i] = last_live_ops_[i].size();
+    var_ref_count_[i] = static_cast<int>(last_live_ops_[i].size());
   }
 
   for (auto& dep : *dependecy_count_) {
@@ -925,6 +927,9 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                      &variable_2_var_name_,
                      &var_name_2_id_,
                      &variable_list_);
+
+    interpreter::BuildId2VarName(var_name_2_id_, &id_2_var_name_);
+
     VLOG(4) << "Done BuildScope";
     VLOG(4) << DebugValueInfo();
 

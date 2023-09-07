@@ -18,7 +18,7 @@ import hashlib
 import paddle
 
 # (TODO: GhostScreaming) It will be removed later.
-from paddle.fluid import core
+from paddle.base import core
 from paddle.framework import in_dynamic_mode
 
 from .communication.group import Group, _add_new_group, is_initialized

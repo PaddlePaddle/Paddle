@@ -18,12 +18,12 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import compiler
+from paddle import base
+from paddle.base import compiler
 
 dev_cnt = 2
-if fluid.core.is_compiled_with_cuda():
-    dev_cnt = fluid.core.get_cuda_device_count()
+if base.core.is_compiled_with_cuda():
+    dev_cnt = base.core.get_cuda_device_count()
 os.environ['CPU_NUM'] = str(dev_cnt)
 
 
@@ -78,7 +78,7 @@ def simple_fc_net(img, label, use_py_func_op):
         hidden = paddle.static.nn.fc(
             hidden,
             size=200,
-            bias_attr=fluid.ParamAttr(
+            bias_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=1.0)
             ),
         )
@@ -86,7 +86,7 @@ def simple_fc_net(img, label, use_py_func_op):
             hidden = paddle.tanh(hidden)
         else:
             new_hidden = (
-                fluid.default_main_program()
+                base.default_main_program()
                 .current_block()
                 .create_var(
                     name=f'hidden_{idx}',
@@ -109,7 +109,7 @@ def simple_fc_net(img, label, use_py_func_op):
         )
     else:
         loss = (
-            fluid.default_main_program()
+            base.default_main_program()
             .current_block()
             .create_var(name='loss', dtype='float32', shape=[-1, 1])
         )
@@ -122,7 +122,7 @@ def simple_fc_net(img, label, use_py_func_op):
         )
 
         dummy_var = (
-            fluid.default_main_program()
+            base.default_main_program()
             .current_block()
             .create_var(name='test_tmp_var', dtype='float32', shape=[1])
         )
@@ -133,12 +133,12 @@ def simple_fc_net(img, label, use_py_func_op):
         paddle.static.py_func(func=dummy_func_with_no_output, x=loss, out=None)
 
         loss_out = (
-            fluid.default_main_program()
+            base.default_main_program()
             .current_block()
             .create_var(dtype='float32', shape=[-1, 1])
         )
         dummy_var_out = (
-            fluid.default_main_program()
+            base.default_main_program()
             .current_block()
             .create_var(dtype='float32', shape=[1])
         )
@@ -172,11 +172,11 @@ def reader():
 
 
 def test_main(use_cuda, use_py_func_op, use_parallel_executor):
-    if use_cuda and not fluid.core.is_compiled_with_cuda():
+    if use_cuda and not base.core.is_compiled_with_cuda():
         return None
 
-    with fluid.program_guard(fluid.Program(), fluid.Program()):
-        with fluid.scope_guard(fluid.core.Scope()):
+    with base.program_guard(base.Program(), base.Program()):
+        with base.scope_guard(base.core.Scope()):
             gen = paddle.seed(1)
             np.random.seed(1)
             img = paddle.static.data(
@@ -189,19 +189,17 @@ def test_main(use_cuda, use_py_func_op, use_parallel_executor):
             optimizer = paddle.optimizer.SGD(learning_rate=1e-3)
             optimizer.minimize(loss)
 
-            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-            feeder = fluid.DataFeeder(feed_list=[img, label], place=place)
+            place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+            feeder = base.DataFeeder(feed_list=[img, label], place=place)
             r = paddle.batch(reader, batch_size=10)
 
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
 
-            train_cp = fluid.default_main_program()
+            train_cp = base.default_main_program()
 
             if use_parallel_executor:
-                train_cp = compiler.CompiledProgram(
-                    fluid.default_main_program()
-                )
+                train_cp = compiler.CompiledProgram(base.default_main_program())
                 fetch_list = [loss.name]
             else:
                 fetch_list = [loss]

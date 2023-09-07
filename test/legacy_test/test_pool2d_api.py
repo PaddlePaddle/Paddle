@@ -22,20 +22,20 @@ from test_pool2d_op import (
 )
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.nn.functional import avg_pool2d, max_pool2d
 
 
 class TestPool2D_API(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def check_avg_static_results(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 32, 32], dtype="float32"
             )
@@ -50,18 +50,18 @@ class TestPool2D_API(unittest.TestCase):
                 pool_type='avg',
             )
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[result],
             )
             np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
 
     def check_avg_dygraph_results(self, place):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
-            input = fluid.dygraph.to_variable(input_np)
+            input = base.dygraph.to_variable(input_np)
             result = avg_pool2d(input, kernel_size=2, stride=2, padding=0)
 
             result_np = pool2D_forward_naive(
@@ -80,9 +80,9 @@ class TestPool2D_API(unittest.TestCase):
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_avg_dygraph_padding_results(self, place):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
-            input = fluid.dygraph.to_variable(input_np)
+            input = base.dygraph.to_variable(input_np)
             result = avg_pool2d(
                 input, kernel_size=2, stride=2, padding=1, ceil_mode=False
             )
@@ -104,9 +104,9 @@ class TestPool2D_API(unittest.TestCase):
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_avg_dygraph_ceilmode_results(self, place):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
-            input = fluid.dygraph.to_variable(input_np)
+            input = base.dygraph.to_variable(input_np)
             result = avg_pool2d(
                 input, kernel_size=2, stride=2, padding=0, ceil_mode=True
             )
@@ -127,7 +127,7 @@ class TestPool2D_API(unittest.TestCase):
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_max_static_results(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 32, 32], dtype="float32"
             )
@@ -142,18 +142,18 @@ class TestPool2D_API(unittest.TestCase):
                 pool_type='max',
             )
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[result],
             )
             np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
 
     def check_max_dygraph_results(self, place):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
-            input = fluid.dygraph.to_variable(input_np)
+            input = base.dygraph.to_variable(input_np)
             result = max_pool2d(
                 input, kernel_size=2, stride=2, padding=0, return_mask=False
             )
@@ -174,9 +174,9 @@ class TestPool2D_API(unittest.TestCase):
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_max_dygraph_nhwc_results(self, place):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
-            input = fluid.dygraph.to_variable(
+            input = base.dygraph.to_variable(
                 np.transpose(input_np, [0, 2, 3, 1])
             )
             result = max_pool2d(
@@ -202,9 +202,9 @@ class TestPool2D_API(unittest.TestCase):
             )
 
     def check_max_dygraph_padding_results(self, place):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
-            input = fluid.dygraph.to_variable(input_np)
+            input = base.dygraph.to_variable(input_np)
             result = max_pool2d(
                 input, kernel_size=2, stride=2, padding=1, ceil_mode=False
             )
@@ -226,9 +226,9 @@ class TestPool2D_API(unittest.TestCase):
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_max_dygraph_ceilmode_results(self, place):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
-            input = fluid.dygraph.to_variable(input_np)
+            input = base.dygraph.to_variable(input_np)
             result = max_pool2d(
                 input, kernel_size=2, stride=2, padding=0, ceil_mode=True
             )
@@ -249,9 +249,9 @@ class TestPool2D_API(unittest.TestCase):
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_max_dygraph_stride_is_none(self, place):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
-            input = fluid.dygraph.to_variable(input_np)
+            input = base.dygraph.to_variable(input_np)
             result, indices = max_pool2d(
                 input,
                 kernel_size=2,
@@ -277,9 +277,9 @@ class TestPool2D_API(unittest.TestCase):
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_avg_dygraph_stride_is_none(self, place):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
-            input = fluid.dygraph.to_variable(input_np)
+            input = base.dygraph.to_variable(input_np)
             result = avg_pool2d(
                 input, kernel_size=2, stride=None, padding="SAME"
             )
@@ -301,9 +301,9 @@ class TestPool2D_API(unittest.TestCase):
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_max_dygraph_padding(self, place):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
-            input = fluid.dygraph.to_variable(input_np)
+            input = base.dygraph.to_variable(input_np)
             padding = [[0, 0], [0, 0], [0, 0], [0, 0]]
             result = max_pool2d(
                 input,
@@ -329,9 +329,9 @@ class TestPool2D_API(unittest.TestCase):
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_avg_divisor(self, place):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
-            input = fluid.dygraph.to_variable(input_np)
+            input = base.dygraph.to_variable(input_np)
             padding = [[0, 0], [0, 0], [0, 0], [0, 0]]
             result = avg_pool2d(
                 input,
@@ -374,11 +374,11 @@ class TestPool2D_API(unittest.TestCase):
 class TestPool2DError_API(unittest.TestCase):
     def test_error_api(self):
         def run1():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = fluid.dygraph.to_variable(input_np)
+                input_pd = base.dygraph.to_variable(input_np)
                 padding = [[0, 1], [0, 0], [0, 0], [0, 0]]
                 res_pd = max_pool2d(
                     input_pd, kernel_size=2, stride=2, padding=padding
@@ -387,11 +387,11 @@ class TestPool2DError_API(unittest.TestCase):
         self.assertRaises(ValueError, run1)
 
         def run2():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = fluid.dygraph.to_variable(input_np)
+                input_pd = base.dygraph.to_variable(input_np)
                 padding = [[0, 1], [0, 0], [0, 0], [0, 0]]
                 res_pd = max_pool2d(
                     input_pd,
@@ -404,11 +404,11 @@ class TestPool2DError_API(unittest.TestCase):
         self.assertRaises(ValueError, run2)
 
         def run3():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = fluid.dygraph.to_variable(input_np)
+                input_pd = base.dygraph.to_variable(input_np)
                 padding = "padding"
                 res_pd = max_pool2d(
                     input_pd,
@@ -421,11 +421,11 @@ class TestPool2DError_API(unittest.TestCase):
         self.assertRaises(ValueError, run3)
 
         def run3_avg():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = fluid.dygraph.to_variable(input_np)
+                input_pd = base.dygraph.to_variable(input_np)
                 padding = "padding"
                 res_pd = avg_pool2d(
                     input_pd,
@@ -438,11 +438,11 @@ class TestPool2DError_API(unittest.TestCase):
         self.assertRaises(ValueError, run3_avg)
 
         def run4():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = fluid.dygraph.to_variable(input_np)
+                input_pd = base.dygraph.to_variable(input_np)
                 padding = "VALID"
                 res_pd = max_pool2d(
                     input_pd,
@@ -456,11 +456,11 @@ class TestPool2DError_API(unittest.TestCase):
         self.assertRaises(ValueError, run4)
 
         def run4_avg():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = fluid.dygraph.to_variable(input_np)
+                input_pd = base.dygraph.to_variable(input_np)
                 padding = "VALID"
                 res_pd = avg_pool2d(
                     input_pd,
@@ -474,11 +474,11 @@ class TestPool2DError_API(unittest.TestCase):
         self.assertRaises(ValueError, run4_avg)
 
         def run5():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = fluid.dygraph.to_variable(input_np)
+                input_pd = base.dygraph.to_variable(input_np)
                 padding = "padding"
                 res_pd = avg_pool2d(
                     input_pd,
@@ -491,11 +491,11 @@ class TestPool2DError_API(unittest.TestCase):
         self.assertRaises(ValueError, run5)
 
         def run6():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = fluid.dygraph.to_variable(input_np)
+                input_pd = base.dygraph.to_variable(input_np)
                 padding = "VALID"
                 res_pd = avg_pool2d(
                     input_pd,
@@ -509,11 +509,11 @@ class TestPool2DError_API(unittest.TestCase):
         self.assertRaises(ValueError, run6)
 
         def run7():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = fluid.dygraph.to_variable(input_np)
+                input_pd = base.dygraph.to_variable(input_np)
                 padding = "VALID"
                 res_pd = avg_pool2d(
                     input_pd,
@@ -527,11 +527,11 @@ class TestPool2DError_API(unittest.TestCase):
         self.assertRaises(ValueError, run7)
 
         def run8():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = fluid.dygraph.to_variable(input_np)
+                input_pd = base.dygraph.to_variable(input_np)
                 padding = "VALID"
                 res_pd = max_pool2d(
                     input_pd,
@@ -545,11 +545,11 @@ class TestPool2DError_API(unittest.TestCase):
         self.assertRaises(ValueError, run8)
 
         def run9():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = fluid.dygraph.to_variable(input_np)
+                input_pd = base.dygraph.to_variable(input_np)
                 res_pd = max_pool2d(
                     input_pd,
                     kernel_size=2,
@@ -563,11 +563,11 @@ class TestPool2DError_API(unittest.TestCase):
         self.assertRaises(ValueError, run9)
 
         def run_kernel_out_of_range():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = fluid.dygraph.to_variable(input_np)
+                input_pd = base.dygraph.to_variable(input_np)
                 res_pd = avg_pool2d(
                     input_pd,
                     kernel_size=[-1, 2],
@@ -580,11 +580,11 @@ class TestPool2DError_API(unittest.TestCase):
         self.assertRaises(ValueError, run_kernel_out_of_range)
 
         def run_stride_out_of_range():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 input_np = np.random.uniform(-1, 1, [2, 3, 32, 32]).astype(
                     np.float32
                 )
-                input_pd = fluid.dygraph.to_variable(input_np)
+                input_pd = base.dygraph.to_variable(input_np)
                 res_pd = avg_pool2d(
                     input_pd,
                     kernel_size=3,
@@ -597,7 +597,7 @@ class TestPool2DError_API(unittest.TestCase):
         self.assertRaises(ValueError, run_stride_out_of_range)
 
         def run_zero_stride():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 array = np.array([1], dtype=np.float32)
                 x = paddle.to_tensor(
                     np.reshape(array, [1, 1, 1, 1]), dtype='float32'
@@ -609,7 +609,7 @@ class TestPool2DError_API(unittest.TestCase):
         self.assertRaises(ValueError, run_zero_stride)
 
         def run_zero_tuple_stride():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 array = np.array([1], dtype=np.float32)
                 x = paddle.to_tensor(
                     np.reshape(array, [1, 1, 1, 1]), dtype='float32'

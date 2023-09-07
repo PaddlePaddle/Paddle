@@ -201,6 +201,11 @@ void FastLayernormXPUInferMeta(const MetaTensor& x,
                                float epsilon,
                                MetaTensor* out);
 
+void AddCMulXPUInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         const MetaTensor& w,
+                         MetaTensor* out);
+
 void FusedScaleBiasReluConvBnstatsInferMeta(
     const MetaTensor& x,
     const MetaTensor& w,
@@ -228,5 +233,15 @@ void FusedScaleBiasReluConvBnstatsInferMeta(
     MetaTensor* saved_var,
     MetaTensor* eq_scale,
     MetaTensor* eq_bias);
+
+void SqueezeExcitationInferMeta(const MetaTensor& x,
+                                const MetaTensor& filter,
+                                const MetaTensor& filter_max,
+                                const MetaTensor& bias,
+                                const MetaTensor& branch,
+                                const std::vector<int>& act_type,
+                                const std::vector<float>& act_param,
+                                const std::vector<int>& filter_dims,
+                                MetaTensor* out);
 
 }  // namespace phi
