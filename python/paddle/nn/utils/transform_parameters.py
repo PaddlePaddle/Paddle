@@ -108,8 +108,11 @@ def parameters_to_vector(parameters, name=None):
 
     out = _create_tensor(dtype=dtype)
     if in_dygraph_mode():
-        tmp = _C_ops.concat(parameters, 0)
-        tmp._share_underline_tensor_to(out)
+        with paddle.fluid.dygraph.no_grad():
+            tmp = _C_ops.concat(parameters, 0)
+            tmp._share_underline_tensor_to(out)
+            tmp.stop_gradient = False
+            return tmp
     else:
         _dygraph_tracer().trace_op(
             type='concat',
