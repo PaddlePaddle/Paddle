@@ -65,12 +65,12 @@ void UpdateIGroupMap(
     const FakeOpPlaceHolders& igroup,
     const Variable& anchor_tensor,
     std::unordered_map<Variable, FakeOpPlaceHolders>* index2IGroup) {
-  for (auto& [variable, opPlaceholder] : *index2IGroup) {
-    if (opPlaceholder->size() >= igroup->size()) {
+  for (const auto& [pre_anchor_tensor, pre_igroup] : *index2IGroup) {
+    if (pre_igroup->size() >= igroup->size()) {
       continue;
     }
-    if (IsContain(opPlaceholder, igroup)) {
-      index2IGroup->erase(variable);
+    if (IsContain(pre_igroup, igroup)) {
+      index2IGroup->erase(pre_anchor_tensor);
     }
   }
   index2IGroup->emplace(anchor_tensor, igroup);
