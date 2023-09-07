@@ -131,18 +131,36 @@ void gelu_grad(const Tensor& x,
                bool approximate,
                Tensor* x_grad) {
   if (!x_grad) return;
+  // Promote to fp32 when the input type is fp16 for keeping consistent with
+  // phi kernel
+
   // Scale only support fp32 attr in static graph mode, use elementwise_xx
   // when precision is over fp32.
+  if (approximate) {
+    auto kBeta = M_SQRT2 * M_2_SQRTPI * 0.5;
+    auto kKappa = 0.044715;
+    auto x_sq = x * x;
+    auto x_cube = x_sq * x;
+    auto inner = kBeta * (x + kKappa * x_cube);
+    auto tanh_inner = tanh<T>(inner);
 
-  auto kAlpha = full<T>(x.shape(), M_SQRT1_2, x.dtype());
+    auto left = scale<T>(x, 0.5);
+    auto right = scale<T>(tanh_inner, 1., 1.);
 
-  auto kBeta_value = M_2_SQRTPI * M_SQRT1_2 * 0.5;
-  auto kBeta = full<T>(x.shape(), kBeta_value, x.dtype());
+    auto left_derivative = scale<T>(right, 0.5);
 
-  auto cdf = scale<T>(scale<T>(erf<T>(multiply<T>(kAlpha, x)), 1., 1.), 0.5);
-  auto pdf = multiply<T>(kBeta, exp<T>(scale<T>(multiply<T>(x, x), -0.5)));
-  auto res = multiply<T>(add<T>(cdf, multiply<T>(x, pdf)), out_grad);
-  set_output<T>(res, x_grad);
+    auto tanh_derivative = scale<T>(tanh_inner * tanh_inner, -1., 1.);
+    auto inner_derivative = kBeta * (scale<T>(3 * kKappa * x_sq, 1., 1.));
+    auto right_derivative = left * tanh_derivative * inner_derivative;
+
+    set_output<T>(out_grad * (left_derivative + right_derivative), x_grad);
+  } else {
+    auto kAlpha = M_SQRT1_2;
+    auto kBeta = M_2_SQRTPI * M_SQRT1_2 * 0.5;
+    auto cdf = scale<T>(scale<T>(erf<T>(kAlpha * x), 1., 1.), 0.5);
+    auto pdf = kBeta * exp<T>(scale<T>(x * x, -0.5));
+    set_output<T>(out_grad * (cdf + x * pdf), x_grad);
+  }
 }
 
 }  // namespace details
