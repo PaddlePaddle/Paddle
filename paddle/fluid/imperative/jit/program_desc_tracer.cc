@@ -265,7 +265,7 @@ void ProgramDescTracer::InsertVarIfNotExist(
     const auto &tensor = inner_var.Get<phi::DenseTensor>();
     new_var_desc->SetType(framework::proto::VarType::LOD_TENSOR);
     new_var_desc->SetShape(phi::vectorize<int64_t>(tensor.dims()));
-    new_var_desc->SetLoDLevel(tensor.lod().size());
+    new_var_desc->SetLoDLevel(static_cast<int32_t>(tensor.lod().size()));
     if (tensor.IsInitialized()) {
       new_var_desc->SetDataType(framework::TransToProtoVarType(tensor.dtype()));
     } else {
