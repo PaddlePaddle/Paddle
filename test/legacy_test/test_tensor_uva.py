@@ -17,12 +17,12 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestTensorCopyFrom(unittest.TestCase):
     def test_main(self):
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CPUPlace()
             np_value = np.random.random(size=[10, 30]).astype('float32')
             tensor = paddle.to_tensor(np_value, place=place)
@@ -32,7 +32,7 @@ class TestTensorCopyFrom(unittest.TestCase):
 
 class TestUVATensorFromNumpy(unittest.TestCase):
     def test_uva_tensor_creation(self):
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             dtype_list = [
                 "int32",
                 "int64",
@@ -54,7 +54,7 @@ class TestUVATensorFromNumpy(unittest.TestCase):
                 np.testing.assert_allclose(tensor2.numpy(), data, rtol=1e-05)
 
     def test_uva_tensor_corectness(self):
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             a = np.arange(0, 100, dtype="int32")
             a = a.reshape([10, 10])
             slice_a = a[:, 5]

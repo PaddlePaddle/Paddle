@@ -600,7 +600,7 @@ class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
                          phi::DenseTensor *out) const {
     // gradient is calculated in a different way when broadcasting is used
     bool need_combine = (x->dims().size() == 3 || y->dims().size() == 3) &&
-                        out->dims().size() == 2;
+                        out->dims().size() == 2;  // NOLINT
 
     phi::DenseTensor x_combined, y_combined;
     if (need_combine) {

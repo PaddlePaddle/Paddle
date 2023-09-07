@@ -292,7 +292,7 @@ void AESCipher::EncryptToFile(const std::string& plaintext,
                               const std::string& filename) {
   std::ofstream fout(filename, std::ios::binary);
   std::string ciphertext = this->Encrypt(plaintext, key);
-  fout.write(ciphertext.data(), ciphertext.size());
+  fout.write(ciphertext.data(), ciphertext.size());  // NOLINT
   fout.close();
 }
 

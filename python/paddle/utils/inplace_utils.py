@@ -15,7 +15,7 @@
 import warnings
 
 import paddle  # noqa: F401
-from paddle.fluid.wrapped_decorator import wrap_decorator
+from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.framework import in_dynamic_mode
 
 
@@ -33,7 +33,7 @@ def _inplace_apis_in_dygraph_only_(func):
                     func.__name__, origin_api_name
                 )
             )
-            from ..fluid.dygraph.base import in_declarative_mode
+            from ..base.dygraph.base import in_declarative_mode
 
             if in_declarative_mode():
                 for arg in args:

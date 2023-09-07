@@ -13,7 +13,7 @@
 # limitations under the License.
 import paddle
 
-from ....fluid.framework import Variable
+from ....base.framework import Variable
 from ....framework import LayerHelper, core
 
 

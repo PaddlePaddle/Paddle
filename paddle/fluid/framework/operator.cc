@@ -170,7 +170,7 @@ static int GetRowSize(const Scope& scope, const std::string& name) {
   }
 
   if (var->IsType<phi::SelectedRows>()) {
-    return var->Get<phi::SelectedRows>().rows().size();
+    return static_cast<int>(var->Get<phi::SelectedRows>().rows().size());
   }
 
   return -1;
@@ -309,7 +309,7 @@ std::string RuntimeInferShapeContext::GetInputNameByIdx(size_t idx) const {
                         op_.Type(),
                         idx,
                         op_proto->inputs().size()));
-  return op_proto->inputs()[idx].name();
+  return op_proto->inputs()[static_cast<int>(idx)].name();
 }
 
 std::string RuntimeInferShapeContext::GetOutputNameByIdx(size_t idx) const {
@@ -323,7 +323,7 @@ std::string RuntimeInferShapeContext::GetOutputNameByIdx(size_t idx) const {
                         op_.Type(),
                         idx,
                         op_proto->outputs().size()));
-  return op_proto->outputs()[idx].name();
+  return op_proto->outputs()[static_cast<int>(idx)].name();
 }
 
 void RuntimeInferShapeContext::ShareDim(const std::string& in,
