@@ -158,7 +158,7 @@ void recompute_bias_and_weights(const Scope* scope,
 
   // ConvTranspose weights are in IOHW format
   if (conv_type == "conv2d_transpose") {
-    int kernel_size = weights_shape[2] * weights_shape[3];
+    int kernel_size = static_cast<int>(weights_shape[2] * weights_shape[3]);
     for (int i = 0; i < weights->numel();) {
       for (int j = 0; j < weights_shape[1]; ++j) {
         for (int k = 0; k < kernel_size; ++k, ++i) {
