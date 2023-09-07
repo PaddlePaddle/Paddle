@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <memory>
 #include <unordered_set>
 #include <vector>
 
@@ -31,7 +32,7 @@ Graph = ([Variale], [Function], [Edge Variable Function], [Edge Function Variabl
 Edge T0 T1 = (T0, T1)
 */
 // clang-format on
-class Graph final {
+class Graph final : public std::enable_shared_from_this<Graph> {
  public:
   using V2Fs = std::unordered_map<const Variable, std::vector<const Function*>>;
   using F2Vs = std::unordered_map<const Function*, std::vector<const Variable>>;
@@ -70,10 +71,11 @@ class Graph final {
   }
 
   F4VVisitor GetNextFunctionsVisitor() const {
-    return [=](const Variable variable,
-               const std::function<void(const Function*)>& Visit) {
-      const auto iter = variable2next_functions_->find(variable);
-      if (iter == variable2next_functions_->end()) {
+    auto self = this->shared_from_this();
+    return [self](const Variable variable,
+                  const std::function<void(const Function*)>& Visit) {
+      const auto iter = self->variable2next_functions_->find(variable);
+      if (iter == self->variable2next_functions_->end()) {
         return;
       }
       for (const Function* function : iter->second) {
@@ -83,10 +85,11 @@ class Graph final {
   }
 
   V4FVisitor GetInputVariablesVisitor() const {
-    return [=](const Function* function,
-               const std::function<void(const Variable)>& Visit) {
-      const auto iter = function2in_variables_->find(function);
-      if (iter == function2in_variables_->end()) {
+    auto self = this->shared_from_this();
+    return [self](const Function* function,
+                  const std::function<void(const Variable)>& Visit) {
+      const auto iter = self->function2in_variables_->find(function);
+      if (iter == self->function2in_variables_->end()) {
         return;
       }
       for (const Variable variable : iter->second) {
@@ -96,10 +99,11 @@ class Graph final {
   }
 
   V4FVisitor GetOutputVariablesVisitor() const {
-    return [=](const Function* function,
-               const std::function<void(const Variable)>& Visit) {
-      const auto iter = function2out_variables_->find(function);
-      if (iter == function2out_variables_->end()) {
+    auto self = this->shared_from_this();
+    return [self](const Function* function,
+                  const std::function<void(const Variable)>& Visit) {
+      const auto iter = self->function2out_variables_->find(function);
+      if (iter == self->function2out_variables_->end()) {
         return;
       }
       for (const Variable variable : iter->second) {
@@ -120,7 +124,8 @@ class Graph final {
               rhs.GetOutputVariablesVisitor()));
   }
 
-  EquationGraphTopoWalker<const Variable, const Function*> GetWalker() const {
+  EquationGraphTopoWalker<const Variable, const Function*> GetGraphView()
+      const {
     return EquationGraphTopoWalker<const Variable, const Function*>(
         /*NextFunctionsVisitor=*/GetNextFunctionsVisitor(),
         /*InputVariablesVisitor=*/GetInputVariablesVisitor(),

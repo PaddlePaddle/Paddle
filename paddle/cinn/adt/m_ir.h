@@ -26,7 +26,6 @@ using ScheduleIterators = List<equation::IterVar>;
 
 namespace cinn::adt::m_ir {
 
-DEFINE_ADT_TAG(tAsOutput);
 DEFINE_ADT_TAG(tBreak);
 
 class MapIR final {

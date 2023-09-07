@@ -39,32 +39,48 @@ class EquationGraphTopoWalker final {
         VisitOutputVariables(OutputVariablesVisitor) {}
   ~EquationGraphTopoWalker() = default;
 
-  EquationGraphTopoWalker Merge(const EquationGraphTopoWalker& walker) {
-    ADT_TODO();
+  static F4VVisitor Merge(const F4VVisitor& lhs, const F4VVisitor& rhs) {
+    return [=](VT variable, const FunctionVisitorT& Visit) {
+      lhs(variable, Visit);
+      rhs(variable, Visit);
+    };
   }
 
-  void operator()(VT start, const VariableVisitorT& VariableVisitor) const {
+  static V4FVisitor Merge(const V4FVisitor& lhs, const V4FVisitor& rhs) {
+    return [=](FT function, const VariableVisitorT& Visit) {
+      lhs(function, Visit);
+      rhs(function, Visit);
+    };
+  }
+
+  EquationGraphTopoWalker Merge(const EquationGraphTopoWalker& that) const {
+    return {Merge(this->VisitNextFunctions, that.VisitNextFunctions),
+            Merge(this->VisitInputVariables, that.VisitInputVariables),
+            Merge(this->VisitOutputVariables, that.VisitOutputVariables)};
+  }
+
+  void WalkVariable(VT start, const VariableVisitorT& VariableVisitor) const {
     std::array<VT, 1> starts{start};
     (*this)(starts.begin(), starts.end(), VariableVisitor, [&](FT) {});
   }
 
   template <typename VarIterT>
-  void operator()(VarIterT begin,
-                  VarIterT end,
-                  const VariableVisitorT& VariableVisitor) const {
+  void WalkVariable(VarIterT begin,
+                    VarIterT end,
+                    const VariableVisitorT& VariableVisitor) const {
     (*this)(begin, end, VariableVisitor, [&](FT) {});
   }
 
-  void operator()(VT start, const FunctionVisitorT& FunctionVisitor) const {
+  void WalkFunction(VT start, const FunctionVisitorT& FunctionVisitor) const {
     std::array<VT, 1> starts{start};
     (*this)(
         starts.begin(), starts.end(), [&](VT) {}, FunctionVisitor);
   }
 
   template <typename VarIterT>
-  void operator()(VarIterT begin,
-                  VarIterT end,
-                  const FunctionVisitorT& FunctionVisitor) const {
+  void WalkFunction(VarIterT begin,
+                    VarIterT end,
+                    const FunctionVisitorT& FunctionVisitor) const {
     (*this)(
         begin, end, [&](VT) {}, FunctionVisitor);
   }

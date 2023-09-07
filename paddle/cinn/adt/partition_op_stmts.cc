@@ -42,24 +42,206 @@ std::vector<AnchorIndex> InitCandidateAnchorIndex(
   return ret;
 }
 
-std::function<const m_expr::OpStmt&(const equation::FakeOpPlaceHolder)>
+std::function<const m_expr::OpStmt&(const equation::FakeOpPlaceHolder&)>
 MakeGetterOpStmt4OpPlaceHolder(const EquationCtx4OpStmtT& EquationCtx4OpStmt,
                                const List<m_expr::OpStmt>& op_stmts) {
-  ADT_TODO();  // Trivial Code
+  using FakeOpPlaceHolder2OpStmt =
+      std::unordered_map<const equation::FakeOpPlaceHolder, m_expr::OpStmt>;
+  const auto& fake_op_placeholder2op_stmt =
+      std::make_shared<FakeOpPlaceHolder2OpStmt>();
+
+  for (const auto& op_stmt : op_stmts) {
+    const auto* ctx = EquationCtx4OpStmt(op_stmt);
+    CHECK(fake_op_placeholder2op_stmt
+              ->emplace(ctx->fake_op_placeholder(), op_stmt)
+              .second);
+  }
+
+  return [fake_op_placeholder2op_stmt](
+             const equation::FakeOpPlaceHolder& fake_op_placeholder) {
+    return fake_op_placeholder2op_stmt->at(fake_op_placeholder);
+  };
 }
 
 List<m_expr::OpStmt> FindVisitedOpStmts(
     const AnchorIndex& anchor_index,
     const equation::GraphView& equation_graph,
     const std::function<const m_expr::OpStmt&(
-        const equation::FakeOpPlaceHolder)>& OpStmt4OpPlaceHolder) {
-  ADT_TODO();  // Trivial Code
+        const equation::FakeOpPlaceHolder&)>& OpStmt4OpPlaceHolder) {
+  List<m_expr::OpStmt> ret{};
+  equation_graph.WalkVariable(
+      anchor_index, [&](const equation::Variable variable) {
+        if (variable.Has<equation::FakeOpPlaceHolder>()) {
+          ret->emplace_back(OpStmt4OpPlaceHolder(
+              variable.Get<equation::FakeOpPlaceHolder>()));
+        }
+      });
+  return ret;
+}
+
+template <typename DoEachT>
+void VisitEachEquation(const List<m_expr::OpStmt>& op_stmts,
+                       const EquationCtx4OpStmtT& EquationCtx4OpStmt,
+                       const DoEachT& DoEach) {
+  for (const auto& op_stmt : *op_stmts) {
+    const auto* ctx = EquationCtx4OpStmt(op_stmt);
+    ctx->VisitEachEquation(DoEach);
+  }
+}
+
+equation::GraphView MakeOpsGraphViewForPartition(
+    const EquationCtx4OpStmtT& EquationCtx4OpStmt,
+    const List<m_expr::OpStmt>& op_stmts) {
+  equation::Equations equations{};
+
+  VisitEachEquation(op_stmts, EquationCtx4OpStmt, [&](const auto& equation) {
+    equations->emplace_back(equation);
+  });
+
+  return std::make_shared<equation::Graph>(equations)->GetGraphView();
+}
+
+template <typename DoEachT>
+void VisitEachIndexAndAsOutput(const List<m_expr::OpStmt>& op_stmts,
+                               const EquationCtx4OpStmtT& EquationCtx4OpStmt,
+                               const DoEachT& DoEach) {
+  for (const auto& op_stmt : op_stmts) {
+    const auto* ctx = EquationCtx4OpStmt(op_stmt);
+    ctx->VisitEachInputTensorIndex(
+        [&](const auto& index) { DoEach(index, tAsOutput<bool>{false}); });
+    ctx->VisitEachOutputTensorIndex(
+        [&](const auto& index) { DoEach(index, tAsOutput<bool>{true}); });
+  }
+}
+
+std::function<tAsOutput<bool>(const equation::Index&)> MakeGetterAsOutput4Index(
+    const List<m_expr::OpStmt>& op_stmts,
+    const EquationCtx4OpStmtT& EquationCtx4OpStmt) {
+  using Index2AsOutput =
+      std::unordered_map<const equation::Index, tAsOutput<bool>>;
+  const auto& index2as_output = std::make_shared<Index2AsOutput>();
+
+  VisitEachIndexAndAsOutput(
+      op_stmts,
+      EquationCtx4OpStmt,
+      [&](const auto& index, const auto& as_output) {
+        CHECK(index2as_output->emplace(index, as_output).second);
+      });
+
+  return [index2as_output](const equation::Index& index) {
+    return index2as_output->at(index);
+  };
+}
+
+std::unordered_map<m_expr::Tensor, std::vector<eqaution::Index>>
+GenerateSameTensor2Indexes(const List<m_expr::OpStmt>& op_stmts,
+                           const EquationCtx4OpStmtT& EquationCtx4OpStmt) {
+  std::unordered_map<m_expr::Tensor, std::vector<eqaution::Index>>
+      tensor2indexes;
+
+  for (const auto& op_stmt : *op_stmts) {
+    const auto* ctx = EquationCtx4OpStmt(op_stmt);
+    const auto& [op, op_inputs, op_outputs] = op_stmt.tuple();
+    for (std::size_t idx = 0; idx < op_inputs.value()->size(); ++idx) {
+      tensor2indexes[op_inputs.value()->at(idx)].emplace_back(
+          ctx->GetInIndex(idx));
+    }
+    for (std::size_t idx = 0; idx < op_outputs.value()->size(); ++idx) {
+      tensor2indexes[op_outputs.value()->at(idx)].emplace_back(
+          ctx->GetOutIndex(idx));
+    }
+  }
+
+  return tensor2indexes;
+}
+
+template <typename DoEachT>
+void VisitIndexesOfSameTensor(const List<m_expr::OpStmt>& op_stmts,
+                              const EquationCtx4OpStmtT& EquationCtx4OpStmt,
+                              const DoEachT& DoEach) {
+  const auto& tensor2indexes =
+      GenerateSameTensor2Indexes(op_stmts, EquationCtx4OpStmt);
+
+  for (const auto& [tensor, indexes] : tensor2indexes) {
+    DoEach(indexes);
+  }
+}
+
+template <typename DoEachT>
+void VisitProducerConsumerPairs(
+    const std::vector<equation::Index>& tensor_indexes,
+    const std::function<tAsOutput<bool>(const equation::Index&)>&
+        AsOutput4Index,
+    const DoEachT& DoEach) {
+  CHECK(!tensor_indexes.empty());
+  if (AsOutput4Index(tensor_indexes.at(0)).value()) {  // Write first
+    auto producer = tensor_indexes.at(0);
+    for (std::size_t idx = 1; idx < tensor_indexes.size(); ++idx) {
+      DoEach(producer, tensor_indexes.at(idx));
+      if (AsOutput4Index(tensor_indexes.at(idx)).value()) {
+        producer = tensor_indexes.at(idx);
+      }
+    }
+  } else {
+    for (const auto& tensor_index : tensor_indexes) {  // Read first
+      CHECK(!AsOutput4Index(tensor_index).value());
+    }
+  }
+}
+
+template <typename DoEachT>
+void VisitTensorIndexPair(const List<m_expr::OpStmt>& op_stmts,
+                          const EquationCtx4OpStmtT& EquationCtx4OpStmt,
+                          const DoEachT& DoEach) {
+  const auto& AsOutput4Index =
+      MakeGetterAsOutput4Index(op_stmts, EquationCtx4OpStmt);
+
+  VisitIndexesOfSameTensor(
+      op_stmts, EquationCtx4OpStmt, [&](const auto& indexes) {
+        VisitProducerConsumerPairs(indexes, AsOutput4Index, DoEach);
+      });
+}
+
+void CollectIdentity(const equation::Index& producer_tensor_index,
+                     const equation::Index& consumer_tensor_index,
+                     equation::Equations* equations) {
+  (*equations)
+      ->emplace_back(
+          equation::Identity<tOut<equation::Index>, tIn<equation::Index>>{
+              producer_tensor_index, consumer_tensor_index});
+  (*equations)
+      ->emplace_back(
+          equation::Identity<tOut<equation::Index>, tIn<equation::Index>>{
+              consumer_tensor_index, producer_tensor_index});
+}
+
+equation::GraphView MakeParametersGraphViewForPartition(
+    const EquationCtx4OpStmtT& EquationCtx4OpStmt,
+    const List<m_expr::OpStmt>& op_stmts) {
+  equation::Equations equations{};
+
+  VisitTensorIndexPair(op_stmts,
+                       EquationCtx4OpStmt,
+                       [&](const auto& producer_tensor_index,
+                           const auto& consumer_tensor_index) {
+                         CollectIdentity(producer_tensor_index,
+                                         consumer_tensor_index,
+                                         &equations);
+                       });
+
+  return std::make_shared<equation::Graph>(equations)->GetGraphView();
 }
 
 equation::GraphView MakeGlobalEquationGraphForPartition(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
     const List<m_expr::OpStmt>& op_stmts) {
-  ADT_TODO();
+  const auto& ops_graph_view =
+      MakeOpsGraphViewForPartition(EquationCtx4OpStmt, op_stmts);
+
+  const auto& parameters_graph_view =
+      MakeParametersGraphViewForPartition(EquationCtx4OpStmt, op_stmts);
+
+  return ops_graph_view.Merge(parameters_graph_view);
 }
 
 template <typename DoEachT>
@@ -101,7 +283,7 @@ std::unordered_map<AnchorIndex, IGroupSpec> PartitionOpStmtsIntoIGroupSpecs(
     std::unordered_set<AnchorIndex>* candidate_anchor_indexes,
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
     const List<m_expr::OpStmt>& op_stmts) {
-  std::unordered_map<AnchorIndex, IGroupSpec> anchor_index2igroup_spec;
+  std::unordered_map<AnchorIndex, IGroupSpec> anchor_index2igroup_spec{};
 
   const auto& OpStmt4OpPlaceHolder =
       MakeGetterOpStmt4OpPlaceHolder(EquationCtx4OpStmt, op_stmts);
@@ -125,10 +307,80 @@ std::unordered_map<AnchorIndex, IGroupSpec> PartitionOpStmtsIntoIGroupSpecs(
   return anchor_index2igroup_spec;
 }
 
+std::function<std::size_t(const m_expr::OpStmt&)> MakeGetterOrderValue4OpStmt(
+    const List<m_expr::OpStmt>& op_stmts) {
+  using OpStmt2OrderValue =
+      std::unordered_map<const m_expr::OpStmt, std::size_t>;
+  const auto& op_stmt2order_value = std::make_shared<OpStmt2OrderValue>();
+  for (std::size_t idx = 0; idx < op_stmts->size(); ++idx) {
+    CHECK(op_stmt2order_value->emplace(op_stmts->at(idx), idx).second);
+  }
+  return [op_stmt2order_value](const auto& op_stmt) {
+    return op_stmt2order_value->at(op_stmt);
+  };
+}
+
+template <typename DoEachT>
+void VisitEachIGroupSpec(
+    std::unordered_map<AnchorIndex, IGroupSpec>* anchor_index2igroup_spec,
+    const DoEachT& DoEach) {
+  for (auto& [anchor_index, igroup_spec] : *anchor_index2igroup_spec) {
+    DoEach(&igroup_spec);
+  }
+}
+
+template <typename DoEachT>
+void VisitEachIGroupSpec(
+    const std::unordered_map<AnchorIndex, IGroupSpec>& anchor_index2igroup_spec,
+    const DoEachT& DoEach) {
+  for (const auto& [anchor_index, igroup_spec] : anchor_index2igroup_spec) {
+    DoEach(igroup_spec);
+  }
+}
+
+void SortIGroupSpecOpStmts(
+    std::unordered_map<AnchorIndex, IGroupSpec>* anchor_index2igroup_spec,
+    const std::function<std::size_t(const m_expr::OpStmt&)>&
+        OrderValue4OpStmt) {
+  const auto& CompareOpStmt = [&](const auto& lhs, const auto& rhs) {
+    return OrderValue4OpStmt(lhs) < OrderValue4OpStmt(rhs);
+  };
+
+  VisitEachIGroupSpec(anchor_index2igroup_spec, [&](auto* igroup_spec) {
+    std::sort(igroup_spec->igroup_op_stmts->begin(),
+              igroup_spec->igroup_op_stmts->end(),
+              CompareOpStmt);
+  });
+}
+
 std::vector<IGroupSpec> SortedIGroupSpecs(
     const std::unordered_map<AnchorIndex, IGroupSpec>& anchor_index2igroup_spec,
+    const std::function<std::size_t(const m_expr::OpStmt&)>&
+        OrderValue4OpStmt) {
+  std::vector<IGroupSpec> ret{};
+
+  VisitEachIGroupSpec(anchor_index2igroup_spec, [&](const auto& igroup_spec) {
+    ret.emplace_back(igroup_spec);
+  });
+
+  const auto& OrderValue4IGroupSpec = [&](const IGroupSpec& igroup_spec) {
+    return OrderValue4OpStmt(igroup_spec.igroup_op_stmts->back());
+  };
+  std::sort(ret.begin(), ret.end(), [&](const auto& lhs, const auto& rhs) {
+    return OrderValue4IGroupSpec(lhs) < OrderValue4IGroupSpec(rhs);
+  });
+
+  return ret;
+}
+
+std::vector<IGroupSpec> SortedIGroupSpecs(
+    std::unordered_map<AnchorIndex, IGroupSpec>* anchor_index2igroup_spec,
     const List<m_expr::OpStmt>& op_stmts) {
-  ADT_TODO();
+  const auto& OrderValue4OpStmt = MakeGetterOrderValue4OpStmt(op_stmts);
+
+  SortIGroupSpecOpStmts(anchor_index2igroup_spec, OrderValue4OpStmt);
+
+  return SortedIGroupSpecs(*anchor_index2igroup_spec, OrderValue4OpStmt);
 }
 
 std::vector<IGroupSpec> PartitionOpStmts(
@@ -141,7 +393,7 @@ std::vector<IGroupSpec> PartitionOpStmts(
       PartitionOpStmtsIntoIGroupSpecs(
           &candidate_anchor_indexes, EquationCtx4OpStmt, op_stmts);
 
-  return SortedIGroupSpecs(anchor_index2igroup_spec, op_stmts);
+  return SortedIGroupSpecs(&anchor_index2igroup_spec, op_stmts);
 }
 
 }  // namespace cinn::adt::partition

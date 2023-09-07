@@ -107,11 +107,28 @@ class Context {
 
   template <typename DoEachT>
   void VisitEachTensorIndex(const DoEachT& DoEach) const {
+    VisitEachInputTensorIndex(DoEach);
+    VisitEachOutputTensorIndex(DoEach);
+  }
+
+  template <typename DoEachT>
+  void VisitEachInputTensorIndex(const DoEachT& DoEach) const {
     for (const auto& in_index : in_indexes_) {
       DoEach(in_index);
     }
+  }
+
+  template <typename DoEachT>
+  void VisitEachOutputTensorIndex(const DoEachT& DoEach) const {
     for (const auto& out_index : out_indexes_) {
       DoEach(out_index);
+    }
+  }
+
+  template <typename DoEachT>
+  void VisitEachEquation(const DoEachT& DoEach) const {
+    for (const auto& equation : *equations_) {
+      DoEach(equation);
     }
   }
 
