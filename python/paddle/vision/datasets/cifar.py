@@ -61,6 +61,7 @@ class Cifar10(Dataset):
 
         .. code-block:: python
 
+            >>> # doctest: +TIMEOUT(60)
             >>> import itertools
             >>> import paddle.vision.transforms as T
             >>> from paddle.vision.datasets import Cifar10
@@ -209,7 +210,7 @@ class Cifar100(Cifar10):
 
         .. code-block:: python
 
-            >>> # doctest: +TIMEOUT(90)
+            >>> # doctest: +TIMEOUT(60)
             >>> import itertools
             >>> import paddle.vision.transforms as T
             >>> from paddle.vision.datasets import Cifar100
