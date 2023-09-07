@@ -61,6 +61,9 @@ HOSTDEVICE inline void Store(const AlignedVector<T, Size>& vec, T* addr) {
  */
 template <typename T>
 int GetVectorizedSize(const T* pointer) {
+  if (!NeedVectorized<T>()) {
+    return 1;
+  }
   constexpr int max_load_bits = 128;
   constexpr int valid_vec_size = max_load_bits / CHAR_BIT / sizeof(T);
   uint64_t address = reinterpret_cast<uint64_t>(pointer);
@@ -85,8 +88,11 @@ int GetVectorizedSize(const T* pointer) {
 }
 
 static int GetVectorizedSize(const DenseTensor* tensor) {
-  constexpr int max_load_bits = 128;
   int element_size = phi::SizeOf(tensor->dtype());
+  if (element_size > sizeof(float)) {
+    return 1;
+  }
+  constexpr int max_load_bits = 128;
   int valid_vec_size = max_load_bits / CHAR_BIT / element_size;
   uint64_t address = reinterpret_cast<uint64_t>(tensor->data());
 

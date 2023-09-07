@@ -83,8 +83,7 @@ struct BroadcastTypeClassifier {
     bool is_optimize = configs[0].cmp_type != type;
     vec_size = is_optimize ? VecSizeL : VecSizeM;
 #else
-    constexpr bool kNeedVectorize = NeedVectorized<OutT>();
-    vec_size = GetVectorizedSizeForTensors(ins, *outs) ? kNeedVectorize : 1;
+    vec_size = GetVectorizedSizeForTensors(ins, *outs);
 #endif
   }
 
