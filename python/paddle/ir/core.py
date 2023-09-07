@@ -19,7 +19,7 @@ from paddle.base.core import VarDesc
 from paddle.base.libpaddle import DataType
 from paddle.base.libpaddle.ir import Program, set_global_program
 
-from ..fluid.wrapped_decorator import signature_safe_contextmanager
+from ..base.wrapped_decorator import signature_safe_contextmanager
 
 vartype_int_to_datatype_int = {
     0: 1,  # bool
@@ -257,7 +257,7 @@ def program_guard(main_program, startup_program=None):
                 data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
 
     """
-    from ..fluid.data_feeder import check_type
+    from ..base.data_feeder import check_type
 
     check_type(
         main_program, 'main_program', Program, 'paddle.static.program_guard'

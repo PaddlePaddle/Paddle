@@ -1328,3 +1328,9 @@ PHI_DEFINE_EXPORTED_int64(host_trace_level,
                           1,
                           "RecordEvent will works "
                           "if host_trace_level >= level.");
+
+PHI_DEFINE_EXPORTED_int32(
+    multiple_of_cupti_buffer_size,
+    1,
+    "Multiple of the CUPTI device buffer size. If the timestamps have "
+    "been dropped when you are profiling, try increasing this value.");
