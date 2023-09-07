@@ -1352,10 +1352,22 @@ foreach(NEW_IR_COVERAGE_TEST ${NEW_IR_COVERAGE_TESTS})
     FLAGS_enable_new_ir_in_executor=true)
 endforeach()
 
+set_tests_properties(
+  test_distributed_fused_lamb_op_with_clip_static_build
+  test_distributed_fused_lamb_op_without_clip_static_build
+  test_distributed_fused_lamb_op_with_gradient_merge_static_build
+  PROPERTIES LABELS "RUN_TYPE=DIST")
+  
 set_tests_properties(test_instance_norm_op_v2_new_ir PROPERTIES TIMEOUT 120)
 
 set_tests_properties(test_decoupled_py_reader_static_build PROPERTIES TIMEOUT
                                                                       120)
+set_tests_properties(test_distributed_fused_lamb_op_with_clip_static_build PROPERTIES TIMEOUT
+                                                                         120)
+set_tests_properties(test_distributed_fused_lamb_op_without_clip_static_build
+                     PROPERTIES TIMEOUT 120)
+set_tests_properties(test_distributed_fused_lamb_op_with_gradient_merge_static_build
+                     PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fuse_bn_act_pass_static_build PROPERTIES TIMEOUT 120)
 set_tests_properties(
   test_fuse_bn_act_pass_static_build
