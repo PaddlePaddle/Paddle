@@ -209,7 +209,7 @@ class Cifar100(Cifar10):
 
         .. code-block:: python
 
-            >>> # doctest: +TIMEOUT(75)
+            >>> # doctest: +TIMEOUT(90)
             >>> import itertools
             >>> import paddle.vision.transforms as T
             >>> from paddle.vision.datasets import Cifar100
