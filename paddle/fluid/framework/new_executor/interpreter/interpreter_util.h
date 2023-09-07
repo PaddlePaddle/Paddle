@@ -116,6 +116,8 @@ void BuildOpFuncList(
 void BuildVariableScope(const framework::BlockDesc& block,
                         const ExecutionConfig& execution_config,
                         VariableScope* var_scope);
+void BuildId2VarName(const std::map<std::string, int>& var_name_2_id,
+                     std::unordered_map<int, std::string>* id_2_var_name);
 
 void LogDeviceMemoryStats(const platform::Place& place);
 
