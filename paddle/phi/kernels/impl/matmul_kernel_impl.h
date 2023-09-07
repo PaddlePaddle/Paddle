@@ -982,6 +982,7 @@ bool MatMulInt8Function(const Context& ctx,
   return false;
 }
 
+#ifdef PADDLE_WITH_CUDA
 template <>
 bool inline MatMulInt8Function(const phi::GPUContext& ctx,
                                const DenseTensor& x,
@@ -994,7 +995,7 @@ bool inline MatMulInt8Function(const phi::GPUContext& ctx,
   if (x.dtype() != DataType::INT8 || y.dtype() != DataType::INT8) {
     return false;
   }
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+#if CUDA_VERSION >= 11060
   const int x_ndim = x_dims.size();
   const int y_ndim = y_dims.size();
   const int8_t* x_data = x.data<int8_t>();
@@ -1423,6 +1424,7 @@ bool inline MatMulInt8Function(const phi::GPUContext& ctx,
   return false;
 #endif
 }
+#endif
 
 template <typename Context, typename T>
 typename std::enable_if<std::is_integral<T>::value>::type
@@ -1510,6 +1512,7 @@ void MatmulWithFlattenKernel(const Context& dev_ctx,
   }
 }
 
+#ifdef PADDLE_WITH_CUDA
 template <>
 void inline MatmulWithFlattenKernel<int8_t, phi::GPUContext>(
     const phi::GPUContext& dev_ctx,
@@ -1607,5 +1610,6 @@ void inline MatmulWithFlattenKernel<int8_t, phi::GPUContext>(
     out->Resize(z_dim);
   }
 }
+#endif
 
 }  // namespace phi

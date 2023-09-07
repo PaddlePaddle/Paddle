@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/impl/matmul_kernel_impl.h"
 
 namespace paddle {
 namespace operators {
@@ -106,7 +107,12 @@ class MatMulKernel : public framework::OpKernel<T> {
       blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, T(0));
     }
 #else
-    blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, T(0));
+    phi::MatmulKernel<T>(dev_ctx,
+                         x,
+                         y,
+                         context.Attr<bool>("transpose_X"),
+                         context.Attr<bool>("transpose_Y"),
+                         out);
 #endif
   }
 };
@@ -929,6 +935,7 @@ REGISTER_OP_CPU_KERNEL(matmul_grad_grad,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
     matmul,
+    ops::MatMulKernel<phi::GPUContext, int8_t>,
     ops::MatMulKernel<phi::GPUContext, float>,
     ops::MatMulKernel<phi::GPUContext, double>,
     ops::MatMulKernel<phi::GPUContext, paddle::platform::float16>);
