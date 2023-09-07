@@ -45,7 +45,7 @@ OP_VJP_FORWARD_OUTPUT_GRAD_LIST_TEMPLATE = """
     }}"""
 
 OP_VJP_ATTRIBUTE_TEMPLATE = """
-    {attr_type} {attr_name} = op->attribute("{attr_name}").dyn_cast<{attr_parse_type}>().data();"""
+    {attr_type} {attr_name} = op->attribute("{attr_name}").dyn_cast<{attr_parse_type}>().{func}();"""
 
 OP_VJP_ATTRIBUTE_DEFAULT_TEMPLATE = """
     {attr_type} {attr_name} = {default_value};"""
@@ -90,6 +90,10 @@ std::vector<std::vector<ir::OpResult>> {op_class_name}::Vjp(ir::Operation* op, c
 input_types_map = {
     'paddle::dialect::DenseTensorType': 'Tensor',
     'ir::VectorType<paddle::dialect::DenseTensorType>': 'Tensor[]',
+}
+
+attr_data_map = {
+    'ir::StrAttribute': 'AsString',
 }
 
 
@@ -155,10 +159,17 @@ def gen_op_vjp_str(
                     )
                 )
             else:
+                func = 'data'
+                if (
+                    op_grad_info.attribute_type_list[idx]
+                    in attr_data_map.keys()
+                ):
+                    func = attr_data_map[op_grad_info.attribute_type_list[idx]]
                 attribute_code += OP_VJP_ATTRIBUTE_TEMPLATE.format(
                     attr_type=op_grad_info.attribute_gen_arg_type_list[idx],
                     attr_name=op_attribute_list[idx],
                     attr_parse_type=op_grad_info.attribute_type_list[idx],
+                    func=func,
                 )
 
         else:

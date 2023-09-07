@@ -18,7 +18,7 @@ import numpy as np
 from dygraph_to_static_util import ast_only_test, dy2static_unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.jit.api import to_static
 from paddle.jit.dy2static.utils import Dygraph2StaticException
 
@@ -39,12 +39,12 @@ class TestDy2staticException(unittest.TestCase):
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):
                 paddle.jit.enable_to_static(True)
                 self.assertTrue(to_static(self.dyfunc)(self.x))
-        paddle.fluid.dygraph.base.global_var._in_declarative_mode_ = False
+        paddle.base.dygraph.base.global_var._in_declarative_mode_ = False
         paddle.jit.enable_to_static(False)
 
 
 def test_continue_in_for(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     for i in range(10):
         x += 1
         if i > 5:
@@ -55,7 +55,7 @@ def test_continue_in_for(x):
 
 
 def test_continue_in_for_at_end(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     for i in range(10):
         x += 1
         if i > 5:
@@ -64,7 +64,7 @@ def test_continue_in_for_at_end(x):
 
 
 def test_continue_in_while(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     i = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=0)
     while i < 10:
         i += 1
@@ -76,7 +76,7 @@ def test_continue_in_while(x):
 
 
 def test_break_in_for(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     for i in range(10):
         x += 1
         if i > 5:
@@ -87,7 +87,7 @@ def test_break_in_for(x):
 
 
 def test_break_in_for_at_end(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     for i in range(10):
         x += 1
         if i > 5:
@@ -96,7 +96,7 @@ def test_break_in_for_at_end(x):
 
 
 def test_break_in_while(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     i = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=0)
     while i < 10:
         i += 1
@@ -108,7 +108,7 @@ def test_break_in_while(x):
 
 
 def test_break_continue_in_for(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
 
     for i in range(1, 10, 1):
         if i <= 4:
@@ -138,7 +138,7 @@ def test_break_continue_in_for(x):
 
 
 def test_for_in_else(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
 
     # Case 1:
     if False:
@@ -169,7 +169,7 @@ def while_loop_class_var(x):
             self.c = 5
 
     foo = Foo()
-    i = fluid.dygraph.to_variable(x)
+    i = base.dygraph.to_variable(x)
     while i < 10:
         foo.b = paddle.zeros(shape=[1], dtype='float32')
         foo.c = foo.b + foo.a
@@ -209,9 +209,9 @@ class TestContinueInFor(unittest.TestCase):
     def setUp(self):
         self.input = np.zeros(1).astype('int64')
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         self.init_dygraph_func()
 
@@ -219,12 +219,12 @@ class TestContinueInFor(unittest.TestCase):
         self.dygraph_func = test_continue_in_for
 
     def run_dygraph_mode(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             res = self.dygraph_func(self.input)
             return res.numpy()
 
     def run_static_mode(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             res = to_static(self.dygraph_func)(self.input)
             return res.numpy()
 

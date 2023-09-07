@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.layer_helper import LayerHelper
 from paddle.incubate.autograd.primrules import _prim2orig
 
 paddle.enable_static()

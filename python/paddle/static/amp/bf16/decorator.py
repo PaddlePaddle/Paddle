@@ -16,7 +16,7 @@ import types
 import warnings
 
 import paddle
-from paddle.fluid import core, default_main_program, program_guard, unique_name
+from paddle.base import core, default_main_program, program_guard, unique_name
 
 from .amp_lists import AutoMixedPrecisionListsBF16
 from .amp_utils import (

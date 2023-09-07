@@ -157,8 +157,8 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
       auto var_type = framework::proto::VarType::SELECTED_ROWS;
       if (VLOG_IS_ON(10)) {
         for (size_t ind = 0; ind < ctx->InputSize("X"); ++ind) {
-          VLOG(10) << ctx->InputVarName("X", ind) << " "
-                   << ctx->GetInputType("X", ind);
+          VLOG(10) << ctx->InputVarName("X", static_cast<int>(ind)) << " "
+                   << ctx->GetInputType("X", static_cast<int>(ind));
         }
       }
 
@@ -168,8 +168,9 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
                                  framework::proto::VarType::LOD_TENSOR_ARRAY)) {
           std::ostringstream os;
           for (size_t ind = 0; ind < ctx->InputSize("X"); ++ind) {
-            os << "    " << ctx->InputVarName("X", ind) << " type is "
-               << ctx->GetInputType("X", ind) << "\n";
+            os << "    " << ctx->InputVarName("X", static_cast<int>(ind))
+               << " type is " << ctx->GetInputType("X", static_cast<int>(ind))
+               << "\n";
           }
           PADDLE_THROW(platform::errors::InvalidArgument(
               "Not all inputs are tensor array:\n%s", os.str()));

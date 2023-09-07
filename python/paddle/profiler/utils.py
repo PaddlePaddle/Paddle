@@ -18,8 +18,8 @@ from contextlib import ContextDecorator, contextmanager
 from typing import Any
 from warnings import warn
 
-from paddle.fluid import core
-from paddle.fluid.core import TracerEventType, _RecordEvent
+from paddle.base import core
+from paddle.base.core import TracerEventType, _RecordEvent
 
 _is_profiler_used = False
 _has_optimizer_wrapped = False

@@ -18,9 +18,9 @@ import numpy as np
 from scipy.special import erf
 
 import paddle
-import paddle.fluid.dygraph as dg
+import paddle.base.dygraph as dg
 import paddle.nn.functional as F
-from paddle import fluid
+from paddle import base
 
 
 def gelu(x, approximate):
@@ -43,7 +43,7 @@ class TestGeluOp(unittest.TestCase):
         x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float32)
         y_ref = gelu(x, approximate)
 
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         with dg.guard(place) as g:
             x_var = dg.to_variable(x)
             y_var = F.gelu(x_var, approximate)
@@ -54,7 +54,7 @@ class TestGeluOp(unittest.TestCase):
         x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float32)
         y_ref = gelu(x, approximate)
 
-        place = fluid.CUDAPlace(0)
+        place = base.CUDAPlace(0)
         with dg.guard(place) as g:
             x_var = dg.to_variable(x)
             y_var = F.gelu(x_var, approximate)
@@ -64,7 +64,7 @@ class TestGeluOp(unittest.TestCase):
     def test_cases(self):
         for approximate in [True, False]:
             self._test_case1_cpu(approximate)
-            if fluid.is_compiled_with_cuda():
+            if base.is_compiled_with_cuda():
                 self._test_case1_gpu(approximate)
 
     def test_fast_math(self):

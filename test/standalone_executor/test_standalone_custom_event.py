@@ -15,13 +15,13 @@
 import unittest
 
 import paddle
+from paddle.base import core
+from paddle.base.executor import _add_feed_fetch_ops, _StandaloneExecutor
 from paddle.distributed.passes.pass_utils import (
     _add_event_dependency,
     get_skip_gc_vars,
     split_program,
 )
-from paddle.fluid import core
-from paddle.fluid.executor import _add_feed_fetch_ops, _StandaloneExecutor
 
 paddle.enable_static()
 
