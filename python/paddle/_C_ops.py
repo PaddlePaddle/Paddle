@@ -16,7 +16,7 @@ from paddle.fluid import core
 
 __all__ = []
 
-UNIFIED_APIS = ['mean', 'cast']
+UNIFIED_APIS = ['mean', 'cast', 'reshape']
 
 for name in dir(core.eager.ops):
     globals()[name] = getattr(core.eager.ops, name)

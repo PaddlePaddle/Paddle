@@ -174,11 +174,11 @@ class TestElementwiseDivOp_ZeroDim3(ElementwiseDivOp):
         return -1 * grad_out * out / y
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA or not support the bfloat16",
-)
+# @unittest.skipIf(
+#     not core.is_compiled_with_cuda()
+#     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+#     "core is not compiled with CUDA or not support the bfloat16",
+# )
 class TestElementwiseDivOpBF16(ElementwiseDivOp):
     def init_args(self):
         # In due to output data type inconsistence of bfloat16 paddle op, we disable the dygraph check.

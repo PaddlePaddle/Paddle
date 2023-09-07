@@ -3039,6 +3039,23 @@ class OpTest(unittest.TestCase):
                         no_grad_set,
                     )
                 print("New IR gradient ends...........")
+                fp32_analytic_grads = []
+                for grad in new_ir_grad:
+                    if grad.dtype == np.uint16:
+                        grad = convert_uint16_to_float(grad)
+                        max_relative_error = (
+                            0.01
+                            if max_relative_error < 0.01
+                            else max_relative_error
+                        )
+                    fp32_analytic_grads.append(grad)
+                new_ir_grad = fp32_analytic_grads
+                if self.is_float16_op():
+                    max_relative_error = (
+                        0.01
+                        if max_relative_error < 0.01
+                        else max_relative_error
+                    )
                 self._assert_is_close(
                     numeric_grads,
                     new_ir_grad,
@@ -3479,12 +3496,25 @@ class OpTest(unittest.TestCase):
                         ][i]
             fetch_list = getattr(self, "fetch_list", [])
 
+            if self.dtype == np.uint16:
+                if len(outputs) == 1:
+                    for output in outputs:
+                        # if not isinstance(output, list):
+                        outputs[output][0] = paddle.cast(
+                            outputs[output][0],
+                            paddle.fluid.core.DataType.FLOAT32,
+                        )
+                    # else:
+                    #     raise TypeError(
+                    #         "Unsupported test data type %s." % type(output)
+                    #     )
             outputs_valid = outputs
             grad_inputs = inputs_to_check
             if user_defined_grad_outputs is None:
                 if len(outputs_valid) == 1:
                     for outputs_valid_key in outputs_valid:
                         loss = paddle.mean(outputs_valid[outputs_valid_key][0])
+                        print(loss, loss.dtype)
                 grad_inputs = ir_grad(
                     outputs=paddle.utils.flatten(loss),
                     inputs=paddle.utils.flatten(static_inputs),
@@ -3496,6 +3526,7 @@ class OpTest(unittest.TestCase):
                     inputs=paddle.utils.flatten(static_inputs),
                     grad_outputs=grad_outputs,
                 )
+            print(outputs, "dddddd:", grad_inputs)
             fetch_list = list(grad_inputs)
 
             # executor run
