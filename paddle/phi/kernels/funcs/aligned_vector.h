@@ -13,9 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <algorithm>
 
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
+
 #if defined(__xpu__)
 #define CHAR_BIT 8
 #endif
@@ -70,6 +73,27 @@ int GetVectorizedSize(const T* pointer) {
   if (address % vec4 == 0) {
     return std::min(4, valid_vec_size);
   } else if (address % vec2 == 0) {
+    return std::min(2, valid_vec_size);
+  } else {
+    return 1;
+  }
+}
+
+static int GetVectorizedSize(const DenseTensor* tensor) {
+  constexpr int max_load_bits = 128;
+  int element_size = phi::SizeOf(tensor->dtype());
+  int valid_vec_size = max_load_bits / CHAR_BIT / element_size;
+  uint64_t address = reinterpret_cast<uint64_t>(tensor->data());
+
+  // Currently, decide to deal with no more than 4 data once while adopting
+  // vectorization load/store, if performance test shows that dealing with
+  // 8 data once in vectorization load/store does get optimized, code below
+  // can begin with :
+  // if (address % (element_size * 8) == 0) {
+  //   return std::min(8, valid_vec_size);
+  if (address % (element_size * 4) == 0) {
+    return std::min(4, valid_vec_size);
+  } else if (address % (element_size * 2) == 0) {
     return std::min(2, valid_vec_size);
   } else {
     return 1;
