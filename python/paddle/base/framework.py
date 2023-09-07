@@ -164,6 +164,7 @@ extra_op_attrs = {
 paddle_type_to_proto_type = {
     DataType.BOOL: core.VarDesc.VarType.BOOL,
     DataType.FLOAT16: core.VarDesc.VarType.FP16,
+    DataType.UINT16: core.VarDesc.VarType.BF16,
     DataType.BFLOAT16: core.VarDesc.VarType.BF16,
     DataType.FLOAT32: core.VarDesc.VarType.FP32,
     DataType.FLOAT64: core.VarDesc.VarType.FP64,
@@ -1082,6 +1083,9 @@ def convert_np_dtype_to_dtype_(np_dtype):
         core.VarDesc.VarType / core.DataType : The data type in Paddle.
 
     """
+    if in_new_ir_mode():
+        return ir.core.convert_np_dtype_to_dtype_(np_dtype)
+
     # Convert the data type string to numpy data type.
     if isinstance(np_dtype, str) and np_dtype == "bfloat16":
         dtype = np.uint16

@@ -18,6 +18,7 @@ __all__ = []
 
 UNIFIED_APIS = [
     'mean',
+    'sum',
     'full_like',
 ]
 

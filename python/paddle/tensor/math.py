@@ -34,6 +34,7 @@ from ..framework import (
     convert_np_dtype_to_dtype_,
     core,
     in_dynamic_mode,
+    in_dynamic_or_new_ir_mode,
 )
 from .creation import _complex_to_real_dtype
 from .layer_function_generator import generate_layer_fn, templatedoc
@@ -1510,17 +1511,12 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 
     dtype_flag = False
     if dtype is not None:
-        if paddle.ir.core._use_new_ir_api():
-            dtype = paddle.ir.core.convert_np_dtype_to_dtype_(dtype)
-        else:
-            dtype_flag = True
-            dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype_flag = True
+        dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_new_ir_mode():
         return _C_ops.sum(x, axis, dtype, keepdim)
     else:
-        if paddle.ir.core._use_new_ir_api():
-            return paddle._ir_ops.sum(x, axis, dtype, keepdim)
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
         attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
 
