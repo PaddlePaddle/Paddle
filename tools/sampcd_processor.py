@@ -501,12 +501,12 @@ class Xdoctester(DocTester):
                 logger.info('\n'.join(summary_success))
 
             if len(summary_skiptest):
-                logger.info(
+                logger.warning(
                     ">>> %d sample codes skipped in env: %s",
                     len(summary_skiptest),
                     self._test_capacity,
                 )
-                logger.info('\n'.join(summary_skiptest))
+                logger.warning('\n'.join(summary_skiptest))
 
             if len(summary_nocodes):
                 logger.warning(
