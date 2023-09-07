@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/ftrl_kernel.h"
+#include "paddle/phi/kernels/selected_rows/ftrl_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/impl/ftrl_kernel_impl.h"
 
-PD_REGISTER_KERNEL(ftrl, GPU, ALL_LAYOUT, phi::FTRLKernel, float) {}
+PD_REGISTER_KERNEL(ftrl_sparse, GPU, ALL_LAYOUT, phi::FTRLSparseKernel, float) {
+}
