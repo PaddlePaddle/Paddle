@@ -760,7 +760,7 @@ void LaunchElementwiseKernel(const KPDevice &ctx,
 }
 
 template <typename OutT, typename Functor, int Arity, int NumOuts = 1>
-typename std::enable_if<!NeedVectorized<OutT>(), void>::type
+typename std::enable_if<!NeedVectorized<OutT>::value, void>::type
 ElementwiseKernelForDifferentVecSize(
     const KPDevice &ctx,
     const std::vector<const DenseTensor *> &ins,
@@ -771,7 +771,7 @@ ElementwiseKernelForDifferentVecSize(
 }
 
 template <typename OutT, typename Functor, int Arity, int NumOuts = 1>
-typename std::enable_if<NeedVectorized<OutT>(), void>::type
+typename std::enable_if<NeedVectorized<OutT>::value, void>::type
 ElementwiseKernelForDifferentVecSize(
     const KPDevice &ctx,
     const std::vector<const DenseTensor *> &ins,

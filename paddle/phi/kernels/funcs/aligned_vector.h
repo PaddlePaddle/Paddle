@@ -26,9 +26,9 @@ limitations under the License. */
 namespace phi {
 
 template <typename T>
-constexpr bool NeedVectorized() {
-  return sizeof(T) <= sizeof(float);
-}
+struct NeedVectorized {
+  static constexpr bool value = sizeof(T) <= sizeof(float);
+};
 
 // Aligned vector generates vectorized load/store on CUDA.
 template <typename T, int Size>
@@ -61,7 +61,7 @@ HOSTDEVICE inline void Store(const AlignedVector<T, Size>& vec, T* addr) {
  */
 template <typename T>
 int GetVectorizedSize(const T* pointer) {
-  if (!NeedVectorized<T>()) {
+  if (!NeedVectorized<T>::value) {
     return 1;
   }
   constexpr int max_load_bits = 128;
