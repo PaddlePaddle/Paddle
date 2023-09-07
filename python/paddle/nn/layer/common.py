@@ -731,7 +731,7 @@ class Dropout(Layer):
     In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
     Warning:
-        The corresponding ` functional methods ` please reference::ref:`cn_api_nn_functional_dropout`.
+        The corresponding ` functional methods ` please reference :ref:`api_nn_functional_dropout`.
 
     Parameters:
         p (float|int, optional): Probability of setting units to zero. Default: 0.5
