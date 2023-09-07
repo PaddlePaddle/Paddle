@@ -18,16 +18,16 @@ from unittest import TestCase
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid.wrapped_decorator import wrap_decorator
+from paddle import base
+from paddle.base.wrapped_decorator import wrap_decorator
 
 
 def _dygraph_guard_(func):
     def __impl__(*args, **kwargs):
-        if fluid.in_dygraph_mode():
+        if base.in_dygraph_mode():
             return func(*args, **kwargs)
         else:
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 return func(*args, **kwargs)
 
     return __impl__
@@ -39,7 +39,7 @@ dygraph_guard = wrap_decorator(_dygraph_guard_)
 def random_var(size, low=-1, high=1, dtype='float32'):
     np.random.seed(2021)
     x_np = np.random.uniform(low=low, high=high, size=size).astype(dtype)
-    return fluid.dygraph.to_variable(x_np)
+    return base.dygraph.to_variable(x_np)
 
 
 class TestDygraphTripleGradMatmul(TestCase):
@@ -118,8 +118,8 @@ class TestDygraphTripleGrad(TestCase):
         create_graph=False,
         allow_unused=False,
     ):
-        fluid.set_flags({'FLAGS_sort_sum_gradient': self.sort_sum_gradient})
-        return fluid.dygraph.grad(
+        base.set_flags({'FLAGS_sort_sum_gradient': self.sort_sum_gradient})
+        return base.dygraph.grad(
             outputs=outputs,
             inputs=inputs,
             grad_outputs=grad_outputs,
@@ -244,8 +244,8 @@ class TestDygraphTripleGradBradcastCase(TestCase):
         create_graph=False,
         allow_unused=False,
     ):
-        fluid.set_flags({'FLAGS_sort_sum_gradient': self.sort_sum_gradient})
-        return fluid.dygraph.grad(
+        base.set_flags({'FLAGS_sort_sum_gradient': self.sort_sum_gradient})
+        return base.dygraph.grad(
             outputs=outputs,
             inputs=inputs,
             grad_outputs=grad_outputs,

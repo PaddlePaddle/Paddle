@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.static import Program, program_guard
 
 paddle.enable_static()
@@ -219,14 +219,14 @@ class TestRandintAPI_ZeroDim(unittest.TestCase):
         paddle.enable_static()
 
     def test_static(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             x = paddle.randint(-10, 10, [])
 
             # Test compile shape
             self.assertEqual(x.shape, ())
 
             # Test runtime shape
-            exe = fluid.Executor()
+            exe = base.Executor()
             result = exe.run(fetch_list=[x])
             self.assertEqual(result[0].shape, ())
 

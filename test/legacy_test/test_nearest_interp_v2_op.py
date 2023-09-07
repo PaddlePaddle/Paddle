@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.nn.functional import interpolate
 
 paddle.enable_static()
@@ -969,7 +969,7 @@ class TestNearestInterpOpAPI_dy(unittest.TestCase):
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_data = np.random.random((2, 3, 6, 6)).astype("int64")
             scale_np = np.array([2, 2]).astype("int64")
             input_x = paddle.to_tensor(input_data)
@@ -994,7 +994,7 @@ class TestNearestInterp3DOpAPI_dy(unittest.TestCase):
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_data = np.random.random((2, 2, 6, 6, 6)).astype("int64")
             scale_np = np.array([2, 2, 2]).astype("int64")
             input_x = paddle.to_tensor(input_data)
@@ -1013,7 +1013,7 @@ class TestNearestInterp3DOpAPI_dy(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestNearestInterp3DOpForFloat16(unittest.TestCase):
     def init_test_case(self):
@@ -1054,7 +1054,7 @@ class TestNearestInterp3DOpForFloat16(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestNearestInterpOpForFloat16(unittest.TestCase):
     def init_test_case(self):

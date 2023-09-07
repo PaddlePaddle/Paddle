@@ -31,11 +31,11 @@ import astor
 import numpy as np
 
 import paddle
-from paddle import fluid  # noqa: F401
-from paddle.fluid import backward, core, framework, unique_name
-from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle import base  # noqa: F401
+from paddle.base import backward, core, framework, unique_name
+from paddle.base.data_feeder import convert_dtype
+from paddle.base.layer_helper import LayerHelper
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.utils import gast
 
 from .ast_utils import ast_to_source_code
@@ -376,7 +376,7 @@ def to_static_ast(node, class_node):
             attr='layers',
             ctx=gast.Load(),
             value=gast.Name(
-                ctx=gast.Load(), id='fluid', annotation=None, type_comment=None
+                ctx=gast.Load(), id='base', annotation=None, type_comment=None
             ),
         ),
     )
@@ -609,7 +609,7 @@ def _inject_import_statements():
     import_statements = [
         "import paddle",
         "from paddle import Tensor",
-        "import paddle.fluid as fluid",
+        "import paddle.base as base",
         "import paddle.jit.dy2static as _jst",
         "from typing import *",
         "import numpy as np",

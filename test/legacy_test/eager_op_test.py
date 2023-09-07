@@ -39,12 +39,12 @@ from white_list import (
 )
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.autograd.ir_backward import grad as ir_grad
-from paddle.fluid import core, unique_name
-from paddle.fluid.backward import append_backward
-from paddle.fluid.executor import Executor
-from paddle.fluid.framework import (
+from paddle.base import core, unique_name
+from paddle.base.backward import append_backward
+from paddle.base.executor import Executor
+from paddle.base.framework import (
     OpProtoHolder,
     Program,
     _current_expected_place,
@@ -52,7 +52,7 @@ from paddle.fluid.framework import (
     get_flags,
     set_flags,
 )
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
@@ -78,7 +78,7 @@ def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
         config(dict): other arguments of paddle api function
 
     Example:
-        check_out_dtype(fluid.layers.pad_constant_like, [([2,3,2,3], 'float64'), ([1, 3, 1,3], )], ['float32', 'float64', 'int64'], target_index=1, pad_value=0.)
+        check_out_dtype(base.layers.pad_constant_like, [([2,3,2,3], 'float64'), ([1, 3, 1,3], )], ['float32', 'float64', 'int64'], target_index=1, pad_value=0.)
 
     """
     with paddle_static_guard():
@@ -106,7 +106,7 @@ def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
                     )
 
                 out = api_fn(*input_t, **configs)
-                out_dtype = fluid.data_feeder.convert_dtype(out.dtype)
+                out_dtype = base.data_feeder.convert_dtype(out.dtype)
 
                 if out_dtype != expect_dtype:
                     raise ValueError(
@@ -578,7 +578,7 @@ class OpTest(unittest.TestCase):
         if (
             not core.is_compiled_with_cinn()
             or not core.is_compiled_with_cuda()
-            or not isinstance(place, fluid.CUDAPlace)
+            or not isinstance(place, base.CUDAPlace)
         ):
             return False
         # CINN not support bfloat16 now, skip cinn test
@@ -851,11 +851,11 @@ class OpTest(unittest.TestCase):
         if isinstance(value, tuple):
             data = value[0]
             lod = value[1]
-            v = fluid.dygraph.base.to_variable(value=data)
+            v = base.dygraph.base.to_variable(value=data)
             v.value().get_tensor().set_recursive_sequence_lengths(lod)
             return v
         else:
-            return fluid.dygraph.base.to_variable(value)
+            return base.dygraph.base.to_variable(value)
 
     def get_sequence_batch_size_1_input(self, lod=None, shape=None):
         """Get LoD input data whose batch size is 1.
@@ -1100,8 +1100,8 @@ class OpTest(unittest.TestCase):
                         ][i]
             return result
 
-        with fluid.dygraph.base.guard(place=place):
-            block = fluid.default_main_program().global_block()
+        with base.dygraph.base.guard(place=place):
+            block = base.default_main_program().global_block()
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
             # prepare input variable
             dygraph_tensor_inputs = (
@@ -1166,8 +1166,8 @@ class OpTest(unittest.TestCase):
         self.__class__.op_type = (
             self.op_type
         )  # for ci check, please not delete it for now
-        with fluid.dygraph.base.guard(place=place):
-            block = fluid.default_main_program().global_block()
+        with base.dygraph.base.guard(place=place):
+            block = base.default_main_program().global_block()
 
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
 
@@ -1204,8 +1204,8 @@ class OpTest(unittest.TestCase):
             return outputs
 
     def get_kernel_signature(self, place, egr_inps=None, egr_oups=None):
-        with fluid.dygraph.base.guard(place=place):
-            block = fluid.default_main_program().global_block()
+        with base.dygraph.base.guard(place=place):
+            block = base.default_main_program().global_block()
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
             # prepare input variable
             dygraph_tensor_inputs = (
@@ -1385,7 +1385,7 @@ class OpTest(unittest.TestCase):
             executor = Executor(place)
             new_program = None
             if isinstance(program, paddle.static.CompiledProgram):
-                new_program = fluid.CompiledProgram(
+                new_program = base.CompiledProgram(
                     program._program, build_strategy=program._build_strategy
                 )
             else:
@@ -1436,7 +1436,7 @@ class OpTest(unittest.TestCase):
         for_inplace_test=None,
         check_cinn=False,
     ):
-        with paddle.fluid.framework._static_guard():
+        with paddle.base.framework._static_guard():
             program = Program()
             block = program.global_block()
             op = self._append_ops(block)
@@ -1457,9 +1457,9 @@ class OpTest(unittest.TestCase):
             original_program = program
             if parallel:
                 use_cuda = False
-                if isinstance(place, fluid.CUDAPlace):
+                if isinstance(place, base.CUDAPlace):
                     use_cuda = True
-                compiled_prog = fluid.CompiledProgram(program)
+                compiled_prog = base.CompiledProgram(program)
                 program = compiled_prog
             fetch_list = getattr(self, "fetch_list", [])
             # if the fetch_list is customized by user, we use it directly.
@@ -1488,14 +1488,14 @@ class OpTest(unittest.TestCase):
                     self.rtol = self.cinn_rtol
 
             if (enable_inplace is not None) or enable_cinn_test:
-                build_strategy = fluid.BuildStrategy()
+                build_strategy = base.BuildStrategy()
                 if enable_inplace is not None:
                     build_strategy.enable_inplace = enable_inplace
                 if enable_cinn_test:
                     build_strategy.build_cinn_pass = check_cinn
                     self._check_cinn = enable_cinn_test
 
-                compiled_prog = fluid.CompiledProgram(
+                compiled_prog = base.CompiledProgram(
                     program, build_strategy=build_strategy
                 )
                 program = compiled_prog
@@ -1698,8 +1698,8 @@ class OpTest(unittest.TestCase):
 
         def _dfs_grad_op(op_desc, fwd_op_desc=None):
             visited_ops.append(op_desc.type())
-            has_infer_inplace = fluid.core.has_infer_inplace(op_desc.type())
-            has_grad_op_maker = fluid.core.has_grad_op_maker(op_desc.type())
+            has_infer_inplace = base.core.has_infer_inplace(op_desc.type())
+            has_grad_op_maker = base.core.has_grad_op_maker(op_desc.type())
             has_infer_inplace_in_grad_descendants = False
             if not has_grad_op_maker:
                 has_infer_inplace_in_descendants = False
@@ -1782,7 +1782,7 @@ class OpTest(unittest.TestCase):
         Returns:
             res (tuple(outs, fetch_list, feed_map, program, op_desc)): The results of given grad_op_desc.
         """
-        with paddle.fluid.framework._static_guard():
+        with paddle.base.framework._static_guard():
             (
                 fwd_outs,
                 fwd_fetch_list,
@@ -1803,9 +1803,9 @@ class OpTest(unittest.TestCase):
             exe = Executor(place)
             program = grad_program
             if enable_inplace is not None:
-                build_strategy = fluid.BuildStrategy()
+                build_strategy = base.BuildStrategy()
                 build_strategy.enable_inplace = enable_inplace
-                compiled_program = fluid.CompiledProgram(
+                compiled_program = base.CompiledProgram(
                     grad_program, build_strategy=build_strategy
                 )
                 program = compiled_program
@@ -1876,8 +1876,8 @@ class OpTest(unittest.TestCase):
         if os.getenv("FLAGS_enable_new_ir_in_executor"):
             return
 
-        has_infer_inplace = fluid.core.has_infer_inplace(self.op_type)
-        has_grad_op_maker = fluid.core.has_grad_op_maker(self.op_type)
+        has_infer_inplace = base.core.has_infer_inplace(self.op_type)
+        has_grad_op_maker = base.core.has_grad_op_maker(self.op_type)
         fwd_res = self._calc_output(
             place, no_check_set=no_check_set, for_inplace_test=True
         )
@@ -1889,7 +1889,7 @@ class OpTest(unittest.TestCase):
             return
         for op_desc, father_op_desc in reversed(need_run_ops):
             # The first one is the forward op
-            has_infer_inplace = fluid.core.has_infer_inplace(op_desc.type())
+            has_infer_inplace = base.core.has_infer_inplace(op_desc.type())
             if op_desc.type() == self.op_type:
                 if has_infer_inplace:
                     res[op_desc] = self._check_forward_inplace(
@@ -1904,7 +1904,7 @@ class OpTest(unittest.TestCase):
             else:
                 # TODO(zhiqiu): enhance inplace_grad test for ops (sum and activation) using mkldnn
                 # skip op that use_mkldnn currently
-                flags_use_mkldnn = fluid.core.globals()["FLAGS_use_mkldnn"]
+                flags_use_mkldnn = base.core.globals()["FLAGS_use_mkldnn"]
                 attrs_use_mkldnn = hasattr(self, 'attrs') and bool(
                     self.attrs.get('use_mkldnn', False)
                 )
@@ -2246,7 +2246,7 @@ class OpTest(unittest.TestCase):
                 return actual_np, expect_np
 
             def find_actual_value(self, name):
-                with fluid.dygraph.base.guard(place=place):
+                with base.dygraph.base.guard(place=place):
                     imperative_actual = find_imperative_actual(
                         name, self.outputs, place
                     )
@@ -2256,7 +2256,7 @@ class OpTest(unittest.TestCase):
                     return imperative_actual, imperative_actual_t
 
             def find_expect_value(self, name):
-                with fluid.dygraph.base.guard(place=place):
+                with base.dygraph.base.guard(place=place):
                     imperative_expect = find_imperative_expect(
                         name, self.ref_outputs, place
                     )
@@ -2267,7 +2267,7 @@ class OpTest(unittest.TestCase):
 
             def _compare_list(self, name, actual, expect):
                 """if expect is a tuple, we need to compare list."""
-                with fluid.dygraph.base.guard(place=place):
+                with base.dygraph.base.guard(place=place):
                     self.op_test.assertListEqual(
                         actual.value()
                         .get_tensor()
@@ -2467,8 +2467,8 @@ class OpTest(unittest.TestCase):
             and check_new_ir
         ):
             if (
-                type(place) is paddle.fluid.libpaddle.CPUPlace
-                or type(place) is paddle.fluid.libpaddle.CUDAPlace
+                type(place) is paddle.base.libpaddle.CPUPlace
+                or type(place) is paddle.base.libpaddle.CUDAPlace
             ):
                 print("New IR checker begins...........")
                 with paddle.new_ir_utils.IrGuard():
@@ -2565,7 +2565,7 @@ class OpTest(unittest.TestCase):
                     return []
             else:
                 return []
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         cpu_only = self._cpu_only if hasattr(self, '_cpu_only') else False
         if (
             core.is_compiled_with_cuda()
@@ -2990,7 +2990,7 @@ class OpTest(unittest.TestCase):
         )
 
         if check_dygraph:
-            with fluid.dygraph.base.guard(place):
+            with base.dygraph.base.guard(place):
                 dygraph_dygraph_grad = self._get_dygraph_grad(
                     inputs_to_check,
                     place,
@@ -3026,8 +3026,8 @@ class OpTest(unittest.TestCase):
             and check_new_ir
         ):
             if (
-                type(place) is paddle.fluid.libpaddle.CPUPlace
-                or type(place) is paddle.fluid.libpaddle.CUDAPlace
+                type(place) is paddle.base.libpaddle.CPUPlace
+                or type(place) is paddle.base.libpaddle.CUDAPlace
             ):
                 print("New IR gradient begins...........")
                 with paddle.new_ir_utils.IrGuard():
@@ -3075,8 +3075,8 @@ class OpTest(unittest.TestCase):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
 
-        with fluid.dygraph.base.guard(place=place):
-            block = fluid.default_main_program().global_block()
+        with base.dygraph.base.guard(place=place):
+            block = base.default_main_program().global_block()
 
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
 
@@ -3181,15 +3181,15 @@ class OpTest(unittest.TestCase):
         return tensor
 
     @staticmethod
-    def np_dtype_to_fluid_dtype(input):
+    def np_dtype_to_base_dtype(input):
         return input
 
     @staticmethod
-    def fluid_dtype_to_np_dtype(self, dtype):
+    def base_dtype_to_np_dtype(self, dtype):
         return dtype
 
     @staticmethod
-    def np_value_to_fluid_value(input):
+    def np_value_to_base_value(input):
         return input
 
     def cast_bf16_output(self, block, cast_inputs):
@@ -3286,7 +3286,7 @@ class OpTest(unittest.TestCase):
         parallel=False,
         check_cinn=False,
     ):
-        with paddle.fluid.framework._static_guard():
+        with paddle.base.framework._static_guard():
             prog = Program()
             scope = core.Scope()
             ir_scope = core.Scope()
@@ -3371,18 +3371,18 @@ class OpTest(unittest.TestCase):
 
             if parallel or enable_cinn_test:
                 use_cuda = False
-                if isinstance(place, fluid.CUDAPlace):
+                if isinstance(place, base.CUDAPlace):
                     use_cuda = True
 
                 build_strategy = None
                 if enable_cinn_test:
-                    build_strategy = fluid.BuildStrategy()
+                    build_strategy = base.BuildStrategy()
                     build_strategy.build_cinn_pass = check_cinn
                     self._check_cinn = True
 
-                compiled_prog = fluid.CompiledProgram(prog, build_strategy)
+                compiled_prog = base.CompiledProgram(prog, build_strategy)
                 prog = compiled_prog
-            executor = fluid.Executor(place)
+            executor = base.Executor(place)
             res = list(
                 map(
                     np.array,

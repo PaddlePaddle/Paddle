@@ -15,12 +15,12 @@
 import os
 
 import paddle
-from paddle.fluid import Variable, core
-from paddle.fluid.data_feeder import check_type
-from paddle.fluid.framework import convert_np_dtype_to_dtype_, static_only
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base import Variable, core
+from paddle.base.data_feeder import check_type
+from paddle.base.framework import convert_np_dtype_to_dtype_, static_only
+from paddle.base.layer_helper import LayerHelper
 
-from ..fluid.variable_index import _setitem_impl_, _setitem_static
+from ..base.variable_index import _setitem_impl_, _setitem_static
 
 __all__ = []
 

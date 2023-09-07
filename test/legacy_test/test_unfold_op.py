@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestUnfoldOp(OpTest):
@@ -203,14 +203,14 @@ class TestUnfoldAPI(TestUnfoldOp):
         self.op_type = 'unfold'
         self.python_api = paddle.nn.functional.unfold
         self.set_data()
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
-                input = fluid.dygraph.to_variable(self.inputs['X'])
+            with base.dygraph.guard(place):
+                input = base.dygraph.to_variable(self.inputs['X'])
                 m = paddle.nn.Unfold(**self.attrs)
                 m.eval()
                 result = m(input)

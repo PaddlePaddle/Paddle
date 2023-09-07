@@ -21,15 +21,15 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.fluid import core, unique_name
-from paddle.fluid.data_feeder import (
+from paddle.base import core, unique_name
+from paddle.base.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
 )
-from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.param_attr import ParamAttr
+from paddle.base.framework import Variable, convert_np_dtype_to_dtype_
+from paddle.base.layer_helper import LayerHelper
+from paddle.base.param_attr import ParamAttr
 
 __all__ = []
 
@@ -1134,7 +1134,7 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
     """
     :alias_main: paddle.nn.functional.bilateral_slice
         :alias: paddle.nn.functional.bilateral_slice,paddle.nn.functional.vision.bilateral_slice
-        :old_api: paddle.fluid.layers.bilateral_slice
+        :old_api: paddle.base.layers.bilateral_slice
 
     This operation implements bilateral slicing on the input according to the guide map.
     For more information of bilateral slicing, please refer to Deep Bilateral Learning for Real-Time Image Enhancement <https://groups.csail.mit.edu/graphics/hdrnet/data/hdrnet.pdf>_

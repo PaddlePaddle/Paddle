@@ -27,12 +27,12 @@ limitations under the License. */
  * 2. Since the infer functions of Spmd forward and backward are closely related
  * and need to be registered together, we manage them together in one file.
  *
- * 3. SPMD rules are much smaller than infermeta function, and we manage files
- * in operator units.
+ * 3. SPMD rules are less than infermeta function, and we manage files by
+ * operator.
  *
  * 4. The previous registration used some compile-time regular matching methods,
  * which was less flexible, and the registration of SPMD rules here is declare
- * directly in the header file
+ * directly in the header file.
  */
 
 namespace phi {
