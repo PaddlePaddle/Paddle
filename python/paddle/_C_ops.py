@@ -16,6 +16,7 @@ from paddle.base import core
 
 __all__ = []
 
+
 UNIFIED_APIS = [
     'mean',
     "sum",
