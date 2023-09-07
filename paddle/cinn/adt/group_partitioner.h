@@ -14,99 +14,39 @@
 
 #pragma once
 
+#include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/equation_graph.h"
+#include "paddle/cinn/hlir/framework/graph.h"
 
 namespace cinn::adt::equation {
 
-using EquationIGroupOps = std::unordered_set<FakeOpPlaceHolder>;
+using FakeOpPlaceHolders = List<FakeOpPlaceHolder>;
 
-std::unordered_set<Variable> InitCandidateIndex(const Graph& graph) {
-  std::unordered_set<Variable> variables = graph.GetVariables();
-  std::unordered_set<Variable> candidate_index;
-  for (auto iter = variables.begin(); iter != variables.end(); ++iter) {
-    *iter >> match{[&](const Index& index) {
-      candidate_index.emplace(Variable(index));
-    }};
-  }
-  return candidate_index;
-}
+std::vector<Variable> InitCandidateIndex(const Graph& graph);
 
-Variable PickAnchorTensor(const std::unordered_set<Variable>& candidate_index) {
-  // Heuristic optimization will be added later
-  // such as choosing the one with the biggest rank number as the anchor tensor
-  // first
-  return *(candidate_index.begin());
-}
+Variable PickAnchorTensor(const std::vector<Variable>& candidate_index);
 
-EquationIGroupOps GenerateIGroup(const Graph& graph,
-                                 const Variable& anchor_tensor) {
-  EquationIGroupOps igroup;
-  EquationGraphTopoWalker<const Variable, const Function*> walker =
-      graph.GetWalker();
-  std::function<void(Variable)> variableVisitor =
-      [&](const Variable& variable) {
-        variable >> match{[&](const FakeOpPlaceHolder& fakeOpPlaceholder) {
-          igroup.emplace(fakeOpPlaceholder);
-        }};
-      };
-  walker(anchor_tensor, variableVisitor);
-  return igroup;
-}
+FakeOpPlaceHolders GenerateIGroup(const Graph& graph,
+                                  const Variable& anchor_tensor);
 
-bool IsContain(const EquationIGroupOps& pre_igroup,
-               const EquationIGroupOps& igroup) {
-  for (auto iter = pre_igroup.begin(); iter != pre_igroup.end(); ++iter) {
-    if (igroup.find(*iter) == igroup.end()) {
-      return false;
-    }
-  }
-  return true;
-}
+bool IsContain(const FakeOpPlaceHolders& pre_igroup,
+               const FakeOpPlaceHolders& igroup);
 
 void UpdateIGroupMap(
-    const EquationIGroupOps& igroup,
+    const FakeOpPlaceHolders& igroup,
     const Variable& anchor_tensor,
-    std::unordered_map<Index, EquationIGroupOps>* index2IGroup) {
-  for (auto iter = index2IGroup->begin(); iter != index2IGroup->end(); ++iter) {
-    if (iter->second.size() >= igroup.size()) {
-      continue;
-    }
-    if (IsContain(iter->second, igroup)) {
-      index2IGroup->erase(iter);
-    }
-  }
-  index2IGroup->emplace(anchor_tensor, igroup);
-}
+    std::unordered_map<Variable, FakeOpPlaceHolders>* index2IGroup);
 
 void UpdateCandidateSet(const Graph& graph,
-                        const EquationIGroupOps& igroup,
+                        const FakeOpPlaceHolders& igroup,
                         const Variable& anchor_tensor,
-                        std::unordered_set<Variable>* candidate_index) {
-  EquationGraphTopoWalker<const Variable, const Function*> walker =
-      graph.GetWalker();
-  std::function<void(Variable)> variableVisitor =
-      [&](const Variable& variable) {
-        variable >> match{[&](const Index& index) {
-          if (candidate_index->find(Variable(index)) !=
-              candidate_index->end()) {
-            candidate_index->erase(Variable(index));
-          }
-        }};
-      };
-  walker(anchor_tensor, variableVisitor);
-}
+                        std::vector<Variable>* candidate_index);
 
-std::unordered_map<Index, EquationIGroupOps> PartitionGraph(
-    const Graph& graph) {
-  std::unordered_set<Variable> candidate_index = InitCandidateIndex(graph);
-  std::unordered_map<Index, EquationIGroupOps> index2IGroup;
-  while (!candidate_index.empty()) {
-    Variable anchor_tensor = PickAnchorTensor(candidate_index);
-    EquationIGroupOps igroup = GenerateIGroup(graph, anchor_tensor);
-    UpdateIGroupMap(igroup, anchor_tensor, &index2IGroup);
-    UpdateCandidateSet(graph, igroup, anchor_tensor, &candidate_index);
-  }
-  return index2IGroup;
-}
+void TopoSort4IGroup(
+    const cinn::hlir::framework::Graph::Group& group,
+    std::unordered_map<Variable, FakeOpPlaceHolders>* index2IGroup);
+
+std::unordered_map<Variable, FakeOpPlaceHolders> PartitionGraph(
+    const cinn::hlir::framework::Graph::Group& group, const Graph& graph);
 
 }  // namespace cinn::adt::equation
