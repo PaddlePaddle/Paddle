@@ -1448,5 +1448,25 @@ class TestDygrapInplaceMultiply(TestDygraphInplaceWithContinuous):
         return paddle.multiply(var, self.y)
 
 
+class TestDygrapInplaceTranspose(TestDygraphInplaceWithContinuous):
+    def init_data(self):
+        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20])
+        self.dtype = "float32"
+
+    def inplace_api_processing(self, var):
+        return paddle.t_(var)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.t(var)
+
+
+class TestDygrapInplaceT(TestDygraphInplaceWithContinuous):
+    def inplace_api_processing(self, var):
+        return paddle.transpose_(var, [1, 0, 2])
+
+    def non_inplace_api_processing(self, var):
+        return paddle.transpose(var, [1, 0, 2])
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -2659,3 +2659,61 @@ def polar(abs, angle, name=None):
     )
 
     return paddle.complex(abs * paddle.cos(angle), abs * paddle.sin(angle))
+
+
+def cauchy_(x, median=0, sigma=1):
+    """Fills the tensor with numbers drawn from the Cauchy distribution.
+
+    Args:
+        x (Tensor): The input tensor.
+        median (scalar, optional):  Location of the peak of the distribution. The data type is float32 or float64.
+        sigma (scalar, optional): The half-width at half-maximum (HWHM). The data type is float32 or float64. Must be positive values.
+
+    Returns:
+        Tensor: input tensor with numbers drawn from the Cauchy distribution.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.randn([3, 4])
+            >>> x.cauchy_(1, 2)
+            >>> print(x)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [[-0.25991905, -0.67726970,  1.05490279, -1.12052715],
+                [-0.67522037, -1.19651091,  2.43438125,  0.46528760],
+                [ 1.23364007, -1.22296286, -1.14138269,  0.17634396]])
+    """
+    cy = paddle.distribution.Cauchy(loc=median, scale=sigma)
+    paddle.assign(x, cy.rsample(x.shape))
+    return x
+
+
+def geometric_(x, p):
+    """Fills the tensor with numbers drawn from the Cauchy distribution.
+
+    Args:
+        x (Tensor): The input tensor.
+        median (scalar, optional):  Location of the peak of the distribution. The data type is float32 or float64.
+        sigma (scalar, optional): The half-width at half-maximum (HWHM). The data type is float32 or float64. Must be positive values.
+
+    Returns:
+        Tensor: input tensor with numbers drawn from the Cauchy distribution.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.randn([3, 4])
+            >>> x.geometric_(0.3)
+            >>> print(x)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [[ 0.26763591,  0.71750325, -0.77750158, -0.95675719],
+                [-0.22266576, -0.74896884, -0.42946699,  0.89165741],
+                [-0.55211657,  1.60769212, -0.17337820, -0.62538552]])
+    """
+    geo = paddle.distribution.Geometric(probs=p)
+    paddle.assign(x, geo.rsample(x.shape))
+    return x
