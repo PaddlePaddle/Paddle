@@ -30,7 +30,8 @@
 
 #if !defined(GCC_WITHOUT_INTRINSICS) && !defined(PADDLE_WITH_ARM) && \
     !defined(PADDLE_WITH_SW) && !defined(PADDLE_WITH_MIPS) &&        \
-    !defined(_WIN32) && !defined(PADDLE_WITH_LOONGARCH)
+    !defined(_WIN32) && !defined(PADDLE_WITH_LOONGARCH) &&           \
+	!defined(PADDLE_WITH_RISCV)
 #define DENORM_USE_INTRINSICS
 #endif
 

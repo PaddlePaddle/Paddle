@@ -522,6 +522,9 @@ if(WITH_POCKETFFT)
   include(external/pocketfft)
   list(APPEND third_party_deps extern_pocketfft)
   add_definitions(-DPADDLE_WITH_POCKETFFT)
+if(WITH_RISCV)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-maybe-uninitialized") # Warnings in pocketfft_hdronly.h
+endif()
 endif()
 
 if(WIN32)

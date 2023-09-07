@@ -653,6 +653,21 @@ if(WITH_ARM)
   add_definitions(-DPADDLE_WITH_ARM)
 endif()
 
+if(WITH_RISCV)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+  set(WITH_XBYAK
+      OFF
+      CACHE STRING "Disable XBYAK when compiling WITH_RISCV=ON." FORCE)
+  set(WITH_MKL
+      OFF
+      CACHE STRING "Disable MKL when compiling WITH_RISCV=ON." FORCE)
+  set(WITH_AVX
+      OFF
+      CACHE STRING "Disable AVX when compiling WITH_AVX=OFF." FORCE)
+  add_definitions(-DPADDLE_WITH_RISCV)
+endif()
+
 if(WITH_SW)
   # mieee flag solves floating-point exceptions under sw and ALPHA architectures
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -mieee")
