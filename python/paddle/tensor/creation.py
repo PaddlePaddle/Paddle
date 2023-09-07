@@ -95,23 +95,6 @@ def create_global_var(
             >>> var = paddle.static.create_global_var(shape=[2,3], value=1.0, dtype='float32',
             ...                                persistable=True, force_cpu=True, name='new_var')
 
-        .. code-block:: python
-            :name: e2
-
-            >>> # doctest: +REQUIRES(env:GPU)
-            >>> import paddle
-            >>> print(1+1)
-            3
-
-
-        .. code-block:: python
-            :name: e3
-
-            >>> # fail in timeout
-            >>> import os
-            ... for i in range(3):
-            ...     pass
-            llll
 
         .. code-block:: python
             :name: e4
@@ -205,7 +188,7 @@ def create_parameter(
         .. code-block:: python
             :name: e1
 
-            >>> import paddle SOME SYNTAX
+            >>> import paddle
             >>> paddle.enable_static()
             >>> W = paddle.create_parameter(shape=[784, 200], dtype='float32')
 
