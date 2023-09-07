@@ -166,7 +166,7 @@ void RenameAndGetOutputs(
       for (int k = 0; k < in_var->arguments_size(); k++) {  // all the arguments
         const std::string arg_value = in_var->arguments(k);
         const std::string arg_value_with_id =
-            arg_value + std::to_string(var2id[arg_value]);
+            RenameVarBeUnique(arg_value, std::to_string(var2id[arg_value]));
         if (input_names_with_id.count(arg_value_with_id)) {
           replaced_names.push_back(arg_value);
           if (graph_var_map.count(arg_value)) {
@@ -199,7 +199,8 @@ void RenameAndGetOutputs(
           PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
       if (same_hierarchy_conv2d_num_map[input_var_name] > 0) {
         (*output_names_with_id)
-            .insert(out_var_name + std::to_string(var2id[out_var_name]));
+            .insert(RenameVarBeUnique(out_var_name,
+                                      std::to_string(var2id[out_var_name])));
         (*output_names).insert(out_var_name);
       } else if (filter_shape[2] == 1 && filter_shape[3] == 1 &&
                  strides[0] == 1 && strides[1] == 1 && paddings[0] == 0 &&
@@ -214,7 +215,7 @@ void RenameAndGetOutputs(
       for (int k = 0; k < out_var->arguments_size(); k++) {
         const std::string arg_value = out_var->arguments(k);
         const std::string arg_value_with_id =
-            arg_value + std::to_string(var2id[arg_value]);
+            RenameVarBeUnique(arg_value, std::to_string(var2id[arg_value]));
         if (graph_var_map.count(arg_value)) {
           add_block_var(arg_value, arg_value_with_id);
         }
@@ -229,6 +230,11 @@ void RenameAndGetOutputs(
       }
     }
   }
+}
+
+std::string RenameVarBeUnique(std::string original_var_name,
+                              std::string var_id) {
+  return original_var_name + "_subgraph_" + var_id;
 }
 
 }  // namespace analysis

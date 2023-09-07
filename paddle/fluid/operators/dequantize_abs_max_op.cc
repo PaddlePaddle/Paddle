@@ -42,7 +42,7 @@ struct DequantizeFunctor<phi::CPUContext, T> {
     const float* scale_factor = scale->data<float>();
     const T* input_data = in->data<T>();
     float* output_data = out->mutable_data<float>(dev_ctx.GetPlace());
-    int ind = in->numel();
+    int ind = static_cast<int>(in->numel());
     for (size_t i = 0; i < (unsigned)ind; i++) {
       output_data[i] = scale_factor[0] * input_data[i] / max_range;
     }

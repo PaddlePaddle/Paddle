@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from paddle import _C_ops, in_dynamic_mode
-from paddle.fluid.framework import core, dygraph_only
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.framework import core, dygraph_only
+from paddle.base.layer_helper import LayerHelper
 
 from .unary import cast
 

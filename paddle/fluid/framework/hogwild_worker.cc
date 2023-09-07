@@ -86,9 +86,9 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
       InitializeVariable(ptr, var->GetType());
       if (stat_var_name_map_.find(var->Name()) != stat_var_name_map_.end() &&
           thread_id_ != 0) {
-        int tensor_dim = root_scope_->FindVar(var->Name())
-                             ->GetMutable<phi::DenseTensor>()
-                             ->numel();
+        int tensor_dim = static_cast<int>(root_scope_->FindVar(var->Name())
+                                              ->GetMutable<phi::DenseTensor>()
+                                              ->numel());
         auto *ptr1 = thread_scope_->Var(var->Name());
         InitializeVariable(ptr1, var->GetType());
         phi::DenseTensor *thread_tensor = ptr1->GetMutable<phi::DenseTensor>();
@@ -290,7 +290,8 @@ void HogwildWorker::TrainFilesWithProfiler() {
         }
         fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
         fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
-        fprintf(stderr, "%6.2f instances/s\n", total_inst / total_time);
+        fprintf(
+            stderr, "%6.2f instances/s\n", total_inst / total_time);  // NOLINT
       }
     }
 #endif

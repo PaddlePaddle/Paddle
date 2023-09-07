@@ -20,7 +20,7 @@ from dygraph_to_static_util import ast_only_test, dy2static_unittest
 
 import paddle
 import paddle.jit.dy2static as _jst
-from paddle import fluid
+from paddle import base
 from paddle.jit.dy2static.convert_call_func import CONVERSION_OPTIONS
 from paddle.jit.dy2static.utils import func_to_source_code
 
@@ -42,7 +42,7 @@ def dyfunc_with_if(x_v):
 
 @paddle.jit.to_static
 def nested_func(x_v):
-    x_v = fluid.dygraph.to_variable(x_v)
+    x_v = base.dygraph.to_variable(x_v)
 
     def fn1():
         return x_v
@@ -81,9 +81,9 @@ class TestRecursiveCall1(unittest.TestCase):
     def setUp(self):
         self.input = np.random.random([10, 16]).astype('float32')
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         self.init_test_func()
 
@@ -92,13 +92,13 @@ class TestRecursiveCall1(unittest.TestCase):
 
     def get_dygraph_output(self):
         paddle.jit.enable_to_static(False)
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             res = self.dyfunc(self.input).numpy()
             return res
 
     def get_static_output(self):
         paddle.jit.enable_to_static(True)
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             res = self.dyfunc(self.input).numpy()
             return res
 
@@ -174,9 +174,9 @@ class TestRecursiveCall2(unittest.TestCase):
     def setUp(self):
         self.input = np.random.random((1, 3, 3, 5)).astype('float32')
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         self.set_func()
 
@@ -184,8 +184,8 @@ class TestRecursiveCall2(unittest.TestCase):
         self.dygraph_func = MyLayer()
 
     def _run(self):
-        with fluid.dygraph.guard():
-            data = fluid.dygraph.to_variable(self.input)
+        with base.dygraph.guard():
+            data = base.dygraph.to_variable(self.input)
             res = self.dygraph_func(data)
 
             return res.numpy()

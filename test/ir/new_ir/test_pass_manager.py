@@ -16,7 +16,7 @@ import unittest
 
 import paddle
 from paddle import ir
-from paddle.fluid import core
+from paddle.base import core
 from paddle.framework import LayerHelper
 
 paddle.enable_static()
@@ -56,8 +56,7 @@ class TestShadowOutputSlice(unittest.TestCase):
         pm.run(new_program)
         op_names = [op.name() for op in new_program.block().ops]
         # print(op_names)
-        # TODO(zhiqiu): unify the name of pass
-        self.assertEqual(pm.passes(), ['DeadCodeEliminationPass'])
+        self.assertEqual(pm.passes(), ['dead_code_elimination'])
         self.assertFalse(pm.empty())
         self.assertTrue(
             'pd.uniform' not in op_names
