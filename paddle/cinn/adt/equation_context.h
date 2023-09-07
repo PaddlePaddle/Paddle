@@ -43,6 +43,7 @@ class Context {
     Init(&out_dim_tuples_, out_tensors_ranks);
 
     GenerateDots();
+    fake_op_placeholder_ = GenerateFakeOpPlaceholder();
   }
 
   const std::vector<std::uint64_t>& GetInTensorsRanks() const {
@@ -100,6 +101,10 @@ class Context {
     return out_dim_tuples_.at(output_idx);
   }
 
+  const FakeOpPlaceHolder& fake_op_placeholder() const {
+    return fake_op_placeholder_;
+  }
+
   template <typename DoEachT>
   void VisitEachTensorIndex(const DoEachT& DoEach) const {
     for (const auto& in_index : in_indexes_) {
@@ -154,6 +159,20 @@ class Context {
     equations_->emplace_back(Identity<tOut<T>, tIn<T>>(rhs, lhs));
   }
 
+  FakeOpPlaceHolder GenerateFakeOpPlaceholder() const {
+    FakeOpPlaceHolder fake_op_placeholder{UniqueId::New()};
+
+    List<Index> input_output_indexes;
+    VisitEachTensorIndex(
+        [&](const auto& index) { input_output_indexes->emplace_back(index); });
+
+    equations_->emplace_back(
+        ConstructFakeOpPlaceHolder<tOut<FakeOpPlaceHolder>, tIn<List<Index>>>{
+            fake_op_placeholder, input_output_indexes});
+
+    return fake_op_placeholder;
+  }
+
   std::vector<std::uint64_t> in_tensors_ranks_;
   std::vector<std::uint64_t> out_tensors_ranks_;
   std::vector<IteratorTuple> in_iterator_tuples_;
@@ -166,6 +185,7 @@ class Context {
   std::vector<DimTuple> out_dim_tuples_;
 
   std::shared_ptr<std::vector<Equation>> equations_;
+  FakeOpPlaceHolder fake_op_placeholder_;
 };
 
 }  // namespace cinn::adt::equation::config

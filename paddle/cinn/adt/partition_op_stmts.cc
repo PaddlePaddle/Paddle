@@ -20,73 +20,14 @@ namespace cinn::adt::partition {
 
 using TensorIndex = Variable;
 
-Variable PickAnchorTensor(const std::vector<Variable>& candidate_index) {
+AnchorIndex PickThenEraseAnchorIndex(
+    std::unordered_set<AnchorIndex>* candidate_anchor_indexes) {
   // Heuristic optimization will be added later
   // such as choosing the one with the biggest rank number as the anchor tensor
   // first
-  return *(candidate_index.begin());
-}
-
-FakeOpPlaceHolders GenerateIGroup(const Graph& graph,
-                                  const Variable& anchor_tensor) {
-  FakeOpPlaceHolders igroup;
-  EquationGraphTopoWalker<const Variable, const Function*> walker =
-      graph.GetWalker();
-  std::function<void(Variable)> variableVisitor =
-      [&](const Variable& variable) {
-        variable >> match{[&](const FakeOpPlaceHolder& fakeOpPlaceholder) {
-          igroup->emplace_back(fakeOpPlaceholder);
-        }};
-      };
-  walker(anchor_tensor, variableVisitor);
-  return igroup;
-}
-
-bool IsContain(const FakeOpPlaceHolders& pre_igroup,
-               const FakeOpPlaceHolders& igroup) {
-  for (const auto& pre_op : *pre_igroup) {
-    auto iter = std::find(igroup->begin(), igroup->end(), pre_op);
-    if (iter == igroup->end()) {
-      return false;
-    }
-  }
-  return true;
-}
-
-void UpdateIGroupMap(
-    const FakeOpPlaceHolders& igroup,
-    const Variable& anchor_tensor,
-    std::unordered_map<Variable, FakeOpPlaceHolders>* index2IGroup) {
-  for (const auto& [pre_anchor_tensor, pre_igroup] : *index2IGroup) {
-    if (pre_igroup->size() >= igroup->size()) {
-      continue;
-    }
-    if (IsContain(pre_igroup, igroup)) {
-      index2IGroup->erase(pre_anchor_tensor);
-    }
-  }
-  index2IGroup->emplace(anchor_tensor, igroup);
-}
-
-void UpdateCandidateSet(const Graph& graph,
-                        const FakeOpPlaceHolders& igroup,
-                        const Variable& anchor_tensor,
-                        std::vector<Variable>* candidate_index) {
-  EquationGraphTopoWalker<const Variable, const Function*> walker =
-      graph.GetWalker();
-
-  std::function<void(Variable)> variableVisitor =
-      [&](const Variable& variable) {
-        variable >> match{[&](const Index& index) {
-          auto iter = std::find(candidate_index->begin(),
-                                candidate_index->end(),
-                                Variable(index));
-          if (iter != candidate_index->end()) {
-            candidate_index->erase(iter);
-          }
-        }};
-      };
-  walker(anchor_tensor, variableVisitor);
+  const auto& ret = *candidate_anchor_indexes->begin();
+  candidate_anchor_indexes->erase(candidate_anchor_indexes->begin());
+  return ret;
 }
 
 std::vector<AnchorIndex> InitCandidateAnchorIndex(
@@ -101,17 +42,87 @@ std::vector<AnchorIndex> InitCandidateAnchorIndex(
   return ret;
 }
 
-std::unordered_map<AnchorIndex, IGroupSpec> PartitionOpStmtsIntoIGroupSpecs(
-    std::vector<AnchorIndex>* candidate_anchor_index,
+std::function<const m_expr::OpStmt&(const equation::FakeOpPlaceHolder)>
+MakeGetterOpStmt4OpPlaceHolder(const EquationCtx4OpStmtT& EquationCtx4OpStmt,
+                               const List<m_expr::OpStmt>& op_stmts) {
+  ADT_TODO();  // Trivial Code
+}
+
+List<m_expr::OpStmt> FindVisitedOpStmts(
+    const AnchorIndex& anchor_index,
+    const equation::GraphView& equation_graph,
+    const std::function<const m_expr::OpStmt&(
+        const equation::FakeOpPlaceHolder)>& OpStmt4OpPlaceHolder) {
+  ADT_TODO();  // Trivial Code
+}
+
+equation::GraphView MakeGlobalEquationGraphForPartition(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
     const List<m_expr::OpStmt>& op_stmts) {
   ADT_TODO();
-  while (!candidate_anchor_index.empty()) {
-    Variable anchor_tensor = PickAnchorTensor(candidate_anchor_index);
-    FakeOpPlaceHolders igroup = GenerateIGroup(graph, anchor_tensor);
-    UpdateIGroupMap(igroup, anchor_tensor, &index2igroup);
-    UpdateCandidateSet(graph, igroup, anchor_tensor, &candidate_anchor_index);
+}
+
+template <typename DoEachT>
+void VisitTensorIndex(const IGroupSpec& igroup_spec, const DoEachT& DoEach) {
+  const auto& igroup_op_stmts = igroup_spec.igroup_op_stmts;
+  const auto& EquationCtx4OpStmt = igroup_spec.EquationCtx4OpStmt;
+  for (const auto& igroup_op_stmt : *igroup_op_stmts) {
+    const auto* ctx = EquationCtx4OpStmt(igroup_op_stmt);
+    ctx->VisitEachTensorIndex(DoEach);
   }
+}
+
+void CleanSmallIGroupSpecs(
+    const IGroupSpec& igroup_spec,
+    std::unordered_map<AnchorIndex, IGroupSpec>* anchor_index2igroup_spec) {
+  VisitTensorIndex(igroup_spec, [&](const auto& tensor_index) {
+    anchor_index2igroup_spec->erase(tensor_index);
+  });
+}
+
+void UpdataAnchorIndex2IGroupSpec(
+    const IGroupSpec& igroup_spec,
+    std::unordered_map<AnchorIndex, IGroupSpec>* anchor_index2igroup_spec) {
+  CleanSmallIGroupSpecs(igroup_spec, anchor_index2igroup_spec);
+
+  CHECK(anchor_index2igroup_spec->emplace(igroup_spec.anchor_index, igroup_spec)
+            .second);
+}
+
+void EraseCandidateAnchorIndexes(
+    const IGroupSpec& igroup_spec,
+    std::unordered_set<AnchorIndex>* candidate_anchor_indexes) {
+  VisitTensorIndex(igroup_spec, [&](const auto& tensor_index) {
+    candidate_anchor_indexes->erase(tensor_index);
+  });
+}
+
+std::unordered_map<AnchorIndex, IGroupSpec> PartitionOpStmtsIntoIGroupSpecs(
+    std::unordered_set<AnchorIndex>* candidate_anchor_indexes,
+    const EquationCtx4OpStmtT& EquationCtx4OpStmt,
+    const List<m_expr::OpStmt>& op_stmts) {
+  std::unordered_map<AnchorIndex, IGroupSpec> anchor_index2igroup_spec;
+
+  const auto& OpStmt4OpPlaceHolder =
+      MakeGetterOpStmt4OpPlaceHolder(EquationCtx4OpStmt, op_stmts);
+
+  const auto& equation_graph =
+      MakeGlobalEquationGraphForPartition(EquationCtx4OpStmt, op_stmts);
+
+  while (!candidate_anchor_indexes->empty()) {
+    AnchorIndex anchor_tensor =
+        PickThenEraseAnchorIndex(candidate_anchor_indexes);
+
+    const auto& visited_op_stmts =
+        FindVisitedOpStmts(anchor_tensor, equation_graph, OpStmt4OpPlaceHolder);
+    CHECK(!visited_op_stmts->empty());
+
+    IGroupSpec igroup_spec{anchor_tensor, visited_op_stmts, EquationCtx4OpStmt};
+    UpdataAnchorIndex2IGroupSpec(igroup_spec, &anchor_index2igroup_spec);
+    EraseCandidateAnchorIndexes(igroup_spec, candidate_anchor_indexes);
+  }
+
+  return anchor_index2igroup_spec;
 }
 
 std::vector<IGroupSpec> SortedIGroupSpecs(
@@ -123,12 +134,12 @@ std::vector<IGroupSpec> SortedIGroupSpecs(
 std::vector<IGroupSpec> PartitionOpStmts(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
     const List<m_expr::OpStmt>& op_stmts) {
-  std::vector<AnchorIndex> candidate_anchor_index =
+  std::unordered_set<AnchorIndex> candidate_anchor_indexes =
       InitCandidateAnchorIndex(EquationCtx4OpStmt, op_stmts);
 
   std::unordered_map<AnchorIndex, IGroupSpec> anchor_index2igroup_spec =
       PartitionOpStmtsIntoIGroupSpecs(
-          &candidate_anchor_index, EquationCtx4OpStmt, op_stmts);
+          &candidate_anchor_indexes, EquationCtx4OpStmt, op_stmts);
 
   return SortedIGroupSpecs(anchor_index2igroup_spec, op_stmts);
 }
