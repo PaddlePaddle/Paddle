@@ -88,7 +88,7 @@ std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
 std::shared_ptr<KGroup> GenerateKGroups(
     const cinn::hlir::framework::Graph::Group& group,
     const std::vector<std::shared_ptr<IGroup>>& igroups) {
-  // Yifan
+  // @Yifan
   ADT_TODO();  // Trival code
 }
 
