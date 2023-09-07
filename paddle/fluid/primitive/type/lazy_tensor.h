@@ -41,11 +41,13 @@ class LazyTensor : public phi::ExtendedTensor,
         value_.type().dyn_cast<paddle::dialect::DenseTensorType>().dtype());
   }
 
-  ir::Value getValue() const { return value_; }
+  ir::Value value() const { return value_; }
 
   const phi::Place& place() const override { return place_; }
 
   bool initialized() const override { return value_.impl() != nullptr; }
+
+  void set_empty_type() { value_.set_type(ir::Type()); }
 
  private:
   ir::Value value_;
