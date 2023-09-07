@@ -753,7 +753,7 @@ void BindVjp(pybind11::module *m) {
     return true;
   });
 
-  m->def("has_custom_vjp", [](Operation &op) -> py::bool_ {
+  m->def("has_custom_vjp", [](ir::Operation &op) -> py::bool_ {
     return op.info().HasTrait<paddle::dialect::CustomVjpTrait>();
   });
 }
