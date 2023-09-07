@@ -83,7 +83,8 @@ struct BroadcastTypeClassifier {
     bool is_optimize = configs[0].cmp_type != type;
     vec_size = is_optimize ? VecSizeL : VecSizeM;
 #else
-    vec_size = GetVectorizedSizeForTensors(ins, *outs);
+    constexpr bool kNeedVectorize = NeedVectorized<OutT>();
+    vec_size = GetVectorizedSizeForTensors(ins, *outs) ? kNeedVectorize : 1;
 #endif
   }
 
@@ -835,20 +836,53 @@ struct LaunchBroadcastKernelWithInt64IndexHelper<OutT,
 #endif
 
 template <typename OutT, typename Functor, int Arity, int NumOuts = 1>
-void BroadcastKernelForDifferentVecSize(
-    const KPDevice &ctx,
-    const std::vector<const DenseTensor *> &ins,
-    std::vector<DenseTensor *> *outs,
-    int axis,
-    Functor func) {
+typename std::enable_if<!NeedVectorized<OutT>(), void>::type
+BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
+                                   const std::vector<const DenseTensor *> &ins,
+                                   std::vector<DenseTensor *> *outs,
+                                   int axis,
+                                   Functor func) {
 #ifndef PADDLE_WITH_XPU_KP
   constexpr bool kEnabledInt64IndexKernel = (NumOuts == 1 && Arity <= 3);
   bool use_int64_index_kernel =
       kEnabledInt64IndexKernel &&
       (*outs)[0]->numel() >= std::numeric_limits<int32_t>::max();
   if (use_int64_index_kernel) {
-    auto classifier =
-        BroadcastTypeClassifier<OutT, Arity, NumOuts>(ins, outs, axis);
+    LaunchBroadcastKernelWithInt64IndexHelper<OutT,
+                                              Functor,
+                                              Arity,
+                                              NumOuts,
+                                              VecSizeS>::Run(ctx,
+                                                             ins,
+                                                             outs,
+                                                             axis,
+                                                             func);
+    return;
+  }
+#endif
+
+  auto classifier =
+      BroadcastTypeClassifier<OutT, Arity, NumOuts>(ins, outs, axis);
+  LaunchBroadcastKernel<OutT, Functor, Arity, NumOuts, VecSizeS>(
+      ctx, classifier, func);
+}
+
+template <typename OutT, typename Functor, int Arity, int NumOuts = 1>
+typename std::enable_if<NeedVectorized<OutT>(), void>::type
+BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
+                                   const std::vector<const DenseTensor *> &ins,
+                                   std::vector<DenseTensor *> *outs,
+                                   int axis,
+                                   Functor func) {
+  auto classifier =
+      BroadcastTypeClassifier<OutT, Arity, NumOuts>(ins, outs, axis);
+
+#ifndef PADDLE_WITH_XPU_KP
+  constexpr bool kEnabledInt64IndexKernel = (NumOuts == 1 && Arity <= 3);
+  bool use_int64_index_kernel =
+      kEnabledInt64IndexKernel &&
+      (*outs)[0]->numel() >= std::numeric_limits<int32_t>::max();
+  if (use_int64_index_kernel) {
     switch (classifier.vec_size) {
       case VecSizeL: {
         LaunchBroadcastKernelWithInt64IndexHelper<OutT,
@@ -896,8 +930,6 @@ void BroadcastKernelForDifferentVecSize(
   }
 #endif
 
-  auto classifier =
-      BroadcastTypeClassifier<OutT, Arity, NumOuts>(ins, outs, axis);
   switch (classifier.vec_size) {
     case VecSizeL: {
       LaunchBroadcastKernel<OutT, Functor, Arity, NumOuts, VecSizeL>(

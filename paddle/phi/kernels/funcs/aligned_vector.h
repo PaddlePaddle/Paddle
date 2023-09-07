@@ -25,6 +25,11 @@ limitations under the License. */
 
 namespace phi {
 
+template <typename T>
+constexpr bool NeedVectorized() {
+  return sizeof(T) <= sizeof(float);
+}
+
 // Aligned vector generates vectorized load/store on CUDA.
 template <typename T, int Size>
 struct alignas(sizeof(T) * Size) AlignedVector {
