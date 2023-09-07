@@ -75,14 +75,17 @@ struct ScaleAddFuctor {
 };
 
 template <typename T, typename Functor>
-__global__ void VectorizedDropoutForward(const size_t n,
-                                         uint64_t seed,
-                                         const T* src,
-                                         const T* res,
-                                         T* dst,
-                                         uint64_t increment,
-                                         size_t main_offset,
-                                         Functor functor) {
+__global__ void VectorizedDropoutForward(
+    /* This is used to relate kernel to cudaGraph nodes*/
+    unsigned int identifier,
+    const size_t n,
+    uint64_t seed,
+    const T* src,
+    const T* res,
+    T* dst,
+    uint64_t increment,
+    size_t main_offset,
+    Functor functor) {
   size_t idx = static_cast<size_t>(BLOCK_ID_X * BLOCK_NUM_X);
   static constexpr int kCount =
       phi::funcs::uniform_distribution<float>::kReturnsCount;
@@ -185,26 +188,49 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
     auto dst_functor =
         NoMaskFwFunctor<T, float>(1.0f - dropout_rate, upscale_in_train);
 
-#define PD_DROPOUT_KERNEL_NAME \
-  VectorizedDropoutForward<T, NoMaskFwFunctor<T, float>>
-    PD_RECORD_CUDA_GRAPH_RANDOM_KERNEL(!fix_seed,
-                                       PD_DROPOUT_KERNEL_NAME,
-                                       grid_size,
-                                       block_size,
-                                       0,
-                                       stream,
-                                       offset,
-                                       KERNEL_PARAMS.As<uint64_t>(1),
-                                       KERNEL_PARAMS.As<uint64_t>(5),
-                                       numel,
-                                       seed_data,  // need save
-                                       x_data,
-                                       y_data,
-                                       out_data,
-                                       increment,  // need save
-                                       main_offset,
-                                       dst_functor);
-#undef PD_DROPOUT_KERNEL_NAME
+    if (phi::backends::gpu::CUDAGraph::IsThisThreadCapturing() && !fix_seed) {
+      auto parameterSetter =
+          [offset](phi::backends::gpu::CUDAKernelParams& params) {
+            auto* dev_ctx = phi::DeviceContextPool::Instance().GetByPlace(
+                phi::backends::gpu::CUDAGraph::CapturingPlace());
+            uint64_t seed, increment;
+            phi::funcs::GetSeedDataAndIncrement(
+                *dev_ctx, nullptr, false, 0, offset, &seed, &increment);
+            params.As<uint64_t>(2) =
+                static_cast<decltype(params.As<uint64_t>(2))>(seed);
+            params.As<uint64_t>(6) =
+                static_cast<decltype(params.As<uint64_t>(6))>(increment);
+          };
+
+      phi::backends::gpu::CUDAGraphKernelLauncher::Instance().KernelLaunch(
+          VectorizedDropoutForward<T, NoMaskFwFunctor<T, float>>,
+          parameterSetter,
+
+          grid_size,
+          block_size,
+          0,
+          stream,
+
+          numel,
+          seed_data,  // need save
+          x_data,
+          y_data,
+          out_data,
+          increment,  // need save
+          main_offset,
+          dst_functor);
+    } else {
+      VectorizedDropoutForward<T, NoMaskFwFunctor<T, float>>
+          <<<grid_size, block_size, 0, stream>>>(0,
+                                                 numel,
+                                                 seed_data,  // need save
+                                                 x_data,
+                                                 y_data,
+                                                 out_data,
+                                                 increment,  // need save
+                                                 main_offset,
+                                                 dst_functor);
+    }
   } else {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     MT factor = static_cast<MT>(1.0f - dropout_rate);

@@ -21,6 +21,7 @@
 #include <mutex>
 #include <set>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 #include "cuda.h"          // NOLINT
@@ -100,6 +101,47 @@ class CUDAKernelParams {
 
  private:
   const cudaKernelNodeParams *params_;
+};
+
+class CUDAGraphKernelLauncher {
+ public:
+  using parameterSetter_t = std::function<void(CUDAKernelParams &)>;
+
+  template <typename F, typename... Args>
+  void KernelLaunch(F func,
+                    parameterSetter_t parameterSetter,
+                    unsigned int blockSize,
+                    unsigned int numBlocks,
+                    size_t sharedMem,
+                    cudaStream_t stream,
+                    Args &...args);
+
+  bool HasParameterSetter(const CUDAKernelParams &params);
+
+  parameterSetter_t GetParameterSetter(const CUDAKernelParams &params);
+
+  static CUDAGraphKernelLauncher &Instance() {
+    static CUDAGraphKernelLauncher *launcher = new CUDAGraphKernelLauncher;
+    return *launcher;
+  }
+
+ private:
+  CUDAGraphKernelLauncher() : id(0) {}
+  DISABLE_COPY_AND_ASSIGN(CUDAGraphKernelLauncher);
+
+  unsigned int GenerateIndentifier() { return id++; }
+
+  void InnerLaunch(const void *func,
+                   unsigned int blockSize,
+                   unsigned int numBlocks,
+                   size_t sharedMem,
+                   cudaStream_t stream,
+                   void **args);
+
+  unsigned int id;
+  std::unordered_map<const void *,
+                     std::unordered_map<unsigned int, parameterSetter_t>>
+      parameterSetters;
 };
 
 #if CUDA_VERSION >= 10010

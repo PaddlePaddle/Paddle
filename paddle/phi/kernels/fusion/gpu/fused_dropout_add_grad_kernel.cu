@@ -89,14 +89,17 @@ struct NoMaskBwFunctor {
 };
 
 template <typename T, typename Functor>
-__global__ void VectorizedDropoutBackward(const size_t n,
-                                          uint64_t seed,
-                                          T* x,
-                                          T* y,
-                                          const T* out_grad,
-                                          uint64_t increment,
-                                          size_t main_offset,
-                                          Functor functor) {
+__global__ void VectorizedDropoutBackward(
+    /* This is used to relate kernel to cudaGraph nodes*/
+    unsigned int identifier,
+    const size_t n,
+    uint64_t seed,
+    T* x,
+    T* y,
+    const T* out_grad,
+    uint64_t increment,
+    size_t main_offset,
+    Functor functor) {
   size_t idx = static_cast<size_t>(BLOCK_ID_X * BLOCK_NUM_X);
   static constexpr int kCount =
       phi::funcs::uniform_distribution<float>::kReturnsCount;
@@ -198,25 +201,51 @@ void FusedDropoutAddGradKernel(const Context& dev_ctx,
     auto functor = upscale_in_train
                        ? NoMaskBwFunctor<T, float>(1.0f - dropout_rate)
                        : NoMaskBwFunctor<T, float>(1.0f - dropout_rate, 1.0f);
-#define PD_DROPOUT_KERNEL_NAME \
-  VectorizedDropoutBackward<T, NoMaskBwFunctor<T, float>>
-    PD_RECORD_CUDA_GRAPH_RANDOM_KERNEL(!fix_seed,
-                                       PD_DROPOUT_KERNEL_NAME,
-                                       grid_size,
-                                       block_size,
-                                       0,
-                                       stream,
-                                       offset,
-                                       KERNEL_PARAMS.As<uint64_t>(1),
-                                       KERNEL_PARAMS.As<uint64_t>(5),
-                                       numel,
-                                       seed_data,  // need save
-                                       x_grad_data,
-                                       y_grad_data,
-                                       out_grad_data,  // grad
-                                       increment,      // need save
-                                       main_offset,
-                                       functor);
+
+    if (phi::backends::gpu::CUDAGraph::IsThisThreadCapturing() && !fix_seed) {
+      auto parameterSetter =
+          [offset](phi::backends::gpu::CUDAKernelParams& params) {
+            auto* dev_ctx = phi::DeviceContextPool::Instance().GetByPlace(
+                phi::backends::gpu::CUDAGraph::CapturingPlace());
+            uint64_t seed, increment;
+            phi::funcs::GetSeedDataAndIncrement(
+                *dev_ctx, nullptr, false, 0, offset, &seed, &increment);
+            params.As<uint64_t>(2) =
+                static_cast<decltype(params.As<uint64_t>(2))>(seed);
+            params.As<uint64_t>(6) =
+                static_cast<decltype(params.As<uint64_t>(6))>(increment);
+          };
+
+      phi::backends::gpu::CUDAGraphKernelLauncher::Instance().KernelLaunch(
+          VectorizedDropoutBackward<T, NoMaskBwFunctor<T, float>>,
+          parameterSetter,
+
+          grid_size,
+          block_size,
+          0,
+          stream,
+
+          numel,
+          seed_data,  // idx: 2 need save
+          x_grad_data,
+          y_grad_data,
+          out_grad_data,
+          increment,  // idx: 6 need save
+          main_offset,
+          functor);
+    } else {
+      VectorizedDropoutBackward<T, NoMaskBwFunctor<T, float>>
+          <<<grid_size, block_size, 0, stream>>>(
+              0,
+              numel,
+              seed_data,  //  idx: 2 need save
+              x_grad_data,
+              y_grad_data,
+              out_grad_data,
+              increment,  //  idx: 6 need save
+              main_offset,
+              functor);
+    }
   }
 }
 

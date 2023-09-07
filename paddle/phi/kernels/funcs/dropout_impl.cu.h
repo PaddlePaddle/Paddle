@@ -126,15 +126,18 @@ struct DstMaskFunctor {
 };
 
 template <typename T>
-__global__ void VectorizedRandomGenerator(const size_t n,
-                                          uint64_t seed,
-                                          const float dropout_prob,
-                                          const T* src,
-                                          uint8_t* mask,
-                                          T* dst,
-                                          bool is_upscale_in_train,
-                                          uint64_t increment,
-                                          size_t main_offset) {
+__global__ void VectorizedRandomGenerator(
+    unsigned int
+        identifier, /* This is used to relate kernel to cudaGraph nodes*/
+    const size_t n,
+    uint64_t seed,
+    const float dropout_prob,
+    const T* src,
+    uint8_t* mask,
+    T* dst,
+    bool is_upscale_in_train,
+    uint64_t increment,
+    size_t main_offset) {
   size_t idx = static_cast<size_t>(BLOCK_ID_X * BLOCK_NUM_X);
   static constexpr int kCount =
       phi::funcs::uniform_distribution<float>::kReturnsCount;
@@ -334,7 +337,6 @@ void DropoutFwGPUKernelDriver(
                                                  dropout_prob,
                                                  x_data,
                                                  mask_data,
-
                                                  increment,
                                                  main_offset,
                                                  mask_functor,
@@ -348,26 +350,50 @@ void DropoutFwGPUKernelDriver(
       bool copy_in_kernel = GetSeedDataAndIncrement(
           dev_ctx, seed, is_fix_seed, seed_val, offset, &seed_data, &increment);
 
-#define PD_DROPOUT_KERNEL_NAME VectorizedRandomGenerator<T>
-      PD_RECORD_CUDA_GRAPH_RANDOM_KERNEL(!is_fix_seed,
-                                         PD_DROPOUT_KERNEL_NAME,
-                                         grid_size,
-                                         block_size,
-                                         0,
-                                         stream,
-                                         offset,
-                                         KERNEL_PARAMS.As<uint64_t>(1),
-                                         KERNEL_PARAMS.As<uint64_t>(7),
-                                         size,
-                                         seed_data,
-                                         dropout_prob,
-                                         x_data,
-                                         mask_data,
-                                         y_data,
-                                         upscale_in_train,
-                                         increment,
-                                         main_offset);
-#undef PD_DROPOUT_KERNEL_NAME
+      if (phi::backends::gpu::CUDAGraph::IsThisThreadCapturing() &&
+          !is_fix_seed) {
+        auto parameterSetter =
+            [offset](phi::backends::gpu::CUDAKernelParams& params) {
+              auto* dev_ctx = phi::DeviceContextPool::Instance().GetByPlace(
+                  phi::backends::gpu::CUDAGraph::CapturingPlace());
+              uint64_t seed, increment;
+              phi::funcs::GetSeedDataAndIncrement(
+                  *dev_ctx, nullptr, false, 0, offset, &seed, &increment);
+              params.As<uint64_t>(2) =
+                  static_cast<decltype(params.As<uint64_t>(2))>(seed);
+              params.As<uint64_t>(8) =
+                  static_cast<decltype(params.As<uint64_t>(8))>(increment);
+            };
+
+        phi::backends::gpu::CUDAGraphKernelLauncher::Instance().KernelLaunch(
+            VectorizedRandomGenerator<T>,
+            parameterSetter,
+            grid_size,
+            block_size,
+            0,
+            stream,
+            size,
+            seed_data,
+            dropout_prob,
+            x_data,
+            mask_data,
+            y_data,
+            upscale_in_train,
+            increment,
+            main_offset);
+      } else {
+        VectorizedRandomGenerator<T>
+            <<<grid_size, block_size, 0, stream>>>(0,
+                                                   size,
+                                                   seed_data,
+                                                   dropout_prob,
+                                                   x_data,
+                                                   mask_data,
+                                                   y_data,
+                                                   upscale_in_train,
+                                                   increment,
+                                                   main_offset);
+      }
     }
     VLOG(4) << "Dropout seed: " << seed << ", offset: " << offset
             << ", seed_data:" << seed_data;

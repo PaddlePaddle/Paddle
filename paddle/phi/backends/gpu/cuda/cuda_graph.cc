@@ -18,6 +18,7 @@
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
+#include "cuda_graph.h"
 
 namespace phi {
 namespace backends {
@@ -224,11 +225,12 @@ void CUDAGraph::EndSegmentCapture() {
           PADDLE_ENFORCE_GPU_SUCCESS(err);
         }
         CUDAKernelParams kernel_params(&params);
-        if (set_seed_func(&kernel_params, true)) {
+        if (CUDAGraphKernelLauncher::Instance().HasParameterSetter(kernel_params)) {
           capturing_graph_->pre_hooks_.back().push_back(
               [set_seed_func, node, params](cudaGraphExec_t exec_graph) {
                 CUDAKernelParams kernel_params(&params);
-                set_seed_func(&kernel_params, false);
+                auto setter = CUDAGraphKernelLauncher::Instance().GetParameterSetter(kernel_params);
+                setter(kernel_params);
                 PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphExecKernelNodeSetParams(
                     exec_graph, node, &params));
               });
@@ -306,6 +308,52 @@ void CUDAGraph::PrintToDotFiles(const std::string &dirname,
       "The print_to_dot_files() method is only supported when CUDA version >= "
       "11.3."));
 #endif
+}
+
+template <typename F, typename... Args>
+void CUDAGraphKernelLauncher::KernelLaunch(F func,
+                                           parameterSetter_t parameterSetter,
+                                           unsigned int blockSize,
+                                           unsigned int numBlocks,
+                                           size_t sharedMem,
+                                           cudaStream_t stream,
+                                           Args &...args) {
+  unsigned int id = GenerateIndentifier();
+  auto args_ = std::array<void *, sizeof...(Args) + 1>{(void *)(&id),
+                                                       (void *)(&args)...};
+  const void *func_p = (const void *)(func);
+  parameterSetters[func_p][id] = parameterSetter;
+  InnerLaunch(func_p, blockSize, numBlocks, sharedMem, stream, args_.data());
+}
+
+bool CUDAGraphKernelLauncher::HasParameterSetter(
+    const CUDAKernelParams &params) {
+  return parameterSetters.find(params.func()) != parameterSetters.end();
+}
+
+CUDAGraphKernelLauncher::parameterSetter_t CUDAGraphKernelLauncher::GetParameterSetter(
+    const CUDAKernelParams &params) {
+  auto launchSequence = parameterSetters[params.func()];
+  unsigned int id = params.As<int>(0);
+  auto parameterSetter = launchSequence.find(id);
+  if (parameterSetter != launchSequence.end()) {
+    return parameterSetter->second;
+  } else {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("Error: does not find launch id"));
+  }
+}
+
+void CUDAGraphKernelLauncher::InnerLaunch(const void *func,
+                                          unsigned int blockSize,
+                                          unsigned int numBlocks,
+                                          size_t sharedMem,
+                                          cudaStream_t stream,
+                                          void **args) {
+  dim3 blockDims(blockSize, 1, 1);
+  dim3 gridDims(numBlocks, 1, 1);
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaLaunchKernel(func, gridDims, blockDims, args, sharedMem, stream));
 }
 
 }  // namespace gpu
