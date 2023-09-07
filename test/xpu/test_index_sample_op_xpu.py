@@ -23,7 +23,7 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -125,9 +125,9 @@ class TestIndexSampleShape(unittest.TestCase):
         index = paddle.static.data(name='index', shape=[-1, 3], dtype='int32')
         output = paddle.index_sample(x=x, index=index)
 
-        place = fluid.XPUPlace(0)
-        exe = fluid.Executor(place=place)
-        exe.run(fluid.default_startup_program())
+        place = base.XPUPlace(0)
+        exe = base.Executor(place=place)
+        exe.run(base.default_startup_program())
 
         feed = {'x': x_np, 'index': index_np}
         res = exe.run(feed=feed, fetch_list=[output])
@@ -135,7 +135,7 @@ class TestIndexSampleShape(unittest.TestCase):
 
 class TestIndexSampleDynamic(unittest.TestCase):
     def test_result(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             x = paddle.to_tensor(
                 [
                     [1.0, 2.0, 3.0, 4.0],

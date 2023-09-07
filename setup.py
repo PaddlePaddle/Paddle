@@ -219,10 +219,10 @@ class DevelopCommand(DevelopCommandBase):
     def run(self):
         # copy proto and .so to python_source_dir
         fluid_proto_binary_path = (
-            paddle_binary_dir + '/python/paddle/fluid/proto/'
+            paddle_binary_dir + '/python/paddle/base/proto/'
         )
         fluid_proto_source_path = (
-            paddle_source_dir + '/python/paddle/fluid/proto/'
+            paddle_source_dir + '/python/paddle/base/proto/'
         )
         distributed_proto_binary_path = (
             paddle_binary_dir + '/python/paddle/distributed/fleet/proto/'
@@ -237,8 +237,8 @@ class DevelopCommand(DevelopCommandBase):
             distributed_proto_binary_path, distributed_proto_source_path
         )
         shutil.copy(
-            paddle_binary_dir + '/python/paddle/fluid/libpaddle.so',
-            paddle_source_dir + '/python/paddle/fluid/',
+            paddle_binary_dir + '/python/paddle/base/libpaddle.so',
+            paddle_source_dir + '/python/paddle/base/',
         )
         dynamic_library_binary_path = paddle_binary_dir + '/python/paddle/libs/'
         dynamic_library_source_path = paddle_source_dir + '/python/paddle/libs/'
@@ -891,16 +891,16 @@ def get_setup_requires():
 def get_package_data_and_package_dir():
     if os.name != 'nt':
         package_data = {
-            'paddle.fluid': [env_dict.get("FLUID_CORE_NAME") + '.so']
+            'paddle.base': [env_dict.get("FLUID_CORE_NAME") + '.so']
         }
     else:
         package_data = {
-            'paddle.fluid': [
+            'paddle.base': [
                 env_dict.get("FLUID_CORE_NAME") + '.pyd',
                 env_dict.get("FLUID_CORE_NAME") + '.lib',
             ]
         }
-    package_data['paddle.fluid'] += [
+    package_data['paddle.base'] += [
         paddle_binary_dir + '/python/paddle/cost_model/static_op_benchmark.json'
     ]
     if 'develop' in sys.argv:
@@ -908,12 +908,12 @@ def get_package_data_and_package_dir():
     else:
         package_dir = {
             '': env_dict.get("PADDLE_BINARY_DIR") + '/python',
-            'paddle.fluid.proto.profiler': env_dict.get("PADDLE_BINARY_DIR")
+            'paddle.base.proto.profiler': env_dict.get("PADDLE_BINARY_DIR")
             + '/paddle/fluid/platform',
-            'paddle.fluid.proto': env_dict.get("PADDLE_BINARY_DIR")
+            'paddle.base.proto': env_dict.get("PADDLE_BINARY_DIR")
             + '/paddle/fluid/framework',
-            'paddle.fluid': env_dict.get("PADDLE_BINARY_DIR")
-            + '/python/paddle/fluid',
+            'paddle.base': env_dict.get("PADDLE_BINARY_DIR")
+            + '/python/paddle/base',
         }
     # put all thirdparty libraries in paddle.libs
     libs_path = paddle_binary_dir + '/python/paddle/libs'
@@ -1150,7 +1150,7 @@ def get_package_data_and_package_dir():
 
     # change rpath of ${FLUID_CORE_NAME}.ext, add $ORIGIN/../libs/ to it.
     # The reason is that libwarpctc.ext, libwarprnnt.ext, libiomp5.ext etc are in paddle.libs, and
-    # ${FLUID_CORE_NAME}.ext is in paddle.fluid, thus paddle/fluid/../libs will pointer to above libraries.
+    # ${FLUID_CORE_NAME}.ext is in paddle.base, thus paddle/fluid/../libs will pointer to above libraries.
     # This operation will fix https://github.com/PaddlePaddle/Paddle/issues/3213
     if env_dict.get("CMAKE_BUILD_TYPE") == 'Release':
         if os.name != 'nt':
@@ -1159,14 +1159,14 @@ def get_package_data_and_package_dir():
                 commands = [
                     "install_name_tool -id '@loader_path/../libs/' "
                     + env_dict.get("PADDLE_BINARY_DIR")
-                    + '/python/paddle/fluid/'
+                    + '/python/paddle/base/'
                     + env_dict.get("FLUID_CORE_NAME")
                     + '.so'
                 ]
                 commands.append(
                     "install_name_tool -add_rpath '@loader_path/../libs/' "
                     + env_dict.get("PADDLE_BINARY_DIR")
-                    + '/python/paddle/fluid/'
+                    + '/python/paddle/base/'
                     + env_dict.get("FLUID_CORE_NAME")
                     + '.so'
                 )
@@ -1188,7 +1188,7 @@ def get_package_data_and_package_dir():
                 commands = [
                     "patchelf --set-rpath '$ORIGIN/../libs/' "
                     + env_dict.get("PADDLE_BINARY_DIR")
-                    + '/python/paddle/fluid/'
+                    + '/python/paddle/base/'
                     + env_dict.get("FLUID_CORE_NAME")
                     + '.so'
                 ]
@@ -1420,14 +1420,14 @@ def get_setup_parameters():
         'paddle.inference',
         'paddle.inference.contrib',
         'paddle.inference.contrib.utils',
-        'paddle.fluid',
-        'paddle.fluid.dygraph',
-        'paddle.fluid.proto',
-        'paddle.fluid.proto.profiler',
-        'paddle.fluid.layers',
-        'paddle.fluid.incubate',
+        'paddle.base',
+        'paddle.base.dygraph',
+        'paddle.base.proto',
+        'paddle.base.proto.profiler',
+        'paddle.base.layers',
+        'paddle.base.incubate',
         'paddle.incubate.distributed.fleet',
-        'paddle.fluid.incubate.checkpoint',
+        'paddle.base.incubate.checkpoint',
         'paddle.amp',
         'paddle.cost_model',
         'paddle.hapi',

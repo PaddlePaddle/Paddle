@@ -17,8 +17,8 @@ import unittest
 import nets
 
 import paddle
-from paddle import fluid
-from paddle.fluid.framework import Program
+from paddle import base
+from paddle.base.framework import Program
 
 
 def conv_block(input, num_filter, groups, dropouts):
@@ -39,7 +39,7 @@ class TestLayer(unittest.TestCase):
     def test_batch_norm_layer(self):
         main_program = Program()
         startup_program = Program()
-        with fluid.program_guard(main_program, startup_program):
+        with base.program_guard(main_program, startup_program):
             images = paddle.static.data(
                 name='pixel', shape=[-1, 3, 48, 48], dtype='float32'
             )
@@ -54,7 +54,7 @@ class TestLayer(unittest.TestCase):
     def test_dropout_layer(self):
         main_program = Program()
         startup_program = Program()
-        with fluid.program_guard(main_program, startup_program):
+        with base.program_guard(main_program, startup_program):
             images = paddle.static.data(
                 name='pixel', shape=[-1, 3, 48, 48], dtype='float32'
             )
@@ -66,7 +66,7 @@ class TestLayer(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
 
-        with fluid.program_guard(main_program, startup_program):
+        with base.program_guard(main_program, startup_program):
             images = paddle.static.data(
                 name='pixel', shape=[-1, 3, 48, 48], dtype='float32'
             )
@@ -78,7 +78,7 @@ class TestLayer(unittest.TestCase):
     def test_elementwise_add_with_act(self):
         main_program = Program()
         startup_program = Program()
-        with fluid.program_guard(main_program, startup_program):
+        with base.program_guard(main_program, startup_program):
             image1 = paddle.static.data(
                 name='pixel1', shape=[-1, 3, 48, 48], dtype='float32'
             )

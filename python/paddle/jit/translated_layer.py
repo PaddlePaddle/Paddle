@@ -19,10 +19,10 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.fluid import backward, core, framework, unique_name
-from paddle.fluid.data_feeder import check_type
-from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.framework import OpProtoHolder
+from paddle.base import backward, core, framework, unique_name
+from paddle.base.data_feeder import check_type
+from paddle.base.dygraph.base import switch_to_static_graph
+from paddle.base.framework import OpProtoHolder
 from paddle.framework import in_dynamic_mode
 from paddle.jit.dy2static.partial_program import (
     LazyInitialized,

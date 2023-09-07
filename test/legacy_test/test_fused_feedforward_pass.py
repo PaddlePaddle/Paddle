@@ -18,8 +18,8 @@ import numpy as np
 
 import paddle
 from paddle import nn
+from paddle.base import core
 from paddle.distributed.passes import PassManager, new_pass
-from paddle.fluid import core
 
 paddle.enable_static()
 

@@ -22,7 +22,7 @@ from legacy_test.test_collective_api_base import (
 )
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed.utils import moe_utils
 
 paddle.enable_static()
@@ -33,7 +33,7 @@ class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program, rank, indata=None):
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             seed = os.getpid()
             np.random.seed(seed)
             in_feat = 2
@@ -57,8 +57,8 @@ class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):
             return [output]
 
     def run_trainer(self, args):
-        train_prog = fluid.Program()
-        startup_prog = fluid.Program()
+        train_prog = base.Program()
+        startup_prog = base.Program()
         endpoints = args["endpoints"].split(",")
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
@@ -66,14 +66,14 @@ class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):
         paddle.distributed.init_parallel_env()
         if args['backend'] == 'nccl':
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-            place = fluid.CUDAPlace(
+            place = base.CUDAPlace(
                 device_id
-            )  # if args.use_gpu else fluid.CPUPlace()
+            )  # if args.use_gpu else base.CPUPlace()
         elif args['backend'] == 'bkcl':
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
-            place = fluid.XPUPlace(device_id)
+            place = base.XPUPlace(device_id)
         else:
-            place = fluid.CPUPlace()
+            place = base.CPUPlace()
         np.random.seed(os.getpid())
         in_feat = 2
         n_expert = 2
@@ -88,7 +88,7 @@ class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):
         )
         if args['static_mode']:
             result = self.get_model(train_prog, startup_prog, rank)
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             exe.run(startup_prog)
             fetch_list = []
             for elem in result:
