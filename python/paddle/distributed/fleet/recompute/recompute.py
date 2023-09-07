@@ -170,7 +170,7 @@ class RecomputeFunction(PyLayer):
 
     @staticmethod
     def backward(ctx, *args):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             # TODO need to check the recompute calling is vaild or not
 
             # Restore inputs

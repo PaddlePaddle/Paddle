@@ -17,7 +17,7 @@ import threading
 import time
 import logging
 import numpy as np
-from paddle.fluid.log_helper import get_logger
+from paddle.base.log_helper import get_logger
 
 local_logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
