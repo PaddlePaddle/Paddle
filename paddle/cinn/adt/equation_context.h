@@ -100,6 +100,16 @@ class Context {
     return out_dim_tuples_.at(output_idx);
   }
 
+  template <typename DoEachT>
+  void VisitEachTensorIndex(const DoEachT& DoEach) const {
+    for (const auto& in_index : in_indexes_) {
+      DoEach(in_index);
+    }
+    for (const auto& out_index : out_indexes_) {
+      DoEach(out_index);
+    }
+  }
+
  private:
   template <typename ContainerT>
   void Init(std::vector<ContainerT>* vec,

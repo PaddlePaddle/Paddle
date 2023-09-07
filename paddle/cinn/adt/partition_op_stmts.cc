@@ -12,21 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/adt/group_partitioner.h"
+#include "paddle/cinn/adt/partition_op_stmts.h"
+
 #include <algorithm>
 
-namespace cinn::adt::equation {
+namespace cinn::adt::partition {
 
-std::vector<Variable> InitCandidateIndex(const Graph& graph) {
-  std::unordered_set<Variable> variables = graph.GetVariables();
-  std::vector<Variable> candidate_index;
-  for (auto iter = variables.begin(); iter != variables.end(); ++iter) {
-    *iter >> match{[&](const Index& index) {
-      candidate_index.emplace_back(Variable(index));
-    }};
-  }
-  return candidate_index;
-}
+using TensorIndex = Variable;
 
 Variable PickAnchorTensor(const std::vector<Variable>& candidate_index) {
   // Heuristic optimization will be added later
@@ -97,35 +89,48 @@ void UpdateCandidateSet(const Graph& graph,
   walker(anchor_tensor, variableVisitor);
 }
 
-void TopoSort4IGroup(
-    const cinn::hlir::framework::Graph::Group& group,
-    std::unordered_map<Variable, FakeOpPlaceHolders>* index2IGroup) {
-  std::vector<cinn::hlir::framework::Node*> sorted_ops = group.nodes;
-  for (auto& [index, igroup] : *index2IGroup) {
-    FakeOpPlaceHolders tmp_igroup;
-    for (const auto& sorted_op : sorted_ops) {
-      auto iter = std::find(igroup->begin(), igroup->end(), sorted_op);
-      if (iter != igroup->end()) {
-        tmp_igroup->emplace_back(sorted_op);
-      }
-    }
-    igroup = std::move(tmp_igroup);
+std::vector<AnchorIndex> InitCandidateAnchorIndex(
+    const EquationCtx4OpStmtT& EquationCtx4OpStmt,
+    const List<m_expr::OpStmt>& op_stmts) {
+  std::vector<AnchorIndex> ret{};
+  for (const auto& op_stmt : *op_stmts) {
+    const auto* equation_ctx = EquationCtx4OpStmt(op_stmt);
+    eqaution_ctx->VisitEachTensorIndex(
+        [&](const auto& tensor_index) { ret.push_back(tensor_index); });
   }
+  return ret;
 }
 
-std::unordered_map<Variable, FakeOpPlaceHolders> PartitionGraph(
-    const cinn::hlir::framework::Graph::Group& group, const Graph& graph) {
-  std::vector<Variable> candidate_index = InitCandidateIndex(graph);
-  std::unordered_map<Variable, FakeOpPlaceHolders> index2IGroup;
-  while (!candidate_index.empty()) {
-    Variable anchor_tensor = PickAnchorTensor(candidate_index);
+std::unordered_map<AnchorIndex, IGroupSpec> PartitionOpStmtsIntoIGroupSpecs(
+    std::vector<AnchorIndex>* candidate_anchor_index,
+    const EquationCtx4OpStmtT& EquationCtx4OpStmt,
+    const List<m_expr::OpStmt>& op_stmts) {
+  ADT_TODO();
+  while (!candidate_anchor_index.empty()) {
+    Variable anchor_tensor = PickAnchorTensor(candidate_anchor_index);
     FakeOpPlaceHolders igroup = GenerateIGroup(graph, anchor_tensor);
-    UpdateIGroupMap(igroup, anchor_tensor, &index2IGroup);
-    UpdateCandidateSet(graph, igroup, anchor_tensor, &candidate_index);
+    UpdateIGroupMap(igroup, anchor_tensor, &index2igroup);
+    UpdateCandidateSet(graph, igroup, anchor_tensor, &candidate_anchor_index);
   }
-
-  TopoSort4IGroup(group, &index2IGroup);
-  return index2IGroup;
 }
 
-}  // namespace cinn::adt::equation
+std::vector<IGroupSpec> SortedIGroupSpecs(
+    const std::unordered_map<AnchorIndex, IGroupSpec>& anchor_index2igroup_spec,
+    const List<m_expr::OpStmt>& op_stmts) {
+  ADT_TODO();
+}
+
+std::vector<IGroupSpec> PartitionOpStmts(
+    const EquationCtx4OpStmtT& EquationCtx4OpStmt,
+    const List<m_expr::OpStmt>& op_stmts) {
+  std::vector<AnchorIndex> candidate_anchor_index =
+      InitCandidateAnchorIndex(EquationCtx4OpStmt, op_stmts);
+
+  std::unordered_map<AnchorIndex, IGroupSpec> anchor_index2igroup_spec =
+      PartitionOpStmtsIntoIGroupSpecs(
+          &candidate_anchor_index, EquationCtx4OpStmt, op_stmts);
+
+  return SortedIGroupSpecs(anchor_index2igroup_spec, op_stmts);
+}
+
+}  // namespace cinn::adt::partition

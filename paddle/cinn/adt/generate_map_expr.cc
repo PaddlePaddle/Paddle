@@ -76,13 +76,48 @@ std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
       });
 }
 
+std::function<equation::config::Context*(const m_expr::OpStmt&)>
+GenerateContext4LocalOpStmt(const List<m_expr::OpStmt>& op_stmts) {
+  ADT_TODO();  // Trivial code
+}
+
+List<m_expr::OpStmt> MakeOpStmts(
+    const cinn::hlir::framework::Graph::Group& group) {
+  ADT_TODO();  // Trivial code
+}
+
+template <typename DoEachT>
+void PartitionIGroupOpStmts(const List<m_expr::OpStmt>& op_stmts,
+                            const DoEachT& DoEach) {
+  const auto& EquationCtx4OpStmt = GenerateContext4LocalOpStmt(op_stmts);
+  const auto& igroup_specs =
+      partition::PartitionOpStmts(EquationCtx4OpStmt, op_stmts);
+  for (const auto& igroup_spec : igroup_specs) {
+    DoEach(igroup_spec);
+  }
+}
+
+std::shared_ptr<IGroup> MakeIGroup(
+    const AnchorIndex& anchor_index,
+    const List<m_expr::OpStmt>& igroup_op_stmts,
+    const std::function<equation::config::Context*(const m_expr::OpStmt&)>&
+        EquationCtx4OpStmt) {
+  ADT_TODO();  // Non-Trivial
+}
+
 std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
     const cinn::hlir::framework::Graph::Group& group) {
-  auto equation_graph = GenerateEquationGraph(group);
+  std::vector<std::shared_ptr<IGroup>> ret{};
 
-  auto anchor_tensor2_igroup = PartitionIGroups(group, equation_graph);
+  List<m_expr::OpStmt> op_stmts = MakeOpStmts(group);
 
-  return GenerateIGroups(group, equation_graph, anchor_tensor2_igroup);
+  PartitionIGroupOpStmts(op_stmts, [&](const auto& igroup_spec) {
+    ret.push_back(MakeIGroup(igroup_spec.anchor_index,
+                             igroup_spec.igroup_op_stmts,
+                             igroup_spec.EquationCtx4OpStmt));
+  });
+
+  return ret;
 }
 
 std::shared_ptr<KGroup> GenerateKGroups(
