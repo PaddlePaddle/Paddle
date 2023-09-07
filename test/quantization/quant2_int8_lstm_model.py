@@ -81,9 +81,7 @@ class TestLstmModelPTQ(unittest.TestCase):
                     [len(feat) // 4 // 8, 8]
                 )
                 lod_feat = [feat.shape[0]]
-                minputs = paddle.fluid.create_lod_tensor(
-                    feat, [lod_feat], place
-                )
+                minputs = paddle.base.create_lod_tensor(feat, [lod_feat], place)
 
                 infer_data = core.PaddleTensor()
                 infer_data.lod = minputs.lod()

@@ -17,9 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.dygraph as dg
+import paddle.base.dygraph as dg
 import paddle.nn.functional as F
-from paddle import fluid, nn
+from paddle import base, nn
 
 
 def _reverse_repeat_list(t, n):
@@ -98,11 +98,11 @@ class Conv2DTestCase(unittest.TestCase):
         else:
             self.bias = None
 
-    def fluid_layer(self, place):
-        main = fluid.Program()
-        start = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, start):
+    def base_layer(self, place):
+        main = base.Program()
+        start = base.Program()
+        with base.unique_name.guard():
+            with base.program_guard(main, start):
                 input_shape = (
                     (-1, -1, -1, self.num_channels)
                     if self.channel_last
@@ -141,16 +141,16 @@ class Conv2DTestCase(unittest.TestCase):
                 )
 
         feed_dict = {"input": self.input}
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         exe.run(start)
         (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
         return y_np
 
     def functional(self, place):
-        main = fluid.Program()
-        start = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, start):
+        main = base.Program()
+        start = base.Program()
+        with base.unique_name.guard():
+            with base.program_guard(main, start):
                 input_shape = (
                     (-1, -1, -1, self.num_channels)
                     if self.channel_last
@@ -190,7 +190,7 @@ class Conv2DTestCase(unittest.TestCase):
         feed_dict = {"input": self.input, "weight": self.weight}
         if self.bias is not None:
             feed_dict["bias"] = self.bias
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         exe.run(start)
         (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
         return y_np
@@ -219,8 +219,8 @@ class Conv2DTestCase(unittest.TestCase):
         return y_np, t1
 
     def _test_equivalence(self, place):
-        place = fluid.CPUPlace()
-        result1 = self.fluid_layer(place)
+        place = base.CPUPlace()
+        result1 = self.base_layer(place)
         result2 = self.functional(place)
         with dg.guard(place):
             result3, g1 = self.paddle_nn_layer()
@@ -228,17 +228,17 @@ class Conv2DTestCase(unittest.TestCase):
         np.testing.assert_array_almost_equal(result2, result3)
 
     def runTest(self):
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         self._test_equivalence(place)
 
-        if fluid.core.is_compiled_with_cuda():
-            place = fluid.CUDAPlace(0)
+        if base.core.is_compiled_with_cuda():
+            place = base.CUDAPlace(0)
             self._test_equivalence(place)
 
 
 class Conv2DErrorTestCase(Conv2DTestCase):
     def runTest(self):
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         with dg.guard(place):
             with self.assertRaises(ValueError):
                 self.paddle_nn_layer()

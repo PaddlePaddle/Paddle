@@ -22,13 +22,13 @@ from paddle import _C_ops, _legacy_C_ops
 from paddle.common_ops_import import VarDesc, dygraph_only, dygraph_utils
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..common_ops_import import Variable
-from ..fluid.data_feeder import (
+from ..base.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
     convert_dtype,
 )
+from ..common_ops_import import Variable
 from ..framework import (
     LayerHelper,
     convert_np_dtype_to_dtype_,

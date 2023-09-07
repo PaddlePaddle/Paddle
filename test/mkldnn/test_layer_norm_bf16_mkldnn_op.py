@@ -24,8 +24,8 @@ from test_layer_norm_mkldnn_op import (
     _reference_layer_norm_naive,
 )
 
-from paddle import enable_static, fluid
-from paddle.fluid import core
+from paddle import base, enable_static
+from paddle.base import core
 
 np.random.random(123)
 
@@ -75,8 +75,8 @@ class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
             var_names.append('bias')
         ground_truth = {name: var_dict[name] for name in var_names}
 
-        program = fluid.Program()
-        with fluid.program_guard(program):
+        program = base.Program()
+        with base.program_guard(program):
             block = program.global_block()
 
             # scale and bias are fp32 and other vars are of bf16
@@ -115,7 +115,7 @@ class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
                 },
             )
 
-            exe = fluid.Executor(core.CPUPlace())
+            exe = base.Executor(core.CPUPlace())
 
             input_list = ['x_bf16']
             if with_scale_bias:
