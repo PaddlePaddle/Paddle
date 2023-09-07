@@ -1112,8 +1112,7 @@ struct AddNOpTranscriber : public OpTranscriber {
     }
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      IR_THROW("Op assign_value should have corresponding OpInfo %s",
-               target_op_name);
+      IR_THROW("Op add_n should have corresponding OpInfo %s", target_op_name);
     }
 
     return op_info;
