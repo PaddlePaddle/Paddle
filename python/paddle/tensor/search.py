@@ -21,7 +21,7 @@ from paddle import _C_ops
 from paddle.common_ops_import import VarDesc, Variable
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..fluid.data_feeder import check_dtype, check_variable_and_dtype
+from ..base.data_feeder import check_dtype, check_variable_and_dtype
 from ..framework import (
     LayerHelper,
     convert_np_dtype_to_dtype_,
@@ -29,8 +29,8 @@ from ..framework import (
     in_dynamic_mode,
 )
 
-# from ..fluid.layers import has_inf  #DEFINE_ALIAS
-# from ..fluid.layers import has_nan  #DEFINE_ALIAS
+# from ..base.layers import has_inf  #DEFINE_ALIAS
+# from ..base.layers import has_nan  #DEFINE_ALIAS
 
 __all__ = []
 

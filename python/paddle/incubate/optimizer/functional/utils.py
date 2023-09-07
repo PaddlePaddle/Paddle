@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.data_feeder import check_type
-from paddle.fluid.framework import Variable
+from paddle.base.data_feeder import check_type
+from paddle.base.framework import Variable
 
 
 def check_input_type(input, name, op_name):

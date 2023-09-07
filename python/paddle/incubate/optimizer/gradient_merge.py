@@ -14,8 +14,8 @@
 
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.framework import (
+from paddle.base import core
+from paddle.base.framework import (
     Variable,
     default_main_program,
     default_startup_program,
@@ -51,7 +51,7 @@ class GradientMergeOptimizer:
         .. code-block:: python
 
         import paddle
-        import paddle.fluid as fluid
+        import paddle.base as base
         import numpy as np
 
         def gen_data(batch_size):
@@ -75,13 +75,13 @@ class GradientMergeOptimizer:
         sgd = paddle.incubate.optimizer.GradientMergeOptimizer(sgd, k_steps=4, avg=True)
         sgd.minimize(cost)
 
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        place = base.CPUPlace()
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
 
         for i in range(10):
             cost_val = exe.run(feed=gen_data(32),
-                       program=fluid.default_main_program(),
+                       program=base.default_main_program(),
                        fetch_list=[cost.name])
             print("step=%d, cost=%f" % (i, cost_val[0]))
     """

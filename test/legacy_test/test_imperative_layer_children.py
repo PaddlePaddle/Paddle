@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid, nn
+from paddle import base, nn
 
 
 class LeNetDygraph(paddle.nn.Layer):
@@ -39,7 +39,7 @@ class LeNetDygraph(paddle.nn.Layer):
 
 class TestLayerChildren(unittest.TestCase):
     def func_apply_init_weight(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             net = LeNetDygraph()
             net.eval()
 

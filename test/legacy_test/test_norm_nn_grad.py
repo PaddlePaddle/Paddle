@@ -19,15 +19,15 @@ import numpy as np
 from decorator_helper import prog_scope
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestInstanceNormDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        prog = fluid.Program()
-        with fluid.program_guard(prog):
+        prog = base.Program()
+        with base.program_guard(prog):
             np.random.seed()
             shape = [2, 3, 4, 5]
             dtype = "float32"
@@ -42,9 +42,9 @@ class TestInstanceNormDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -54,8 +54,8 @@ class TestInstanceNormDoubleGradCheckWithoutParamBias(
 ):
     @prog_scope()
     def func(self, place):
-        prog = fluid.Program()
-        with fluid.program_guard(prog):
+        prog = base.Program()
+        with base.program_guard(prog):
             np.random.seed()
             shape = [2, 3, 4, 5]
             dtype = "float32"
@@ -77,8 +77,8 @@ class TestInstanceNormDoubleGradEagerCheck(unittest.TestCase):
 
     @prog_scope()
     def func(self, place):
-        prog = fluid.Program()
-        with fluid.program_guard(prog):
+        prog = base.Program()
+        with base.program_guard(prog):
             np.random.seed()
             shape = [2, 3, 4, 5]
             dtype = "float32"
@@ -103,9 +103,9 @@ class TestInstanceNormDoubleGradEagerCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -119,8 +119,8 @@ class TestInstanceNormDoubleGradEagerCheckWithParams(
 
     @prog_scope()
     def func(self, place):
-        prog = fluid.Program()
-        with fluid.program_guard(prog):
+        prog = base.Program()
+        with base.program_guard(prog):
             np.random.seed()
             shape = [2, 3, 4, 5]
             dtype = "float32"
@@ -164,8 +164,8 @@ class TestBatchNormDoubleGradCheck(unittest.TestCase):
 
     @prog_scope()
     def func(self, place):
-        prog = fluid.Program()
-        with fluid.program_guard(prog):
+        prog = base.Program()
+        with base.program_guard(prog):
             np.random.seed()
             dtype = "float32"
             eps = 0.005
@@ -191,9 +191,9 @@ class TestBatchNormDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -241,8 +241,8 @@ class TestBatchNormDoubleGradCheckCase4(TestBatchNormDoubleGradCheck):
 class TestBatchNormDoubleGradCheckCase5(TestBatchNormDoubleGradCheck):
     @prog_scope()
     def func(self, place):
-        prog = fluid.Program()
-        with fluid.program_guard(prog):
+        prog = base.Program()
+        with base.program_guard(prog):
             np.random.seed(37)
             dtype = "float32"
             eps = 0.005

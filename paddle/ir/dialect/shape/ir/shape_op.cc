@@ -112,6 +112,7 @@ bool SymbolicDim::merge(SymbolicDim other) {
   if (!isDynamic() && !other.isDynamic() && getValue() != other.getValue())
     return false;
   if (isDynamic() && !other.isDynamic()) updateValue(other.getValue());
+  if (!isDynamic() && other.isDynamic()) other.updateValue(getValue());
 
   bool knownNonNegativeFlag =
       getKnownNonNegative() || other.getKnownNonNegative();

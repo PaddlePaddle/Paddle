@@ -18,8 +18,8 @@ import legacy_test.test_collective_api_base as test_base
 
 import paddle
 import paddle.distributed as dist
-from paddle import fluid, framework
-from paddle.fluid import data_feeder
+from paddle import base, framework
+from paddle.base import data_feeder
 
 paddle.enable_static()
 
@@ -83,7 +83,7 @@ class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
 
     def get_model(self, main_prog, startup_program, rank, dtype=None):
         dtype = "float32" if dtype is None else dtype
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             tensor_list = []
             tindata = paddle.static.data(
                 name="tindata", shape=[10, 1000], dtype=dtype
@@ -94,7 +94,7 @@ class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
     def get_model_new(
         self, main_prog, startup_program, rank, dtype=None, reduce_type=None
     ):
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             tensor_list = []
             tindata = paddle.static.data(
                 name="tindata", shape=[10, 1000], dtype=dtype
@@ -103,8 +103,8 @@ class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
             return tensor_list
 
     def run_trainer(self, args):
-        train_prog = fluid.Program()
-        startup_prog = fluid.Program()
+        train_prog = base.Program()
+        startup_prog = base.Program()
         endpoints = args["endpoints"].split(",")
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
@@ -115,14 +115,14 @@ class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
             paddle.distributed.init_parallel_env()
         if args['backend'] == 'nccl':
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-            place = fluid.CUDAPlace(
+            place = base.CUDAPlace(
                 device_id
-            )  # if args.use_gpu else fluid.CPUPlace()
+            )  # if args.use_gpu else base.CPUPlace()
         elif args['backend'] == 'bkcl':
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
-            place = fluid.XPUPlace(device_id)
+            place = base.XPUPlace(device_id)
         else:
-            place = fluid.CPUPlace()
+            place = base.CPUPlace()
         indata = test_base.create_test_data(
             shape=(10, 1000), dtype=args["dtype"], seed=os.getpid()
         )
@@ -138,7 +138,7 @@ class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
                 train_prog, startup_prog, rank, dtype=args["dtype"]
             )
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         exe.run(startup_prog)
         fetch_list = []
         for elem in result:

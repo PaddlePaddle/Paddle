@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid.dygraph as dg
+import paddle.base.dygraph as dg
 
 
 class TestComplexAbsOp(OpTest):
@@ -30,7 +30,7 @@ class TestComplexAbsOp(OpTest):
         self.shape = (2, 3, 4, 5)
         self.init_input_output()
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
         self.outputs = {'Out': self.out}
 
     def init_input_output(self):
@@ -58,7 +58,7 @@ class TestComplexAbsOpZeroValues(OpTest):
         self.shape = (2, 3, 4, 5)
         self.init_input_output()
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
         self.outputs = {'Out': self.out}
 
     def init_input_output(self):
@@ -102,7 +102,7 @@ class TestRealAbsOp(OpTest):
         self.shape = (2, 3, 4, 5)
         self.init_input_output()
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
         self.outputs = {'Out': self.out}
 
     def init_input_output(self):

@@ -21,7 +21,7 @@ import numpy as np
 from test_dist_fleet_base import FleetDistRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 def fake_ctr_reader():
@@ -74,7 +74,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         datas = [dnn_data, lr_data, label]
 
         if args.reader == "pyreader":
-            self.reader = fluid.io.PyReader(
+            self.reader = base.io.PyReader(
                 feed_list=datas,
                 capacity=64,
                 iterable=False,
@@ -101,7 +101,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             size=[dnn_input_dim, dnn_layer_dims[0]],
             is_test=inference,
             entry=entry,
-            param_attr=fluid.ParamAttr(name="deep_embedding", initializer=init),
+            param_attr=base.ParamAttr(name="deep_embedding", initializer=init),
         )
         dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
             input=dnn_embedding, pool_type="sum"
@@ -112,7 +112,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 x=dnn_out,
                 size=dim,
                 activation="relu",
-                weight_attr=fluid.ParamAttr(
+                weight_attr=base.ParamAttr(
                     initializer=paddle.nn.initializer.Constant(value=0.01)
                 ),
                 name='dnn-fc-%d' % i,
@@ -125,7 +125,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             size=[lr_input_dim, 1],
             is_test=inference,
             entry=entry,
-            param_attr=fluid.ParamAttr(
+            param_attr=base.ParamAttr(
                 name="wide_embedding",
                 initializer=paddle.nn.initializer.Constant(value=0.01),
             ),
@@ -161,9 +161,9 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             fleet(Fleet api): the fleet object of Parameter Server, define distribute training role
         """
 
-        exe = fluid.Executor(fluid.CPUPlace())
+        exe = base.Executor(base.CPUPlace())
 
-        exe.run(fluid.default_startup_program())
+        exe.run(base.default_startup_program())
         fleet.init_worker()
 
         batch_size = 4
@@ -176,7 +176,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             try:
                 while True:
                     loss_val = exe.run(
-                        program=fluid.default_main_program(),
+                        program=base.default_main_program(),
                         fetch_list=[self.avg_cost.name],
                     )
                     loss_val = np.mean(loss_val)
@@ -185,7 +185,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                             epoch_id, loss_val
                         )
                     )
-            except fluid.core.EOFException:
+            except base.core.EOFException:
                 self.reader.reset()
 
         model_dir = os.getenv("MODEL_DIR", None)

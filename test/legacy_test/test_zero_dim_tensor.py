@@ -4921,7 +4921,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         value = paddle.to_tensor(1000, dtype=paddle.int64).squeeze()
         out = paddle.static.nn.sequence_pad(x, value)
 
-        x_tensor = paddle.fluid.create_lod_tensor(
+        x_tensor = paddle.base.create_lod_tensor(
             np.arange(20).astype(np.int64).reshape(-1, 2),
             [[3, 3, 4]],
             place=self.exe.place,

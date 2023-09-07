@@ -26,7 +26,7 @@
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/phi/core/ddim.h"
 
-DECLARE_bool(cinn_use_cuda_vectorize);
+PD_DECLARE_bool(cinn_use_cuda_vectorize);
 
 namespace cinn {
 namespace hlir {
@@ -43,7 +43,7 @@ ir::Tensor GetTensor(const ::ir::Value& value) {
   auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
   auto in_shape = phi::vectorize<int>(type_info.dims());
   auto dtype = type_info.dtype();
-  std::string input_id = CompatibleInfo::InputName(value);
+  std::string input_id = CompatibleInfo::ValueName(value);
   return lang::CreatePlaceHolder(
       in_shape, utils::ConvertIRType(dtype), input_id);
 }
@@ -56,15 +56,16 @@ std::vector<ir::Tensor> CollectInputTensor(
   for (auto& operand : op->operands()) {
     CHECK(operand);
     auto in_value = operand.source();
-    ir::Tensor tensor;
+    VLOG(4) << "input tensor name: " << CompatibleInfo::ValueName(in_value);
+    // NOTE(Aurelius84): Need always to create placeholder for input tensor.
+    ir::Tensor tensor = details::GetTensor(in_value);
     if (!tensor_map->count(in_value)) {
-      tensor = details::GetTensor(in_value);
       // record tensor.
       (*tensor_map)[in_value] = tensor;
       // record func input args
-      if (func_args != nullptr) func_args->push_back(tensor);
-    } else {
-      tensor = tensor_map->at(in_value);
+      if (func_args != nullptr) {
+        func_args->push_back(tensor);
+      }
     }
     tensors.push_back(tensor);
   }
@@ -76,7 +77,7 @@ void CollectOutputInfo(const ::ir::Operation* op,
                        std::vector<std::vector<int>>* out_shapes) {
   auto op_results = op->results();
   for (auto& out_value : op_results) {
-    std::string output_id = CompatibleInfo::OutputName(out_value);
+    std::string output_id = CompatibleInfo::ValueName(out_value);
     // group->output_names.push_back(output_id);
     auto type_info =
         out_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
@@ -265,11 +266,11 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       // output arg tensors
       group_func_arg_tensors->push_back(tensor);
       // output args
+      group->output_names.push_back(tensor->name);
       group_func_args.emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
       arg_name_set.insert(tensor->buffer->name);
     }
   }
-
   if (!done_op_schedule) {
     std::unordered_set<std::string> args_set;
     for (auto arg : group_func_args) {
@@ -329,6 +330,8 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
 
     std::vector<ir::Tensor> op_func_arg_tensors =
         details::CollectInputTensor(op, group_func_arg_tensors, tensor_map);
+    VLOG(4) << "input size:" << op_func_arg_tensors.size();
+
     std::string cinn_op_name = CompatibleInfo::OpName(*op);
     const hlir::framework::Operator* cinn_op = Operator::Get(cinn_op_name);
     auto op_impl = OpStrategy::SelectImpl(strategy[cinn_op](
@@ -348,6 +351,9 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     }
   }
 
+  VLOG(4) << "group_func_arg_tensors.size(): "
+          << group_func_arg_tensors->size();
+
   return func_bodies;
 }
 
@@ -364,7 +370,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
   // set tensor name = operand hash name
   auto op_results = op->results();
   for (const auto& result : op_results) {
-    std::string output_id = CompatibleInfo::OutputName(result);
+    std::string output_id = CompatibleInfo::ValueName(result);
     cinn_inputs.push_back(common::CINNValue(output_id));
   }
 
@@ -399,6 +405,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
       expr.as_tensor_ref()->WithBuffer();
     }
   }
+
+  VLOG(4) << "op_func_arg_tensors.size(): " << op_func_arg_tensors->size();
 
   // 2.Do lower
   std::string lower_fn_name = CompatibleInfo::OpFuncName(*op);

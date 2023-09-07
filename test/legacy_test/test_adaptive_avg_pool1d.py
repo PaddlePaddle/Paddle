@@ -18,8 +18,8 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -80,14 +80,14 @@ def avg_pool1D_forward_naive(
 class TestPool1D_API(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def check_adaptive_avg_dygraph_results(self, place):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32]).astype("float32")
-            input = fluid.dygraph.to_variable(input_np)
+            input = base.dygraph.to_variable(input_np)
             result = F.adaptive_avg_pool1d(input, output_size=16)
             result_np = avg_pool1D_forward_naive(
                 input_np, ksize=[16], strides=[0], paddings=[0], adaptive=True
@@ -107,7 +107,7 @@ class TestPool1D_API(unittest.TestCase):
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_adaptive_avg_static_results(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 32], dtype="float32"
             )
@@ -118,9 +118,9 @@ class TestPool1D_API(unittest.TestCase):
                 input_np, ksize=[16], strides=[2], paddings=[0], adaptive=True
             )
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[result],
             )
