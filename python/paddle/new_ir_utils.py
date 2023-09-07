@@ -32,12 +32,14 @@ class IrGuard:
         paddle.fluid.framework.set_flags(old_flag)
 
     def __enter__(self):
+        paddle.enable_static()
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
         self._switch_to_new_ir()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
         self._switch_to_old_ir()
+        paddle.disable_static()
 
     def _switch_to_new_ir(self):
         if paddle.ir.core._use_new_ir_api():

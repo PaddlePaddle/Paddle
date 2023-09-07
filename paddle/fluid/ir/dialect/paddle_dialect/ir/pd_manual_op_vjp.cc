@@ -36,7 +36,7 @@ std::vector<std::vector<ir::OpResult>> SumOp::Vjp(
   Tensor x(std::make_shared<primitive::LazyTensor>(op_obj.x()));
   Tensor out_grad(std::make_shared<primitive::LazyTensor>(out_grads[0][0]));
 
-  Tensor axis(std::make_shared<primitive::LazyTensor>(op_obj.axis()));
+  Tensor axis = Tensor(std::make_shared<primitive::LazyTensor>(op_obj.axis()));
 
   bool keepdim = op->attribute("keepdim").dyn_cast<ir::BoolAttribute>().data();
   bool reduce_all = false;

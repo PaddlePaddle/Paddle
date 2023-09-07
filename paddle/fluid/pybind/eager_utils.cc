@@ -142,6 +142,10 @@ bool PyObject_CheckIRVectorOfOpResult(PyObject* obj) {
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
+    // if obj is [], parse it as std::vector<scalar>
+    if (len == 0) {
+      return false;
+    }
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
       if (!PyObject_CheckIROpResult(item)) {
@@ -679,7 +683,7 @@ paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s: argument (position %d) must be "
-        "one of core.VarDesc.VarType, "
+        "one of paddle::DataType, "
         "but got %s",
         op_type,
         arg_pos + 1,
@@ -1712,7 +1716,6 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
         arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
-
   // Fake a IntArray
   return paddle::experimental::IntArray({1});
 }
