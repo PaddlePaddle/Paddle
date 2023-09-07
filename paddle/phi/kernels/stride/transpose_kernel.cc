@@ -27,7 +27,7 @@ void TransposeStridedKernel(const Context& ctx,
   std::vector<int> formated_axis = axis;
   for (size_t i = 0; i < axis.size(); i++) {
     if (axis[i] < 0) {
-      formated_axis[i] = axis[i] + x_rank;
+      formated_axis[i] = static_cast<int>(axis[i] + x_rank);
     }
   }
 
@@ -35,7 +35,7 @@ void TransposeStridedKernel(const Context& ctx,
   auto in_stride = x.strides();
   auto in_dims = x.dims();
   meta.strides = in_stride;
-  for (size_t i = 0; i < formated_axis.size(); i++) {
+  for (int i = 0; i < static_cast<int>(formated_axis.size()); i++) {
     meta.strides[i] = in_stride[formated_axis[i]];
     meta.dims[i] = in_dims[formated_axis[i]];
   }

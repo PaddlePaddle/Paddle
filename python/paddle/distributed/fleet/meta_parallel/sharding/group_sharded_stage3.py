@@ -22,8 +22,8 @@ import paddle
 import paddle.distributed as dist
 from paddle import framework, nn
 from paddle.autograd import PyLayer
+from paddle.base.framework import EagerParamBase
 from paddle.distributed import collective
-from paddle.fluid.framework import EagerParamBase
 from paddle.framework import core
 from paddle.nn import ClipGradByGlobalNorm
 

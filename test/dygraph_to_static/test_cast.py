@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_util import ast_only_test, test_and_compare_with_new_ir
 
-from paddle import fluid
+from paddle import base
 from paddle.jit.api import to_static
 
 SEED = 2020
@@ -26,20 +26,20 @@ np.random.seed(SEED)
 
 @to_static
 def test_bool_cast(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     x = bool(x)
     return x
 
 
 @to_static
 def test_int_cast(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     x = int(x)
     return x
 
 
 def test_float_cast(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     x = float(x)
     return x
 
@@ -52,7 +52,7 @@ def test_not_var_cast(x):
 
 @to_static
 def test_mix_cast(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     x = int(x)
     x = float(x)
     x = bool(x)
@@ -63,9 +63,9 @@ def test_mix_cast(x):
 class TestCastBase(unittest.TestCase):
     def setUp(self):
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         self.prepare()
         self.set_func()
@@ -84,7 +84,7 @@ class TestCastBase(unittest.TestCase):
         self.func = test_bool_cast
 
     def do_test(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             res = self.func(self.input)
             return res
 

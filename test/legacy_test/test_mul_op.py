@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 from test_sparse_attention_op import get_cuda_version
 
-from paddle.fluid import core
+from paddle.base import core
 
 sys.path.append("..")
 from eager_op_test import OpTest, convert_float_to_uint16

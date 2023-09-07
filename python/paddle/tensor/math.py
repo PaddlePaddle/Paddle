@@ -22,13 +22,13 @@ from paddle import _C_ops, _legacy_C_ops
 from paddle.common_ops_import import VarDesc, dygraph_only, dygraph_utils
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..common_ops_import import Variable
-from ..fluid.data_feeder import (
+from ..base.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
     convert_dtype,
 )
+from ..common_ops_import import Variable
 from ..framework import (
     LayerHelper,
     convert_np_dtype_to_dtype_,
@@ -270,6 +270,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
             "x",
             [
                 'float16',
+                'bfloat16',
                 'uint16',
                 'float32',
                 'float64',
@@ -278,6 +279,8 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
                 'int32',
                 'int64',
                 'uint8',
+                'complex64',
+                'complex128',
             ],
             "scale",
         )
@@ -1507,8 +1510,11 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 
     dtype_flag = False
     if dtype is not None:
-        dtype_flag = True
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        if paddle.ir.core._use_new_ir_api():
+            dtype = paddle.ir.core.convert_np_dtype_to_dtype_(dtype)
+        else:
+            dtype_flag = True
+            dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_mode():
         return _C_ops.sum(x, axis, dtype, keepdim)

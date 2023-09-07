@@ -48,12 +48,12 @@ class PADDLE_API DeviceContext {
   /**
    * @brief Move construct.
    */
-  DeviceContext(DeviceContext&&);
+  DeviceContext(DeviceContext&&) noexcept;
 
   /**
    * @brief Move assign operator.
    */
-  DeviceContext& operator=(DeviceContext&&);
+  DeviceContext& operator=(DeviceContext&&) noexcept;
 
   /**
    * @brief Default destruct.

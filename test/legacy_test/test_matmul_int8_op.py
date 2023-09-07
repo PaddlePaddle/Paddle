@@ -18,7 +18,7 @@ import numpy as np
 from test_sparse_attention_op import get_cuda_version
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.disable_static()
 

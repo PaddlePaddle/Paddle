@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
+#include "paddle/utils/flags.h"
 
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
-  GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, false);
+  paddle::flags::ParseCommandLineFlags(&argc, &argv);
 
   return RUN_ALL_TESTS();
 }
