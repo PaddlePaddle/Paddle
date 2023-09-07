@@ -115,10 +115,10 @@ void Conv2dTransFilterDilationsNxNTo1x1Pass::conv2d_dilation_trans(
     auto* weights =
         scope->FindVar(weights_name)->GetMutable<phi::DenseTensor>();
     auto weights_shape = weights->dims();
-    int kh = weights_shape[2];
-    int kw = weights_shape[3];
-    int new_kh = dilations[0] * (kh - 1) + 1;
-    int new_kw = dilations[1] * (kw - 1) + 1;
+    int kh = static_cast<int>(weights_shape[2]);
+    int kw = static_cast<int>(weights_shape[3]);
+    int new_kh = static_cast<int>(dilations[0] * (kh - 1) + 1);
+    int new_kw = static_cast<int>(dilations[1] * (kw - 1) + 1);
     // New weights
     auto new_weights_name = weights_name + "_dilation_trans";
     auto* new_weights =
@@ -131,8 +131,8 @@ void Conv2dTransFilterDilationsNxNTo1x1Pass::conv2d_dilation_trans(
       memset(new_weights_data, 0, new_weights->numel() * sizeof(float));
       conv2d_dilation_trans_fn<float>(weights_data,
                                       new_weights_data,
-                                      weights_shape[0],
-                                      weights_shape[1],
+                                      static_cast<int>(weights_shape[0]),
+                                      static_cast<int>(weights_shape[1]),
                                       kh,
                                       kw,
                                       new_kh,
@@ -147,16 +147,17 @@ void Conv2dTransFilterDilationsNxNTo1x1Pass::conv2d_dilation_trans(
       memset(new_weights_data,
              0,
              new_weights->numel() * sizeof(phi::dtype::float16));
-      conv2d_dilation_trans_fn<phi::dtype::float16>(weights_data,
-                                                    new_weights_data,
-                                                    weights_shape[0],
-                                                    weights_shape[1],
-                                                    kh,
-                                                    kw,
-                                                    new_kh,
-                                                    new_kw,
-                                                    dilations[0],
-                                                    dilations[1]);
+      conv2d_dilation_trans_fn<phi::dtype::float16>(
+          weights_data,
+          new_weights_data,
+          static_cast<int>(weights_shape[0]),
+          static_cast<int>(weights_shape[1]),
+          kh,
+          kw,
+          new_kh,
+          new_kw,
+          dilations[0],
+          dilations[1]);
     } else {
       VLOG(3)
           << "Transfilter only support float32/float16 dtype of weights -- do "

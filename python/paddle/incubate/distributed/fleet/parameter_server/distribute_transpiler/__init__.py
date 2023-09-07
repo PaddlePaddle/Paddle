@@ -27,7 +27,7 @@ from paddle.static import (
     Program,
     Executor,
 )
-from paddle.fluid.compiler import CompiledProgram
+from paddle.base.compiler import CompiledProgram
 
 from paddle.distributed.transpiler.distribute_transpiler import (
     DistributeTranspilerConfig,
@@ -812,8 +812,8 @@ fleet = FleetTranspiler()
 
 class ParameterServerOptimizer(DistributedOptimizer):
     """
-    DistributedOptimizer is a wrapper for paddle.fluid.optimizer
-    A user should pass a paddle.fluid.optimizer to DistributedOptimizer
+    DistributedOptimizer is a wrapper for paddle.base.optimizer
+    A user should pass a paddle.base.optimizer to DistributedOptimizer
     minimize() function is implemented.
     DistributedOptimizer is the starting point for a user who wants to
     run distributed training. The optimized information will be stored in

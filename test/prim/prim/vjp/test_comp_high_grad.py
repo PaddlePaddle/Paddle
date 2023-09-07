@@ -22,8 +22,8 @@ import parameterized as param
 from decorator_helper import prog_scope
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 @param.parameterized_class(
@@ -75,7 +75,7 @@ class TestAddHighGradCheck(unittest.TestCase):
         y_arr = np.random.uniform(-2, 2, shape2).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         y_arr[np.abs(y_arr) < 0.005] = 0.002
-        from paddle.fluid import core
+        from paddle.base import core
 
         core._set_prim_backward_enabled(True)
         gradient_checker.double_grad_check(
@@ -101,7 +101,7 @@ class TestAddHighGradCheck(unittest.TestCase):
         y_arr = np.random.uniform(-1, 1, shape2).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         y_arr[np.abs(y_arr) < 0.005] = 0.002
-        from paddle.fluid import core
+        from paddle.base import core
 
         core._set_prim_backward_enabled(True)
         gradient_checker.triple_grad_check(
@@ -114,9 +114,9 @@ class TestAddHighGradCheck(unittest.TestCase):
 
     def test_high_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func_double(p)
             self.func_triple(p)
@@ -171,7 +171,7 @@ class TestSubtractHighGradCheck(unittest.TestCase):
         y_arr = np.random.uniform(-2, 2, shape2).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         y_arr[np.abs(y_arr) < 0.005] = 0.002
-        from paddle.fluid import core
+        from paddle.base import core
 
         core._set_prim_backward_enabled(True)
         gradient_checker.double_grad_check(
@@ -201,7 +201,7 @@ class TestSubtractHighGradCheck(unittest.TestCase):
         y_arr = np.random.uniform(-2, 2, shape2).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         y_arr[np.abs(y_arr) < 0.005] = 0.002
-        from paddle.fluid import core
+        from paddle.base import core
 
         core._set_prim_backward_enabled(True)
         gradient_checker.triple_grad_check(
@@ -218,9 +218,9 @@ class TestSubtractHighGradCheck(unittest.TestCase):
 
     def test_high_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func_double(p)
             self.func_triple(p)
@@ -275,7 +275,7 @@ class TestMultiplyHighGradCheck(unittest.TestCase):
         y_arr = np.random.uniform(-2, 2, shape2).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         y_arr[np.abs(y_arr) < 0.005] = 0.002
-        from paddle.fluid import core
+        from paddle.base import core
 
         core._set_prim_backward_enabled(True)
         gradient_checker.double_grad_check(
@@ -305,7 +305,7 @@ class TestMultiplyHighGradCheck(unittest.TestCase):
         y_arr = np.random.uniform(-1, 1, shape2).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         y_arr[np.abs(y_arr) < 0.005] = 0.002
-        from paddle.fluid import core
+        from paddle.base import core
 
         core._set_prim_backward_enabled(True)
         gradient_checker.triple_grad_check(
@@ -322,9 +322,9 @@ class TestMultiplyHighGradCheck(unittest.TestCase):
 
     def test_high_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func_double(p)
             self.func_triple(p)
@@ -360,7 +360,7 @@ class TestSiluHighGradCheck(unittest.TestCase):
         x_arr[np.abs(x_arr) < 0.005] = 0.002
 
         # silu double grad only has CompositeOpMaker,don't need set prim_flag
-        from paddle.fluid import core
+        from paddle.base import core
 
         core._set_prim_backward_enabled(True)
         gradient_checker.double_grad_check(
@@ -386,7 +386,7 @@ class TestSiluHighGradCheck(unittest.TestCase):
         out = paddle.nn.functional.silu(x)
         x_arr = np.random.uniform(-1, 1, shape1).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
-        from paddle.fluid import core
+        from paddle.base import core
 
         core._set_prim_backward_enabled(True)
         gradient_checker.triple_grad_check(
@@ -403,9 +403,9 @@ class TestSiluHighGradCheck(unittest.TestCase):
 
     def test_high_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func_double(p)
             self.func_triple(p)

@@ -17,9 +17,9 @@ from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.framework import core
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ...fluid.data_feeder import check_dtype, check_variable_and_dtype
-from ...fluid.framework import convert_np_dtype_to_dtype_
-from ...fluid.layer_helper import LayerHelper
+from ...base.data_feeder import check_dtype, check_variable_and_dtype
+from ...base.framework import convert_np_dtype_to_dtype_
+from ...base.layer_helper import LayerHelper
 from ...tensor.manipulation import chunk
 from ...tensor.math import tanh  # noqa: F401
 from ...tensor.math import tanh_  # noqa: F401

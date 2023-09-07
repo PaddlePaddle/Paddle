@@ -16,7 +16,7 @@ import unittest
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.base import core
 
 
 class ConvBNLayer(paddle.nn.Layer):

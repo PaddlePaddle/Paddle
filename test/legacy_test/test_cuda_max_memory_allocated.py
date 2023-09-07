@@ -15,12 +15,12 @@
 import unittest
 
 import paddle
+from paddle.base import core
 from paddle.device.cuda import (
     device_count,
     max_memory_allocated,
     memory_allocated,
 )
-from paddle.fluid import core
 
 
 class TestMaxMemoryAllocated(unittest.TestCase):

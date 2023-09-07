@@ -131,14 +131,14 @@ def as_numpy(tensor, copy=False):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+          import paddle.base as base
           import numpy
 
-          new_scope = fluid.Scope()
-          with fluid.scope_guard(new_scope):
-              fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
+          new_scope = base.Scope()
+          with base.scope_guard(new_scope):
+              base.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), base.CPUPlace())
           tensor = new_scope.find_var("data").get_tensor()
-          fluid.executor.as_numpy(tensor) # or numpy.array(new_scope.find_var("data").get_tensor())
+          base.executor.as_numpy(tensor) # or numpy.array(new_scope.find_var("data").get_tensor())
 
     Args:
        tensor(Variable): a instance of Tensor
@@ -679,11 +679,11 @@ def _as_lodtensor(data, place, dtype=None):
     For higher dimensional sequence data, please use LoDTensor directly.
 
     Examples:
-        >>> import paddle.fluid as fluid
-        >>> place = fluid.CPUPlace()
-        >>> exe = fluid.executor(place)
+        >>> import paddle.base as base
+        >>> place = base.CPUPlace()
+        >>> exe = base.executor(place)
         >>> data = np.array(size=(100, 200, 300))
-        >>> np_outs = map(lambda x: fluid.executor._as_lodtensor(x, place), data)
+        >>> np_outs = map(lambda x: base.executor._as_lodtensor(x, place), data)
         >>>     ...
 
     Args:
@@ -712,7 +712,7 @@ def _as_lodtensor(data, place, dtype=None):
                 raise TypeError(
                     "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
                     "this means the input data contains nested lists with different lengths. "
-                    "Please consider using 'fluid.create_lod_tensor' to convert it to a LoD-Tensor."
+                    "Please consider using 'base.create_lod_tensor' to convert it to a LoD-Tensor."
                 )
             data = data.astype(dtype)
         else:
@@ -1724,7 +1724,7 @@ class Executor:
             else:
                 error_info = (
                     "There are no operators in the program to be executed. "
-                    "If you pass Program manually, please use fluid.program_guard "
+                    "If you pass Program manually, please use base.program_guard "
                     "to ensure the current Program is being used."
                 )
             warnings.warn(error_info)
@@ -1915,7 +1915,7 @@ class Executor:
             else:
                 error_info = (
                     "There are no operators in the program to be executed. "
-                    "If you pass Program manually, please use fluid.program_guard "
+                    "If you pass Program manually, please use base.program_guard "
                     "to ensure the current Program is being used."
                 )
             warnings.warn(error_info)
@@ -2245,7 +2245,7 @@ class Executor:
             for var in program.global_block().vars.values():
                 if var.is_data:
                     data_vars.append(var)
-            dataset = paddle.fluid.DatasetFactory().create_dataset(
+            dataset = paddle.base.DatasetFactory().create_dataset(
                 'FileInstantDataset'
             )
             dataset.set_batch_size(1)
@@ -2270,7 +2270,7 @@ class Executor:
                     for var in program.global_block().vars.values():
                         if var.is_data:
                             data_vars.append(var)
-                    dataset = paddle.fluid.DatasetFactory().create_dataset(
+                    dataset = paddle.base.DatasetFactory().create_dataset(
                         'InMemoryDataset'
                     )
                     dataset.set_batch_size(1)
@@ -2417,7 +2417,7 @@ class Executor:
             for var in program.global_block().vars.values():
                 if var.is_data:
                     data_vars.append(var)
-            dataset = paddle.fluid.DatasetFactory().create_dataset(
+            dataset = paddle.base.DatasetFactory().create_dataset(
                 'FileInstantDataset'
             )
             dataset.set_batch_size(1)
@@ -2897,7 +2897,7 @@ class Executor:
         fetch_handler=None,
     ):
         """
-        Infer from a pre-defined Dataset. Dataset is defined in paddle.fluid.dataset.
+        Infer from a pre-defined Dataset. Dataset is defined in paddle.base.dataset.
         Given a program, either a program or compiled program, infer_from_dataset will
         consume all data samples in dataset. Input scope can be given by users. By default,
         scope is global_scope(). The total number of thread run in training is `thread`.
@@ -2912,7 +2912,7 @@ class Executor:
         Args:
             program(Program|CompiledProgram): the program that needs to be run,
                 if not provided, then default_main_program (not compiled) will be used.
-            dataset(paddle.fluid.Dataset): dataset created outside this function,
+            dataset(paddle.base.Dataset): dataset created outside this function,
                 a user should provide a well-defined dataset before calling this function.
                 Please check the document of Dataset if needed. default is None
             scope(Scope): the scope used to run this program, you can switch it to different scope
@@ -2940,7 +2940,7 @@ class Executor:
                 exe = paddle.static.Executor(place)
                 x = paddle.static.data(name="x", shape=[None, 10, 10], dtype="int64")
                 y = paddle.static.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
-                dataset = paddle.fluid.DatasetFactory().create_dataset()
+                dataset = paddle.base.DatasetFactory().create_dataset()
                 dataset.set_use_var([x, y])
                 dataset.set_thread(1)
                 # you should set your own filelist, e.g. filelist = ["dataA.txt"]
@@ -3021,7 +3021,7 @@ class Executor:
         fetch_handler=None,
     ):
         """
-        Train from a pre-defined Dataset. Dataset is defined in paddle.fluid.dataset.
+        Train from a pre-defined Dataset. Dataset is defined in paddle.base.dataset.
         Given a program, either a program or compiled program, train_from_dataset will
         consume all data samples in dataset. Input scope can be given by users. By default,
         scope is global_scope(). The total number of thread run in training is `thread`.
@@ -3034,7 +3034,7 @@ class Executor:
         Args:
             program(Program|CompiledProgram): the program that needs to be run,
                 if not provided, then default_main_program (not compiled) will be used.
-            dataset(paddle.fluid.Dataset): dataset created outside this function,
+            dataset(paddle.base.Dataset): dataset created outside this function,
                 a user should provide a well-defined dataset before calling this function.
                 Please check the document of Dataset if needed.
             scope(Scope): the scope used to run this program, you can switch it to different scope
@@ -3063,7 +3063,7 @@ class Executor:
               exe = paddle.static.Executor(place)
               x = paddle.static.data(name="x", shape=[None, 10, 10], dtype="int64")
               y = paddle.static.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
-              dataset = paddle.fluid.DatasetFactory().create_dataset()
+              dataset = paddle.base.DatasetFactory().create_dataset()
               dataset.set_use_var([x, y])
               dataset.set_thread(1)
               # you should set your own filelist, e.g. filelist = ["dataA.txt"]

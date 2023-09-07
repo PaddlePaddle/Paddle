@@ -14,8 +14,8 @@
 
 from paddle import _C_ops
 
-from ...fluid import core, framework
-from ...fluid.framework import _current_expected_place, in_dygraph_mode
+from ...base import core, framework
+from ...base.framework import _current_expected_place, in_dygraph_mode
 
 # TODO: define the initializers of Constant in neural network
 from .initializer import Initializer

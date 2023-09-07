@@ -20,8 +20,8 @@ from decorator_helper import prog_scope
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 paddle.enable_static()
 
@@ -140,7 +140,7 @@ class TestSqueezeOpError(unittest.TestCase):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input type of softmax_op must be Variable.
-            x1 = fluid.create_lod_tensor(
+            x1 = base.create_lod_tensor(
                 np.array([[-1]]), [[1]], paddle.CPUPlace()
             )
             self.assertRaises(TypeError, paddle.squeeze, x1)
@@ -265,9 +265,9 @@ class TestSqueezeDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -296,9 +296,9 @@ class TestSqueezeTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
