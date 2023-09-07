@@ -25,7 +25,7 @@ ElementwiseSPMDRule::InferForward(
     const std::vector<DistTensorSpec>& input_specs,
     const paddle::framework::AttributeMap& attrs) {
   // step0: Verify Input Args Based on Elementwise Logic
-  int64_t ninputs = input_specs.size();
+  int64_t ninputs = static_cast<int64_t>(input_specs.size());
   PADDLE_ENFORCE_GT(
       ninputs,
       0,
@@ -39,7 +39,7 @@ ElementwiseSPMDRule::InferForward(
   std::vector<std::string> input_axes_vec;
   int64_t max_ndim = 0;
   for (int64_t i = 0; i < ninputs; ++i) {
-    int64_t ndim = input_specs[i].shape().size();
+    int64_t ndim = static_cast<int64_t>(input_specs[i].shape().size());
     if (ndim > max_ndim) {
       max_ndim = ndim;
     }
@@ -49,7 +49,7 @@ ElementwiseSPMDRule::InferForward(
   std::vector<int64_t> broadcast_axis_count(max_ndim, 0);
   for (int64_t i = 0; i < ninputs; ++i) {
     std::vector<int64_t> shape = input_specs[i].shape();
-    int64_t ndim = shape.size();
+    int64_t ndim = static_cast<int64_t>(shape.size());
     int64_t start_dim = max_ndim - ndim;
     std::string axes_notation = GetBroadcastAxes(ndim, max_ndim, alphabet);
     if (ninputs > 1) {

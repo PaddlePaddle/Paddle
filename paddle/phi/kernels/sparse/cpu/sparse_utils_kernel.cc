@@ -48,9 +48,9 @@ inline int64_t GetNonZeroNum(const DenseTensor& dense,
           sparse_dim,
           dims.size()));
 
-  auto dims_2d = flatten_to_2d(dims, sparse_dim);
-  const int rows = dims_2d[0];
-  const int cols = dims_2d[1];
+  auto dims_2d = flatten_to_2d(dims, static_cast<int>(sparse_dim));
+  const int rows = static_cast<int>(dims_2d[0]);
+  const int cols = static_cast<int>(dims_2d[1]);
 
   const T* data = dense.data<T>();
   int64_t non_zero_num = 0;
@@ -87,15 +87,15 @@ void DenseToCooKernel(const Context& dev_ctx,
   int64_t* indices_data = indices.data<int64_t>();
   T* values_data = values.data<T>();
 
-  auto dims_2d = flatten_to_2d(x_dims, sparse_dim);
-  const int rows = dims_2d[0];
-  const int cols = dims_2d[1];
+  auto dims_2d = flatten_to_2d(x_dims, static_cast<int>(sparse_dim));
+  const int rows = static_cast<int>(dims_2d[0]);
+  const int cols = static_cast<int>(dims_2d[1]);
 
   int index = 0;
   for (int i = 0; i < rows; i++) {
     if (!IsZero(x_data + i * cols, cols)) {
       int64_t sparse_index = i;
-      for (int64_t j = sparse_dim - 1; j >= 0; j--) {
+      for (int j = static_cast<int>(sparse_dim - 1); j >= 0; j--) {
         indices_data[j * non_zero_num + index] = sparse_index % x_dims[j];
         sparse_index /= x_dims[j];
       }
@@ -138,8 +138,8 @@ void CsrToCooCPUKernel(const CPUContext& dev_ctx,
   IntT* coo_cols_data = coo_rows_data + non_zero_num;
   T* coo_values_data = values.data<T>();
 
-  int batch = x_dims.size() == 2 ? 1 : x_dims[0];
-  int rows = x_dims.size() == 2 ? x_dims[0] : x_dims[1];
+  int batch = static_cast<int>(x_dims.size() == 2 ? 1 : x_dims[0]);
+  int rows = static_cast<int>(x_dims.size() == 2 ? x_dims[0] : x_dims[1]);
 
   int index = 0;
   for (int b = 0; b < batch; b++) {
@@ -182,8 +182,8 @@ void CooToCsrCPUKernel(const CPUContext& dev_ctx,
                         "SparseCsrTensor only support 2-D or 3-D matrix"));
   const int64_t non_zero_num = x.nnz();
 
-  int batchs = x_dims.size() == 2 ? 1 : x_dims[0];
-  int rows = x_dims.size() == 2 ? x_dims[0] : x_dims[1];
+  int batchs = static_cast<int>(x_dims.size() == 2 ? 1 : x_dims[0]);
+  int rows = static_cast<int>(x_dims.size() == 2 ? x_dims[0] : x_dims[1]);
 
   phi::DenseTensor crows = phi::Empty<IntT>(dev_ctx, {batchs * (rows + 1)});
   phi::DenseTensor cols = phi::Empty<IntT>(dev_ctx, {non_zero_num});
@@ -221,9 +221,9 @@ void CooToCsrCPUKernel(const CPUContext& dev_ctx,
 
   for (int b = 0; b < batchs; b++) {
     int batch_start = 0;
-    int batch_non_zero_num = offsets[b];
+    int batch_non_zero_num = static_cast<int>(offsets[b]);
     if (b > 0) {
-      batch_start = offsets[b - 1];
+      batch_start = static_cast<int>(offsets[b - 1]);
       batch_non_zero_num -= batch_start;
     }
     auto* coo_rows_ptr = coo_rows_data + batch_start;
@@ -283,11 +283,11 @@ void CooToDenseCPUKernel(const CPUContext& dev_ctx,
 
   int64_t base_offset = 1;
   for (int64_t i = 0; i < dense_dim; i++) {
-    base_offset *= dense_dims[sparse_dim + i];
+    base_offset *= dense_dims[static_cast<int>(sparse_dim + i)];
   }
   std::vector<int64_t> sparse_offsets(sparse_dim);
   int64_t offset = 1;
-  for (int i = sparse_dim - 1; i >= 0; i--) {
+  for (int i = static_cast<int>(sparse_dim - 1); i >= 0; i--) {
     sparse_offsets[i] = offset;
     offset *= dense_dims[i];
   }

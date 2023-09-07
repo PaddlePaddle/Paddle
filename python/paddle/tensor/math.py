@@ -270,6 +270,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
             "x",
             [
                 'float16',
+                'bfloat16',
                 'uint16',
                 'float32',
                 'float64',
@@ -278,6 +279,8 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
                 'int32',
                 'int64',
                 'uint8',
+                'complex64',
+                'complex128',
             ],
             "scale",
         )
@@ -1507,8 +1510,11 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 
     dtype_flag = False
     if dtype is not None:
-        dtype_flag = True
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        if paddle.ir.core._use_new_ir_api():
+            dtype = paddle.ir.core.convert_np_dtype_to_dtype_(dtype)
+        else:
+            dtype_flag = True
+            dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_mode():
         return _C_ops.sum(x, axis, dtype, keepdim)
