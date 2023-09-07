@@ -58,12 +58,8 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir}
   COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
           ${pd_op_forward_yaml_file} --output_path ${op_yaml_file3}
-  COMMENT "Generate pd_ops.parsed.yaml"
   COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
           ${pd_op_backward_yaml_file} --output_path ${op_yaml_file4} --backward
-  COMMENT "Generate pd_ops_backward.parsed.yaml"
-  DEPENDS ${op_gen_parsed_yaml_file} ${pd_op_forward_yaml_file}
-          ${pd_op_backward_yaml_file}
   VERBATIM)
 
 add_custom_command(
