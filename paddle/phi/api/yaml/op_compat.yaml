@@ -1171,6 +1171,10 @@
     shape :
       data_type : int64_t
       support_tensor : true
+  scalar :
+    value :
+      data_type : float
+      support_tensor : true
   extra :
     attrs : [bool use_mkldnn = false]
 

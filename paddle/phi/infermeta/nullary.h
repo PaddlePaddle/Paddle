@@ -39,7 +39,10 @@ void CreateIntArrayInferMeta(const IntArray& data,
                              DataType dtype,
                              MetaTensor* out);
 
-void CreateInferMeta(const IntArray& shape, DataType dtype, MetaTensor* out);
+void CreateInferMeta(const IntArray& shape,
+                     DataType dtype,
+                     MetaTensor* out,
+                     MetaConfig config = MetaConfig());
 
 void CreateInferMetaBase(const std::vector<int64_t>& shape,
                          DataType dtype,
