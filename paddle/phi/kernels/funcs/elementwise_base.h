@@ -560,8 +560,9 @@ struct InputSetter {
   }
 };
 
-int GetVectorizedSizeForTensors(const std::vector<const DenseTensor *> &ins,
-                                const std::vector<DenseTensor *> &outs) {
+static int GetVectorizedSizeForTensors(
+    const std::vector<const DenseTensor *> &ins,
+    const std::vector<DenseTensor *> &outs) {
 #ifdef PADDLE_WITH_XPU_KP
   int vec_size = 256;
 #else
