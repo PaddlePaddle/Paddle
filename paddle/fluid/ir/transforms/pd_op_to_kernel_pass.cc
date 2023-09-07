@@ -27,7 +27,6 @@
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_dialect.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_op.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_type.h"
-#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/legacy_kernel_op.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
