@@ -37,6 +37,11 @@ void FullKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   out->Resize(phi::make_ddim(shape.GetData()));
   FullValue<T>(dev_ctx, out, val.to<T>());
+  auto filter_z_shape = phi::vectorize<int>(out->dims());
+  for (size_t i = 0; i < filter_z_shape.size(); i++) {
+    std::cout << filter_z_shape[i] << std::endl;
+  }
+  std::cout << "numel: " << out->numel() << std::endl;
 }
 
 template <typename T, typename Context>
