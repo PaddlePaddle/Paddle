@@ -17,15 +17,15 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 paddle.enable_static()
 
 
 def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
-    fluid.default_startup_program().random_seed = 1
-    fluid.default_main_program().random_seed = 1
+    base.default_startup_program().random_seed = 1
+    base.default_main_program().random_seed = 1
     np.random.seed(2)
 
     x = paddle.assign(
@@ -64,7 +64,7 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
     loss = paddle.mean(out)
     opt = paddle.optimizer.Adam(0.01)
     opt.minimize(loss)
-    exe = fluid.Executor(place)
+    exe = base.Executor(place)
     data = np.random.random_integers(
         low=0, high=beam_size - 1, size=(batch_size, beam_size)
     ).astype("int64")
@@ -79,8 +79,8 @@ class TestDynRNNStopGradient(unittest.TestCase):
         self.beam_size = 64
 
     def run_main(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            with fluid.scope_guard(fluid.Scope()):
+        with base.program_guard(base.Program(), base.Program()):
+            with base.scope_guard(base.Scope()):
                 value1 = build_and_run_program(
                     place, self.batch_size, self.beam_size, False
                 )
@@ -91,9 +91,9 @@ class TestDynRNNStopGradient(unittest.TestCase):
                 np.testing.assert_array_equal(value1, value2)
 
     def test_check_main(self):
-        places = [fluid.CPUPlace()]
-        if fluid.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
 
         for p in places:
             self.run_main(p)

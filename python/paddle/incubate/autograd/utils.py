@@ -16,7 +16,7 @@ import typing
 
 import paddle
 import paddle.framework.dtype as dtypes
-from paddle.fluid import framework
+from paddle.base import framework
 
 from .phi_ops_map import op_info, op_map
 
@@ -309,7 +309,7 @@ def map_output_for_composite(op):
 
 
 def flatten(inp):
-    if inp is None or isinstance(inp, paddle.fluid.framework.Variable):
+    if inp is None or isinstance(inp, paddle.base.framework.Variable):
         return [inp]
     flattened = []
     for part in inp:

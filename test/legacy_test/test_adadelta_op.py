@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 def adadelta_wrapper(
@@ -173,9 +173,9 @@ class TestAdadeltaV2(unittest.TestCase):
 
     def test_adadelta(self):
         paddle.enable_static()
-        place = fluid.CPUPlace()
-        main = fluid.Program()
-        with fluid.program_guard(main):
+        place = base.CPUPlace()
+        main = base.Program()
+        with base.program_guard(main):
             x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
             y_predict = paddle.static.nn.fc(x, size=1)
@@ -191,9 +191,9 @@ class TestAdadeltaV2(unittest.TestCase):
             train_reader = paddle.batch(
                 paddle.dataset.uci_housing.train(), batch_size=1
             )
-            feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            feeder = base.DataFeeder(place=place, feed_list=[x, y])
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
             for data in train_reader():
                 exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
 

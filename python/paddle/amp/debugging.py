@@ -20,8 +20,8 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle.fluid import core
-from paddle.fluid.framework import dygraph_only
+from paddle.base import core
+from paddle.base.framework import dygraph_only
 
 from ..framework import LayerHelper, in_dynamic_mode
 
@@ -139,7 +139,7 @@ def set_checked_op_list(checked_op_list):
     if checked_op_list is not None:
         if isinstance(checked_op_list, (list, tuple)):
             check_op_list = ",".join(value for value in checked_op_list)
-            paddle.fluid.core.set_checked_op_list(check_op_list)
+            paddle.base.core.set_checked_op_list(check_op_list)
         else:
             raise ValueError("checked_op_list must be list or tuple")
 
@@ -149,7 +149,7 @@ def set_skipped_op_list(skipped_op_list):
     if skipped_op_list is not None:
         if isinstance(skipped_op_list, (list, tuple)):
             skip_op_list = ",".join(value for value in skipped_op_list)
-            paddle.fluid.core.set_skipped_op_list(skip_op_list)
+            paddle.base.core.set_skipped_op_list(skip_op_list)
         else:
             raise ValueError("skipped_op_list must be list or tuple")
 
@@ -305,11 +305,11 @@ class TensorCheckerConfig:
 
             # set output_dir
             if self.output_dir is not None:
-                paddle.fluid.core.set_nan_inf_debug_path(self.output_dir)
+                paddle.base.core.set_nan_inf_debug_path(self.output_dir)
 
             # set stack_height_limit
             if isinstance(self.stack_height_limit, (int)):
-                paddle.fluid.core.set_nan_inf_stack_limit(
+                paddle.base.core.set_nan_inf_stack_limit(
                     self.stack_height_limit
                 )
             else:
@@ -488,7 +488,7 @@ def enable_operator_stats_collection():
 
     """
     # Clear the previous stats.
-    paddle.fluid.core.clear_low_precision_op_list()
+    paddle.base.core.clear_low_precision_op_list()
     paddle.set_flags({'FLAGS_low_precision_op_list': 1})
 
 
@@ -528,7 +528,7 @@ def disable_operator_stats_collection():
     if not _get_operator_stats_flag():
         return
 
-    op_count_dict = paddle.fluid.core.get_low_precision_op_list()
+    op_count_dict = paddle.base.core.get_low_precision_op_list()
     _print_operator_stats(op_count_dict)
     paddle.set_flags({'FLAGS_low_precision_op_list': 0})
 
@@ -592,7 +592,7 @@ def compare_accuracy(
         ..  code-block:: python
 
             import paddle
-            from paddle.fluid import core
+            from paddle.base import core
             try:
                 import xlsxwriter as xlw
             except ImportError:
@@ -608,7 +608,7 @@ def compare_accuracy(
                     {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
                 )
                 path = "workerlog_log_dir"
-                paddle.fluid.core.set_nan_inf_debug_path(path)
+                paddle.base.core.set_nan_inf_debug_path(path)
                 x = paddle.to_tensor(
                     [2, 3, 4, 0], dtype="float32"
                 )

@@ -15,9 +15,9 @@
 import unittest
 
 import paddle
+from paddle.base import program_guard
+from paddle.base.backward import append_backward
 from paddle.distributed.fleet import auto
-from paddle.fluid import program_guard
-from paddle.fluid.backward import append_backward
 
 paddle.enable_static()
 
@@ -77,8 +77,8 @@ def init_y_col(trans_y):
 
 
 def matmul_dp2mp2(init_x, init_y, trans_x, trans_y):
-    main_program = paddle.fluid.Program()
-    start_program = paddle.fluid.Program()
+    main_program = paddle.base.Program()
+    start_program = paddle.base.Program()
     with paddle.static.program_guard(main_program, start_program):
         x = init_x(trans_x)
         y = init_y(trans_y)
@@ -90,8 +90,8 @@ def matmul_dp2mp2(init_x, init_y, trans_x, trans_y):
 
 
 def matmulv2_dp2mp2(init_x, init_y, trans_x, trans_y):
-    main_program = paddle.fluid.Program()
-    start_program = paddle.fluid.Program()
+    main_program = paddle.base.Program()
+    start_program = paddle.base.Program()
     with paddle.static.program_guard(main_program, start_program):
         x = init_x(trans_x)
         y = init_y(trans_y)

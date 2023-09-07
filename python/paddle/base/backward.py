@@ -14,15 +14,15 @@
 
 from .proto import framework_pb2
 
-from paddle.fluid import framework as framework
-from paddle.fluid import program_guard
+from paddle.base import framework as framework
+from paddle.base import program_guard
 from . import core
 import collections
 import copy
 import logging
 from . import unique_name
 from . import log_helper
-import paddle.fluid
+import paddle.base
 from .data_feeder import check_type
 import warnings
 
@@ -1393,7 +1393,7 @@ def _append_backward_ops_(
             grad_sub_block_list.append(grad_sub_block.desc)
         # In primitive mode, raw phi GradOp will be split into multiple small
         # primitive operators, and the split rules are defined in c++ level,
-        # see details: paddle/fluid/prim/api/manual/backward/composite_backward_api.h
+        # see details: paddle/base/prim/api/manual/backward/composite_backward_api.h
         # It means that the output's shape and dtype of previous operators which
         # maybe used as the input of next operators must be known. Therefore,
         # we infer shape and dtype in a sandbox block(named composite_block) for
@@ -1462,10 +1462,10 @@ def _append_backward_ops_(
         # Rename internal gradient variables in multiple backward
         # so that they have different names with previous backward.
         # For example:
-        #  y = x * x, grad = fluid.gradients(fluid.gradients(y, x) + y * y, x)
+        #  y = x * x, grad = base.gradients(base.gradients(y, x) + y * y, x)
         # In second-time backward, gradient variable names of partial
         # forward network (y * y) may be have same names with first-time
-        # fluid.gradients(y, x).
+        # base.gradients(y, x).
         # So rename here before _addup_repetitive_outputs_.
         if program._appending_grad_times > 1:
             for op_desc in grad_op_desc:
@@ -1796,7 +1796,7 @@ def infershape_for_composite(block, grad_op_desc):
         grad_op_desc.copy_from(op_desc)
 
     if not framework.OpProtoHolder.instance().has_op_proto(grad_op_desc.type()):
-        # NOTE: Some raw fluid grad operators which hadn't been decomposed may not
+        # NOTE: Some raw base grad operators which hadn't been decomposed may not
         # implement InferVarType method, such as elementwise_xx_grad, and it will
         # cause the dtype or shape of corresponding cotangent incorrect. This
         # patch set the cotangent dtype and shape same with corresponding
@@ -1869,7 +1869,7 @@ def _get_no_grad_set_name(no_grad_set):
                     no_grad_set_name.add(no_grad_var)
                 else:
                     raise TypeError(
-                        "The type of no_grad_set's member must be paddle.fluid.Variable or str, but received %s."
+                        "The type of no_grad_set's member must be paddle.base.Variable or str, but received %s."
                         % (type(no_grad_var))
                     )
         else:
@@ -2169,7 +2169,7 @@ def append_backward(
             parameter_list,
             'parameter_list',
             (list, tuple, set),
-            'fluid.backward.append_backward',
+            'base.backward.append_backward',
         )
         parameters = []
         for i, param in enumerate(parameter_list):
@@ -2177,7 +2177,7 @@ def append_backward(
                 param,
                 'parameter_list[%s]' % i,
                 (framework.Variable, str),
-                'fluid.backward.append_backward',
+                'base.backward.append_backward',
             )
             if isinstance(param, framework.Variable):
                 parameters.append(param.name)
@@ -2710,14 +2710,14 @@ def gradients_with_optimizer(program, optimizer, inputs=None, outputs=None):
             img = static.data(name='image', shape=[None, 784])
             pred = static.nn.fc(x=img, size=10, activation='relu')
             loss = paddle.mean(pred)
-            opt_ops, pram_grads = paddle.fluid.backward.gradients_with_optimizer(static.default_main_program(), opt)
+            opt_ops, pram_grads = paddle.base.backward.gradients_with_optimizer(static.default_main_program(), opt)
             print(opt_ops)
 
     """
     check_type(
         program,
         'program',
-        paddle.fluid.Program,
+        paddle.base.Program,
         'paddle.static.gradients_with_optimizer',
     )
     check_type(
@@ -2747,7 +2747,7 @@ def gradients_with_optimizer(program, optimizer, inputs=None, outputs=None):
         pram_grads = [
             (pram, grad)
             for pram, grad in zip(inputs, grads)
-            if isinstance(pram, paddle.fluid.framework.Parameter)
+            if isinstance(pram, paddle.base.framework.Parameter)
             and grad is not None
         ]
 
