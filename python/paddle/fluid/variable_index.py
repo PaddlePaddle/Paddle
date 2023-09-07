@@ -994,22 +994,19 @@ def _setitem_static(x, indices, values):
             transback_sub_tensor = transed_sub_tensor.transpose(transback_dim)
 
             inputs["ValueTensor"] = transback_sub_tensor
-            if paddle.in_dynamic_mode():
-                x._bump_inplace_version()
-                output = x
-            else:
-                helper = paddle.fluid.layer_helper.LayerHelper(
-                    'set_value', **locals()
+
+            helper = paddle.fluid.layer_helper.LayerHelper(
+                'set_value', **locals()
+            )
+            if helper.main_program.current_block_idx != 0:
+                # not in global block, we should create a global variable.
+                output = helper._create_global_variable_for_type_inference(
+                    dtype=x.dtype
                 )
-                if helper.main_program.current_block_idx != 0:
-                    # not in global block, we should create a global variable.
-                    output = helper._create_global_variable_for_type_inference(
-                        dtype=x.dtype
-                    )
-                else:
-                    output = helper.create_variable_for_type_inference(
-                        dtype=x.dtype
-                    )
+            else:
+                output = helper.create_variable_for_type_inference(
+                    dtype=x.dtype
+                )
             cur_block = default_main_program().current_block()
             cur_block.append_op(
                 type="set_value",
@@ -1018,11 +1015,11 @@ def _setitem_static(x, indices, values):
                 attrs=attrs,
                 inplace_map={"Input": "Out"},
             )
-            if not paddle.in_dynamic_mode():
-                # map var to the new output
-                paddle.jit.api.ProgramTranslator.get_instance()._inplace_map.add(
-                    cur_block.program, x.desc.id(), output
-                )
+
+            # map var to the new output
+            paddle.jit.api.ProgramTranslator.get_instance()._inplace_map.add(
+                cur_block.program, x.desc.id(), output
+            )
             return output
 
 
