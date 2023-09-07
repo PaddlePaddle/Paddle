@@ -54,10 +54,8 @@ from .process_group import get_all_process_groups, new_process_group
 
 class Engine:
     """
-    An Engine object can provide the full power of auto parallel to users.
-    With the help of it, users can easily obtain the abilities of the
-    distributed training and inference. It also support the dynamic graph and
-    static graph at the same time.
+    An High-Level API for auto parallel, which could be used for distributed Training (engine.fit) and Inferenced (engine.predict).
+    Static graph mode is supported natively, Dynamic graph mode is also supported under `@to_static <https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/api/paddle/jit/to_static_cn.html#to-static>`_ .
 
     Args:
         model (paddle.nn.Layer, optional): The model is an instance of
@@ -835,6 +833,14 @@ class Engine:
                 dist_main_program, self._place, dist_context
             )
 
+        # NOTE(zhaoyinglia): Skip startup program when use new ir temporarily.
+        use_new_ir = False
+        if auto_utils.use_new_ir():
+            use_new_ir = True
+            paddle.framework.set_flags(
+                {"FLAGS_enable_new_ir_in_executor": False}
+            )
+
         if self._executor is None:
             self._executor = paddle.static.Executor(self._place)
             uninitialized = []
@@ -861,6 +867,11 @@ class Engine:
                 self._cur_rank
             ]
             self._executor.run(dist_startup_prog)
+
+        if use_new_ir:
+            paddle.framework.set_flags(
+                {"FLAGS_enable_new_ir_in_executor": True}
+            )
 
     def fit(
         self,

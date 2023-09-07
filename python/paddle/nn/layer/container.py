@@ -303,7 +303,7 @@ class ParameterList(Layer):
     This container acts like a Python list, but parameters it contains will be properly added.
 
     Parameters:
-        parameters (iterable, optional): Iterable Parameters to be added
+        parameters (iterable, optional): Iterable Parameters to be added.
 
     Examples:
         .. code-block:: python

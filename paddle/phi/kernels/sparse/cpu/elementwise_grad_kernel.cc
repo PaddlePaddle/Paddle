@@ -122,8 +122,8 @@ void CopyCsrValues(const Context& dev_ctx,
   Copy(dev_ctx, x.cols(), dev_ctx.GetPlace(), false, dx->mutable_cols());
 
   const auto& x_dims = x.dims();
-  int batch = x_dims.size() == 2 ? 1 : x_dims[0];
-  int rows = x_dims.size() == 2 ? x_dims[0] : x_dims[1];
+  int batch = static_cast<int>(x_dims.size() == 2 ? 1 : x_dims[0]);
+  int rows = static_cast<int>(x_dims.size() == 2 ? x_dims[0] : x_dims[1]);
 
   const IntT* x_crows_ptr = x.crows().data<IntT>();
   const IntT* x_cols_ptr = x.cols().data<IntT>();
