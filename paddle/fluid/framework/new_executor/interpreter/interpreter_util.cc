@@ -686,7 +686,7 @@ void BuildOpFuncList(const platform::Place& place,
         VLOG(4) << "HandleOperatorBase";
         // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
         bool is_skil_fake_init = false;
-        if (op->Type() == "conditional_block") {
+        if (static_build && op->Type() == "conditional_block") {
           // Note(sonder): skip fake init for conditional_block when there is no
           // op with kernel after it.
           is_skil_fake_init = true;
