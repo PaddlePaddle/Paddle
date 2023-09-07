@@ -19,16 +19,16 @@ import warnings
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.framework import Block
+from paddle import base
+from paddle.base import core
+from paddle.base.framework import Block
 
 
 class PassTest(unittest.TestCase):
     @classmethod
     def setUpClass(self):
-        self.main_program = fluid.Program()
-        self.startup_program = fluid.Program()
+        self.main_program = base.Program()
+        self.startup_program = base.Program()
         self.feeds = None
         self.fetch_list = None
         self.pass_names = None
@@ -41,9 +41,9 @@ class PassTest(unittest.TestCase):
         random.seed(124)
 
     def _get_places(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         return places
 
     def grad(self, var):
@@ -51,9 +51,9 @@ class PassTest(unittest.TestCase):
         return self.main_program.global_block().var(grad_name)
 
     def append_gradients(self, outs):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             loss = paddle.mean(outs)
-            fluid.backward.append_backward(loss)
+            base.backward.append_backward(loss)
 
     def check_output(self, startup_on_cpu=False, atol=1e-5):
         '''
@@ -84,7 +84,7 @@ class PassTest(unittest.TestCase):
 
     def _apply_ir_passes(self):
         graph = core.Graph(self.main_program.desc)
-        graph.set_not_owned("__param_scope__", fluid.global_scope())
+        graph.set_not_owned("__param_scope__", base.global_scope())
         for attr_name, attr_value in self.graph_attrs.items():
             graph.set(attr_name, attr_value)
 
@@ -101,7 +101,7 @@ class PassTest(unittest.TestCase):
                     ir_pass.set(key, attrs[key])
 
         trans_pass = pass_builder.append_pass("graph_to_program_pass")
-        opt_program = fluid.Program()
+        opt_program = base.Program()
         trans_pass.set_not_owned("program", opt_program.desc)
         for p in pass_builder.all_passes():
             p.apply(graph)
@@ -120,10 +120,10 @@ class PassTest(unittest.TestCase):
         after apply all specified passes, then copy the parameters to GPUPlace.
         We can set startup_on_cpu to True to test inference pass.
         '''
-        executor = fluid.Executor(place)
+        executor = base.Executor(place)
         if startup_on_cpu:
             # Initialize parameters on CPU
-            cpu_executor = fluid.Executor(fluid.CPUPlace())
+            cpu_executor = base.Executor(base.CPUPlace())
             cpu_executor.run(self.startup_program)
             outs, lods = self._run_program(cpu_executor, self.main_program)
         else:
@@ -140,7 +140,7 @@ class PassTest(unittest.TestCase):
         opt_program = self._apply_ir_passes()
         self.check_program(opt_program)
 
-        if startup_on_cpu and not isinstance(place, fluid.CPUPlace):
+        if startup_on_cpu and not isinstance(place, base.CPUPlace):
             warnings.warn(
                 "Parameters are on CPU, and will be transferred to GPU "
                 "automatically by data transform."

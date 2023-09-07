@@ -20,10 +20,10 @@ import paddle
 
 np.random.seed(1)
 
-if paddle.fluid.is_compiled_with_cuda():
-    place = paddle.fluid.CUDAPlace(0)
+if paddle.base.is_compiled_with_cuda():
+    place = paddle.base.CUDAPlace(0)
 else:
-    place = paddle.fluid.CPUPlace()
+    place = paddle.base.CPUPlace()
 
 
 class SimpleNet(paddle.nn.Layer):
@@ -40,7 +40,7 @@ class SimpleNet(paddle.nn.Layer):
 class TestDuplicateOutput(unittest.TestCase):
     """
     TestCase for the transformation from control flow `if/else`
-    dependent on tensor in Dygraph into Static `fluid.layers.cond`.
+    dependent on tensor in Dygraph into Static `base.layers.cond`.
     """
 
     def setUp(self):

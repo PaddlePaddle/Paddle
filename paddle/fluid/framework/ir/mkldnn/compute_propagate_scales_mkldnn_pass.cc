@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/compute_propagate_scales_mkldnn_pass.h"
 
-#include <float.h>
+#include <cfloat>
 
 #include <algorithm>
 
@@ -492,7 +492,7 @@ void ComputePropagateScalesMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init(pattern_name, graph);
 
   const std::unordered_set<std::string> scale_immutable_ops = {
-      "fused_transpose"
+      "fused_transpose",
       "transpose2",
       "reshape2",
       "pool2d",

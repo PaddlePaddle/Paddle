@@ -66,11 +66,12 @@ static int64_t GetMemorySize(
                     platform::errors::InvalidArgument(
                         "Var(%s) must be phi::DenseTensor.", var_name));
   auto dims = var_desc->GetShape();
-  return SizeOfType(var_desc->GetDataType()) *
-         std::accumulate(dims.begin(),
-                         dims.end(),
-                         static_cast<int64_t>(1),
-                         std::multiplies<int64_t>());  // NOLINT
+  return static_cast<int64_t>(
+      SizeOfType(var_desc->GetDataType()) *
+      std::accumulate(dims.begin(),
+                      dims.end(),
+                      static_cast<int64_t>(1),
+                      std::multiplies<int64_t>()));  // NOLINT
 }
 
 // Split all variables in the graph into phi::DenseTensor and
@@ -176,8 +177,8 @@ static OpToVarNameSetMap ShrinkGCVars(
               });
 
     int64_t accumulated_size = 0;
-    int64_t size_threshold =
-        static_cast<int64_t>(fraction_of_memory_size * place_to_size[place]);
+    int64_t size_threshold = static_cast<int64_t>(
+        fraction_of_memory_size * place_to_size[place]);  // NOLINT
     for (size_t i = 0; i < gc_vars.size() && accumulated_size < size_threshold;
          ++i) {
       partial_vars[gc_vars[i].op_].insert(gc_vars[i].name_);

@@ -1,5 +1,5 @@
 set(PYTHON_TESTS_DIR
-    ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests
+    ${PADDLE_BINARY_DIR}/python/paddle/base/tests
     CACHE INTERNAL "python tests directory")
 
 add_subdirectory(utils)

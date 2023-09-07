@@ -66,6 +66,15 @@ class DistTensor final
   /// \return The DenseTensor value's const reference
   const DenseTensor& value() const { return value_; }
 
+  /// \brief Returns the mutable dense tensor value in dist tensor.
+  /// \note If DenseTensor value is modified externally, the corresponding
+  /// relationship between it and the current tensor's global dims and
+  /// dist attr may be destroyed, which may introduce some subtle bugs,
+  /// so you need to make sure to consider it thoroughly when using
+  /// this method.
+  /// \return The mutable pointer of DenseTensor value
+  DenseTensor* unsafe_mutable_value() { return &value_; }
+
   /// \brief Returns the global dims of the dist tensor.
   /// \return The global dims of the dist tensor.
   const DDim& local_dims() const;

@@ -15,8 +15,8 @@
 import paddle
 from paddle import _legacy_C_ops
 from paddle.autograd import PyLayer
+from paddle.base.data_feeder import check_dtype, check_variable_and_dtype
 from paddle.distributed import collective
-from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
 from paddle.framework import LayerHelper, _create_tensor, in_dynamic_mode
 from paddle.nn import Layer
 from paddle.nn.utils import dygraph_utils
@@ -46,6 +46,38 @@ class c_identity_eager(PyLayer):
         op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
         ctx.group.process_group.all_reduce_on_calc_stream(dy, op_type)
         return dy
+
+
+class c_split_eager(PyLayer):
+    @staticmethod
+    def forward(ctx, tensor, group, rank, nranks):
+        ctx.group = group
+        ctx.nranks = nranks
+        return _legacy_C_ops.c_split(
+            tensor,
+            'use_calc_stream',
+            True,
+            'ring_id',
+            group.id,
+            'rank',
+            rank,
+            'nranks',
+            nranks,
+            'use_model_parallel',
+            True,
+        )
+
+    @staticmethod
+    def backward(ctx, dy):
+        group = ctx.group
+        out_shape = dy.shape
+        out_shape[0] = out_shape[0] * ctx.nranks
+        out = paddle.empty(out_shape, dtype=dy.dtype)
+        group.process_group.all_gather_into_tensor_on_calc_stream(
+            out,
+            dy,
+        )
+        return out
 
 
 def _c_identity(tensor, group=None, skip_c_identity_dynamic=False):
@@ -179,19 +211,7 @@ def _c_split(tensor, group=None):
     )
 
     if in_dynamic_mode():
-        return _legacy_C_ops.c_split(
-            tensor,
-            'use_calc_stream',
-            True,
-            'ring_id',
-            ring_id,
-            'rank',
-            rank,
-            'nranks',
-            nranks,
-            'use_model_parallel',
-            True,
-        )
+        return c_split_eager.apply(tensor, group, rank, nranks)
     else:
         op_type = 'c_split'
         helper = LayerHelper(op_type, **locals())

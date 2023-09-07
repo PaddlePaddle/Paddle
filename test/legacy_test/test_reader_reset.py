@@ -20,8 +20,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import compiler
+from paddle import base
+from paddle.base import compiler
 
 
 class TestReaderReset(unittest.TestCase):
@@ -33,7 +33,7 @@ class TestReaderReset(unittest.TestCase):
         return fake_data_generator
 
     def setUp(self):
-        self.use_cuda = fluid.core.is_compiled_with_cuda()
+        self.use_cuda = base.core.is_compiled_with_cuda()
         self.ins_shape = [3]
         self.batch_size = 5
         self.batch_num = 20
@@ -42,17 +42,17 @@ class TestReaderReset(unittest.TestCase):
         self.prepare_data()
 
     def main(self, with_double_buffer):
-        main_prog = fluid.Program()
-        startup_prog = fluid.Program()
+        main_prog = base.Program()
+        startup_prog = base.Program()
 
-        with fluid.program_guard(main_prog, startup_prog):
+        with base.program_guard(main_prog, startup_prog):
             image = paddle.static.data(
                 name='image', shape=[-1] + self.ins_shape, dtype='float32'
             )
             label = paddle.static.data(
                 name='label', shape=[-1, 1], dtype='int64'
             )
-            data_reader_handle = fluid.io.PyReader(
+            data_reader_handle = base.io.PyReader(
                 feed_list=[image, label],
                 capacity=16,
                 iterable=False,
@@ -60,8 +60,8 @@ class TestReaderReset(unittest.TestCase):
             )
             fetch_list = [image.name, label.name]
 
-        place = fluid.CUDAPlace(0) if self.use_cuda else fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CUDAPlace(0) if self.use_cuda else base.CPUPlace()
+        exe = base.Executor(place)
         exe.run(startup_prog)
 
         data_reader_handle.decorate_sample_list_generator(
@@ -85,7 +85,7 @@ class TestReaderReset(unittest.TestCase):
                     ) * label_val.reshape((ins_num, 1))
                     self.assertEqual(data_val.all(), broadcasted_label.all())
                     batch_id += 1
-            except fluid.core.EOFException:
+            except base.core.EOFException:
                 data_reader_handle.reset()
                 pass_count += 1
                 self.assertEqual(pass_count * self.batch_num, batch_id)

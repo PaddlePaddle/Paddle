@@ -23,8 +23,8 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle import base
+from paddle.base import Program, program_guard
 
 paddle.enable_static()
 
@@ -106,7 +106,7 @@ class TestSqueezeOpError(unittest.TestCase):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input type of softmax_op must be Variable.
-            x1 = fluid.create_lod_tensor(
+            x1 = base.create_lod_tensor(
                 np.array([[-1]]), [[1]], paddle.XPUPlace(0)
             )
             self.assertRaises(TypeError, paddle.squeeze, x1)
