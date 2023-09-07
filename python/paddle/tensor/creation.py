@@ -97,6 +97,14 @@ def create_global_var(
 
 
         .. code-block:: python
+            :name: e3
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> print(1+1)
+            3
+
+        .. code-block:: python
             :name: e4
 
             >>> # doctest: +REQUIRES(env:GPU)
