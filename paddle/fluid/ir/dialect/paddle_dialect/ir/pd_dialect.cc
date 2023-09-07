@@ -20,6 +20,7 @@
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type_storage.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/transforms/param_to_variable.h"
+#include "paddle/ir/core/ir_printer.h"
 #include "paddle/ir/core/utils.h"
 
 namespace paddle {
@@ -48,8 +49,11 @@ void PaddleDialect::initialize() {
 #define GET_OP_LIST
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"  // NOLINT
       >();
-  RegisterOps<paddle::dialect::AddNOp, paddle::dialect::SplitGradOp>();
-
+  RegisterOps<paddle::dialect::AddNOp,
+              paddle::dialect::AddN_Op,
+              paddle::dialect::AddNWithKernelOp,
+              paddle::dialect::SplitGradOp,
+              paddle::dialect::IfOp>();
   RegisterInterfaces<ParameterConvertInterface>();
 }
 
@@ -100,6 +104,7 @@ void PaddleDialect::PrintAttribute(ir::Attribute attr, std::ostream &os) const {
   }
 }
 
+
 ir::Type PaddleDialect::ParseType(ir::IrParser &parser) {  // NOLINT
   parser.ConsumeAToken("pd.tensor");
   parser.ConsumeAToken("<");
@@ -145,6 +150,14 @@ ir::Attribute PaddleDialect::ParseAttribute(ir::IrParser &parser) {  // NOLINT
   } else {
     IR_THROW("No function to parse " + attribute_name + " exists!" +
              parser.GetErrorLocationInfo());
+
+void PaddleDialect::PrintOperation(ir::Operation *op,
+                                   ir::IrPrinter &printer) const {
+  if (auto if_op = op->dyn_cast<IfOp>()) {
+    if_op.Print(printer);
+  } else {
+    printer.PrintGeneralOperation(op);
+
   }
 }
 

@@ -130,7 +130,7 @@ void IrPrinter::PrintProgram(const Program* program) {
   }
 }
 
-void IrPrinter::PrintOperation(const Operation* op) {
+void IrPrinter::PrintOperation(Operation* op) {
   if (auto* dialect = op->dialect()) {
     dialect->PrintOperation(op, *this);
     return;
@@ -161,7 +161,7 @@ void IrPrinter::PrintGeneralOperation(const Operation* op) {
 }
 
 void IrPrinter::PrintFullOperation(const Operation* op) {
-  PrintOperation(op);
+  PrintGeneralOperation(op);
   if (op->num_regions() > 0) {
     os << newline;
   }
@@ -295,7 +295,7 @@ void IrPrinter::PrintOpReturnType(const Operation* op) {
       [this]() { this->os << ", "; });
 }
 
-void Dialect::PrintOperation(const Operation* op, IrPrinter& printer) const {
+void Dialect::PrintOperation(Operation* op, IrPrinter& printer) const {
   printer.PrintGeneralOperation(op);
 }
 
@@ -304,9 +304,9 @@ void Program::Print(std::ostream& os) const {
   printer.PrintProgram(this);
 }
 
-void Operation::Print(std::ostream& os) const {
+void Operation::Print(std::ostream& os) {
   IrPrinter printer(os);
-  printer.PrintFullOperation(this);
+  printer.PrintOperation(this);
 }
 
 void Type::Print(std::ostream& os) const {

@@ -1261,7 +1261,7 @@ class OpTest(unittest.TestCase):
         static_inputs = defaultdict(list)
         feed = {}
         for name, item in self.inputs.items():
-            if isinstance(item, list):
+            if isinstance(item, (list, tuple)):
                 for tup in item:
                     dtype = (
                         "bfloat16"
@@ -1355,9 +1355,7 @@ class OpTest(unittest.TestCase):
             # executor run
             executor = Executor(place)
             (outs,) = executor.run(
-                ir_program,
-                feed=feed,
-                fetch_list=fetch_list,
+                ir_program, feed=feed, fetch_list=[fetch_list]
             )
         return outs
 
@@ -1370,9 +1368,19 @@ class OpTest(unittest.TestCase):
             return
         if self._check_cinn:
             return
-        stored_flag = get_flags('FLAGS_enable_new_ir_in_executor')
+        stored_flag = get_flags(
+            [
+                'FLAGS_enable_new_ir_in_executor',
+                "FLAGS_new_ir_apply_inplace_pass",
+            ]
+        )
         try:
-            set_flags({"FLAGS_enable_new_ir_in_executor": True})
+            set_flags(
+                {
+                    "FLAGS_enable_new_ir_in_executor": True,
+                    "FLAGS_new_ir_apply_inplace_pass": 0,
+                }
+            )
             new_scope = paddle.static.Scope()
             executor = Executor(place)
             new_program = None
@@ -1927,6 +1935,7 @@ class OpTest(unittest.TestCase):
         only_check_prim=False,
         inplace_atol=None,
         check_cinn=False,
+        check_new_ir=True,
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
@@ -2455,13 +2464,14 @@ class OpTest(unittest.TestCase):
         if (
             self.op_type
             in new_ir_python_api_grad_white_list.new_ir_python_api_grad_white_list
+            and check_new_ir
         ):
             if (
                 type(place) is paddle.fluid.libpaddle.CPUPlace
                 or type(place) is paddle.fluid.libpaddle.CUDAPlace
             ):
                 print("New IR checker begins...........")
-                with paddle.new_ir_utils._newir_guard():
+                with paddle.new_ir_utils.IrGuard():
                     new_ir_checker = NewIRChecker(self, self.outputs)
                     new_ir_checker.check()
 
@@ -2576,6 +2586,7 @@ class OpTest(unittest.TestCase):
         inplace_atol=None,
         check_cinn=False,
         only_check_prim=False,
+        check_new_ir=True,
     ):
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
@@ -2600,6 +2611,7 @@ class OpTest(unittest.TestCase):
                 only_check_prim=only_check_prim,
                 inplace_atol=inplace_atol,
                 check_cinn=check_cinn,
+                check_new_ir=check_new_ir,
             )
             if not res and only_check_prim:
                 continue
@@ -2766,6 +2778,7 @@ class OpTest(unittest.TestCase):
         only_check_prim=False,
         atol=1e-5,
         check_cinn=False,
+        check_new_ir=True,
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -2788,6 +2801,7 @@ class OpTest(unittest.TestCase):
                 only_check_prim=only_check_prim,
                 atol=atol,
                 check_cinn=check_cinn,
+                check_new_ir=check_new_ir,
             )
 
     def check_grad_with_place(
@@ -2807,6 +2821,7 @@ class OpTest(unittest.TestCase):
         numeric_place=None,
         atol=1e-5,
         check_cinn=False,
+        check_new_ir=True,
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -3003,17 +3018,19 @@ class OpTest(unittest.TestCase):
                     "Gradient Check On %s" % str(place),
                     atol=atol,
                 )
+
         # get new ir gradient
         if (
             self.op_type
             in new_ir_python_api_grad_white_list.new_ir_python_api_grad_white_list
+            and check_new_ir
         ):
             if (
                 type(place) is paddle.fluid.libpaddle.CPUPlace
                 or type(place) is paddle.fluid.libpaddle.CUDAPlace
             ):
                 print("New IR gradient begins...........")
-                with paddle.new_ir_utils._newir_guard():
+                with paddle.new_ir_utils.IrGuard():
                     new_ir_grad = self._get_ir_gradient(
                         inputs_to_check,
                         place,
@@ -3024,7 +3041,7 @@ class OpTest(unittest.TestCase):
                 print("New IR gradient ends...........")
                 self._assert_is_close(
                     numeric_grads,
-                    [new_ir_grad],
+                    new_ir_grad,
                     inputs_to_check,
                     max_relative_error,
                     "Gradient Check On %s" % str(place),
@@ -3207,9 +3224,19 @@ class OpTest(unittest.TestCase):
         if self._check_cinn:
             return
 
-        stored_flag = get_flags('FLAGS_enable_new_ir_in_executor')
+        stored_flag = get_flags(
+            [
+                'FLAGS_enable_new_ir_in_executor',
+                "FLAGS_new_ir_apply_inplace_pass",
+            ]
+        )
         try:
-            set_flags({"FLAGS_enable_new_ir_in_executor": True})
+            set_flags(
+                {
+                    "FLAGS_enable_new_ir_in_executor": True,
+                    "FLAGS_new_ir_apply_inplace_pass": 0,
+                }
+            )
             executor = Executor(place)
             new_gradients = list(
                 map(
@@ -3420,23 +3447,38 @@ class OpTest(unittest.TestCase):
             args = OpTestUtils.assumption_assert_and_transform(
                 args, len(inputs_sig)
             )
+            grad_outputs = []
+            if user_defined_grad_outputs is not None:
+                # user_defined_grad_outputs here are numpy arrays
+                if not isinstance(user_defined_grad_outputs, list):
+                    user_defined_grad_outputs = [user_defined_grad_outputs]
+                for grad_out_value, idx in zip(
+                    user_defined_grad_outputs,
+                    range(len(user_defined_grad_outputs)),
+                ):
+                    grad_val = paddle.static.data(
+                        name='val_grad_%s' % idx,
+                        shape=grad_out_value.shape,
+                        dtype=grad_out_value.dtype,
+                    )
+                    grad_outputs.append(grad_val)
+                    feed.update({'val_grad_%s' % idx: grad_out_value})
+                # delete the inputs which no need to calculate grad
+                for no_grad_val in no_grad_set:
+                    del static_inputs[no_grad_val]
+
             ret_tuple = self.python_api(*args)
-            result = construct_output_dict_by_kernel_sig(ret_tuple, outputs_sig)
+            outputs = construct_output_dict_by_kernel_sig(
+                ret_tuple, outputs_sig
+            )
             if hasattr(self, "python_out_sig_sub_name"):
                 for key in self.python_out_sig_sub_name.keys():
                     for i in range(len(self.python_out_sig_sub_name[key])):
-                        result[key][0][i].name = self.python_out_sig_sub_name[
+                        outputs[key][0][i].name = self.python_out_sig_sub_name[
                             key
                         ][i]
             fetch_list = getattr(self, "fetch_list", [])
-            if len(fetch_list) == 0:
-                for var in result.items():
-                    if isinstance(var[1], list):
-                        for v in var[1]:
-                            fetch_list.append(v)
-                    else:
-                        fetch_list.append(var[1])
-            outputs = result
+
             outputs_valid = outputs
             grad_inputs = inputs_to_check
             if user_defined_grad_outputs is None:
@@ -3449,16 +3491,6 @@ class OpTest(unittest.TestCase):
                     grad_outputs=None,
                 )
             else:
-                # user_defined_grad_outputs here are numpy arrays
-                if not isinstance(user_defined_grad_outputs, list):
-                    user_defined_grad_outputs = [user_defined_grad_outputs]
-                grad_outputs = []
-                for grad_out_value in user_defined_grad_outputs:
-                    grad_outputs.append(paddle.to_tensor(grad_out_value))
-                # delete the inputs which no need to calculate grad
-                for no_grad_val in no_grad_set:
-                    del static_inputs[no_grad_val]
-
                 grad_inputs = ir_grad(
                     outputs=paddle.utils.flatten(outputs),
                     inputs=paddle.utils.flatten(static_inputs),
@@ -3468,7 +3500,7 @@ class OpTest(unittest.TestCase):
 
             # executor run
             executor = paddle.static.Executor()
-            (outs,) = executor.run(
+            outs = executor.run(
                 ir_program,
                 feed=feed,
                 fetch_list=fetch_list,

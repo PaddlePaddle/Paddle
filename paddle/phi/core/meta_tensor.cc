@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_meta_tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/enforce.h"
@@ -271,6 +272,8 @@ const LoD& MetaTensor::lod() const {
     return static_cast<SparseCooTensor*>(tensor_)->non_zero_elements().lod();
   } else if (phi::SparseCsrTensor::classof(tensor_)) {
     return static_cast<SparseCsrTensor*>(tensor_)->non_zero_elements().lod();
+  } else if (paddle::dialect::IrMetaTensor::classof(tensor_)) {
+    return static_cast<paddle::dialect::IrMetaTensor*>(tensor_)->lod();
   } else {
     PADDLE_THROW(phi::errors::Unimplemented("Unsupported getting lod of `%s`.",
                                             tensor_->type_info().name()));
