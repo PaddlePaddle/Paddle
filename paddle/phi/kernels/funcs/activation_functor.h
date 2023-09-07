@@ -2052,6 +2052,25 @@ struct LogSigmoidGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct LogSigmoidGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
+    auto temp =
+        (-x).cwiseMax(static_cast<ComplexType<T>>(0));  // temp = max(-x, 0)
+    dx.device(d) =
+        dout * ((-x - temp).exp() / ((-temp).exp() + (-x - temp).exp()))
+                   .unaryExpr(Conj<T>());
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
 struct HardSigmoidFunctor : public BaseActivationFunctor<T> {
   float slope;
   float offset;
@@ -3857,6 +3876,28 @@ struct CudaLogSigmoidGradFunctor : public BaseActivationFunctor<T> {
     MPType temp1 = x > zero ? zero : -x;
     MPType temp2 = exp(-x - temp1);
     return static_cast<T>(dout * (temp2 / (exp(-temp1) + temp2)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaLogSigmoidGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  ComplexType<T> zero = static_cast<ComplexType<T>>(0.0f);
+
+  // dx = dout * exp(-x) / (1 + exp(-x))
+  // For numerical stability:
+  // dx = dout * exp(-x - max(-x, 0)) / (exp(-max(-x, 0)) + exp(-x - max(-x,
+  // 0)))
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> arg_dout, const ComplexType<T> arg_x) const {
+    ComplexType<T> dout = static_cast<ComplexType<T>>(arg_dout);
+    ComplexType<T> x = static_cast<ComplexType<T>>(arg_x);
+    ComplexType<T> temp1 = x > zero ? zero : -x;
+    ComplexType<T> temp2 = exp(-x - temp1);
+    return static_cast<ComplexType<T>>(dout *
+                                       conj(temp2 / (exp(-temp1) + temp2)));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }

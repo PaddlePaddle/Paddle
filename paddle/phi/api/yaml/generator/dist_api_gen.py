@@ -44,14 +44,14 @@ PADDLE_THROW(phi::errors::Unimplemented(
 MAIN_DIST_BRANCH_TEMPLATE = """
   // Auto Parallel condition
   if ({}) {{
-    // 1. Create API Output & Prepare Dist and Dense Output{}
-    // 2. InferSPMD (Infer Global Shape and DistAttr of Inputs&Outputs){}
-    // 3. Select Kernel{}
-    // 4. Reshard Input{}
-    // 5. PrepareData (DataTransform & Prepare Dist and Dense Input){}
-    // 6. Infer Local DenseTensor Meta{}
-    // 7. DenseTensor Kernel Call{}
-    // 8. Reshard Output{}
+    // 1. InferSpmd (Infer DistAttr of Inputs&Outputs){}
+    // 2. Create API Output & Prepare Dist and Dense Output{}
+    // 3. Infer DistTensor's Global Shape{}
+    // 4. Select Kernel{}
+    // 5. Reshard Input{}\n
+    // 6. PrepareData (DataTransform & Prepare Dense Input){}
+    // 7. Infer Local DenseTensor Meta{}
+    // 8. DenseTensor Kernel Call{}
     // 9. Return
     {}
   }}
@@ -60,20 +60,35 @@ MAIN_DIST_BRANCH_TEMPLATE = """
 # Auto Parallel condition
 AUTO_PARALLEL_COND_TEMPLATE = """AllInputsAreDistTensor({})"""
 
-# 1. Create API Outputs
+# 1. InferSPMD
+SINGLE_DIST_META_IN_TEMPLATE = """
+    auto meta_dist_{} = MakeDistMetaTensor(*{}.impl());"""
+INFER_SPMD_TEMPLATE = """
+    auto spmd_info = phi::distributed::{}({});
+"""
+
+# 2. Create API Outputs
 API_OUT_CREATION_TEMPLATE = """
     {} api_output{};
 """
 INPLACE_API_OUT_CREATION_TEMPLATE = """
     {} api_output{{{}}};
 """
-SINGLE_OUT_CREATION_TEMPLATE = """
+SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
     auto dist_out = SetKernelDistOutput(&api_output);
-    auto dense_out = const_cast<phi::DenseTensor*>(&dist_out->value());
+    auto dense_out = dist_out->unsafe_mutable_value();
+"""
+MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
+    auto dist_out_{idx} = SetKernelDistOutput({out});
+    auto dense_out_{idx} = dist_out_{idx}->unsafe_mutable_value();
+"""
+SINGLE_OUT_CREATION_TEMPLATE = """
+    auto dist_out = SetKernelDistOutput(&api_output, spmd_info.second[0]);
+    auto dense_out = dist_out->unsafe_mutable_value();
 """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
-    auto dist_out_{} = SetKernelDistOutput({});
-    auto dense_out_{} = const_cast<phi::DenseTensor*>(&dist_out_{}->value());
+    auto dist_out_{idx} = SetKernelDistOutput({out}, spmd_info.second[{idx}]);
+    auto dense_out_{idx} = dist_out_{idx}->unsafe_mutable_value();
 """
 VECTOR_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput({}, &api_output);
@@ -93,12 +108,12 @@ MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
 TUPLE_OUT_CREATION_TEMPLATE = """
 """
 
-# 2. InferSPMD
-# Call InferMeta now, replace by InferSPMD function later
-# TODO(chenweihang): InferSPMD function design
-SINGLE_DIST_META_IN_TEMPLATE = """MakeMetaTensor(*{}.impl()), """
-VECTOR_DIST_META_IN_TEMPLATE = """{}_meta_ptr_vec, """
-VECTOR_DIST_META_IN_DECL_TEMPLATE = """
+# 3. Infer Global Shape
+# TODO(chenweihang): the input MetaTensor created by Inferspmd can be reused
+# for InferGlobalShape to avoid creating repeated inputs.
+SINGLE_GLOBAL_META_IN_TEMPLATE = """MakeMetaTensor(*{}.impl()), """
+VECTOR_GLOBAL_META_IN_TEMPLATE = """{}_meta_ptr_vec, """
+VECTOR_GLOBAL_META_IN_DECL_TEMPLATE = """
     std::vector<phi::MetaTensor> {name}_meta_vec;
     for (auto tmp : {name}) {{
       {name}_meta_vec.emplace_back(MakeMetaTensor(*tmp.impl()));
@@ -109,11 +124,11 @@ VECTOR_DIST_META_IN_DECL_TEMPLATE = """
     }}
 """
 # TODO(GhostScreaming): support optional args later
-OPTIONAL_DIST_VECTOR_META_IN_TEMPLATE = """
+OPTIONAL_GLOBAL_VECTOR_META_IN_TEMPLATE = """
 """
-SINGLE_DIST_META_OUT_DECL_TEMPLATE = """
+SINGLE_GLOBAL_META_OUT_DECL_TEMPLATE = """
     phi::MetaTensor meta_{}({});"""
-VECTOR_DIST_META_OUT_DECL_TEMPLATE = """
+VECTOR_GLOBAL_META_OUT_DECL_TEMPLATE = """
     std::vector<phi::MetaTensor> {name}_meta_vec;
     for (auto tmp : {name}) {{
       {name}_meta_vec.emplace_back(phi::MetaTensor(tmp));
@@ -123,11 +138,11 @@ VECTOR_DIST_META_OUT_DECL_TEMPLATE = """
       {name}_meta_ptr_vec[i] = &{name}_meta_vec[i];
     }}
 """
-INFER_SPMD_TEMPLATE = """
+INFER_GLOBAL_SHAPE_TEMPLATE = """
     phi::{}({}{});
 """
 
-# 3. Select Kernel
+# 4. Select Kernel
 KERNEL_SELECTION_TEMPLATE = """
     VLOG(6) << "{} API dist branch: kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
     auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
@@ -137,14 +152,18 @@ KERNEL_SELECTION_TEMPLATE = """
     auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
 """
 
-# 4. Reshard Input
-INPUT_RESHARD_TEMPLATE = """
-"""
+# 5. Reshard Input
+SINGLE_INPUT_RESHARD_TEMPLATE = """
+    auto dist_input_{arg} = ReshardDistTensor(dev_ctx, {arg}, spmd_info.first[{idx}]);"""
 
-# 5. PrepareData
+# 6. PrepareData
 SINGLE_PREPARE_DATA_TEMPLATE = """
-    auto dist_input_{} = PrepareDataForDistTensor({}, GetKernelInputArgDef(kernel.InputAt({}), kernel_backend), {}, kernel_result.is_stride_kernel);
-    auto input_{} = &dist_input_{}->value();
+    dist_input_{arg} = PrepareDataForDistTensor(dist_input_{arg}, GetKernelInputArgDef(kernel.InputAt({idx}), kernel_backend), {flag}, kernel_result.is_stride_kernel);
+    auto input_{arg} = &dist_input_{arg}->value();
+"""
+SINGLE_PREPARE_DATA_TEMPLATE_NO_RESHARD = """
+    auto dist_input_{arg} = PrepareDataForDistTensor({arg}, GetKernelInputArgDef(kernel.InputAt({idx}), kernel_backend), {flag}, kernel_result.is_stride_kernel);
+    auto input_{arg} = &dist_input_{arg}->value();
 """
 VECTOR_PREPARE_DATA_TEMPLATE = """
     auto dist_input_{name}_vec = PrepareDataForDistTensor({name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
@@ -170,7 +189,7 @@ INFER_META_VECTOR_INPUT_TEMPLATE = """
     const auto& input_{} = *input_{}_uq_ptr;
 """
 
-# 6. Infer Local DenseTensor Meta
+# 7. Infer Local DenseTensor Meta
 SINGLE_META_IN_TEMPLATE = """MakeMetaTensor(*input_{}), """
 # TODO(GhostScreaming): support optional args later
 VECTOR_META_IN_TEMPLATE = """dense_input_{}_meta_ptr_vec, """
@@ -189,7 +208,7 @@ INFER_META_TEMPLATE = """
     phi::{}({}{});
 """
 
-# 7. DenseTensor Kernel Call
+# 8. DenseTensor Kernel Call
 # TODO(chenweihang): support kernel fallback later
 SINGLE_OUTPUT_NAME = """dense_out"""
 # TODO(chenweihang): support vector and tuple output later
@@ -204,10 +223,6 @@ KERNEL_CALL_TEMPLATE = """
 """
 PREFIX_VECTOR_TENSOR_NAME = "dense_input_"
 SUFFIX_VECTOR_TENSOR_NAME = "_vec"
-
-# 8. Reshard Output
-OUTPUT_RESHARD_TEMPLATE = """
-"""
 
 # BaseAPI members:
 # inputs:
@@ -252,6 +267,17 @@ class DistForwardAPI(ForwardAPI):
         self.inplace_flag = False
         self.dist_output_args = []
         self.dense_output_args = []
+        self.input_args_code = ""
+
+    # override BaseAPI's method
+    def parse_infer_meta(self, infer_meta_config):
+        infer_meta = infer_meta_config
+        if 'param' not in infer_meta_config:
+            infer_meta['param'] = None
+        if 'spmd_rule' not in infer_meta_config:
+            infer_meta['spmd_rule'] = None
+
+        return infer_meta
 
     def need_to_generate_code_for_inplace_impl(self, i):
         return (
@@ -289,6 +315,55 @@ class DistForwardAPI(ForwardAPI):
             input_args = input_args[:-2]
         return AUTO_PARALLEL_COND_TEMPLATE.format(input_args)
 
+    def generate_infer_spmd_code(self) -> str:
+        if self.infer_meta['spmd_rule'] is not None:
+            input_names = self.inputs['names']
+            attr_names = self.attrs['names']
+
+            infer_meta_params = (
+                self.infer_meta['param']
+                if self.infer_meta['param'] is not None
+                else input_names + attr_names
+            )
+            input_decl_code = ""
+            self.input_args_code = ""
+            for param in infer_meta_params:
+                if param in input_names:
+                    if self.inputs['input_info'][param] == "const Tensor&":
+                        input_decl_code += SINGLE_DIST_META_IN_TEMPLATE.format(
+                            param, param
+                        )
+                        self.input_args_code += "meta_dist_" + param + ", "
+                    else:
+                        raise ValueError(
+                            f"{self.api} : Param of infer_spmd error : {self.inputs['input_info'][param]} type is not supported."
+                        )
+                elif param in attr_names:
+                    self.input_args_code = self.input_args_code + param + ", "
+                elif isinstance(param, str):
+                    self.input_args_code = (
+                        self.input_args_code + "\"" + param + "\", "
+                    )
+                elif isinstance(param, bool):
+                    self.input_args_code = (
+                        self.input_args_code + str(param).lower() + ", "
+                    )
+                else:
+                    self.input_args_code = (
+                        self.input_args_code + str(param) + ", "
+                    )
+
+            # TODO(chenweihang): add general spmd rule later
+            infer_spmd_code = ""
+            infer_spmd_func_code = self.infer_meta['spmd_rule']
+            infer_spmd_code = INFER_SPMD_TEMPLATE.format(
+                infer_spmd_func_code, self.input_args_code[:-2]
+            )
+
+            return input_decl_code + infer_spmd_code
+        else:
+            return ""
+
     def generate_output_creation_code(self) -> str:
         # forward api need to generate api and kernel outputs
         output_num = len(self.outputs['types'])
@@ -311,7 +386,10 @@ class DistForwardAPI(ForwardAPI):
             self.dist_output_args.append('dist_out')
             self.dense_output_args.append('dense_out')
             if self.outputs['types'][0] == 'Tensor':
-                output_creation_code += SINGLE_OUT_CREATION_TEMPLATE
+                if self.infer_meta['spmd_rule'] is not None:
+                    output_creation_code += SINGLE_OUT_CREATION_TEMPLATE
+                else:
+                    output_creation_code += SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD
             elif self.outputs['types'][0] == 'std::vector<Tensor>':
                 output_creation_code += VECTOR_OUT_CREATION_TEMPLATE.format(
                     self.outputs['out_size_expr'][0]
@@ -365,11 +443,18 @@ class DistForwardAPI(ForwardAPI):
                         )
                     )
                 else:
-                    output_creation_code += (
-                        MULTI_SINGLE_OUT_CREATION_TEMPLATE.format(
-                            i, get_out_code, i, i
+                    if self.infer_meta['spmd_rule'] is not None:
+                        output_creation_code += (
+                            MULTI_SINGLE_OUT_CREATION_TEMPLATE.format(
+                                idx=i, out=get_out_code
+                            )
                         )
-                    )
+                    else:
+                        output_creation_code += (
+                            MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD.format(
+                                idx=i, out=get_out_code
+                            )
+                        )
         else:
             raise ValueError(
                 "{} : Output error: the output should not be empty.".format(
@@ -379,10 +464,9 @@ class DistForwardAPI(ForwardAPI):
 
         return output_creation_code
 
-    def generate_infer_spmd_code(self) -> str:
+    def generate_infer_global_shape_code(self) -> str:
         input_names = self.inputs['names']
         attr_names = self.attrs['names']
-        output_names = self.outputs['names']
 
         # 1. get infer meta func name
         infer_meta = self.infer_meta
@@ -399,18 +483,18 @@ class DistForwardAPI(ForwardAPI):
         for param in infer_meta_params:
             if param in input_names:
                 if self.inputs['input_info'][param] == "const Tensor&":
-                    input_args_code += SINGLE_DIST_META_IN_TEMPLATE.format(
+                    input_args_code += SINGLE_GLOBAL_META_IN_TEMPLATE.format(
                         param
                     )
                 elif (
                     self.inputs['input_info'][param]
                     == "const std::vector<Tensor>&"
                 ):
-                    input_args_code += VECTOR_DIST_META_IN_TEMPLATE.format(
+                    input_args_code += VECTOR_GLOBAL_META_IN_TEMPLATE.format(
                         param
                     )
-                    input_meta_code += VECTOR_DIST_META_IN_DECL_TEMPLATE.format(
-                        name=param
+                    input_meta_code += (
+                        VECTOR_GLOBAL_META_IN_DECL_TEMPLATE.format(name=param)
                     )
                 else:
                     raise ValueError(
@@ -430,7 +514,7 @@ class DistForwardAPI(ForwardAPI):
         output_args_code = ""
         for i, out_name in enumerate(self.dist_output_args):
             if self.outputs['types'][i] == 'std::vector<Tensor>':
-                output_decl_code += VECTOR_DIST_META_OUT_DECL_TEMPLATE.format(
+                output_decl_code += VECTOR_GLOBAL_META_OUT_DECL_TEMPLATE.format(
                     name=out_name
                 )
                 if len(self.dense_output_args) == 1:
@@ -440,7 +524,7 @@ class DistForwardAPI(ForwardAPI):
                         f"{out_name} ? {out_name}_meta_ptr_vec : nullptr, "
                     )
             else:
-                output_decl_code += SINGLE_DIST_META_OUT_DECL_TEMPLATE.format(
+                output_decl_code += SINGLE_GLOBAL_META_OUT_DECL_TEMPLATE.format(
                     out_name, out_name
                 )
                 if len(self.dense_output_args) == 1:
@@ -451,10 +535,12 @@ class DistForwardAPI(ForwardAPI):
                     )
         output_args_code = output_args_code[:-2]
 
+        if self.input_args_code != "":
+            input_args_code = self.input_args_code
         return (
             output_decl_code
             + input_meta_code
-            + INFER_SPMD_TEMPLATE.format(
+            + INFER_GLOBAL_SHAPE_TEMPLATE.format(
                 infer_meta_func_code, input_args_code, output_args_code
             )
         )
@@ -465,7 +551,35 @@ class DistForwardAPI(ForwardAPI):
         )
 
     def generate_reshard_input_code(self) -> str:
-        return INPUT_RESHARD_TEMPLATE.format()
+        input_reshard_code = ""
+        if self.infer_meta['spmd_rule'] is not None:
+            input_names = self.inputs['names']
+
+            infer_meta = self.infer_meta
+            infer_meta_params = (
+                infer_meta['param']
+                if infer_meta['param'] is not None
+                else input_names
+            )
+            for i, param in enumerate(infer_meta_params):
+                if param in input_names:
+                    if self.inputs['input_info'][param] == "const Tensor&":
+                        input_reshard_code += (
+                            SINGLE_INPUT_RESHARD_TEMPLATE.format(
+                                arg=param, idx=i
+                            )
+                        )
+                    else:
+                        raise ValueError(
+                            f"{self.api} : Param of reshard input error : {self.inputs['input_info'][param]} type is not supported."
+                        )
+                else:
+                    # do nothing
+                    pass
+        else:
+            # do nothingd
+            pass
+        return input_reshard_code
 
     def generate_single_dense_input(
         self,
@@ -479,14 +593,18 @@ class DistForwardAPI(ForwardAPI):
         if kernel_param is None:
             kernel_param = input_names + attr_names
 
-        input_tensor_code += SINGLE_PREPARE_DATA_TEMPLATE.format(
-            input_name,
-            input_name,
-            kernel_param.index(input_name),
-            trans_flag,
-            input_name,
-            input_name,
-        )
+        if self.infer_meta['spmd_rule'] is not None:
+            input_tensor_code += SINGLE_PREPARE_DATA_TEMPLATE.format(
+                arg=input_name,
+                idx=kernel_param.index(input_name),
+                flag=trans_flag,
+            )
+        else:
+            input_tensor_code += SINGLE_PREPARE_DATA_TEMPLATE_NO_RESHARD.format(
+                arg=input_name,
+                idx=kernel_param.index(input_name),
+                flag=trans_flag,
+            )
 
         return input_tensor_code
 
@@ -706,9 +824,6 @@ class DistForwardAPI(ForwardAPI):
             ", ".join(self.dense_output_args),
         )
 
-    def generate_reshard_output_code(self) -> str:
-        return OUTPUT_RESHARD_TEMPLATE.format()
-
     def generate_return_code(self) -> str:
         return self.gene_return_code()
 
@@ -718,14 +833,14 @@ class DistForwardAPI(ForwardAPI):
             return ""
         return MAIN_DIST_BRANCH_TEMPLATE.format(
             self.generate_if_condition_code(),
-            self.generate_output_creation_code(),
             self.generate_infer_spmd_code(),
+            self.generate_output_creation_code(),
+            self.generate_infer_global_shape_code(),
             self.generate_kernel_selection_code(),
             self.generate_reshard_input_code(),
             self.generate_prepare_data_code(),
             self.generate_infer_meta_code(),
             self.generate_kernel_call_code(),
-            self.generate_reshard_output_code(),
             self.generate_return_code(),
         )
 
@@ -777,11 +892,14 @@ class DistForwardAPI(ForwardAPI):
             # 3. doesn't support view api
             # 4. only for general forward and backward
             # 5. only support single tensor input and output
+            # 6. doesn't support double grad and triple grad
             dist_branch_code = ""
             if (
                 len(self.inputs['names']) > 0
                 and len(self.view_map) == 0
                 and self.check_argument_whether_support_auto_parallel()
+                and not self.api.endswith("_double_grad")
+                and not self.api.endswith("_triple_grad")
             ):
                 dist_branch_code = self.generate_auto_paralel_branch()
             return API_IMPL_TEMPLATE.format(

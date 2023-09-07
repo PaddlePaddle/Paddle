@@ -790,7 +790,7 @@ def log_sigmoid(x, name=None):
         log\_sigmoid(x) = log \frac{1}{1 + e^{-x}}
 
     Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type float32, float64, complex64, complex128.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -813,7 +813,10 @@ def log_sigmoid(x, name=None):
         return _C_ops.logsigmoid(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'log_sigmoid'
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'complex64', 'complex128'],
+            'log_sigmoid',
         )
         helper = LayerHelper("log_sigmoid", **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
