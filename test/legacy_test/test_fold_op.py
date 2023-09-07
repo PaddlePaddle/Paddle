@@ -39,7 +39,7 @@ class TestFoldOp(OpTest):
         self.dilations = [1, 1]
         self.output_sizes = [4, 5]
         input_shape = [self.batch_size, self.input_channels, self.length]
-        self.x = np.random.rand(*input_shape).astype(np.float64)
+        self.x = np.random.rand(*input_shape).astype(self.dtype)
         if self.dtype == np.complex64 or self.dtype == np.complex128:
             self.x = (
                 np.random.uniform(-1, 1, input_shape)
@@ -47,7 +47,7 @@ class TestFoldOp(OpTest):
             ).astype(self.dtype)
 
     def init_dtype(self):
-        pass
+        self.dtype = np.float64
 
     def calc_fold(self):
         output_shape = [0] * 4
