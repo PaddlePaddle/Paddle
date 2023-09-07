@@ -347,6 +347,7 @@ def launch():
             nnodes = int(nnodes)
         tuner_cfg["nodes"] = nnodes
         tuner_cfg["num_gpus"] = gpus_per_node * tuner_cfg["nodes"]
+        mode = tuner_cfg.get("mode", None)
 
         if nnodes > 1:
             from .utils.etcd_client import ETCDClient
@@ -741,6 +742,7 @@ def launch():
                 best_cfg, err = recorder.get_best(
                     metric=tuner_cfg['metric_cfg']['name'],
                     direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
+                    mode=mode,
                 )
                 if err:
                     raise ValueError(
@@ -766,6 +768,7 @@ def launch():
             best_cfg, err = recorder.get_best(
                 metric=tuner_cfg['metric_cfg']['name'],
                 direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
+                mode=mode,
             )
             if err:
                 raise ValueError(

@@ -48,10 +48,24 @@ class HistoryRecorder:
             )
         return
 
-    def get_best(self, metric, direction) -> Tuple[dict, bool]:
+    def get_best(self, metric, direction, mode=None) -> Tuple[dict, bool]:
         self.sort_metric(direction=direction, metric_name=metric)
         if len(self.history) == 0:
             return (self.history[0], True)
+        if mode == "SFT" or mode == "LoRA":
+            best_cfg = self.history[0]
+            first_few = 1
+            for cfg in self.history:
+                if (
+                    cfg["max_mem_usage"] < best_cfg["max_mem_usage"]
+                    and cfg["time"] != -1
+                ):
+                    best_cfg = cfg
+                    first_few += 1
+                if first_few >= 5:
+                    break
+            return (best_cfg, False)
+
         return (self.history[0], False)
 
     def store_history(self, path="./history.csv"):
