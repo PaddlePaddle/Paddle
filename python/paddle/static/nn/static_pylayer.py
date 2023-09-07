@@ -98,6 +98,7 @@ class StaticPyLayerBlock:
         )
 
         self.fwd_op_id = pylayer_op.idx
+        self.helper.main_program._sync_with_cpp()
 
     def complete_backward_block(self):
         inside_block = self.helper.main_program.current_block()
@@ -135,6 +136,8 @@ class StaticPyLayerBlock:
                         f"{var.name} was saved in forward block but could not be found in backward block. Maybe {var.name} was renamed somewhere."
                     )
                 inside_block._remove_var(var.name)
+
+        self.helper.main_program._sync_with_cpp()
 
     def complete(self):
         if not self.is_backward_block:
@@ -255,10 +258,11 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
 
     Args:
         forward_fn (callable): A callable to be performed in forward propagation
-        inputs (list[Variable]): The list of if input Variable to the ``forward_fn``
+        inputs (list[Variable]): The list of input Variable to the ``forward_fn``
         backward_fn (callable, optional): A callable to be performed in backward propagation. Default: None, which means no need to do backward propagation.
         name (str, optional): The default value is ``None`` . Normally users
-            don't have to set this parameter.
+            don't have to set this parameter. For more information, please
+            refer to :ref:`api_guide_Name` .
 
     Returns:
         Variable|list(Variable)|tuple(Variable): returns the output of ``forward_fn(inputs)``
