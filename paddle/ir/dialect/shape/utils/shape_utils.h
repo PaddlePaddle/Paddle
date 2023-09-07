@@ -18,6 +18,7 @@
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
+#include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/utils.h"
 #include "paddle/ir/dialect/shape/ir/shape_op.h"
@@ -45,7 +46,6 @@ class SymbolTable {
  public:
   explicit SymbolTable(ir::Operation* symbolTableOp)
       : symbolTableOp_(symbolTableOp) {}
-
   template <typename T>
   typename std::enable_if<std::is_same<T, SymbolicDim>::value,
                           SymbolicDim>::type
@@ -97,6 +97,7 @@ struct SymProductHasher {
 class SymbolicDimMgr {
  public:
   explicit SymbolicDimMgr(ir::ModuleOp m);
+  bool load();
   SymbolicDim newSymbolicDim(const std::string& name = {});
   SymbolicDim newConstantSymbolicDim(int64_t val);
   std::vector<SymbolicDim> createSymbolicDimsForRankedValue(Value value);
@@ -104,9 +105,28 @@ class SymbolicDimMgr {
   bool isSymbolicDimEqual(SymbolicDim lhs, SymbolicDim rhs);
   SymbolTable& symbolTable() { return symbolTable_; }
   bool mapSymbolicDimEqual(SymbolicDim lhs, SymbolicDim rhs);
+  SymbolicDimProduct simplifySymbolicDimProduct(const SymbolicDimProduct& x);
+  std::pair<SymbolicDimProduct, SymbolicDimProduct>
+  simplifySymbolicDimProductPair(const SymbolicDimProduct& x,
+                                 const SymbolicDimProduct& y);
+  SymbolicDimProduct* symbolicDimProductDivide(const SymbolicDimProduct& x,
+                                               const SymbolicDimProduct& y);
+
+  bool save();  // TODO(liujinnan): load constraint func
+
+  bool isSymbolicDimProductEqual(const SymbolicDimProduct& lhs,
+                                 const SymbolicDimProduct& rhs);
+  bool mapSymbolicDimProductEqual(const SymbolicDimProduct& lhs,
+                                  const SymbolicDimProduct& rhs);
 
  private:
   const std::string getNextName();
+  bool updateProductEqualityMap();
+  bool isMultipleOfKnownSymbolicDimProductEqualPair(
+      const SymbolicDimProduct& lhs, const SymbolicDimProduct& rhs);
+  bool saveShapeConstraintGraph();  // TODO(liujinnan): load & save
+                                    // shape_constraint_func
+  bool loadShapeConstraintGraph();
 
  private:
   ir::ModuleOp m_;
@@ -127,6 +147,6 @@ class SymbolicDimMgr {
       std::unordered_map<SymbolicDimProduct, bool, SymProductHasher>,
       SymProductHasher>;
   SymbolicDimProductMap productEqualityMap_;
+  bool productEqualityMapUpdated_ = true;
 };
-
 }  // namespace ir

@@ -88,6 +88,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_reshard_r_to_p MODULES test_reshard_r_to_p)
   set_tests_properties(test_reshard_r_to_p
                        PROPERTIES LABELS "RUN_TYPE=EXECLUSIVE" TIMEOUT 100)
+  py_test_modules(test_semi_auto_parallel_basic MODULES
+                  test_semi_auto_parallel_basic)
+  set_tests_properties(test_semi_auto_parallel_basic
+                       PROPERTIES LABELS "RUN_TYPE=EXECLUSIVE" TIMEOUT 100)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout

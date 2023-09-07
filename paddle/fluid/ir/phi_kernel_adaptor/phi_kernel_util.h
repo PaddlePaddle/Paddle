@@ -118,8 +118,18 @@ void BuildPhiContext(ir::Operation* op,
       InListType inputs;
       auto& variable_array = var->Get<paddle::framework::VariableRefArray>();
       for (size_t i = 0; i < variable_array.size(); ++i) {
-        inputs.emplace_back(InType(const_cast<phi::DenseTensor*>(
-            &(variable_array[i]->Get<phi::DenseTensor>()))));
+        if (variable_array[i]->IsType<phi::DenseTensor>()) {
+          inputs.emplace_back(InType(const_cast<phi::DenseTensor*>(
+              &(variable_array[i]->Get<phi::DenseTensor>()))));
+        } else if (variable_array[i]->IsType<phi::SelectedRows>()) {
+          inputs.emplace_back(InType(const_cast<phi::SelectedRows*>(
+              &(variable_array[i]->Get<phi::SelectedRows>()))));
+        } else {
+          PADDLE_THROW(phi::errors::Unimplemented(
+              "Only support Vector<DenseTensor> and vector<SelectedRows> now, "
+              "not support vector<%d>.",
+              variable_array[i]->Type()));
+        }
       }
       ctx->EmplaceBackInputs(inputs);
     } else {
@@ -315,8 +325,18 @@ void BuildPhiContext(ir::Operation* op,
       auto& variable_array = inner_scope->FindVar(name_map.at(out_ptr))
                                  ->Get<paddle::framework::VariableRefArray>();
       for (size_t i = 0; i < variable_array.size(); ++i) {
-        outputs.emplace_back(OutType(const_cast<phi::DenseTensor*>(
-            &(variable_array[i]->Get<phi::DenseTensor>()))));
+        if (variable_array[i]->IsType<phi::DenseTensor>()) {
+          outputs.emplace_back(OutType(const_cast<phi::DenseTensor*>(
+              &(variable_array[i]->Get<phi::DenseTensor>()))));
+        } else if (variable_array[i]->IsType<phi::SelectedRows>()) {
+          outputs.emplace_back(OutType(const_cast<phi::SelectedRows*>(
+              &(variable_array[i]->Get<phi::SelectedRows>()))));
+        } else {
+          PADDLE_THROW(phi::errors::Unimplemented(
+              "Only support Vector<DenseTensor> and vector<SelectedRows> now, "
+              "not support vector<%d>.",
+              variable_array[i]->Type()));
+        }
       }
       ctx->EmplaceBackOutputs(outputs);
     } else {

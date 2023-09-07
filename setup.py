@@ -1377,6 +1377,7 @@ def get_setup_parameters():
         'paddle.distributed.utils',
         'paddle.distributed.sharding',
         'paddle.distributed.fleet',
+        'paddle.distributed.auto_tuner',
         'paddle.distributed.launch',
         'paddle.distributed.launch.context',
         'paddle.distributed.launch.controllers',
