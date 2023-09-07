@@ -164,7 +164,7 @@ extra_op_attrs = {
 paddle_type_to_proto_type = {
     DataType.BOOL: core.VarDesc.VarType.BOOL,
     DataType.FLOAT16: core.VarDesc.VarType.FP16,
-    DataType.UINT16: core.VarDesc.VarType.BF16,
+    DataType.BFLOAT16: core.VarDesc.VarType.BF16,
     DataType.FLOAT32: core.VarDesc.VarType.FP32,
     DataType.FLOAT64: core.VarDesc.VarType.FP64,
     DataType.INT8: core.VarDesc.VarType.INT8,
