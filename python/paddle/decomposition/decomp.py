@@ -16,7 +16,7 @@ import logging
 import typing
 
 from paddle import ir
-from paddle.fluid.libpaddle.ir import Block, Program
+from paddle.base.libpaddle.ir import Block, Program
 from paddle.framework import core
 
 from . import register

@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import convert_uint16_to_float
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.data_feeder import convert_dtype
+from paddle.base import core
+from paddle.base.data_feeder import convert_dtype
 from paddle.static import Program, program_guard
 
 
@@ -214,7 +214,7 @@ class TestEmptyLikeAPI_StaticForFP16Op(TestEmptyLikeAPICommon):
 
     def test_static_graph(self):
         paddle.enable_static()
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
@@ -247,7 +247,7 @@ class TestEmptyLikeAPI_StaticForBF16Op(TestEmptyLikeAPICommon):
 
     def test_static_graph(self):
         paddle.enable_static()
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()

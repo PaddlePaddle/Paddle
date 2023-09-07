@@ -295,7 +295,7 @@ void RnnFunc(const Context& dev_ctx,
                         num_layers,
                         init_h_dims[0]));
   if (is_lstm(cell_type)) {
-    const auto& init_c_dims = init_c->dims();
+    const auto& init_c_dims = init_c->dims();  // NOLINT
     PADDLE_ENFORCE_EQ(init_c_dims[0],
                       num_layers * direction_num,
                       phi::errors::InvalidArgument(

@@ -14,8 +14,8 @@
 
 from paddle import _C_ops
 
-from ...fluid import core, framework
-from ...fluid.framework import (
+from ...base import core, framework
+from ...base.framework import (
     _current_expected_place,
     in_dygraph_mode,
     in_dynamic_or_new_ir_mode,

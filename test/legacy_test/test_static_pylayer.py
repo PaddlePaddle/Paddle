@@ -17,10 +17,10 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import Program, program_guard
+from paddle import base
+from paddle.base import core
+from paddle.base.backward import append_backward
+from paddle.base.framework import Program, program_guard
 
 np.random.seed(123)
 
@@ -45,11 +45,11 @@ class TestStatocPyLayerInputOutput(unittest.TestCase):
             out = paddle.static.nn.static_pylayer(forward_fn, [data])
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         x = np.array([2.0], dtype=np.float32)
         (ret,) = exe.run(main_program, feed={"X": x}, fetch_list=[out.name])
         np.testing.assert_allclose(
@@ -76,11 +76,11 @@ class TestStatocPyLayerInputOutput(unittest.TestCase):
             out = paddle.static.nn.static_pylayer(forward_fn, [data])
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         (ret,) = exe.run(main_program, fetch_list=[out.name])
         np.testing.assert_allclose(
             np.asarray(ret), np.array(6.0, np.float32), rtol=1e-05
@@ -114,11 +114,11 @@ class TestStatocPyLayerInputOutput(unittest.TestCase):
             append_backward(out)
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         ret, x_grad = exe.run(
             main_program, fetch_list=[out.name, data.grad_name]
         )
@@ -146,11 +146,11 @@ class TestStatocPyLayerInputOutput(unittest.TestCase):
             )
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         ret_1, ret_2 = exe.run(
             main_program, fetch_list=[out_1.name, out_2.name]
         )
@@ -184,11 +184,11 @@ class TestStatocPyLayerInputOutput(unittest.TestCase):
             out = paddle.static.nn.static_pylayer(forward_fn, [data])
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         exe.run(main_program)
         self.assertIsNone(out)
 
@@ -284,11 +284,11 @@ class _TestControlFlowNestedStaticPyLayer(unittest.TestCase):
             append_backward(loss)
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         for feed_i in range(0, 10):
             print(feed_i)
             expected_a = 2.0 * feed_i

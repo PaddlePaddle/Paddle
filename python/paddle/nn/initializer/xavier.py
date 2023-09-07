@@ -16,9 +16,9 @@ import math
 
 from paddle import _C_ops
 
-from ...fluid import core, framework, unique_name
-from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid.framework import (
+from ...base import core, framework, unique_name
+from ...base.data_feeder import check_variable_and_dtype
+from ...base.framework import (
     _current_expected_place,
     in_dygraph_mode,
     in_new_ir_mode,

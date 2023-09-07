@@ -14,8 +14,8 @@
 import warnings
 
 from paddle import _legacy_C_ops
-from paddle.fluid import framework
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.base import framework
+from paddle.base.framework import in_dygraph_mode
 from paddle.optimizer import Optimizer
 
 
@@ -44,14 +44,14 @@ class LarsMomentumOptimizer(Optimizer):
             This parameter is required in dygraph mode. \
             The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
+             :ref:`api_base_regularizer_L1Decay` , :ref:`api_base_regularizer_L2Decay` . If a parameter has set \
+            regularizer using :ref:`api_base_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+            ( :ref:`api_base_clip_GradientClipByGlobalNorm` , :ref:`api_base_clip_GradientClipByNorm` ,
+            :ref:`api_base_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
         exclude_from_weight_decay (list[str], optional): Name string of layers which will be exclude from lars weight decay. Default is None.
@@ -64,7 +64,7 @@ class LarsMomentumOptimizer(Optimizer):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
+            import paddle.base as base
             import numpy as np
 
             paddle.enable_static()
@@ -73,11 +73,11 @@ class LarsMomentumOptimizer(Optimizer):
                 name="inp", shape=[2, 2], dtype='float32')
             out = paddle.static.nn.fc(inp, size=3)
             out = paddle.sum(out)
-            optimizer = fluid.optimizer.LarsMomentumOptimizer(learning_rate=0.001, momentum=0.9)
+            optimizer = base.optimizer.LarsMomentumOptimizer(learning_rate=0.001, momentum=0.9)
             optimizer.minimize(out)
 
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
+            exe = base.Executor(base.CPUPlace())
+            exe.run(base.default_startup_program())
             exe.run(
                 feed={"inp": np_inp},
                 fetch_list=[out.name])

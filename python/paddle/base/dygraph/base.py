@@ -18,10 +18,10 @@ import functools
 import inspect
 import sys
 import numpy as np
-from paddle.fluid import core
-from paddle.fluid import framework
-from paddle.fluid.framework import global_var
-from paddle.fluid.multiprocess_utils import CleanupFuncRegistrar
+from paddle.base import core
+from paddle.base import framework
+from paddle.base.framework import global_var
+from paddle.base.multiprocess_utils import CleanupFuncRegistrar
 from .tracer import Tracer
 import logging
 from ..data_feeder import convert_dtype
@@ -166,13 +166,13 @@ def _convert_into_variable(tensor):
 def enabled():
     """
     This function checks whether the program runs in dynamic graph mode or not.
-    You can enter dynamic graph mode with :ref:`api_fluid_dygraph_guard` api,
-    or enable and disable dynamic graph mode with :ref:`api_fluid_dygraph_enable_dygraph`
-    and :ref:`api_fluid_dygraph_disable_dygraph` api .
+    You can enter dynamic graph mode with :ref:`api_base_dygraph_guard` api,
+    or enable and disable dynamic graph mode with :ref:`api_base_dygraph_enable_dygraph`
+    and :ref:`api_base_dygraph_disable_dygraph` api .
 
     **Note**:
-        ``fluid.dygraph.enabled`` is the alias of ``fluid.in_dygraph_mode``, and
-        ``fluid.in_dygraph_mode`` is recommended to use for now.
+        ``base.dygraph.enabled`` is the alias of ``base.in_dygraph_mode``, and
+        ``base.in_dygraph_mode`` is recommended to use for now.
 
     Returns:
         bool: Whether the program is running in dynamic graph mode.
@@ -180,12 +180,12 @@ def enabled():
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle.base as base
 
-            fluid.enable_dygraph()  # Now we are in dygragh mode
-            print(fluid.dygraph.enabled())  # True
-            fluid.disable_dygraph()
-            print(fluid.dygraph.enabled())  # False
+            base.enable_dygraph()  # Now we are in dygragh mode
+            print(base.dygraph.enabled())  # True
+            base.disable_dygraph()
+            print(base.dygraph.enabled())  # False
     """
     # TODO(jiabin): Make this check as in_dygraph_mode when we support default eager mode.
     return framework.in_dygraph_mode()
@@ -289,18 +289,18 @@ def no_grad(func=None):
      .. code-block:: python
 
         import numpy as np
-        import paddle.fluid as fluid
+        import paddle.base as base
 
         # use as generator
 
         data = np.array([[2, 3], [4, 5]]).astype('float32')
-        with fluid.dygraph.guard():
-            l0 = fluid.Linear(2, 2)  # l0.weight.gradient() is None
-            l1 = fluid.Linear(2, 2)
-            with fluid.dygraph.no_grad():
+        with base.dygraph.guard():
+            l0 = base.Linear(2, 2)  # l0.weight.gradient() is None
+            l1 = base.Linear(2, 2)
+            with base.dygraph.no_grad():
                 # l1.weight.stop_gradient is False
                 tmp = l1.weight * 2  # tmp.stop_gradient is True
-            x = fluid.dygraph.to_variable(data)
+            x = base.dygraph.to_variable(data)
             y = l0(x) + tmp
             o = l1(y)
             o.backward()
@@ -309,13 +309,13 @@ def no_grad(func=None):
 
         # use as decorator
 
-        @fluid.dygraph.no_grad
+        @base.dygraph.no_grad
         def test_layer():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 inp = np.ones([3, 1024], dtype='float32')
-                t = fluid.dygraph.base.to_variable(inp)
-                linear1 = fluid.Linear(1024, 4, bias_attr=False)
-                linear2 = fluid.Linear(4, 4)
+                t = base.dygraph.base.to_variable(inp)
+                linear1 = base.Linear(1024, 4, bias_attr=False)
+                linear2 = base.Linear(4, 4)
                 ret = linear1(t)
                 dy_ret = linear2(ret)
 
@@ -555,7 +555,7 @@ def guard(place=None):
     This context will create a dygraph context for dygraph to run, using python ``with`` statement.
 
     Parameters:
-        place(fluid.CPUPlace| fluid.CUDAPlace|str, optional): Place to execute dygraph.
+        place(base.CPUPlace| base.CUDAPlace|str, optional): Place to execute dygraph.
             If None, the running place will be determined according to the way of paddle compilation.
             If ``place`` is string, It can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the
             index of the GPUs or XPUs. Default: None
@@ -568,13 +568,13 @@ def guard(place=None):
      .. code-block:: python
 
         import numpy as np
-        import paddle.fluid as fluid
+        import paddle.base as base
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             inp = np.ones([3, 1024], dtype='float32')
-            t = fluid.dygraph.base.to_variable(inp)
-            linear1 = fluid.Linear(1024, 4, bias_attr=False)
-            linear2 = fluid.Linear(4, 4)
+            t = base.dygraph.base.to_variable(inp)
+            linear1 = base.Linear(1024, 4, bias_attr=False)
+            linear2 = base.Linear(4, 4)
             ret = linear1(t)
             dy_ret = linear2(ret)
 
@@ -859,25 +859,25 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
      .. code-block:: python
 
         import numpy as np
-        import paddle.fluid as fluid
+        import paddle.base as base
 
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             x = np.ones([2, 2], np.float32)
-            y = fluid.dygraph.to_variable(x, zero_copy=False)
+            y = base.dygraph.to_variable(x, zero_copy=False)
             x[0][0] = -1
             y[0][0].numpy()  # array([1.], dtype=float32)
-            y = fluid.dygraph.to_variable(x)
+            y = base.dygraph.to_variable(x)
             x[0][0] = 0
             y[0][0].numpy()  # array([0.], dtype=float32)
             c = np.array([2+1j, 2])
-            z = fluid.dygraph.to_variable(c)
+            z = base.dygraph.to_variable(c)
             z.numpy() # array([2.+1.j, 2.+0.j])
             z.dtype # 'complex128'
 
-            y = fluid.dygraph.to_variable([[0.1, 1.2], [2.2, 3.1], [4.9, 5.2]])
+            y = base.dygraph.to_variable([[0.1, 1.2], [2.2, 3.1], [4.9, 5.2]])
             y.shape     # [3L, 2L]
 
-            y = fluid.dygraph.to_variable(((0.1, 1.2), (2.2, 3.1), (4.9, 5.2)), dtype='int32')
+            y = base.dygraph.to_variable(((0.1, 1.2), (2.2, 3.1), (4.9, 5.2)), dtype='int32')
             y.shape     # [3L, 2L]
 
     """
@@ -892,7 +892,7 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
     )
     if not isinstance(value, support_type):
         raise TypeError(
-            "The type of 'value' in fluid.dygraph.to_variable must be %s, but received %s."
+            "The type of 'value' in base.dygraph.to_variable must be %s, but received %s."
             % (support_type, type(value))
         )
     if isinstance(value, (core.eager.Tensor, framework.Variable)):
