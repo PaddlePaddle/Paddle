@@ -159,6 +159,7 @@ def dtensor_from_fn(fn, dist_attr, *args, **kwargs):
     Examples:
 
         .. code-block:: python
+
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> # Create a distributed attribute
