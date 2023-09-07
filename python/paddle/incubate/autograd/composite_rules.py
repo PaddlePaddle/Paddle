@@ -20,7 +20,7 @@
 import functools
 import operator
 
-from paddle.fluid import core
+from paddle.base import core
 
 from .primitives import *  # noqa: F403
 from .primreg import REGISTER_COMPOSITE, lookup_composite
@@ -35,7 +35,7 @@ def _composite(op, *args):
 def softmax_composite(x, axis):
     """define composite rule of op softmax"""
     is_amp = False
-    from paddle.fluid.data_feeder import convert_dtype
+    from paddle.base.data_feeder import convert_dtype
 
     # Softmax need fp32 compute since it has sum op in
     dtype = convert_dtype(x.dtype)
@@ -78,7 +78,7 @@ def composite_batchnorm(
     """
 
     is_amp = False
-    from paddle.fluid.data_feeder import convert_dtype
+    from paddle.base.data_feeder import convert_dtype
 
     dtype = convert_dtype(x.dtype)
     if dtype in ["float16", "uint16"]:
@@ -152,7 +152,7 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
     var = mean((x-mean(x))^2)
     """
     is_amp = False
-    from paddle.fluid.data_feeder import convert_dtype
+    from paddle.base.data_feeder import convert_dtype
 
     dtype = convert_dtype(x.dtype)
     if dtype in ["float16", "uint16"]:
@@ -194,7 +194,7 @@ def instancenorm_composite(x, scale, bias, epsilon):
     var = mean((x-mean(x))^2)
     """
     is_amp = False
-    from paddle.fluid.data_feeder import convert_dtype
+    from paddle.base.data_feeder import convert_dtype
 
     dtype = convert_dtype(x.dtype)
     if dtype in ["float16", "uint16"]:
@@ -259,7 +259,7 @@ def gelu_composite(x, approximate):
 def mean_composite(x, axis, keepdim):
     """define composite rule of op mean"""
     is_amp = False
-    from paddle.fluid.data_feeder import convert_dtype
+    from paddle.base.data_feeder import convert_dtype
 
     dtype = convert_dtype(x.dtype)
     if dtype in ["float16", "uint16"]:
@@ -436,7 +436,7 @@ def dropout_composite(x, seed_tensor, p, is_test, mode, seed, fix_seed):
 
 
 def bernoulli(shape, dtype, p, seed=0):
-    from paddle.fluid.data_feeder import convert_dtype
+    from paddle.base.data_feeder import convert_dtype
 
     # TODO(jiabin) Fix uniform doesn't support float16 error in CINN
     new_dtype = (
@@ -493,7 +493,7 @@ def sigmoid_composite(x):
     res = 1 / (1 + exp(-x))
     """
     is_amp = False
-    from paddle.fluid.data_feeder import convert_dtype
+    from paddle.base.data_feeder import convert_dtype
 
     dtype = convert_dtype(x.dtype)
     if dtype in ["float16", "uint16"]:
@@ -512,7 +512,7 @@ def silu_composite(x):
     res = x / (1 + exp(-x))
     """
     is_amp = False
-    from paddle.fluid.data_feeder import convert_dtype
+    from paddle.base.data_feeder import convert_dtype
 
     dtype = convert_dtype(x.dtype)
     if dtype in ["float16", "uint16"]:
@@ -592,7 +592,7 @@ def sqrt_composite(x):
     res = pow(x, 0.5)
     """
     is_amp = False
-    from paddle.fluid.data_feeder import convert_dtype
+    from paddle.base.data_feeder import convert_dtype
 
     dtype = convert_dtype(x.dtype)
     if dtype in ["float16", "uint16"]:
@@ -611,7 +611,7 @@ def pow_composite(x, y):
     res = x^y
     """
     is_amp = False
-    from paddle.fluid.data_feeder import convert_dtype
+    from paddle.base.data_feeder import convert_dtype
 
     dtype = convert_dtype(x.dtype)
     if dtype in ["float16", "uint16"]:
@@ -661,7 +661,7 @@ def rsqrt_composite(x):
     """define composite rule of op rsqrt."""
     # rsqrt(x) = x^(-0.5)
     is_amp = False
-    from paddle.fluid.data_feeder import convert_dtype
+    from paddle.base.data_feeder import convert_dtype
 
     dtype = convert_dtype(x.dtype)
     if dtype in ["float16", "uint16"]:
@@ -684,7 +684,7 @@ def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
     N, C, H, W = x.shape
 
     is_amp = False
-    from paddle.fluid.data_feeder import convert_dtype
+    from paddle.base.data_feeder import convert_dtype
 
     dtype = convert_dtype(x.dtype)
     # when inputs are float16 or bfloat16, convert to float32 in computing

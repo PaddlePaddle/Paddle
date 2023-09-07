@@ -79,8 +79,8 @@ using gflags::DoubleFromEnv;
 using gflags::Int32FromEnv;
 using gflags::Int64FromEnv;
 using gflags::StringFromEnv;
-using gflags::UInt32FromEnv;
-using gflags::UInt64FromEnv;
+using gflags::Uint32FromEnv;
+using gflags::Uint64FromEnv;
 #else
 #define DEFINE_FROM_ENV_FUNC(type, name)                     \
   inline type name##FromEnv(const std::string& env_var_name, \
@@ -90,9 +90,9 @@ using gflags::UInt64FromEnv;
 
 DEFINE_FROM_ENV_FUNC(bool, Bool);
 DEFINE_FROM_ENV_FUNC(int32_t, Int32);
-DEFINE_FROM_ENV_FUNC(uint32_t, UInt32);
+DEFINE_FROM_ENV_FUNC(uint32_t, Uint32);
 DEFINE_FROM_ENV_FUNC(int64_t, Int64);
-DEFINE_FROM_ENV_FUNC(uint64_t, UInt64);
+DEFINE_FROM_ENV_FUNC(uint64_t, Uint64);
 DEFINE_FROM_ENV_FUNC(double, Double);
 DEFINE_FROM_ENV_FUNC(std::string, String);
 

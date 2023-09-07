@@ -50,7 +50,7 @@ BufferedReader::BufferedReader(
   VLOG(1) << "BufferedReader";
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place_) && !pin_memory) {
-    int dev_idx = place_.device;
+    int dev_idx = place_.device;  // NOLINT
     compute_stream_ =
         ((phi::GPUContext *)(platform::DeviceContextPool::Instance().Get(
              place_)))

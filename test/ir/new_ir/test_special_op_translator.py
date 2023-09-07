@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import ir
-from paddle.fluid import core
+from paddle.base import core
 from paddle.framework import LayerHelper
 
 paddle.enable_static()

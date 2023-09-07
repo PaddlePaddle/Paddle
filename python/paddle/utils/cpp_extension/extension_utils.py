@@ -38,8 +38,8 @@ try:
 except ImportError:
     DEVNULL = open(os.devnull, 'wb')
 
-from ...fluid import core
-from ...fluid.framework import OpProtoHolder
+from ...base import core
+from ...base.framework import OpProtoHolder
 from ...sysconfig import get_include, get_lib
 
 logger = logging.getLogger("utils.cpp_extension")
@@ -448,13 +448,13 @@ def get_rocm_arch_flags(cflags):
     return cflags
 
 
-def _get_fluid_path():
+def _get_base_path():
     """
-    Return installed fluid dir path.
+    Return installed base dir path.
     """
     import paddle
 
-    return os.path.join(os.path.dirname(paddle.__file__), 'fluid')
+    return os.path.join(os.path.dirname(paddle.__file__), 'base')
 
 
 def _get_core_name():
@@ -471,7 +471,7 @@ def _get_lib_core_path():
     """
     raw_core_name = _get_core_name()
     lib_core_name = f"lib{raw_core_name[:-3]}.dylib"
-    return os.path.join(_get_fluid_path(), lib_core_name)
+    return os.path.join(_get_base_path(), lib_core_name)
 
 
 def _get_dll_core_path():
@@ -480,17 +480,17 @@ def _get_dll_core_path():
     """
     raw_core_name = _get_core_name()
     dll_core_name = "libpaddle.dll"
-    return os.path.join(_get_fluid_path(), dll_core_name)
+    return os.path.join(_get_base_path(), dll_core_name)
 
 
 def _reset_so_rpath(so_path):
     """
     NOTE(Aurelius84): Runtime path of libpaddle.so is modified into `@loader_path/../libs`
     in setup.py.in. While loading custom op, `@loader_path` is the dirname of custom op
-    instead of `paddle/fluid`. So we modify `@loader_path` from custom dylib into `@rpath`
+    instead of `paddle/base`. So we modify `@loader_path` from custom dylib into `@rpath`
     to ensure dynamic loader find it correctly.
 
-    Moreover, we will add `-rpath site-packages/paddle/fluid` while linking the dylib so
+    Moreover, we will add `-rpath site-packages/paddle/base` while linking the dylib so
     that we don't need to set `LD_LIBRARY_PATH` any more.
     """
     assert os.path.exists(so_path)
@@ -518,7 +518,7 @@ def _get_include_dirs_when_compiling(compile_dir):
     with open(include_dirs_file, 'r') as f:
         include_dirs = [line.strip() for line in f.readlines() if line.strip()]
 
-    extra_dirs = ['paddle/fluid/platform']
+    extra_dirs = ['paddle/base/platform']
     all_include_dirs = list(include_dirs)
     for extra_dir in extra_dirs:
         for include_dir in include_dirs:
@@ -583,7 +583,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         # ----------------------- MacOS Platform ----------------------- #
         else:
             # See _reset_so_rpath for details.
-            extra_link_args.append(f'-Wl,-rpath,{_get_fluid_path()}')
+            extra_link_args.append(f'-Wl,-rpath,{_get_base_path()}')
             # On MacOS, ld don't support `-l:xx`, so we create a
             # liblibpaddle.dylib symbol link.
             lib_core_name = create_sym_link_if_not_exist()
@@ -606,7 +606,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         kwargs['runtime_library_dirs'] = runtime_library_dirs
 
     if compile_dir is None:
-        # Add this compile option to isolate fluid headers
+        # Add this compile option to isolate base headers
         add_compile_flag(extra_compile_args, ['-DPADDLE_WITH_CUSTOM_KERNEL'])
     kwargs['extra_compile_args'] = extra_compile_args
 
@@ -621,7 +621,7 @@ def create_sym_link_if_not_exist():
     assert OS_NAME.startswith('darwin') or IS_WINDOWS
 
     raw_core_name = _get_core_name()
-    core_path = os.path.join(_get_fluid_path(), raw_core_name)
+    core_path = os.path.join(_get_base_path(), raw_core_name)
     if IS_WINDOWS:
         new_dll_core_path = _get_dll_core_path()
         # create symbol link on windows
@@ -871,8 +871,8 @@ def find_paddle_libraries(use_cuda=False):
             cuda_lib_dir = find_cuda_libraries()
             paddle_lib_dirs.extend(cuda_lib_dir)
 
-    # add `paddle/fluid` to search `libpaddle.so`
-    paddle_lib_dirs.append(_get_fluid_path())
+    # add `paddle/base` to search `libpaddle.so`
+    paddle_lib_dirs.append(_get_base_path())
 
     return paddle_lib_dirs
 
@@ -1142,9 +1142,9 @@ def _custom_api_content(op_name):
     )
     API_TEMPLATE = textwrap.dedent(
         """
-        import paddle.fluid.core as core
+        import paddle.base.core as core
         from paddle.framework import in_dynamic_mode
-        from paddle.fluid.layer_helper import LayerHelper
+        from paddle.base.layer_helper import LayerHelper
 
         def {op_name}({params_list}):
             # The output variable's dtype use default value 'float32',

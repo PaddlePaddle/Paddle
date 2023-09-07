@@ -167,10 +167,10 @@ bool RunPassAndAssert(Graph* graph,
                       int added_nodes_count) {
   if (!TestIsReachable(*graph, from, to)) return false;
 
-  int original_nodes_num = graph->Nodes().size();
+  int original_nodes_num = static_cast<int>(graph->Nodes().size());
   auto pass = PassRegistry::Instance().Get(pass_name);
   pass->Apply(graph);
-  int current_nodes_num = graph->Nodes().size();
+  int current_nodes_num = static_cast<int>(graph->Nodes().size());
 
   if (!TestIsReachable(*graph, from, to)) return false;
 

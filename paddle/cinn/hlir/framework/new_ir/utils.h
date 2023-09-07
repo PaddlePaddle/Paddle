@@ -24,17 +24,14 @@ namespace framework {
 namespace newir {
 
 struct CompatibleInfo {
-  static constexpr char* kInputPrefix = "input_";
-  static constexpr char* kOutputPrefix = "output_";
+  static constexpr char* kNamePrefix = "var_";
   // TODO(Aurelius): Need add name mapping logic in REGISTER_CINN_OP
   // macros or attempt to unify Op name with Paddle and CINN.
   static const std::unordered_map<std::string, std::string> OP_NAMES;
 
   static std::string OpName(const ::ir::Operation& op);
 
-  static std::string InputName(const ::ir::Value& value);
-
-  static std::string OutputName(const ::ir::Value& value);
+  static std::string ValueName(const ::ir::Value& value);
 
   static std::string OpFuncName(const ::ir::Operation& op);
 

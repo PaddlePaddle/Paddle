@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+#include "paddle/cinn/hlir/framework/new_ir/utils.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/ir/core/operation.h"
 
@@ -30,20 +31,26 @@ struct Group {
  public:
   explicit Group(const std::vector<::ir::Operation*>& group_ops)
       : ops(group_ops) {
-    op_pattern_kind = OpPatternKind::kElementWise;
-    fn_name = "fn_";
-    for (auto& op : group_ops) {
-      fn_name += "_" + op->name();
-    }
+    Initialize();
   }
 
+  explicit Group(std::initializer_list<::ir::Operation*> group_ops)
+      : ops(group_ops) {
+    Initialize();
+  }
+
+  int group_id;
+  std::string fn_name;
+  OpPatternKind op_pattern_kind;
   std::vector<::ir::Operation*> ops;
   std::vector<std::string> input_names;
   std::vector<std::string> output_names;
-  int group_id;
-  // FIXME(Aurelius84): This should be refactored with CinnGroupOp
-  OpPatternKind op_pattern_kind;
-  std::string fn_name;
+
+ private:
+  void Initialize() {
+    op_pattern_kind = OpPatternKind::kElementWise;
+    fn_name = CompatibleInfo::GroupOpsName(ops);
+  }
 };
 
 }  // namespace newir

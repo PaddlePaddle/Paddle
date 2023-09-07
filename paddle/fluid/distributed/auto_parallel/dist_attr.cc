@@ -120,6 +120,9 @@ void OperatorDistAttr::copy_from(const OperatorDistAttr& dist_attr) {
   set_is_recompute(dist_attr.is_recompute());
   set_execution_stream(dist_attr.execution_stream());
   set_stream_priority(dist_attr.stream_priority());
+  set_force_record_event(dist_attr.force_record_event());
+  set_event_to_record(dist_attr.event_to_record());
+  set_events_to_wait(dist_attr.events_to_wait());
   set_scheduling_priority(dist_attr.scheduling_priority());
   set_annotated(dist_attr.annotated());
 }

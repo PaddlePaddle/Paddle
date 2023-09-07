@@ -22,8 +22,8 @@ import scipy.linalg
 from eager_op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def scipy_lu_unpack(A):
@@ -138,17 +138,17 @@ class TestLU_UnpackOp(OpTest):
             lu = lu.numpy()
             pivots = pivots.numpy()
         else:
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                place = fluid.CPUPlace()
+            with base.program_guard(base.Program(), base.Program()):
+                place = base.CPUPlace()
                 if core.is_compiled_with_cuda():
-                    place = fluid.CUDAPlace(0)
+                    place = base.CUDAPlace(0)
                 xv = paddle.static.data(
                     name="input", shape=self.x_shape, dtype=self.dtype
                 )
                 lu, p = paddle.linalg.lu(xv)
-                exe = fluid.Executor(place)
+                exe = base.Executor(place)
                 fetches = exe.run(
-                    fluid.default_main_program(),
+                    base.default_main_program(),
                     feed={"input": x},
                     fetch_list=[lu, p],
                 )
@@ -228,9 +228,9 @@ class TestLU_UnpackAPI(unittest.TestCase):
             n = a.shape[-1]
             min_mn = min(m, n)
 
-            places = [fluid.CPUPlace()]
+            places = [base.CPUPlace()]
             if core.is_compiled_with_cuda():
-                places.append(fluid.CUDAPlace(0))
+                places.append(base.CUDAPlace(0))
             for place in places:
                 paddle.disable_static(place)
 
@@ -271,11 +271,11 @@ class TestLU_UnpackAPI(unittest.TestCase):
             n = a.shape[-1]
             min_mn = min(m, n)
 
-            places = [fluid.CPUPlace()]
+            places = [base.CPUPlace()]
             if core.is_compiled_with_cuda():
-                places.append(fluid.CUDAPlace(0))
+                places.append(base.CUDAPlace(0))
             for place in places:
-                with fluid.program_guard(fluid.Program(), fluid.Program()):
+                with base.program_guard(base.Program(), base.Program()):
                     sP, sL, sU = scipy_lu_unpack(a)
 
                     x = paddle.static.data(
@@ -283,9 +283,9 @@ class TestLU_UnpackAPI(unittest.TestCase):
                     )
                     lu, p = paddle.linalg.lu(x)
                     pP, pL, pU = paddle.linalg.lu_unpack(lu, p)
-                    exe = fluid.Executor(place)
+                    exe = base.Executor(place)
                     fetches = exe.run(
-                        fluid.default_main_program(),
+                        base.default_main_program(),
                         feed={"input": a},
                         fetch_list=[pP, pL, pU],
                     )
@@ -317,7 +317,7 @@ class TestLU_UnpackAPI(unittest.TestCase):
 
 class TestLU_UnpackAPIError(unittest.TestCase):
     def test_errors_1(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             # The size of input in lu should not be 0.
             def test_x_size():
                 x = paddle.to_tensor(
@@ -337,7 +337,7 @@ class TestLU_UnpackAPIError(unittest.TestCase):
             self.assertRaises(ValueError, test_x_size)
 
     def test_errors_2(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             # The size of input in lu should not be 0.
             def test_y_size():
                 x = paddle.to_tensor(
@@ -357,7 +357,7 @@ class TestLU_UnpackAPIError(unittest.TestCase):
             self.assertRaises(ValueError, test_y_size)
 
     def test_errors_3(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             # The size of input in lu should not be 0.
             def test_y_data():
                 x = paddle.to_tensor(

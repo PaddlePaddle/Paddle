@@ -49,7 +49,7 @@ std::string CipherUtils::GenKeyToFile(int length, const std::string& filename) {
                         "Failed to open file : %s, "
                         "make sure input filename is available.",
                         filename));
-  fout.write(rng.c_str(), rng.size());
+  fout.write(rng.c_str(), rng.size());  // NOLINT
   fout.close();
   return rng;
 }

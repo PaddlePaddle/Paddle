@@ -18,17 +18,14 @@ limitations under the License. */
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/string_tensor.h"
-
-namespace phi {
-namespace distributed {
-class DistTensor;
-}  // namespace distributed
-}  // namespace phi
 
 namespace paddle {
 namespace experimental {
@@ -139,9 +136,17 @@ void TransStrideLegacy(phi::DeviceContext* dev_ctx,
 
 /* ------------------ for auto parallel ----------------------- */
 
-phi::distributed::DistTensor* SetKernelDistOutput(Tensor* out);
+phi::distributed::DistMetaTensor MakeDistMetaTensor(
+    const phi::TensorBase& tensor);
+
+phi::distributed::DistTensor* SetKernelDistOutput(
+    Tensor* out,
+    const phi::distributed::TensorDistAttr& dist_attr =
+        phi::distributed::TensorDistAttr());
+
 std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
     std::vector<Tensor*> out);
+
 std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
     size_t out_size, std::vector<Tensor>* out);
 

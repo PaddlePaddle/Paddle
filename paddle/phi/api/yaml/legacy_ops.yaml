@@ -651,6 +651,7 @@
   output : Tensor
   infer_meta :
     func : MatmulInferMeta
+    spmd_rule : MatmulSpmdInferForward
   kernel :
     func : matmul
   backward : matmul_grad

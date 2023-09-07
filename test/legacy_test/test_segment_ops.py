@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def compute_segment_sum(x, segment_ids):
@@ -365,7 +365,7 @@ class API_SegmentOpsTest(unittest.TestCase):
 
     def test_dygraph(self):
         device = paddle.CPUPlace()
-        with paddle.fluid.dygraph.guard(device):
+        with paddle.base.dygraph.guard(device):
             x = paddle.to_tensor(
                 [[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32'
             )
@@ -418,7 +418,7 @@ class API_GeometricSegmentOpsTest(unittest.TestCase):
 
     def test_dygraph(self):
         device = paddle.CPUPlace()
-        with paddle.fluid.dygraph.guard(device):
+        with paddle.base.dygraph.guard(device):
             x = paddle.to_tensor(
                 [[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32'
             )
@@ -442,7 +442,7 @@ class API_GeometricSegmentOpsTest(unittest.TestCase):
 
     def test_dygraph_cpu_float16(self):
         device = paddle.CPUPlace()
-        with paddle.fluid.dygraph.guard(device):
+        with paddle.base.dygraph.guard(device):
             x = paddle.to_tensor(
                 [[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float16'
             )
@@ -466,7 +466,7 @@ class API_GeometricSegmentOpsTest(unittest.TestCase):
     def test_dygraph_cuda_float16(self):
         if core.is_compiled_with_cuda():
             device = paddle.CUDAPlace(0)
-            with paddle.fluid.dygraph.guard(device):
+            with paddle.base.dygraph.guard(device):
                 x = paddle.to_tensor(
                     [[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float16'
                 )
