@@ -32,10 +32,10 @@ class IGroup final {
 
   explicit IGroup(const List<m_expr::OpStmt>& op_stmts,
                   const std::shared_ptr<AnchorTensor>& anchor_tensor,
-                  const std::shared_ptr<equation::Graph>& equation_graph)
+                  const std::shared_ptr<equation::Graph>& local_equations_graph)
       : op_stmt_nodes_(op_stmts),
         anchor_tensor_(anchor_tensor),
-        equation_graph_(equation_graph) {}
+        local_equations_graph_(local_equations_graph) {}
 
   const List<m_expr::OpStmt>& op_stmts() const { return op_stmt_nodes_; }
 
@@ -50,7 +50,7 @@ class IGroup final {
  private:
   std::shared_ptr<AnchorTensor> anchor_tensor_;
   List<m_expr::OpStmt> op_stmt_nodes_;
-  std::shared_ptr<equation::Graph> equation_graph_;
+  std::shared_ptr<equation::Graph> local_equations_graph_;
   equation::IndexExprInferContext index_expr_infer_ctx_;
 };
 

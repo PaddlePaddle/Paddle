@@ -88,6 +88,7 @@ std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
 std::shared_ptr<KGroup> GenerateKGroups(
     const cinn::hlir::framework::Graph::Group& group,
     const std::vector<std::shared_ptr<IGroup>>& igroups) {
+  // Yifan
   ADT_TODO();  // Trival code
 }
 
@@ -133,6 +134,7 @@ void VisitEachStmt(const m_ir::MapIRList& map_irs, const DoEachT& DoEach) {
 
 m_expr::OpStmt MakeOpStmt(const m_ir::MapIR& map_ir,
                           std::size_t outter_layer_sd_size) {
+  CHECK_EQ(map_ir.op_stmts().size(), 1);
   ADT_TODO();
 }
 
