@@ -102,7 +102,7 @@ class OpsAPIGen(CodeGen):
             or name.endswith('xpu')
             or name in SPECIAL_STATIC_ONLY_APIS
         ):
-            return NO_DY_FUNCTION_IMPL_TEMPLATE.format(name=name)
+            return ''
         else:
             return FUNCTION_IMPL_TEMPLATE.format(name=name)
 
