@@ -40,8 +40,8 @@ namespace distributed {
 
 // matmul rule
 PD_REGISTER_SPMD_RULE(matmul,
-                      PD_INFER_SPMD(phi::distributed::MatmulSpmdInferForward),
-                      PD_INFER_SPMD(phi::distributed::MatmulSpmdInferBackward));
+                      PD_INFER_SPMD(phi::distributed::MatmulInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::MatmulInferSpmdReverse));
 
 }  // namespace distributed
 }  // namespace phi

@@ -590,5 +590,10 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
   return results;
 }
 
+std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
+    const phi::distributed::TensorDistAttr& dist_attr) {
+  return std::make_shared<phi::distributed::DistTensor>(phi::DDim(), dist_attr);
+}
+
 }  // namespace experimental
 }  // namespace paddle

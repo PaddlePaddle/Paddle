@@ -154,7 +154,7 @@ KERNEL_SELECTION_TEMPLATE = """
 
 # 5. Reshard Input
 SINGLE_INPUT_RESHARD_TEMPLATE = """
-    auto dist_input_{arg} = ReshardDistTensor(dev_ctx, {arg}, spmd_info.first[{idx}]);"""
+    auto dist_input_{arg} = ReshardApiInputToKernelInput(dev_ctx, {arg}, spmd_info.first[{idx}]);"""
 
 # 6. PrepareData
 SINGLE_PREPARE_DATA_TEMPLATE = """
@@ -267,7 +267,7 @@ class DistForwardAPI(ForwardAPI):
         self.inplace_flag = False
         self.dist_output_args = []
         self.dense_output_args = []
-        self.input_args_code = ""
+        # self.input_args_code = ""
 
     # override BaseAPI's method
     def parse_infer_meta(self, infer_meta_config):
@@ -319,45 +319,39 @@ class DistForwardAPI(ForwardAPI):
         if self.infer_meta['spmd_rule'] is not None:
             input_names = self.inputs['names']
             attr_names = self.attrs['names']
+            kernel_param = self.kernel['param']
+            if kernel_param is None:
+                kernel_param = input_names + attr_names
 
-            infer_meta_params = (
-                self.infer_meta['param']
-                if self.infer_meta['param'] is not None
-                else input_names + attr_names
-            )
             input_decl_code = ""
-            self.input_args_code = ""
-            for param in infer_meta_params:
+            input_args_code = ""
+            for param in kernel_param:
                 if param in input_names:
                     if self.inputs['input_info'][param] == "const Tensor&":
                         input_decl_code += SINGLE_DIST_META_IN_TEMPLATE.format(
                             param, param
                         )
-                        self.input_args_code += "meta_dist_" + param + ", "
+                        input_args_code += "meta_dist_" + param + ", "
                     else:
                         raise ValueError(
                             f"{self.api} : Param of infer_spmd error : {self.inputs['input_info'][param]} type is not supported."
                         )
                 elif param in attr_names:
-                    self.input_args_code = self.input_args_code + param + ", "
+                    input_args_code = input_args_code + param + ", "
                 elif isinstance(param, str):
-                    self.input_args_code = (
-                        self.input_args_code + "\"" + param + "\", "
-                    )
+                    input_args_code = input_args_code + "\"" + param + "\", "
                 elif isinstance(param, bool):
-                    self.input_args_code = (
-                        self.input_args_code + str(param).lower() + ", "
+                    input_args_code = (
+                        input_args_code + str(param).lower() + ", "
                     )
                 else:
-                    self.input_args_code = (
-                        self.input_args_code + str(param) + ", "
-                    )
+                    input_args_code = input_args_code + str(param) + ", "
 
             # TODO(chenweihang): add general spmd rule later
             infer_spmd_code = ""
             infer_spmd_func_code = self.infer_meta['spmd_rule']
             infer_spmd_code = INFER_SPMD_TEMPLATE.format(
-                infer_spmd_func_code, self.input_args_code[:-2]
+                infer_spmd_func_code, input_args_code[:-2]
             )
 
             return input_decl_code + infer_spmd_code
@@ -535,8 +529,8 @@ class DistForwardAPI(ForwardAPI):
                     )
         output_args_code = output_args_code[:-2]
 
-        if self.input_args_code != "":
-            input_args_code = self.input_args_code
+        # if self.input_args_code != "":
+        #     input_args_code = self.input_args_code
         return (
             output_decl_code
             + input_meta_code

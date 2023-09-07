@@ -175,10 +175,15 @@ inline bool NeedTransformPlace(const phi::Place& src_place,
 
 /* ------------------ for auto parallel ----------------------- */
 
-std::shared_ptr<phi::distributed::DistTensor> ReshardDistTensor(
+std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
     phi::DeviceContext* dev_ctx,
     const Tensor& tensor,
     const phi::distributed::TensorDistAttr& dist_attr);
+
+void ReshardKernelOutputToApiOutput(
+    phi::DeviceContext* dev_ctx,
+    const std::shared_ptr<phi::distributed::DistTensor>& src_tensor,
+    Tensor* dst_tensor);
 
 std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
     const Tensor& input,

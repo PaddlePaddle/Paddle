@@ -32,6 +32,8 @@ class TestMatmulApiForSemiAutoParallel:
         y_shape = [32, 48]
         x = paddle.randn(x_shape, self._dtype)
         y = paddle.randn(y_shape, self._dtype)
+        x.stop_gradient = False
+        y.stop_gradient = False
 
         x_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=x_specs)
         y_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=y_specs)
@@ -40,30 +42,70 @@ class TestMatmulApiForSemiAutoParallel:
         dist_y = dist.shard_tensor(y, dist_attr=y_dist_attr)
 
         dist_out = paddle.matmul(dist_x, dist_y)
-
         # verify global shape
         out_shape = [64, 48]
         np.testing.assert_equal(dist_out.shape, out_shape, verbose=True)
 
-        return dist_out
+        dist_out.backward()
+        np.testing.assert_equal(dist_x.grad.shape, x_shape, verbose=True)
+        np.testing.assert_equal(dist_y.grad.shape, y_shape, verbose=True)
+
+        return dist_out, dist_x.grad, dist_y.grad
 
     def test_case1(self):
         # case1: mk[0,-1],kn[-1,-1] -> mk[0,-1],kn[-1,-1] = mn[0,-1] partial[]
-        dist_out = self.test_body(x_specs=['x', None], y_specs=[None, None])
-        # verify local shape and dist attr
+        dist_out, dist_x_grad, dist_y_grad = self.test_body(
+            x_specs=['x', None], y_specs=[None, None]
+        )
+        # verify output local shape and dist attr
         np.testing.assert_equal(dist_out._local_shape, [32, 48], verbose=True)
         np.testing.assert_equal(
             dist_out.dist_attr.dims_mapping, [0, -1], verbose=True
         )
         assert dist_out.dist_attr._is_partial() is False
+        # verify x_grad local shape and dist attr
+        np.testing.assert_equal(
+            dist_x_grad._local_shape, [32, 32], verbose=True
+        )
+        np.testing.assert_equal(
+            dist_x_grad.dist_attr.dims_mapping, [0, -1], verbose=True
+        )
+        assert dist_x_grad.dist_attr._is_partial() is False
+        # verify y_grad local shape and dist attr
+        np.testing.assert_equal(
+            dist_y_grad._local_shape, [32, 48], verbose=True
+        )
+        np.testing.assert_equal(
+            dist_y_grad.dist_attr.dims_mapping, [-1, -1], verbose=True
+        )
+        assert dist_y_grad.dist_attr._is_partial() is False
 
     def test_case2(self):
         # case2: mk[-1, 0],kn[-1,-1] --> mk[-1, 0],kn[0, -1] = nm[-1, -1] partial[0]
-        dist_out = self.test_body(x_specs=[None, 'x'], y_specs=[None, None])
+        dist_out, dist_x_grad, dist_y_grad = self.test_body(
+            x_specs=[None, 'x'], y_specs=[None, None]
+        )
         # verify local shape
         np.testing.assert_equal(dist_out._local_shape, [64, 48], verbose=True)
         np.testing.assert_equal(
             dist_out.dist_attr.dims_mapping, [-1, -1], verbose=True
+        )
+        assert dist_out.dist_attr._is_partial() is True
+        assert dist_out.dist_attr._partial_dims() == {0}
+        # verify x_grad local shape and dist attr
+        np.testing.assert_equal(
+            dist_x_grad._local_shape, [64, 16], verbose=True
+        )
+        np.testing.assert_equal(
+            dist_x_grad.dist_attr.dims_mapping, [-1, 0], verbose=True
+        )
+        assert dist_x_grad.dist_attr._is_partial() is False
+        # verify y_grad local shape and dist attr
+        np.testing.assert_equal(
+            dist_y_grad._local_shape, [32, 48], verbose=True
+        )
+        np.testing.assert_equal(
+            dist_y_grad.dist_attr.dims_mapping, [-1, -1], verbose=True
         )
         assert dist_out.dist_attr._is_partial() is True
         assert dist_out.dist_attr._partial_dims() == {0}

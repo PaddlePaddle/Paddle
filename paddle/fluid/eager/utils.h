@@ -18,6 +18,7 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/phi/api/all.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
 namespace egr {
 
@@ -33,7 +34,7 @@ template <typename ElementType>
 class IterHelper {
   virtual void visit(ElementType element) = 0;
 
-  void visit(std::vector<ElementType>* elements) {
+  virtual void visit(std::vector<ElementType>* elements) {
     for (auto element : *elements) visit(element);
   }
 
@@ -80,6 +81,52 @@ class PassStopGradientIter : public IterHelper<AutogradMeta*> {
   }
 
   bool stop_gradient_ = true;
+};
+
+class SetGradOutputDistAttrIter : public IterHelper<paddle::Tensor*> {
+ public:
+  explicit SetGradOutputDistAttrIter(
+      const paddle::small_vector<std::vector<GradSlotMeta>,
+                                 kSlotSmallVectorSize>& out_meta)
+      : out_meta_(out_meta) {}
+
+ private:
+  void visit(paddle::Tensor* element) override {
+    if (element == nullptr) {
+      return;
+    }
+    auto& cur_meta = out_meta_[cur_pos_][cur_sub_pos_];
+    if (cur_meta.DistAttr().empty()) {
+      return;
+    }
+    if (element->defined()) {
+      if (element->is_dist_tensor()) {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "Unsupport set defined dist tensor now."));
+      } else {
+        // Only deal with dist tensor
+        return;
+      }
+    } else {
+      element->set_impl(std::make_shared<phi::distributed::DistTensor>(
+          phi::DDim(), cur_meta.DistAttr()));
+    }
+    cur_pos_++;
+  }
+
+  void visit(std::vector<paddle::Tensor*>* elements) override {
+    for (auto element : *elements) {
+      visit(element);
+      cur_sub_pos_++;
+    }
+    cur_pos_++;
+    cur_sub_pos_ = 0;
+  }
+
+  size_t cur_pos_ = 0;
+  size_t cur_sub_pos_ = 0;
+  const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+      out_meta_;
 };
 
 class EagerUtils {
@@ -223,6 +270,18 @@ class EagerUtils {
   static void FillZeroForEmptyGradInput(
       std::vector<paddle::Tensor>* in_grads,
       const std::vector<GradSlotMeta>& grad_in_metas);
+
+  /**
+   * Set DistAttr
+   */
+  template <typename... Args>
+  static void SetGradOutputDistAttrIfNeeded(
+      const paddle::small_vector<std::vector<GradSlotMeta>,
+                                 kSlotSmallVectorSize>& out_metas,
+      Args&&... args) {
+    SetGradOutputDistAttrIter(out_metas).apply(std::forward<Args>(args)...);
+  }
+
   /**
    * Print Input Output (level 0 means least info, level 2 means most info)
    * **/

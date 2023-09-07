@@ -187,6 +187,8 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
 {}
   // Runtime check if we need next grad
 {}
+  // Set DistAttr of Out Tensor for semi-auto parallel
+{}
   // Inplace Check
 {}
   // Inplace Strategy
@@ -498,6 +500,10 @@ CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE = """
 CREATE_RECOVER_OPTIONAL_VECTOR_TENSOR_TEMPLATE = """
   paddle::optional<std::vector<paddle::Tensor>> {}_optional;
   if( !{}.empty() ) {}_optional = paddle::make_optional<std::vector<paddle::Tensor>>({});
+"""
+
+SET_GRAD_OUT_DIST_ATTR_TEMPLATE = """
+  egr::EagerUtils::SetGradOutputDistAttrIfNeeded(out_metas, {});
 """
 
 CHECK_BACKWARD_INPLACE_TEMPLATE = """
@@ -2122,6 +2128,8 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                     else:
                         fill_zero_str += f"{indent}egr::EagerUtils::FillZeroForEmptyGradInput(&grads[{fwd_position}], input_metas[{fwd_position}]);\n"
 
+        set_out_dist_attr_str = SET_GRAD_OUT_DIST_ATTR_TEMPLATE.format()
+
         inplace_grad_input_str = ""
         inplace_check_str = ""
         optional_inplace_var_name = []
@@ -2510,6 +2518,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             get_grad_in_args_str,
             grad_function_prepare_str,
             compute_require_next_grad_str,
+            set_out_dist_attr_str,
             inplace_check_str,
             inplace_for_grad_outs_str,
             self.backward_api_name,

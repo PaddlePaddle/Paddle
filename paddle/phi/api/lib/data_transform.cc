@@ -599,7 +599,7 @@ void TransDataBackend(const phi::SelectedRows* tensor,
 
 /* ------------------ for auto parallel ----------------------- */
 
-std::shared_ptr<phi::distributed::DistTensor> ReshardDistTensor(
+std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
     phi::DeviceContext* dev_ctx,
     const Tensor& tensor,
     const phi::distributed::TensorDistAttr& dist_attr) {
@@ -617,6 +617,29 @@ std::shared_ptr<phi::distributed::DistTensor> ReshardDistTensor(
     return std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in);
   }
   return nullptr;
+}
+
+void ReshardKernelOutputToApiOutput(
+    phi::DeviceContext* dev_ctx,
+    const std::shared_ptr<phi::distributed::DistTensor>& src_tensor,
+    Tensor* dst_tensor) {
+  auto tensor_out = dst_tensor->impl();
+  PADDLE_ENFORCE_NE(
+      tensor_out,
+      nullptr,
+      phi::errors::InvalidArgument("The output tensor is nullptr."));
+  phi::distributed::DistTensor* dist_tensor =
+      static_cast<phi::distributed::DistTensor*>(tensor_out.get());
+  if (src_tensor->dist_attr() != dist_tensor->dist_attr()) {
+    VLOG(6) << "Reshard tensor from " << src_tensor->dist_attr() << " to "
+            << dist_tensor->dist_attr();
+    auto* func = phi::distributed::ChooseProperReshardFunction(
+        *src_tensor, dist_tensor->dist_attr());
+    func->Eval(dev_ctx, *src_tensor, dist_tensor->dist_attr(), dist_tensor);
+  } else {
+    // shallow copy dense tensor
+    *dist_tensor->unsafe_mutable_value() = src_tensor->value();
+  }
 }
 
 std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(

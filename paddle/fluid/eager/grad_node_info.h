@@ -20,6 +20,7 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/phi/api/all.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 
 namespace egr {
 /**
@@ -158,11 +159,23 @@ class GradSlotMeta {
   Edge& GetMutableEdge() { return adj_edge_; }
   const Edge& GetEdge() const { return adj_edge_; }
 
+  const phi::distributed::TensorDistAttr& DistAttr() const {
+    return dist_attr_;
+  }
+
+  void SetDistAttr(const phi::distributed::TensorDistAttr& dist_attr) {
+    dist_attr_ = dist_attr;
+  }
+
  private:
   bool stop_gradient_{false};
   phi::Place place_;
   std::shared_ptr<phi::DenseTensorMeta> meta_ = nullptr;
   Edge adj_edge_;
+  // For dygraph semi-auto parallel
+  // Save the dist attr of the forward input Tensor for proper resharding
+  // operation when compute the input Tensor's gradient
+  phi::distributed::TensorDistAttr dist_attr_;
 };
 
 class GradNodeBase {
