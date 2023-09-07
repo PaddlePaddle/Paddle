@@ -28,6 +28,7 @@ class SegmentParallel(MetaParallelBase):
         super().__init__(layers, hcg, **kwargs)
 
     def _prepare_for_model(self):
+        logger.info("start broadcast sep parameters")
         broadcast_sep_parameters(self._layers, self._hcg)
 
         if self._hcg.get_sharding_parallel_world_size() > 1:
@@ -35,5 +36,5 @@ class SegmentParallel(MetaParallelBase):
             broadcast_sharding_parameters(self._layers, self._hcg)
 
         if self._hcg.get_data_parallel_world_size() > 1:
-            logger.info("start broadcast sharding parameters")
+            logger.info("start broadcast dp parameters")
             broadcast_dp_parameters(self._layers, self._hcg)

@@ -260,7 +260,7 @@ class PipelineParallel(MetaParallelBase):
             broadcast_mp_parameters(self._layers, self._hcg)
 
         if self.use_sep_parallel:
-            logger.info("start broadcast mp parameters")
+            logger.info("start broadcast sep parameters")
             broadcast_sep_parameters(self._layers, self._hcg)
 
         if self.use_sharding_parallel:
