@@ -789,6 +789,7 @@ class Normalize(BaseTransform):
 
         .. code-block:: python
             :name: code-example
+
             >>> import paddle
             >>> from paddle.vision.transforms import Normalize
             >>> paddle.seed(2023)
