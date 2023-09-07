@@ -2700,8 +2700,8 @@ def cross_entropy(
             ...                             label)
 
             >>> print(dy_ret)
-            Tensor(shape=[], dtype=float64, place=Place(gpu:0), stop_gradient=True,
-                   5.34043430)
+            Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
+                   5.35419278)
 
         .. code-block:: python
 
