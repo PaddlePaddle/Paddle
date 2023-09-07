@@ -756,9 +756,13 @@ def relu(x, name=None):
             [0., 0., 1.])
     """
 
-    if paddle.framework.in_dynamic_or_new_ir_mode():
+    if in_dynamic_mode():
         return _C_ops.relu(x)
     else:
+        if paddle.framework.in_dynamic_or_new_ir_mode():
+            # Below code will be removed after we can generate IR api automatically
+            return paddle._ir_ops.relu(x)
+
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'relu'
         )
