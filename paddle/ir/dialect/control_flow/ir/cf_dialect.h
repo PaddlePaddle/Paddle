@@ -16,26 +16,18 @@
 
 #include "paddle/ir/core/dialect.h"
 
-namespace paddle {
-namespace dialect {
-
-class PaddleDialect : public ir::Dialect {
+namespace ir {
+class ControlFlowDialect : public Dialect {
  public:
-  explicit PaddleDialect(ir::IrContext* context);
-
-  static const char* name() { return "pd"; }
-
-  void PrintType(ir::Type type, std::ostream& os) const override;
-  void PrintAttribute(ir::Attribute type, std::ostream& os) const override;
-
-  void PrintOperation(ir::Operation* op,
-                      ir::IrPrinter& printer) const override;  // NOLINT
+  explicit ControlFlowDialect(IrContext *context)
+      : Dialect(name(), context, TypeId::get<ControlFlowDialect>()) {
+    initialize();
+  }
+  static const char *name() { return "cf"; }
 
  private:
   void initialize();
 };
 
-}  // namespace dialect
-}  // namespace paddle
-
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::PaddleDialect)
+}  // namespace ir
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::ControlFlowDialect)

@@ -92,7 +92,7 @@
   output : Tensor(out)
   infer_meta:
     func: RecvV2InferMeta
-    param: [peer, dtype, out_shape]
+    param: [ring_id, dynamic_shape, peer, out_shape, dtype]
   kernel :
     func : recv_v2
     param : [ring_id, dynamic_shape, peer, out_shape, dtype, use_calc_stream]
