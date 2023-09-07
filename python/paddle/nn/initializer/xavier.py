@@ -162,6 +162,7 @@ class XavierInitializer(Initializer):
                 )
         else:
             if self._uniform:
+                limit = math.sqrt(6.0 / float(fan_in + fan_out))
                 op = block.append_op(
                     type="uniform_random",
                     inputs={},
