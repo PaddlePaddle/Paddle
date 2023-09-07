@@ -19,6 +19,8 @@ __all__ = []
 UNIFIED_APIS = [
     'mean',
     "sum",
+    "split",
+    "split_with_num",
 ]
 
 for name in dir(core.eager.ops):
