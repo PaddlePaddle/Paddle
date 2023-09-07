@@ -653,8 +653,8 @@ static void RunDefaultInferDtypeFunc(
       if (detail::IsDuplicableVar(pair.first)) {
         size_t size = ctx->InputSize(pair.first);
         for (size_t i = 0; i < size; ++i) {
-          auto dtype = ctx->GetInputDataType(pair.first, i);
-          ctx->SetOutputDataType(pair.second, dtype, i);
+          auto dtype = ctx->GetInputDataType(pair.first, static_cast<int>(i));
+          ctx->SetOutputDataType(pair.second, dtype, static_cast<int>(i));
         }
       } else {
         auto dtype = ctx->GetInputDataType(pair.first);
@@ -681,7 +681,7 @@ static void RunInferDtypeFunc(
       std::vector<DataType> vec_custom_dtype;
       if (ctx->HasInput(in_name)) {  // general inputs
         for (size_t i = 0; i < ctx->InputSize(in_name); ++i) {
-          auto dtype = ctx->GetInputDataType(in_name, i);
+          auto dtype = ctx->GetInputDataType(in_name, static_cast<int>(i));
           vec_custom_dtype.emplace_back(
               paddle::framework::TransToPhiDataType(dtype));
         }
@@ -799,8 +799,8 @@ static void RunInferDtypeFunc(
       if (ctx->HasOutput(out_name)) {
         size_t size = ctx->InputSize(in_name);
         for (size_t i = 0; i < size; ++i) {
-          auto dtype = ctx->GetInputDataType(in_name, i);
-          ctx->SetOutputDataType(out_name, dtype, i);
+          auto dtype = ctx->GetInputDataType(in_name, static_cast<int>(i));
+          ctx->SetOutputDataType(out_name, dtype, static_cast<int>(i));
         }
       } else {
         PADDLE_ENFORCE(

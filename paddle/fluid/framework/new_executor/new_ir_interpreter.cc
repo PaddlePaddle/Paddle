@@ -174,7 +174,7 @@ void NewIRInterpreter::reset_scope(Scope* new_scope) {
   var_scope_.SetScope(new_scope);
   scope_ = new_scope;
   for (size_t i = 0; i < variable_list_.size(); i++) {
-    const auto& var_name = GetNameById(i);
+    const auto& var_name = GetNameById(static_cast<int>(i));
     variable_list_[i] = new_scope->FindVar(var_name);
   }
   // The index should be assured valid, cause the InterpreterCore may not be
@@ -758,17 +758,19 @@ void NewIRInterpreter::CheckGC(InstructionBase* instr) {
 #endif
 
   for (auto var_id : instr->GCCheckVars()) {
-    VLOG(4) << "GC:" << GetNameById(var_id) << ", id:" << var_id
-            << ", ref:" << refs_[var_id]->DynamicRef();
+    VLOG(4) << "GC:" << GetNameById(static_cast<int>(var_id))
+            << ", id:" << var_id << ", ref:" << refs_[var_id]->DynamicRef();
     bool is_ready = refs_[var_id]->CheckAndDecrease();
     // ignore all persistable var while GCphi
-    if (parameter_var_names_.count(GetNameById(var_id))) {
-      VLOG(4) << GetNameById(var_id) << " is a parameter, skip gc";
+    if (parameter_var_names_.count(GetNameById(static_cast<int>(var_id)))) {
+      VLOG(4) << GetNameById(static_cast<int>(var_id))
+              << " is a parameter, skip gc";
       continue;
     }
 
     if (is_ready) {
-      VLOG(6) << "Async delete variable with name : " << GetNameById(var_id);
+      VLOG(6) << "Async delete variable with name : "
+              << GetNameById(static_cast<int>(var_id));
       gc_->Add(refs_[var_id]->Var(), instr);
     }
   }
@@ -804,13 +806,13 @@ void NewIRInterpreter::CalculateLastLiveOps() {
     for (auto var_id : gc_check_vars) {
       Scope* inner_scope = InnerScope();
       paddle::framework::Variable* var =
-          inner_scope->FindVar(GetNameById(var_id));
+          inner_scope->FindVar(GetNameById(static_cast<int>(var_id)));
       if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>() ||
           var->IsType<LoDTensorArray>()) {
         last_live_ops_[var_id].insert(op_idx);
       } else {
-        VLOG(4) << "not clear " << GetNameById(var_id) << " after "
-                << instr->Name() << " because its type is "
+        VLOG(4) << "not clear " << GetNameById(static_cast<int>(var_id))
+                << " after " << instr->Name() << " because its type is "
                 << framework::ToTypeName(var->Type());
       }
     }
@@ -854,14 +856,15 @@ void NewIRInterpreter::CalculateLastLiveOps() {
         }
       }
       if (not_before_any) {
-        VLOG(6) << "last live op of var " << i << " " << GetNameById(i) << " : "
-                << item << " " << vec_instruction_base_[item]->Name();
+        VLOG(6) << "last live op of var " << i << " "
+                << GetNameById(static_cast<int>(i)) << " : " << item << " "
+                << vec_instruction_base_[item]->Name();
         minumum_last_live_ops.insert(item);
         vec_instruction_base_[item]->AddGCCheckVar(i);
       }
     }
     last_live_ops_[i] = minumum_last_live_ops;
-    var_ref_count_[i] = last_live_ops_[i].size();
+    var_ref_count_[i] = static_cast<int>(last_live_ops_[i].size());
   }
 
   for (auto& dep : *dependecy_count_) {

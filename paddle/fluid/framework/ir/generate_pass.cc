@@ -90,7 +90,7 @@ Attribute GetVarAttrValue(const VarDesc* desc,
     } else if (attr.has_element_index()) {
       int element_index = attr.element_index();
       if (attr.element_index() < 0) {
-        element_index += shape.size();
+        element_index += static_cast<int>(shape.size());
       }
       if (element_index >= 0 &&
           static_cast<size_t>(element_index) < shape.size()) {
