@@ -30,7 +30,7 @@ from vjp_interface_gen_op_list import (
     vjp_interface_implementation_gen_op_list,
 )
 
-from paddle.fluid.primitive.codegen import VJP_COMPS
+from paddle.fluid.primitive.codegen.gen import VJP_COMPS
 
 # =====================================
 # String Template for h file code gen
