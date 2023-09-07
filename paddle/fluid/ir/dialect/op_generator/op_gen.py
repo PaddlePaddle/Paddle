@@ -17,7 +17,6 @@ import logging
 import os
 
 import yaml
-from has_custom_vjp_op_list import has_custom_vjp_op_list
 from op_build_gen import gen_build_func_str
 from op_interface_gen import (
     gen_exclusive_interface_str,
@@ -30,6 +29,8 @@ from vjp_interface_gen_op_list import (
     vjp_interface_declare_gen_op_list,
     vjp_interface_implementation_gen_op_list,
 )
+
+from paddle.fluid.primitive.codegen import VJP_COMPS
 
 # =====================================
 # String Template for h file code gen
@@ -875,7 +876,7 @@ def OpGenerator(
             op_interfaces += ["paddle::dialect::VjpInterface"]
         exclusive_interface_str = gen_exclusive_interface_str(op_info)
 
-        if op_info.op_phi_name[0] in has_custom_vjp_op_list:
+        if op_info.op_phi_name[0] in VJP_COMPS:
             op_traits += ["paddle::dialect::CustomVjpTrait"]
 
         # check op inputs and mutable_attributes grad semantics
