@@ -66,8 +66,8 @@ void Array2Poly(const T* box,
   (*poly).contour =
       (phi::funcs::gpc_vertex_list*)malloc(sizeof(phi::funcs::gpc_vertex_list));
   (*poly).contour->num_vertices = static_cast<int>(pts_num);
-  (*poly).contour->vertex =
-      (phi::funcs::gpc_vertex*)malloc(sizeof(phi::funcs::gpc_vertex) * pts_num);
+  (*poly).contour->vertex = (phi::funcs::gpc_vertex*)malloc(
+      sizeof(phi::funcs::gpc_vertex) * pts_num);  // NOLINT
   for (size_t i = 0; i < pts_num; ++i) {
     (*poly).contour->vertex[i].x = box[2 * i];
     (*poly).contour->vertex[i].y = box[2 * i + 1];
