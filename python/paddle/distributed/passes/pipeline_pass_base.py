@@ -14,8 +14,8 @@
 
 import logging
 
+from paddle.base import core
 from paddle.distributed.auto_parallel.static.utils import get_logger
-from paddle.fluid import core
 
 from .pass_base import PassBase
 from .pass_utils import get_skip_gc_vars

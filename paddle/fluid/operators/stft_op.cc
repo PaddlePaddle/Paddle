@@ -30,7 +30,7 @@ class StftOp : public framework::OperatorWithKernel {
     const auto x_dims = ctx->GetInputDim("X");
     const int x_rank = x_dims.size();
     const auto window_dims = ctx->GetInputDim("Window");
-    const int window_size = window_dims[0];
+    const int window_size = static_cast<int>(window_dims[0]);
     const bool onesided = ctx->Attrs().Get<bool>("onesided");
 
     PADDLE_ENFORCE_EQ(
@@ -55,7 +55,7 @@ class StftOp : public framework::OperatorWithKernel {
             n_fft,
             window_size));
 
-    int seq_length = x_dims[x_rank - 1];
+    int seq_length = static_cast<int>(x_dims[x_rank - 1]);
     int n_frames = 1 + (seq_length - n_fft) / hop_length;
 
     PADDLE_ENFORCE_LE(n_fft,

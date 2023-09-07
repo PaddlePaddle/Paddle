@@ -16,8 +16,8 @@ import logging
 import typing
 
 import paddle
-from paddle.fluid import backward, core, framework
-from paddle.fluid.core import prim_config
+from paddle.base import backward, core, framework
+from paddle.base.core import prim_config
 from paddle.incubate.autograd import primx, utils
 
 
@@ -240,12 +240,12 @@ def to_prim(
     """
     if not core._is_fwd_prim_enabled():
         return
-    if isinstance(blocks, paddle.fluid.framework.Block):
+    if isinstance(blocks, paddle.base.framework.Block):
         logging.info("Atomize composite op to primitive ops begin.")
         main_program = blocks.program
     elif isinstance(blocks, typing.Sequence):
         for item in blocks:
-            if not isinstance(item, paddle.fluid.framework.Block):
+            if not isinstance(item, paddle.base.framework.Block):
                 raise TypeError(
                     f"Expect block or sequence of blocks, but sequence contains {type(item)}."
                 )

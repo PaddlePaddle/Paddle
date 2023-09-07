@@ -48,7 +48,7 @@ class WorkQueueImpl : public WorkQueue {
           options.events_waiter->RegisterEvent(kQueueDestructEvent);
     }
     queue_ = new NonblockingThreadPool(options_.name,
-                                       options_.num_threads,
+                                       static_cast<int>(options_.num_threads),
                                        options_.allow_spinning,
                                        options_.always_spinning);
   }
@@ -141,7 +141,7 @@ WorkQueueGroupImpl::WorkQueueGroupImpl(
     }
     queues_[idx] = new (&queues_storage_[idx])
         NonblockingThreadPool(options.name,
-                              options.num_threads,
+                              static_cast<int>(options.num_threads),
                               options.allow_spinning,
                               options.always_spinning);
   }

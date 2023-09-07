@@ -79,11 +79,11 @@ class LayerHelperBase:
          .. code-block:: python
 
             import numpy as np
-            import paddle.fluid as fluid
+            import paddle.base as base
 
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 x = np.ones([2, 2], np.float32)
-                y = fluid.dygraph.to_variable(x)
+                y = base.dygraph.to_variable(x)
 
         """
         if isinstance(value, np.ndarray):

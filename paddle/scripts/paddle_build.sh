@@ -2574,7 +2574,7 @@ set -ex
 
 function parallel_test_base_ipu() {
     mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/ipu
+    cd ${PADDLE_ROOT}/build/python/paddle/base/tests/unittests/ipu
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
     ========================================
@@ -3275,7 +3275,7 @@ function build_pr_and_develop() {
             rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/build.ninja
             rm -rf ${PADDLE_ROOT}/build/third_party
         fi
-
+        
         git checkout -b develop_base_pr upstream/$BRANCH
         git submodule update --init
         run_setup ${PYTHON_ABI:-""} "rerun-cmake bdist_wheel" ${parallel_number}
@@ -3285,6 +3285,7 @@ function build_pr_and_develop() {
         mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
         mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
     fi
+    
     generate_api_spec "$1" "DEV"
 
 }

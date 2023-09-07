@@ -41,7 +41,7 @@ from .framework import set_flags  # noqa: F401
 from .framework import disable_static  # noqa: F401
 from .framework import enable_static  # noqa: F401
 from .framework import in_dynamic_mode  # noqa: F401
-from .fluid.dataset import *  # noqa: F401, F403
+from .base.dataset import *  # noqa: F401, F403
 
 from .framework.dtype import iinfo  # noqa: F401
 from .framework.dtype import finfo  # noqa: F401

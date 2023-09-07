@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestReshardRToS:

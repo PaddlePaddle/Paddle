@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.proto import data_feed_pb2
+from paddle.base.proto import data_feed_pb2
 from google.protobuf import text_format
 
 __all__ = ['DataFeedDesc']
@@ -28,12 +28,12 @@ class DataFeedDesc:
 
     DataFeedDesc shall be initialized from a valid protobuf message from disk.
 
-    See :code:`paddle/fluid/framework/data_feed.proto` for message definition.
+    See :code:`paddle/base/framework/data_feed.proto` for message definition.
     A typical message might look like:
 
     .. code-block:: python
 
-      import paddle.fluid as fluid
+      import paddle.base as base
       f = open("data.proto", "w")
       print >> f, 'name: "MultiSlotDataFeed"'
       print >> f, 'batch_size: 2'
@@ -52,7 +52,7 @@ class DataFeedDesc:
       print >> f, '    }'
       print >> f, '}'
       f.close()
-      data_feed = fluid.DataFeedDesc('data.proto')
+      data_feed = base.DataFeedDesc('data.proto')
 
     However, users usually shouldn't care about the message format; instead,
     they are encouraged to use :code:`Data Generator` as a tool to generate a
@@ -64,8 +64,8 @@ class DataFeedDesc:
 
     .. code-block:: python
 
-      import paddle.fluid as fluid
-      data_feed = fluid.DataFeedDesc('data.proto')
+      import paddle.base as base
+      data_feed = base.DataFeedDesc('data.proto')
       data_feed.set_batch_size(128)
       data_feed.set_dense_slots('wd')  # The slot named 'wd' will be dense
       data_feed.set_use_slots('wd')    # The slot named 'wd' will be used
@@ -94,12 +94,12 @@ class DataFeedDesc:
 
     def set_batch_size(self, batch_size):
         """
-        Set :attr:`batch_size` in :ref:`api_fluid_DataFeedDesc` . :attr:`batch_size` can be changed during training.
+        Set :attr:`batch_size` in :ref:`api_base_DataFeedDesc` . :attr:`batch_size` can be changed during training.
 
         Example:
             .. code-block:: python
 
-              import paddle.fluid as fluid
+              import paddle.base as base
               f = open("data.proto", "w")
               print >> f, 'name: "MultiSlotDataFeed"'
               print >> f, 'batch_size: 2'
@@ -118,7 +118,7 @@ class DataFeedDesc:
               print >> f, '    }'
               print >> f, '}'
               f.close()
-              data_feed = fluid.DataFeedDesc('data.proto')
+              data_feed = base.DataFeedDesc('data.proto')
               data_feed.set_batch_size(128)
 
         Args:
@@ -140,7 +140,7 @@ class DataFeedDesc:
         Example:
             .. code-block:: python
 
-              import paddle.fluid as fluid
+              import paddle.base as base
               f = open("data.proto", "w")
               print >> f, 'name: "MultiSlotDataFeed"'
               print >> f, 'batch_size: 2'
@@ -159,7 +159,7 @@ class DataFeedDesc:
               print >> f, '    }'
               print >> f, '}'
               f.close()
-              data_feed = fluid.DataFeedDesc('data.proto')
+              data_feed = base.DataFeedDesc('data.proto')
               data_feed.set_dense_slots(['words'])
 
         Args:
@@ -187,7 +187,7 @@ class DataFeedDesc:
         Example:
             .. code-block:: python
 
-              import paddle.fluid as fluid
+              import paddle.base as base
               f = open("data.proto", "w")
               print >> f, 'name: "MultiSlotDataFeed"'
               print >> f, 'batch_size: 2'
@@ -206,7 +206,7 @@ class DataFeedDesc:
               print >> f, '    }'
               print >> f, '}'
               f.close()
-              data_feed = fluid.DataFeedDesc('data.proto')
+              data_feed = base.DataFeedDesc('data.proto')
               data_feed.set_use_slots(['words'])
 
         Args:
@@ -231,7 +231,7 @@ class DataFeedDesc:
         Example:
             .. code-block:: python
 
-              import paddle.fluid as fluid
+              import paddle.base as base
               f = open("data.proto", "w")
               print >> f, 'name: "MultiSlotDataFeed"'
               print >> f, 'batch_size: 2'
@@ -250,7 +250,7 @@ class DataFeedDesc:
               print >> f, '    }'
               print >> f, '}'
               f.close()
-              data_feed = fluid.DataFeedDesc('data.proto')
+              data_feed = base.DataFeedDesc('data.proto')
               print(data_feed.desc())
 
         Returns:
