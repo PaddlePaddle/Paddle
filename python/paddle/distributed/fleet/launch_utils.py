@@ -370,12 +370,14 @@ def get_host_name_ip():
 
 def add_arguments(argname, type, default, help, argparser, **kwargs):
     """Add argparse's argument.
-    Examples:
 
-        .. code-block::
-            >>> imort argparse
+    Examples:
+        .. code-block:: python
+
+            >>> import argparse
+            >>> from paddle.distributed.fleet.launch_utils import add_arguments
             >>> parser = argparse.ArgumentParser()
-            >>> add_argument("name", str, "Jonh", "User name.", parser)
+            >>> add_arguments("name", str, "Jonh", "User name.", parser)
             >>> args = parser.parse_args()
 
     """
