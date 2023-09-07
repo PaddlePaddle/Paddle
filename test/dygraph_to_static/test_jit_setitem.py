@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import unittest
 
 import numpy as np
@@ -231,6 +232,7 @@ class TestCase14(TestSetItemBase):
         y = func()
         return (y,)
 
+
 class TestCase15(TestSetItemBase):
     # Test gradient of value tensor
     def init_func(self):
@@ -250,7 +252,7 @@ class TestCase15(TestSetItemBase):
 
     def run_dygraph(self, func):
         # 注释这句看结果diff
-        x = paddle.ones((1, 6, 6 ,3))
+        x = paddle.ones((1, 6, 6, 3))
         H = paddle.full([1], 6, dtype='int32')
         W = paddle.full([1], 6, dtype='int32')
         y = func(x, H, W)
