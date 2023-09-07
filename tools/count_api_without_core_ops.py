@@ -24,9 +24,9 @@ __all__ = [
 
 # APIs that should not be printed into API.spec
 omitted_list = [
-    "paddle.fluid.LoDTensor.set",  # Do not know why it should be omitted
-    "paddle.fluid.io.ComposeNotAligned",
-    "paddle.fluid.io.ComposeNotAligned.__init__",
+    "paddle.base.LoDTensor.set",  # Do not know why it should be omitted
+    "paddle.base.io.ComposeNotAligned",
+    "paddle.base.io.ComposeNotAligned.__init__",
 ]
 
 
@@ -143,7 +143,7 @@ def visit_all_module(mod, func):
     if mod_name != 'paddle' and not mod_name.startswith('paddle.'):
         return
 
-    if mod_name.startswith('paddle.fluid.core'):
+    if mod_name.startswith('paddle.base.core'):
         return
 
     if mod in visited_modules:

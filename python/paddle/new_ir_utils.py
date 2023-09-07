@@ -18,18 +18,18 @@ import paddle
 
 class IrGuard:
     def __init__(self):
-        old_flag = paddle.fluid.framework.get_flags("FLAGS_enable_new_ir_api")
-        paddle.fluid.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+        old_flag = paddle.base.framework.get_flags("FLAGS_enable_new_ir_api")
+        paddle.base.framework.set_flags({"FLAGS_enable_new_ir_api": False})
         if not paddle.ir.core._use_new_ir_api():
             self.old_Program = paddle.static.Program
-            self.old_program_guard = paddle.fluid.program_guard
+            self.old_program_guard = paddle.base.program_guard
             self.old_default_main_program = paddle.static.default_main_program
         else:
             raise RuntimeError(
                 "IrChange only init when paddle.ir.core._use_new_ir_api() is false, \
                 please set FLAGS_enable_new_ir_api = false"
             )
-        paddle.fluid.framework.set_flags(old_flag)
+        paddle.base.framework.set_flags(old_flag)
 
     def __enter__(self):
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
@@ -46,8 +46,8 @@ class IrGuard:
             )
             paddle.ir.register_paddle_dialect()
             paddle.static.Program = paddle.ir.Program
-            paddle.fluid.Program = paddle.ir.Program
-            paddle.fluid.program_guard = paddle.ir.core.program_guard
+            paddle.base.Program = paddle.ir.Program
+            paddle.base.program_guard = paddle.ir.core.program_guard
             paddle.static.program_guard = paddle.ir.core.program_guard
             paddle.framework.default_main_program = (
                 paddle.ir.core.default_main_program
@@ -59,8 +59,8 @@ class IrGuard:
                 {"FLAGS_enable_new_ir_in_executor": False}
             )
             paddle.static.Program = self.old_Program
-            paddle.fluid.Program = self.old_Program
-            paddle.fluid.program_guard = self.old_program_guard
+            paddle.base.Program = self.old_Program
+            paddle.base.program_guard = self.old_program_guard
             paddle.static.program_guard = self.old_program_guard
             paddle.framework.default_main_program = (
                 self.old_default_main_program

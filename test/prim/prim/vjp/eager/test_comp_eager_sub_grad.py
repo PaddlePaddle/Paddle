@@ -18,7 +18,7 @@ import numpy as np
 import parameterized as param
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 core.set_prim_eager_enabled(True)
 

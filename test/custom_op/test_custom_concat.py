@@ -31,9 +31,9 @@ if os.name == 'nt' and os.path.isfile(file):
     run_cmd(cmd, True)
 
 if os.name == 'nt':
-    test_include = "..\\python\\paddle\\fluid\\tests\\custom_op"
+    test_include = "..\\python\\paddle\\base\\tests\\custom_op"
 else:
-    test_include = "../python/paddle/fluid/tests/custom_op"
+    test_include = "../python/paddle/base/tests/custom_op"
 paddle_includes.append(test_include)
 
 custom_ops = load(

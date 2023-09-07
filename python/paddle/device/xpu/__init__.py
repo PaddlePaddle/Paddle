@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 from paddle.utils import deprecated
 
 __all__ = [
