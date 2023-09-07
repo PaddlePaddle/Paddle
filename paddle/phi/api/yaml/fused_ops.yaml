@@ -208,6 +208,16 @@
     data_type : input
   optional : bias_qk
 
+- op : squeeze_excitation_block
+  args : (Tensor x, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch, int[] act_type, float[] act_param, int[] filter_dims)
+  output : Tensor(out)
+  infer_meta :
+    func : SqueezeExcitationInferMeta
+  kernel :
+    func : squeeze_excitation_block
+    data_type : x
+  optional : bias, branch
+
 - op : yolo_box_xpu
   args : (Tensor x, Tensor x_max, Tensor grid, Tensor stride, Tensor anchor_grid, float offset)
   output : Tensor(out), Tensor(out_max)

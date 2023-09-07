@@ -143,7 +143,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
             local_scope->FindVar(out_name)->GetMutable<phi::DenseTensor>();
         std::vector<int64_t> out_shape;
         for (int64_t i = 0; i < local_out_tensor->dims().size(); i++) {
-          out_shape.push_back(local_out_tensor->dims()[i]);
+          out_shape.push_back(local_out_tensor->dims()[static_cast<int>(i)]);
         }
         out_desc->SetShape(out_shape);
         out_desc->SetPersistable(true);

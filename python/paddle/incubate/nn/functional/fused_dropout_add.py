@@ -14,8 +14,8 @@
 
 
 from paddle import _C_ops
+from paddle.base import core
 from paddle.common_ops_import import default_main_program
-from paddle.fluid import core
 from paddle.framework import LayerHelper, in_dynamic_mode
 
 

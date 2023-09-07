@@ -17,8 +17,8 @@ import unittest
 import numpy
 
 import paddle
-from paddle.fluid import Program, core, program_guard
-from paddle.fluid.executor import Executor
+from paddle.base import Program, core, program_guard
+from paddle.base.executor import Executor
 
 
 class TestLoDArrayLength(unittest.TestCase):

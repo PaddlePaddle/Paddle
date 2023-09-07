@@ -19,9 +19,9 @@ from sqlite3 import NotSupportedError
 import paddle
 import paddle.autograd as imperative_base
 from paddle import _C_ops
+from paddle.base import core, framework, unique_name
+from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.common_ops_import import Variable, check_type, default_main_program
-from paddle.fluid import core, framework, unique_name
-from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.framework import LayerHelper, in_dynamic_mode
 from paddle.tensor.layer_function_generator import templatedoc
 
@@ -100,11 +100,11 @@ def merge_selected_rows(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            b = fluid.default_main_program().global_block()
+            import paddle.base as base
+            b = base.default_main_program().global_block()
             var = b.create_var(
                 name="X", dtype="float32", persistable=True,
-                type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
+                type=base.core.VarDesc.VarType.SELECTED_ROWS)
             y = nn.merge_selected_rows(var)
     """
     if in_dynamic_mode():
@@ -153,8 +153,8 @@ def get_tensor_from_selected_rows(x, name=None):
         .. code-block:: python
 
             from paddle import nnp.py
-            b = fluid.default_main_program().global_block()
-            input = b.create_var(name="X", dtype="float32", persistable=True, type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
+            b = base.default_main_program().global_block()
+            input = b.create_var(name="X", dtype="float32", persistable=True, type=base.core.VarDesc.VarType.SELECTED_ROWS)
             out = nn.get_tensor_from_selected_rows(input)
     """
 
@@ -253,21 +253,21 @@ class ErrorClipByValue(BaseErrorClipAttr):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle.base as base
             import paddle
             paddle.enable_static()
             BATCH_SIZE = 128
             CLIP_MAX = 2e-6
             CLIP_MIN = -1e-6
-            prog = fluid.framework.Program()
-            with fluid.program_guard(main_program=prog):
-                image = fluid.layers.data(
+            prog = base.framework.Program()
+            with base.program_guard(main_program=prog):
+                image = base.layers.data(
                     name='x', shape=[784], dtype='float32')
-                hidden1 = fluid.layers.fc(input=image, size=128, act='relu')
-                hidden2 = fluid.layers.fc(input=hidden1, size=64, act='relu')
-                predict = fluid.layers.fc(
+                hidden1 = base.layers.fc(input=image, size=128, act='relu')
+                hidden2 = base.layers.fc(input=hidden1, size=64, act='relu')
+                predict = base.layers.fc(
                     input=hidden2, size=10, act='softmax')
-                label = fluid.layers.data(name='y', shape=[1], dtype='int64')
+                label = base.layers.data(name='y', shape=[1], dtype='int64')
                 cost = paddle.nn.functional.cross_entropy(input=predict, label=label)
                 avg_cost = paddle.mean(cost)
             prog_clip = prog.clone()
@@ -937,22 +937,22 @@ def set_gradient_clip(clip, param_list=None, program=None):
         and it may be removed in future releases, so it is not recommended.
         It is recommended to set ``grad_clip`` when initializing the ``optimizer`` ,
         this is a better method to clip gradient. There are three clipping strategies:
-         :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
-         :ref:`api_fluid_clip_GradientClipByValue` .
+         :ref:`api_base_clip_GradientClipByGlobalNorm` , :ref:`api_base_clip_GradientClipByNorm` ,
+         :ref:`api_base_clip_GradientClipByValue` .
 
     To specify parameters that require gradient clip.
 
     Args:
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default value: None, and there is no
+            ( :ref:`api_base_clip_GradientClipByGlobalNorm` , :ref:`api_base_clip_GradientClipByNorm` ,
+            :ref:`api_base_clip_GradientClipByValue` ). Default value: None, and there is no
             gradient clipping.
         param_list (list(Variable), optional): Parameters that require gradient clip.
                 It can be a list of parameter or a list of parameter's name.
                 Default None, meaning that all parameters in the program will be included.
         program (Program, optional): The program where parameters are located.
-                Default None, meaning that using :ref:`api_fluid_default_main_program` .
+                Default None, meaning that using :ref:`api_base_default_main_program` .
 
     Returns:
         None
@@ -961,58 +961,58 @@ def set_gradient_clip(clip, param_list=None, program=None):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
+            import paddle.base as base
 
             paddle.enable_static()
 
             def network():
                 image = paddle.static.data(name='image', shape=[
                                    None, 28], dtype='float32')
-                param_attr1 = fluid.ParamAttr("fc1_param")
-                fc1 = fluid.layers.fc(image, size=10, param_attr=param_attr1)
-                param_attr2 = fluid.ParamAttr("fc2_param")
-                fc2 = fluid.layers.fc(fc1, size=10, param_attr=param_attr2)
+                param_attr1 = base.ParamAttr("fc1_param")
+                fc1 = base.layers.fc(image, size=10, param_attr=param_attr1)
+                param_attr2 = base.ParamAttr("fc2_param")
+                fc2 = base.layers.fc(fc1, size=10, param_attr=param_attr2)
                 loss = paddle.mean(fc2)
                 return loss
 
 
             # network 1: clip all parameter gradient
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with base.program_guard(base.Program(), base.Program()):
                 loss = network()
                 paddle.nn.clip.set_gradient_clip(
                     paddle.nn.ClipGradByGlobalNorm(clip_norm=2.0))
-                sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+                sgd = base.optimizer.SGD(learning_rate=1e-3)
                 sgd.minimize(loss)
 
             # network 2: clip parameter gradient by name
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with base.program_guard(base.Program(), base.Program()):
                 loss = network()
                 paddle.nn.clip.set_gradient_clip(
                     paddle.nn.ClipGradByValue(min=-1.0, max=1.0),
                     param_list=["fc1_param", "fc2_param"])
-                sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+                sgd = base.optimizer.SGD(learning_rate=1e-3)
                 sgd.minimize(loss)
 
             # network 3: clip parameter gradient by value
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with base.program_guard(base.Program(), base.Program()):
                 loss = network()
-                param_var1 = fluid.default_main_program().global_block().var("fc1_param")
-                param_var2 = fluid.default_main_program().global_block().var("fc2_param")
+                param_var1 = base.default_main_program().global_block().var("fc1_param")
+                param_var2 = base.default_main_program().global_block().var("fc2_param")
                 paddle.nn.clip.set_gradient_clip(
                     paddle.nn.ClipGradByValue(min=-1.0, max=1.0),
                     param_list=[param_var1, param_var2])
-                sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+                sgd = base.optimizer.SGD(learning_rate=1e-3)
                 sgd.minimize(loss)
 
             # network 4: use 'set_gradient_clip' and 'optimize(grad_clip=clip)' together
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with base.program_guard(base.Program(), base.Program()):
                 loss = network()
                 clip1 = paddle.nn.ClipGradByValue(min=-1.0, max=1.0)
                 clip2 = paddle.nn.ClipGradByNorm(clip_norm=1.0)
                 # Set the gradient clipping strategy: clip1
                 paddle.nn.clip.set_gradient_clip(clip1)
                 # Set the gradient clipping strategy: clip2
-                sgd = fluid.optimizer.SGD(learning_rate=1e-3, grad_clip=clip2)
+                sgd = base.optimizer.SGD(learning_rate=1e-3, grad_clip=clip2)
                 sgd.minimize(loss)
                 # 'set_gradient_clip' will not take effect when setting has a conflict,
                 # and the gradient clipping strategy will be 'clip2'

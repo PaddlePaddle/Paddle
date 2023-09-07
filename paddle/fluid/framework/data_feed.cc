@@ -45,7 +45,9 @@ class BufferedLineFileReader {
   class FILEReader {
    public:
     explicit FILEReader(FILE* fp) : fp_(fp) {}
-    int read(char* buf, int len) { return fread(buf, sizeof(char), len, fp_); }
+    int read(char* buf, int len) {
+      return static_cast<int>(fread(buf, sizeof(char), len, fp_));
+    }
 
    private:
     FILE* fp_;
@@ -644,10 +646,11 @@ void MultiSlotDataFeed::Init(
   use_slots_.clear();
   use_slots_is_dense_.clear();
   for (size_t i = 0; i < all_slot_num; ++i) {
-    const auto& slot = multi_slot_desc.slots(i);
+    const auto& slot = multi_slot_desc.slots(static_cast<int>(i));
     all_slots_[i] = slot.name();
     all_slots_type_[i] = slot.type();
-    use_slots_index_[i] = slot.is_used() ? use_slots_.size() : -1;
+    use_slots_index_[i] =
+        static_cast<int>(slot.is_used() ? use_slots_.size() : -1);
     total_dims_without_inductive_[i] = 1;
     inductive_shape_index_[i] = -1;
     if (slot.is_used()) {
@@ -1048,10 +1051,11 @@ void MultiSlotInMemoryDataFeed::Init(
   use_slots_is_dense_.clear();
   slot_conf_.resize(all_slot_num);
   for (size_t i = 0; i < all_slot_num; ++i) {
-    const auto& slot = multi_slot_desc.slots(i);
+    const auto& slot = multi_slot_desc.slots(static_cast<int>(i));
     all_slots_[i] = slot.name();
     all_slots_type_[i] = slot.type();
-    use_slots_index_[i] = slot.is_used() ? use_slots_.size() : -1;
+    use_slots_index_[i] =
+        static_cast<int>(slot.is_used() ? use_slots_.size() : -1);
 
     slot_conf_[i].name = slot.name();
     slot_conf_[i].type = slot.type();
@@ -1839,21 +1843,21 @@ void PaddleBoxDataFeed::GetRankOffset(const std::vector<PvInstance>& pv_vec,
   int max_rank = 3;  // the value is setting
   int row = ins_number;
   int col = max_rank * 2 + 1;
-  int pv_num = pv_vec.size();
+  int pv_num = static_cast<int>(pv_vec.size());
 
   std::vector<int> rank_offset_mat(row * col, -1);
   rank_offset_mat.shrink_to_fit();
 
   for (int i = 0; i < pv_num; i++) {
     auto pv_ins = pv_vec[i];
-    int ad_num = pv_ins->ads.size();
+    int ad_num = static_cast<int>(pv_ins->ads.size());
     int index_start = index;
     for (int j = 0; j < ad_num; ++j) {
       auto ins = pv_ins->ads[j];
       int rank = -1;
       if ((ins->cmatch == 222 || ins->cmatch == 223) &&
           ins->rank <= static_cast<uint32_t>(max_rank) && ins->rank != 0) {
-        rank = ins->rank;
+        rank = static_cast<int>(ins->rank);
       }
 
       rank_offset_mat[index * col] = rank;
@@ -1864,12 +1868,13 @@ void PaddleBoxDataFeed::GetRankOffset(const std::vector<PvInstance>& pv_vec,
           if ((cur_ins->cmatch == 222 || cur_ins->cmatch == 223) &&
               cur_ins->rank <= static_cast<uint32_t>(max_rank) &&
               cur_ins->rank != 0) {
-            fast_rank = cur_ins->rank;
+            fast_rank = static_cast<int>(cur_ins->rank);
           }
 
           if (fast_rank > 0) {
             int m = fast_rank - 1;
-            rank_offset_mat[index * col + 2 * m + 1] = cur_ins->rank;
+            rank_offset_mat[index * col + 2 * m + 1] =
+                static_cast<int>(cur_ins->rank);
             rank_offset_mat[index * col + 2 * m + 2] = index_start + k;
           }
         }
@@ -2035,7 +2040,7 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   float_total_dims_size_ = 0;
   float_total_dims_without_inductives_.clear();
   for (size_t i = 0; i < all_slot_num; ++i) {
-    const auto& slot = multi_slot_desc.slots(i);
+    const auto& slot = multi_slot_desc.slots(static_cast<int>(i));
     all_slots_[i] = slot.name();
 
     AllSlotInfo& all_slot = all_slots_info_[i];
@@ -2046,7 +2051,7 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
 
     if (slot.is_used()) {
       UsedSlotInfo& info = used_slots_info_[use_slot_size_];
-      info.idx = i;
+      info.idx = static_cast<int>(i);
       info.slot = slot.name();
       info.type = slot.type();
       info.dense = slot.is_dense();
@@ -2423,20 +2428,20 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
   slot_uint64_feasigns.resize(uint64_use_slot_size_);
 
   if (parse_ins_id_) {
-    int num = strtol(&str[pos], &endptr, 10);
+    int num = static_cast<int>(strtol(&str[pos], &endptr, 10));
     CHECK(num == 1);  // NOLINT
-    pos = endptr - str + 1;
+    pos = static_cast<int>(endptr - str + 1);
     size_t len = 0;
     while (str[pos + len] != ' ') {
       ++len;
     }
     rec->ins_id_ = std::string(str + pos, len);
-    pos += len + 1;
+    pos += static_cast<int>(len + 1);
   }
   if (parse_logkey_) {
-    int num = strtol(&str[pos], &endptr, 10);
+    int num = static_cast<int>(strtol(&str[pos], &endptr, 10));
     CHECK(num == 1);  // NOLINT
-    pos = endptr - str + 1;
+    pos = static_cast<int>(endptr - str + 1);
     size_t len = 0;
     while (str[pos + len] != ' ') {
       ++len;
@@ -2452,14 +2457,14 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
     rec->search_id = search_id;
     rec->cmatch = cmatch;
     rec->rank = rank;
-    pos += len + 1;
+    pos += static_cast<int>(len + 1);
   }
 
   int float_total_slot_num = 0;
   int uint64_total_slot_num = 0;
 
   for (auto& info : all_slots_info_) {
-    int num = strtol(&str[pos], &endptr, 10);
+    int num = static_cast<int>(strtol(&str[pos], &endptr, 10));
     PADDLE_ENFORCE(num,
                    "The number of ids can not be zero, you need padding "
                    "it in data generator; or if there is something wrong with "
@@ -2488,7 +2493,7 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
           ++uint64_total_slot_num;
         }
       }
-      pos = endptr - str;
+      pos = static_cast<int>(endptr - str);
     } else {
       for (int j = 0; j <= num; ++j) {
         // pos = line.find_first_of(' ', pos + 1);
@@ -2565,7 +2570,7 @@ void SlotRecordInMemoryDataFeed::PutToFeedVec(const SlotRecord* ins_vec,
         batch_fea.resize(total_instance + fea_num);
         memcpy(
             &batch_fea[total_instance], slot_values, sizeof(float) * fea_num);
-        total_instance += fea_num;
+        total_instance += static_cast<int>(fea_num);
         slot_offset.push_back(total_instance);
       }
 
@@ -2588,7 +2593,7 @@ void SlotRecordInMemoryDataFeed::PutToFeedVec(const SlotRecord* ins_vec,
           memcpy(&batch_fea[total_instance],
                  slot_values,
                  sizeof(uint64_t) * fea_num);
-          total_instance += fea_num;
+          total_instance += static_cast<int>(fea_num);
         }
         if (fea_num == 0) {
           batch_fea.resize(total_instance + fea_num);

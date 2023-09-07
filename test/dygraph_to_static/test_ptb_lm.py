@@ -19,8 +19,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid.dygraph.base import to_variable
+from paddle import base
+from paddle.base.dygraph.base import to_variable
 from paddle.jit.api import to_static
 from paddle.optimizer import SGD
 
@@ -48,7 +48,7 @@ class SimpleLSTMRNN(paddle.nn.Layer):
 
         for i in range(self._num_layers):
             weight_1 = self.create_parameter(
-                attr=fluid.ParamAttr(
+                attr=base.ParamAttr(
                     initializer=paddle.nn.initializer.Uniform(
                         low=-self._init_scale, high=self._init_scale
                     )
@@ -61,7 +61,7 @@ class SimpleLSTMRNN(paddle.nn.Layer):
             )
             self.weight_1_arr.append(self.add_parameter('w_%d' % i, weight_1))
             bias_1 = self.create_parameter(
-                attr=fluid.ParamAttr(
+                attr=base.ParamAttr(
                     initializer=paddle.nn.initializer.Uniform(
                         low=-self._init_scale, high=self._init_scale
                     )
@@ -156,7 +156,7 @@ class PtbModel(paddle.nn.Layer):
             vocab_size,
             hidden_size,
             sparse=False,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name='embedding_para',
                 initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
@@ -164,7 +164,7 @@ class PtbModel(paddle.nn.Layer):
             ),
         )
         self.softmax_weight = self.create_parameter(
-            attr=fluid.ParamAttr(),
+            attr=base.ParamAttr(),
             shape=[self.hidden_size, self.vocab_size],
             dtype="float32",
             default_initializer=paddle.nn.initializer.Uniform(
@@ -172,7 +172,7 @@ class PtbModel(paddle.nn.Layer):
             ),
         )
         self.softmax_bias = self.create_parameter(
-            attr=fluid.ParamAttr(),
+            attr=base.ParamAttr(),
             shape=[self.vocab_size],
             dtype="float32",
             default_initializer=paddle.nn.initializer.Uniform(
@@ -235,7 +235,7 @@ def train(place):
     vocab_size = 1000
     batch_num = 200
 
-    with fluid.dygraph.guard(place):
+    with base.dygraph.guard(place):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
         ptb_model = PtbModel(
@@ -322,9 +322,9 @@ def train_static(place):
 class TestPtb(unittest.TestCase):
     def setUp(self):
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
 
     def test_check_result(self):

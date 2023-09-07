@@ -17,20 +17,20 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid, nn
+from paddle import base, nn
 
 
 class TestModelAverage(unittest.TestCase):
     def test_model_average_static(self):
         paddle.enable_static()
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         shape = [2, 3, 8, 8]
-        exe = fluid.Executor(place)
-        train_program = fluid.Program()
-        startup = fluid.Program()
-        test_program = fluid.Program()
-        with fluid.program_guard(train_program, startup):
-            with fluid.unique_name.guard():
+        exe = base.Executor(place)
+        train_program = base.Program()
+        startup = base.Program()
+        test_program = base.Program()
+        with base.program_guard(train_program, startup):
+            with base.unique_name.guard():
                 data = paddle.static.data(
                     name='X', shape=[None, 1], dtype='float32'
                 )

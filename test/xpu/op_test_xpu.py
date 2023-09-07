@@ -24,10 +24,10 @@ from testsuite import append_loss_ops, create_op, set_input
 from white_list import no_grad_set_white_list, op_threshold_white_list
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import Program, convert_np_dtype_to_dtype_
+from paddle import base
+from paddle.base import core
+from paddle.base.backward import append_backward
+from paddle.base.framework import Program, convert_np_dtype_to_dtype_
 
 
 class XPUOpTest(OpTest):
@@ -359,7 +359,7 @@ class XPUOpTest(OpTest):
             )
             fetch_list = [g for p, g in param_grad_list]
 
-            executor = fluid.Executor(place)
+            executor = base.Executor(place)
             return list(
                 map(
                     np.array,

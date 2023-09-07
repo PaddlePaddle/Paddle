@@ -17,7 +17,7 @@ import os
 from utils import extra_compile_args, paddle_includes
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 from paddle.utils.cpp_extension import CppExtension, CUDAExtension, setup
 
 if paddle.is_compiled_with_cuda():
