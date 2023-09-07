@@ -513,13 +513,14 @@ class GRUCPUKernel : public framework::OpKernel<T> {
         gru_value.gate_value = gate_t.data<T>();
         gru_value.reset_output_value = reset_hidden_prev_t.data<T>();
 
-        phi::funcs::GRUUnitFunctor<DeviceContext, T>::compute(dev_ctx,
-                                                              gru_value,
-                                                              frame_size,
-                                                              cur_batch_size,
-                                                              active_node,
-                                                              active_gate,
-                                                              origin_mode);
+        phi::funcs::GRUUnitFunctor<DeviceContext, T>::compute(
+            dev_ctx,  // NOLINT
+            gru_value,
+            frame_size,
+            cur_batch_size,
+            active_node,
+            active_gate,
+            origin_mode);
 
         gru_value.prev_out_value = gru_value.output_value;
       }
