@@ -877,6 +877,7 @@ def OpGenerator(
 
         if op_info.op_phi_name[0] in has_custom_vjp_op_list:
             op_traits += ["paddle::dialect::CustomVjpTrait"]
+
         # check op inputs and mutable_attributes grad semantics
         input_grad_semantic_list = OpInputGradSemanticCheck(
             op_info, op_info_items
@@ -901,8 +902,6 @@ def OpGenerator(
 
             if op_name[-1] == "_":
                 op_traits += ["paddle::dialect::InplaceTrait"]
-            if op_name == "gelu":
-                op_traits += ["paddle::dialect::CustomVjpTrait"]
 
             op_traits_str = ""
             if len(op_traits) > 0:
