@@ -38,22 +38,35 @@ def softmax_mask_fuse_upper_triangle(x):
                         The third dimension of x must be same with the fourth dimension of x.
 
     Returns:
-        4-D Tensor. A location into which the result is stored. It’s dimension is 4D. Has same dimension with x.
+        4-D Tensor. A location into which the result is stored. It's dimension is 4D. Has same dimension with x.
 
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            import paddle.incubate as incubate
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> import paddle.incubate as incubate
 
-            x = paddle.rand((1, 1, 32, 32))
+            >>> paddle.seed(1)
+            >>> paddle.set_device("gpu")
+            >>> x = paddle.rand((1, 1, 32, 32))
 
-            rst = incubate.softmax_mask_fuse_upper_triangle(x)
-            # [[[[1.        , 0.        , 0.        , ..., 0., 0., 0.],
-            #    [0.45324376, 0.54675621, 0.        , ..., 0., 0., 0.],
-            #    [0.32674268, 0.28156221, 0.39169508, ..., 0., 0., 0.]
-            #     ... ]]]
+            >>> rst = incubate.softmax_mask_fuse_upper_triangle(x)
+            >>> print(rst)
+            Tensor(shape=[1, 1, 32, 32], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [[[[1.        , 0.        , 0.        , ..., 0.        ,
+                0.        , 0.        ],
+               [0.49575609, 0.50424391, 0.        , ..., 0.        ,
+                0.        , 0.        ],
+               [0.26035303, 0.25114325, 0.48850375, ..., 0.        ,
+                0.        , 0.        ],
+                ...,
+               [0.04379999, 0.04194880, 0.05150032, ..., 0.02721255,
+                0.        , 0.        ],
+               [0.02348574, 0.01959674, 0.02609110, ..., 0.04046615,
+                0.02248267, 0.        ],
+               [0.02280738, 0.03144657, 0.02892209, ..., 0.03885521,
+                0.03342311, 0.02842640]]]])
     """
     if in_dynamic_mode():
         out = _legacy_C_ops.fused_softmax_mask_upper_triangle(x)
