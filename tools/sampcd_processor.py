@@ -464,7 +464,7 @@ class Xdoctester(DocTester):
             )
             for test_result in test_results:
                 if test_result.failed:
-                    logger.warning(
+                    logger.error(
                         "In addition, mistakes found in sample codes: %s",
                         test_result.name,
                     )
@@ -509,31 +509,31 @@ class Xdoctester(DocTester):
                 logger.warning('\n'.join(summary_skiptest))
 
             if len(summary_nocodes):
-                logger.warning(
+                logger.error(
                     ">>> %d apis don't have sample codes or could not run test in env: %s",
                     len(summary_nocodes),
                     self._test_capacity,
                 )
-                logger.warning('\n'.join(summary_nocodes))
+                logger.error('\n'.join(summary_nocodes))
 
             if len(summary_timeout):
-                logger.warning(
+                logger.error(
                     ">>> %d sample codes ran timeout or error in env: %s",
                     len(summary_timeout),
                     self._test_capacity,
                 )
                 for _result in summary_timeout:
-                    logger.warning(
+                    logger.error(
                         f"{_result['api_name']} - more than {_result['run_time']}s"
                     )
 
             if len(summary_failed):
-                logger.warning(
+                logger.error(
                     ">>> %d sample codes ran failed in env: %s",
                     len(summary_failed),
                     self._test_capacity,
                 )
-                logger.warning('\n'.join(summary_failed))
+                logger.error('\n'.join(summary_failed))
 
             if summary_failed or summary_timeout or summary_nocodes:
                 logger.warning(
