@@ -64,6 +64,12 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
     bool is_test = ctx.Attr<bool>("is_test");
     bool is_train = !is_test && !use_global_stats;
     std::string act_type = ctx.Attr<std::string>("act_type");
+    auto act_type_xpu = xpu::Activation_t::LINEAR;
+    if (act_type == "relu") {
+      act_type_xpu = xpu::Activation_t::RELU;
+    } else if (act_type == "silu" || act_type == "swish") {
+      act_type_xpu = xpu::Activation_t::SWISH;
+    }
     auto &dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
 
     std::vector<const XPUType *> x_list = {
@@ -149,34 +155,116 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
         x_maxlist.push_back(nullptr);
       }
     }
-    int r = xpu::resnet_unit_fusion<XPUType, XPUType, XPUType, int16_t>(
-        dev_ctx.x_context(),
-        x_list,
-        w_list,
-        conv_y_list,
-        reinterpret_cast<XPUType *>(output->mutable_data<T>(place)),
-        x_shape_list,
-        filter_x_shape[0],
-        ksize_list,
-        stride_list,
-        paddings,
-        dilations,
-        group,
-        eps,
-        momentum,
-        x_maxlist,
-        w_maxlist,
-        scale_list,
-        bias_list,
-        batch_mean_list,
-        batch_invstd_list,
-        global_mean_list,
-        global_var_list,
-        xpu::Activation_t::RELU,
-        is_nchw,
-        has_shortcut,
-        fuse_add,
-        is_train);
+    phi::DenseTensor *reserve_space = ctx.Output<phi::DenseTensor>("BitMask");
+    size_t reserve_space_size = 0;
+    if (std::getenv("XPU_PADDLE_LOCAL") != nullptr) {
+      reserve_space_size =
+          xpu::resnet_unit_fusion_get_reserve_space_size<XPUType,
+                                                         XPUType,
+                                                         XPUType,
+                                                         float>(
+              dev_ctx.x_context(),
+              x_shape_list,
+              filter_x_shape[0],
+              ksize_list,
+              stride_list,
+              paddings,
+              dilations,
+              group,
+              x_maxlist,
+              w_maxlist,
+              act_type_xpu,
+              is_nchw,
+              has_shortcut,
+              fuse_add);
+    } else {
+      reserve_space_size =
+          xpu::resnet_unit_fusion_get_reserve_space_size<XPUType,
+                                                         XPUType,
+                                                         XPUType,
+                                                         int16_t>(
+              dev_ctx.x_context(),
+              x_shape_list,
+              filter_x_shape[0],
+              ksize_list,
+              stride_list,
+              paddings,
+              dilations,
+              group,
+              x_maxlist,
+              w_maxlist,
+              act_type_xpu,
+              is_nchw,
+              has_shortcut,
+              fuse_add);
+    }
+
+    int64_t aligned_reserve_space_size = (reserve_space_size + 3) / 4;
+    reserve_space->Resize(
+        phi::make_ddim({static_cast<int64_t>(aligned_reserve_space_size)}));
+    auto *reserve_space_ptr = reserve_space->mutable_data<int>(place);
+    int r = 0;
+    if (std::getenv("XPU_PADDLE_LOCAL") != nullptr) {
+      r = xpu::resnet_unit_fusion<XPUType, XPUType, XPUType, float>(
+          dev_ctx.x_context(),
+          x_list,
+          w_list,
+          conv_y_list,
+          reinterpret_cast<XPUType *>(output->mutable_data<T>(place)),
+          x_shape_list,
+          filter_x_shape[0],
+          ksize_list,
+          stride_list,
+          paddings,
+          dilations,
+          group,
+          eps,
+          momentum,
+          x_maxlist,
+          w_maxlist,
+          scale_list,
+          bias_list,
+          batch_mean_list,
+          batch_invstd_list,
+          global_mean_list,
+          global_var_list,
+          act_type_xpu,
+          is_nchw,
+          has_shortcut,
+          fuse_add,
+          is_train,
+          reserve_space_ptr);
+    } else {
+      r = xpu::resnet_unit_fusion<XPUType, XPUType, XPUType, int16_t>(
+          dev_ctx.x_context(),
+          x_list,
+          w_list,
+          conv_y_list,
+          reinterpret_cast<XPUType *>(output->mutable_data<T>(place)),
+          x_shape_list,
+          filter_x_shape[0],
+          ksize_list,
+          stride_list,
+          paddings,
+          dilations,
+          group,
+          eps,
+          momentum,
+          x_maxlist,
+          w_maxlist,
+          scale_list,
+          bias_list,
+          batch_mean_list,
+          batch_invstd_list,
+          global_mean_list,
+          global_var_list,
+          act_type_xpu,
+          is_nchw,
+          has_shortcut,
+          fuse_add,
+          is_train,
+          reserve_space_ptr);
+    }
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet_unit_fusion");
   }
 };
@@ -206,8 +294,11 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
     const phi::DenseTensor *conv_out_x = ctx.Input<phi::DenseTensor>("ConvX");
     const phi::DenseTensor *output = ctx.Input<phi::DenseTensor>("Y");
 
-    phi::DenseTensor *x_grad =
-        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    phi::DenseTensor *x_grad = nullptr;
+    int has_dx = ctx.Attr<bool>("has_dx");
+    if (has_dx) {
+      x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    }
     phi::DenseTensor *filter_x_grad =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("FilterX"));
     phi::DenseTensor *scale_x_grad =
@@ -224,7 +315,12 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
     bool has_shortcut = ctx.Attr<bool>("has_shortcut");
     bool fuse_add = ctx.Attr<bool>("fuse_add");
     std::string act_type = ctx.Attr<std::string>("act_type");
-
+    auto act_type_xpu = xpu::Activation_t::LINEAR;
+    if (act_type == "relu") {
+      act_type_xpu = xpu::Activation_t::RELU;
+    } else if (act_type == "silu" || act_type == "swish") {
+      act_type_xpu = xpu::Activation_t::SWISH;
+    }
     auto &dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
 
     std::vector<const XPUType *> x_list = {
@@ -233,8 +329,10 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
         reinterpret_cast<const XPUType *>(filter_x->data<T>())};
     std::vector<const XPUType *> conv_y_list = {
         reinterpret_cast<const XPUType *>(conv_out_x->data<T>())};
-    std::vector<XPUType *> dx_list = {
-        reinterpret_cast<XPUType *>(x_grad->mutable_data<T>(place))};
+    std::vector<XPUType *> dx_list = {nullptr};
+    if (has_dx) {
+      dx_list[0] = reinterpret_cast<XPUType *>(x_grad->mutable_data<T>(place));
+    }
     std::vector<XPUType *> dw_list = {
         reinterpret_cast<XPUType *>(filter_x_grad->mutable_data<T>(place))};
 
@@ -324,34 +422,72 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
       }
     }
 
-    int r = xpu::resnet_unit_grad_fusion<XPUType, XPUType, XPUType, int16_t>(
-        dev_ctx.x_context(),
-        x_list,
-        w_list,
-        reinterpret_cast<const XPUType *>(y_grad->data<T>()),
-        reinterpret_cast<const XPUType *>(output->data<T>()),
-        conv_y_list,
-        dx_list,
-        dw_list,
-        x_shape_list,
-        filter_x_shape[0],
-        ksize_list,
-        stride_list,
-        paddings,
-        dilations,
-        group,
-        x_maxlist,
-        w_maxlist,
-        scale_list,
-        batch_mean_list,
-        batch_invstd_list,
-        dscale_list,
-        dbias_list,
-        xpu::Activation_t::RELU,
-        eps,
-        is_nchw,
-        has_shortcut,
-        fuse_add);
+    const phi::DenseTensor *reserve_space =
+        ctx.Input<phi::DenseTensor>("BitMask");
+    int r = 0;
+    if (std::getenv("XPU_PADDLE_LOCAL_BACKWARD") != nullptr) {
+      r = xpu::resnet_unit_grad_fusion<XPUType, XPUType, XPUType, float>(
+          dev_ctx.x_context(),
+          x_list,
+          w_list,
+          reinterpret_cast<const XPUType *>(y_grad->data<T>()),
+          reinterpret_cast<const XPUType *>(output->data<T>()),
+          conv_y_list,
+          dx_list,
+          dw_list,
+          x_shape_list,
+          filter_x_shape[0],
+          ksize_list,
+          stride_list,
+          paddings,
+          dilations,
+          group,
+          x_maxlist,
+          w_maxlist,
+          scale_list,
+          batch_mean_list,
+          batch_invstd_list,
+          dscale_list,
+          dbias_list,
+          act_type_xpu,
+          eps,
+          is_nchw,
+          has_shortcut,
+          fuse_add,
+          reinterpret_cast<void *>(
+              const_cast<int *>(reserve_space->data<int>())));
+    } else {
+      r = xpu::resnet_unit_grad_fusion<XPUType, XPUType, XPUType, int16_t>(
+          dev_ctx.x_context(),
+          x_list,
+          w_list,
+          reinterpret_cast<const XPUType *>(y_grad->data<T>()),
+          reinterpret_cast<const XPUType *>(output->data<T>()),
+          conv_y_list,
+          dx_list,
+          dw_list,
+          x_shape_list,
+          filter_x_shape[0],
+          ksize_list,
+          stride_list,
+          paddings,
+          dilations,
+          group,
+          x_maxlist,
+          w_maxlist,
+          scale_list,
+          batch_mean_list,
+          batch_invstd_list,
+          dscale_list,
+          dbias_list,
+          act_type_xpu,
+          eps,
+          is_nchw,
+          has_shortcut,
+          fuse_add,
+          reinterpret_cast<void *>(
+              const_cast<int *>(reserve_space->data<int>())));
+    }
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet_unit_grad_fusion");
   }
 };

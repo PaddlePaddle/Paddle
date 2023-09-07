@@ -45,8 +45,9 @@ def resnet_unit(
     data_format,
     fuse_add,
     has_shortcut,
+    has_dx,
     use_global_stats,
-    is_test,
+    training,
     act,
 ):
     helper = LayerHelper('resnet_unit', **locals())
@@ -119,8 +120,9 @@ def resnet_unit(
         'data_format': data_format,
         'fuse_add': fuse_add,
         'has_shortcut': has_shortcut,
+        'has_dx': has_dx,
         'use_global_stats': use_global_stats,
-        'is_test': is_test,
+        'is_test': not training,
         'act_type': act,
     }
 
@@ -164,6 +166,7 @@ class ResNetUnit(Layer):
         act='relu',
         fuse_add=False,
         has_shortcut=False,
+        has_dx=True,
         use_global_stats=False,
         is_test=False,
         filter_x_attr=None,
@@ -194,6 +197,7 @@ class ResNetUnit(Layer):
         self._act = act
         self._fuse_add = fuse_add
         self._has_shortcut = has_shortcut
+        self._has_dx = has_dx
         self._use_global_stats = use_global_stats
         self._is_test = is_test
 
@@ -214,8 +218,8 @@ class ResNetUnit(Layer):
         is_nchw = data_format == 'NCHW'
         # initial filter
         bn_param_dtype = fluid.core.VarDesc.VarType.FP32
+        bn_param_shape = [num_filters]
         if not is_nchw:
-            bn_param_shape = [1, 1, 1, num_filters]
             filter_x_shape = [
                 num_filters,
                 filter_size,
@@ -229,7 +233,6 @@ class ResNetUnit(Layer):
                 num_channels_z,
             ]
         else:
-            bn_param_shape = [1, num_filters, 1, 1]
             filter_x_shape = [
                 num_filters,
                 num_channels_x,
@@ -354,8 +357,9 @@ class ResNetUnit(Layer):
             self._data_format,
             self._fuse_add,
             self._has_shortcut,
+            self._has_dx,
             self._use_global_stats,
-            self._is_test,
+            not self.training,
             self._act,
         )
         return out

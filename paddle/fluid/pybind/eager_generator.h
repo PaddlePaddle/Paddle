@@ -275,6 +275,19 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
       "Var3"}},
     {"graph_send_recv", {"X", "Src_index", "Dst_index", "Out_size"}},
     {"graph_send_ue_recv", {"X", "Y", "Src_index", "Dst_index", "Out_size"}},
+    // {"resnet_unit",
+    //  {"X",
+    //   "FilterX",
+    //   "ScaleX",
+    //   "BiasX",
+    //   "MeanX",
+    //   "VarX",
+    //   "Z",
+    //   "FilterZ",
+    //   "ScaleZ",
+    //   "BiasZ",
+    //   "MeanZ",
+    //   "VarZ"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -406,6 +419,19 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
       "Var2Out",   "Conv3",     "SavedMean3", "SavedInvstd3", "Mean3Out",
       "Var3Out",   "MaxInput1", "MaxFilter1", "MaxInput2",    "MaxFilter2",
       "MaxInput3", "MaxFilter3"}},
+    // {"resnet_unit",
+    //  {"Y",
+    //   "BitMask",
+    //   "ConvX",
+    //   "SavedMeanX",
+    //   "SavedInvstdX",
+    //   "RunningMeanX",
+    //   "RunningVarX",
+    //   "ConvZ",
+    //   "SavedMeanZ",
+    //   "SavedInvstdZ",
+    //   "RunningMeanZ",
+    //   "RunningVarZ"}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are
@@ -524,6 +550,8 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"group_norm", {"Mean", "Variance"}},
     {"resnet_basic_block",
      {"Mean1Out", "Var1Out", "Mean2Out", "Var2Out", "Mean3Out", "Var3Out"}},
+    {"resnet_unit",
+     {"RunningMeanX", "RunningVarX", "RunningMeanZ", "RunningVarZ"}},
 };
 
 // NOTE(pangyoki): Tensor View Strategy.
