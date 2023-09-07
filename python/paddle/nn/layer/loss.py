@@ -313,65 +313,65 @@ class CrossEntropyLoss(Layer):
         .. code-block:: python
 
             # hard labels
-            import paddle
-            paddle.seed(2023)
-            N=100
-            C=200
-            reduction='mean'
-            input =  paddle.rand([N, C], dtype='float64')
-            label =  paddle.randint(0, C, shape=[N], dtype='int64')
-            weight = paddle.rand([C], dtype='float64')
+            >>> import paddle
+            >>> paddle.seed(2023)
+            >>> N=100
+            >>> C=200
+            >>> reduction='mean'
+            >>> input =  paddle.rand([N, C], dtype='float64')
+            >>> label =  paddle.randint(0, C, shape=[N], dtype='int64')
+            >>> weight = paddle.rand([C], dtype='float64')
 
-            cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
-                weight=weight, reduction=reduction)
-            dy_ret = cross_entropy_loss(input, label)
-            print(dy_ret)
-            # Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
-            # 5.33697682)
+            >>> cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
+            ...     weight=weight, reduction=reduction)
+            >>> dy_ret = cross_entropy_loss(input, label)
+            >>> print(dy_ret)
+            Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
+            5.33697682)
 
         .. code-block:: python
 
             # soft labels
             # case1: soft labels without label_smoothing
-            import paddle
-            paddle.seed(2023)
-            axis = -1
-            N = 4
-            C = 3
-            shape = [N, C]
-            reduction='mean'
-            weight = None
-            logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
-            labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
-            labels /= paddle.sum(labels, axis=axis, keepdim=True)
-            cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
-                weight=weight, reduction=reduction, soft_label=True, label_smoothing=0.0)
-            dy_ret = cross_entropy_loss(logits, labels)
-            print(dy_ret)
-            # Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
-            # 1.14554912)
+            >>> import paddle
+            >>> paddle.seed(2023)
+            >>> axis = -1
+            >>> N = 4
+            >>> C = 3
+            >>> shape = [N, C]
+            >>> reduction='mean'
+            >>> weight = None
+            >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
+            >>> labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
+            >>> labels /= paddle.sum(labels, axis=axis, keepdim=True)
+            >>> cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
+            ...     weight=weight, reduction=reduction, soft_label=True, label_smoothing=0.0)
+            >>> dy_ret = cross_entropy_loss(logits, labels)
+            >>> print(dy_ret)
+            Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
+            1.14554912)
 
 
 
             # case2: soft labels with label_smoothing
-            import paddle
-            paddle.seed(2023)
-            axis = -1
-            N = 4
-            C = 3
-            shape = [N, C]
-            label_smoothing = 0.4
-            reduction='mean'
-            weight = None
-            logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
-            labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
-            labels /= paddle.sum(labels, axis=axis, keepdim=True)
-            cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
-                weight=weight, reduction=reduction, label_smoothing=label_smoothing)
-            dy_ret = cross_entropy_loss(logits, labels)
-            print(dy_ret)
-            # Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
-            # 1.13879701)
+            >>> import paddle
+            >>> paddle.seed(2023)
+            >>> axis = -1
+            >>> N = 4
+            >>> C = 3
+            >>> shape = [N, C]
+            >>> label_smoothing = 0.4
+            >>> reduction='mean'
+            >>> weight = None
+            >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
+            >>> labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
+            >>> labels /= paddle.sum(labels, axis=axis, keepdim=True)
+            >>> cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
+            ...     weight=weight, reduction=reduction, label_smoothing=label_smoothing)
+            >>> dy_ret = cross_entropy_loss(logits, labels)
+            >>> print(dy_ret)
+            Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
+            1.13879701)
 
     """
 
