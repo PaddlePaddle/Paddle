@@ -57,11 +57,11 @@ def sin(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.to_tensor([-2., 0., 1.])
-            sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.sparse.sin(sparse_x)
+            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> sparse_x = dense_x.to_sparse_coo(1)
+            >>> out = paddle.sparse.sin(sparse_x)
 
     """
     return _C_ops.sparse_sin(x)
@@ -87,11 +87,11 @@ def tan(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.to_tensor([-2., 0., 1.])
-            sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.sparse.tan(sparse_x)
+            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> sparse_x = dense_x.to_sparse_coo(1)
+            >>> out = paddle.sparse.tan(sparse_x)
 
     """
     return _C_ops.sparse_tan(x)
@@ -117,11 +117,11 @@ def asin(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.to_tensor([-2., 0., 1.])
-            sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.sparse.asin(sparse_x)
+            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> sparse_x = dense_x.to_sparse_coo(1)
+            >>> out = paddle.sparse.asin(sparse_x)
 
     """
     return _C_ops.sparse_asin(x)
@@ -148,11 +148,11 @@ def transpose(x, perm, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.to_tensor([[-2., 0.], [1., 2.]])
-            sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.sparse.transpose(sparse_x, [1, 0])
+            >>> dense_x = paddle.to_tensor([[-2., 0.], [1., 2.]])
+            >>> sparse_x = dense_x.to_sparse_coo(1)
+            >>> out = paddle.sparse.transpose(sparse_x, [1, 0])
 
     """
     return _C_ops.sparse_transpose(x, perm)
@@ -185,14 +185,14 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.to_tensor([[-2., 0.], [1., 2.]])
-            sparse_x = dense_x.to_sparse_coo(1)
-            out1 = paddle.sparse.sum(sparse_x)  # [1.]
-            out2 = paddle.sparse.sum(sparse_x, axis=0)  # [-1., 2.]
-            out3 = paddle.sparse.sum(sparse_x, axis=-1)  # [-2., 3.]
-            out4 = paddle.sparse.sum(sparse_x, axis=1, keepdim=True)  # [[-2.], [3.]]
+            >>> dense_x = paddle.to_tensor([[-2., 0.], [1., 2.]])
+            >>> sparse_x = dense_x.to_sparse_coo(1)
+            >>> out1 = paddle.sparse.sum(sparse_x)  # [1.]
+            >>> out2 = paddle.sparse.sum(sparse_x, axis=0)  # [-1., 2.]
+            >>> out3 = paddle.sparse.sum(sparse_x, axis=-1)  # [-2., 3.]
+            >>> out4 = paddle.sparse.sum(sparse_x, axis=1, keepdim=True)  # [[-2.], [3.]]
     """
     dtype_flag = False
     if dtype is not None:
@@ -263,11 +263,11 @@ def atan(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.to_tensor([-2., 0., 1.])
-            sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.sparse.atan(sparse_x)
+            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> sparse_x = dense_x.to_sparse_coo(1)
+            >>> out = paddle.sparse.atan(sparse_x)
 
     """
     return _C_ops.sparse_atan(x)
@@ -293,11 +293,11 @@ def sinh(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.to_tensor([-2., 0., 1.])
-            sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.sparse.sinh(sparse_x)
+            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> sparse_x = dense_x.to_sparse_coo(1)
+            >>> out = paddle.sparse.sinh(sparse_x)
 
     """
     return _C_ops.sparse_sinh(x)
@@ -323,11 +323,11 @@ def asinh(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.to_tensor([-2., 0., 1.])
-            sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.sparse.asinh(sparse_x)
+            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> sparse_x = dense_x.to_sparse_coo(1)
+            >>> out = paddle.sparse.asinh(sparse_x)
 
     """
     return _C_ops.sparse_asinh(x)
@@ -353,11 +353,11 @@ def atanh(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.to_tensor([-2., 0., 1.])
-            sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.sparse.atanh(sparse_x)
+            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> sparse_x = dense_x.to_sparse_coo(1)
+            >>> out = paddle.sparse.atanh(sparse_x)
 
     """
     return _C_ops.sparse_atanh(x)
@@ -383,11 +383,11 @@ def tanh(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.to_tensor([-2., 0., 1.])
-            sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.sparse.tanh(sparse_x)
+            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> sparse_x = dense_x.to_sparse_coo(1)
+            >>> out = paddle.sparse.tanh(sparse_x)
 
     """
     return _C_ops.sparse_tanh(x)
@@ -413,11 +413,11 @@ def square(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.to_tensor([-2., 0., 1.])
-            sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.sparse.square(sparse_x)
+            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> sparse_x = dense_x.to_sparse_coo(1)
+            >>> out = paddle.sparse.square(sparse_x)
 
     """
     return _C_ops.sparse_square(x)
@@ -443,11 +443,11 @@ def sqrt(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.to_tensor([-2., 0., 1.])
-            sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.sparse.sqrt(sparse_x)
+            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> sparse_x = dense_x.to_sparse_coo(1)
+            >>> out = paddle.sparse.sqrt(sparse_x)
 
     """
     return _C_ops.sparse_sqrt(x)
@@ -473,11 +473,11 @@ def log1p(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.to_tensor([-2, 0, 1], dtype='float32')
-            sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.sparse.log1p(sparse_x)
+            >>> dense_x = paddle.to_tensor([-2, 0, 1], dtype='float32')
+            >>> sparse_x = dense_x.to_sparse_coo(1)
+            >>> out = paddle.sparse.log1p(sparse_x)
 
     """
     return _C_ops.sparse_log1p(x)
@@ -504,11 +504,11 @@ def cast(x, index_dtype=None, value_dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.to_tensor([-2, 0, 1])
-            sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.sparse.cast(sparse_x, 'int32', 'float64')
+            >>> dense_x = paddle.to_tensor([-2, 0, 1])
+            >>> sparse_x = dense_x.to_sparse_coo(1)
+            >>> out = paddle.sparse.cast(sparse_x, 'int32', 'float64')
 
     """
     if index_dtype and not isinstance(index_dtype, core.VarDesc.VarType):
@@ -539,11 +539,11 @@ def pow(x, factor, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.to_tensor([-2, 0, 3], dtype='float32')
-            sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.sparse.pow(sparse_x, 2)
+            >>> dense_x = paddle.to_tensor([-2, 0, 3], dtype='float32')
+            >>> sparse_x = dense_x.to_sparse_coo(1)
+            >>> out = paddle.sparse.pow(sparse_x, 2)
 
     """
     return _C_ops.sparse_pow(x, float(factor))
@@ -569,11 +569,11 @@ def neg(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.to_tensor([-2, 0, 3], dtype='float32')
-            sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.sparse.neg(sparse_x)
+            >>> dense_x = paddle.to_tensor([-2, 0, 3], dtype='float32')
+            >>> sparse_x = dense_x.to_sparse_coo(1)
+            >>> out = paddle.sparse.neg(sparse_x)
 
     """
     return _C_ops.sparse_scale(x, -1.0, 0.0, True)
@@ -599,11 +599,11 @@ def abs(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.to_tensor([-2, 0, 3], dtype='float32')
-            sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.sparse.abs(sparse_x)
+            >>> dense_x = paddle.to_tensor([-2, 0, 3], dtype='float32')
+            >>> sparse_x = dense_x.to_sparse_coo(1)
+            >>> out = paddle.sparse.abs(sparse_x)
 
     """
     return _C_ops.sparse_abs(x)
@@ -625,16 +625,19 @@ def coalesce(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            indices = [[0, 0, 1], [1, 1, 2]]
-            values = [1.0, 2.0, 3.0]
-            sp_x = paddle.sparse.sparse_coo_tensor(indices, values)
-            sp_x = paddle.sparse.coalesce(sp_x)
-            print(sp_x.indices())
-            #[[0, 1], [1, 2]]
-            print(sp_x.values())
-            #[3.0, 3.0]
+            >>> indices = [[0, 0, 1], [1, 1, 2]]
+            >>> values = [1.0, 2.0, 3.0]
+            >>> sp_x = paddle.sparse.sparse_coo_tensor(indices, values)
+            >>> sp_x = paddle.sparse.coalesce(sp_x)
+            >>> print(sp_x.indices())
+            Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 1],
+             [1, 2]])
+            >>> print(sp_x.values())
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [3., 3.])
     """
     return _C_ops.sparse_coalesce(x)
 
@@ -660,11 +663,11 @@ def rad2deg(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.to_tensor([3.142, 0., -3.142])
-            sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.sparse.rad2deg(sparse_x)
+            >>> dense_x = paddle.to_tensor([3.142, 0., -3.142])
+            >>> sparse_x = dense_x.to_sparse_coo(1)
+            >>> out = paddle.sparse.rad2deg(sparse_x)
 
     """
     if x.dtype in _int_dtype_:
@@ -693,11 +696,11 @@ def deg2rad(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.to_tensor([-180, 0, 180])
-            sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.sparse.deg2rad(sparse_x)
+            >>> dense_x = paddle.to_tensor([-180, 0, 180])
+            >>> sparse_x = dense_x.to_sparse_coo(1)
+            >>> out = paddle.sparse.deg2rad(sparse_x)
 
     """
     if x.dtype in _int_dtype_:
@@ -725,11 +728,11 @@ def expm1(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.to_tensor([-2., 0., 1.])
-            sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.sparse.expm1(sparse_x)
+            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> sparse_x = dense_x.to_sparse_coo(1)
+            >>> out = paddle.sparse.expm1(sparse_x)
     """
     return _C_ops.sparse_expm1(x)
 
@@ -769,22 +772,22 @@ def reshape(x, shape, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x_shape = [6, 2, 3]
-            new_shape = [1, 0, 2, -1, 3]
-            format = "coo"
+            >>> x_shape = [6, 2, 3]
+            >>> new_shape = [1, 0, 2, -1, 3]
+            >>> format = "coo"
 
-            dense_x = paddle.randint(-100, 100, x_shape) * paddle.randint(0, 2, x_shape)
+            >>> dense_x = paddle.randint(-100, 100, x_shape) * paddle.randint(0, 2, x_shape)
 
-            if format == "coo":
-                sp_x = dense_x.to_sparse_coo(len(x_shape))
-            else:
-                sp_x = dense_x.to_sparse_csr()
-            sp_out = paddle.sparse.reshape(sp_x, new_shape)
+            >>> if format == "coo":
+            ...     sp_x = dense_x.to_sparse_coo(len(x_shape))
+            >>> else:
+            ...     sp_x = dense_x.to_sparse_csr()
+            >>> sp_out = paddle.sparse.reshape(sp_x, new_shape)
 
-            print(sp_out)
-            # the shape of sp_out is [1, 2, 2, 3, 3]
+            >>> print(sp_out.shape)
+            [1, 2, 2, 3, 3]
 
     """
     if in_dynamic_mode():
@@ -836,25 +839,25 @@ def isnan(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import numpy as np
+            >>> import paddle
+            >>> import numpy as np
 
-            format = "coo"
-            np_x = np.asarray([[[0., 0], [1., 2.]], [[0., 0], [3., float('nan')]]])
-            dense_x = paddle.to_tensor(np_x)
+            >>> format = "coo"
+            >>> np_x = np.asarray([[[0., 0], [1., 2.]], [[0., 0], [3., float('nan')]]])
+            >>> dense_x = paddle.to_tensor(np_x)
 
-            if format == "coo":
-                sparse_x = dense_x.to_sparse_coo(len(np_x.shape))
-            else:
-                sparse_x = dense_x.to_sparse_csr()
-
-            sparse_out = paddle.sparse.isnan(sparse_x)
-            print(sparse_out)
-            # Tensor(shape=[2, 2, 2], dtype=paddle.bool, place=Place(gpu:0), stop_gradient=True,
-            #        indices=[[0, 0, 1, 1],
-            #                 [1, 1, 1, 1],
-            #                 [0, 1, 0, 1]],
-            #        values=[False, False, False, True ])
+            >>> if format == "coo":
+            ...     sparse_x = dense_x.to_sparse_coo(len(np_x.shape))
+            >>> else:
+            ...     sparse_x = dense_x.to_sparse_csr()
+            ...
+            >>> sparse_out = paddle.sparse.isnan(sparse_x)
+            >>> print(sparse_out)
+            Tensor(shape=[2, 2, 2], dtype=paddle.bool, place=Place(gpu:0), stop_gradient=True,
+                   indices=[[0, 0, 1, 1],
+                            [1, 1, 1, 1],
+                            [0, 1, 0, 1]],
+                   values=[False, False, False, True ])
 
     """
     if in_dynamic_mode():
@@ -900,28 +903,28 @@ def slice(x, axes, starts, ends, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import numpy as np
+            >>> import paddle
+            >>> import numpy as np
 
-            format = 'coo'
-            np_x = np.asarray([[4, 0, 7, 0], [0, 0, 5, 0], [-4, 2, 0, 0]])
-            dense_x = paddle.to_tensor(np_x)
-            if format == 'coo':
-                sp_x = dense_x.to_sparse_coo(len(np_x.shape))
-            else:
-                sp_x = dense_x.to_sparse_csr()
+            >>> format = 'coo'
+            >>> np_x = np.asarray([[4, 0, 7, 0], [0, 0, 5, 0], [-4, 2, 0, 0]])
+            >>> dense_x = paddle.to_tensor(np_x)
+            >>> if format == 'coo':
+            ...     sp_x = dense_x.to_sparse_coo(len(np_x.shape))
+            >>> else:
+            ...     sp_x = dense_x.to_sparse_csr()
+            ...
+            >>> axes = [0, 1]
+            >>> starts = [1, 0]
+            >>> ends = [3, -2]
+            >>> sp_out = paddle.sparse.slice(sp_x, axes, starts, ends)
+            >>> # sp_out is x[1:3, 0:-2]
 
-            axes = [0, 1]
-            starts = [1, 0]
-            ends = [3, -2]
-            sp_out = paddle.sparse.slice(sp_x, axes, starts, ends)
-            # sp_out is x[1:3, 0:-2]
-
-            print(sp_out)
-            # Tensor(shape=[2, 2], dtype=paddle.int64, place=Place(cpu), stop_gradient=True,
-            #        indices=[[1, 1],
-            #                 [0, 1]],
-            #        values=[-4,  2])
+            >>> print(sp_out)
+            Tensor(shape=[2, 2], dtype=paddle.int64, place=Place(cpu), stop_gradient=True,
+                   indices=[[1, 1],
+                            [0, 1]],
+                   values=[-4,  2])
 
     """
     if in_dynamic_mode():

@@ -975,20 +975,19 @@ void BindAnalysisConfig(py::module *m) {
       .def("disable_mkldnn_fc_passes",
            &AnalysisConfig::DisableMkldnnFcPasses,
            R"DOC(
-           Disable Mkldnn FC
-           Args:
+            Disable Mkldnn FC
+            Returns:
                 None.
-           Returns:
-                None.
-           Examples:
-               .. code-block:: python
 
-                   >>> from paddle.inference import Config
+            Examples:
+                .. code-block:: python
 
-                   >>> config = Config("")
-                   >>> config.enable_mkldnn()
-                   >>> config.disable_mkldnn_fc_passes()
-           )DOC")
+                    >>> from paddle.inference import Config
+
+                    >>> config = Config("")
+                    >>> config.enable_mkldnn()
+                    >>> config.disable_mkldnn_fc_passes()
+            )DOC")
 #endif
       .def("set_mkldnn_op", &AnalysisConfig::SetMKLDNNOp)
       .def("set_model_buffer", &AnalysisConfig::SetModelBuffer)
