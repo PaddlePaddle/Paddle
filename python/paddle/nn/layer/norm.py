@@ -894,8 +894,8 @@ class BatchNorm(Layer):
     - :math:`x` : mini-batch data
     - :math:`m` : the size of the mini-batch data
 
-    When use_global_stats = True, the :math:`\\mu_{\\beta}`
-    and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
+    When use_global_stats = True, the :math:`\mu_{\beta}`
+    and :math:`\sigma_{\beta}^{2}` are not the statistics of one mini-batch.
     They are global or running statistics (moving_mean and moving_variance). It usually got from the
     pre-trained model. Calculated as follows:
 
@@ -1180,6 +1180,9 @@ class BatchNorm1D(_BatchNormBase):
         \ mini-batch\ mean \\
         \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i - \
         \mu_{\beta})^2 \qquad &//\ mini-batch\ variance \\
+
+    - :math:`x` : mini-batch data
+    - :math:`m` : the size of the mini-batch data
 
     When use_global_stats = True, the :math:`\mu_{\beta}`
     and :math:`\sigma_{\beta}^{2}` are not the statistics of one mini-batch.
