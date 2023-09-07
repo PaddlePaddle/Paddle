@@ -298,7 +298,9 @@ def _pickle_save(obj, f, protocol):
         return (tuple, ((name, data),))
 
     def reduce_LoDTensor(self):
-        data = np.array(self._copy(paddle.CPUPlace()))
+        p = core.Place()
+        p.set_place(paddle.CPUPlace())
+        data = np.array(self._copy(p))
 
         return (eval, ('data', {'data': data}))
 
@@ -1110,7 +1112,9 @@ def load(path, **configs):
                 try:
                     tensor, _ = _load_lod_tensor(path)
                     if config.return_numpy:
-                        return np.array(tensor._copy(paddle.CPUPlace()))
+                        p = core.Place()
+                        p.set_place(paddle.CPUPlace())
+                        return np.array(tensor._copy(p))
                     else:
                         if in_dygraph_mode():
                             return _lod_tensor2varbase(tensor)
