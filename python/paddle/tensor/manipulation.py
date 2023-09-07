@@ -3598,7 +3598,7 @@ def reshape(x, shape, name=None):
             # the value is [10.]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_new_ir_mode():
         if isinstance(shape, (list, tuple)):
             new_shape = []
             for ele in shape:

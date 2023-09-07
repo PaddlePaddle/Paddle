@@ -24,7 +24,7 @@ from paddle.fluid import core
 
 def broadcast_wrapper(shape=[1, 10, 12, 1]):
     def div_wrapper(x, y, axis=-1):
-        return paddle.divide(x, y.reshape(shape))
+        return paddle.divide(x, paddle.reshape(y, shape))
 
     return div_wrapper
 
@@ -505,6 +505,7 @@ class TestDivideOp(unittest.TestCase):
             self.assertEqual((np_z == z_expected).all(), True)
 
 
+# new ir doesn't support complex right now, skip new ir op test
 class TestComplexElementwiseDivOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_div"
@@ -532,7 +533,7 @@ class TestComplexElementwiseDivOp(OpTest):
         self.out = self.x / self.y
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=False)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -540,6 +541,7 @@ class TestComplexElementwiseDivOp(OpTest):
             'Out',
             numeric_grad_delta=1e-5,
             max_relative_error=1e-6,
+            check_new_ir=False,
         )
 
     def test_check_grad_ingore_x(self):
@@ -549,6 +551,7 @@ class TestComplexElementwiseDivOp(OpTest):
             no_grad_set=set("X"),
             numeric_grad_delta=1e-5,
             max_relative_error=1e-6,
+            check_new_ir=False,
         )
 
     def test_check_grad_ingore_y(self):
@@ -558,6 +561,7 @@ class TestComplexElementwiseDivOp(OpTest):
             no_grad_set=set('Y'),
             numeric_grad_delta=1e-5,
             max_relative_error=1e-6,
+            check_new_ir=False,
         )
 
 
