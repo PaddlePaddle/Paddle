@@ -1065,7 +1065,7 @@ def zeros(shape, dtype=None, name=None):
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype(np.dtype|str, optional): Data type of output Tensor, it supports
-            bool, float16, float32, float64, int32 and int64. Default: if None, the date type is float32.
+            bool, float16, float32, float64, int32 and int64. Default: if None, the data type is float32.
         name(str, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
