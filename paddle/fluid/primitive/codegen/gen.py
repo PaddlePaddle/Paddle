@@ -62,6 +62,7 @@ VJPS = [
     'slice_grad',
     'transpose_grad',
     'square_grad',
+    'dropout_grad',
 ]
 VJP_COMPS = ['divide_grad', 'sum_grad']
 BACKENDS = [
@@ -129,6 +130,7 @@ BACKENDS = [
     'scatter',
     'scatter_nd_add',
     'square_grad',
+    'dropout_grad',
 ]
 
 
