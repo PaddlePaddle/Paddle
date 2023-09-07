@@ -283,11 +283,12 @@ class PythonCCodeGen(CodeGen):
 
     def _gen_one_impl(self, op_info, op_name):
         input_name_list = op_info.input_name_list
+        output_name_list = op_info.output_name_list
         attr_name_list = op_info.attribute_name_list
         mutable_attr_name_list = op_info.mutable_attribute_name_list
         no_mutable_attr_name_list = op_info.non_mutable_attribute_name_list
 
-        if op_name == "send_v2":
+        if len(output_name_list) == 0:
             ret = NO_OUTPUT_API_IMPL_TEMPLATE.format(
                 api_name=op_name,
                 inputs=self._gen_inputs(op_info, op_name),
