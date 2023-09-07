@@ -146,7 +146,7 @@ void BindCudaStream(py::module *m_ptr) {
           Synchronizes with the given stream.
 
           Parameters:
-            stream(CUDAStream): The stream to synchronize with.
+              stream(CUDAStream): The stream to synchronize with.
 
           Examples:
               .. code-block:: python
