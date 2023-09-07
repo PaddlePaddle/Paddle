@@ -40,7 +40,7 @@ macro(find_musa_version musa_version_file)
     "import sys\n"
     "with open(sys.argv[1], 'r') as f:\n"
     "    data = json.load(f)\n"
-    "    print(data[\"MUSA_RUNTIME\"][\"version\"])"
+    "    print(data[\"musa_runtime\"][\"version\"])"
     "")
 
   execute_process(
