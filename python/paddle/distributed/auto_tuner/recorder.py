@@ -61,7 +61,7 @@ class HistoryRecorder:
                     and cfg["time"] != -1
                 ):
                     best_cfg = cfg
-                    first_few += 1
+                first_few += 1
                 if first_few >= 5:
                     break
             return (best_cfg, False)
