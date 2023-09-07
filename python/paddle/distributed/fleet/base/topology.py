@@ -312,7 +312,7 @@ class HybridCommunicateGroup:
             # initialize the seed
             return ParallelMode.TENSOR_PARALLEL
         elif self._pp_degree > 1:
-            # tp may coexist with mp、sep、dp and sharding
+            # pp may coexist with mp、sep、dp and sharding
             return ParallelMode.PIPELINE_PARALLEL
 
     def _check_vaild_topo(self):
