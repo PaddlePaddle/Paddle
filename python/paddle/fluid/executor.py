@@ -849,6 +849,7 @@ class _ExecutorCache:
                         self.feed,
                         self.fetch_list,
                     )
+                    + str(self.program._build_strategy)
                 )
             else:
                 self.key = hash(
