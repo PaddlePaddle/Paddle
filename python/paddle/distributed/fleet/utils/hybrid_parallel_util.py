@@ -254,6 +254,14 @@ def broadcast_sharding_parameters(model, hcg):
     )
 
 
+def broadcast_sep_parameters(model, hcg):
+    # TODO TO save memory, use un-fused broadcast to avoid potentional OOM
+    logger.debug("sep start init parameters sync")
+    sep_group = hcg.get_sep_parallel_group()
+    src_rank = hcg.get_sep_parallel_group_src_rank()
+    sync_params_buffers(model, sep_group, src_rank, is_model_parallel=False)
+
+
 def unwrap_optimizer(optimizer, optimizer_instances=()):
     _inner_opt = optimizer
     while isinstance(_inner_opt, optimizer_instances):

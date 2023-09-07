@@ -55,7 +55,7 @@ class ParallelMode:
     TENSOR_PARALLEL = 1
     PIPELINE_PARALLEL = 2
     SHARDING_PARALLEL = 3
-    SEP_PARALLEL = 4
+    SEGMENT_PARALLEL = 4
 
 
 class CommunicateTopology:
@@ -282,26 +282,37 @@ class HybridCommunicateGroup:
         # NOTE when sharding conjugates with other parallel, sharding should act like a optimizer and
         # adding its parallel logic within that parallelism
         # when use sharding alone, it should have its own parallelism for its parallel logic
-        # TODO modify 3 others parallel to support sharding
+
+        # pp -> mp -> sep -> sharding -> dp
         if (
             self._pp_degree == 1
             and self._mp_degree == 1
             and self._sep_degree == 1
-            and self._dp_degree == 1
+            and self._sharding_degree == 1
+            and self._dp_degree > 1
         ):
-            return ParallelMode.SHARDING_PARALLEL
+            return ParallelMode.DATA_PARALLEL
         elif (
             self._pp_degree == 1
             and self._mp_degree == 1
             and self._sep_degree == 1
+            and self._sharding_degree > 1
         ):
-            return ParallelMode.DATA_PARALLEL
-        elif self._pp_degree == 1 and self._mp_degree == 1:
-            return ParallelMode.SEP_PARALLEL
-        elif self._pp_degree == 1:
+            # sharding may coexist with dp
+            return ParallelMode.SHARDING_PARALLEL
+        elif (
+            self._pp_degree == 1
+            and self._mp_degree == 1
+            and self._sep_degree > 1
+        ):
+            # sep may coexist with dp and sharding
+            return ParallelMode.SEGMENT_PARALLEL
+        elif self._pp_degree == 1 and self._mp_degree > 1:
+            # tp may coexist with sep、dp and sharding
             # initialize the seed
             return ParallelMode.TENSOR_PARALLEL
         elif self._pp_degree > 1:
+            # tp may coexist with mp、sep、dp and sharding
             return ParallelMode.PIPELINE_PARALLEL
 
     def _check_vaild_topo(self):
