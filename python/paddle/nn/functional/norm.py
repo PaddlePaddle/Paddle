@@ -79,9 +79,15 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     """
 
     if in_dygraph_mode():
-        eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
-        out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
-        return x / _C_ops.maximum(out, eps)
+        if p == 2:
+            if len(x.shape) == 1:
+                axis = 0
+            out, _ = _C_ops.norm(x, 1 if axis is None else axis, 0, False)
+            return out
+        else:
+            eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
+            out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
+            return x / _C_ops.maximum(out, eps)
 
     else:
         check_type(p, 'p', (float, int), 'normalize')
