@@ -2876,10 +2876,10 @@ PDNode *patterns::MultipleQuantize::operator()() {
 
   // find nodes that are inputs to quantize operators
   prev_out->assert_more([&](Node *node) {
-    int counter = std::count_if(
+    int counter = static_cast<int>(std::count_if(
         node->outputs.begin(), node->outputs.end(), [&](Node const *iter) {
           return iter && iter->IsOp() && iter->Op()->Type() == "quantize";
-        });
+        }));
     return (counter > 1);
   });
 

@@ -608,7 +608,7 @@ void TensorFromStream(std::istream& is,
   {  // read tensor
     tensor->Resize(phi::make_ddim(shape));
     size_t seekg = seek * framework::SizeOfType(desc.data_type());
-    is.seekg(seekg, is.cur);
+    is.seekg(seekg, is.cur);  // NOLINT
 
     void* buf;
     phi::CPUContext ctx;
@@ -642,7 +642,7 @@ void TensorFromStream(std::istream& is,
       framework::VisitDataType(
           desc.data_type(),
           DeserializedDataFunctor(&buf, tensor, ctx.GetPlace()));
-      is.read(static_cast<char*>(buf), size);
+      is.read(static_cast<char*>(buf), size);  // NOLINT
     }
   }
 }
@@ -718,7 +718,7 @@ void TensorFromStream(std::istream& is,
       framework::VisitDataType(
           desc.data_type(),
           DeserializedDataFunctor(&buf, tensor, ctx.GetPlace()));
-      is.read(static_cast<char*>(buf), size);
+      is.read(static_cast<char*>(buf), size);  // NOLINT
     }
   }
 }

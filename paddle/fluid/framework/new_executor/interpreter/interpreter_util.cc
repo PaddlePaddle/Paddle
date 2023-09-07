@@ -648,7 +648,8 @@ void BuildOpFuncList(const platform::Place& place,
     op_func_node.input_index = ins_name2id;
     op_func_node.output_index = outs_name2id;
 
-    const OperatorDistAttr* dist_attr = block.Op(i)->DistAttr();
+    const OperatorDistAttr* dist_attr =
+        block.Op(static_cast<int>(i))->DistAttr();
     if (dist_attr) {
       if (dist_attr->execution_stream() !=
           distributed::auto_parallel::kDefault) {

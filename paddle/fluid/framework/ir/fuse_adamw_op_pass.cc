@@ -306,7 +306,7 @@ ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph,
 
   VLOG(4) << "replace adamw with fuse_adamw";
 
-  AddStatis(found_adamw_count);
+  AddStatis(static_cast<int>(found_adamw_count));
   return graph;
 }
 
