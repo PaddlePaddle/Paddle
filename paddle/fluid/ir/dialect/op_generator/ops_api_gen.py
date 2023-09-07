@@ -95,8 +95,8 @@ class OpsAPIGen(CodeGen):
 
     def _gen_one_function_impl(self, name):
         if (
-            name.endswith('grad')
-            or name.endswith('grad_')
+            name.endswith('_grad')
+            or name.endswith('_grad_')
             or name.endswith('xpu')
             or name in SPECIAL_STATIC_ONLY_APIS
         ):
