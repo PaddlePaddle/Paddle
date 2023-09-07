@@ -24,6 +24,7 @@ from paddle.fluid.framework import is_compiled_with_cuda  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_rocm  # noqa: F401
 from . import cuda
 from . import xpu
+from paddle.fluid.core import XPUPlace
 
 __all__ = [  # noqa
     'get_cudnn_version',
@@ -113,24 +114,6 @@ def is_compiled_with_xpu():
             support_xpu = paddle.device.is_compiled_with_xpu()
     """
     return core.is_compiled_with_xpu()
-
-
-def XPUPlace(dev_id):
-    """
-    Return a Baidu Kunlun Place
-
-    Parameters:
-        dev_id(int): Baidu Kunlun device id
-
-    Examples:
-        .. code-block:: python
-
-            # required: xpu
-
-            import paddle
-            place = paddle.device.XPUPlace(0)
-    """
-    return core.XPUPlace(dev_id)
 
 
 def get_cudnn_version():
