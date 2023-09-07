@@ -36,6 +36,11 @@ void DiagonalGradStridedKernel(const Context& dev_ctx,
                            dev_ctx, *in_grad, 0, in_grad);
                      }));
   DenseTensor tmp;
+  tmp.set_layout(out_grad.layout());
+  tmp.set_lod(out_grad.lod());
+  tmp.set_type(out_grad.dtype());
+  tmp.Resize(out_grad.dims());
+
   DiagonalStridedKernel<Context>(dev_ctx, *in_grad, offset, axis1, axis2, &tmp);
   PD_VISIT_ALL_TYPES(out_grad.dtype(), "DiagonalGradStridedKernel", ([&] {
                        phi::StridedCopyKernel<data_t, Context>(

@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.incubate.nn.functional import fused_dropout_add
 from paddle.incubate.nn.layer.fused_dropout_add import FusedDropoutAdd
 
@@ -152,7 +152,7 @@ class TestFusedDropoutAddStatic(unittest.TestCase):
 
             outs = fused_dropout_add(xs, ys, p=0.5, training=True)
 
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             out_s = exe.run(
                 feed={
                     "xs": x_data.astype('float16'),

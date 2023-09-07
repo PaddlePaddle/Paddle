@@ -18,7 +18,7 @@
 
 import numpy as np
 
-from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
+from paddle.base.core import AnalysisConfig, create_paddle_predictor
 
 
 def main():

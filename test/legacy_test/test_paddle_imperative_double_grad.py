@@ -19,8 +19,8 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid.wrapped_decorator import wrap_decorator
+from paddle import base
+from paddle.base.wrapped_decorator import wrap_decorator
 
 
 def _dygraph_guard_(func):
@@ -28,7 +28,7 @@ def _dygraph_guard_(func):
         if paddle.in_dynamic_mode():
             return func(*args, **kwargs)
         else:
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 return func(*args, **kwargs)
 
     return __impl__
@@ -39,7 +39,7 @@ dygraph_guard = wrap_decorator(_dygraph_guard_)
 
 def random_var(size, low=-1, high=1, dtype='float32'):
     x_np = np.random.uniform(low=low, high=high, size=size).astype(dtype)
-    return fluid.dygraph.to_variable(x_np)
+    return base.dygraph.to_variable(x_np)
 
 
 class TestDygraphDoubleGrad(TestCase):
@@ -152,7 +152,7 @@ class TestDygraphDoubleGrad(TestCase):
         )
         np.random.shuffle(x_np)
 
-        x = fluid.dygraph.to_variable(x_np)
+        x = base.dygraph.to_variable(x_np)
         x.stop_gradient = False
 
         alpha = 0.2
