@@ -18,20 +18,19 @@ limitations under the License. */
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/type_defs.h"
-#include "paddle/phi/infermeta/spmd_rules/utils.h"
 
 namespace phi {
 namespace distributed {
 /**
  * A Bottom Line Rule that enforces input(s) and output(s) of the Op to be
- *replicated among the given mesh.
+ * replicated among the given mesh.
  *
  * This rule is used to support any op that have not been assign a specific rule
- *in auto parallel, and once there is a specific rule for that op,  replicated
- *rule would not effect that op any more.
+ * in auto parallel, and once there is a specific rule for that op,  replicated
+ * rule would not effect that op any more.
  *
  * Vector of input tensors and output tensors used as argumnets (for both
- *inferfw & inferbw) to support any kind of op.
+ * inferfw & inferbw) to support any kind of op.
  *
  */
 SpmdInfo ReplicatedSpmdInferForward(

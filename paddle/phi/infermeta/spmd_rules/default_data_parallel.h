@@ -18,7 +18,6 @@ limitations under the License. */
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/type_defs.h"
-#include "paddle/phi/infermeta/spmd_rules/utils.h"
 
 namespace phi {
 namespace distributed {
@@ -27,15 +26,15 @@ namespace distributed {
  * all the input and ouput tensors is the batch dimension (broadcast dimension),
  * therefore, if any tensor's first dimension is sharded, the sharding would be
  * propagating to all the other tensors (for tensor first dimension). All the
- *other axes of tensors would be set as unshard (-1).
+ * other axes of tensors would be set as unshard (-1).
  *
  *
  * This rule is used to support emerging op for hybrid parallelism quickly, and
- *once there is a specific rule for that op,  we should remove that op from this
- *rule.
+ * once there is a specific rule for that op,  we should remove that op from
+ * this rule.
  *
  * Vector of input tensors and output tensors used as argumnets (for both
- *inferfw & inferbw) to support any kind of op.
+ * inferfw & inferbw) to support any kind of op.
  *
  */
 SpmdInfo DefaultDataParallelSpmdInferForward(

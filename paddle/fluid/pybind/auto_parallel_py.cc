@@ -376,9 +376,9 @@ void BindAutoParallel(py::module *m) {
              }
              return self.InferForward(ctx);
            })
-      .def("infer_forward", /*for op that have vector argument*/
+      .def("infer_forward",  // for op that have vector argument
            [](const phi::distributed::SpmdRule &self,
-              const std::vector<std::pair<int, int>> input_ranges,
+              const std::vector<std::pair<int, int>> &input_ranges,
               const std::vector<DistTensorSpec> &input_specs,
               const std::vector<phi::Attribute> &attrs) {
              /*
@@ -391,7 +391,7 @@ void BindAutoParallel(py::module *m) {
              paddle::small_vector<phi::distributed::DistMetaTensor,
                                   phi::kInputSmallVectorSize>
                  ins;
-             for (auto range : input_ranges) {
+             for (auto &range : input_ranges) {
                if (range.second - range.first == 0) {
                  auto &in = input_specs.at(range.first);
                  ctx.EmplaceBackInput(phi::distributed::DistMetaTensor(
@@ -433,9 +433,9 @@ void BindAutoParallel(py::module *m) {
              }
              return self.InferBackward(ctx);
            })
-      .def("infer_backward", /*for op that have vector argument*/
+      .def("infer_backward",  // for op that have vector argument
            [](const phi::distributed::SpmdRule &self,
-              const std::vector<std::pair<int, int>> input_ranges,
+              const std::vector<std::pair<int, int>> &input_ranges,
               const std::vector<DistTensorSpec> &input_specs,
               const std::vector<phi::Attribute> &attrs) {
              /*
@@ -448,7 +448,7 @@ void BindAutoParallel(py::module *m) {
              paddle::small_vector<phi::distributed::DistMetaTensor,
                                   phi::kInputSmallVectorSize>
                  ins;
-             for (auto range : input_ranges) {
+             for (auto &range : input_ranges) {
                if (range.second - range.first == 0) {
                  auto &in = input_specs.at(range.first);
                  ctx.EmplaceBackInput(phi::distributed::DistMetaTensor(
