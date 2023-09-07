@@ -106,7 +106,7 @@ void DealWithSpecialBuiltinOps(
                   .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
                   .place());
         } else if (new_in.type()
-                        .isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+                       .isa<paddle::dialect::AllocatedSelectedRowsType>()) {
           out_places.push_back(
               new_in.type()
                   .dyn_cast<paddle::dialect::AllocatedSelectedRowsType>()
@@ -152,9 +152,9 @@ void DealWithSpecialBuiltinOps(
         if (new_in.type().isa<ir::VectorType>()) {
           auto vec_types = new_in.type().dyn_cast<ir::VectorType>().data();
           auto index = op_item->attributes()
-                            .at("index")
-                            .dyn_cast<ir::Int32Attribute>()
-                            .data();
+                           .at("index")
+                           .dyn_cast<ir::Int32Attribute>()
+                           .data();
           op_output_types.push_back(vec_types[index]);
         } else {
           PADDLE_THROW(
