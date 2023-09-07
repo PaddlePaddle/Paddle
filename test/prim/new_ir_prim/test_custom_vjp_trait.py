@@ -16,6 +16,7 @@ import unittest
 
 import paddle
 from paddle import ir, nn
+from paddle.fluid.core import has_custom_vjp
 
 paddle.enable_static()
 
@@ -50,12 +51,12 @@ class TestCustomVjpTrait(unittest.TestCase):
     def test_gelu_op_custom_vjp_trait(self):
         newir_program = get_gelu_program_new_ir()
         op = newir_program.block().ops[-1]
-        self.assertEqual(op.has_custom_vjp(), True)
+        self.assertEqual(has_custom_vjp(op), True)
 
     def test_add_op_custom_vjp_trait(self):
         newir_program = get_add_program_new_ir()
         op = newir_program.block().ops[-1]
-        self.assertEqual(op.has_custom_vjp(), False)
+        self.assertEqual(has_custom_vjp(op), False)
 
 
 if __name__ == "__main__":
