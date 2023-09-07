@@ -364,12 +364,12 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   // var may have the same name but not have the same id.
   // e.g., var(batch_norm2d_0.w_1) may have id: 10, 13, 25.... in a graph.
   // so we must find all the var_name+id.
-  // input_names = real_input + parameters!
+  // input_names = real_input + parameters!这两部分都不可以重命名的！
   // https://github.com/PaddlePaddle/Paddle/pull/53184
-  // 这个会触发set_value的bug啊！！，我先disable掉吧！！
+  // 这个会触发set_value的bug啊！！，我改正了下吧！！
   for (auto *n : graph->Nodes()) {
-    if (n->IsVar() && input_names.count(n->Name())) {
-      // input_names_with_id.insert(RenameVarBeUnique(n->Name(), std::to_string(n->id())));
+    if (n->IsVar() && find(graph_params.begin(), graph_params.end(), n->Name()) != graph_params.end()) {
+      input_names_with_id.insert(RenameVarBeUnique(n->Name(), std::to_string(n->id())));
     }
   }
 
