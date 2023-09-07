@@ -154,8 +154,6 @@ class IR_API Dialect {
     IR_THROW("dialect has no registered attribute parsing hook");
   }
 
-  virtual void PrintOperation(const Operation *op,
-
   virtual void PrintOperation(Operation *op,
                               IrPrinter &printer) const;  // NOLINT
 
