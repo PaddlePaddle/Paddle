@@ -52,6 +52,9 @@ class StandaloneExecutor {
   Scope* scope_;
 
   std::vector<std::string> fetch_var_names_;
+
+  std::vector<std::unordered_map<std::string, std::shared_ptr<EventInter>>>
+      vec_force_events_to_wait_;
 };
 
 }  // namespace framework
