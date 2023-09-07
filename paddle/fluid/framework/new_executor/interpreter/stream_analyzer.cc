@@ -21,6 +21,9 @@
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
 
 namespace paddle {
 namespace framework {
@@ -167,9 +170,15 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
     if (op_type == "c_allreduce_sum" &&
         op->Attr<bool>("use_calc_stream") == false) {
       int ring_id = op->Attr<int>("ring_id");
-      return platform::NCCLCommContext::Instance()
-          .Get(ring_id, place_)
-          ->dev_context();
+      if (FLAGS_dynamic_static_unified_comm) {
+        phi::GPUContext* dev_ctx(
+            new phi::GPUContext(phi::GPUPlace(place_.device)));
+        return dev_ctx;
+      } else {
+        return platform::NCCLCommContext::Instance()
+            .Get(ring_id, place_)
+            ->dev_context();
+      }
     }
 #endif
   }
