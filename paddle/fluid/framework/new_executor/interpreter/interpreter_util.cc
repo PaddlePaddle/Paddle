@@ -690,7 +690,7 @@ void BuildOpFuncList(const platform::Place& place,
           // Note(sonder): skip fake init for conditional_block when there is no
           // op with kernel after it.
           is_skil_fake_init = true;
-          for (size_t j = 0; j < ops.size(); ++j) {
+          for (size_t j = i + 1; j < ops.size(); ++j) {
             if (dynamic_cast<framework::OperatorWithKernel*>(ops[j].get()) !=
                 nullptr) {
               is_skil_fake_init = false;
