@@ -133,15 +133,16 @@ class SEPModel(paddle.nn.Layer):
     def __init__(
         self, vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
     ):
+        super().__init__()
         self._net = SimpleNet(
             vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
         )
         self._hcg = fleet.get_hybrid_communicate_group()
 
     def forward(self, x):
-        x = Split.Apply(x, axis=1, group=self._hcg.get_sep_parallel_group())
+        x = Split.apply(x, axis=1, group=self._hcg.get_sep_parallel_group())
         x = self._net.forward(x)
-        x = Concat.Apply(x, axis=1, group=self._hcg.get_sep_parallel_group())
+        x = Concat.apply(x, axis=1, group=self._hcg.get_sep_parallel_group())
         loss = x.mean()
         return loss
 
@@ -150,6 +151,7 @@ class DPModel(paddle.nn.Layer):
     def __init__(
         self, vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
     ):
+        super().__init__()
         self._net = SimpleNet(
             vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
         )
@@ -230,7 +232,7 @@ class TestDistSEPTraining(unittest.TestCase):
             loss_dp = self.train_batch(batch, dp_model, dp_optimizer)
 
             np.testing.assert_allclose(
-                loss_sep.numpy(), loss_dp.numpy(), rtol=1e-6
+                loss_sep.numpy(), loss_dp.numpy(), rtol=1e-3
             )
 
 

@@ -138,7 +138,7 @@ def distributed_model(model):
             find_unused_parameters=strategy.find_unused_parameters,
             group=fleet_env._hcg.get_data_parallel_group(),
         )
-    elif fleet_env._hcg.get_parallel_mode() == ParallelMode.SEP_PARALLEL:
+    elif fleet_env._hcg.get_parallel_mode() == ParallelMode.SEGMENT_PARALLEL:
         model = SegmentParallel(model, fleet_env._hcg, strategy=strategy)
     elif fleet_env._hcg.get_parallel_mode() == ParallelMode.TENSOR_PARALLEL:
         model = TensorParallel(model, fleet_env._hcg, strategy=strategy)
