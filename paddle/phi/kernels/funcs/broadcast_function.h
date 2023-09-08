@@ -47,9 +47,8 @@ struct BroadcastTypeClassifier {
                           int axis) {
     numel = (*outs)[0]->numel();
 
-    for (size_t i = 0; i < ins.size(); ++i) {
-      ins_data[i] = (const _ptr_ char *)(ins[i]->data());
 #ifndef PADDLE_WITH_XPU_KP
+    for (size_t i = 0; i < ins.size(); ++i) {
       bool is_same_dim = ins[i]->numel() == numel;
       if (is_same_dim) {
         use_broadcast[i] = false;
@@ -58,14 +57,15 @@ struct BroadcastTypeClassifier {
         broadcast_num++;
       }
       all_elementwise &= is_same_dim;
-#endif
     }
+#endif
 
+    InitBroadcastConfigs(ins, outs, axis);
+
+    UnrollerWithoutVecSize<InputSetter, Arity>::step(ins, &ins_data);
     for (int i = 0; i < NumOuts; ++i) {
       outs_data[i] = (*outs)[i]->data<OutT>();
     }
-
-    InitBroadcastConfigs(ins, outs, axis);
   }
 
   void InitBroadcastConfigs(const std::vector<const DenseTensor *> &ins,
@@ -630,9 +630,8 @@ struct LaunchBroadcastKernelWithInt64IndexHelper<OutT,
                   Functor functor) {
     phi::Array<const _ptr_ char *__restrict__, MaxWithOne<Arity>::kValue>
         ins_ptrs;
-    for (size_t i = 0; i < ins.size(); ++i) {
-      ins_ptrs[i] = (const _ptr_ char *)(ins[i]->data());
-    }
+    UnrollerWithoutVecSize<InputSetter, Arity>::step(ins, &ins_ptrs);
+
     auto *out_tensor = (*outs)[0];
     auto *out_ptr = ctx.Alloc<OutT>(out_tensor);
 
