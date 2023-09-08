@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/compare_functors.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
@@ -68,8 +69,8 @@ void ReduceMaxGradKernel(const Context& dev_ctx,
   // 2. dx = dout * 1
   std::vector<const phi::DenseTensor*> mul_inputs = {&new_out_grad, equal_out};
   std::vector<phi::DenseTensor*> mul_outputs = {x_grad};
-  funcs::BroadcastKernel<T>(
-      dev_ctx, mul_inputs, &mul_outputs, funcs::MultiplyFunctor<T>(), 0);
+  phi::MultiplyKernel<T, Context>(dev_ctx, new_out_grad, *equal_out, x_grad);
+
   delete equal_out;
 }
 }  // namespace phi
