@@ -61,6 +61,7 @@ VJPS = [
     'rsqrt_grad',
     'slice_grad',
     'transpose_grad',
+    'dropout_grad',
 ]
 
 PRIM_VJP = []
@@ -131,6 +132,7 @@ BACKENDS = [
     'roll',
     'scatter',
     'scatter_nd_add',
+    'dropout_grad',
 ]
 
 

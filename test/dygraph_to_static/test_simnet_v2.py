@@ -180,7 +180,7 @@ class TestSimnet(unittest.TestCase):
     @test_and_compare_with_new_ir(True)
     def test_dygraph_static_same_loss(self):
         if paddle.is_compiled_with_cuda():
-            paddle.fluid.set_flags({"FLAGS_cudnn_deterministic": True})
+            paddle.base.set_flags({"FLAGS_cudnn_deterministic": True})
         conf_dict = create_conf_dict()
         dygraph_loss = train(conf_dict, to_static=False)
         static_loss = train(conf_dict, to_static=True)

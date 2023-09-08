@@ -421,7 +421,7 @@ struct iinfo {
         dtype = "int64";
         break;
       case framework::proto::VarType::INT8:
-        min = std::numeric_limits<int8_t>::min();
+        min = std::numeric_limits<int8_t>::min();  // NOLINT
         max = std::numeric_limits<int8_t>::max();
         bits = 8;
         dtype = "int8";
@@ -1108,7 +1108,7 @@ PYBIND11_MODULE(libpaddle, m) {
   });
 
   // NOTE(zjl): ctest would load environment variables at the beginning even
-  // though we have not `import paddle.fluid as fluid`. So we add this API
+  // though we have not `import paddle.base as base`. So we add this API
   // to enable eager deletion mode in unittest.
   m.def("_set_eager_deletion_mode", &paddle::framework::SetEagerDeletionMode);
 
@@ -1244,7 +1244,6 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
           # create tensor from a scope and set value to it.
           param = scope.var('Param').get_tensor()
           param_array = np.full((height, row_numel), 5.0).astype("float32")
@@ -2154,9 +2153,9 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+          import paddle.base as base
 
-          arr = fluid.LoDTensorArray()
+          arr = base.LoDTensorArray()
 )DOC");
   g_framework_lodtensorarray_pytype =
       reinterpret_cast<PyTypeObject *>(pylodtensorarray.ptr());
@@ -2198,12 +2197,12 @@ All parameter, weight, gradient are variables in Paddle.
              Examples:
                  .. code-block:: python
 
-                   import paddle.fluid as fluid
+                   import paddle.base as base
                    import numpy as np
 
-                   arr = fluid.LoDTensorArray()
-                   t = fluid.LoDTensor()
-                   t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                   arr = base.LoDTensorArray()
+                   t = base.LoDTensor()
+                   t.set(np.ndarray([5, 30]), base.CPUPlace())
                    arr.append(t)
            )DOC")
       .def(

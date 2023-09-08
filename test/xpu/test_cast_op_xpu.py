@@ -23,8 +23,8 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 typeid_dict = {
     'int32': int(core.VarDesc.VarType.INT32),
@@ -93,8 +93,8 @@ class TestCastOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of cast_op must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.XPUPlace(0)
+            x1 = base.create_lod_tensor(
+                np.array([[-1]]), [[1]], base.XPUPlace(0)
             )
             self.assertRaises(TypeError, paddle.cast, x1, 'int32')
 

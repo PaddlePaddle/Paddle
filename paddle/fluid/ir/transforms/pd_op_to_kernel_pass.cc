@@ -569,6 +569,29 @@ phi::KernelKey GetKernelKey(
         kernel_key_parser.key_set.backend_set =
             kernel_key_parser.key_set.backend_set |
             paddle::experimental::BackendSet(data_op_backend);
+      } else if (op->operand_source(i).GetDefiningOp()->name() ==
+                 "builtin.combine") {
+        auto combine_op = op->operand_source(i).GetDefiningOp();
+        for (size_t j = 0; j < combine_op->num_operands(); ++j) {
+          if (combine_op->operand_source(j).GetDefiningOp()->name() ==
+              "pd.data") {
+            auto data_op = combine_op->operand_source(j).GetDefiningOp();
+            auto data_place = data_op->attributes()
+                                  .at("place")
+                                  .dyn_cast<dialect::PlaceAttribute>()
+                                  .data();
+
+            auto data_op_backend =
+                paddle::experimental::ParseBackend(data_place);
+            if (data_op_backend == phi::Backend::UNDEFINED) {
+              data_op_backend = paddle::experimental::ParseBackend(place);
+            }
+            kernel_key_parser.key_set.backend_set =
+                kernel_key_parser.key_set.backend_set |
+                paddle::experimental::BackendSet(data_op_backend);
+            break;
+          }
+        }
       }
     }
 
