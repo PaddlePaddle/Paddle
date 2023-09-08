@@ -13,9 +13,21 @@
 # limitations under the License.
 
 # generator build function
-_INFERMETA_NEED_META_CONFIG = {'SplitInferMeta', 'SumInferMeta'}
+_INFERMETA_NEED_META_CONFIG = {
+    'SplitInferMeta',
+    'SumInferMeta',
+    'SplitWithNumInferMeta',
+    'ConcatInferMeta',
+    'ReduceIntArrayAxisInferMeta',
+}
 
-_PREPARE_DATA_WITH_UNKNOW_ATTRIBUTE = {'SplitOp', 'SumOp'}
+_PREPARE_DATA_WITH_UNKNOW_ATTRIBUTE = {
+    'SplitOp',
+    'SumOp',
+    'SplitWithNumOp',
+    'ConcatOp',
+    'MeanOp',
+}
 
 
 OP_BUILD_TEMPLATE = """

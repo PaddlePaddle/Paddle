@@ -333,6 +333,7 @@ class TestSplitAPI(unittest.TestCase):
 
 class TestSplitOpError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             # The type of axis in split_op should be int or Variable.
             def test_axis_type():
@@ -379,6 +380,7 @@ class TestSplitOpError(unittest.TestCase):
                 paddle.split(input=x8, num_or_sections=2, dim=3.2)
 
             self.assertRaises(TypeError, test_axis_type_tensor)
+        paddle.disable_static()
 
         with paddle.base.dygraph.guard():
 
