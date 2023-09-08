@@ -31,7 +31,6 @@
 #include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/ir_replace.h"
 #include "paddle/cinn/optim/ir_simplify.h"
-#include "paddle/cinn/optim/tensor_write_tell.h"
 #include "paddle/cinn/optim/unroll_loops.h"
 #include "paddle/cinn/utils/functional.h"
 

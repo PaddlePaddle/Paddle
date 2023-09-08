@@ -34,7 +34,6 @@
 #include "paddle/cinn/optim/optimize.h"
 #include "paddle/cinn/optim/remove_nested_block.h"
 #include "paddle/cinn/optim/replace_call_with_expr.h"
-#include "paddle/cinn/optim/tensor_write_tell.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
 #include "paddle/cinn/poly/ast_gen.h"
