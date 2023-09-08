@@ -22,8 +22,8 @@ from dygraph_to_static_util import (
 )
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.framework import Program, program_guard
+from paddle.base import core
+from paddle.base.framework import Program, program_guard
 
 
 def case0(x):

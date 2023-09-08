@@ -289,6 +289,8 @@ void KthvalueInferMeta(const MetaTensor& x,
                        MetaTensor* indices,
                        MetaConfig = MetaConfig());
 
+void LogicalNotInfermeta(const MetaTensor& x, MetaTensor* out);
+
 void LogsumexpInferMeta(const MetaTensor& input,
                         const std::vector<int64_t>& axis,
                         bool keepdim,
@@ -436,6 +438,8 @@ void Pool2DInferMeta(const MetaTensor& x,
 void PSendInferMeta(const MetaTensor& x, int peer);
 
 void PSendArrayInferMeta(const MetaTensor& x, int peer);
+
+void SendV2InferMeta(const int peer, const int ring_id);
 
 void QrInferMeta(const MetaTensor& x,
                  const std::string& mode,

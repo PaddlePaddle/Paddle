@@ -43,9 +43,9 @@ class IR_API InterfaceValue {
   InterfaceValue() = default;
   explicit InterfaceValue(TypeId type_id) : type_id_(type_id) {}
   InterfaceValue(const InterfaceValue &) = delete;
-  InterfaceValue(InterfaceValue &&);
+  InterfaceValue(InterfaceValue &&) noexcept;
   InterfaceValue &operator=(const InterfaceValue &) = delete;
-  InterfaceValue &operator=(InterfaceValue &&);
+  InterfaceValue &operator=(InterfaceValue &&) noexcept;
   ~InterfaceValue();
   void swap(InterfaceValue &&val) {
     using std::swap;
@@ -213,6 +213,10 @@ class Op : public OpBase {
       return ConcreteOp(op);
     }
     return ConcreteOp(nullptr);
+  }
+
+  static bool classof(const Operation *op) {
+    return op && op->info().id() == TypeId::get<ConcreteOp>();
   }
 
   static std::vector<InterfaceValue> GetInterfaceMap() {

@@ -228,13 +228,13 @@ cc_test(
 
 set(BRPC_DEPS "")
 if(WITH_PSCORE)
-  set(BRPC_DEPS brpc ssl crypto)
+  set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS})
 endif()
 if(WITH_PSLIB)
   if(WITH_PSLIB_BRPC)
     set(BRPC_DEPS pslib_brpc)
   elseif(NOT WITH_HETERPS)
-    set(BRPC_DEPS brpc ssl crypto)
+    set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS})
   endif()
   if(WITH_ARM_BRPC)
     set(BRPC_DEPS arm_brpc)
@@ -600,8 +600,8 @@ if(WITH_PYTHON)
       TARGET framework_py_proto
       POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory
-              ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
-      COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
+              ${PADDLE_BINARY_DIR}/python/paddle/base/proto
+      COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/base/proto/
       COMMAND cp distributed_strategy_*.py
               ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
@@ -620,7 +620,7 @@ if(WITH_PYTHON)
     endif()
   else()
     string(REPLACE "/" "\\" proto_dstpath
-                   "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/")
+                   "${PADDLE_BINARY_DIR}/python/paddle/base/proto/")
     string(
       REPLACE "/" "\\" fleet_proto_dstpath
               "${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/")
@@ -628,7 +628,7 @@ if(WITH_PYTHON)
       TARGET framework_py_proto
       POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory
-              ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
+              ${PADDLE_BINARY_DIR}/python/paddle/base/proto
       COMMAND copy /Y *.py ${proto_dstpath}
       COMMAND copy /Y distributed_strategy_*.py ${fleet_proto_dstpath}
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
@@ -833,7 +833,7 @@ if(WITH_DISTRIBUTE)
            heter_service_proto
            fleet
            heter_server
-           brpc
+           ${${EXTERNAL_BRPC_DEPS}}
            phi)
     set(DISTRIBUTE_COMPILE_FLAGS "")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
@@ -1034,7 +1034,7 @@ cc_library(
 cc_library(
   executor_cache
   SRCS executor_cache.cc
-  DEPS parallel_executor standalone_executor phi_kernel_adaptor
+  DEPS parallel_executor standalone_executor phi_kernel_adaptor pd_inplace_pass
        pd_op_to_kernel_pass ir)
 if(WITH_PSCORE)
   get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)

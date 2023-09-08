@@ -16,11 +16,11 @@
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
+from paddle.base.framework import _current_expected_place
 from paddle.common_ops_import import Variable
-from paddle.fluid.framework import _current_expected_place
 from paddle.framework import in_dynamic_mode
 
-from ..fluid.data_feeder import (
+from ..base.data_feeder import (
     check_dtype,
     check_shape,
     check_type,
@@ -183,10 +183,6 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
 
     """
 
-    assert (
-        not core.is_compiled_with_rocm()
-    ), "multinomial op is not supported on ROCM yet."
-
     if in_dynamic_mode():
         return _C_ops.multinomial(x, num_samples, replacement)
     else:
@@ -259,7 +255,7 @@ def uniform_random_batch_size_like(
     Examples:
         .. code-block:: python
             import paddle
-            import paddle.fluid as fluid
+            import paddle.base as base
             from paddle.tensor import random
             paddle.enable_static()
             # example 1:

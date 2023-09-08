@@ -156,13 +156,26 @@ class CodeGen:
 
     def _gen_ret_type(self, op_info):
         type_list = op_info.output_type_list
-        if len(type_list) > 1:
+        intermediate_list = op_info.output_intermediate_list
+        assert len(type_list) == len(intermediate_list)
+
+        output_num = len(type_list) - intermediate_list.count('true')
+        if output_num > 1:
             return 'std::tuple<{}>'.format(
-                ', '.join([self._type_map[type] for type in type_list])
+                ', '.join(
+                    [
+                        self._type_map[type]
+                        for type, intermediate in zip(
+                            type_list, intermediate_list
+                        )
+                        if intermediate == 'false'
+                    ]
+                )
             )
-        elif len(type_list) == 1:
-            return self._type_map[type_list[0]]
-        elif len(type_list) == 0:
+        elif output_num == 1:
+            index = intermediate_list.index('false')
+            return self._type_map[type_list[index]]
+        elif output_num == 0:
             return 'void'
 
     def _gen_one_declare(self, op_info, op_name, is_mutable_attr):
@@ -252,10 +265,16 @@ class CodeGen:
     def _gen_out_split_and_ret_list(self, op_info, op_inst_name):
         name_list = op_info.output_name_list
         type_list = op_info.output_type_list
+        intermediate_list = op_info.output_intermediate_list
+        assert len(name_list) == len(type_list) == len(intermediate_list)
 
         split_op_str = ''
         ret_list = []
-        for i, (name, type) in enumerate(zip(name_list, type_list)):
+        for i, (name, type, intermediate) in enumerate(
+            zip(name_list, type_list, intermediate_list)
+        ):
+            if intermediate == 'true':
+                continue
             if VECTOR_TYPE in type:
                 split_op_name = f'{name}_split_op'
                 split_op_str += SPLIT_OP_TEMPLATE.format(
@@ -275,16 +294,20 @@ class CodeGen:
             return 'return;'
 
     def _gen_one_impl(self, op_info, op_name, is_mutable_attr):
+        ret_type = self._gen_ret_type(op_info)
         in_combine, in_combine_op_list = self._gen_in_combine(op_info)
         compute_op, op_inst_name = self._gen_compute_op(
             op_info, op_name, in_combine_op_list, is_mutable_attr
         )
+        if ret_type == 'void':
+            compute_op += f' (void){op_inst_name};'
+
         out_split, ret_list = self._gen_out_split_and_ret_list(
             op_info, op_inst_name
         )
 
         ret = API_IMPL_TEMPLATE.format(
-            ret_type=self._gen_ret_type(op_info),
+            ret_type=ret_type,
             api_name=op_name,
             args=self._gen_api_args(op_info, False, is_mutable_attr),
             in_combine=in_combine,

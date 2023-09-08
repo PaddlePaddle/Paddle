@@ -15,10 +15,10 @@
 
 import numpy as np
 
-from paddle.fluid.libpaddle import DataType
-from paddle.fluid.libpaddle.ir import Program, set_global_program
+from paddle.base.libpaddle import DataType
+from paddle.base.libpaddle.ir import Program, set_global_program
 
-from ..fluid.wrapped_decorator import signature_safe_contextmanager
+from ..base.wrapped_decorator import signature_safe_contextmanager
 
 np_type_to_paddle_type = {
     np.dtype("float32"): DataType.FLOAT32,
@@ -141,7 +141,7 @@ def default_main_program():
             paddle.enable_static()
             # Sample Network:
             x = paddle.static.data(name='x', shape=[100, 100], dtype='float32')
-            y = paddle.static.data(name='x', shape=[100, 100], dtype='float32')
+            y = paddle.static.data(name='y', shape=[100, 100], dtype='float32')
             out = paddle.add(x, y)
 
             #print the number of blocks in the program, 1 in this case
@@ -229,7 +229,7 @@ def program_guard(main_program, startup_program=None):
                 data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
 
     """
-    from ..fluid.data_feeder import check_type
+    from ..base.data_feeder import check_type
 
     check_type(
         main_program, 'main_program', Program, 'paddle.static.program_guard'

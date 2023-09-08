@@ -161,7 +161,7 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
       "affine_channel", "softmax", "temporal_shift"};
   // OPs unrelated to layout are consistent according to the layout of input
   // var！
-  std::unordered_set<std::string> any_layout_ops{"relu"};
+  std::unordered_set<std::string> any_layout_ops{"relu", "elementwise_add"};
   //
   //
   // TODO(liuyuanle): Add other op if needed!

@@ -18,21 +18,21 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import _legacy_C_ops, fluid
-from paddle.fluid import core, framework
-from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle import _legacy_C_ops, base
+from paddle.base import core, framework
+from paddle.base.dygraph.base import switch_to_static_graph
 
 paddle.enable_static()
 
 
 @contextlib.contextmanager
 def program_scope_guard():
-    prog = fluid.Program()
-    startup_prog = fluid.Program()
-    scope = fluid.core.Scope()
-    with fluid.scope_guard(scope):
-        with fluid.program_guard(prog, startup_prog):
-            with fluid.unique_name.guard():
+    prog = base.Program()
+    startup_prog = base.Program()
+    scope = base.core.Scope()
+    with base.scope_guard(scope):
+        with base.program_guard(prog, startup_prog):
+            with base.unique_name.guard():
                 yield
 
 
@@ -45,7 +45,7 @@ def _add_build_strategy_for(input_program, start_op_index, end_op_index):
     compiled_program._compile(
         core.Scope(), paddle.framework._current_expected_place()
     )
-    ir_graph = paddle.fluid.framework.IrGraph(compiled_program._graph)
+    ir_graph = paddle.base.framework.IrGraph(compiled_program._graph)
     builded_program = ir_graph.to_program()
     return builded_program
 
@@ -75,18 +75,18 @@ class RunProgramOpTest(unittest.TestCase):
         )
 
     def check_output(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for place in places:
             # TODO: RunProgramOp is not recommended for use in static graph mode now
             self.expect_outs = self.run_static_model(place, is_test=True)
             self.check_output_with_place(place)
 
     def check_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for place in places:
             # TODO: RunProgramOp is not recommended for use in static graph mode now
             self.expect_grads = self.run_static_model(place, is_test=False)
@@ -94,12 +94,12 @@ class RunProgramOpTest(unittest.TestCase):
 
     def run_static_model(self, place, is_test=True):
         with program_scope_guard():
-            startup_program = fluid.default_startup_program()
-            main_program = fluid.default_main_program()
+            startup_program = base.default_startup_program()
+            main_program = base.default_main_program()
 
             self.build_model()
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             exe.run(startup_program)
 
             if is_test:
@@ -115,7 +115,7 @@ class RunProgramOpTest(unittest.TestCase):
     def get_program_desc(self):
         with program_scope_guard():
             fwd_op_num = self.build_model()
-            return fluid.default_main_program().desc, fwd_op_num
+            return base.default_main_program().desc, fwd_op_num
 
     def get_forward_backward_program_desc(
         self, whole_program_desc, forward_op_num, output_num
@@ -215,7 +215,7 @@ class RunProgramOpTest(unittest.TestCase):
         self.program_desc, self.fwd_op_num = self.get_program_desc()
         self.attrs = self.prepare_attrs()
 
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             inputs = self.prepare_dygraph_input(place)
             outputs = self.prepare_dygraph_output()
 
@@ -267,7 +267,7 @@ class RunProgramOpTest(unittest.TestCase):
         self.program_desc, self.fwd_op_num = self.get_program_desc()
         self.attrs = self.prepare_attrs()
 
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             # Step 1. run forward
             inputs, input_param_list = self.prepare_dygraph_input(place, True)
             outputs = self.prepare_dygraph_output()
@@ -381,7 +381,7 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
             shape=[None, 1, 28, 28],
             dtype='float32',
         )
-        weight_attr = fluid.ParamAttr(
+        weight_attr = base.ParamAttr(
             name=self.input_names['Params'][0],
             learning_rate=0.5,
             initializer=paddle.nn.initializer.Assign(
@@ -389,7 +389,7 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
             ),
             trainable=True,
         )
-        bias_attr = fluid.ParamAttr(
+        bias_attr = base.ParamAttr(
             name=self.input_names['Params'][1],
             learning_rate=0.5,
             initializer=paddle.nn.initializer.Assign(
@@ -405,9 +405,9 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
             activation='relu',
         )
         # 2. get forward op num
-        fwd_op_num = fluid.default_main_program().global_block().desc.op_size()
+        fwd_op_num = base.default_main_program().global_block().desc.op_size()
         # 3. append backward
-        grads = fluid.backward.gradients(targets=[pred], inputs=[img])
+        grads = base.backward.gradients(targets=[pred], inputs=[img])
 
         return fwd_op_num
 
@@ -432,9 +432,9 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
     def test_check_grad(self):
         # NOTE: fecth not support SelectedRows, catnot compare
         # sparse gradients with staic mode, only run dygraph
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for place in places:
             # TODO: RunProgramOp is not recommended for use in static graph mode now
             self.calc_dygraph_grad(place)
@@ -447,7 +447,7 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
         emb = paddle.static.nn.embedding(
             input=x,
             size=[10, 16],
-            param_attr=fluid.ParamAttr(
+            param_attr=base.ParamAttr(
                 name="emb_weight",
                 learning_rate=10,
                 initializer=paddle.nn.initializer.Assign(
@@ -458,9 +458,9 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
         )
         y = paddle.sum(emb, axis=-1)
         # 2. get forward op num
-        fwd_op_num = fluid.default_main_program().global_block().desc.op_size()
+        fwd_op_num = base.default_main_program().global_block().desc.op_size()
         # 3. append backward
-        grads = fluid.backward.gradients(targets=[y], inputs=[x])
+        grads = base.backward.gradients(targets=[y], inputs=[x])
 
         return fwd_op_num
 

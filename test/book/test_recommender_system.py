@@ -24,9 +24,9 @@ sys.path.append("../legacy_test")
 import nets
 
 import paddle
-from paddle import fluid
-from paddle.fluid import framework
-from paddle.fluid.executor import Executor
+from paddle import base
+from paddle.base import framework
+from paddle.base.executor import Executor
 from paddle.optimizer import SGD
 
 paddle.enable_static()
@@ -186,12 +186,12 @@ def train(use_cuda, save_dirname, is_local=True):
     scale_infer, avg_cost = model()
 
     # test program
-    test_program = fluid.default_main_program().clone(for_test=True)
+    test_program = base.default_main_program().clone(for_test=True)
 
     sgd_optimizer = SGD(learning_rate=0.2)
     sgd_optimizer.minimize(avg_cost)
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
 
     exe = Executor(place)
 
@@ -233,7 +233,7 @@ def train(use_cuda, save_dirname, is_local=True):
             main_program.global_block().var(var_name)
             for var_name in feed_infer_order
         ]
-        feeder = fluid.DataFeeder(feed_list, place)
+        feeder = base.DataFeeder(feed_list, place)
 
         PASS_NUM = 100
         for pass_id in range(PASS_NUM):
@@ -273,7 +273,7 @@ def train(use_cuda, save_dirname, is_local=True):
                     sys.exit("got NaN loss, training failed.")
 
     if is_local:
-        train_loop(fluid.default_main_program())
+        train_loop(base.default_main_program())
     else:
         port = os.getenv("PADDLE_PSERVER_PORT", "6174")
         pserver_ips = os.getenv("PADDLE_PSERVER_IPS")  # ip,ip...
@@ -302,11 +302,11 @@ def infer(use_cuda, save_dirname=None):
     if save_dirname is None:
         return
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    exe = fluid.Executor(place)
+    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+    exe = base.Executor(place)
 
-    inference_scope = fluid.core.Scope()
-    with fluid.scope_guard(inference_scope):
+    inference_scope = base.core.Scope()
+    with base.scope_guard(inference_scope):
         # Use paddle.static.io.load_inference_model to obtain the inference program desc,
         # the feed_target_names (the names of variables that will be fed
         # data using feed operators), and the fetch_targets (variables that
@@ -328,27 +328,27 @@ def infer(use_cuda, save_dirname=None):
         # Correspondingly, recursive_sequence_lengths = [[3, 2]] contains one
         # level of detail info, indicating that `data` consists of two sequences
         # of length 3 and 2, respectively.
-        user_id = fluid.create_lod_tensor([[np.int64(1)]], [[1]], place)
+        user_id = base.create_lod_tensor([[np.int64(1)]], [[1]], place)
 
         assert feed_target_names[1] == "gender_id"
-        gender_id = fluid.create_lod_tensor([[np.int64(1)]], [[1]], place)
+        gender_id = base.create_lod_tensor([[np.int64(1)]], [[1]], place)
 
         assert feed_target_names[2] == "age_id"
-        age_id = fluid.create_lod_tensor([[np.int64(0)]], [[1]], place)
+        age_id = base.create_lod_tensor([[np.int64(0)]], [[1]], place)
 
         assert feed_target_names[3] == "job_id"
-        job_id = fluid.create_lod_tensor([[np.int64(10)]], [[1]], place)
+        job_id = base.create_lod_tensor([[np.int64(10)]], [[1]], place)
 
         assert feed_target_names[4] == "movie_id"
-        movie_id = fluid.create_lod_tensor([[np.int64(783)]], [[1]], place)
+        movie_id = base.create_lod_tensor([[np.int64(783)]], [[1]], place)
 
         assert feed_target_names[5] == "category_id"
-        category_id = fluid.create_lod_tensor(
+        category_id = base.create_lod_tensor(
             [np.array([10, 8, 9], dtype='int64')], [[3]], place
         )
 
         assert feed_target_names[6] == "movie_title"
-        movie_title = fluid.create_lod_tensor(
+        movie_title = base.create_lod_tensor(
             [np.array([1069, 4140, 2923, 710, 988], dtype='int64')],
             [[5]],
             place,
@@ -374,7 +374,7 @@ def infer(use_cuda, save_dirname=None):
 
 
 def main(use_cuda):
-    if use_cuda and not fluid.core.is_compiled_with_cuda():
+    if use_cuda and not base.core.is_compiled_with_cuda():
         return
 
     # Directory for saving the inference model

@@ -59,7 +59,7 @@ class TestGeometric(unittest.TestCase):
         self._paddle_geom = geometric.Geometric(probs)
 
     def test_mean(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_geom.mean,
                 scipy.stats.geom.mean(self.probs),
@@ -68,7 +68,7 @@ class TestGeometric(unittest.TestCase):
             )
 
     def test_variance(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_geom.variance,
                 scipy.stats.geom.var(self.probs),
@@ -77,7 +77,7 @@ class TestGeometric(unittest.TestCase):
             )
 
     def test_stddev(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_geom.stddev,
                 scipy.stats.geom.std(self.probs),
@@ -86,7 +86,7 @@ class TestGeometric(unittest.TestCase):
             )
 
     def test_entropy(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_geom.entropy(),
                 scipy.stats.geom.entropy(self.probs),
@@ -181,7 +181,7 @@ class TestGeometric(unittest.TestCase):
     def test_back_rsample(self):
         sample_shape = (100000,)
 
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             self._paddle_geom.probs.stop_gradient = False
 
             rs_value = self._paddle_geom.rsample(sample_shape)
@@ -236,7 +236,7 @@ class TestGeometricPMF(unittest.TestCase):
         )
 
     def test_pmf(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_geom.pmf(self.value),
                 scipy.stats.geom.pmf(self.value, self.probs),
@@ -245,7 +245,7 @@ class TestGeometricPMF(unittest.TestCase):
             )
 
     def test_log_pmf(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_geom.log_pmf(self.value),
                 scipy.stats.geom.logpmf(self.value, self.probs),
@@ -254,7 +254,7 @@ class TestGeometricPMF(unittest.TestCase):
             )
 
     def test_cdf(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_geom.cdf(self.value),
                 scipy.stats.geom.cdf(self.value, self.probs),

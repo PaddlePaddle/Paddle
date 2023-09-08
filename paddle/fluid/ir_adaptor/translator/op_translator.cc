@@ -1112,8 +1112,7 @@ struct AddNOpTranscriber : public OpTranscriber {
     }
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
-      IR_THROW(
-          "Op assign_value should have corresponding OpInfo pd.assign_value_");
+      IR_THROW("Op add_n should have corresponding OpInfo %s", target_op_name);
     }
 
     return op_info;
@@ -1181,11 +1180,20 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
              ctx,
              paddle::dialect::VarTypeToDataType(
                  static_cast<paddle::framework::proto::VarType_Type>(dtype)))}};
+
+    if (op_desc.HasAttr("force_cpu")) {
+      bool force_cpu = PADDLE_GET_CONST(bool, op_desc.GetAttr("force_cpu"));
+      if (force_cpu) {
+        attribute_map["place"] =
+            paddle::dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
+      }
+    }
+
     int place_type = PADDLE_GET_CONST(int, op_desc.GetAttr("place_type"));
     switch (place_type) {
       case -1:
-        attribute_map["place"] =
-            paddle::dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
+        attribute_map["place"] = paddle::dialect::PlaceAttribute::get(
+            ctx, phi::Place(phi::AllocationType::UNDEFINED));
         break;
       case 0:
         attribute_map["place"] =
@@ -1699,6 +1707,7 @@ OpTranslator::OpTranslator() {
   special_handlers["cast"] = CastOpTranscriber();
   special_handlers["feed"] = FeedOpTranscriber();
   special_handlers["data"] = DataOpTranscriber();
+  special_handlers["fetch"] = FetchOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
   special_handlers["fill_constant"] = FillConstantTranscriber();
   special_handlers["grad_add"] = GradAddOpTranscriber();

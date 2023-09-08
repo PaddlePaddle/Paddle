@@ -110,7 +110,7 @@ class TestAutoParallelAPI(unittest.TestCase):
         with ProcessMesh(process_mesh1.mesh, process_mesh1.dim_names):
             linear0, linear1, linear0_out, gelu_out, linear1_out = mlp(input)
 
-        default_program = paddle.fluid.default_main_program()
+        default_program = paddle.base.default_main_program()
         default_dist_context = get_default_distributed_context()
 
         self.assertEqual(len(default_program.blocks[0].ops), 5)
