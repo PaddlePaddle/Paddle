@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_meta_tensor.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -50,6 +51,7 @@ template class TypeInfoTraits<phi::TensorBase, SparseCsrTensor>;
 template class TypeInfoTraits<phi::TensorBase, StringTensor>;
 template class TypeInfoTraits<phi::TensorBase, TensorArray>;
 template class TypeInfoTraits<phi::TensorBase, phi::distributed::DistTensor>;
+template class TypeInfoTraits<phi::TensorBase, paddle::dialect::IrMetaTensor>;
 
 template class TypeInfoTraits<phi::DeviceContext, CPUContext>;
 template class TypeInfoTraits<phi::DeviceContext, CustomContext>;

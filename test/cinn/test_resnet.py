@@ -21,7 +21,7 @@ import numpy as np
 from cinn.common import DefaultHostTarget, DefaultNVGPUTarget
 from cinn.frontend import Interpreter
 
-from paddle import fluid
+from paddle import base
 
 enable_gpu = sys.argv.pop()
 model_dir = sys.argv.pop()
@@ -39,13 +39,13 @@ class TestLoadResnetModel(unittest.TestCase):
         self.x_shape = [1, 160, 7, 7]
 
     def get_paddle_inference_result(self, data):
-        config = fluid.core.AnalysisConfig(
+        config = base.core.AnalysisConfig(
             self.model_dir + ".pdmodel", self.model_dir + ".pdiparams"
         )
         config.disable_gpu()
         config.switch_ir_optim(False)
-        self.paddle_predictor = fluid.core.create_paddle_predictor(config)
-        data = fluid.core.PaddleTensor(data)
+        self.paddle_predictor = base.core.create_paddle_predictor(config)
+        data = base.core.PaddleTensor(data)
         results = self.paddle_predictor.run([data])
         return results[0].as_ndarray()
 

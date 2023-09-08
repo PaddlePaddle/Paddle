@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/platform/enforce.h"

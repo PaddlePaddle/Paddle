@@ -20,10 +20,10 @@ from multiprocessing import Manager, Process
 import numpy as np
 
 import paddle
+from paddle.base import core
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
-from paddle.fluid import core
 
 from ...backup_env import getenv_or_backup
 

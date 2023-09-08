@@ -17,14 +17,13 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
 
 paddle.enable_static()
 
 
 class TestPdInplacePass(unittest.TestCase):
     def test_pd_inplace_pass(self):
-        place = core.Place()
+        place = paddle.framework.core.Place()
         place.set_place(paddle.CPUPlace())
         new_scope = paddle.static.Scope()
         main_program = paddle.static.Program()

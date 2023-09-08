@@ -14,8 +14,8 @@
 
 
 from paddle import _C_ops
+from paddle.base import core
 from paddle.common_ops_import import default_main_program
-from paddle.fluid import core
 from paddle.framework import LayerHelper, in_dynamic_mode
 
 
@@ -51,15 +51,27 @@ def fused_dropout_add(
 
     Examples:
 
-        ..  code-block:: python
+        .. code-block:: python
 
-            # required: gpu
-            import paddle
-            from paddle.incubate.nn.functional import fused_dropout_add
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> from paddle.incubate.nn.functional import fused_dropout_add
 
-            x = paddle.randn([4, 10], dtype='float16')
-            y = paddle.randn([4, 10], dtype='float16')
-            out = fused_dropout_add(x, y, p=0.5)
+            >>> paddle.set_device('gpu')
+            >>> paddle.seed(2023)
+            >>> x = paddle.randn([4, 10], dtype="float32")
+            >>> y = paddle.randn([4, 10], dtype="float32")
+            >>> out = fused_dropout_add(x, y, p=0.5)
+            >>> print(out)
+            Tensor(shape=[4, 10], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [[-0.49133155,  0.53819323, -2.58393312,  0.06336236, -1.09908366,
+               0.22085167,  2.19751787,  0.05034769,  0.53417486,  0.84864247],
+             [ 0.78248203, -1.59652555, -0.14399840, -0.77985179, -0.17006736,
+              -0.30991879, -0.36593807, -0.51025450,  1.46401680,  0.61627960],
+             [ 4.50472546, -0.48472026,  0.60729283,  0.33509624, -0.25593102,
+              -1.45173049,  1.06727099,  0.00440830, -0.77340341,  0.67393088],
+             [ 1.29453969,  0.07568165,  0.71947742, -0.71768606, -2.57172823,
+               1.89179027,  3.26482797,  1.10493207, -1.04569530, -1.04862499]])
     """
     if isinstance(p, (int, float)):
         # fast return for p == 0

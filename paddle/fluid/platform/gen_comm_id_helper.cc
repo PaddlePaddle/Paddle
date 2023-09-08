@@ -19,8 +19,8 @@ limitations under the License. */
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
-#include <stdlib.h>
 #include <sys/socket.h>
+#include <cstdlib>
 
 #include <algorithm>
 #include <array>

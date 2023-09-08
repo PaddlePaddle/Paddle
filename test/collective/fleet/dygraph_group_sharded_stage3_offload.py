@@ -18,13 +18,13 @@
 import numpy as np
 
 import paddle
+from paddle.base import core
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import (
     GroupShardedStage3,
 )
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import (
     GroupShardedScaler,
 )
-from paddle.fluid import core
 from paddle.nn import Linear
 
 epoch = 10
