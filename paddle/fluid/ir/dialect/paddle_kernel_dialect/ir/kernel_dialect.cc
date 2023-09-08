@@ -16,8 +16,8 @@
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_attribute.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_op.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_type.h"
-#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/legacy_kernel_op.h"
 #include "paddle/fluid/platform/init_phi.h"
+#include "paddle/ir/core/ir_printer.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/ddim.h"
 
@@ -73,6 +73,45 @@ void PaddleKernelDialect::PrintAttribute(ir::Attribute attr,
 
   os << "<backend:" << kernel.backend() << "|layout:" << kernel.layout()
      << "|dtype:" << kernel.dtype() << ">";
+}
+
+void PaddleKernelDialect::PrintOperation(ir::Operation *op,
+                                         ir::IrPrinter &printer) const {
+  if (op->dyn_cast<PhiKernelOp>() || op->dyn_cast<LegacyKernelOp>()) {
+    auto &os = printer.os;
+    printer.PrintOpResult(op);
+    os << " =";
+    if (auto phi_kernel_op = op->dyn_cast<PhiKernelOp>()) {
+      std::string kernel_name = phi_kernel_op.kernel_name();
+      if (op->attributes().count("is_inplace") != 0 &&
+          op->attributes()
+              .at("is_inplace")
+              .dyn_cast<ir::BoolAttribute>()
+              .data()) {
+        kernel_name = kernel_name + "_";
+      }
+      os << " \"" << kernel_name << "(phi_kernel)\"";
+    } else {
+      auto legacy_kernel_op = op->dyn_cast<LegacyKernelOp>();
+      std::string kernel_name = legacy_kernel_op.kernel_name();
+      if (op->attributes().count("is_inplace") != 0 &&
+          op->attributes()
+              .at("is_inplace")
+              .dyn_cast<ir::BoolAttribute>()
+              .data()) {
+        kernel_name = kernel_name + "_";
+      }
+      os << " \"" << kernel_name << "(legacy_kernel)\"";
+    }
+    printer.PrintOpOperands(op);
+    printer.PrintAttributeMap(op);
+    os << " :";
+    printer.PrintOperandsType(op);
+    os << " -> ";
+    printer.PrintOpReturnType(op);
+  } else {
+    printer.PrintGeneralOperation(op);
+  }
 }
 
 }  // namespace dialect

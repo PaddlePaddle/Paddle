@@ -29,6 +29,9 @@ class PaddleKernelDialect : public ir::Dialect {
 
   void PrintAttribute(ir::Attribute attr, std::ostream& os) const override;
 
+  void PrintOperation(ir::Operation* op,
+                      ir::IrPrinter& printer) const override;  // NOLINT
+
  private:
   void initialize();
 };
