@@ -273,6 +273,84 @@ class DrrRewritePattern : public ir::RewritePattern {
     return matched;
   }
 
+  bool Bottom2UpMatch(vector<OpCall*> drr_output_sequence_candidate, 
+                      vecotr<ir::Operator*> ir_output_sequence,
+                      const std::shared_ptr<MatchContextImpl>& source_pattern_match_ctx) const {
+    // assert: equal sequence length
+    IR_ENFORCE(drr_output_candidate.size() == ir_output_sequence.size());
+    // init
+    std::unordered_set<const OpCall*> drr_visited;
+    std::unordered_set<Operation*> ir_visited;
+    std::queue<const OpCall*> drr_q;
+    std::queue<ir::Operation*> ir_q;
+    bool matched = true;
+    for(size_t i = 0; i < ir_output_sequence.size(); ++i){
+      drr_q.push(drr_output_candidate[i]);
+      drr_visited.insert(drr_output_sequence_candidate[i]);
+      ir_q.push(ir_output_sequence[i]);
+      ir_visited.insert(in_output_sequence[i]);
+      source_pattern_match_ctx->BindIrOperation(
+        drr_output_candidate[i], std::make_shared<IrOperation>(ir_output_sequence[i]);
+      )
+    }
+    size_t step = 0;
+    while (!drr_q.empty()){
+      if(!matched) break;
+      auto* drr_node = drr_q.front();
+      auto* ir_node = ir_q.front();
+      drr_q.pop();
+      ir_q.pop();
+      if (drr_node->name() != ir_node->name()){
+        matched = false;
+        break;
+      }
+      const auto& drr_input_tensors = drr_node->inputs();
+      auto ir_Operands = ir_node->operands();
+      // check input size
+      if (drr_input_tensors.size() != ir_Operands.size()){
+        matched = false;
+        break;
+      }
+      // check output size
+      if (drr_node->outputs().size() != ir_node->operands().size()){
+        matched = false;
+        break;
+      }
+      source_pattern_match_ctx->BindIrOperation(
+        drr_node, std::make_shared<IrOperation>(ir_node));
+      // join the producerOp of input
+      for(size_t i = 0; i < drr_input_tensors.size(); ++i){
+        auto *drr_ancestor_op = drr_input_tensors[i]->producer();
+        auto *ir_ancestor_op = ir_input_value.GetDefiningOp();
+        if (drr_ancestor_op->name() != ir_ancestor_op->name()){
+          matched = false;
+          break;
+        } else {
+          drr_q.push(drr_ancestor_op);
+          ir_q.push(ir_ancestor_op);
+          drr_visited.insert(drr_ancestor_op);
+          ir_visited.insert(ir_ancestor_op);
+        }
+      }
+
+      ++step;    
+    }
+
+    if (matched) {
+      IR_ENFORCE(step == source_pattern_graph_->CountOfOpCalls());
+    } else {
+      return matched;
+    }
+
+    MatchContext match_context{source_pattern_match_ctx};
+    for (const auto& constrain : constraints_){
+      matched = constraint(match_context);
+      if (!matched) break;
+    }
+
+    return matched;
+  }
+
   void PatternGraphRewrite(const MatchContextImpl& source_pattern_match_ctx,
                            ir::PatternRewriter& rewriter) const {  // NOLINT
     VLOG(6) << "Create Operations in result_pattern_graph";
