@@ -19,9 +19,9 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.base import core
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_optimizers.common import CollectiveHelper
-from paddle.fluid import core
 from paddle.incubate import DistributedFusedLamb
 from paddle.nn.clip import ClipGradBase, _clip_by_global_norm_using_mp_type
 from paddle.vision.models import resnet18 as resnet
@@ -126,7 +126,7 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
     main = paddle.static.Program()
     startup = paddle.static.Program()
     with paddle.static.program_guard(main, startup):
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             with paddle.static.amp.fp16_guard():
                 image = paddle.static.data(
                     name='image',

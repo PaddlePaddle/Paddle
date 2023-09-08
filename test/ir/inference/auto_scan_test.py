@@ -34,7 +34,7 @@ from program_config import (
 
 import paddle
 import paddle.inference as paddle_infer
-from paddle.fluid.core import PassVersionChecker
+from paddle.base.core import PassVersionChecker
 from paddle.static.log_helper import get_logger
 
 LOGLEVEL = os.environ.get("PADDLE_TEST_LOGLEVEL", "INFO").upper()

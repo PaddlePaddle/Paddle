@@ -18,9 +18,9 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle import base
+from paddle.base import core
+from paddle.base.dygraph.base import switch_to_static_graph
 
 
 def numpy_scatter_nd(ref, index, updates, fun):
@@ -324,7 +324,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
     """
 
     def testcase1(self):
-        with paddle.fluid.framework._static_guard():
+        with paddle.base.framework._static_guard():
             ref1 = paddle.static.data(
                 name='ref1',
                 shape=[10, 9, 8, 1, 3],
@@ -343,7 +343,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
             output1 = paddle.scatter_nd_add(ref1, index1, updates1)
 
     def testcase2(self):
-        with paddle.fluid.framework._static_guard():
+        with paddle.base.framework._static_guard():
             ref2 = paddle.static.data(
                 name='ref2',
                 shape=[10, 9, 8, 1, 3],
@@ -364,7 +364,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
             )
 
     def testcase3(self):
-        with paddle.fluid.framework._static_guard():
+        with paddle.base.framework._static_guard():
             shape3 = [10, 9, 8, 1, 3]
             index3 = paddle.static.data(
                 name='index3',
@@ -379,7 +379,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
             output3 = paddle.scatter_nd(index3, updates3, shape3)
 
     def testcase4(self):
-        with paddle.fluid.framework._static_guard():
+        with paddle.base.framework._static_guard():
             shape4 = [10, 9, 8, 1, 3]
             index4 = paddle.static.data(
                 name='index4',
@@ -396,7 +396,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
             )
 
     def testcase5(self):
-        if not fluid.core.is_compiled_with_cuda():
+        if not base.core.is_compiled_with_cuda():
             return
 
         shape = [2, 3, 4]
@@ -404,7 +404,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
         index = np.array([[0, 0, 2], [0, 1, 2]])
         val = np.array([-1, -3])
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             device = paddle.get_device()
             paddle.set_device('gpu')
             gpu_value = paddle.scatter_nd_add(
@@ -450,7 +450,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
 class TestScatterNdOpRaise(unittest.TestCase):
     def test_check_raise(self):
         def check_raise_is_test():
-            with paddle.fluid.framework._static_guard():
+            with paddle.base.framework._static_guard():
                 try:
                     ref5 = paddle.static.data(
                         name='ref5', shape=[-1, 3, 4, 5], dtype='float32'
@@ -471,7 +471,7 @@ class TestScatterNdOpRaise(unittest.TestCase):
 
     def test_check_raise2(self):
         with self.assertRaises(ValueError):
-            with paddle.fluid.framework._static_guard():
+            with paddle.base.framework._static_guard():
                 ref6 = paddle.static.data(
                     name='ref6',
                     shape=[10, 9, 8, 1, 3],
@@ -491,7 +491,7 @@ class TestScatterNdOpRaise(unittest.TestCase):
 
     def test_check_raise3(self):
         def check_raise_is_test():
-            with paddle.fluid.framework._static_guard():
+            with paddle.base.framework._static_guard():
                 try:
                     shape = [3, 4, 5]
                     index7 = paddle.static.data(
@@ -513,19 +513,19 @@ class TestScatterNdOpRaise(unittest.TestCase):
 
 class TestDygraph(unittest.TestCase):
     def test_dygraph(self):
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             index_data = np.array([[1, 1], [0, 1], [1, 3]]).astype(np.int64)
-            index = fluid.dygraph.to_variable(index_data)
+            index = base.dygraph.to_variable(index_data)
             updates = paddle.rand(shape=[3, 9, 10], dtype='float32')
             shape = [3, 5, 9, 10]
             output = paddle.scatter_nd(index, updates, shape)
 
     def test_dygraph_1(self):
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             x = paddle.rand(shape=[3, 5, 9, 10], dtype='float32')
             updates = paddle.rand(shape=[3, 9, 10], dtype='float32')
             index_data = np.array([[1, 1], [0, 1], [1, 3]]).astype(np.int64)
-            index = fluid.dygraph.to_variable(index_data)
+            index = base.dygraph.to_variable(index_data)
             output = paddle.scatter_nd_add(x, index, updates)
 
 

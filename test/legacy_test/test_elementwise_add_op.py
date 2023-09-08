@@ -21,9 +21,9 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.layer_helper import LayerHelper
+from paddle import base
+from paddle.base import core
+from paddle.base.layer_helper import LayerHelper
 
 
 class TestElementwiseAddOp(OpTest):
@@ -43,8 +43,8 @@ class TestElementwiseAddOp(OpTest):
         self.if_enable_cinn()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.out}
@@ -187,12 +187,8 @@ class TestBF16ElementwiseAddOp(OpTest):
         self.axis = -1
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(
-                convert_float_to_uint16(self.x)
-            ),
-            'Y': OpTest.np_dtype_to_fluid_dtype(
-                convert_float_to_uint16(self.y)
-            ),
+            'X': OpTest.np_dtype_to_base_dtype(convert_float_to_uint16(self.x)),
+            'Y': OpTest.np_dtype_to_base_dtype(convert_float_to_uint16(self.y)),
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': False}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
@@ -581,7 +577,7 @@ class TestAddApi(unittest.TestCase):
         return paddle.add(x, y, name)
 
     def test_name(self):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
             x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
             y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
 
@@ -589,7 +585,7 @@ class TestAddApi(unittest.TestCase):
             self.assertEqual(('add_res' in y_1.name), True)
 
     def test_declarative(self):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
 
             def gen_data():
                 return {
@@ -601,18 +597,18 @@ class TestAddApi(unittest.TestCase):
             y = paddle.static.data(name="y", shape=[3], dtype='float32')
             z = self._executed_api(x, y)
 
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            exe = base.Executor(place)
             z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
             z_expected = np.array([3.0, 8.0, 6.0])
             self.assertEqual((z_value == z_expected).all(), True)
 
     def test_dygraph(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             np_x = np.array([2, 3, 4]).astype('float64')
             np_y = np.array([1, 5, 2]).astype('float64')
-            x = fluid.dygraph.to_variable(np_x)
-            y = fluid.dygraph.to_variable(np_y)
+            x = base.dygraph.to_variable(np_x)
+            y = base.dygraph.to_variable(np_y)
             z = self._executed_api(x, y)
             np_z = z.numpy()
             z_expected = np.array([3.0, 8.0, 6.0])
@@ -691,8 +687,8 @@ class TestComplexElementwiseAddOp(OpTest):
         self.init_input_output()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
@@ -877,7 +873,7 @@ class TestTensorFloa32Bfloat16OrFloat16Add(unittest.TestCase):
 class TestTensorFloa32Bfloat16Add(TestTensorFloa32Bfloat16OrFloat16Add):
     def test_floa32_bfloat16_add(self):
         place = core.CUDAPlace(0)
-        with fluid.dygraph.base.guard(place=place):
+        with base.dygraph.base.guard(place=place):
             self._floa32_bfloat16_or_float16_add(y_dtype=paddle.bfloat16)
 
 
@@ -888,7 +884,7 @@ class TestTensorFloa32Bfloat16Add(TestTensorFloa32Bfloat16OrFloat16Add):
 class TestTensorFloa32Float16Add(TestTensorFloa32Bfloat16OrFloat16Add):
     def test_floa32_float16_add(self):
         place = core.CUDAPlace(0)
-        with fluid.dygraph.base.guard(place=place):
+        with base.dygraph.base.guard(place=place):
             self._floa32_bfloat16_or_float16_add(y_dtype=paddle.float16)
 
 

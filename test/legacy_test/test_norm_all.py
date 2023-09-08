@@ -18,9 +18,9 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import _C_ops, fluid
-from paddle.fluid import core
-from paddle.fluid.framework import in_dygraph_mode
+from paddle import _C_ops, base
+from paddle.base import core
+from paddle.base.framework import in_dygraph_mode
 
 
 # hack method for test p_norm final state
@@ -412,11 +412,11 @@ class TestPnormBF16Op(OpTest):
 
 
 def run_fro(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
-    with fluid.program_guard(fluid.Program()):
+    with base.program_guard(base.Program()):
         data = paddle.static.data(name="X", shape=shape_x, dtype=dtype)
         out = paddle.norm(x=data, p=p, axis=axis, keepdim=keep_dim)
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
         np_input = (np.random.rand(*shape_x) + 1.0).astype(dtype)
         expected_result = numpy_frobenius_norm(
             np_input, axis=axis, keepdims=keep_dim
@@ -434,11 +434,11 @@ def run_fro(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
 
 
 def run_pnorm(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
-    with fluid.program_guard(fluid.Program()):
+    with base.program_guard(base.Program()):
         data = paddle.static.data(name="X", shape=shape_x, dtype=dtype)
         out = paddle.norm(x=data, p=p, axis=axis, keepdim=keep_dim)
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
         np_input = (np.random.rand(*shape_x) + 1.0).astype(dtype)
         expected_result = p_norm(
             np_input, porder=p, axis=axis, keepdims=keep_dim
@@ -637,7 +637,7 @@ class API_NormTest(unittest.TestCase):
         run_graph(self, p='fro', axis=None, shape_x=[2, 3, 4], dtype="float32")
 
     def test_name(self):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
             x = paddle.static.data(name="x", shape=[10, 10], dtype="float32")
             y_1 = paddle.norm(x, p='fro', name='frobenius_name')
             y_2 = paddle.norm(x, p=2, name='pnorm_name')
@@ -645,7 +645,7 @@ class API_NormTest(unittest.TestCase):
             self.assertEqual(('pnorm_name' in y_2.name), True)
 
     def test_errors(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
 
             def err_dtype(p, shape_x, xdtype, out=None):
                 data = paddle.static.data(shape=shape_x, dtype=xdtype)
@@ -674,7 +674,7 @@ class API_NormTest(unittest.TestCase):
                 ValueError, paddle.norm, data, p='unspport', axis=[-3, -2, -1]
             )
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             # The size of input in Norm should not be 0.
             def test_0_size():
                 array = np.array([], dtype=np.float32)

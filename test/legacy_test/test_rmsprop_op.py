@@ -18,8 +18,8 @@ import numpy as np
 from op import Operator
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def create_selected_rows_and_tensor(
@@ -56,7 +56,7 @@ class TestBase(unittest.TestCase):
     ):
         np.random.seed(5)  # fix seed
 
-        self.scope = fluid.global_scope()
+        self.scope = base.global_scope()
         self.place = place
 
         self.param_name = "param"
@@ -231,12 +231,12 @@ class TestRmspropOp(TestBase):
         size = (128, 320)
         for place in places:
             for centered in [False, True]:
-                with fluid.scope_guard(core.Scope()):
+                with base.scope_guard(core.Scope()):
                     self.check_with_place(
                         place, is_sparse=False, centered=centered, size=size
                     )
 
-                with fluid.scope_guard(core.Scope()):
+                with base.scope_guard(core.Scope()):
                     self.check_with_place(
                         place,
                         is_sparse=True,
@@ -245,7 +245,7 @@ class TestRmspropOp(TestBase):
                         size=size,
                     )
 
-                with fluid.scope_guard(core.Scope()):
+                with base.scope_guard(core.Scope()):
                     self.check_with_place(
                         place,
                         is_sparse=True,
@@ -274,9 +274,9 @@ class TestRMSPropV2(unittest.TestCase):
 
     def test_rmsprop(self):
         paddle.enable_static()
-        place = fluid.CPUPlace()
-        main = fluid.Program()
-        with fluid.program_guard(main):
+        place = base.CPUPlace()
+        main = base.Program()
+        with base.program_guard(main):
             x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
             y_predict = paddle.static.nn.fc(x, size=1)
@@ -292,9 +292,9 @@ class TestRMSPropV2(unittest.TestCase):
             train_reader = paddle.batch(
                 paddle.dataset.uci_housing.train(), batch_size=1
             )
-            feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            feeder = base.DataFeeder(place=place, feed_list=[x, y])
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
             for data in train_reader():
                 exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
 

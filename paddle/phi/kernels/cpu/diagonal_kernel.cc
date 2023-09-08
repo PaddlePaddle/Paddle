@@ -38,8 +38,10 @@ void DiagonalKernel(const Context& dev_ctx,
   auto output_dim_size = output_dim.size();
 
   const int64_t offset_ = offset;
-  int64_t axis1_ = axis1 < 0 ? input_dim_size + axis1 : axis1;
-  int64_t axis2_ = axis2 < 0 ? input_dim_size + axis2 : axis2;
+  int64_t axis1_ =
+      static_cast<int64_t>(axis1 < 0 ? input_dim_size + axis1 : axis1);
+  int64_t axis2_ =
+      static_cast<int64_t>(axis2 < 0 ? input_dim_size + axis2 : axis2);
 
   std::vector<int64_t> input_stride = funcs::ComputeDimStride(input_dim);
   std::vector<int64_t> output_stride = funcs::ComputeDimStride(output_dim);

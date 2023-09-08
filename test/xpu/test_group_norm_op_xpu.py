@@ -78,9 +78,9 @@ class XPUTestGroupNormOp(XPUOpTestWrapper):
             )
 
             self.inputs = {
-                'X': OpTest.np_dtype_to_fluid_dtype(input),
-                'Scale': OpTest.np_dtype_to_fluid_dtype(scale),
-                'Bias': OpTest.np_dtype_to_fluid_dtype(bias),
+                'X': OpTest.np_dtype_to_base_dtype(input),
+                'Scale': OpTest.np_dtype_to_base_dtype(scale),
+                'Bias': OpTest.np_dtype_to_base_dtype(bias),
             }
             self.outputs = {'Y': output, 'Mean': mean, 'Variance': var}
             self.attrs['data_layout'] = self.data_format

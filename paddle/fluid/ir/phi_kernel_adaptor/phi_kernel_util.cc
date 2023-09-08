@@ -253,7 +253,8 @@ void HandleForSpecialOp(
                variable_list);
   }
 
-  if (op_name == "pd.feed") {
+  if (op_name == "pd.feed" || op_name == "pd.data") {
+    VLOG(6) << "Handle for" << op_name;
     auto value = op->result(0);
     VLOG(6) << "link feed output to feed in variable" << inner_scope;
 
@@ -266,27 +267,6 @@ void HandleForSpecialOp(
 
     AddNewData(value,
                name,
-               var,
-               value_2_var_name,
-               variable_2_var_name,
-               var_name_2_id,
-               variable_list);
-  }
-
-  if (op_name == "pd.data") {
-    VLOG(6) << "Handle for pd.data";
-    auto var_name =
-        op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
-
-    auto value = op->result(0);
-
-    paddle::framework::Variable* var = inner_scope->FindVar(var_name);
-    PADDLE_ENFORCE(var,
-                   paddle::platform::errors::InvalidArgument(
-                       "The variable %s shoud exist", var_name));
-
-    AddNewData(value,
-               var_name,
                var,
                value_2_var_name,
                variable_2_var_name,
@@ -704,6 +684,51 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
       attr_map[name] = val.dyn_cast<ir::DoubleAttribute>().data();
     } else if (val.isa<ir::Int64Attribute>()) {
       attr_map[name] = val.dyn_cast<ir::Int64Attribute>().data();
+    } else if (val.isa<ir::ArrayAttribute>()) {
+      auto array_list = val.dyn_cast<ir::ArrayAttribute>().AsVector();
+      PADDLE_ENFORCE(
+          array_list.size() > 0,
+          paddle::platform::errors::Fatal("Attribute %s is empty", name));
+      if (array_list[0].isa<ir::Int32Attribute>()) {
+        std::vector<int> vec_int;
+        for (auto attribute : array_list) {
+          vec_int.push_back(attribute.dyn_cast<ir::Int32Attribute>().data());
+        }
+        attr_map[name] = vec_int;
+      } else if (array_list[0].isa<ir::Int64Attribute>()) {
+        std::vector<int> vec_int64;
+        for (auto attribute : array_list) {
+          vec_int64.push_back(attribute.dyn_cast<ir::Int64Attribute>().data());
+        }
+        attr_map[name] = vec_int64;
+      } else if (array_list[0].isa<ir::BoolAttribute>()) {
+        std::vector<int> vec_bool;
+        for (auto attribute : array_list) {
+          vec_bool.push_back(attribute.dyn_cast<ir::BoolAttribute>().data());
+        }
+        attr_map[name] = vec_bool;
+      } else if (array_list[0].isa<ir::FloatAttribute>()) {
+        std::vector<int> vec_float;
+        for (auto attribute : array_list) {
+          vec_float.push_back(attribute.dyn_cast<ir::FloatAttribute>().data());
+        }
+        attr_map[name] = vec_float;
+      } else if (array_list[0].isa<ir::DoubleAttribute>()) {
+        std::vector<int> vec_double;
+        for (auto attribute : array_list) {
+          vec_double.push_back(
+              attribute.dyn_cast<ir::DoubleAttribute>().data());
+        }
+        attr_map[name] = vec_double;
+      } else {
+        std::stringstream ss;
+        val.Print(ss);
+        VLOG(1) << "type not support " << ss.str() << std::endl;
+        PADDLE_THROW("Type[%s] in attribute map not support yet", ss.str());
+      }
+    } else if (val.isa<paddle::dialect::DataTypeAttribute>()) {
+      attr_map[name] = paddle::framework::TransToProtoVarType(
+          val.dyn_cast<paddle::dialect::DataTypeAttribute>().data());
     } else {
       std::stringstream ss;
       val.Print(ss);

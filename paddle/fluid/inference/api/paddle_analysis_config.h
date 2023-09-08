@@ -695,7 +695,8 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param output_tensor_names The name of the Tensor that needs to be marked
   ///
   void MarkTrtEngineOutputs(
-      const std::vector<std::string>& output_tensor_names = {});
+      const std::vector<std::string>& output_tensor_names = {},
+      const bool trt_mark_output_with_id = false);
   ///
   /// \brief Turn on the TensorRT memory optimization.
   ///
@@ -1147,6 +1148,14 @@ struct PD_INFER_DECL AnalysisConfig {
   void Exp_DisableMixedPrecisionOps(
       const std::unordered_set<std::string>& black_list);
 
+  ///
+  /// \brief Set a list of operators that do support mixed precision. This
+  /// interface is in the experimental stage and may change in the future. Note
+  /// that the whitelist must be the same as the model conversion whitelist.
+  ///
+  void Exp_EnableMixedPrecisionOps(
+      const std::unordered_set<std::string>& white_list);
+
   void SetApplyOptim(bool value) { apply_optim_ = value; }
 
   void SetSkipLoadParams(bool value) { skip_load_params_ = value; }
@@ -1179,6 +1188,7 @@ struct PD_INFER_DECL AnalysisConfig {
   // Mixed precision related.
   Precision mixed_precision_mode_{Precision::kFloat32};
   std::unordered_set<std::string> mixed_black_list_;
+  std::unordered_set<std::string> mixed_white_list_;
   bool enable_low_precision_io_{false};
 
   // GPU related.
@@ -1228,6 +1238,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool trt_use_varseqlen_{false};
   bool trt_with_interleaved_{false};
   bool trt_mark_output_{false};
+  bool trt_mark_output_with_id_{false};
   std::vector<std::string> trt_output_tensor_names_{};
   std::string tensorrt_transformer_posid_{""};
   std::string tensorrt_transformer_maskid_{""};

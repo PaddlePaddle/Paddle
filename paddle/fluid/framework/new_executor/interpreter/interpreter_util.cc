@@ -72,7 +72,7 @@ class SingleStreamGuard {
     }
   }
 
-  ~SingleStreamGuard() {
+  ~SingleStreamGuard() {  // NOLINT
     if (!is_changed) {
       return;
     }
@@ -648,7 +648,8 @@ void BuildOpFuncList(const platform::Place& place,
     op_func_node.input_index = ins_name2id;
     op_func_node.output_index = outs_name2id;
 
-    const OperatorDistAttr* dist_attr = block.Op(i)->DistAttr();
+    const OperatorDistAttr* dist_attr =
+        block.Op(static_cast<int>(i))->DistAttr();
     if (dist_attr) {
       if (dist_attr->execution_stream() !=
           distributed::auto_parallel::kDefault) {
@@ -656,6 +657,10 @@ void BuildOpFuncList(const platform::Place& place,
       }
       op_func_node.stream_priority_ = dist_attr->stream_priority();
       op_func_node.scheduling_priority_ = dist_attr->scheduling_priority();
+      // set mannual event information
+      op_func_node.force_record_event_ = dist_attr->force_record_event();
+      op_func_node.events_to_wait_ = dist_attr->events_to_wait();
+      op_func_node.event_to_record_ = dist_attr->event_to_record();
     } else {
       if (interpreter::IsCommunicationOp(op)) {
         // NOTE(Ruibiao): Dispatching computation before communication improves
@@ -1212,6 +1217,16 @@ std::unordered_set<std::string> GetSpecialOpNames() {
       "pd.data",
       "pd.shadow_output",
   };
+}
+
+void BuildId2VarName(const std::map<std::string, int>& var_name_2_id,
+                     std::unordered_map<int, std::string>* id_2_var_name) {
+  PADDLE_ENFORCE_NOT_NULL(
+      id_2_var_name,
+      phi::errors::InvalidArgument("id2_var_name can not be null"));
+  for (auto [var_name, id] : var_name_2_id) {
+    id_2_var_name->insert({id, var_name});
+  }
 }
 
 }  // namespace interpreter

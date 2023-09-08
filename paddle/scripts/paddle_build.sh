@@ -459,7 +459,7 @@ EOF
         fi
         echo "PR whl Size: $PR_whlSize"
         echo "ipipe_log_param_PR_whl_Size: $PR_whlSize" >> ${PADDLE_ROOT}/build/build_summary.txt
-        PR_soSize=$($com ${PADDLE_ROOT}/build/paddle/fluid/pybind/libpaddle.so |awk '{print $1}')
+        PR_soSize=$($com ${PADDLE_ROOT}/build/python/paddle/fluid/libpaddle.so |awk '{print $1}')
         echo "PR so Size: $PR_soSize"
         echo "ipipe_log_param_PR_so_Size: $PR_soSize" >> ${PADDLE_ROOT}/build/build_summary.txt
     fi
@@ -692,13 +692,13 @@ EOF
         get_precision_ut_mac
         if [[ "$on_precision" == "0" ]];then
           ctest -E "($disable_ut_quickly|$single_list)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
-          ctest -R "${single_list}" -E "($disable_ut_quickly)" --output-on-failure -j 1 | tee $tmpfile
+          ctest -R "${single_list}" -E "($disable_ut_quickly)" --output-on-failure -j 1 | tee -a $tmpfile
         else
             ctest -R "($UT_list_prec)" -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
             tmpfile_rand=`date +%s%N`
             tmpfile=$tmp_dir/$tmpfile_rand
-            ctest -R "($UT_list_prec_1)" -E "(${disable_ut_quickly}|${single_list})" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
-            ctest -R "($single_list)" -E "(${disable_ut_quickly})" --output-on-failure -j 1 | tee $tmpfile
+            ctest -R "($UT_list_prec_1)" -E "(${disable_ut_quickly}|${single_list})" -LE ${nightly_label} --output-on-failure -j $2 | tee -a $tmpfile
+            ctest -R "($single_list)" -E "(${disable_ut_quickly})" --output-on-failure -j 1 | tee -a $tmpfile
         fi
         failed_test_lists=''
         collect_failed_tests
@@ -841,7 +841,7 @@ set +x
             ctest -R "$UT_list_prec" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
             tmpfile_rand=`date +%s%N`
             tmpfile=$tmp_dir/$tmpfile_rand
-            ctest -R "$UT_list_prec_1" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee $tmpfile
+            ctest -R "$UT_list_prec_1" -E "$disable_ut_quickly" -LE ${nightly_label} --timeout 120 --output-on-failure -j $2 | tee -a $tmpfile
         fi
         ut_total_endTime_s=`date +%s`
         echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_actual_total_startTime_s ]s"
@@ -1025,7 +1025,7 @@ function generate_upstream_develop_api_spec() {
     git log --pretty=oneline -10
 
     dev_commit=`git log -1|head -1|awk '{print $2}'`
-    dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl"
+    dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl"
     url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
     if [ "$url_return" == '200' ];then
         echo "wget develop whl from bos! "
@@ -1310,7 +1310,7 @@ function collect_failed_tests() {
 
 # getting qucik disable ut list
 function get_quickly_disable_ut() {
-    python -m pip install requests
+    python -m pip install httpx
     if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); then
         echo "========================================="
         echo "The following unittests have been disabled:"
@@ -2574,7 +2574,7 @@ set -ex
 
 function parallel_test_base_ipu() {
     mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/ipu
+    cd ${PADDLE_ROOT}/build/python/paddle/base/tests/unittests/ipu
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
     ========================================
@@ -3140,10 +3140,10 @@ function exec_samplecode_test() {
 
     cd ${PADDLE_ROOT}/tools
     if [ "$1" = "cpu" ] ; then
-        python sampcd_processor.py --debug cpu; example_error=$?
+        python sampcd_processor.py --debug --mode cpu; example_error=$?
     elif [ "$1" = "gpu" ] ; then
         SAMPLE_CODE_EXEC_THREADS=${SAMPLE_CODE_EXEC_THREADS:-2}
-        python sampcd_processor.py --threads=${SAMPLE_CODE_EXEC_THREADS} --debug gpu; example_error=$?
+        python sampcd_processor.py --threads=${SAMPLE_CODE_EXEC_THREADS} --debug --mode gpu; example_error=$?
     fi
     if [ "$example_error" != "0" ];then
       echo "Code instance execution failed" >&2
@@ -3265,17 +3265,17 @@ function build_pr_and_develop() {
 
     git checkout $BRANCH
     dev_commit=`git log -1|head -1|awk '{print $2}'`
-    dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl"
+    dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl"
     url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
     if [ "$url_return" == '200' ];then
         mkdir ${PADDLE_ROOT}/build/dev_whl && wget -q -P ${PADDLE_ROOT}/build/dev_whl ${dev_url}
-        cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl ${PADDLE_ROOT}/build/python/dist
+        cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl ${PADDLE_ROOT}/build/python/dist
     else
         if [[ ${cmake_change} ]];then
             rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/build.ninja
             rm -rf ${PADDLE_ROOT}/build/third_party
         fi
-
+        
         git checkout -b develop_base_pr upstream/$BRANCH
         git submodule update --init
         run_setup ${PYTHON_ABI:-""} "rerun-cmake bdist_wheel" ${parallel_number}
@@ -3285,6 +3285,7 @@ function build_pr_and_develop() {
         mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
         mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
     fi
+    
     generate_api_spec "$1" "DEV"
 
 }
@@ -3552,9 +3553,11 @@ EOF
     if [ "$3" != "" ]; then
       parallel_number=$3
     fi
-    export MAX_JOBS=${parallel_number}
+    
     # reset ccache zero stats for collect PR's actual hit rate
-
+    if [ "${MAX_JOBS}" == "" ]; then
+        export MAX_JOBS=${parallel_number}
+    fi
     ccache -z
     cd ..
     if [ "${PYTHON_EXECUTABLE}" != "" ];then

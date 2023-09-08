@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.nn.layer.transformer import (
     MultiHeadAttention,
     Transformer,
@@ -187,7 +187,7 @@ def scaled_dot_product_attention(q, k, v, d_key, attn_mask, multi_head_attn):
 
 
 def cal_qkv(key, value, num_heads, embed_dim, multi_head_attn):
-    with fluid.dygraph.guard():
+    with base.dygraph.guard():
         head_dim = embed_dim // num_heads
         k_weight = multi_head_attn.k_proj.weight.numpy()
         v_weight = multi_head_attn.v_proj.weight.numpy()
@@ -226,8 +226,8 @@ def prepare_qkv(
 
 
 def add(x, y=None):
-    fluid.enable_dygraph()
-    with fluid.dygraph.guard():
+    base.enable_dygraph()
+    with base.dygraph.guard():
         x = x.numpy() if not isinstance(x, np.ndarray) else x
         if y is not None:
             x += y
@@ -241,8 +241,8 @@ def relu(x):
 
 
 def layer_norm(x, normalized_shape, norm, epsilon=1e-05, act=None):
-    fluid.enable_dygraph()
-    with fluid.dygraph.guard():
+    base.enable_dygraph()
+    with base.dygraph.guard():
         # scale:
         weight = norm.weight.numpy()
         # shift:
@@ -265,8 +265,8 @@ def layer_norm(x, normalized_shape, norm, epsilon=1e-05, act=None):
 
 def ffn(src, encoder_layer, ffn_fc1_act="relu"):
     assert ffn_fc1_act == "relu", "only relu is supported"
-    fluid.enable_dygraph()
-    with fluid.dygraph.guard():
+    base.enable_dygraph()
+    with base.dygraph.guard():
         src = src.numpy() if not isinstance(src, np.ndarray) else src
         w1 = encoder_layer.linear1.weight.numpy()
         w2 = encoder_layer.linear2.weight.numpy()
@@ -284,7 +284,7 @@ class TestTransformer(unittest.TestCase):
             paddle.seed(2020)
             paddle.framework.random._manual_program_seed(2020)
             # self_attention|cross_attention, cache|No cache
-            with fluid.dygraph.guard(fluid.CPUPlace()):
+            with base.dygraph.guard(base.CPUPlace()):
                 # generate params for multi_head_attention
                 (
                     batch_size,
@@ -398,7 +398,7 @@ class TestTransformer(unittest.TestCase):
         multihead_attention_test_helper(False, False)
 
     def test_transformer_encoder_layer(self):
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             paddle.framework.seed(2020)
             paddle.framework.random._manual_program_seed(2020)
 
@@ -463,7 +463,7 @@ class TestTransformer(unittest.TestCase):
             )
 
     def test_transformer_encoder_layer_attr_1(self):
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             paddle.framework.seed(2020)
             paddle.framework.random._manual_program_seed(2020)
 
@@ -544,7 +544,7 @@ class TestTransformer(unittest.TestCase):
                 )
 
     def test_transformer_decoder_layer(self):
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             paddle.framework.seed(2020)
             activation = "relu"
             normalize_before = False
@@ -679,7 +679,7 @@ class TestTransformer(unittest.TestCase):
             (batch_size, n_head, sequence_length, sequence_length)
         ).astype("float32")
         src_mask[0][0][0][0] = -np.inf
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             encoder_layer = TransformerEncoderLayer(
                 d_model, n_head, dim_feedforward, dropout
             )
@@ -710,7 +710,7 @@ class TestTransformer(unittest.TestCase):
             (batch_size, n_head, sequence_length, sequence_length)
         ).astype("float32")
         src_mask[0][0][0][0] = -np.inf
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             for cache in [True, False]:
                 # paddle
                 encoder_layer = TransformerEncoderLayer(
@@ -755,7 +755,7 @@ class TestTransformer(unittest.TestCase):
             (batch_size, n_head, target_length, source_length)
         ).astype("float32")
         memory_mask[0][0][0][0] = -1e9
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             decoder_layer = TransformerDecoderLayer(
                 d_model, n_head, dim_feedforward, dropout
             )
@@ -783,7 +783,7 @@ class TestTransformer(unittest.TestCase):
         ) = generate_basic_params(mode="decoder_layer")
 
         # batch_size, source_length, target_length, d_model, n_head = 4, 8, 8, 64, 8
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             transformer = Transformer(
                 d_model,
                 n_head,
@@ -834,7 +834,7 @@ class TestTransformer(unittest.TestCase):
         ) = generate_basic_params(mode="decoder_layer")
 
         # batch_size, source_length, target_length, d_model, n_head = 4, 8, 8, 64, 8
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             transformer = Transformer(
                 d_model,
                 n_head,
@@ -887,7 +887,7 @@ class TestTransformer(unittest.TestCase):
         ) = generate_basic_params(mode="decoder_layer")
 
         # batch_size, source_length, target_length, d_model, n_head = 4, 8, 8, 64, 8
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             transformer = Transformer(
                 d_model,
                 n_head,
@@ -940,7 +940,7 @@ class TestTransformer(unittest.TestCase):
         ) = generate_basic_params(mode="decoder_layer")
 
         # batch_size, source_length, target_length, d_model, n_head = 4, 8, 8, 64, 8
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             transformer = Transformer(
                 d_model,
                 n_head,
@@ -993,7 +993,7 @@ class TestTransformer(unittest.TestCase):
         ) = generate_basic_params(mode="decoder_layer")
 
         # batch_size, source_length, target_length, d_model, n_head = 4, 8, 8, 64, 8
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             transformer = Transformer(
                 d_model,
                 n_head,

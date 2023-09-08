@@ -544,7 +544,8 @@ void BindInferenceApi(py::module *m) {
          py::arg("mixed_precision"),
          py::arg("backend"),
          py::arg("keep_io_types") = true,
-         py::arg("black_list") = std::unordered_set<std::string>());
+         py::arg("black_list") = std::unordered_set<std::string>(),
+         py::arg("white_list") = std::unordered_set<std::string>());
 }
 
 namespace {
@@ -777,6 +778,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("exp_enable_use_cutlass", &AnalysisConfig::Exp_EnableUseCutlass)
       .def("exp_disable_mixed_precision_ops",
            &AnalysisConfig::Exp_DisableMixedPrecisionOps)
+      .def("exp_enable_mixed_precision_ops",
+           &AnalysisConfig::Exp_EnableMixedPrecisionOps)
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def("set_exec_stream",
            [](AnalysisConfig &self, phi::CUDAStream &stream) {
@@ -893,7 +896,8 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::tensorrt_dynamic_shape_enabled)
       .def("mark_trt_engine_outputs",
            &AnalysisConfig::MarkTrtEngineOutputs,
-           py::arg("output_tensor_names") = std::vector<std::string>({}))
+           py::arg("output_tensor_names") = std::vector<std::string>({}),
+           py::arg("mark_output_with_id") = false)
       .def("enable_tensorrt_varseqlen", &AnalysisConfig::EnableVarseqlen)
       .def("tensorrt_varseqlen_enabled",
            &AnalysisConfig::tensorrt_varseqlen_enabled)

@@ -20,8 +20,8 @@ from legacy_test.test_dist_base import (
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid.dygraph import to_variable
+from paddle import base
+from paddle.base.dygraph import to_variable
 from paddle.nn import Layer
 from paddle.optimizer.lr import NoamDecay
 
@@ -245,10 +245,10 @@ class PrePostProcessLayer(Layer):
             if cmd == "n":
                 self._layer_norm = paddle.nn.LayerNorm(
                     normalized_shape=d_model,
-                    weight_attr=fluid.ParamAttr(
+                    weight_attr=base.ParamAttr(
                         initializer=paddle.nn.initializer.Constant(1.0)
                     ),
-                    bias_attr=fluid.ParamAttr(
+                    bias_attr=base.ParamAttr(
                         initializer=paddle.nn.initializer.Constant(0.0)
                     ),
                 )
@@ -513,7 +513,7 @@ class PrepareEncoderDecoderLayer(Layer):
             src_vocab_size,
             src_emb_dim,
             sparse=is_sparse,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name=word_emb_param_name,
                 initializer=paddle.nn.initializer.Normal(
                     0.0, src_emb_dim**-0.5
@@ -529,7 +529,7 @@ class PrepareEncoderDecoderLayer(Layer):
             self._src_max_len,
             src_emb_dim,
             sparse=is_sparse,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name=pos_enc_param_name,
                 initializer=paddle.nn.initializer.Assign(pos_inp),
                 trainable=False,

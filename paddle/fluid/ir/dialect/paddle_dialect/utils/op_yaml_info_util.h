@@ -27,6 +27,7 @@ struct OpInputInfo {
   bool optional = false;
   bool no_need_buffer = false;
   bool is_mutable_attribute = false;
+  bool with_grad_semantic = true;
   OpInputInfo() = default;
   OpInputInfo(const OpInputInfo& input_info) = default;
 
@@ -34,12 +35,14 @@ struct OpInputInfo {
               const std::string& type_name,
               bool optional,
               bool no_need_buffer,
-              bool is_mutable_attribute)
+              bool is_mutable_attribute,
+              bool with_grad_semantic)
       : name(name),
         type_name(type_name),
         optional(optional),
         no_need_buffer(no_need_buffer),
-        is_mutable_attribute(is_mutable_attribute) {}
+        is_mutable_attribute(is_mutable_attribute),
+        with_grad_semantic(with_grad_semantic) {}
 };
 
 struct OpOutputInfo {
@@ -77,6 +80,7 @@ struct OpRunTimeInfo {
   std::vector<std::string> kernel_func;
   std::vector<std::string> kernel_param;
   std::vector<std::string> kernel_key_dtype;
+  std::vector<std::string> kernel_key_backend;
   std::vector<std::pair<std::string, std::string>> inplace;
   std::vector<std::pair<std::string, std::string>> view;
   OpRunTimeInfo(const std::string& infer_meta_func,
@@ -84,6 +88,7 @@ struct OpRunTimeInfo {
                 const std::vector<std::string>& kernel_func,
                 const std::vector<std::string>& kernel_param,
                 const std::vector<std::string>& dtype,
+                const std::vector<std::string>& backend,
                 const std::vector<std::pair<std::string, std::string>>& inplace,
                 const std::vector<std::pair<std::string, std::string>>& view)
       : infer_meta_func(infer_meta_func),
@@ -91,6 +96,7 @@ struct OpRunTimeInfo {
         kernel_func(kernel_func),
         kernel_param(kernel_param),
         kernel_key_dtype(dtype),
+        kernel_key_backend(backend),
         inplace(inplace),
         view(view) {}
 };

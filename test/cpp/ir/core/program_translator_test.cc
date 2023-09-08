@@ -16,14 +16,18 @@
 #include <chrono>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <sstream>
 #include <string>
+#include <vector>
 
+#include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
+#include "paddle/fluid/ir_adaptor/translator/utils.h"
 #include "paddle/ir/core/builtin_dialect.h"
 #include "paddle/ir/core/dialect.h"
 #include "paddle/ir/core/ir_context.h"
@@ -84,4 +88,22 @@ TEST(PaddleDialectTest, StartupProgram) {
   std::stringstream ss;
   program->Print(ss);
   EXPECT_GT(ss.str().size(), 0u);
+}
+
+TEST(RegisterInfoTest, MainProgram) {
+  auto p = load_from_file("resnet50_startup.prog");
+  ir::IrContext *ctx = ir::IrContext::Instance();
+
+  auto unregistered_ops =
+      paddle::translator::CheckUnregisteredOperation(ctx, p);
+  EXPECT_EQ(unregistered_ops.size(), 0u);
+
+  auto new_op = std::unique_ptr<OpDesc>(
+      new OpDesc("something must not be registered", {}, {}, {}));
+  auto *block = p.MutableBlock(0);
+  block->AppendAllocatedOp(std::move(new_op));
+
+  unregistered_ops = paddle::translator::CheckUnregisteredOperation(ctx, p);
+  EXPECT_EQ(unregistered_ops.size(), 1u);
+  EXPECT_EQ(unregistered_ops[0], "something must not be registered");
 }

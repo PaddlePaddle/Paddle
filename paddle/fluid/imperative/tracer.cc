@@ -38,7 +38,7 @@
 PHI_DECLARE_bool(use_mkldnn);
 PHI_DECLARE_string(tracer_mkldnn_ops_on);
 PHI_DECLARE_string(tracer_mkldnn_ops_off);
-DECLARE_bool(use_stride_kernel);
+PHI_DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace imperative {
@@ -56,7 +56,7 @@ thread_local AmpLevel Tracer::amp_level_ = AmpLevel::O0;
 
 thread_local phi::DataType Tracer::amp_dtype_ = phi::DataType::FLOAT32;
 
-static std::shared_ptr<Tracer> g_current_tracer(nullptr);
+static thread_local std::shared_ptr<Tracer> g_current_tracer(nullptr);
 
 const std::shared_ptr<Tracer>& GetCurrentTracer() { return g_current_tracer; }
 
@@ -413,6 +413,7 @@ void Tracer::TraceOp(const std::string& type,
   std::map<phi::DenseTensor*, std::shared_ptr<phi::Allocation>>
       need_backup_inputs2holder;
   std::map<phi::DenseTensor*, phi::DDim> need_backup_inputs2strides;
+  std::map<phi::DenseTensor*, size_t> need_backup_inputs2offset;
   if (FLAGS_use_stride_kernel) {
     for (auto& iter : inplace_map) {
       auto inputs_iter = ins.find(iter.first);
@@ -431,6 +432,7 @@ void Tracer::TraceOp(const std::string& type,
                     ->GetMutable<phi::DenseTensor>();
             need_backup_inputs2holder[dense_tensor] = dense_tensor->Holder();
             need_backup_inputs2strides[dense_tensor] = dense_tensor->strides();
+            need_backup_inputs2offset[dense_tensor] = dense_tensor->offset();
           }
         }
       }
@@ -449,9 +451,11 @@ void Tracer::TraceOp(const std::string& type,
     for (auto& iter : need_backup_inputs2outputs) {
       iter.first->ResetHolder(need_backup_inputs2holder[iter.first]);
       iter.first->set_strides(need_backup_inputs2strides[iter.first]);
+      iter.first->set_offset(need_backup_inputs2offset[iter.first]);
       paddle::experimental::TransStrideLegacy(dev_ctx, iter.second, iter.first);
       iter.second->ResetHolder(need_backup_inputs2holder[iter.first]);
       iter.second->set_strides(need_backup_inputs2strides[iter.first]);
+      iter.second->set_offset(need_backup_inputs2offset[iter.first]);
     }
   } else {
     TraceOpImpl<egr::EagerVariable>(type,

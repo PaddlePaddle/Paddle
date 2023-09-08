@@ -20,15 +20,15 @@ import threading
 import warnings
 import weakref
 
-from paddle.fluid import core, framework
-from paddle.fluid.data_feeder import check_type
-from paddle.fluid.dygraph.base import (
+from paddle.base import core, framework
+from paddle.base.data_feeder import check_type
+from paddle.base.dygraph.base import (
     _switch_declarative_mode_guard_,
     param_guard,
     switch_to_static_graph,
 )
-from paddle.fluid.unique_name import UniqueNameGenerator
-from paddle.fluid.unique_name import guard as UniqueNameGuard
+from paddle.base.unique_name import UniqueNameGenerator
+from paddle.base.unique_name import guard as UniqueNameGuard
 from paddle.framework import in_dynamic_mode
 from paddle.nn.layer import layers
 from paddle.utils import flatten, gast
@@ -1182,8 +1182,8 @@ class ConcreteProgram:
 
         main_program, startup_program = framework.Program(), framework.Program()
         # Note: The random seed should be synchronized into cached program
-        # if set in `fluid.dygraph_guard` because some ops rely on it, such as
-        # `fluid.layers.dropout`.
+        # if set in `base.dygraph_guard` because some ops rely on it, such as
+        # `base.layers.dropout`.
         main_program.random_seed = framework.default_main_program().random_seed
         startup_program.random_seed = (
             framework.default_startup_program().random_seed
@@ -1256,6 +1256,14 @@ class ConcreteProgram:
         )
 
 
+def _program_hash(program):
+    """
+    because program is not deleted while calling from_func_spec.
+    so it's ok to use id(program)
+    """
+    return id(program)
+
+
 class ParametersRecorder:
     def __init__(self):
         self.params_dict = {}
@@ -1263,35 +1271,28 @@ class ParametersRecorder:
     @synchronized
     def add(self, program, param):
         """use the default_program as key, append param the parameter list."""
-        key = self._program_hash(program)
+        key = _program_hash(program)
         if key not in self.params_dict:
             self.params_dict[key] = set()
         params = self.params_dict[key]
         params.add(param)
 
     def pop(self, program):
-        params = self.params_dict.get(self._program_hash(program))
+        params = self.params_dict.get(_program_hash(program))
         if params is None:
             return []
-        del self.params_dict[self._program_hash(program)]
+        del self.params_dict[_program_hash(program)]
         return list(params)
 
-    def _program_hash(self, program):
-        """
-        because program is not deleted while calling from_func_spec.
-        so it's ok to use id(program)
-        """
-        return id(program)
 
-
-class ParametersMap:
+class InplaceMap:
     def __init__(self):
         self.params_dict = {}
 
     @synchronized
     def add(self, program, id, param):
         """use the default_program as key, append param the parameter list."""
-        key = self._program_hash(program)
+        key = _program_hash(program)
         if key not in self.params_dict:
             self.params_dict[key] = {}
 
@@ -1299,7 +1300,7 @@ class ParametersMap:
         params[id] = param
 
     def get(self, program, id):
-        params = self.params_dict.get(self._program_hash(program))
+        params = self.params_dict.get(_program_hash(program))
         if params is None:
             return None
         if id not in params:
@@ -1313,12 +1314,19 @@ class ParametersMap:
             params[var.desc.id()] = root_var
         return root_var
 
-    def _program_hash(self, program):
-        """
-        because program is not deleted while calling from_func_spec.
-        so it's ok to use id(program)
-        """
-        return id(program)
+    def restore_checkpoint(self, checkpoint):
+        # InplaceMap is a nested effect.
+        # when enter a block, we should save a checkpoint
+        # when exit a block, we should restore a checkpoint
+        # for example:
+        # if cond > 0:
+        #    x [:] = 0
+        # return x
+        # x[:] only effect current cond block, we should restore in false block.
+        self.params_dict = checkpoint
+
+    def save_checkpoint(self):
+        return dict(self.params_dict.items())
 
 
 class FallbackProgramLayer:
@@ -1582,7 +1590,7 @@ class ProgramTranslator:
         self._initialized = True
         self._program_cache = ProgramCache()
         self._params_recorder = ParametersRecorder()
-        self._params_map = ParametersMap()
+        self._inplace_map = InplaceMap()
         self.enable_to_static = True
 
     def enable(self, enable_to_static):

@@ -16,7 +16,7 @@ import types
 import warnings
 
 import paddle
-from paddle.fluid import core, default_main_program, program_guard, unique_name
+from paddle.base import core, default_main_program, program_guard, unique_name
 
 from .amp_lists import AutoMixedPrecisionListsBF16
 from .amp_utils import (
@@ -135,42 +135,44 @@ class OptimizerWithMixedPrecision:
         Examples:
             .. code-block:: python
 
-                import numpy as np
-                import paddle
-                import paddle.nn.functional as F
-                paddle.enable_static()
+                >>> import numpy as np
+                >>> import paddle
+                >>> import paddle.nn.functional as F
+                >>> paddle.enable_static()
 
-                def run_example_code():
-                    place = paddle.CPUPlace(0)
-                    exe = paddle.static.Executor(place)
-                    data = paddle.static.data(name='X', shape=[None, 1, 28, 28], dtype='float32')
-                    conv2d = paddle.static.nn.conv2d(input=data, num_filters=6, filter_size=3)
-                    # 1) Use bf16_guard to control the range of bf16 kernels used.
-                    with paddle.static.amp.bf16_guard():
-                        bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
-                        pool = F.max_pool2d(bn, kernel_size=2, stride=2)
-                        hidden = paddle.static.nn.fc(pool, size=10)
-                        loss = paddle.mean(hidden)
-                    # 2) Create the optimizer and set `multi_precision` to True.
-                    # Setting `multi_precision` to True can avoid the poor accuracy
-                    # or the slow convergence in a way.
-                    optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
-                    # 3) These ops in `custom_fp32_list` will keep in the float32 computation type.
-                    amp_list = paddle.static.amp.CustomOpLists(
-                        custom_fp32_list=['pool2d'])
-                    # 4) The entry of Paddle AMP.
-                    # Enable pure bf16 training by setting `use_pure_bf16` to True.
-                    optimizer = paddle.static.amp.bf16.decorate_bf16(
-                        optimizer,
-                        amp_list,
-                        use_pure_bf16=True)
-                    # If you don't use the default_startup_program(), you sholud pass
-                    # your defined `startup_program` into `minimize`.
-                    optimizer.minimize(loss)
-                    exe.run(paddle.static.default_startup_program())
-                    # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
-                    # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
-                    optimizer.amp_init(place, scope=paddle.static.global_scope())
+                >>> def run_example_code():
+                ...     place = paddle.CPUPlace()
+                ...     exe = paddle.static.Executor(place)
+                ...     data = paddle.static.data(name='X', shape=[None, 1, 28, 28], dtype='float32')
+                ...     conv2d = paddle.static.nn.conv2d(input=data, num_filters=6, filter_size=3)
+                ...     # 1) Use bf16_guard to control the range of bf16 kernels used.
+                ...     with paddle.static.amp.bf16.bf16_guard():
+                ...         bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
+                ...         pool = F.max_pool2d(bn, kernel_size=2, stride=2)
+                ...         hidden = paddle.static.nn.fc(pool, size=10)
+                ...         loss = paddle.mean(hidden)
+                ...     # 2) Create the optimizer and set `multi_precision` to True.
+                ...     # Setting `multi_precision` to True can avoid the poor accuracy
+                ...     # or the slow convergence in a way.
+                ...     optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
+                ...     # 3) These ops in `custom_black_list` will keep in the float32 computation type.
+                ...     amp_list = paddle.static.amp.CustomOpLists(
+                ...         custom_black_list=['pool2d'])
+                ...     # 4) The entry of Paddle AMP.
+                ...     # Enable pure bf16 training by setting `use_pure_bf16` to True.
+                ...     optimizer = paddle.static.amp.bf16.decorate_bf16(
+                ...         optimizer,
+                ...         amp_list,
+                ...         use_pure_bf16=True)
+                ...     # If you don't use the default_startup_program(), you sholud pass
+                ...     # your defined `startup_program` into `minimize`.
+                ...     optimizer.minimize(loss)
+                ...     exe.run(paddle.static.default_startup_program())
+                ...     # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
+                ...     # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
+                ...     optimizer.amp_init(place, scope=paddle.static.global_scope())
+
+                >>> run_example_code()
 
         """
         assert (
@@ -263,63 +265,68 @@ def decorate_bf16(
         An optimizer acting like a normal one but with mixed-precision training
         enabled.
 
-    Examples 1:
-            .. code-block:: python
+    Examples:
+        .. code-block:: python
+            :name: example-1
 
             # fp32&bf16 list based strategy example
-            import paddle
-            import paddle.static as static
+            >>> import paddle
+            >>> import paddle.static as static
 
-            paddle.enable_static()
+            >>> paddle.enable_static()
 
-            data = static.data(name='X', shape=[None, 1], dtype='float32')
-            hidden = static.nn.fc(x=data, size=10)
-            loss = paddle.mean(hidden)
-            optimizer = paddle.optimizer.Adam(learning_rate=0.001)
+            >>> data = static.data(name='X', shape=[None, 1], dtype='float32')
+            >>> hidden = static.nn.fc(x=data, size=10)
+            >>> loss = paddle.mean(hidden)
+            >>> optimizer = paddle.optimizer.Adam(learning_rate=0.001)
 
-            mp_optimizer = static.amp.decorate_bf16(optimizer=optimizer)
+            >>> mp_optimizer = static.amp.bf16.decorate_bf16(optimizer=optimizer)
 
-            ops, param_grads = mp_optimizer.minimize(loss)
+            >>> ops, param_grads = mp_optimizer.minimize(loss)
 
-    Examples 2:
+
+
+
         .. code-block:: python
+            :name: example-2
 
             # pure bf16 training example
-            import numpy as np
-            import paddle
-            import paddle.nn.functional as F
+            >>> import numpy as np
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            def run_example_code():
-                place = paddle.CPUPlace(0)
-                exe = paddle.static.Executor(place)
-                data = paddle.static.data(name='X', shape=[None, 1, 28, 28], dtype='float32')
-                conv2d = paddle.static.nn.conv2d(input=data, num_filters=6, filter_size=3)
-                # 1) Use bf16_guard to control the range of bf16 kernels used.
-                with paddle.static.amp.bf16_guard():
-                    bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
-                    pool = F.max_pool2d(bn, kernel_size=2, stride=2)
-                    hidden = paddle.static.nn.fc(pool, size=10)
-                    loss = paddle.mean(hidden)
-                # 2) Create the optimizer and set `multi_precision` to True.
-                # Setting `multi_precision` to True can avoid the poor accuracy
-                # or the slow convergence in a way.
-                optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
-                # 3) These ops in `custom_fp32_list` will keep in the float32 computation type.
-                amp_list = paddle.static.amp.CustomOpLists(
-                    custom_fp32_list=['pool2d'])
-                # 4) The entry of Paddle AMP.
-                # Enable pure bf16 training by setting `use_pure_bf16` to True.
-                optimizer = paddle.static.amp.decorate_bf16(
-                    optimizer,
-                    amp_list,
-                    use_pure_bf16=True)
-                # If you don't use the default_startup_program(), you sholud pass
-                # your defined `startup_program` into `minimize`.
-                optimizer.minimize(loss)
-                exe.run(paddle.static.default_startup_program())
-                # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
-                # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
-                optimizer.amp_init(place, scope=paddle.static.global_scope())
+            >>> def run_example_code():
+            ...     place = paddle.CPUPlace()
+            ...     exe = paddle.static.Executor(place)
+            ...     data = paddle.static.data(name='X', shape=[None, 1, 28, 28], dtype='float32')
+            ...     conv2d = paddle.static.nn.conv2d(input=data, num_filters=6, filter_size=3)
+            ...     # 1) Use bf16_guard to control the range of bf16 kernels used.
+            ...     with paddle.static.amp.bf16.bf16_guard():
+            ...         bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
+            ...         pool = F.max_pool2d(bn, kernel_size=2, stride=2)
+            ...         hidden = paddle.static.nn.fc(pool, size=10)
+            ...         loss = paddle.mean(hidden)
+            ...     # 2) Create the optimizer and set `multi_precision` to True.
+            ...     # Setting `multi_precision` to True can avoid the poor accuracy
+            ...     # or the slow convergence in a way.
+            ...     optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
+            ...     # 3) These ops in `custom_black_list` will keep in the float32 computation type.
+            ...     amp_list = paddle.static.amp.CustomOpLists(
+            ...         custom_black_list=['pool2d'])
+            ...     # 4) The entry of Paddle AMP.
+            ...     # Enable pure bf16 training by setting `use_pure_bf16` to True.
+            ...     optimizer = paddle.static.amp.bf16.decorate_bf16(
+            ...         optimizer,
+            ...         amp_list,
+            ...         use_pure_bf16=True)
+            ...     # If you don't use the default_startup_program(), you sholud pass
+            ...     # your defined `startup_program` into `minimize`.
+            ...     optimizer.minimize(loss)
+            ...     exe.run(paddle.static.default_startup_program())
+            ...     # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
+            ...     # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
+            ...     optimizer.amp_init(place, scope=paddle.static.global_scope())
+            >>> run_example_code()
 
     """
     if amp_lists is None:

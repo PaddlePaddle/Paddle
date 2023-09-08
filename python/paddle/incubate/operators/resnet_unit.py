@@ -15,9 +15,9 @@
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.param_attr import ParamAttr
+from paddle import base
+from paddle.base.layer_helper import LayerHelper
+from paddle.base.param_attr import ParamAttr
 from paddle.nn import Layer
 from paddle.nn import initializer as I
 
@@ -50,8 +50,8 @@ def resnet_unit(
     act,
 ):
     helper = LayerHelper('resnet_unit', **locals())
-    bn_param_dtype = fluid.core.VarDesc.VarType.FP32
-    bit_mask_dtype = fluid.core.VarDesc.VarType.INT32
+    bn_param_dtype = base.core.VarDesc.VarType.FP32
+    bit_mask_dtype = base.core.VarDesc.VarType.INT32
     out = helper.create_variable_for_type_inference(x.dtype)
     bit_mask = helper.create_variable_for_type_inference(
         dtype=bit_mask_dtype, stop_gradient=True
@@ -213,7 +213,7 @@ class ResNetUnit(Layer):
 
         is_nchw = data_format == 'NCHW'
         # initial filter
-        bn_param_dtype = fluid.core.VarDesc.VarType.FP32
+        bn_param_dtype = base.core.VarDesc.VarType.FP32
         if not is_nchw:
             bn_param_shape = [1, 1, 1, num_filters]
             filter_x_shape = [

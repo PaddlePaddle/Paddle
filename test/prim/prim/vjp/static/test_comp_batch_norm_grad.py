@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core, framework
+from paddle.base import core, framework
 
 np.random.seed(2023)
 
