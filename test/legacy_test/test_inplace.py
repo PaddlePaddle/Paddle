@@ -154,7 +154,6 @@ class TestDygraphInplace(unittest.TestCase):
     def test_backward_error(self):
         # It raises an error because the inplace operator will result
         # in incorrect gradient computation.
-
         var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
         var_a.stop_gradient = False
 
@@ -211,7 +210,6 @@ class TestDygraphInplace(unittest.TestCase):
         # The inplace operator doesn't result in incorrect gradient computation.
         grad_var_a, grad_var_a_inplace = 0, 1
         var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
-        var_a.stop_gradient = False
 
         var_b = var_a**2
 

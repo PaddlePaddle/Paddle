@@ -14,15 +14,15 @@
 
 import numpy as np
 
-from paddle.fluid.framework import static_only
+from paddle.base.framework import static_only
 
 # TODO: define loss functions of neural network
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers.layer_function_generator import templatedoc
-from paddle.fluid.param_attr import ParamAttr
+from paddle.base.layer_helper import LayerHelper
+from paddle.base.layers.layer_function_generator import templatedoc
+from paddle.base.param_attr import ParamAttr
 from paddle.nn.initializer import Assign
 
-from ...fluid.data_feeder import check_variable_and_dtype
+from ...base.data_feeder import check_variable_and_dtype
 
 __all__ = []
 
@@ -62,10 +62,10 @@ def nce(
             sample is 1.0.
         param_attr (ParamAttr|None): To specify the weight parameter attribute.
             Default: None, which means the default weight parameter property is
-            used. See usage for details in :ref:`api_fluid_ParamAttr` .
+            used. See usage for details in :ref:`api_base_ParamAttr` .
         bias_attr (ParamAttr|None): To specify the bias parameter attribute.
             Default: None, which means the default bias parameter property is
-            used. See usage for details in :ref:`api_fluid_ParamAttr` .
+            used. See usage for details in :ref:`api_base_ParamAttr` .
         num_neg_samples (int): ${num_neg_samples_comment}.
         name(str|None): For detailed information, please refer to
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.

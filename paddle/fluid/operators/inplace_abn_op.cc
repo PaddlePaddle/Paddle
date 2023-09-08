@@ -258,10 +258,10 @@ class InplaceABNGradOp : public framework::OperatorWithKernel {
     const DataLayout data_layout =
         phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
-    const int C = ((ctx->IsRunMKLDNNKernel() == true) ||
-                           (data_layout == DataLayout::kNCHW)
-                       ? y_dims[1]
-                       : y_dims[y_dims.size() - 1]);
+    const int C = static_cast<int>((ctx->IsRunMKLDNNKernel() == true) ||
+                                           (data_layout == DataLayout::kNCHW)
+                                       ? y_dims[1]
+                                       : y_dims[y_dims.size() - 1]);
 
     ctx->SetOutputDim(framework::GradVarName("X"), y_dims);
     // has_scale_grad == has_bias_grad, judge has_scale_grad is enough

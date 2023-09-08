@@ -157,7 +157,7 @@ class SampleLogitsOp : public framework::OperatorWithKernel {
                           labels_dims.size()));
 
     const int num_samples = ctx->Attrs().Get<int>("num_samples");
-    int num_sampled_classes = labels_dims[1] + num_samples;
+    int num_sampled_classes = static_cast<int>(labels_dims[1] + num_samples);
     if ((!ctx->IsRuntime()) && labels_dims[1] <= 0) {
       num_sampled_classes = -1;
     }

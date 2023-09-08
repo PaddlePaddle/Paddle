@@ -18,6 +18,7 @@
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/trait/inplace.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_parser.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_attribute.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_dialect.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_type.h"
 #include "paddle/ir/core/builtin_op.h"
@@ -25,10 +26,11 @@
 #include "paddle/ir/pass/pass.h"
 #include "paddle/ir/pass/pass_registry.h"
 
+namespace details {
 // NOTE(zhangbo): Which kind of value can be deleted?
 // (1) Value's type needs to be AllocatedDenseTensorType or
 // AllocatedSelectedRowsType; (2) Value's is not persisable.
-bool CanBeDeleted(ir::Value value) {
+static bool CanBeDeleted(ir::Value value) {
   if (!value.type()) {
     return false;
   }
@@ -47,9 +49,9 @@ bool CanBeDeleted(ir::Value value) {
   return true;
 }
 
-bool CanDoInplace(const std::unordered_set<ir::Value>& eager_dels,
-                  ir::Value input,
-                  ir::Value output) {
+static bool CanDoInplace(const std::unordered_set<ir::Value>& eager_dels,
+                         ir::Value input,
+                         ir::Value output) {
   if (input.type() != output.type()) {
     VLOG(9) << "     -- input's type != output's type, can't do inplace";
     return false;
@@ -61,7 +63,7 @@ bool CanDoInplace(const std::unordered_set<ir::Value>& eager_dels,
   return true;
 }
 
-bool IsNoNeedBuffer(ir::Operation* op, ir::Value value) {
+static bool IsNoNeedBuffer(ir::Operation* op, ir::Value value) {
   if (op->dialect()->name().compare(
           paddle::dialect::PaddleKernelDialect::name()) != 0) {
     VLOG(8) << op->name()
@@ -90,7 +92,7 @@ bool IsNoNeedBuffer(ir::Operation* op, ir::Value value) {
 
 // NOTE(zhangbo): pd.feed's output and pd.fetch's input can not be eager
 // deleted.
-std::unordered_set<ir::Value> GetSkipDeletionValues(ir::Block* block) {
+static std::unordered_set<ir::Value> GetSkipDeletionValues(ir::Block* block) {
   std::unordered_set<ir::Value> skip_dels;
   for (auto& op : *block) {
     if (op->dialect()->name().compare(
@@ -119,7 +121,7 @@ std::unordered_set<ir::Value> GetSkipDeletionValues(ir::Block* block) {
 // NOTE(zhangbo): For inplace Pass, currently only the kernel_dialect operator
 // is supported. Therefore, this function only returns the values in the
 // kernel_dialect operator that can be eager deleted.
-std::unordered_map<ir::Operation*, std::unordered_set<ir::Value>>
+static std::unordered_map<ir::Operation*, std::unordered_set<ir::Value>>
 GetEagerDeletionValues(ir::Block* block) {
   std::unordered_set<ir::Value> skip_dels = GetSkipDeletionValues(block);
 
@@ -167,7 +169,7 @@ GetEagerDeletionValues(ir::Block* block) {
   return eager_dels;
 }
 
-std::unordered_map<ir::Operation*, std::string> GetInplaceOps(
+static std::unordered_map<ir::Operation*, std::string> GetInplaceOps(
     ir::Block* block) {
   const auto eager_dels = GetEagerDeletionValues(block);
 
@@ -197,6 +199,20 @@ std::unordered_map<ir::Operation*, std::string> GetInplaceOps(
     auto upper_op_name =
         upper_op_attrs.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
     VLOG(6) << "analyse op: " << upper_op_name;
+
+    // NOTE(zhangbo): add_grad cpu kernel can't do inplace, for the reason shown
+    // in the function: CommonElementwiseBroadcastBackward
+    // (paddle/phi/kernels/funcs/elementwise_grad_base.h)
+    if ((upper_op_name == "pd.add_grad") &&
+        (upper_op_attrs.at("kernel_key")
+             .dyn_cast<paddle::dialect::KernelAttribute>()
+             .data()
+             .backend() == phi::Backend::CPU)) {
+      for (size_t i = 0; i < op->num_results(); ++i) {
+        visited_values.insert(op->result(i));
+      }
+      continue;
+    }
 
     if (upper_op_attrs.count("is_inplace") != 0 &&
         upper_op_attrs.at("is_inplace").dyn_cast<ir::BoolAttribute>().data()) {
@@ -282,6 +298,7 @@ std::unordered_map<ir::Operation*, std::string> GetInplaceOps(
   }
   return inplace_ops;
 }
+}  // namespace details
 
 class InplacePass : public ir::Pass {
  public:
@@ -289,10 +306,10 @@ class InplacePass : public ir::Pass {
 
   void Run(ir::Operation* op) override {
     auto module_op = op->dyn_cast<ir::ModuleOp>();
-    IR_ENFORCE(module_op, "DcePass should run on module op.");
+    IR_ENFORCE(module_op, "InplacePass should run on module op.");
     auto* block = module_op.block();
 
-    auto inplace_ops = GetInplaceOps(block);
+    auto inplace_ops = details::GetInplaceOps(block);
 
     for (auto kv : inplace_ops) {
       VLOG(6) << "Do inplace for: "
@@ -328,4 +345,4 @@ std::unique_ptr<ir::Pass> CreateInplacePass() {
 
 }  // namespace ir
 
-REGISTER_PASS(inplace, InplacePass);
+REGISTER_IR_PASS(inplace, InplacePass);

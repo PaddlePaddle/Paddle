@@ -36,13 +36,8 @@ std::string CompatibleInfo::OpName(const ::ir::Operation& op) {
   return cinn_op_name;
 }
 
-std::string CompatibleInfo::InputName(const ::ir::Value& value) {
-  return CompatibleInfo::kInputPrefix +
-         std::to_string(std::hash<::ir::Value>()(value));
-}
-
-std::string CompatibleInfo::OutputName(const ::ir::Value& value) {
-  return CompatibleInfo::kOutputPrefix +
+std::string CompatibleInfo::ValueName(const ::ir::Value& value) {
+  return CompatibleInfo::kNamePrefix +
          std::to_string(std::hash<::ir::Value>()(value));
 }
 
@@ -55,10 +50,10 @@ std::string CompatibleInfo::OpFuncName(const ::ir::Operation& op) {
 
 std::string CompatibleInfo::GroupOpsName(
     const std::vector<::ir::Operation*>& ops) {
-  std::string name = "fn_";
+  std::string name = "fn";
   for (auto* op : ops) {
     std::string op_name = OpName(*op);
-    name += cinn::common::Context::Global().NewName(op_name);
+    name += "_" + cinn::common::Context::Global().NewName(op_name);
   }
   return name;
 }
@@ -69,7 +64,7 @@ std::vector<std::string> CompatibleInfo::InputNames(const ::ir::Operation& op,
   std::unordered_set<std::string> repeat;
   for (int i = 0; i < op.num_operands(); ++i) {
     auto value = op.operand_source(i);
-    std::string name = CompatibleInfo::InputName(value);
+    std::string name = CompatibleInfo::ValueName(value);
     if (!allow_duplicate && repeat.count(name)) {
       continue;
     }
@@ -84,7 +79,7 @@ std::vector<std::string> CompatibleInfo::OutputNames(
   std::vector<std::string> names;
   for (int i = 0; i < op.num_results(); ++i) {
     auto value = op.result(i);
-    std::string name = CompatibleInfo::OutputName(value);
+    std::string name = CompatibleInfo::ValueName(value);
     names.push_back(std::move(name));
   }
   return names;

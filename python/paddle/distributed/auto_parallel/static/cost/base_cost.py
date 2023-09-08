@@ -928,9 +928,9 @@ def calc_time_by_modeling(op=None, desc=None, cluster=None):
 
 def calc_time_by_cost_model(op, cluster=None):
     """Calc op time by cost model and the unit is microsecond."""
-    if not isinstance(op, paddle.fluid.framework.Operator):
+    if not isinstance(op, paddle.base.framework.Operator):
         raise TypeError(
-            "OP must be paddle.fluid.framework.Operator, but got {}.".format(
+            "OP must be paddle.base.framework.Operator, but got {}.".format(
                 type(op)
             )
         )

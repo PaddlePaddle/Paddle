@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class LinalgPinvTestCase(unittest.TestCase):
@@ -63,11 +63,11 @@ class LinalgPinvTestCase(unittest.TestCase):
 
     def test_static(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for place in places:
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with base.program_guard(base.Program(), base.Program()):
                 x = paddle.static.data(
                     name="input",
                     shape=self._input_shape,
@@ -76,9 +76,9 @@ class LinalgPinvTestCase(unittest.TestCase):
                 out = paddle.linalg.pinv(
                     x, rcond=self.rcond, hermitian=self.hermitian
                 )
-                exe = fluid.Executor(place)
+                exe = base.Executor(place)
                 fetches = exe.run(
-                    fluid.default_main_program(),
+                    base.default_main_program(),
                     feed={"input": self._input_data},
                     fetch_list=[out],
                 )

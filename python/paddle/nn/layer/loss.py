@@ -15,8 +15,8 @@
 import paddle
 
 # TODO: define loss functions of neural network
-from paddle import fluid, in_dynamic_mode
-from paddle.fluid.framework import in_dygraph_mode
+from paddle import base, in_dynamic_mode
+from paddle.base.framework import in_dygraph_mode
 
 from .. import functional as F
 from .layers import Layer
@@ -583,10 +583,10 @@ class MSELoss(Layer):
 
     def forward(self, input, label):
         if not in_dynamic_mode():
-            fluid.data_feeder.check_variable_and_dtype(
+            base.data_feeder.check_variable_and_dtype(
                 input, 'input', ['float32', 'float64'], 'MSELoss'
             )
-            fluid.data_feeder.check_variable_and_dtype(
+            base.data_feeder.check_variable_and_dtype(
                 label, 'label', ['float32', 'float64'], 'MSELoss'
             )
 

@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.nn.functional import interpolate
 
 np.random.seed(123)
@@ -964,7 +964,7 @@ class TestTrilinearInterp_attr_tensor_Case3(TestTrilinearInterpOp_attr_tensor):
 
 
 @unittest.skipIf(
-    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestTrilinearInterpOpForFloat16(unittest.TestCase):
     def init_test_case(self):
@@ -1007,7 +1007,7 @@ class TestTrilinearInterpOpForFloat16(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestTrilinearInterpDatalayoutForFloat16(TestTrilinearInterpOpForFloat16):
     def init_test_case(self):
