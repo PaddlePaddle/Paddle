@@ -16,9 +16,9 @@
 
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/op_info.h"
-#include "paddle/fluid/ir/transforms/inplace_pass.h"
-#include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
+#include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/pass/pass.h"
@@ -444,8 +444,8 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
 
   auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program.get());
 
-  ::ir::PassManager pm(::ir::IrContext::Instance(), 3);
-  pm.AddPass(::ir::CreateInplacePass());
+  ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
+  pm.AddPass(::pir::CreateInplacePass());
   pm.Run(ir_res.get());
 
   return ir_res;
@@ -521,8 +521,8 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
 
   auto res = paddle::dialect::PdOpLowerToKernelPass(program.get());
 
-  ::ir::PassManager pm(::ir::IrContext::Instance(), 3);
-  pm.AddPass(::ir::CreateInplacePass());
+  ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
+  pm.AddPass(::pir::CreateInplacePass());
   pm.Run(res.get());
 
   return res;

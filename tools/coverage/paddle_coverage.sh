@@ -49,7 +49,7 @@ function gen_full_html_report() {
         '/paddle/paddle/fluid/recordio/*' \
         '/paddle/paddle/fluid/string/*' \
         '/paddle/paddle/fluid/eager/*' \
-        '/paddle/paddle/fluid/ir/*' \
+        '/paddle/paddle/fluid/pir/*' \
         '/paddle/paddle/fluid/ir_adaptor/*' \
         '/paddle/paddle/phi/*' \
         '/paddle/paddle/pir/*' \

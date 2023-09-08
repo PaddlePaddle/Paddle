@@ -636,12 +636,12 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddOperand(cond);
   argument.output_types.swap(output_types);
 }
-ir::Block *IfOp::true_block() {
+pir::Block *IfOp::true_block() {
   pir::Region &true_region = (*this)->region(0);
   if (true_region.empty()) true_region.emplace_back();
   return true_region.front();
 }
-ir::Block *IfOp::false_block() {
+pir::Block *IfOp::false_block() {
   pir::Region &false_region = (*this)->region(1);
   if (false_region.empty()) false_region.emplace_back();
   return false_region.front();

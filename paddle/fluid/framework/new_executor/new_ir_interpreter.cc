@@ -50,7 +50,6 @@
 #include "paddle/pir/core/builtin_attribute.h"
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
-
 PHI_DECLARE_bool(enable_new_ir_in_executor_trace_run);
 
 namespace paddle {
@@ -921,12 +920,12 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
     std::stringstream ss;
     ss << this;
     ::pir::BuildScope(*ir_program_->block(),
-                     InnerScope(),
-                     ss.str(),
-                     &value_2_var_name_,
-                     &variable_2_var_name_,
-                     &var_name_2_id_,
-                     &variable_list_);
+                      InnerScope(),
+                      ss.str(),
+                      &value_2_var_name_,
+                      &variable_2_var_name_,
+                      &var_name_2_id_,
+                      &variable_list_);
 
     interpreter::BuildId2VarName(var_name_2_id_, &id_2_var_name_);
 

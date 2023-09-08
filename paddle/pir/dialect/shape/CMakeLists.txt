@@ -1,2 +1,2 @@
 file(GLOB_RECURSE SHAPE_SRCS "*.cc")
-ir_library(ir_shape SRCS ${SHAPE_SRCS} DEPS ir_core)
+ir_library(pir_shape SRCS ${SHAPE_SRCS} DEPS pir_core)

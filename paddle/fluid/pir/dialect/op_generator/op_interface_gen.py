@@ -93,7 +93,7 @@ input_types_map = {
 }
 
 attr_data_map = {
-    'ir::StrAttribute': 'AsString',
+    'pir::StrAttribute': 'AsString',
 }
 
 
