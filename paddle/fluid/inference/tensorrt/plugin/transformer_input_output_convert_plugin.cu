@@ -19,6 +19,10 @@ limitations under the License. */
 #include "cub/cub.cuh"
 #include "paddle/fluid/inference/tensorrt/plugin/transformer_input_output_convert_plugin.h"
 
+#if CUDA_VERSION >= 11020
+namespace cub = CUB_COMPATIBLE::cub;
+#endif
+
 namespace paddle {
 namespace inference {
 namespace tensorrt {

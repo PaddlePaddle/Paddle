@@ -26,6 +26,10 @@ limitations under the License. */
 #include "dnnl.hpp"  // NOLINT
 #endif
 
+#if CUDA_VERSION >= 11020
+namespace cub = CUB_COMPATIBLE::cub;
+#endif
+
 namespace phi {
 
 class DenseTensorUtils;

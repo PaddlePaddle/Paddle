@@ -5,6 +5,12 @@ endif()
 #(risemeup1) note: CMake 3.18 needs to specify the value of CMAKE_CUDA_ARCHITECTURES，otherwise a large number of warnings may appear in cmake
 set(CMAKE_CUDA_ARCHITECTURES OFF)
 
+if(${CMAKE_CUDA_COMPILER_VERSION} GREATER 11.2)
+  # The reduce result of cub is wrong in cuda12, we workaround it by wrapping CUB/Thrust namespaces in each library:
+  # refer:https://github.com/NVIDIA/cub/issues/719
+  add_definitions(-DCUB_WRAPPED_NAMESPACE=CUB_COMPATIBLE)
+endif()
+
 if(WITH_NV_JETSON)
   add_definitions(-DWITH_NV_JETSON)
   set(paddle_known_gpu_archs "53 62 72")

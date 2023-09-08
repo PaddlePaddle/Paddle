@@ -20,6 +20,10 @@
 #include "cublas_v2.h"
 #include "paddle/fluid/platform/device_context.h"
 
+#if CUDA_VERSION >= 11020
+  namespace cub = CUB_COMPATIBLE::cub;
+#endif
+
 using kv_float = cub::KeyValuePair<float, float>;
 using kv_half = cub::KeyValuePair<half, half>;
 using kv_half2 = cub::KeyValuePair<half2, half2>;
@@ -32,7 +36,11 @@ __device__ inline float rsqrt(const float& x) {
   return rsqrtf(x);
 }
 
+#if CUDA_VERSION >= 11020
+namespace CUB_COMPATIBLE::cub {
+#else
 namespace cub {
+#endif
 __host__ __device__ inline kv_float operator+(const kv_float& a, const kv_float& b) {
   return kv_float(a.key + b.key, a.value + b.value);
 }
