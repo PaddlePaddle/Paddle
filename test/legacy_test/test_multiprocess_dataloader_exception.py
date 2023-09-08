@@ -17,8 +17,8 @@ import unittest
 
 import numpy as np
 
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.io import BatchSampler, DataLoader, Dataset, IterableDataset
 from paddle.io.dataloader.worker import _worker_loop
 
@@ -39,8 +39,8 @@ class RandomDataset(Dataset):
 
 class TestDataLoaderAssert(unittest.TestCase):
     def test_main(self):
-        place = fluid.cpu_places()[0]
-        with fluid.dygraph.guard(place):
+        place = base.cpu_places()[0]
+        with base.dygraph.guard(place):
             dataset = RandomDataset(100)
             batch_sampler = BatchSampler(dataset=dataset, batch_size=4)
 
@@ -147,8 +147,8 @@ class TestDatasetRuntimeError(unittest.TestCase):
 class TestDataLoaderWorkerLoop(unittest.TestCase):
     def run_without_worker_done(self, use_shared_memory=True):
         try:
-            place = fluid.cpu_places()[0]
-            with fluid.dygraph.guard(place):
+            place = base.cpu_places()[0]
+            with base.dygraph.guard(place):
                 dataset = RandomDataset(800)
 
                 # test init_fn
@@ -204,8 +204,8 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
 
     def run_with_worker_done(self, use_shared_memory=True):
         try:
-            place = fluid.CPUPlace()
-            with fluid.dygraph.guard(place):
+            place = base.CPUPlace()
+            with base.dygraph.guard(place):
                 dataset = RandomDataset(800)
 
                 # test init_fn

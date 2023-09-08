@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
 import paddle
-from paddle.fluid import Program, core, program_guard
+from paddle.base import Program, core, program_guard
 
 
 def stable_softmax_comm(x):
@@ -322,7 +322,7 @@ class TestMarginCrossEntropyOpV2(unittest.TestCase):
         paddle.framework.random._manual_program_seed(self.seed)
         self.places = []
         if core.is_compiled_with_cuda():
-            self.places.append(paddle.fluid.CUDAPlace(0))
+            self.places.append(paddle.base.CUDAPlace(0))
 
     def initParams(self):
         self.python_out_sig = ["Loss"]
@@ -402,9 +402,9 @@ class TestMarginCrossEntropyOpV2(unittest.TestCase):
                     reduction=self.reduction,
                 )
 
-                exe = paddle.fluid.Executor(place)
+                exe = paddle.base.Executor(place)
                 [loss_res, softmax_res] = exe.run(
-                    paddle.fluid.default_main_program(),
+                    paddle.base.default_main_program(),
                     feed={'logits': logits_np, 'label': labels_np},
                     fetch_list=[loss, softmax],
                 )
@@ -416,7 +416,7 @@ class TestMarginCrossEntropyOpV2(unittest.TestCase):
             self.check_dynamic_result(place=place)
 
     def check_dynamic_result(self, place):
-        with paddle.fluid.dygraph.guard(place):
+        with paddle.base.dygraph.guard(place):
             datas = np.random.uniform(
                 -0.99, 0.99, [self.batch_dim, self.feat_dim]
             ).astype(self.dtype)
@@ -492,7 +492,7 @@ class TestMarginCrossEntropyOpAPIError(unittest.TestCase):
         paddle.framework.random._manual_program_seed(self.seed)
         self.places = []
         if core.is_compiled_with_cuda():
-            self.places.append(paddle.fluid.CUDAPlace(0))
+            self.places.append(paddle.base.CUDAPlace(0))
 
     def initParams(self):
         self.python_api = python_api
@@ -517,7 +517,7 @@ class TestMarginCrossEntropyOpAPIError(unittest.TestCase):
     def test_dynamic_errors(self):
         def test_dim():
             for place in self.places:
-                with paddle.fluid.dygraph.guard(place):
+                with paddle.base.dygraph.guard(place):
                     labels_np = np.random.randint(
                         0, self.num_class, (self.batch_dim, 2), dtype="int64"
                     )
@@ -540,7 +540,7 @@ class TestMarginCrossEntropyOpAPIError(unittest.TestCase):
 
         def test_label_type():
             for place in self.places:
-                with paddle.fluid.dygraph.guard(place):
+                with paddle.base.dygraph.guard(place):
                     labels_np = np.random.uniform(
                         0, self.num_class, (self.batch_dim, 1)
                     ).astype(self.dtype)
@@ -563,7 +563,7 @@ class TestMarginCrossEntropyOpAPIError(unittest.TestCase):
 
         def test_group_value():
             for place in self.places:
-                with paddle.fluid.dygraph.guard(place):
+                with paddle.base.dygraph.guard(place):
                     labels_np = np.random.randint(
                         0, self.num_class, (self.batch_dim,), dtype="int64"
                     )

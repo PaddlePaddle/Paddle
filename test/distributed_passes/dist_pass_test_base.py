@@ -137,7 +137,7 @@ class DistPassTestBase(unittest.TestCase):
             paddle.static.Program(), paddle.static.Program()
         ):
             with paddle.static.scope_guard(scope):
-                with paddle.fluid.unique_name.guard():
+                with paddle.base.unique_name.guard():
                     main_prog, startup_prog, inputs, outputs, reader = model(
                         place, **kwargs
                     )

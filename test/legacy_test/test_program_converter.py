@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.proto import framework_pb2
+from paddle.base.proto import framework_pb2
 
 
 class TestSetValue(unittest.TestCase):

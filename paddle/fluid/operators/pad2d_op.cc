@@ -434,13 +434,13 @@ class Pad2dCPUKernel : public framework::OpKernel<T> {
 
     const int pad_top = pads[0];
     const int pad_left = pads[2];
-    const int num = in_dims[0];
+    const int num = static_cast<int>(in_dims[0]);
     if (data_format == "NCHW") {
-      const int channels = in_dims[1];
-      const int in_height = in_dims[2];
-      const int in_width = in_dims[3];
-      const int out_height = out_dims[2];
-      const int out_width = out_dims[3];
+      const int channels = static_cast<int>(in_dims[1]);
+      const int in_height = static_cast<int>(in_dims[2]);
+      const int in_width = static_cast<int>(in_dims[3]);
+      const int out_height = static_cast<int>(out_dims[2]);
+      const int out_width = static_cast<int>(out_dims[3]);
       if (mode == "reflect") {
         Pad2DReflectNCHW(in_data,
                          num,
@@ -477,11 +477,11 @@ class Pad2dCPUKernel : public framework::OpKernel<T> {
                        out_data);
       }
     } else {
-      const int channels = in_dims[3];
-      const int in_height = in_dims[1];
-      const int in_width = in_dims[2];
-      const int out_height = out_dims[1];
-      const int out_width = out_dims[2];
+      const int channels = static_cast<int>(in_dims[3]);
+      const int in_height = static_cast<int>(in_dims[1]);
+      const int in_width = static_cast<int>(in_dims[2]);
+      const int out_height = static_cast<int>(out_dims[1]);
+      const int out_width = static_cast<int>(out_dims[2]);
       if (mode == "reflect") {
         Pad2DReflectNHWC(in_data,
                          num,
@@ -542,13 +542,13 @@ class Pad2dGradCPUKernel : public framework::OpKernel<T> {
              static_cast<T>(0));
     const int pad_top = pads[0];
     const int pad_left = pads[2];
-    const int num = d_in_dims[0];
+    const int num = static_cast<int>(d_in_dims[0]);
     if (data_format == "NCHW") {
-      const int channels = d_in_dims[1];
-      const int in_height = d_in_dims[2];
-      const int in_width = d_in_dims[3];
-      const int out_height = d_out_dims[2];
-      const int out_width = d_out_dims[3];
+      const int channels = static_cast<int>(d_in_dims[1]);
+      const int in_height = static_cast<int>(d_in_dims[2]);
+      const int in_width = static_cast<int>(d_in_dims[3]);
+      const int out_height = static_cast<int>(d_out_dims[2]);
+      const int out_width = static_cast<int>(d_out_dims[3]);
       if (mode == "reflect") {
         Pad2DGradReflectNCHW(d_in_data,
                              num,
@@ -584,11 +584,11 @@ class Pad2dGradCPUKernel : public framework::OpKernel<T> {
                            d_out_data);
       }
     } else {
-      const int channels = d_in_dims[3];
-      const int in_height = d_in_dims[1];
-      const int in_width = d_in_dims[2];
-      const int out_height = d_out_dims[1];
-      const int out_width = d_out_dims[2];
+      const int channels = static_cast<int>(d_in_dims[3]);
+      const int in_height = static_cast<int>(d_in_dims[1]);
+      const int in_width = static_cast<int>(d_in_dims[2]);
+      const int out_height = static_cast<int>(d_out_dims[1]);
+      const int out_width = static_cast<int>(d_out_dims[2]);
       if (mode == "reflect") {
         Pad2DGradReflectNHWC(d_in_data,
                              num,

@@ -18,5 +18,7 @@
 namespace egr {
 
 Controller* Controller::controller_ = new Controller();
+thread_local std::shared_ptr<paddle::imperative::Tracer> Controller::tracer_ =
+    std::make_shared<paddle::imperative::Tracer>();
 
 }  // namespace egr

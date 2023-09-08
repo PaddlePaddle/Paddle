@@ -28,8 +28,8 @@ paddle.enable_static()
 class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
     def test_sharding_optimizer(self):
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'sharding')
@@ -106,8 +106,8 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
 
     def test_sharding_amp_optimizer(self):
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'sharding')
@@ -212,8 +212,8 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
 
     def test_sharding_recompute_optimizer(self):
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'sharding')
@@ -296,8 +296,8 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
 
     def test_sharding_amp_recompute_optimizer(self):
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'sharding')
@@ -421,8 +421,8 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
 
     def test_sharding_amp_asp_optimizer(self):
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'sharding')
@@ -534,8 +534,8 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
 
     def test_sharding_weight_decay(self):
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'sharding')
@@ -617,8 +617,8 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
 
     def test_sharding_gradient_clip(self):
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'sharding')
@@ -708,8 +708,8 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
 
     def test_sharding_clone_for_test(self):
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'sharding')
@@ -766,8 +766,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
     def test_sharding_with_mp(self):
         # NOTE(JZ-LIANG) MP parallelism need user to build model with MP API
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, _ = self.net(train_prog, startup_prog)
         strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -817,8 +817,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
     def test_sharding_hybrid_dp(self):
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, _ = self.net(train_prog, startup_prog)
         strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -939,8 +939,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
     def test_sharding_hybrid_dp_gm(self):
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, _ = self.net(train_prog, startup_prog)
         strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -1072,8 +1072,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
     def test_sharding_with_pp(self):
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.sharding = True
@@ -1239,8 +1239,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
     def test_sharding_dp_with_allreduce_fuse(self):
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, _ = self.net(train_prog, startup_prog)
         strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -1271,8 +1271,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
     def test_hybrid_with_mp_pp_amp_gclip(self):
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         self.set_strategy(strategy, 'amp')
@@ -1509,8 +1509,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
     def test_hybrid_with_mp_pp_amp_gclip_for_optimizer(self):
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         self.set_strategy(strategy, 'amp')
@@ -1777,8 +1777,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
     def test_hybrid_with_pp_dp_amp_fp16allreduce(self):
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.amp = True
@@ -1977,8 +1977,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
     def test_hybrid_with_sharding_pp_amp_fp16allreduce_in_optimize(self):
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.amp = True
@@ -2078,8 +2078,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
     def test_hybrid_with_pp_dp_amp_fp16allreduce_optimize_cast(self):
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.amp = True
@@ -2286,8 +2286,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
     def test_hybrid_with_pp_dp_amp_fp16allreduce_optimize_offload(self):
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.amp = True
@@ -2517,8 +2517,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         self,
     ):
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.amp = True
@@ -2716,8 +2716,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
     def test_hybrid_with_pp_dp_amp_with_gradient_fuse(self):
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.amp = True
@@ -2898,8 +2898,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
     def test_hybrid_with_pp_dp_amp_with_gradient_fuse_and_avg_after_sum(self):
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.amp = True
@@ -3052,8 +3052,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
     def test_hybrid_with_pp_dp_with_gradient_fuse_and_avg_after_sum(self):
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.sharding = True
@@ -3180,8 +3180,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         self,
     ):
         train_prog, startup_prog = (
-            paddle.fluid.Program(),
-            paddle.fluid.Program(),
+            paddle.base.Program(),
+            paddle.base.Program(),
         )
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
         strategy.sharding = True

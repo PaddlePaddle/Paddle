@@ -19,7 +19,6 @@
 #include <utility>
 #include <vector>
 
-#include "gflags/gflags.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/context.h"
@@ -38,6 +37,7 @@
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
+#include "paddle/utils/flags.h"
 
 namespace cinn {
 namespace hlir {

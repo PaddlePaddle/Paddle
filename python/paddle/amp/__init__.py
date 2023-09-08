@@ -27,8 +27,8 @@ from .grad_scaler import OptimizerState  # noqa: F401
 from . import debugging  # noqa: F401
 from . import accuracy_compare  # noqa: F401
 
-from paddle.fluid import core
-from paddle.fluid.framework import (
+from paddle.base import core
+from paddle.base.framework import (
     _current_expected_place,
     _get_paddle_place,
 )

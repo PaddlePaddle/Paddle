@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 class TestSplitOp(OpTest):
@@ -315,9 +315,9 @@ class TestSplitAPI(unittest.TestCase):
         )
         paddle.split(x=x_2, num_or_sections=2, axis=2)
 
-        exe = fluid.Executor(place=fluid.CPUPlace())
+        exe = base.Executor(place=base.CPUPlace())
         [res_0, res_1, res_2, res_3, res_4, res_5] = exe.run(
-            fluid.default_main_program(),
+            base.default_main_program(),
             feed={"x_1": input_1, "x_2": input_1},
             fetch_list=[out_0, out_1, out_2, out_3, out_4, out_5],
         )
@@ -380,7 +380,7 @@ class TestSplitOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_axis_type_tensor)
 
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
 
             def test_0_num_tensor():
                 x = paddle.uniform([1, 1, 1], dtype='float32')
@@ -391,7 +391,7 @@ class TestSplitOpError(unittest.TestCase):
 
 class API_TestSplit(unittest.TestCase):
     def test_out(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             data1 = paddle.static.data(
                 'data1', shape=[-1, 4, 6, 6], dtype='float64'
             )
@@ -399,8 +399,8 @@ class API_TestSplit(unittest.TestCase):
             data2 = paddle.static.data('data2', shape=[-1, 1], dtype='int32')
             data2.desc.set_need_check_feed(False)
             x0, x1, x2 = paddle.split(data1, num_or_sections=3, axis=data2)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            exe = base.Executor(place)
             input1 = np.random.random([4, 6, 6]).astype('float64')
             input2 = np.array([2]).astype('int32')
             (
@@ -418,14 +418,14 @@ class API_TestSplit(unittest.TestCase):
 
 class API_TestSplit2(unittest.TestCase):
     def test_out(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             data1 = paddle.static.data(
                 'data1', shape=[-1, 4, 6, 6], dtype='float64'
             )
             data1.desc.set_need_check_feed(False)
             x0, x1, x2 = paddle.split(data1, num_or_sections=3, axis=2)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            exe = base.Executor(place)
             input1 = np.random.random([4, 6, 6]).astype('float64')
             (
                 r0,
@@ -440,11 +440,11 @@ class API_TestSplit2(unittest.TestCase):
 
 class API_TestSplit3(unittest.TestCase):
     def test_out(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             data = paddle.static.data('data', shape=[-1, 10], dtype='float64')
             x0, x1 = paddle.split(data, num_or_sections=(3, 7), axis=1)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            exe = base.Executor(place)
             input1 = np.random.random([1, 10]).astype('float64')
             r0, r1 = exe.run(feed={"data": input1}, fetch_list=[x0, x1])
             ex_x0, ex_x1 = np.split(input1, (3,), axis=1)
@@ -454,12 +454,12 @@ class API_TestSplit3(unittest.TestCase):
 
 class API_TestSplit4(unittest.TestCase):
     def test_out(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             data = paddle.static.data('data', shape=[-1, 10], dtype='float64')
             index = paddle.static.data('index', shape=[1], dtype='int32')
             x0, x1 = paddle.split(data, num_or_sections=(3, index), axis=1)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            exe = base.Executor(place)
             input1 = np.random.random([1, 10]).astype('float64')
             input2 = np.array([7]).astype('int32')
             r0, r1 = exe.run(
@@ -476,7 +476,7 @@ class API_TestSplit5(unittest.TestCase):
             [False, True] if core.is_compiled_with_cuda() else [False]
         ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with base.program_guard(base.Program(), base.Program()):
                 input_1 = np.random.random([5, 4]).astype("int32")
                 # input is a variable which shape is [5, 4]
                 input = paddle.to_tensor(input_1)
@@ -492,11 +492,11 @@ class API_TestSplit5(unittest.TestCase):
 
 class API_TestSplit6(unittest.TestCase):
     def test_out(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             data = paddle.static.data('data', shape=[-1, 10], dtype='float64')
             x0, x1 = paddle.split(data, num_or_sections=[1, 1], axis=0)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            exe = base.Executor(place)
             input1 = np.random.random([2, 10]).astype('float64')
             r0, r1 = exe.run(feed={"data": input1}, fetch_list=[x0, x1])
             ex_x0, ex_x1 = np.split(input1, (1,), axis=0)
@@ -506,7 +506,7 @@ class API_TestSplit6(unittest.TestCase):
 
 class API_TestDygraphFluidSplit(unittest.TestCase):
     def test_out1(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             input_1 = np.random.random([4, 6, 6]).astype("int32")
             # input is a variable which shape is [4, 6, 6]
             input = paddle.to_tensor(input_1)
@@ -536,7 +536,7 @@ class API_TestDygraphFluidSplit(unittest.TestCase):
         np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
 
     def test_out2(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             input_1 = np.random.random([4, 6, 6]).astype("int32")
             # input is a variable which shape is [4, 6, 6]
             input = paddle.to_tensor(input_1)
@@ -568,7 +568,7 @@ class API_TestDygraphFluidSplit(unittest.TestCase):
 
 class API_TestDygraphSplit(unittest.TestCase):
     def test_out1(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             input_1 = np.random.random([4, 6, 6]).astype("int32")
             # input is a variable which shape is [4, 6, 6]
             input = paddle.to_tensor(input_1)
@@ -599,7 +599,7 @@ class API_TestDygraphSplit(unittest.TestCase):
         np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
 
     def test_out2(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             input_1 = np.random.random([4, 6, 6]).astype("bool")
             # input is a variable which shape is [4, 6, 6]
             input = paddle.to_tensor(input_1)
@@ -613,7 +613,7 @@ class API_TestDygraphSplit(unittest.TestCase):
         np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
 
     def test_out3(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             np.random.seed(2021)
             input_1 = np.random.random([4, 6, 6]).astype("int32")
             # input is a variable which shape is [4, 6, 6]
@@ -631,7 +631,7 @@ class API_TestDygraphSplit(unittest.TestCase):
         np.testing.assert_allclose(ex_out, out_dy_np, rtol=1e-05)
 
     def test_out_tensor_input(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             input_1 = np.random.random([4, 6, 6]).astype("int32")
             # input is a variable which shape is [4, 6, 6]
             input = paddle.to_tensor(input_1)
@@ -648,7 +648,7 @@ class API_TestDygraphSplit(unittest.TestCase):
         np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
 
     def test_axis_tensor_input(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             input_1 = np.random.random([4, 6, 6]).astype("int32")
             # input is a variable which shape is [4, 6, 6]
             input = paddle.to_tensor(input_1)
@@ -665,7 +665,7 @@ class API_TestDygraphSplit(unittest.TestCase):
         np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
 
     def test_negative_one_section(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             input_1 = np.random.random([4, 6, 6]).astype("int32")
             # input is a variable which shape is [4, 6, 6]
             input = paddle.to_tensor(input_1)
@@ -677,7 +677,7 @@ class API_TestDygraphSplit(unittest.TestCase):
 
 class API_TestEmptySplit(unittest.TestCase):
     def test_axis_input_empty_section(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             input_1 = np.random.random([8, 6, 6]).astype("float32")
             # input is a variable which shape is [8, 6, 6]
             input = paddle.to_tensor(input_1)

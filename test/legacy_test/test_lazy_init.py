@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import LazyGuard
-from paddle.fluid import unique_name
+from paddle.base import unique_name
 from paddle.nn import Layer, Linear
 from paddle.nn.initializer import (
     Constant,

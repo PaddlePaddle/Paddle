@@ -14,8 +14,8 @@
 import paddle
 from paddle import _C_ops
 
-from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid.layer_helper import LayerHelper
+from ...base.data_feeder import check_variable_and_dtype
+from ...base.layer_helper import LayerHelper
 from ...framework import in_dynamic_mode
 
 __all__ = []

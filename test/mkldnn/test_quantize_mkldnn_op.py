@@ -48,7 +48,7 @@ class TestQuantizeOp(OpTest):
                 'float32'
             )
 
-        self.inputs = {'Input': OpTest.np_dtype_to_fluid_dtype(self.input)}
+        self.inputs = {'Input': OpTest.np_dtype_to_base_dtype(self.input)}
         self.attrs = {
             'Scale': self.scale,
             'Shift': self.shift,
