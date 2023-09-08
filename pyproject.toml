@@ -89,6 +89,25 @@ ignore = [
     "UP015",
     # It will cause the performance regression on python3.10
     "UP038",
+
+    "F403", # Open Later
+    "F522", # Open Later
+    "F811", # Open Later
+    "F821", # Open Later
+    "C408", # Open Later
+    "C403", # Open Later
+    "C405", # Open Later
+    "C417", # Open Later
+    "C411", # Open Later
+    "C416", # Open Later
+    "UP032", # Open Later
+    "UP015", # Open Later
+    "UP018", # Open Later
+    "UP031", # Open Later
+    "UP030", # Open Later
+    "UP028", # Open Later
+    "UP034", # Open Later
+    "UP004", # Open Later
 ]
 
 [tool.ruff.per-file-ignores]
