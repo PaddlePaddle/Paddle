@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestNumelOp(OpTest):
@@ -149,9 +149,9 @@ class TestNumelOp1BF16(TestNumelOpBF16):
 
 class TestNumelAPI(unittest.TestCase):
     def test_numel_static(self):
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(main_program, startup_program):
             shape1 = [2, 1, 4, 5]
             shape2 = [1, 4, 5]
             x_1 = paddle.static.data(shape=shape1, dtype='int32', name='x_1')
@@ -188,9 +188,9 @@ class TestNumelAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_error(self):
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(main_program, startup_program):
 
             def test_x_type():
                 shape = [1, 4, 5]

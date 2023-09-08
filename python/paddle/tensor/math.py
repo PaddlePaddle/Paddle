@@ -15,6 +15,7 @@
 math functions
 """
 
+
 import numpy as np
 
 import paddle
@@ -22,18 +23,20 @@ from paddle import _C_ops, _legacy_C_ops
 from paddle.common_ops_import import VarDesc, dygraph_only, dygraph_utils
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..common_ops_import import Variable
-from ..fluid.data_feeder import (
+from ..base.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
     convert_dtype,
 )
+from ..common_ops_import import Variable
 from ..framework import (
     LayerHelper,
     convert_np_dtype_to_dtype_,
     core,
     in_dynamic_mode,
+    in_dynamic_or_new_ir_mode,
+    in_new_ir_mode,
 )
 from .creation import _complex_to_real_dtype
 from .layer_function_generator import generate_layer_fn, templatedoc
@@ -264,6 +267,10 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
             return _C_ops.scale(x, scale, float(bias), bias_after_scale)
         out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
         return dygraph_utils._append_activation_in_dygraph(out, act)
+    elif in_new_ir_mode():
+        if act is None:
+            return _C_ops.scale(x, scale, float(bias), bias_after_scale)
+        raise ValueError("act is not implement in new ir of scale api.")
     else:
         check_variable_and_dtype(
             x,
@@ -1510,8 +1517,11 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 
     dtype_flag = False
     if dtype is not None:
-        dtype_flag = True
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        if paddle.ir.core._use_new_ir_api():
+            dtype = paddle.ir.core.convert_np_dtype_to_dtype_(dtype)
+        else:
+            dtype_flag = True
+            dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_mode():
         return _C_ops.sum(x, axis, dtype, keepdim)
@@ -1953,14 +1963,11 @@ def add_n(inputs, name=None):
             [[8. , 10., 12.],
              [14., 16., 18.]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_new_ir_mode():
         if isinstance(inputs, Variable):
             inputs = [inputs]
         return _C_ops.add_n(inputs)
     else:
-        if paddle.ir.core._use_new_ir_api():
-            return paddle._ir_ops.add_n(inputs)
-
         helper = LayerHelper('add_n', **locals())
         check_type(inputs, 'inputs', (Variable, tuple, list), 'add_n')
         if isinstance(inputs, (list, tuple)):

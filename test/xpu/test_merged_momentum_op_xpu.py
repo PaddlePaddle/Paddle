@@ -38,7 +38,7 @@ class XPUTestMergedMomentumOP(XPUOpTestWrapper):
 
         def set_case(self):
             self.shapes = [[3, 4], [2, 7], [5, 6, 8]]
-            self.place = paddle.fluid.XPUPlace(0)
+            self.place = paddle.base.XPUPlace(0)
             self.seed = 1
 
         def testalltype(self):

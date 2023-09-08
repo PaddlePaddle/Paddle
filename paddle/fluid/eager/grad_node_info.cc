@@ -126,7 +126,7 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
   } else if (phi::distributed::DistTensor::classof(fwd_out.impl().get())) {
     // TODO(chenweihang): DistTensor contains global and local meta, here
     // only set the local meta now, we should set global meta later
-    dense_tensor =
+    dense_tensor =  // NOLINT
         &(static_cast<phi::distributed::DistTensor*>(fwd_out.impl().get())
               ->value());
   } else {
@@ -548,6 +548,7 @@ void GradNodeBase::HandleComplexGradToRealGrad(
   for (size_t slot_id = 0; slot_id < out_grads->size(); slot_id++) {
     const std::vector<paddle::Tensor>& slot_out_grads = (*out_grads)[slot_id];
     for (size_t rank_id = 0; rank_id < slot_out_grads.size(); rank_id++) {
+      if (bwd_out_meta_[slot_id].size() == 0) continue;
       const GradSlotMeta& slot_meta = bwd_out_meta_[slot_id][rank_id];
 
       PADDLE_ENFORCE(

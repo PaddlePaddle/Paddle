@@ -19,10 +19,10 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.base import core
+from paddle.base.core import Job, Plan
+from paddle.base.executor import _add_feed_fetch_ops, _StandaloneExecutor
 from paddle.distributed.passes.pass_utils import get_skip_gc_vars, split_program
-from paddle.fluid import core
-from paddle.fluid.core import Job, Plan
-from paddle.fluid.executor import _add_feed_fetch_ops, _StandaloneExecutor
 from paddle.nn import TransformerEncoderLayer
 
 paddle.enable_static()
@@ -94,7 +94,7 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
                 dtype="float32",
             )
 
-            loader = paddle.fluid.io.DataLoader.from_generator(
+            loader = paddle.base.io.DataLoader.from_generator(
                 feed_list=[enc_input, attn_mask],
                 use_double_buffer=False,
                 capacity=16,

@@ -18,15 +18,15 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.core import AnalysisConfig, PassVersionChecker
+from paddle import base
+from paddle.base import core
+from paddle.base.core import AnalysisConfig, PassVersionChecker
 
 
 class TRTGatherTest1(InferencePassTest):
     def setUp(self):
         self.set_params()
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name='data', shape=[-1, 128], dtype='float32'
             )
@@ -69,7 +69,7 @@ class TRTGatherTest1(InferencePassTest):
 class TRTGatherTest2(InferencePassTest):
     def setUp(self):
         self.set_params()
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name='data', shape=[16, 64], dtype='float32'
             )

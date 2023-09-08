@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestUniqueWithCountsOp(OpTest):

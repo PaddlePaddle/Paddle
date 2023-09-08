@@ -815,7 +815,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
       CommType::BROADCAST);
 }
 
-void CheckTensorsInDifferentDevices(
+inline void CheckTensorsInDifferentDevices(
     const std::vector<phi::DenseTensor>& tensors, const size_t num_devices) {
   PADDLE_ENFORCE_EQ(
       tensors.empty(),

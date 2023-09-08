@@ -19,7 +19,7 @@ from dygraph_to_static_util import ast_only_test, dy2static_unittest
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.base import core
 
 TOLERANCE = {
     "float16": {"rtol": 1e-3, "atol": 1e-3},
