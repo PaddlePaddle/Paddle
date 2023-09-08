@@ -23,35 +23,35 @@
 
 namespace cinn::adt {
 
-using AnchorTensor = eqaution::Variable;
+using AnchorIndex = eqaution::Variable;
 
 class IGroup final {
  public:
   IGroup(const IGroup&) = delete;
   IGroup(IGroup&&) = delete;
 
-  explicit IGroup(const List<m_expr::OpStmt>& op_stmts,
-                  const std::shared_ptr<AnchorTensor>& anchor_tensor,
-                  const std::shared_ptr<equation::Graph>& local_equations_graph)
+  explicit IGroup(const List<m_expr::OpStmt>& op_stmts, const AnchorIndex& anchor_index)
       : op_stmt_nodes_(op_stmts),
-        anchor_tensor_(anchor_tensor),
-        local_equations_graph_(local_equations_graph) {}
+        anchor_index_(anchor_index) {
+     ADT_TODO();
+  }
 
   const List<m_expr::OpStmt>& op_stmts() const { return op_stmt_nodes_; }
 
-  const std::shared_ptr<AnchorTensor>& anchor_tensor() const {
-    return anchor_tensor_;
-  }
+  const AnchorIndex& anchor_index() const { return anchor_index_; }
+
+  const m_expr::Tensor& anchor_tensor() const { return GetTensor(anchor_index()); }
 
   GraphView GetDefaultGraphView() const { ADT_TODO(); }
 
-  const m_expr::Tensor& GetTensor(const Index& index) const;
+  const m_expr::Tensor& GetTensor(const Index& index) const {
+    AD_TODO();
+  }
 
  private:
-  std::shared_ptr<AnchorTensor> anchor_tensor_;
-  List<m_expr::OpStmt> op_stmt_nodes_;
-  std::shared_ptr<equation::Graph> local_equations_graph_;
-  equation::IndexExprInferContext index_expr_infer_ctx_;
+  AnchorIndex anchor_index_;
+  List<m_expr::OpStmt> op_stmts_;
+  std::unordered_map<m_expr::OpStmt, equation::IndexExprInferContext> op_stmt2index_expr_infer_ctx_;
 };
 
 }  // namespace cinn::adt

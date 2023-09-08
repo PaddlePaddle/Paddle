@@ -32,7 +32,7 @@ class KGroup final {
       const std::vector<std::shared_ptr<IGroup>>& igroups)
       : cinn_group_(cinn_group), igroups_(igroups) {}
 
-  const std::shared_ptr<cinn::hlir::framework::Graph::Group>& GetCinnGroup()
+  const std::shared_ptr<cinn::hlir::framework::Graph::Group>& cinn_group()
       const {
     return cinn_group_;
   }
@@ -40,6 +40,7 @@ class KGroup final {
   const std::shared_ptr<IGroup>& GetSoleIGroup() const {
     return igroups_.at(0);
   }
+  const std::vector<std::shared_ptr<IGroup>>& igroups() const { return  igroups_; }
 
   ScheduleDescriptor GetDefaultScheduleDescriptor(
       const std::shared_ptr<IGroup>& igroup) const;

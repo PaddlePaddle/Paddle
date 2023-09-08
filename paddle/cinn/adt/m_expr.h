@@ -129,9 +129,13 @@ class MapStmt final : public Tuple<ScheduleDescriptor, List<T>> {
 // Stmt = OpStmt | MapStmt Stmt
 DEFINE_ADT_UNION(Stmt, OpStmt, MapStmt<Stmt>);
 
-class AnchoredMapStmt final : public Tuple<MapStmt<Stmt>, tAnchor<Tensor>> {
+using TensorIndexExpr = equation::Value;
+using TensorIndexExpr4TensorT = std::function<const TensorIndexExpr&(const Tensor&)>;
+
+// AnchoredMapStmt = (MapStmt Stmt, tAnchor Tensor, TensorIndexExpr4TensorT)
+class AnchoredMapStmt final : public Tuple<MapStmt<Stmt>, tAnchor<Tensor>, TensorIndexExpr4TensorT> {
  public:
-  using Tuple<MapStmt<Stmt>, tAnchor<Tensor>>::Tuple;
+  using Tuple<MapStmt<Stmt>, tAnchor<Tensor>, TensorIndexExpr4TensorT>::Tuple;
 };
 
 // Kernel = ([AnchoredMapStmt], In [Tensor], Out [Tensor])
@@ -142,15 +146,8 @@ class Kernel final
       Tuple;
 };
 
-using TensorIndexExpr = equation::Value;
-// MapExpr = Kernel
-class MapExpr final
-    : public Tuple<Kernel,
-                   std::function<const TensorIndexExpr&(const Tensor&)>> {
- public:
-  using Tuple<Kernel,
-              std::function<const TensorIndexExpr&(const Tensor&)>>::Tuple;
-};
+// MapExpr = Kernel;
+using MapExpr = Kernel;
 
 }  // namespace m_expr
 }  // namespace adt
