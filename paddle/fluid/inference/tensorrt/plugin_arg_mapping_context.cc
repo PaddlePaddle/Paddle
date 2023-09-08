@@ -140,6 +140,10 @@ bool PluginArgumentMappingContext::IsSparseCooTensorInput(
       "Not supported for input of SparseCooTensor."));
   return false;
 }
+bool PluginArgumentMappingContext::IsDenseTensorVectorOutput(
+    const std::string& name) const {
+  return false;
+}
 
 bool PluginArgumentMappingContext::IsSparseCooTensorOutput(
     const std::string& name) const {

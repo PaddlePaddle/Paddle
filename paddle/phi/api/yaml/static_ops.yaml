@@ -445,27 +445,6 @@
     func : one_hot_raw
     data_type : x
 
-- op : p_recv
-  args : (int ring_id = 0, int peer = 0, DataType dtype = DataType::FLOAT32, bool dynamic_shape = false)
-  output : Tensor(out)
-  infer_meta :
-    func : PRecvInferMeta
-    param : [peer, dtype]
-  kernel :
-    func : p_recv
-    param : [peer, dtype, dynamic_shape]
-    data_type : dtype
-
-- op : p_recv_array
-  args : (int ring_id = 0, int peer = 0, DataType dtype = DataType::FLOAT32, int[] out_shape = {})
-  output : Tensor(out)
-  infer_meta :
-    func : PRecvArrayInferMeta
-    param : [peer, dtype, out_shape]
-  kernel :
-    func : p_recv_array
-    param : [peer, dtype, out_shape]
-
 - op : pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", bool use_cudnn = false)
   output : Tensor(out)

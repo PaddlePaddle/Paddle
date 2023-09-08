@@ -16,16 +16,15 @@
 
 namespace phi {
 
-KernelSignature PSendOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature("p_send", {"x"}, {"peer", "dynamic_shape"}, {});
-}
-
-KernelSignature PSendArrayOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("p_send_array", {"x"}, {"peer"}, {});
-}
+KernelSignature PSendOpArgumentMapping(const ArgumentMappingContext& ctx) {
+    if ( ctx.IsDenseTensorInput("X"))  {
+        return KernelSignature("p_send", {"x"}, {"peer", "dynamic_shape"}, {});
+    }
+    else if (ctx.IsDenseTensorVectorInput("X")) {
+        return KernelSignature("p_send_array", {"x"}, {"peer"}, {});
+    }
+    else { return KernelSignature("unregistered", {}, {}, {}); }
 
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(p_send, phi::PSendOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(p_send_array, phi::PSendArrayOpArgumentMapping);

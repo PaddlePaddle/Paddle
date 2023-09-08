@@ -670,6 +670,13 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
     });
   }
 
+  bool IsDenseTensorVectorOutput(const std::string& name) const override {
+    auto vars = ctx_.MultiOutputVar(name);
+    return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
+      return var->IsType<framework::LoDTensorArray>();
+    });
+  }
+
   bool IsSparseCooTensorInput(const std::string& name) const override {
     const auto* var = ctx_.InputVar(name);
     return var->IsType<phi::SparseCooTensor>();

@@ -116,6 +116,7 @@ class ArgumentMappingContext {
   virtual bool IsSparseCsrTensorInput(const std::string& name) const = 0;
   // For compatibility with LoDTensorArray
   virtual bool IsDenseTensorVectorInput(const std::string& name) const = 0;
+  virtual bool IsDenseTensorVectorOutput(const std::string& name) const = 0;
 
   virtual bool IsDenseTensorOutput(const std::string& name) const = 0;
   virtual bool IsSelectedRowsOutput(const std::string& name) const = 0;
