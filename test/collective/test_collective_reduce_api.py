@@ -70,7 +70,7 @@ class TestCollectiveReduceAPI(TestDistBase):
             dist.ReduceOp.SUM,
         ]
         for dtype in dtypes_to_test:
-            if paddle.fluid.core.is_compiled_with_cuda():
+            if paddle.base.core.is_compiled_with_cuda():
                 for red_type in red_types_to_test:
                     self.check_with_place(
                         "collective_reduce_api.py",
