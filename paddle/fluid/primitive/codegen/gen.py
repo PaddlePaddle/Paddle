@@ -75,6 +75,7 @@ BACKENDS = [
     'sum',
     'divide',
     'full',
+    'tanh',
     'tanh_grad',
     'mean_grad',
     'concat',
