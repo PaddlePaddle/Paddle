@@ -67,8 +67,6 @@ def create_global_var(
     shape, value, dtype, persistable=False, force_cpu=False, name=None
 ):
     """
-    # TODO:
-
     This function creates a new tensor variable with value in the global block(block 0).
 
     Args:
@@ -88,31 +86,12 @@ def create_global_var(
 
     Examples:
         .. code-block:: python
-            :name: e1
 
             >>> import paddle
             >>> paddle.enable_static()
             >>> var = paddle.static.create_global_var(shape=[2,3], value=1.0, dtype='float32',
             ...                                persistable=True, force_cpu=True, name='new_var')
-
-
-        .. code-block:: python
-            :name: e3
-
-            >>> # doctest: +REQUIRES(env:GPU)
-            >>> import paddle
-            >>> print(1+1)
-            3
-
-        .. code-block:: python
-            :name: e4
-
-            >>> # doctest: +REQUIRES(env:GPU)
-            >>> import paddle
-            >>> print(1+1)
-            2
     """
-    # TODO:
     check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_global_var')
     for item in shape:
         check_type(
@@ -169,7 +148,6 @@ def create_parameter(
     shape, dtype, name=None, attr=None, is_bias=False, default_initializer=None
 ):
     """
-    # TODO:
     This function creates a parameter. The parameter is a learnable variable, which can have
     gradient, and can be optimized.
 
@@ -193,19 +171,11 @@ def create_parameter(
 
     Examples:
         .. code-block:: python
-            :name: e1
 
             >>> import paddle
             >>> paddle.enable_static()
             >>> W = paddle.create_parameter(shape=[784, 200], dtype='float32')
-
-        .. code-block:: python
-            :name: e2
-
-            >>> print(1+1)
-            2
     """
-    # TODO
     check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_parameter')
     for item in shape:
         check_type(
@@ -257,7 +227,6 @@ def create_parameter(
 
 def create_tensor(dtype, name=None, persistable=False):
     """
-    # TODO
     Create a variable, which will hold a Tensor with data type dtype.
 
     Args:
@@ -274,9 +243,9 @@ def create_tensor(dtype, name=None, persistable=False):
     Examples:
         .. code-block:: python
 
-            >>> print(1)
+            >>> import paddle
+            >>> tensor = paddle.tensor.create_tensor(dtype='float32')
     """
-    # TODO
     check_dtype(
         dtype,
         'dtype',
@@ -300,7 +269,6 @@ def create_tensor(dtype, name=None, persistable=False):
 
 def linspace(start, stop, num, dtype=None, name=None):
     r"""
-    # TODO
     Return fixed number of evenly spaced values within a given interval. Note: no gradient calculation is performed.
 
     Args:
@@ -322,18 +290,15 @@ def linspace(start, stop, num, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP
             >>> import paddle
             >>> data = paddle.linspace(0, 10, 5, 'float32')
             >>> print(data.numpy())
             [0. 2.5 5. 7.5 10.]
-
             >>> data = paddle.linspace(0, 10, 1, 'float32')
             >>> print(data.numpy())
             [0.]
 
     """
-    # TODO
     if dtype is None:
         dtype = 'float32'
     tensor_num = num
@@ -426,7 +391,6 @@ def linspace(start, stop, num, dtype=None, name=None):
 
 def logspace(start, stop, num, base=10.0, dtype=None, name=None):
     r"""
-    # TODO
     Return fixed number of logarithmical-evenly spaced values within the interval \
     :math:`[base^{start}, base^{stop}]`.
 
@@ -458,11 +422,14 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
+            >>> import paddle
+            >>> data = paddle.logspace(0, 10, 5, 2, 'float32')
+            >>> print(data.numpy())
+            [1.0000000e+00 5.6568542e+00 3.2000000e+01 1.8101933e+02 1.0240000e+03]
             >>> data = paddle.logspace(0, 10, 1, 2, 'float32')
             >>> print(data.numpy())
             [1.]
     """
-    # TODO
     if dtype is None:
         dtype = 'float32'
     tensor_num = num

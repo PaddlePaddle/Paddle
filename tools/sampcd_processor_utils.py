@@ -482,7 +482,7 @@ def get_docstring(full_test=False):
                 docstrings_to_test[api] = api_obj.__doc__
 
     if len(docstrings_to_test) == 0 and len(whl_error) == 0:
-        logger.info("-----API_PR.spec is the same as API_DEV.spec-----")
+        logger.warning("-----API_PR.spec is the same as API_DEV.spec-----")
         log_exit(0)
     logger.info("API_PR is diff from API_DEV: %s", docstrings_to_test.keys())
     logger.info("Total api: %s", len(docstrings_to_test.keys()))
