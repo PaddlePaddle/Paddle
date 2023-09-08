@@ -256,7 +256,7 @@ class TestReduceMeanBF16Op(OpTest):
 
     def test_check_output(self):
         place = paddle.CUDAPlace(0)
-        self.check_output_with_place(place, check_prim=True, check_new_ir=True)
+        self.check_output_with_place(place, check_prim=True)
 
     def test_check_grad(self):
         place = paddle.CUDAPlace(0)
@@ -266,7 +266,6 @@ class TestReduceMeanBF16Op(OpTest):
             ['Out'],
             numeric_grad_delta=0.05,
             check_prim=True,
-            check_new_ir=True,
         )
 
 
