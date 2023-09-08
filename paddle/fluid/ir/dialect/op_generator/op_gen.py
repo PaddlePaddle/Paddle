@@ -827,6 +827,11 @@ def OpGenerator(
     ops_declare_list = []  # all op class declare store in this list
     ops_defined_list = []  # all op class defined store in this list
     ops_vjp_defined_list = []  # all op vjp static interface defination
+
+    custom_vjp_op_name_list = []
+    for custom_vjp in vjp_gen.CUSTOM_VJP:
+        custom_vjp_op_name_list.append(custom_vjp[:-5])  # cut _grad
+
     for key, op_info in op_info_items.items():
         # get op inputs info
         op_input_name_list = op_info.input_name_list
@@ -882,7 +887,7 @@ def OpGenerator(
             op_interfaces += ["paddle::dialect::VjpInterface"]
         exclusive_interface_str = gen_exclusive_interface_str(op_info)
 
-        if op_info.op_phi_name[0] in vjp_gen.CUSTOM_VJP:
+        if op_info.op_phi_name[0] in custom_vjp_op_name_list:
             op_traits += ["paddle::dialect::CustomVjpTrait"]
 
         # check op inputs and mutable_attributes grad semantics
