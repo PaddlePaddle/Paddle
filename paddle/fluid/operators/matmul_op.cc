@@ -989,7 +989,6 @@ REGISTER_OP_CUDA_KERNEL(
 REGISTER_OP_CUDA_KERNEL(matmul_grad_grad,
                         ops::MatMulDoubleGradKernel<phi::GPUContext, float>,
                         ops::MatMulDoubleGradKernel<phi::GPUContext, double>);
-#endif
 
 REGISTER_OP_VERSION(matmul).AddCheckpoint(
     R"ROC(Register matmul for adding the attribute of
