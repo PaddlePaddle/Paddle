@@ -21,7 +21,7 @@ from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler im
 )
 
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
-logger = logging.getLogger("fluid")
+logger = logging.getLogger("base")
 logger.setLevel(logging.INFO)
 # role = role_maker.GeneralRoleMaker(
 # init_timeout_seconds=100,

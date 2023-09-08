@@ -118,7 +118,7 @@ class IrContextImpl {
               << ", OpInfo: ptr=" << iter->second.AsOpaquePointer() << "].";
       return iter->second;
     }
-    LOG(WARNING) << "No cache found operation of: [Name=" << name << "].";
+    VLOG(8) << "No cache found operation of: [Name=" << name << "].";
     return OpInfo();
   }
   const OpInfoMap &registered_op_info_map() { return registed_op_infos_; }

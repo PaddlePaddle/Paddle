@@ -49,7 +49,7 @@ void TransferLayoutElimPass::PutTranferlayoutAfterOp(
   std::unordered_set<const Node *> remove_nodes;
   // Ensure op_node has only one output!
   int op_node_useful_output = 0;
-  Node *var2;
+  Node *var2 = nullptr;
   for (auto ele : op_node->outputs) {
     if (!ele->outputs.empty()) {
       op_node_useful_output++;

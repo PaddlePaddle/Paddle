@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import fluid
+from paddle import base
 
-fluid.core._set_eager_deletion_mode(-1, -1, False)
+base.core._set_eager_deletion_mode(-1, -1, False)
 
 import os
 
@@ -45,7 +45,7 @@ remove_bn = True
 
 
 def squeeze_excitation(input, num_channels, reduction_ratio):
-    # pool = fluid.layers.pool2d(
+    # pool = base.layers.pool2d(
     #    input=input, pool_size=0, pool_type='avg', global_pooling=True)
     conv = input
     shape = conv.shape
