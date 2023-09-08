@@ -19,7 +19,6 @@
 #include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/call_arg_list_to_pod_value.h"
 #include "paddle/cinn/optim/cast_bool_to_int8.h"
-#include "paddle/cinn/optim/cast_simplify.h"
 #include "paddle/cinn/optim/eliminate_broadcast_in_forloop.h"
 #include "paddle/cinn/optim/extern_call_process.h"
 #include "paddle/cinn/optim/fold_cinn_call_arguments.h"

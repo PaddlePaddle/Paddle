@@ -17,13 +17,13 @@ import math
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
 # Fix seed for test
-fluid.default_startup_program().random_seed = 1
-fluid.default_main_program().random_seed = 1
+base.default_startup_program().random_seed = 1
+base.default_main_program().random_seed = 1
 
 train_parameters = {
     "input_size": [3, 224, 224],
@@ -120,7 +120,7 @@ class SE_ResNeXt:
             x=drop,
             size=class_dim,
             activation='softmax',
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.05)
             ),
         )
@@ -173,7 +173,7 @@ class SE_ResNeXt:
             groups=groups,
             act=None,
             # avoid pserver CPU init differs from GPU
-            param_attr=fluid.ParamAttr(
+            param_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.05)
             ),
             bias_attr=False,
@@ -186,7 +186,7 @@ class SE_ResNeXt:
         squeeze = paddle.static.nn.fc(
             x=pool,
             size=num_channels // reduction_ratio,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.05)
             ),
             activation='relu',
@@ -195,7 +195,7 @@ class SE_ResNeXt:
         excitation = paddle.static.nn.fc(
             x=squeeze,
             size=num_channels,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.05)
             ),
             activation='sigmoid',
@@ -226,7 +226,7 @@ class DistSeResneXt2x2(TestDistRunnerBase):
         acc_top5 = paddle.static.accuracy(input=out, label=label, k=5)
 
         # Evaluator
-        test_program = fluid.default_main_program().clone(for_test=True)
+        test_program = base.default_main_program().clone(for_test=True)
 
         # Optimization
         total_images = 6149  # flowers

@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, skip_check_grad_ci
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestSvdOp(OpTest):
@@ -295,27 +295,27 @@ class TestSvdAPI(unittest.TestCase):
 
     def test_static(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for place in places:
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with base.program_guard(base.Program(), base.Program()):
                 a = np.random.rand(5, 5)
                 x = paddle.static.data(
                     name="input", shape=[5, 5], dtype='float64'
                 )
                 u, s, vh = paddle.linalg.svd(x)
-                exe = fluid.Executor(place)
+                exe = base.Executor(place)
                 gt_u, gt_s, gt_vh = np.linalg.svd(a, full_matrices=False)
                 fetches = exe.run(
-                    fluid.default_main_program(),
+                    base.default_main_program(),
                     feed={"input": a},
                     fetch_list=[s],
                 )
                 np.testing.assert_allclose(fetches[0], gt_s, rtol=1e-05)
 
     def test_errors(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             # The size of input in svd should not be 0.
             def test_0_size():
                 array = np.array([], dtype=np.float32)

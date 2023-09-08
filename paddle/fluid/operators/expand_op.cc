@@ -51,7 +51,7 @@ class ExpandOp : public framework::OperatorWithKernel {
             x_dims.size()));
 
     std::vector<int64_t> out_shape(x_dims.size());
-    for (size_t i = 0; i < expand_times.size(); ++i) {
+    for (int i = 0; i < static_cast<int>(expand_times.size()); ++i) {
       if (x_dims[i] == -1 || expand_times[i] == -1) {
         out_shape[i] = -1;
       } else {

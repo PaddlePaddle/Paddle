@@ -18,7 +18,7 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class MLP(paddle.nn.Layer):
@@ -68,6 +68,6 @@ class TestDygraphFramework(unittest.TestCase):
 
     def test_dygraph_to_string(self):
         np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
-        with fluid.dygraph.guard():
-            var_inp = fluid.dygraph.to_variable(np_inp)
+        with base.dygraph.guard():
+            var_inp = base.dygraph.to_variable(np_inp)
             print(str(var_inp))

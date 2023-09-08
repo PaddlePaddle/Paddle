@@ -17,12 +17,10 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.jit import to_static
 
-PLACE = (
-    fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
-)
+PLACE = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 
 
 class SubNetWithDict(paddle.nn.Layer):
@@ -53,7 +51,7 @@ class SubNetWithDict(paddle.nn.Layer):
         )
 
     def forward(self, input, cache=None):
-        input = fluid.dygraph.to_variable(input)
+        input = base.dygraph.to_variable(input)
 
         q = self.q_fc(input)
         k = self.k_fc(input)
@@ -82,7 +80,7 @@ class MainNetWithDict(paddle.nn.Layer):
 
     @to_static
     def forward(self, input, max_len=4):
-        input = fluid.dygraph.to_variable(input)
+        input = base.dygraph.to_variable(input)
         cache = {
             "k": paddle.tensor.fill_constant(
                 shape=[self.batch_size, self.output_size],
@@ -120,7 +118,7 @@ def update_cache(cache):
 class TestNetWithDict(unittest.TestCase):
     """
     TestCase for the transformation from control flow `if/else`
-    dependent on tensor in Dygraph into Static `fluid.layers.cond`.
+    dependent on tensor in Dygraph into Static `base.layers.cond`.
     """
 
     def setUp(self):
@@ -135,7 +133,7 @@ class TestNetWithDict(unittest.TestCase):
 
     def train(self, to_static=False):
         paddle.jit.enable_to_static(to_static)
-        with fluid.dygraph.guard(PLACE):
+        with base.dygraph.guard(PLACE):
             net = MainNetWithDict(batch_size=self.batch_size)
             ret = net(self.x)
             return ret.numpy()
@@ -235,7 +233,7 @@ class TestDictPop3(TestNetWithDict):
 
     def train(self, to_static=False):
         paddle.jit.enable_to_static(to_static)
-        with fluid.dygraph.guard(PLACE):
+        with base.dygraph.guard(PLACE):
             net = NetWithDictPop()
             ret = net(z=0, x=self.x, y=True)
             return ret.numpy()

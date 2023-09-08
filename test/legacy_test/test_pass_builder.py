@@ -22,16 +22,16 @@ import numpy as np
 from simple_nets import simple_fc_net
 
 import paddle
-from paddle import fluid
-from paddle.fluid import compiler, core
+from paddle import base
+from paddle.base import compiler, core
 
 
 class TestPassBuilder(unittest.TestCase):
     def check_network_convergence(self, use_cuda, build_strategy=None):
         os.environ['CPU_NUM'] = str(4)
-        main = fluid.Program()
-        startup = fluid.Program()
-        with fluid.program_guard(main, startup):
+        main = base.Program()
+        startup = base.Program()
+        with base.program_guard(main, startup):
             loss = simple_fc_net()
             test_program = main.clone(for_test=True)
 
@@ -42,8 +42,8 @@ class TestPassBuilder(unittest.TestCase):
             image = np.random.normal(size=(batch_size, 784)).astype('float32')
             label = np.random.randint(0, 10, (batch_size, 1), dtype="int64")
 
-            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+            exe = base.Executor(place)
             exe.run(startup)
             feed_dict = {'image': image, 'label': label}
 
@@ -83,7 +83,7 @@ class TestPassBuilder(unittest.TestCase):
                 )
 
     def test_parallel_testing_with_new_strategy(self):
-        build_strategy = fluid.BuildStrategy()
+        build_strategy = base.BuildStrategy()
         self.assertFalse(build_strategy.fuse_elewise_add_act_ops)
         build_strategy.fuse_elewise_add_act_ops = True
         # FIXME: currently fuse_elewise_add_act_ops not compatible with below options

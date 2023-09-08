@@ -16,7 +16,7 @@ skip = ["build", "third_party", "__init__.py"]
 extend_skip_glob = [
     # These files do not need to be formatted,
     # see .flake8 for more details
-    "python/paddle/fluid/**",
+    "python/paddle/base/**",
     "python/paddle/utils/gast/**",
 ]
 
@@ -24,7 +24,7 @@ extend_skip_glob = [
 exclude = [
     "./build",
     "third_party",
-    "./python/paddle/fluid/**",
+    "./python/paddle/base/**",
     "./python/paddle/utils/gast/**",
 ]
 target-version = "py37"

@@ -21,7 +21,7 @@ import numpy as np
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def affine_channel(x, scale, bias, layout):

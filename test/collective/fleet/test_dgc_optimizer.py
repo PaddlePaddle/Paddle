@@ -16,7 +16,7 @@ import unittest
 
 import paddle
 from paddle import regularizer
-from paddle.fluid import framework
+from paddle.base import framework
 from paddle.nn import clip
 
 paddle.enable_static()

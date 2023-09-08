@@ -15,8 +15,8 @@
 import copy
 import logging
 
+from paddle.base.core import get_spmd_rule  # noqa: F401
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.fluid.core import get_spmd_rule  # noqa: F401
 from paddle.framework import core
 
 from ..process_mesh import ProcessMesh, compute_compatible_process_mesh

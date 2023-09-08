@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestMarginRankLossOp(OpTest):
@@ -75,19 +75,19 @@ class TestMarginRankLossLayer(unittest.TestCase):
         self.loss = loss
 
     def test_identity(self):
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         self.check_identity(place)
 
-        if fluid.is_compiled_with_cuda():
-            place = fluid.CUDAPlace(0)
+        if base.is_compiled_with_cuda():
+            place = base.CUDAPlace(0)
             self.check_identity(place)
 
     def check_identity(self, place):
         with paddle_static_guard():
-            main = fluid.Program()
-            start = fluid.Program()
-            with fluid.unique_name.guard():
-                with fluid.program_guard(main, start):
+            main = base.Program()
+            start = base.Program()
+            with base.unique_name.guard():
+                with base.program_guard(main, start):
                     label = paddle.static.data(
                         "label", (self.batch_size, 1), "float32"
                     )
@@ -101,7 +101,7 @@ class TestMarginRankLossLayer(unittest.TestCase):
                         x1, x2, label, self.margin, 'none'
                     )
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             exe.run(start)
             (out_np,) = exe.run(
                 main,

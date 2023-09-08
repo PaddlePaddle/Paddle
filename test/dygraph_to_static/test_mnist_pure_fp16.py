@@ -21,8 +21,8 @@ from test_mnist import MNIST, SEED, TestMNIST
 
 import paddle
 
-if paddle.fluid.is_compiled_with_cuda():
-    paddle.fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+if paddle.base.is_compiled_with_cuda():
+    paddle.base.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
 class TestPureFP16(TestMNIST):
@@ -34,7 +34,7 @@ class TestPureFP16(TestMNIST):
 
     @test_and_compare_with_new_ir(False)
     def test_mnist_to_static(self):
-        if paddle.fluid.is_compiled_with_cuda():
+        if paddle.base.is_compiled_with_cuda():
             dygraph_loss = self.train_dygraph()
             static_loss = self.train_static()
             # NOTE: In pure fp16 training, loss is not stable, so we enlarge atol here.
