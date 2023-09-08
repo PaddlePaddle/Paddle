@@ -18,7 +18,7 @@ import inspect
 from .. import core
 from ..framework import Variable, unique_name, static_only
 from .layer_function_generator import OpProtoHolder
-from paddle.base.dygraph.base import in_declarative_mode
+from paddle.base.dygraph.base import in_to_static_mode
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.BOOL,
@@ -302,7 +302,7 @@ def monkey_patch_variable():
 
         """
         if not isinstance(var, Variable):
-            if in_declarative_mode():
+            if in_to_static_mode():
                 """in dy2static mode, x may be tensorable values such as int, float, np.array"""
                 from paddle.tensor.creation import to_tensor
 
