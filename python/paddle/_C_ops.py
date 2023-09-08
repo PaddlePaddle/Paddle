@@ -16,7 +16,15 @@ from paddle.base import core
 
 __all__ = []
 
-UNIFIED_APIS = ['mean', 'concat', 'add_n', 'scale']
+UNIFIED_APIS = [
+    'add_n',
+    'concat',
+    'full_like',
+    'mean',
+    'scale',
+    'sum',
+]
+
 
 for name in dir(core.eager.ops):
     globals()[name] = getattr(core.eager.ops, name)

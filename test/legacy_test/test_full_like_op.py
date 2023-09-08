@@ -21,14 +21,26 @@ import paddle
 import paddle.framework.dtype as dtypes
 from paddle.base import core
 from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.framework import in_new_ir_mode
 from paddle.static import Program, program_guard
 
 
 def fill_any_like_wrapper(x, value, out_dtype=None, name=None):
     if isinstance(out_dtype, int):
-        tmp_dtype = dtypes.dtype(out_dtype)
+        if not in_new_ir_mode():
+            tmp_dtype = dtypes.dtype(out_dtype)
+        else:
+            from paddle.fluid.libpaddle import DataType
+
+            tmp_dtype = DataType(
+                paddle.ir.core.vartype_int_to_datatype_int[out_dtype]
+            )
     else:
         tmp_dtype = out_dtype
+        if in_new_ir_mode() and isinstance(
+            out_dtype, paddle.framework.core.VarDesc.VarType
+        ):
+            tmp_dtype = paddle.ir.core.vartype_to_datatype[tmp_dtype]
     return paddle.full_like(x, value, tmp_dtype, name)
 
 
@@ -36,6 +48,7 @@ class TestFullOp(unittest.TestCase):
     """Test fill_any_like op(whose API is full_like) for attr out."""
 
     def test_attr_tensor_API(self):
+        paddle.enable_static()
         startup_program = Program()
         train_program = Program()
         with program_guard(train_program, startup_program):
@@ -63,6 +76,7 @@ class TestFullOp(unittest.TestCase):
                 not (out_np - np.full_like(img, fill_value)).any(),
                 msg="full_like output is wrong, out = " + str(out_np),
             )
+        paddle.disable_static()
 
     def test_full_like_imperative(self):
         paddle.disable_static()
