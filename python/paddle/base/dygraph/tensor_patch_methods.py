@@ -15,7 +15,6 @@
 import inspect
 import numpy as np
 import warnings
-import weakref
 import sys
 
 import paddle
@@ -23,7 +22,7 @@ from .. import framework
 from ..framework import convert_np_dtype_to_dtype_
 from .. import core
 from .. import unique_name
-from ..framework import (
+from ..framework import (  # noqa: F401
     Variable,
     Parameter,
     _getitem_static,
@@ -32,8 +31,8 @@ from ..framework import (
     EagerParamBase,
     in_dygraph_mode,
 )
-from .base import switch_to_static_graph
-from .math_op_patch import monkey_patch_math_tensor
+from .base import switch_to_static_graph  # noqa: F401
+from .math_op_patch import monkey_patch_math_tensor  # noqa: F401
 from paddle.base.data_feeder import (
     convert_uint16_to_float,
     _PADDLE_DTYPE_2_NUMPY_DTYPE,
@@ -41,9 +40,9 @@ from paddle.base.data_feeder import (
 import paddle.utils.deprecated as deprecated
 import paddle.profiler as profiler
 from paddle.profiler.utils import in_profiler_mode
-from paddle import _C_ops, _legacy_C_ops
-from paddle.device import get_all_custom_device_type
-from paddle.base.framework import _global_flags
+from paddle import _C_ops, _legacy_C_ops  # noqa: F401
+from paddle.device import get_all_custom_device_type  # noqa: F401
+from paddle.base.framework import _global_flags  # noqa: F401
 
 _grad_scalar = None
 

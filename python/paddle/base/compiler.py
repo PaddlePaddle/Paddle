@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import multiprocessing
-import os
 import sys
 import warnings
 from . import framework
-from .framework import _get_paddle_place, _get_paddle_place_list
+from .framework import _get_paddle_place, _get_paddle_place_list  # noqa: F401
 from .framework import cuda_places, cpu_places, xpu_places
 from . import core
 

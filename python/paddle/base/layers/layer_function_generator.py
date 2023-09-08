@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import re
-import functools
 import warnings
 import string
 
