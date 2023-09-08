@@ -1373,7 +1373,7 @@ class Engine:
         else:
             self._switch_mode(self._mode)
 
-        micro_batch_size = self._validate_batch_size(batch_size)
+        # micro_batch_size = self._validate_batch_size(batch_size)
         dataloader = self._prepare_dataloader_from_generator(
             dataset=dataset,
             capacity=capacity,
@@ -1382,7 +1382,7 @@ class Engine:
             return_list=False,
             use_multiprocess=use_multiprocess,
             drop_last=drop_last,
-            batch_size=micro_batch_size,
+            batch_size=batch_size,
             epochs=epochs,
             steps_per_epoch=steps_per_epoch,
             collate_fn=collate_fn,
