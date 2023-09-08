@@ -122,13 +122,14 @@ tHasUniqueInferedValue<bool> MergeInferedValuesIntoCtx(
 
 void SolveEquations(
     const EquationGraphTopoWalker<const Variable, const Function*>& walker,
-    const Variable& start,
+    const std::vector<Variable>& starts,
     IndexExprInferContext* ctx) {
-  walker(start, [&](const Function* function) {
-    tHasUniqueInferedValue<bool> has_unique_value =
-        MergeInferedValuesIntoCtx(function, ctx);
-    CHECK(has_unique_value.value());
-  });
+  walker.WalkFunction(
+      starts.begin(), starts.end(), [&](const Function* function) {
+        tHasUniqueInferedValue<bool> has_unique_value =
+            MergeInferedValuesIntoCtx(function, ctx);
+        CHECK(has_unique_value.value());
+      });
 }
 
 bool IsEquationsSolvable(
@@ -143,7 +144,7 @@ bool IsEquationsSolvable(
     return !has_unique_value.value();
   };
 
-  walker(start, [&](const Function* function) {
+  walker.WalkFunction(start, [&](const Function* function) {
     if (is_solvable && HasConflictInferedValue(function)) {
       is_solvable = false;
     }

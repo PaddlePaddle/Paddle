@@ -17,6 +17,7 @@
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/match.h"
+#include "paddle/cinn/adt/schedule_policy.h"
 
 namespace cinn::hlir::framework {
 class Node;
@@ -107,7 +108,8 @@ struct PtrGetItem final : public Tuple<tPointer<UniqueId>, T> {
 
 DEFINE_ADT_UNION(Value,
                  Undefined,
-                 IterVar,
+                 MockValue,
+                 SchedulePolicy,
                  List<Value>,
                  IndexDot<Value>,
                  IndexUnDot<Value>,

@@ -232,7 +232,7 @@ equation::GraphView MakeParametersGraphViewForPartition(
   return std::make_shared<equation::Graph>(equations)->GetGraphView();
 }
 
-equation::GraphView MakeGlobalEquationGraphForPartition(
+equation::GraphView MakeGlobalEquationGraphViewForPartition(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
     const List<m_expr::OpStmt>& op_stmts) {
   const auto& ops_graph_view =
@@ -288,15 +288,15 @@ std::unordered_map<AnchorIndex, IGroupSpec> PartitionOpStmtsIntoIGroupSpecs(
   const auto& OpStmt4OpPlaceHolder =
       MakeGetterOpStmt4OpPlaceHolder(EquationCtx4OpStmt, op_stmts);
 
-  const auto& equation_graph =
-      MakeGlobalEquationGraphForPartition(EquationCtx4OpStmt, op_stmts);
+  const auto& equation_graph_view =
+      MakeGlobalEquationGraphViewForPartition(EquationCtx4OpStmt, op_stmts);
 
   while (!candidate_anchor_indexes->empty()) {
     AnchorIndex anchor_tensor =
         PickThenEraseAnchorIndex(candidate_anchor_indexes);
 
-    const auto& visited_op_stmts =
-        FindVisitedOpStmts(anchor_tensor, equation_graph, OpStmt4OpPlaceHolder);
+    const auto& visited_op_stmts = FindVisitedOpStmts(
+        anchor_tensor, equation_graph_view, OpStmt4OpPlaceHolder);
     CHECK(!visited_op_stmts->empty());
 
     IGroupSpec igroup_spec{anchor_tensor, visited_op_stmts, EquationCtx4OpStmt};
@@ -305,6 +305,22 @@ std::unordered_map<AnchorIndex, IGroupSpec> PartitionOpStmtsIntoIGroupSpecs(
   }
 
   return anchor_index2igroup_spec;
+}
+
+std::unordered_map<const Variable, Value> MakeAnchorIndex2MockValue(
+    const partition::IGroupSpec& igroup_spec) {
+  return {{igroup_spec.anchor_index, MockValue{}}};
+}
+
+bool IsEquationSolvable(const partition::IGroupSpec& igroup_spec) {
+  const auto& equation_graph_view = MakeGlobalEquationGraphViewForPartition(
+      igroup_spec.EquationCtx4OpStmt, igroup_spec.op_stmts);
+
+  const auto& init_var2value = MakeAnchorIndex2MockValue(igroup_spec);
+  auto ctx = std::make_shared<equation::IndexExprInferContext>(init_var2value);
+
+  return equation::value::IsEquationsSolvable(
+      equation_graph_view, igroup_spec.anchor_index, ctx.get());
 }
 
 std::function<std::size_t(const m_expr::OpStmt&)> MakeGetterOrderValue4OpStmt(

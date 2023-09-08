@@ -19,8 +19,8 @@ namespace cinn::adt {
 using AnchorTensor = eqaution::Variable;
 
 std::size_t GetTensorNumel(const m_expr::Tensor& tensor) {
-  // Yifan
-  ADT_TODO();
+  CHECK(tensor.Has<adapter::Tensor>());
+  return tensor.Get<adapter::Tensor>().GetNumel();
 }
 
 ScheduleDescriptor KGroup::GetDefaultScheduleDescriptor(

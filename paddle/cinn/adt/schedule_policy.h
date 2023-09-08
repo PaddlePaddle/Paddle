@@ -16,7 +16,7 @@
 
 #include "paddle/cinn/adt/adt.h"
 
-namespace cinn::adt::m_expr {
+namespace cinn::adt {
 
 class AutoSize final {};
 
@@ -59,16 +59,25 @@ class S1z final {
 class Temporal final {
  public:
   bool IsSpatial() const { return false; }
+
+ private:
+  std::string iter_var_name_;
 };
 
 class Vectorize final {
  public:
   bool IsSpatial() const { return false; }
+
+ private:
+  std::string iter_var_name_;
 };
 
 class Unroll final {
  public:
   bool IsSpatial() const { return false; }
+
+ private:
+  std::string iter_var_name_;
 };
 
 DEFINE_ADT_UNION(
@@ -86,6 +95,10 @@ class SchedulePolicy final : public Tuple<ScheduleType, ScheduleSize> {
   const ScheduleSize& GetScheduleSize() const {
     return std::get<1>(this->tuple());
   }
+
+  bool operator==(const SchedulePolicy& other) const {
+    return &this->tuple() == &other.tuple();
+  }
 };
 
 // ScheduleDescriptor = [SchedulePolicy]
@@ -96,4 +109,4 @@ inline bool IsSpatial(const ScheduleType& schedule_type) {
                     schedule_type.variant());
 }
 
-}  // namespace cinn::adt::m_expr
+}  // namespace cinn::adt

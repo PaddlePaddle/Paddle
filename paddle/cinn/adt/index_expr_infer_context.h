@@ -27,7 +27,9 @@ class IndexExprInferContext final {
   IndexExprInferContext(const IndexExprInferContext&) = delete;
   IndexExprInferContext(IndexExprInferContext&&) = delete;
 
-  IndexExprInferContext() = default;
+  explicit IndexExprInferContext(
+      const std::unordered_map<const Variable, Value>& init_map)
+      : map_(init_map) {}
 
   const Value& GetValue(const Variable& variable) const {
     return map_.at(variable);

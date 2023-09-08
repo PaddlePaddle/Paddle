@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <vector>
+
 #include "paddle/cinn/adt/equation_value.h"
 #include "paddle/cinn/common/equation_graph_topo_walker.h"
 
@@ -23,7 +25,7 @@ class IndexExprInferContext;
 
 void SolveEquations(
     const EquationGraphTopoWalker<const Variable, const Function*>& walker,
-    const Variable& start,
+    const std::vector<Variable>& starts,
     IndexExprInferContext* ctx);
 
 bool IsEquationsSolvable(

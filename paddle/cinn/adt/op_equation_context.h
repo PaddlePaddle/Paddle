@@ -24,13 +24,14 @@
 
 namespace cinn::adt::equation::config {
 
-class Context {
+class OpEquationContext {
  public:
-  Context(const Context&) = delete;
-  Context(Context&&) = delete;
+  OpEquationContext(const OpEquationContext&) = delete;
+  OpEquationContext(OpEquationContext&&) = delete;
 
-  explicit Context(const std::vector<std::uint64_t>& in_tensors_ranks,
-                   const std::vector<std::uint64_t>& out_tensors_ranks)
+  explicit OpEquationContext(
+      const std::vector<std::uint64_t>& in_tensors_ranks,
+      const std::vector<std::uint64_t>& out_tensors_ranks)
       : in_tensors_ranks_(in_tensors_ranks),
         out_tensors_ranks_(out_tensors_ranks),
         equations_{} {

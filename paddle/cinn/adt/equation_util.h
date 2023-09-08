@@ -19,6 +19,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/common/equation_graph_topo_walker.h"
 #include "paddle/cinn/common/topo_walker.h"
 
@@ -84,6 +85,79 @@ EquationGraphTopoWalker<VT, FT> GetSubgraph(
       };
   return EquationGraphTopoWalker<VT, FT>(
       VisitNextFunctions, VisitInputVariables, VisitOutputVariables);
+}
+
+inline List<Stride> MakeStrides(std::size_t num_strides) {
+  List<Stride> ret{};
+  for (std::size_t i = 0; i < num_strides; ++i) {
+    ret->emplace_back(UniqueId::New());
+  }
+  return ret;
+}
+
+template <typename DoEachT>
+void Equal(const Index& lhs, const Index& rhs, const DoEachT& DoEach) {
+  DoEach(Identity<tOut<Index>, tIn<Index>>{lhs, rhs});
+  DoEach(Identity<tOut<Index>, tIn<Index>>{rhs, lhs});
+}
+
+inline void Equal(const Index& lhs, const Index& rhs, Equations* equations) {
+  Equal(lhs, rhs, [&](const auto& equation) {
+    (*equations)->emplace_back(equation);
+  });
+}
+
+template <typename DoEachT>
+void GenerateDotEquation(const List<Iterator>& iterators,
+                         const List<Stride>& strides,
+                         const Index& index,
+                         const DoEachT& DoEach) {
+  DoEach(Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>{
+      strides, index, iterators});
+  DoEach(UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>{
+      strides, iterators, index});
+}
+
+template <typename DoEachT>
+Index MakeDot(const List<Iterator>& iterators,
+              const List<Stride>& strides,
+              const DoEachT& DoEach) {
+  Index ret{UniqueId::New()};
+  GenerateDotEquation(iterators, strides, ret, DoEach);
+  return ret;
+}
+
+inline Index MakeDot(const List<Iterator>& iterators,
+                     const List<Stride>& strides,
+                     Equations* equations) {
+  return MakeDot(iterators, strides, [&](const auto& equation) {
+    (*equations)->emplace_back(equation);
+  });
+}
+
+inline List<Iterator> MakeIterators(std::size_t num_iterators) {
+  List<Iterator> ret{};
+  for (std::size_t i = 0; i < num_iterators; ++i) {
+    ret->emplace_back(UniqueId::New());
+  }
+  return ret;
+}
+
+template <typename DoEachT>
+List<Iterator> MakeUnDot(const Index& index,
+                         const List<Stride>& strides,
+                         const DoEachT& DoEach) {
+  List<Iterator> ret{};
+  GenerateDotEquation(ret, strides, index, DoEach);
+  return ret;
+}
+
+inline List<Iterator> MakeUnDot(const Index& index,
+                                const List<Stride>& strides,
+                                Equations* equations) {
+  return MakeUnDot(index, strides, [&](const auto& equation) {
+    (*equations)->emplace_back(equation);
+  });
 }
 
 }  // namespace cinn::adt::equation::util

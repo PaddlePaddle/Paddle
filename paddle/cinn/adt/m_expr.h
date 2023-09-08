@@ -19,7 +19,7 @@
 #include "paddle/cinn/adt/adapter.h"
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/equation_value.h"
-#include "paddle/cinn/adt/schedule_descriptor.h"
+#include "paddle/cinn/adt/schedule_policy.h"
 
 namespace cinn {
 namespace hlir {
@@ -130,10 +130,12 @@ class MapStmt final : public Tuple<ScheduleDescriptor, List<T>> {
 DEFINE_ADT_UNION(Stmt, OpStmt, MapStmt<Stmt>);
 
 using TensorIndexExpr = equation::Value;
-using TensorIndexExpr4TensorT = std::function<const TensorIndexExpr&(const Tensor&)>;
+using TensorIndexExpr4TensorT =
+    std::function<const TensorIndexExpr&(const Tensor&)>;
 
 // AnchoredMapStmt = (MapStmt Stmt, tAnchor Tensor, TensorIndexExpr4TensorT)
-class AnchoredMapStmt final : public Tuple<MapStmt<Stmt>, tAnchor<Tensor>, TensorIndexExpr4TensorT> {
+class AnchoredMapStmt final
+    : public Tuple<MapStmt<Stmt>, tAnchor<Tensor>, TensorIndexExpr4TensorT> {
  public:
   using Tuple<MapStmt<Stmt>, tAnchor<Tensor>, TensorIndexExpr4TensorT>::Tuple;
 };

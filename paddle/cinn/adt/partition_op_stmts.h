@@ -22,7 +22,7 @@
 namespace cinn::adt::partition {
 
 using EquationCtx4OpStmtT =
-    std::function<std::shared_ptr<equation::config::Context>(
+    std::function<std::shared_ptr<equation::config::OpEquationContext>(
         const m_expr::OpStmt&)>;
 using TensorIndex = equation::Variable;
 using AnchorIndex = TensorIndex;
@@ -34,6 +34,12 @@ struct IGroupSpec {
 };
 
 std::vector<IGroupSpec> PartitionOpStmts(
+    const EquationCtx4OpStmtT& EquationCtx4OpStmt,
+    const List<m_expr::OpStmt>& op_stmts);
+
+bool IsEquationSolvable(const partition::IGroupSpec& igroup_spec);
+
+equation::GraphView MakeGlobalEquationGraphViewForPartition(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
     const List<m_expr::OpStmt>& op_stmts);
 

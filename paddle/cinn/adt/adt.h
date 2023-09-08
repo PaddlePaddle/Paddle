@@ -262,6 +262,11 @@ struct Undefined final {
   bool operator!=(const Undefined&) const { return false; }
 };
 
+struct MockValue final {
+  bool operator==(const MockValue&) const { return true; }
+  bool operator!=(const MockValue&) const { return false; }
+};
+
 #define ADT_TODO() LOG(FATAL) << "TODO"
 
 inline std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
