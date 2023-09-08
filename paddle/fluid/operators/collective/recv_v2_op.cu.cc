@@ -220,8 +220,9 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     ncclDataType_t dtype = platform::ToNCCLDataType(type);
 
     auto *out_var = ctx.OutputVar("Out");
-    if (out_var->IsType<framework::LoDTensorArray>()) {
-      // if the tensor being received is a LoD tensor
+    if (out_var->IsType<framework::LoDTensorArray>()) {  // if the tensor being
+                                                         // received is a LoD
+                                                         // tensor
       PADDLE_ENFORCE_EQ(
           dynamic_shape,
           false,
@@ -251,7 +252,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
         }
       }
       return;
-    } else {
+    } else {  // otherwise, consider it as a dense tensor
       auto out_shape = ctx.Attr<std::vector<int>>("out_shape");
       auto out = ctx.Output<phi::DenseTensor>("Out");
       auto out_dims = out->dims();
