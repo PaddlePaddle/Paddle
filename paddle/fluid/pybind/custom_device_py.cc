@@ -327,7 +327,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
                   >>> event = s.record_event()
 
           )DOC",
-          >>> py::arg("event") = nullptr)
+          py::arg("event") = nullptr)
       .def_property_readonly(
           "raw_stream",
           [](const phi::stream::Stream &self) {
