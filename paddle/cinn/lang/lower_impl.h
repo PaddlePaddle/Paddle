@@ -27,6 +27,7 @@
 
 #include "paddle/cinn/common/graph_utils.h"
 #include "paddle/cinn/ir/buffer.h"
+#include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/buffer_assign.h"
 #include "paddle/cinn/optim/compute_inline_expand.h"
