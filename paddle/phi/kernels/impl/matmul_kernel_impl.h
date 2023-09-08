@@ -1576,6 +1576,7 @@ void inline MatmulWithFlattenKernel<int8_t, phi::GPUContext>(
     out->Resize({x_matrix.dims()[0], y_matrix.dims()[1]});
   }
 
+#if CUDA_VERSION >= 11060
   using blaslt = phi::funcs::MatmulWithCublasLt<int8_t, int32_t>;
 
   const int8_t* x_data = x_matrix.data<int8_t>();
@@ -1609,6 +1610,7 @@ void inline MatmulWithFlattenKernel<int8_t, phi::GPUContext>(
   if (z_dim.size() != 2) {
     out->Resize(z_dim);
   }
+#endif
 }
 #endif
 
