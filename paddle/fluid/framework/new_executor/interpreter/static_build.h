@@ -26,10 +26,12 @@ namespace interpreter {
 
 bool BlockCanBeStaticBuilt(const framework::BlockDesc& block);
 
-void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
-                                          const platform::Place& place,
-                                          Scope* scope,
-                                          bool is_last_op);
+void FakeInitializeOutputsForOperatorBase(
+    const OperatorBase& op,
+    const phi::Place& place,
+    Scope* scope,
+    bool is_skip_fake_init,
+    const std::unordered_set<std::string> following_input_vars);
 
 void FakeInitializeOutputsForFunctionKernel(
     const framework::OperatorBase& op,

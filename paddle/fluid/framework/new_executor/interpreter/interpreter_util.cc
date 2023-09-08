@@ -526,12 +526,14 @@ platform::DeviceContext* ConstructDeviceContext(const OperatorBase* op,
   return default_dev_ctx;
 }
 
-void HandleOperatorBase(const platform::Place& place,
-                        std::shared_ptr<OperatorBase> op,
-                        OpFuncNode* op_func_node,
-                        Scope* scope,
-                        bool static_build,
-                        bool is_skip_fake_init) {
+void HandleOperatorBase(
+    const platform::Place& place,
+    std::shared_ptr<OperatorBase> op,
+    OpFuncNode* op_func_node,
+    Scope* scope,
+    bool static_build,
+    bool is_skip_fake_init,
+    const std::unordered_set<std::string> following_input_vars) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
   // input, output is prepared. set the other attributes.
@@ -542,7 +544,8 @@ void HandleOperatorBase(const platform::Place& place,
     if (OperatorBasesMustRunInStaticBuild.count(op->Type())) {
       op->Run(*scope, place);
     }
-    FakeInitializeOutputsForOperatorBase(*op, place, scope, is_skip_fake_init);
+    FakeInitializeOutputsForOperatorBase(
+        *op, place, scope, is_skip_fake_init, following_input_vars);
   } else {
     op->Run(*scope, place);  // Run without data transformer.
   }
@@ -686,6 +689,8 @@ void BuildOpFuncList(const platform::Place& place,
         VLOG(4) << "HandleOperatorBase";
         // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
         bool is_skip_fake_init = false;
+        std::unordered_set<std::string> following_input_vars;
+
         if (static_build && op->Type() == "conditional_block") {
           // Note(sonder): skip fake init for conditional_block when there is no
           // op with kernel after it.
@@ -696,6 +701,10 @@ void BuildOpFuncList(const platform::Place& place,
               is_skip_fake_init = false;
               break;
             }
+            auto input_vars_info = ops[j]->InputVarsInfo(local_scope);
+            for (auto& input_var_info : input_vars_info) {
+              following_input_vars.insert(input_var_info.name_);
+            }
           }
         }
         HandleOperatorBase(place,
@@ -703,7 +712,8 @@ void BuildOpFuncList(const platform::Place& place,
                            &op_func_node,
                            local_scope,
                            static_build,
-                           is_skip_fake_init);
+                           is_skip_fake_init,
+                           following_input_vars);
         vec_func_list->emplace_back(op_func_node);
       } else {
         VLOG(4) << "OP is not null";

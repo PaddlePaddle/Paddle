@@ -319,12 +319,14 @@ void FakeInitializeTensorBase(const platform::DeviceContext& dev_ctx,
   }
 }
 
-void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
-                                          const phi::Place& place,
-                                          Scope* scope,
-                                          bool is_skip) {
+void FakeInitializeOutputsForOperatorBase(
+    const OperatorBase& op,
+    const phi::Place& place,
+    Scope* scope,
+    bool is_skip_fake_init,
+    const std::unordered_set<std::string> following_input_vars) {
   const std::string& op_type = op.Type();
-  if (OpsCanSkipedFakeAllocInStaticBuild.count(op_type) || is_skip) {
+  if (OpsCanSkipedFakeAllocInStaticBuild.count(op_type) || is_skip_fake_init) {
     return;
   }
 
@@ -364,17 +366,36 @@ void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
       }
     }
   } else if (op_type == "conditional_block") {
-    const std::string out_var_info_before_build = op.OutVarInfoString(scope);
+    const std::vector<VarInfo> out_var_info_before_build =
+        op.OutputVarsInfo(scope);
     op.RunPreStaticBuild(*scope, place);
-    const std::string out_var_info_after_build = op.OutVarInfoString(scope);
-    if (out_var_info_before_build != out_var_info_after_build) {
-      PADDLE_THROW(
-          phi::errors::Unimplemented("The output of conditional_block is "
-                                     "changed after static build. Static build "
-                                     "is not supported in this case. "
-                                     "Before: %s, After: %s",
-                                     out_var_info_before_build,
-                                     out_var_info_after_build));
+    const std::vector<VarInfo> out_var_info_after_build =
+        op.OutputVarsInfo(scope);
+
+    // Note(sonder): static_build is not supported if the output of
+    // conditional_block is changed after static build.
+    bool can_static_build = true;
+    if (out_var_info_before_build.size() != out_var_info_after_build.size()) {
+      can_static_build = false;
+    } else {
+      follow for (size_t i = 0; i < out_var_info_before_build.size(); ++i) {
+        // static build is supported in case of the output's dtype/place
+        // is changed but the following op is not use this output
+        if (out_var_info_before_build[i] != out_var_info_after_build[i]) {
+          auto var_name = out_var_info_before_build[i].name_;
+          if (following_input_vars.count(var_name)) {
+            can_static_build = false;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!can_static_build) {
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
+          "The output of conditional_block is "
+          "changed after static build. Static build "
+          "is not supported in this case."));
     }
   } else {
     PADDLE_THROW(

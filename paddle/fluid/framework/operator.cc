@@ -953,37 +953,36 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
   return ss.str();
 }
 
-std::string OperatorBase::OutVarInfoString(const Scope* scope) const {
-  std::stringstream ss;
+std::vector<VarInfo> GetVarsInfo(const Scope* scope,
+                                 VariableNameMap var_name_map) {
+  std::vector<VarInfo> var_info;
 
-  ss << "Op(" << type_ << "), outputs:{";
-  for (auto it = outputs_.begin(); it != outputs_.end();) {
-    auto& output = *it;
-    ss << output.first << "[";
-    for (size_t i = 0; i < output.second.size(); ++i) {
-      auto var_name = output.second[i];
-      ss << var_name;
+  for (auto it = var_name_map.begin(); it != var_name_map.end();) {
+    auto& vars = *it;
+    std::string var_name, var_dtype, var_place;
+    for (size_t i = 0; i < vars.second.size(); ++i) {
+      var_name = vars.second[i];
+      var_dtype.clear();
+      var_place.clear();
       if (scope) {
-        if (!VarInited(*scope, var_name)) {
-          ss << "[uninited]";
-        } else {
-          std::string dtype = GetDtype(*scope, output.second[i]);
-          ss << ":" << dtype;
-          ss << "(" << GetPlace(*scope, var_name) << ")";
+        if (VarInited(*scope, var_name)) {
+          var_dtype = GetDtype(*scope, vars.second[i]);
+          var_place = GetPlace(*scope, var_name);
         }
       }
-      if (i != output.second.size() - 1) {
-        ss << ", ";
-      }
-    }
-    ss << "]";
-    ++it;
-    if (it != outputs_.end()) {
-      ss << ", ";
+      var_info.emplace_back(var_name, var_dtype, var_place);
     }
   }
-  ss << "}.";
-  return ss.str();
+
+  return var_info;
+}
+
+std::vector<VarInfo> OperatorBase::InputVarsInfo(const Scope* scope) const {
+  return GetVarsInfo(scope, inputs_);
+}
+
+std::vector<VarInfo> OperatorBase::OutputVarsInfo(const Scope* scope) const {
+  return GetVarsInfo(scope, outputs_);
 }
 
 OperatorBase::OperatorBase(const std::string& type,
