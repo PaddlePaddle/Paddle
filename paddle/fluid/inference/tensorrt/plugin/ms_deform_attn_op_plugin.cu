@@ -221,9 +221,13 @@ __device__ void ms_deform_attn_col2im_bilinear_gm(
 
 template <typename scalar_t>
 __global__ void ms_deformable_im2col_gpu_kernel(
-    const int n, const scalar_t *data_value, const int *data_spatial_shapes,
-    const int *data_level_start_index, const scalar_t *data_sampling_loc,
-    const scalar_t *data_attn_weight, const int batch_size,
+    const int n, 
+    const scalar_t *data_value, 
+    const int *data_spatial_shapes,
+    const int *data_level_start_index, 
+    const scalar_t *data_sampling_loc,
+    const scalar_t *data_attn_weight, 
+    const int batch_size,
     const int spatial_size, const int num_heads, const int channels,
     const int num_levels, const int num_query, const int num_point,
     scalar_t *data_col) {
@@ -901,20 +905,20 @@ const int num_levels = spatial_shapes_dims.d[0];
 const int num_query = sampling_locations_dims.d[1];
 const int num_point = sampling_locations_dims.d[4];
 
-const int im2col_step_ = std::min(batch, im2col_step_);
-assert(batch % im2col_step_ == 0);
-assert(0 == 1);
+const int im2col_step_new = std::min(batch, im2col_step_);
+assert(batch % im2col_step_new == 0);
 //   auto output = paddle::full({batch, num_query, num_heads * channels}, 0,
 //                              value.type(), paddle::GPUPlace());
+cudaMemsetAsync(outputs[0], 0, batch * num_query * num_heads * channels * sizeof(float), stream);
 
   auto per_value_size = spatial_size * num_heads * channels;
   auto per_sample_loc_size = num_query * num_heads * num_levels * num_point * 2;
   auto per_attn_weight_size = num_query * num_heads * num_levels * num_point;
   auto per_output_size = num_query * num_heads * channels;
 
-  for (int n = 0; n < batch / im2col_step_; ++n) {
-    const int num_kernels = im2col_step_ * per_output_size;
-    const int num_actual_kernels = im2col_step_ * per_output_size;
+  for (int n = 0; n < batch / im2col_step_new; ++n) {
+    const int num_kernels = im2col_step_new * per_output_size;
+    const int num_actual_kernels = im2col_step_new * per_output_size;
     const int num_threads = CUDA_NUM_THREADS;
 
     ms_deformable_im2col_gpu_kernel<float>
@@ -923,12 +927,12 @@ assert(0 == 1);
            0,
            stream>>>(
             num_kernels,
-            (float*)(value) + n * im2col_step_ * per_value_size,
+            (float*)(value) + n * im2col_step_new * per_value_size,
             (int*)(spatial_shapes), 
             (int*)(level_start_index),
-            (float*)(sampling_locations) + n * im2col_step_ * per_sample_loc_size,
-            (float*)(attention_weights) + n * im2col_step_ * per_attn_weight_size,
-            im2col_step_, 
+            (float*)(sampling_locations) + n * im2col_step_new * per_sample_loc_size,
+            (float*)(attention_weights) + n * im2col_step_new * per_attn_weight_size,
+            im2col_step_new, 
             spatial_size, 
             num_heads, 
             channels, 
