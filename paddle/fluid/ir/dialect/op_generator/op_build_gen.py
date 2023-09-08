@@ -350,14 +350,16 @@ def GenBuildOutputs(
                           .dyn_cast<paddle::dialect::IntArrayAttribute>()
                           .data()
                           .GetData()));
-  }}
-  else {{
-    PADDLE_ENFORCE(
-        {name}_.type().isa<ir::VectorType>(),
-        phi::errors::PreconditionNotMet("section Type should be VectorType."));
+  }} else if ({name}_.type().isa<ir::VectorType>()) {{
     size_t {name}_size = {name}_.type().dyn_cast<ir::VectorType>().size();
     {name} = std::move(phi::IntArray(std::vector<int64_t>({name}_size, -1)));
     {name}.SetFromTensor(true);
+  }} else if ({name}_.type().isa<paddle::dialect::DenseTensorType>()) {{
+    size_t {name}_size = phi::product({name}_.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
+    {name} = std::move(phi::IntArray(std::vector<int64_t>({name}_size, -1)));
+    {name}.SetFromTensor(true);
+  }} else {{
+    PADDLE_THROW(phi::errors::Unimplemented("Only support VectorType or DenseTensorType"));
   }}\n"""
 
     CREATE_SCALAR_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::Scalar {name};
