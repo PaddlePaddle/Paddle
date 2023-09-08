@@ -14,8 +14,10 @@
 
 /*
 Custom VJP stands for manually implemented backward rules for composite
-operators. We will add CustomVjpTrait for those composite operators that defines
-custom vjp rules.
+operators. CustomVjpTrait will be added for those composite operators that
+definescustom vjp rules. Finally, by calling has_custom_vjp(op), users can check
+whether an operator has a CustomVjpTrait, and thus check whether a custom vjp
+rule is defined for that operator.
 */
 
 #pragma once
