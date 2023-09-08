@@ -810,7 +810,7 @@ class PartialProgramLayer:
         (
             forward_program,
             backward_program,
-        ), program_attr = paddle.fluid.libpaddle.ir.program_split(
+        ), program_attr = paddle.base.libpaddle.ir.program_split(
             whole_program,
             forward_inputs,
             forward_outputs,
@@ -871,10 +871,10 @@ class PartialProgramLayer:
         """
         var_names = []
         for var in self._inputs:
-            if isinstance(var, paddle.fluid.framework.Variable):
+            if isinstance(var, paddle.base.framework.Variable):
                 var_names.append(var.desc.name())
         for var in self._outputs:
-            if isinstance(var, paddle.fluid.framework.Variable):
+            if isinstance(var, paddle.base.framework.Variable):
                 var_names.append(var.desc.name())
         return var_names
 
@@ -1124,7 +1124,7 @@ def partial_program_from(concrete_program, from_method=False):
 def add_build_strategy_for(
     program, start_op_index, end_op_index, build_strategy=None, skip_vars=None
 ):
-    paddle.fluid.libpaddle.ir.program_split(
+    paddle.base.libpaddle.ir.program_split(
         program,
     )
     if start_op_index < end_op_index:
