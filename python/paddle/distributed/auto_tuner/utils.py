@@ -34,7 +34,7 @@ def divisor(num, reverse=False):
     return sorted(results, reverse=reverse)
 
 
-def dist_degree(mode, num_gpus, num_nodes):
+def dist_degree(mode, num_gpus, num_nodes, tuner_cfg=None):
     """Return the degree of different parallel modes by gpus and nodes num."""
     assert mode in ["dp", "mp", "pp", "sharding"]
     results = []
@@ -42,13 +42,16 @@ def dist_degree(mode, num_gpus, num_nodes):
         results = divisor(num_gpus, reverse=False)
 
     elif mode == "pp":
-        if num_nodes > 1:
+        if num_nodes > 1 and tuner_cfg.get("enable_pp_prune", True):
             results = list(range(num_nodes + 1, 0, -1))
         else:
             results = divisor(num_gpus, reverse=True)
     elif mode == "mp":
-        gpus_per_node = num_gpus // num_nodes
-        results = divisor(gpus_per_node, reverse=True)
+        if tuner_cfg.get("enable_mp_prune", True):
+            gpus_per_node = num_gpus // num_nodes
+            results = divisor(gpus_per_node, reverse=True)
+        else:
+            results = divisor(num_gpus, reverse=True)
 
     elif mode == "sharding":
         results = divisor(num_gpus, reverse=True)
@@ -64,21 +67,27 @@ def default_candidates(tuner_cfg):
     assert num_gpus > 0
 
     if tuner_cfg.get("dp_degree", None) == "auto":
-        candidates["dp_degree"] = dist_degree("dp", num_gpus, num_nodes)
+        candidates["dp_degree"] = dist_degree(
+            "dp", num_gpus, num_nodes, tuner_cfg
+        )
     elif tuner_cfg.get("dp_degree", None):
         candidates["dp_degree"] = tuner_cfg.get("dp_degree")
     else:
         candidates["dp_degree"] = [1]
 
     if tuner_cfg.get("mp_degree", None) == "auto":
-        candidates["mp_degree"] = dist_degree("mp", num_gpus, num_nodes)
+        candidates["mp_degree"] = dist_degree(
+            "mp", num_gpus, num_nodes, tuner_cfg
+        )
     elif tuner_cfg.get("mp_degree", None):
         candidates["mp_degree"] = tuner_cfg.get("mp_degree")
     else:
         candidates["mp_degree"] = [1]
 
     if tuner_cfg.get("pp_degree", None) == "auto":
-        candidates["pp_degree"] = dist_degree("pp", num_gpus, num_nodes)
+        candidates["pp_degree"] = dist_degree(
+            "pp", num_gpus, num_nodes, tuner_cfg
+        )
     elif tuner_cfg.get("pp_degree", None):
         candidates["pp_degree"] = tuner_cfg.get("pp_degree")
     else:
@@ -95,7 +104,7 @@ def default_candidates(tuner_cfg):
 
     if tuner_cfg.get("sharding_degree", None) == "auto":
         candidates["sharding_degree"] = dist_degree(
-            "sharding", num_gpus, num_nodes
+            "sharding", num_gpus, num_nodes, tuner_cfg
         )
     elif tuner_cfg.get("sharding_degree", None):
         candidates["sharding_degree"] = tuner_cfg.get("sharding_degree")
