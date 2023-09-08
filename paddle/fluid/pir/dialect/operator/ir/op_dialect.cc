@@ -52,12 +52,15 @@ void PaddleDialect::initialize() {
   RegisterOps<paddle::dialect::AddNOp,
               paddle::dialect::AddN_Op,
               paddle::dialect::AddNWithKernelOp,
+              paddle::dialect::FusedGemmEpilogueOp,
+              paddle::dialect::FusedGemmEpilogueGradOp,
               paddle::dialect::SplitGradOp,
               paddle::dialect::IfOp>();
+
   RegisterInterfaces<ParameterConvertInterface>();
 }
 
-void PaddleDialect::PrintType(pir::Type type, std::ostream &os) const {
+void OperatorDialect::PrintType(pir::Type type, std::ostream &os) const {
   os << type.dialect().name();
   os << '.';
   if (auto tensor_type = type.dyn_cast<DenseTensorType>()) {
@@ -79,11 +82,13 @@ void PaddleDialect::PrintType(pir::Type type, std::ostream &os) const {
   }
 }
 
-void PaddleDialect::PrintAttribute(pir::Attribute attr,
-                                   std::ostream &os) const {
+void OperatorDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
+  os << "(" << attr.dialect().name();
+  os << '.';
   if (auto int_array_attr = attr.dyn_cast<IntArrayAttribute>()) {
     phi::IntArray data = int_array_attr.data();
-    os << "IntArray[";
+    os << "IntArray)"
+       << "[";
     const auto &inner_data = data.GetData();
     pir::PrintInterleave(
         inner_data.begin(),
@@ -92,17 +97,17 @@ void PaddleDialect::PrintAttribute(pir::Attribute attr,
         [&os]() { os << ","; });
     os << "]";
   } else if (auto data_type_attr = attr.dyn_cast<DataTypeAttribute>()) {
-    os << data_type_attr.data();
+    os << "DataType)" << data_type_attr.data();
   } else if (auto place_type_attr = attr.dyn_cast<PlaceAttribute>()) {
-    os << place_type_attr.data();
+    os << "Place)" << place_type_attr.data();
   } else if (auto data_layout_attr = attr.dyn_cast<DataLayoutAttribute>()) {
-    os << data_layout_attr.data();
+    os << "DataLayout)" << data_layout_attr.data();
   } else {
     os << "<#AttrNotImplemented>";
   }
 }
 
-void PaddleDialect::PrintOperation(pir::Operation *op,
+void OperatorDialect::PrintOperation(pir::Operation *op,
                                    pir::IrPrinter &printer) const {
   if (auto if_op = op->dyn_cast<IfOp>()) {
     if_op.Print(printer);

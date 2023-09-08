@@ -52,6 +52,8 @@ class IR_API Program {
 
   void Print(std::ostream& os) const;
 
+  static std::unique_ptr<Program> Parse(std::istream& is, IrContext* ctx);
+
   Block* block() { return module_.block(); }
   const Block* block() const { return module_op().block(); }
 

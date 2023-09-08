@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/attribute_storage.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/pir/core/ir_parser.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/attribute.h"
@@ -33,6 +34,8 @@ class IntArrayAttribute : public pir::Attribute {
   bool operator<(const IntArrayAttribute &right) const {
     return storage() < right.storage();
   }
+
+  static IntArrayAttribute Parse(pir::IrParser &parser);  // NOLINT
 
   const phi::IntArray &data() const;
 };
@@ -68,6 +71,8 @@ class DataTypeAttribute : public pir::Attribute {
     return storage() < right.storage();
   }
 
+  static DataTypeAttribute Parse(pir::IrParser &parser);  // NOLINT
+
   phi::DataType data() const;
 };
 
@@ -80,6 +85,8 @@ class PlaceAttribute : public pir::Attribute {
   bool operator<(const PlaceAttribute &right) const {
     return storage() < right.storage();
   }
+
+  static PlaceAttribute Parse(ir::IrParser &parser);  // NOLINT
 
   phi::Place data() const;
 };
@@ -95,6 +102,7 @@ class DataLayoutAttribute : public pir::Attribute {
     return storage() < right.storage();
   }
 
+  static DataLayoutAttribute Parse(pir::IrParser &parser);  // NOLINT
   phi::DataLayout data() const;
 };
 

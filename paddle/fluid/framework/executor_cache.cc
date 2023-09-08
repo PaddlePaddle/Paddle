@@ -23,6 +23,9 @@
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
+#include "paddle/phi/core/flags.h"
+
+PHI_DECLARE_bool(new_ir_apply_inplace_pass);
 
 namespace paddle {
 namespace framework {
@@ -444,9 +447,11 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
 
   auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program.get());
 
-  ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
-  pm.AddPass(::pir::CreateInplacePass());
-  pm.Run(ir_res.get());
+  if (FLAGS_new_ir_apply_inplace_pass) {
+    ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
+    pm.AddPass(::pir::CreateInplacePass());
+    pm.Run(ir_res.get());
+  }
 
   return ir_res;
 }
@@ -521,9 +526,11 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
 
   auto res = paddle::dialect::PdOpLowerToKernelPass(program.get());
 
-  ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
-  pm.AddPass(::pir::CreateInplacePass());
-  pm.Run(res.get());
+  if (FLAGS_new_ir_apply_inplace_pass) {
+    ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
+    pm.AddPass(::pir::CreateInplacePass());
+    pm.Run(res.get());
+  }
 
   return res;
 }

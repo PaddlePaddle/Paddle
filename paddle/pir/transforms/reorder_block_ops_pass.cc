@@ -22,9 +22,6 @@
 
 namespace {
 
-// TODO(wilber): After support SideEffectTrait, Only NoSideEffectTrait op can be
-// removed by dce pass.
-// Now just a naive implementation.
 class ReorderBlockOpsPass : public pir::Pass {
  public:
   ReorderBlockOpsPass() : pir::Pass("ReorderBlockOpsPass", 0) {}

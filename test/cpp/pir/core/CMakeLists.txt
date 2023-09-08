@@ -65,6 +65,9 @@ file(
   ${CMAKE_CURRENT_BINARY_DIR}/resnet50_startup.prog
   EXPECTED_MD5 6affc5f40f0f0bb84d956919b95eaf50)
 
+copy_if_different(${CMAKE_CURRENT_SOURCE_DIR}/TestParserText.txt
+                  ${CMAKE_CURRENT_BINARY_DIR}/TestParserText.txt)
+
 cc_test_old(
   program_translator_test
   SRCS
@@ -75,7 +78,25 @@ cc_test_old(
   pd_op_dialect
   pir)
 
-cc_test_old(ir_op_info_test SRCS op_info_test.cc DEPS gtest pir)
+cc_test_old(
+  add_dialect_parser_test
+  SRCS
+  add_dialect_parser_test.cc
+  DEPS
+  gtest
+  pd_op_dialect
+  pir)
+
+cc_test_old(
+  ir_parser_test
+  SRCS
+  ir_parser_test.cc
+  DEPS
+  gtest
+  pd_op_dialect
+  pir)
+
+cc_test_old(ir_op_info_test SRCS op_info_test.cc DEPS gtest ir)
 cc_test_old(
   ir_op_yaml_info_parser_test
   SRCS

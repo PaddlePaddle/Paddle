@@ -31,6 +31,8 @@
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/core/dialect.h"
 #include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/core/ir_parser.h"
+#include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/program.h"
 
 using PaddleDialect = paddle::dialect::PaddleDialect;
@@ -106,4 +108,38 @@ TEST(RegisterInfoTest, MainProgram) {
   unregistered_ops = paddle::translator::CheckUnregisteredOperation(ctx, p);
   EXPECT_EQ(unregistered_ops.size(), 1u);
   EXPECT_EQ(unregistered_ops[0], "something must not be registered");
+}
+
+TEST(IrParserTest, MainProgram) {
+  auto p = load_from_file("resnet50_main.prog");
+  EXPECT_EQ(p.Size(), 1u);
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<PaddleDialect>();
+  ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
+  auto program = paddle::TranslateLegacyProgramToProgram(p);
+
+  std::stringstream ss;
+  program->Print(ss);
+  std::unique_ptr<ir::Program> parser_program = ir::Program::Parse(ss, ctx);
+  std::stringstream ssp;
+  parser_program->Print(ssp);
+
+  EXPECT_TRUE(ssp.str() == ss.str());
+}
+
+TEST(IrParserTest, StartupProgram) {
+  auto p = load_from_file("resnet50_startup.prog");
+  EXPECT_EQ(p.Size(), 1u);
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<PaddleDialect>();
+  ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
+  auto program = paddle::TranslateLegacyProgramToProgram(p);
+
+  std::stringstream ss;
+  program->Print(ss);
+  std::unique_ptr<ir::Program> parser_program = ir::Program::Parse(ss, ctx);
+  std::stringstream ssp;
+  parser_program->Print(ssp);
+
+  EXPECT_TRUE(ssp.str() == ss.str());
 }

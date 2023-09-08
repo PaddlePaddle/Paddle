@@ -68,6 +68,8 @@ class IR_API Attribute {
   /// @param os
   void Print(std::ostream &os) const;
 
+  static Attribute Parse(std::istream &is, IrContext *ctx);
+
   ///
   /// \brief Methods for type judgment and cast.
   ///

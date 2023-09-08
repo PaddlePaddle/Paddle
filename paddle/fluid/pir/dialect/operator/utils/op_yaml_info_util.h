@@ -27,7 +27,17 @@ struct OpInputInfo {
   bool optional = false;
   bool no_need_buffer = false;
   bool is_mutable_attribute = false;
+  /***
+   * "with_grad_semantic" represents whether the input of the OP has gradient
+   * semantics. For example, gather op contains three inputs (x, index, axis),
+   * but the backward op gather_grad calculates only the gradient with respect
+   * to x. Therefore, for gather op, only x has gradient semantics.
+   * The "with_grad_semantic" fields in OpInputInfo for x is true,
+   * and "with_grad_semantic" fields in OpInputInfo for index and axis are both
+   * false.
+   */
   bool with_grad_semantic = true;
+
   OpInputInfo() = default;
   OpInputInfo(const OpInputInfo& input_info) = default;
 

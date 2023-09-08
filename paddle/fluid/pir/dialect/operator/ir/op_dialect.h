@@ -25,8 +25,16 @@ class PaddleDialect : public pir::Dialect {
 
   static const char* name() { return "pd_op"; }
 
+<<<<<<< HEAD:paddle/fluid/pir/dialect/operator/ir/op_dialect.h
   void PrintType(pir::Type type, std::ostream& os) const override;
   void PrintAttribute(pir::Attribute type, std::ostream& os) const override;
+=======
+  ir::Type ParseType(ir::IrParser& parser) override;            // NOLINT
+  ir::Attribute ParseAttribute(ir::IrParser& parser) override;  // NOLINT
+
+  void PrintType(ir::Type type, std::ostream& os) const override;
+  void PrintAttribute(ir::Attribute type, std::ostream& os) const override;
+>>>>>>> upstream/develop:paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h
 
   void PrintOperation(pir::Operation* op,
                       pir::IrPrinter& printer) const override;  // NOLINT
