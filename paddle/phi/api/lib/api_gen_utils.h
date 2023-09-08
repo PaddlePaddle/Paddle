@@ -135,6 +135,7 @@ void TransStrideLegacy(phi::DeviceContext* dev_ctx,
                        phi::DenseTensor* to);
 
 /* ------------------ for auto parallel ----------------------- */
+
 phi::distributed::DistMetaTensor MakeDistMetaTensor(
     const phi::TensorBase& tensor);
 

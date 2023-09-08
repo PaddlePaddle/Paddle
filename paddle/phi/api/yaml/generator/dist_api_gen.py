@@ -141,7 +141,7 @@ OPTIONAL_GLOBAL_VECTOR_META_IN_DECL_TEMPLATE = """
     for (size_t i=0; i<{name}_meta_ptr_vec_tmp.size(); i++) {{
       {name}_meta_ptr_vec_tmp[i] = &{name}_meta_vec_tmp[i];
     }}
-    paddle::optional<std::vector<const phi::MetaTensor*>> {name}_meta_ptr_vec = 
+    paddle::optional<std::vector<const phi::MetaTensor*>> {name}_meta_ptr_vec =
         {name} ? paddle::make_optional<std::vector<const phi::MetaTensor*>>({name}_meta_ptr_vec_tmp) : paddle::none;
 """
 SINGLE_GLOBAL_META_OUT_DECL_TEMPLATE = """
@@ -191,18 +191,6 @@ VECTOR_PREPARE_DATA_TEMPLATE = """
     }}
     std::vector<phi::MetaTensor> dense_input_{name}_meta_vec = MakeMetaTensor(dense_input_{name}_vec);
     std::vector<const phi::MetaTensor*> dense_input_{name}_meta_ptr_vec(dense_input_{name}_meta_vec.size());
-    for (size_t i=0; i<dense_input_{name}_meta_vec.size(); i++) {{
-      dense_input_{name}_meta_ptr_vec[i] = &dense_input_{name}_meta_vec[i];
-    }}
-"""
-VECTOR_PREPARE_DATA_TEMPLATE = """
-    auto dist_input_{name}_vec = PrepareDataForDistTensor({name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
-    std::vector<const phi::DenseTensor*> dense_input_{name}_vec;
-    for (auto tmp : dist_input_{name}_vec) {{
-      dense_input_{name}_vec.emplace_back(&tmp->value());
-    }}
-    std::vector<phi::MetaTensor> dense_input_{name}_meta_vec = MakeMetaTensor(dense_input_{name}_vec);
-    std::vector<const phi::MetaTensor*> dense_input_{name}_meta_ptr_vec(dense_input_{name}_meta_vec.size());
     for (size_t i = 0; i < dense_input_{name}_meta_ptr_vec.size(); i++) {{
       dense_input_{name}_meta_ptr_vec[i] = &dense_input_{name}_meta_vec[i];
     }}
@@ -242,7 +230,6 @@ INFER_META_VECTOR_INPUT_TEMPLATE = """
 
 # 7. Infer Local DenseTensor Meta
 SINGLE_META_IN_TEMPLATE = """MakeMetaTensor(*input_{}), """
-# TODO(GhostScreaming): support optional args later
 VECTOR_META_IN_TEMPLATE = """dense_input_{}_meta_ptr_vec, """
 OPTIONAL_SINGLE_META_IN_TEMPLATE = """MakeMetaTensor(input_{}), """
 OPTIONAL_VECTOR_META_IN_TEMPLATE = """dense_input_{}_meta_ptr_vec, """
@@ -272,7 +259,7 @@ KERNEL_CALL_TEMPLATE = """
     auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
     (*kernel_fn)({}, {});
 """
-# TODO(GhostScreaming): Some operators generate shape info in runtime, 
+# TODO(GhostScreaming): Some operators generate shape info in runtime,
 # bincount. As a result, dist_output's global shape is set uncorrectly,
 # because it's generated in InferMeta function. A temporally solution is
 # use black op list to set DistTensor shape extra.
@@ -340,7 +327,7 @@ class DistForwardAPI(ForwardAPI):
             },
             "const paddle::optional<std::vector<Tensor>>&": {
                 "dense": self.generate_optional_vector_dense_input,
-            }
+            },
         }
 
         self.inplace_flag = False
@@ -579,21 +566,25 @@ class DistForwardAPI(ForwardAPI):
                     self.inputs['input_info'][param]
                     == "const paddle::optional<Tensor>&"
                 ):
-                    input_args_code += OPTIONAL_GLOBAL_SINGLE_META_IN_TEMPLATE.format(
-                        param
+                    input_args_code += (
+                        OPTIONAL_GLOBAL_SINGLE_META_IN_TEMPLATE.format(param)
                     )
-                    input_meta_code += OPTIONAL_GLOBAL_SINGLE_META_IN_DECL_TEMPLATE.format(
-                        name=param
+                    input_meta_code += (
+                        OPTIONAL_GLOBAL_SINGLE_META_IN_DECL_TEMPLATE.format(
+                            name=param
+                        )
                     )
                 elif (
                     self.inputs['input_info'][param]
                     == "const paddle::optional<std::vector<Tensor>>&"
                 ):
-                    input_args_code += OPTIONAL_GLOBAL_VECTOR_META_IN_TEMPLATE.format(
-                        param
+                    input_args_code += (
+                        OPTIONAL_GLOBAL_VECTOR_META_IN_TEMPLATE.format(param)
                     )
-                    input_meta_code += OPTIONAL_GLOBAL_VECTOR_META_IN_DECL_TEMPLATE.format(
-                        name=param
+                    input_meta_code += (
+                        OPTIONAL_GLOBAL_VECTOR_META_IN_DECL_TEMPLATE.format(
+                            name=param
+                        )
                     )
 
                 else:
@@ -700,26 +691,6 @@ class DistForwardAPI(ForwardAPI):
                 idx=kernel_param.index(input_name),
                 flag=trans_flag,
             )
-
-        return input_tensor_code
-
-    def generate_vector_dense_input(
-        self,
-        input_name,
-    ):
-        input_tensor_code = ""
-        trans_flag = self.gene_trans_flag(input_name)
-        input_names = self.inputs['names']
-        attr_names = self.attrs['names']
-        kernel_param = self.kernel['param']
-        if kernel_param is None:
-            kernel_param = input_names + attr_names
-
-        input_tensor_code += VECTOR_PREPARE_DATA_TEMPLATE.format(
-            name=input_name,
-            index=kernel_param.index(input_name),
-            trans_flag=trans_flag,
-        )
 
         return input_tensor_code
 
@@ -862,12 +833,16 @@ class DistForwardAPI(ForwardAPI):
                     self.inputs['input_info'][param]
                     == "const paddle::optional<Tensor>&"
                 ):
-                    input_args_code += OPTIONAL_SINGLE_META_IN_TEMPLATE.format(param)
+                    input_args_code += OPTIONAL_SINGLE_META_IN_TEMPLATE.format(
+                        param
+                    )
                 elif (
                     self.inputs['input_info'][param]
                     == "const paddle::optional<std::vector<Tensor>>&"
                 ):
-                    input_args_code += OPTIONAL_VECTOR_META_IN_TEMPLATE.format(param)
+                    input_args_code += OPTIONAL_VECTOR_META_IN_TEMPLATE.format(
+                        param
+                    )
                 else:
                     raise ValueError(
                         f"{self.api} : Param of infer_meta error : {self.inputs['input_info'][param]} type is not supported."
