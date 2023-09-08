@@ -225,7 +225,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
             [10, 3, 5, 5]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_new_ir_mode():
         return _C_ops.matmul(x, y, transpose_x, transpose_y)
     else:
         attrs = {

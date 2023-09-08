@@ -224,7 +224,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
             )
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_new_ir_mode():
         return _C_ops.embedding(x, weight, padding_idx, sparse)
     else:
         helper = LayerHelper('embedding', **locals())
