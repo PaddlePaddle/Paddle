@@ -87,4 +87,28 @@ int GetVectorizedSize(const T* pointer) {
   }
 }
 
+static int GetVectorizedSize(const DenseTensor* tensor) {
+  int element_size = phi::SizeOf(tensor->dtype());
+  if (element_size > sizeof(float)) {
+    return 1;
+  }
+  constexpr int max_load_bits = 128;
+  int valid_vec_size = max_load_bits / CHAR_BIT / element_size;
+  uint64_t address = reinterpret_cast<uint64_t>(tensor->data());
+
+  // Currently, decide to deal with no more than 4 data once while adopting
+  // vectorization load/store, if performance test shows that dealing with
+  // 8 data once in vectorization load/store does get optimized, code below
+  // can begin with :
+  // if (address % (element_size * 8) == 0) {
+  //   return std::min(8, valid_vec_size);
+  if (address % (element_size * 4) == 0) {
+    return std::min(4, valid_vec_size);
+  } else if (address % (element_size * 2) == 0) {
+    return std::min(2, valid_vec_size);
+  } else {
+    return 1;
+  }
+}
+
 }  // namespace phi

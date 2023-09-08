@@ -851,16 +851,13 @@ BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
                                    std::vector<DenseTensor *> *outs,
                                    int axis,
                                    Functor func) {
-  auto classifier =
-      BroadcastTypeClassifier<OutT, Arity, NumOuts>(ins, outs, axis);
-
 #ifdef PADDLE_WITH_XPU_KP
   auto type = kps::details::OptType::CanNotOptimize;
   bool is_optimize = classifier.configs[0].cmp_type != type;
   int vec_size = is_optimize ? VecSizeL : VecSizeM;
 #else
-  // calculate the max vec_size for all ins and outs
-  int vec_size = GetVectorizedSizeForTensors<OutT, Functor>(ins, *outs);
+  // Calculate the max vec_size for all ins and outs.
+  int vec_size = GetVectorizedSizeForTensors(ins, *outs);
 #endif
 
 #ifndef PADDLE_WITH_XPU_KP
@@ -916,6 +913,8 @@ BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
   }
 #endif
 
+  auto classifier =
+      BroadcastTypeClassifier<OutT, Arity, NumOuts>(ins, outs, axis);
   switch (vec_size) {
     case VecSizeL: {
       LaunchBroadcastKernel<OutT, Functor, Arity, NumOuts, VecSizeL>(
@@ -949,6 +948,7 @@ void BroadcastKernel(const KPDevice &ctx,
   // When there are multiple inputs, the outputs's rank should be equal the
   // maximum rank of all inputs.
   using Traits = phi::funcs::FunctionTraits<Functor>;
+  using ArgsT = typename Traits::ArgsTuple;
   const int kArity = Traits::arity;
 
 #ifdef PADDLE_WITH_XPU_KP
@@ -979,6 +979,8 @@ void BroadcastKernel(const KPDevice &ctx,
                                    outs->size(),
                                    NumOuts));
 
+  ArgsT arg;
+  UnrollerWithoutVecSize<InputChecker, kArity>::step(ins, arg);
   for (auto i = 0; i < outs->size(); ++i) {
     if (i > 0) {
       PADDLE_ENFORCE_EQ(
@@ -989,7 +991,6 @@ void BroadcastKernel(const KPDevice &ctx,
               "%d-th output tensor`s shape is not.",
               i));
     }
-
     ctx.template Alloc<OutT>((*outs)[i]);
   }
 
