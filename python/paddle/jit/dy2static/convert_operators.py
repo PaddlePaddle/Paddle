@@ -17,7 +17,7 @@ import re
 import paddle
 from paddle.autograd.py_layer import PyLayerMeta
 from paddle.base.data_feeder import convert_dtype
-from paddle.base.dygraph.base import _convert_into_variable, in_declarative_mode
+from paddle.base.dygraph.base import _convert_into_variable, in_to_static_mode
 from paddle.base.framework import Variable, core, default_main_program
 
 from .py_layer import StaticPyLayer
@@ -40,7 +40,7 @@ def convert_attr(x, attr):
 
 
 def convert_load(x):
-    if in_declarative_mode():
+    if in_to_static_mode():
         if isinstance(x, paddle.base.core.eager.Tensor):
             """
             TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.
