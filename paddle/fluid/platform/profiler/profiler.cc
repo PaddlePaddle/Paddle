@@ -146,7 +146,8 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
                     collector.RuntimeEvents(),
                     collector.DeviceEvents(),
                     collector.MemEvents(),
-                    collector.OperatorSupplementEvents()));
+                    collector.OperatorSupplementEvents(),
+                    collector.CommunicationSupplementEvents()));
   cpu_utilization_.RecordEndTimeInfo();
   ExtraInfo extrainfo;
   extrainfo.AddExtraInfo(std::string("System Cpu Utilization"),

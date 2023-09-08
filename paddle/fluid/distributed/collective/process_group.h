@@ -49,7 +49,20 @@ enum class CommType : std::uint8_t {
   BARRIER = 11,
   UNKNOWN = 100,
 };
-
+const char* const CommType_Name[] = {
+    "BROADCAST",
+    "ALL_REDUCE",
+    "ALL_REDUCE_SPARSE",  // TODO(shenliang03): to support sparse in allreduce
+    "REDUCE",
+    "ALL_GATHER",
+    "GATHER",
+    "SCATTER",
+    "REDUCE_SCATTER",
+    "ALL_TOALL",
+    "SEND",
+    "RECV",
+    "BARRIER",
+    "UNKNOWN"};
 class ProcessGroup {
  public:
   class Task {
