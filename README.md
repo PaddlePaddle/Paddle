@@ -48,7 +48,7 @@
 
 ```bash
 apt-get install ccache
-pip install -r requirements.txt
+pip install -r python/requirements.txt
 ```
 
 #### Set Important Environment Variables
@@ -76,7 +76,8 @@ docker run -it --privileged --name=paddle_musa_dev --env MTHREADS_VISIBLE_DEVICE
 
 | Docker Tag | Description |
 | ---- | --- |
-| [**v0.1.4/latest**](https://sh-harbor.mthreads.com/harbor/projects/20/repositories/musa-paddle-dev/artifacts-tab) | musatoolkits-v1.4.2 (driver2.2.0 develop or newer)<br> mcc-20230823-daily <br> mudnn 20230823-daily <br> mccl_20230823-daily <br> muAlg_dev-20230823-daily <br> muRAND_dev1.0.0 <br> muSPARSE_dev0.1.0 <br> muThrust_dev-0.1.1 |
+| [**v0.1.6/latest**](https://sh-harbor.mthreads.com/harbor/projects/20/repositories/musa-paddle-dev/artifacts-tab) | musatoolkits-20230903 (driver2.3.0 develop or newer)<br> mudnn 20230903-daily <br> mccl_20230903-daily <br> muAlg_dev-20230903-daily <br> muRAND_dev1.0.0 <br> muSPARSE_dev0.1.0 <br> muThrust_dev-0.1.1 |
+| [**v0.1.4**](https://sh-harbor.mthreads.com/harbor/projects/20/repositories/musa-paddle-dev/artifacts-tab) | musatoolkits-v1.4.2 (driver2.2.0 develop or newer)<br> mcc-20230823-daily <br> mudnn 20230823-daily <br> mccl_20230823-daily <br> muAlg_dev-20230823-daily <br> muRAND_dev1.0.0 <br> muSPARSE_dev0.1.0 <br> muThrust_dev-0.1.1 |
 | [**v0.1.3**](https://sh-harbor.mthreads.com/harbor/projects/20/repositories/musa-paddle-dev/artifacts-tab) | musatoolkits-v1.4.0 (ddk_1.4.0 develop or newer)<br> mcc-20230814-daily <br> mudnn v1.4.0 <br> mccl_rc1.1.0 <br> muAlg_dev-20230814-daily <br> muRAND_dev1.0.0 <br> muSPARSE_dev0.1.0 <br> muThrust_dev-0.1.1 |
 | [**v0.1.2**](https://sh-harbor.mthreads.com/harbor/projects/20/repositories/musa-paddle-dev/artifacts-tab) | musatoolkits-v1.4.0 (ddk_1.4.0 develop or newer)<br> mcc-20230814-daily <br> mudnn v1.4.0 <br> mccl_rc1.1.0 <br> muAlg_dev-20230814-daily <br> muRAND_dev1.0.0 <br> muSPARSE_dev0.1.0 <br> muThrust_dev-0.1.1 |
 | [**v0.1.1**](https://sh-harbor.mthreads.com/harbor/projects/20/repositories/musa-paddle-dev/artifacts-tab) | musatoolkits-v1.4.0 (ddk_1.4.0 develop or newer)<br> mudnn v1.4.0 <br> mccl_rc1.1.0 <br> muAlg_dev-0.1.1 <br> muRAND_dev1.0.0 <br> muSPARSE_dev0.1.0 <br> muThrust_dev-0.1.1 |

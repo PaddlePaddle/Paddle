@@ -296,6 +296,7 @@ if(WITH_PYTHON)
   add_executable(eager_legacy_op_function_generator
                  eager_legacy_op_function_generator.cc)
   if(WITH_MUSA)
+    # libtinfo.so depended by libmusa.so is located in '/usr/lib/x86_64-linux-gnu/'
     target_link_options(eager_legacy_op_function_generator PRIVATE
                         -Wl,-rpath,/usr/lib/x86_64-linux-gnu/)
   endif()
@@ -304,6 +305,7 @@ if(WITH_PYTHON)
   if(NOT WIN32)
     add_executable(kernel_signature_generator kernel_signature_generator.cc)
     if(WITH_MUSA)
+      # libtinfo.so depended by libmusa.so is located in '/usr/lib/x86_64-linux-gnu/'
       target_link_options(kernel_signature_generator PRIVATE
                           -Wl,-rpath,/usr/lib/x86_64-linux-gnu/)
     endif()

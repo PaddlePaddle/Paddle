@@ -191,6 +191,9 @@ if(${len} GREATER_EQUAL 1)
       endif()
       if(WITH_MUSA)
         target_link_libraries(${test_name} ${MUSARTC_LIB})
+        # libtinfo.so depended by libmusa.so is located in '/usr/lib/x86_64-linux-gnu/'
+        target_link_options(${test_name} PRIVATE
+                            -Wl,-rpath,/usr/lib/x86_64-linux-gnu/)
       endif()
       if(APPLE)
         target_link_libraries(

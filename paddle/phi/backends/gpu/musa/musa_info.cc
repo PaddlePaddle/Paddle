@@ -34,8 +34,8 @@ int DnnVersion() {
   if (!dynload::HasCUDNN()) return -1;
   // TODO(@caizhi): mudnnGetVersion is not supported now.
   // version info will be returned from mudnnGetVersion later.
-  const int version_major = 1;
-  const int version_minor = 1;
+  const int version_major = 2;
+  const int version_minor = 3;
   const int version_patch = 0;
   return version_major * 1000 + version_minor * 100 + version_patch;
 }
@@ -99,7 +99,7 @@ int GetGPUComputeCapability(int id) {
 
   PADDLE_ENFORCE_GPU_SUCCESS(major_error_code);
   PADDLE_ENFORCE_GPU_SUCCESS(minor_error_code);
-  return major * 100 + minor;
+  return major * 10 + minor;
 }
 
 int GetGPURuntimeVersion(int id) {
@@ -111,6 +111,7 @@ int GetGPURuntimeVersion(int id) {
                                    id,
                                    GetGPUDeviceCount()));
   int runtime_version = 0;
+  // Note: runtime_version = MAJOR * 10000 + MINOR * 100 + PATCH
   PADDLE_ENFORCE_GPU_SUCCESS(musaRuntimeGetVersion(&runtime_version));
   return runtime_version;
 }
@@ -124,6 +125,7 @@ int GetGPUDriverVersion(int id) {
                                    id,
                                    GetGPUDeviceCount()));
   int driver_version = 0;
+  // Note: driver_version = MAJOR * 10000 + MINOR * 100 + PATCH
   PADDLE_ENFORCE_GPU_SUCCESS(musaDriverGetVersion(&driver_version));
   return driver_version;
 }

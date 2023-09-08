@@ -123,6 +123,17 @@ void InitGpuProperties(Place place,
   }
 #endif
 
+#ifdef PADDLE_WITH_MUSA
+  LOG_FIRST_N(INFO, 1) << "Please NOTE: device: "
+                       << static_cast<int>(place.device)
+                       << ", GPU Compute Capability: "
+                       << *compute_capability / 10 << "."
+                       << *compute_capability % 10
+                       << ", Driver API Version: " << *driver_version / 10000
+                       << "." << (*driver_version % 10000) / 100
+                       << ", Runtime API Version: " << *runtime_version / 10000
+                       << "." << (*runtime_version % 10000) / 100;
+#else
   // TODO(wilber): glog may be replaced in the future?
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: "
                           << static_cast<int>(place.device)
@@ -134,6 +145,7 @@ void InitGpuProperties(Place place,
                           << ", Runtime API Version: "
                           << *runtime_version / 1000 << "."
                           << (*runtime_version % 100) / 10;
+#endif
 #ifdef PADDLE_WITH_HIP
   size_t miopen_major, miopen_minor, miopen_patch;
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -156,39 +168,39 @@ void InitGpuProperties(Place place,
   // TODO(@caizhi): mudnnGetVersion is not supported for MUSA now.
   // Requests have been submitted to Mudnn.
   // size_t mudnn_dso_ver = dynload::mudnnGetVersion();
-  size_t mudnn_dso_ver = 1100;
-  LOG_FIRST_N(WARNING, 1) << "device: " << static_cast<int>(place.device)
-                          << ", muDNN Version: " << mudnn_dso_ver / 1000 << "."
-                          << (mudnn_dso_ver % 1000) / 100 << ".";
+  size_t mudnn_dso_ver = 2300;
+  LOG_FIRST_N(INFO, 1) << "device: " << static_cast<int>(place.device)
+                       << ", muDNN Version: " << mudnn_dso_ver / 1000 << "."
+                       << (mudnn_dso_ver % 1000) / 100 << ".";
 
   // Check MUSA/MUDNN version compatiblity
-  auto local_musa_version =
-      (*driver_version / 1000) * 10 + (*driver_version % 100) / 10;
-  auto compile_musa_version =
-      (MUSA_VERSION / 1000) * 10 + (MUSA_VERSION % 100) / 10;
+  auto local_musa_version = *driver_version;
+  int compile_musa_version = MUSA_VERSION;
 #if defined(__linux__)
   PADDLE_ENFORCE_EQ(
-      (local_musa_version / 10 < compile_musa_version / 10) &&
+      (local_musa_version / 100 < compile_musa_version / 100) &&
           (mudnn_dso_ver / 1000 < MUDNN_VERSION / 1000),
       false,
       phi::errors::InvalidArgument(
-          "The installed Paddle is compiled with MUDA%d/muDNN%d,"
+          "The installed Paddle is compiled with MUSA%d/muDNN%d,"
           "but MUSA/muDNN version in your machine is MUSA%d/muDNN%d. "
           "which will cause serious incompatible bug. "
           "Please recompile or reinstall Paddle with compatible MUSA/muDNN "
           "version.",
-          compile_musa_version / 10,
+          compile_musa_version / 10000,
           MUDNN_VERSION / 1000,
-          local_musa_version / 10,
+          local_musa_version / 10000,
           mudnn_dso_ver / 1000));
 #endif
   if (local_musa_version < compile_musa_version) {
     LOG_FIRST_N(WARNING, 1)
         << "WARNING: device: " << static_cast<int>(place.device)
         << ". The installed Paddle is compiled with MUSA "
-        << compile_musa_version / 10 << "." << compile_musa_version % 10
+        << compile_musa_version / 10000 << "."
+        << (compile_musa_version % 1000) / 100
         << ", but MUSA runtime version in your machine is "
-        << local_musa_version / 10 << "." << local_musa_version % 10
+        << local_musa_version / 10000 << "."
+        << (local_musa_version % 1000) / 100
         << ", which may cause serious incompatible bug. "
         << "Please recompile or reinstall Paddle with compatible MUSA "
            "version.";

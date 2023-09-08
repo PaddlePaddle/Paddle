@@ -457,6 +457,9 @@ function(cc_test_build TARGET_NAME)
     endif()
     if(WITH_MUSA)
       target_link_libraries(${TARGET_NAME} ${MUSARTC_LIB})
+      # libtinfo.so depended by libmusa.so is located in '/usr/lib/x86_64-linux-gnu/'
+      target_link_options(${TARGET_NAME} PRIVATE
+                          -Wl,-rpath,/usr/lib/x86_64-linux-gnu/)
     endif()
     check_coverage_opt(${TARGET_NAME} ${cc_test_SRCS})
   endif()
