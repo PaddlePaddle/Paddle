@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 from paddle.incubate.nn.functional import fused_rotary_position_embedding
 
 

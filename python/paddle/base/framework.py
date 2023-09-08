@@ -35,7 +35,7 @@ from .proto import framework_pb2, data_feed_pb2
 from . import core
 from . import unique_name
 from .. import ir
-from paddle.fluid.libpaddle import DataType
+from paddle.base.libpaddle import DataType
 import paddle.version as fluid_version
 import warnings
 import functools
@@ -409,13 +409,13 @@ def require_version(min_version, max_version=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle.base as base
 
             # any version >= 0.1.0 is acceptable.
-            fluid.require_version('0.1.0')
+            base.require_version('0.1.0')
 
             # if 0.1.0 <= version <= 10.0.0, it is acceptable.
-            fluid.require_version(min_version='0.1.0', max_version='10.0.0')
+            base.require_version(min_version='0.1.0', max_version='10.0.0')
     """
     if not isinstance(min_version, str):
         raise TypeError(
@@ -576,7 +576,7 @@ def _fake_interface_only_(func):
 
 
 # NOTE(chenweihang): There is argument name typo (stat_dict, correct name is state_dict)
-# in fluid api Layer.set_dict, Optimizer.load, in order to correct the argument without
+# in base api Layer.set_dict, Optimizer.load, in order to correct the argument without
 # introducing compatibility issues, add this decorator
 # NOTE(chenweihang): not using `wrap_decorator` here is because `wrap_decorator` will
 # move kwargs to args, which doesn't work in this decorate case
@@ -722,8 +722,8 @@ def is_compiled_with_xpu():
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            support_xpu = fluid.is_compiled_with_xpu()
+            import paddle.base as base
+            support_xpu = base.is_compiled_with_xpu()
     """
     return core.is_compiled_with_xpu()
 
@@ -925,7 +925,7 @@ def cpu_places(device_count=None):
 
 def cuda_pinned_places(device_count=None):
     """
-    This function creates a list of :code:`fluid.CUDAPinnedPlace` objects.
+    This function creates a list of :code:`base.CUDAPinnedPlace` objects.
 
     If :code:`device_count` is None, the device count would
     be determined by environment variable :code:`CPU_NUM`.
@@ -938,15 +938,15 @@ def cuda_pinned_places(device_count=None):
         device_count (int, optional): device number. Default: None.
 
     Returns:
-        list of fluid.CUDAPinnedPlace: Created list of CUDA pinned places.
+        list of base.CUDAPinnedPlace: Created list of CUDA pinned places.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            cuda_pinned_places_cpu_num = fluid.cuda_pinned_places()
+            import paddle.base as base
+            cuda_pinned_places_cpu_num = base.cuda_pinned_places()
             # or
-            cuda_pinned_places = fluid.cuda_pinned_places(1)
+            cuda_pinned_places = base.cuda_pinned_places(1)
 
     """
     assert core.is_compiled_with_cuda(), "Not compiled with CUDA"
@@ -1318,7 +1318,7 @@ class Variable(metaclass=VariableMetaClass):
 
         In Static Graph Mode: Please use ** `Block.create_var` ** to create a Static variable which has no data until being feed.
 
-        In Dygraph Mode: Please use ** :ref:`api_fluid_dygraph_to_variable` ** to create a dygraph variable with real data.
+        In Dygraph Mode: Please use ** :ref:`api_base_dygraph_to_variable` ** to create a dygraph variable with real data.
 
     In Fluid, every input and output of an OP is a variable. In most
     cases, variables are used for holding different kinds of data or training
@@ -1326,7 +1326,7 @@ class Variable(metaclass=VariableMetaClass):
     two variables in different :ref:`api_guide_Block_en` could have the same name.
 
     There are many kinds of variables. Each kind of them has its own attributes
-    and usages. Please refer to the `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/framework.proto>`_ for details.
+    and usages. Please refer to the `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/base/framework/framework.proto>`_ for details.
 
     Most of a Variable's member variables can be set to be None. It mean
     it is not available or will be specified later.
@@ -1337,8 +1337,8 @@ class Variable(metaclass=VariableMetaClass):
         .. code-block:: python
             :name: code-example-1
 
-            import paddle.fluid as fluid
-            cur_program = fluid.Program()
+            import paddle.base as base
+            cur_program = base.Program()
             cur_block = cur_program.current_block()
             new_variable = cur_block.create_var(name="X",
                                                 shape=[-1, 23, 48],
@@ -1349,11 +1349,11 @@ class Variable(metaclass=VariableMetaClass):
         .. code-block:: python
             :name: code-example-2
 
-            import paddle.fluid as fluid
+            import paddle.base as base
             import numpy as np
 
-            with fluid.dygraph.guard():
-                new_variable = fluid.dygraph.to_variable(np.arange(10))
+            with base.dygraph.guard():
+                new_variable = base.dygraph.to_variable(np.arange(10))
 
     """
 
@@ -1535,13 +1535,13 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import Linear
+                import paddle.base as base
+                from paddle.base.dygraph.base import to_variable
+                from paddle.base.dygraph import Linear
                 import numpy as np
 
                 data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
-                with fluid.dygraph.guard():
+                with base.dygraph.guard():
                     linear = Linear(32, 64)
                     data = to_variable(data)
                     x = linear(data)
@@ -1614,15 +1614,15 @@ class Variable(metaclass=VariableMetaClass):
             .. code-block:: python
 
                 import paddle
-                import paddle.fluid as fluid
+                import paddle.base as base
                 import numpy as np
 
                 # example1: return ndarray
                 x = np.ones([2, 2], np.float32)
-                with fluid.dygraph.guard():
+                with base.dygraph.guard():
                     inputs2 = []
                     for _ in range(10):
-                        tmp = fluid.dygraph.base.to_variable(x)
+                        tmp = base.dygraph.base.to_variable(x)
                         tmp.stop_gradient=False
                         inputs2.append(tmp)
                     ret2 = paddle.add_n(inputs2)
@@ -1631,7 +1631,7 @@ class Variable(metaclass=VariableMetaClass):
                     print(loss2.gradient())
 
                 # example2: return tuple of ndarray
-                with fluid.dygraph.guard():
+                with base.dygraph.guard():
                     embedding = paddle.nn.Embedding(
                         20,
                         32,
@@ -1639,7 +1639,7 @@ class Variable(metaclass=VariableMetaClass):
                         sparse=True)
                     x_data = np.arange(12).reshape(4, 3).astype('int64')
                     x_data = x_data.reshape((-1, 3, 1))
-                    x = fluid.dygraph.base.to_variable(x_data)
+                    x = base.dygraph.base.to_variable(x_data)
                     out = embedding(x)
                     out.backward()
                     print(embedding.weight.gradient())
@@ -1663,14 +1663,14 @@ class Variable(metaclass=VariableMetaClass):
             .. code-block:: python
 
                 import paddle
-                import paddle.fluid as fluid
+                import paddle.base as base
                 import numpy as np
 
                 x = np.ones([2, 2], np.float32)
-                with fluid.dygraph.guard():
+                with base.dygraph.guard():
                     inputs2 = []
                     for _ in range(10):
-                        tmp = fluid.dygraph.base.to_variable(x)
+                        tmp = base.dygraph.base.to_variable(x)
                         tmp.stop_gradient=False
                         inputs2.append(tmp)
                     ret2 = paddle.add_n(inputs2)
@@ -1788,11 +1788,11 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle.base as base
                 import paddle
 
                 paddle.enable_static()
-                cur_program = fluid.Program()
+                cur_program = base.Program()
                 cur_block = cur_program.current_block()
                 new_variable = cur_block.create_var(name="X",
                                                     shape=[-1, 23, 48],
@@ -1853,22 +1853,22 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
           .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle.base as base
             import numpy as np
 
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 value0 = np.arange(26).reshape(2, 13).astype("float32")
                 value1 = np.arange(6).reshape(2, 3).astype("float32")
                 value2 = np.arange(10).reshape(2, 5).astype("float32")
-                linear = fluid.Linear(13, 5, dtype="float32")
-                linear2 = fluid.Linear(3, 3, dtype="float32")
-                a = fluid.dygraph.to_variable(value0)
-                b = fluid.dygraph.to_variable(value1)
-                c = fluid.dygraph.to_variable(value2)
+                linear = base.Linear(13, 5, dtype="float32")
+                linear2 = base.Linear(3, 3, dtype="float32")
+                a = base.dygraph.to_variable(value0)
+                b = base.dygraph.to_variable(value1)
+                c = base.dygraph.to_variable(value2)
                 out1 = linear(a)
                 out2 = linear2(b)
                 out1.stop_gradient = True
-                out = fluid.layers.concat(input=[out1, out2, c], axis=1)
+                out = base.layers.concat(input=[out1, out2, c], axis=1)
                 out.backward()
 
                 assert linear.weight.gradient() is None
@@ -1895,8 +1895,8 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
           .. code-block:: python
 
-            import paddle.fluid as fluid
-            cur_program = fluid.Program()
+            import paddle.base as base
+            cur_program = base.Program()
             cur_block = cur_program.current_block()
             new_variable = cur_block.create_var(name="X",
                                                 shape=[-1, 23, 48],
@@ -1944,8 +1944,8 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
           .. code-block:: python
 
-            import paddle.fluid as fluid
-            cur_program = fluid.Program()
+            import paddle.base as base
+            cur_program = base.Program()
             cur_block = cur_program.current_block()
             new_variable = cur_block.create_var(name="X",
                                                 shape=[-1, 23, 48],
@@ -1988,8 +1988,8 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
           .. code-block:: python
 
-            import paddle.fluid as fluid
-            cur_program = fluid.Program()
+            import paddle.base as base
+            cur_program = base.Program()
             cur_block = cur_program.current_block()
             new_variable = cur_block.create_var(name="X",
                                                 shape=[-1, 23, 48],
@@ -2010,8 +2010,8 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
           .. code-block:: python
 
-            import paddle.fluid as fluid
-            cur_program = fluid.Program()
+            import paddle.base as base
+            cur_program = base.Program()
             cur_block = cur_program.current_block()
             new_variable = cur_block.create_var(name="X",
                                                 shape=[-1, 23, 48],
@@ -2023,7 +2023,7 @@ class Variable(metaclass=VariableMetaClass):
     @property
     def lod_level(self):
         """
-        Indicating ``LoD`` info of current Variable, please refer to  :ref:`api_fluid_LoDTensor_en` to check the meaning
+        Indicating ``LoD`` info of current Variable, please refer to  :ref:`api_base_LoDTensor_en` to check the meaning
         of ``LoD``
 
         **Notes**:
@@ -2036,10 +2036,10 @@ class Variable(metaclass=VariableMetaClass):
           .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
+            import paddle.base as base
 
             paddle.enable_static()
-            cur_program = fluid.Program()
+            cur_program = base.Program()
             cur_block = cur_program.current_block()
             new_variable = cur_block.create_var(name="X",
                                                 shape=[-1, 23, 48],
@@ -2062,8 +2062,8 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
           .. code-block:: python
 
-            import paddle.fluid as fluid
-            cur_program = fluid.Program()
+            import paddle.base as base
+            cur_program = base.Program()
             cur_block = cur_program.current_block()
             new_variable = cur_block.create_var(name="X",
                                                 shape=[-1, 23, 48],
@@ -2767,8 +2767,8 @@ class Operator:
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            cur_program = fluid.Program()
+            import paddle.base as base
+            cur_program = base.Program()
             cur_block = cur_program.current_block()
             # var1 += var2 + var3
             cur_block.append_op(type="sum",
@@ -3122,9 +3122,9 @@ class Operator:
         Examples:
             .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle.base as base
 
-            cur_program = fluid.Program()
+            cur_program = base.Program()
             cur_block = cur_program.current_block()
             var = cur_block.create_var(name="X",
                                        shape=[-1, 23, 48],
@@ -3653,7 +3653,7 @@ def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
                     and inplace_map.get("Input", None) == "Out"
                 ):
                     raise ValueError(
-                        'Sorry about what\'s happend. In to_static mode, %s\'s output variable %s is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.fluid.framework._stride_in_no_check_dy2st_diff() in your safe code block.'
+                        'Sorry about what\'s happend. In to_static mode, %s\'s output variable %s is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.'
                         % (op_type, k)
                     )
             elif isinstance(v, list):
@@ -3664,7 +3664,7 @@ def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
                             and inplace_map.get("Input", None) == "Out"
                         ):
                             raise ValueError(
-                                'Sorry about what\'s happend. In to_static mode, %s\'s output variable %s is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.fluid.framework._stride_in_no_check_dy2st_diff() in your safe code block.'
+                                'Sorry about what\'s happend. In to_static mode, %s\'s output variable %s is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.'
                                 % (op_type, k)
                             )
 
@@ -3872,9 +3872,9 @@ class Block:
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle.base as base
 
-            cur_program = fluid.Program()
+            cur_program = base.Program()
             cur_block = cur_program.current_block()
             var = cur_block.create_var(name="X",
                                        shape=[-1, 23, 48],
@@ -3911,9 +3911,9 @@ class Block:
         Examples:
             .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle.base as base
 
-            cur_program = fluid.Program()
+            cur_program = base.Program()
             cur_block = cur_program.current_block()
             new_var = cur_block.create_var(name="X",
                                            shape=[-1, 23, 48],
@@ -4292,7 +4292,7 @@ class Block:
                 inplace_map,
             )
         else:
-            from paddle.fluid.dygraph.base import param_guard
+            from paddle.base.dygraph.base import param_guard
             from paddle.utils import flatten
 
             def pass_stop_gradient(ins, outs):
@@ -5534,11 +5534,11 @@ class IrGraph:
 class Program:
     """
     Create Python Program.  It has at least one :ref:`api_guide_Block_en`, when the
-    control flow op like conditional_block, while :ref:`api_paddle_fluid_layers_While` is included,
+    control flow op like conditional_block, while :ref:`api_paddle_base_layers_While` is included,
     it will contain nested block.
 
     Please reference the
-    `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/framework.proto>`_
+    `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/base/framework/framework.proto>`_
     for details.
 
     A set of Program usually contains startup program and main program.
@@ -5551,9 +5551,9 @@ class Program:
     backward ops and vars.
 
     **Notes**:
-        **we have** :ref:`api_paddle_fluid_framework_default_startup_program` **and** :ref:`api_paddle_fluid_framework_default_main_program`
-        **by default, a pair of them will shared the parameters. The** :ref:`api_paddle_fluid_framework_default_startup_program` **only run once to initialize parameters,**
-        :ref:`api_paddle_fluid_framework_default_main_program` **run in every mini batch and adjust the weights.**
+        **we have** :ref:`api_paddle_base_framework_default_startup_program` **and** :ref:`api_paddle_base_framework_default_main_program`
+        **by default, a pair of them will shared the parameters. The** :ref:`api_paddle_base_framework_default_startup_program` **only run once to initialize parameters,**
+        :ref:`api_paddle_base_framework_default_main_program` **run in every mini batch and adjust the weights.**
 
     Returns:
         Program: An empty Program.
@@ -5857,7 +5857,7 @@ class Program:
 
         Examples:
 
-            >>> import paddle.fluid as fluid
+            >>> import paddle.base as base
             >>> p, g = backward(...)
             >>> with program._optimized_guard([p,g]):
             >>>     p = p - 0.001 * g
@@ -5893,7 +5893,7 @@ class Program:
 
         Examples:
 
-            >>> import paddle.fluid as fluid
+            >>> import paddle.base as base
             >>> p, g = backward(...)
             >>> with program.lr_schedule_guard():
             >>>     lr = lr * decay
@@ -6062,7 +6062,7 @@ class Program:
         Create a new Program with forward content of original one when ``for_test=True``.
         Create a new Program as same as the original one when ``for_test=False``.
 
-        Some operators, e.g., :ref:`api_paddle_fluid_layers_batch_norm` , behave differently between
+        Some operators, e.g., :ref:`api_paddle_base_layers_batch_norm` , behave differently between
         training and testing. They have an attribute, :code:`is_test`, to
         control this behaviour. This method will change the :code:`is_test`
         attribute of them to :code:`True` when :code:`for_test=True`.
@@ -7252,10 +7252,10 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle.base as base
                 import paddle
 
-                prog = fluid.default_main_program()
+                prog = base.default_main_program()
                 rlt = paddle.static.data("fake_data", shape=[-1,1,1], dtype='float32')
                 debug_str = prog.to_string(throw_on_error=True, with_details=False)
                 print(debug_str)
@@ -7466,7 +7466,7 @@ def default_startup_program():
     The :code:`startup_program` will initialize the parameters by the OPs.
 
     This method will return the default or the current startup program. Users can use
-    :ref:`api_paddle_fluid_framework_program_guard`  to switch :ref:`api_paddle_fluid_framework_Program` .
+    :ref:`api_paddle_base_framework_program_guard`  to switch :ref:`api_paddle_base_framework_Program` .
 
     Returns:
         Program: current default startup program.
@@ -7499,7 +7499,7 @@ def default_main_program():
     a lot of APIs. For example, the :code:`Executor.run()` will execute the
     :code:`default_main_program` when the program is not specified.
 
-    If you want to switch the ``default main program``, you can use :ref:`api_paddle_fluid_framework_program_guard` .
+    If you want to switch the ``default main program``, you can use :ref:`api_paddle_base_framework_program_guard` .
 
     Returns:
         Program: A ``Program`` which holding the descriptions of OPs and tensors in the network.

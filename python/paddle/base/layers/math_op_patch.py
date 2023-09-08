@@ -18,7 +18,7 @@ import inspect
 from .. import core
 from ..framework import Variable, unique_name, static_only
 from .layer_function_generator import OpProtoHolder
-from paddle.fluid.dygraph.base import in_declarative_mode
+from paddle.base.dygraph.base import in_declarative_mode
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.BOOL,
@@ -241,7 +241,7 @@ def monkey_patch_variable():
     def astype(self, dtype):
         """
         **Notes**:
-            **The variable must be a** :ref:`api_fluid_Tensor`
+            **The variable must be a** :ref:`api_base_Tensor`
 
         Cast a variable to a specified data type.
 
@@ -259,11 +259,11 @@ def monkey_patch_variable():
 
             .. code-block:: python
                 import paddle
-                import paddle.fluid as fluid
+                import paddle.base as base
                 paddle.enable_static()
-                startup_prog = fluid.Program()
-                main_prog = fluid.Program()
-                with fluid.program_guard(startup_prog, main_prog):
+                startup_prog = base.Program()
+                main_prog = base.Program()
+                with base.program_guard(startup_prog, main_prog):
                     original_variable = paddle.static.data(name = "new_variable", shape=[2,2], dtype='float32')
                     new_variable = original_variable.astype('int64')
                     print("new var's dtype is: {}".format(new_variable.dtype))
@@ -272,12 +272,12 @@ def monkey_patch_variable():
 
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle.base as base
                 import numpy as np
 
                 x = np.ones([2, 2], np.float32)
-                with fluid.dygraph.guard():
-                    original_variable = fluid.dygraph.to_variable(x)
+                with base.dygraph.guard():
+                    original_variable = base.dygraph.to_variable(x)
                     print("original var's dtype is: {}, numpy dtype is {}".format(original_variable.dtype, original_variable.numpy().dtype))
                     new_variable = original_variable.astype('int64')
                     print("new var's dtype is: {}, numpy dtype is {}".format(new_variable.dtype, new_variable.numpy().dtype))
