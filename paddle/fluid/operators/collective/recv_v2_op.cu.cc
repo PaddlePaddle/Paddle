@@ -129,7 +129,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     gpuStream_t stream = nullptr;
     auto place = ctx.GetPlace();
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
-    if (map->has(rid)) {
+    if (map->has(rid)) {  // >> this code block is deprecated.
       // Use ProcessGroup
       distributed::ProcessGroup *pg = map->get(rid);
       std::vector<phi::DenseTensor> out_tensor;
@@ -175,7 +175,10 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     ncclDataType_t dtype = platform::ToNCCLDataType(type);
 
     auto *out_var = ctx.OutputVar("Out");
-    if (out_var->IsType<framework::LoDTensorArray>()) {
+
+    if (out_var->IsType<framework::LoDTensorArray>()) {  // if tensor being
+                                                         // received is a LoD
+                                                         // tensor
       PADDLE_ENFORCE_EQ(
           dynamic_shape,
           false,
@@ -186,38 +189,55 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
         VLOG(3) << "LodTensorArray: idx(" << idx << ")";
         auto out = &out_array->at(idx);
         auto out_dims = out->dims();
-        out->mutable_data<T>(out_dims, place, 0);
-        auto numel = out->numel();
+
+        out->Resize(out_dims);
+        /**
+          liuchenghao:
+          Old implementation does not support recv_v2 kernel to be executed on
+        custom cuda streams, this is a simple hack to get this job done.
+        However, this temporal implementation may be completely replaced by a
+        more elegant version in the future releases of Paddle.
+        **/
+        out->mutable_data(place,
+                          out_array->dtype(),
+                          phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
-            out->data<T>(), numel, dtype, peer, comm->comm(), stream));
+            out->data<T>(), out->numel(), dtype, peer, comm->comm(), stream));
         VLOG(3) << "rank " << comm->rank() << " recv " << phi::product(out_dims)
                 << " from " << peer;
       }
-      return;
-    }
+    } else {  // otherwise, consider this tensor as a dense tensor
+      auto out = ctx.Output<phi::DenseTensor>("Out");
+      if (dynamic_shape) {
+        VLOG(3) << "recv_v2 will use dynamic shape with send_v2";
+        framework::DDim new_dim = recv_shape_info(place,
+                                                  stream,
+                                                  comm,
+                                                  peer,
+                                                  /* ProcessGroup* */ nullptr);
+        out->Resize(new_dim);
+      } else {
+        auto out_dims = out->dims();
+        out->Resize(out_dims);
+      }
 
-    auto out_shape = ctx.Attr<std::vector<int>>("out_shape");
-    auto out = ctx.Output<phi::DenseTensor>("Out");
-    auto out_dims = out->dims();
-    auto numel = out->numel();
+      /**
+        liuchenghao:
+        Old implementation does not support recv_v2 kernel to be executed on
+      custom cuda streams, this is a simple hack to get this job done. However,
+      this temporal implementation may be completely replaced by a more elegant
+      version in the future releases of Paddle.
+      **/
+      out->mutable_data(place,
+                        out->dtype(),
+                        phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
 
-    if (dynamic_shape) {
-      VLOG(3) << "recv_v2 will use dynamic shape with send_v2";
-      framework::DDim new_dim = recv_shape_info(place,
-                                                stream,
-                                                comm,
-                                                peer,
-                                                /* ProcessGroup* */ nullptr);
-      out->Resize(new_dim);
-      numel = out->numel();
-      out->mutable_data<T>(new_dim, place);
-    } else {
-      out->mutable_data<T>(out_dims, place);
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
+          out->data<T>(), out->numel(), dtype, peer, comm->comm(), stream));
+      VLOG(3) << "rank " << comm->rank() << " recv "
+              << phi::product(out->dims()) << " from " << peer;
     }
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
-        out->data<T>(), numel, dtype, peer, comm->comm(), stream));
-    VLOG(3) << "rank " << comm->rank() << " recv " << phi::product(out->dims())
-            << " from " << peer;
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "PaddlePaddle should be compiled with NCCL and "
