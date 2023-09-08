@@ -12,6 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/*
+Custom VJP stands for manually implemented backward rules for complex operators.
+
+For example, when custom vjp is not defined, complex operators such as softmax,
+gelu, etc., are split into a set of primitive operators (such as add, multiply,
+etc.) in the forward pass, and the backward pass consists of the backward
+operators (such as add_grad, multiply_grad) of above primitive operators. And
+those backward operators also consists of primitive operators, which may lead to
+an increase of memory usage.
+
+After implementing custom vjp manually, the backward pass of complex operators
+can be split to several primitive operators directly by calling custom vjp
+rules.
+
+*/
+
 #pragma once
 
 #include "paddle/ir/core/op_base.h"
