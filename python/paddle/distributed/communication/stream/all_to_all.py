@@ -15,11 +15,11 @@
 import paddle
 import paddle.distributed as dist
 from paddle import framework
+from paddle.base import data_feeder
 from paddle.distributed.communication.group import (
     _get_global_group,
     _warn_cur_rank_not_in_group,
 )
-from paddle.fluid import data_feeder
 
 
 def _all_to_all_tensor_in_dygraph(

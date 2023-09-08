@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # TODO: define the initializers to create a Parameter in neural network
-from ...fluid.initializer import set_global_initializer  # noqa: F401
+from ...base.initializer import set_global_initializer  # noqa: F401
 
 from .Bilinear import Bilinear  # noqa: F401
 

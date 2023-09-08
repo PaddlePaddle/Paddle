@@ -19,7 +19,7 @@ from eager_op_test import OpTest, skip_check_grad_ci
 
 import paddle
 from paddle import _C_ops
-from paddle.fluid.framework import Program, program_guard
+from paddle.base.framework import Program, program_guard
 
 paddle.enable_static()
 

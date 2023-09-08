@@ -16,10 +16,10 @@ import unittest
 
 import paddle
 import paddle.distributed as dist
+from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.distributed.auto_parallel.static.dist_context import (
     get_default_distributed_context,
 )
-from paddle.fluid.dygraph.base import switch_to_static_graph
 
 
 class TestDistAttrBasic(unittest.TestCase):

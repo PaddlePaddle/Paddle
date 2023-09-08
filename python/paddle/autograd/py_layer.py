@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 __all__ = []
 
@@ -404,7 +404,7 @@ class PyLayer(with_mateclass(PyLayerMeta, core.eager.PyLayer, PyLayerContext)):
 
 def once_differentiable(backward):
     def wrapper(ctx, *args):
-        with paddle.fluid.dygraph.no_grad():
+        with paddle.base.dygraph.no_grad():
             outputs = backward(ctx, *args)
         return outputs
 

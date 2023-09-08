@@ -215,7 +215,7 @@ void NaiveExecutor::MakeReusePlan(
         const auto &reuse_name = reuse_table.at(name);
         auto it =
             std::find(cluster_names.begin(), cluster_names.end(), reuse_name);
-        int idx = it - cluster_names.begin();
+        int idx = static_cast<int>(it - cluster_names.begin());
         auto *var = scope_->FindVar(name);
         auto *reuse_var = scope_->FindVar(reuse_name);
         if (var && reuse_var && var->IsType<phi::DenseTensor>() &&
