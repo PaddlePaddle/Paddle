@@ -68,7 +68,7 @@ class TestDy2staticException(unittest.TestCase):
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):
                 paddle.jit.enable_to_static(True)
                 self.assertTrue(paddle.jit.to_static(self.dyfunc)(self.x))
-        paddle.base.dygraph.base.global_var._in_declarative_mode_ = False
+        paddle.base.dygraph.base.global_var._in_to_static_mode_ = False
         paddle.jit.enable_to_static(False)
 
 
@@ -468,12 +468,12 @@ class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
         with self.assertRaises(Dygraph2StaticException):
             static_func = paddle.jit.to_static(self.dyfunc)
             out = static_func(self.x)
-        # Why need set `_in_declarative_mode_` here?
-        # In Dy2St we use `with _switch_declarative_mode_guard_()` to indicate
+        # Why need set `_in_to_static_mode_` here?
+        # In Dy2St we use `with _to_static_mode_guard_()` to indicate
         # that the code block is under @to_static, but in this UT
-        # an exception is thrown during Dy2St, making the `_in_declarative_mode_`
-        # a wrong value. So We need set `_in_declarative_mode_` to False manually.
-        paddle.base.dygraph.base.global_var._in_declarative_mode_ = False
+        # an exception is thrown during Dy2St, making the `_in_to_static_mode_`
+        # a wrong value. So We need set `_in_to_static_mode_` to False manually.
+        paddle.base.dygraph.base.global_var._in_to_static_mode_ = False
         paddle.jit.enable_to_static(False)
 
 
