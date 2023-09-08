@@ -63,13 +63,14 @@ VJPS = [
     'transpose_grad',
     'dropout_grad',
 ]
-VJP_COMPS = ['divide_grad', 'sum_grad']
+VJP_COMPS = ['divide_grad', 'sum_grad', 'gelu_grad']
 BACKENDS = [
     'add_n',
     'mean',
     'sum',
     'divide',
     'full',
+    'tanh',
     'tanh_grad',
     'mean_grad',
     'concat',
