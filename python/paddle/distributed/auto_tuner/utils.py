@@ -205,7 +205,7 @@ def gen_new_args(raw_args, cfg, tuner_cfg):
                     raise ValueError(
                         "Please check your auto tuner json whether valid."
                     )
-                keys = cmd[arg][1]
+                keys = cmd[arg][1].split(".")
                 for key in keys[: len(keys) - 1]:
                     cmd_cfg = cmd_cfg[key]
                 cmd_cfg[keys[-1]] = cfg[arg]
@@ -221,7 +221,7 @@ def gen_new_args(raw_args, cfg, tuner_cfg):
                     raise ValueError(
                         "Please check your auto tuner json whether valid."
                     )
-                keys = cmd[arg][1]
+                keys = cmd[arg][1].split(".")
                 for key in keys[: len(keys) - 1]:
                     cmd_cfg = cmd_cfg[key]
                 cmd_cfg[keys[-1]] = cfg[arg]
@@ -253,7 +253,7 @@ def gen_new_args(raw_args, cfg, tuner_cfg):
                     raise ValueError(
                         "Please check your auto tuner json whether valid."
                     )
-                keys = cmd[arg][1]
+                keys = cmd[arg][1].split(".")
                 for key in keys[: len(keys) - 1]:
                     cmd_cfg = cmd_cfg[key]
                 cmd_cfg[keys[-1]] = local_batch_size
@@ -269,7 +269,7 @@ def gen_new_args(raw_args, cfg, tuner_cfg):
                     raise ValueError(
                         "Please check your auto tuner json whether valid."
                     )
-                keys = cmd[arg][1]
+                keys = cmd[arg][1].split(".")
                 for key in keys[: len(keys) - 1]:
                     cmd_cfg = cmd_cfg[key]
                 cmd_cfg[keys[-1]] = local_batch_size
@@ -309,7 +309,7 @@ def gen_new_args(raw_args, cfg, tuner_cfg):
                     raise ValueError(
                         "Please check your auto tuner json whether valid."
                     )
-                keys = cmd[arg][1]
+                keys = cmd[arg][1].split(".")
                 for key in keys[: len(keys) - 1]:
                     cmd_cfg = cmd_cfg[key]
                 cmd_cfg[keys[-1]] = gradient_accumulation_steps
@@ -325,7 +325,7 @@ def gen_new_args(raw_args, cfg, tuner_cfg):
                     raise ValueError(
                         "Please check your auto tuner json whether valid."
                     )
-                keys = cmd[arg][1]
+                keys = cmd[arg][1].split(".")
                 for key in keys[: len(keys) - 1]:
                     cmd_cfg = cmd_cfg[key]
                 cmd_cfg[keys[-1]] = gradient_accumulation_steps

@@ -618,6 +618,10 @@ def launch():
                     client.put(path, "OK".encode('latin-1'))
                     ctx.logger.info(f"Put OK to {path}")
                     logger.info(f"Put OK to {path}")
+                elif not hasattr(c, 'sigint') and c.pod.exit_code == 0:
+                    client.put(path, "OK".encode('latin-1'))
+                    ctx.logger.info(f"Put OK to {path}")
+                    logger.info(f"Put OK to {path}")
                 else:
                     client.put(path, "Error".encode('latin-1'))
                     ctx.logger.info(f"Put Error to {path}")
