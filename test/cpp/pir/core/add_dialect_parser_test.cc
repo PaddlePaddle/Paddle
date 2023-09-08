@@ -101,7 +101,7 @@ TEST(IrParserTest, AddAttribute) {
   std::string op_str =
       " (%0) = \"builtin.get_parameter\" () "
       "{parameter_name:(String)conv2d_0.w_0,test:(tp.char)a} : () -> "
-      "pd.tensor<64x3x7x7xf32>";
+      "pd_op.tensor<64x3x7x7xf32>";
   std::stringstream ss;
   ss << op_str;
   pir::IrParser* parser = new pir::IrParser(ctx, ss);

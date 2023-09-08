@@ -109,7 +109,7 @@ void OperatorDialect::PrintAttribute(pir::Attribute attr,
 }
 
 pir::Type OperatorDialect::ParseType(pir::IrParser &parser) {  // NOLINT
-  parser.ConsumeAToken("pd.tensor");
+  parser.ConsumeAToken("pd_op.tensor");
   parser.ConsumeAToken("<");
   std::vector<int> dim{};
   Token dim_token = parser.PeekToken();

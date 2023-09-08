@@ -100,7 +100,7 @@ class FusedGemmEpilogueOp
                      paddle::dialect::InferMetaInterface> {
  public:
   using Op::Op;
-  static const char *name() { return "pd.fused_gemm_epilogue"; }
+  static const char *name() { return "pd_op.fused_gemm_epilogue"; }
   static const char *attributes_name[3];
   static constexpr uint32_t attributes_num = 3;
   static OpInfoTuple GetOpInfo();
@@ -127,7 +127,7 @@ class FusedGemmEpilogueGradOp
                      paddle::dialect::InferMetaInterface> {
  public:
   using Op::Op;
-  static const char *name() { return "pd.fused_gemm_epilogue_grad"; }
+  static const char *name() { return "pd_op.fused_gemm_epilogue_grad"; }
   static const char *attributes_name[3];
   static constexpr uint32_t attributes_num = 3;
   static OpInfoTuple GetOpInfo();
@@ -177,7 +177,7 @@ class SplitGradOp : public pir::Op<SplitGradOp, OpYamlInfoInterface> {
 class IfOp : public pir::Op<IfOp> {
  public:
   using Op::Op;
-  static const char *name() { return "pd.if"; }
+  static const char *name() { return "pd_op.if"; }
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
   static void Build(pir::Builder &builder,             // NOLINT

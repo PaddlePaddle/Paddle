@@ -1087,7 +1087,7 @@ void IfOp::Print(pir::IrPrinter &printer) {
   auto &os = printer.os;
   auto op = operation();
   printer.PrintOpResult(op);
-  os << " = pd.if";
+  os << " = pd_op.if";
   printer.PrintOpOperands(op);
   os << " -> ";
   printer.PrintOpReturnType(op);
