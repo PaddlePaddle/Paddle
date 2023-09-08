@@ -10,7 +10,9 @@
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
 #include "paddle/ir/core/operation.h"
+#include "paddle/phi/core/flags.h"
 
+PHI_DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace primitive {
@@ -95,6 +97,7 @@ for (size_t i=0; i< stop_gradients[0].size(); i++ ) {
 {% endmacro %}
 
 {% macro body_prim(api) %}
+FLAGS_tensor_operants_mode = "static";
   {% for i in range(api.outputs|length) %}
     {% if api.outputs[i].typename=='Tensor' %}
 paddle::Tensor* {{api.outputs[i].name}} = !stop_gradients[{{i}}][0] ? &vjp_res[{{i}}][0] : nullptr; 

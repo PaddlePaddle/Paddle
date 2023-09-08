@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import paddle
+from paddle.base import core
+from paddle.base.backward import _append_grad_suffix_
+from paddle.base.framework import Variable
 from paddle.common_ops_import import LayerHelper, check_type, in_dygraph_mode
-from paddle.fluid import core
-from paddle.fluid.backward import _append_grad_suffix_
-from paddle.fluid.framework import Variable
 from paddle.utils import flatten, map_structure
 
 # NOTE(MarioLulab): Borrowed from `python/paddle/static/nn/control_flow.py`
@@ -98,6 +98,7 @@ class StaticPyLayerBlock:
         )
 
         self.fwd_op_id = pylayer_op.idx
+        self.helper.main_program._sync_with_cpp()
 
     def complete_backward_block(self):
         inside_block = self.helper.main_program.current_block()
@@ -135,6 +136,8 @@ class StaticPyLayerBlock:
                         f"{var.name} was saved in forward block but could not be found in backward block. Maybe {var.name} was renamed somewhere."
                     )
                 inside_block._remove_var(var.name)
+
+        self.helper.main_program._sync_with_cpp()
 
     def complete(self):
         if not self.is_backward_block:
@@ -255,10 +258,11 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
 
     Args:
         forward_fn (callable): A callable to be performed in forward propagation
-        inputs (list[Variable]): The list of if input Variable to the ``forward_fn``
+        inputs (list[Variable]): The list of input Variable to the ``forward_fn``
         backward_fn (callable, optional): A callable to be performed in backward propagation. Default: None, which means no need to do backward propagation.
         name (str, optional): The default value is ``None`` . Normally users
-            don't have to set this parameter.
+            don't have to set this parameter. For more information, please
+            refer to :ref:`api_guide_Name` .
 
     Returns:
         Variable|list(Variable)|tuple(Variable): returns the output of ``forward_fn(inputs)``
@@ -328,7 +332,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
         fwd_fn_ctx if fwd_fn_ctx and (fwd_fn_ctx == bwd_fn_ctx) else None
     )
 
-    check_type(name, "name", (str, type(None)), "fluid.layers.static_pylayer")
+    check_type(name, "name", (str, type(None)), "base.layers.static_pylayer")
     helper = LayerHelper('static_pylayer', **locals())
     copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)
 

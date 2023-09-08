@@ -197,7 +197,7 @@ static std::vector<std::unique_ptr<OperatorBase>> CreateOpsFromBlock(
   size_t op_num = block.OpSize();
   ops.reserve(op_num);
   for (size_t i = 0; i < op_num; ++i) {
-    auto *op_desc = block.Op(i);
+    auto *op_desc = block.Op(static_cast<int>(i));
     ops.push_back(OpRegistry::CreateOp(*op_desc));
   }
   return ops;
@@ -251,9 +251,9 @@ GetEagerDeletionCleanVarsForPartial(const ProgramDesc &origin_program,
     const auto &block = program.Block(i);
     size_t op_num = block.OpSize();
     for (size_t j = 0; j < op_num; ++j) {
-      auto *op = block.Op(j);
-      if (!op->HasAttr(kSubBlock) || !op->HasAttr(kSkipEagerDeletionVars) ||
-          !op->HasAttr(kBlocks)) {
+      auto *op = block.Op(static_cast<int>(j));
+      if (!op->HasAttr(kSubBlock) || !op->HasAttr(kBlocks) ||
+          !op->HasAttr(kSkipEagerDeletionVars)) {
         continue;
       }
 

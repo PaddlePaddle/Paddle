@@ -3,7 +3,7 @@ select = C,E,W
 exclude =
     ./build,
     # Exclude fluid directory
-    ./python/paddle/fluid/**,
+    ./python/paddle/base/**,
     # Exclude third-party libraries
     ./third_party/**,
     ./python/paddle/utils/gast/**,

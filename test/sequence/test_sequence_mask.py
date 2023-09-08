@@ -19,7 +19,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-from paddle.fluid.framework import (
+from paddle.base.framework import (
     Program,
     convert_np_dtype_to_dtype_,
     program_guard,
