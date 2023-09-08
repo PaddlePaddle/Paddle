@@ -182,8 +182,8 @@ void ReservoirSampling(const int num,
                        std::minstd_rand engine,
                        bool use_random) {
   std::uniform_real_distribution<float> uniform(0, 1);
-  size_t len = inds->size();
-  if (len > static_cast<size_t>(num)) {
+  int len = static_cast<int>(inds->size());
+  if (len > num) {
     if (use_random) {
       for (int i = num; i < len; ++i) {
         int rng_ind = std::floor(uniform(engine) * i);  // NOLINT
