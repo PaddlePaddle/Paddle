@@ -32,7 +32,7 @@
 #include "paddle/pir/core/utils.h"
 
 using OperatorDialect = paddle::dialect::OperatorDialect;
-using AttributeStorage = ir::AttributeStorage;
+using AttributeStorage = pir::AttributeStorage;
 
 enum TestType {
   AttributeTest = 0,
@@ -59,7 +59,7 @@ class ParserTest {
  public:
   explicit ParserTest(std::ifstream& test_text) : test_text(test_text) {}
   TestTask* GetTestTask();
-  bool ConsumeTestTask(TestTask* test_task, ir::IrContext* ctx);
+  bool ConsumeTestTask(TestTask* test_task, pir::IrContext* ctx);
 };
 
 TestTask* ParserTest::GetTestTask() {
@@ -92,13 +92,13 @@ TestTask* ParserTest::GetTestTask() {
   return nullptr;
 }
 
-bool ParserTest::ConsumeTestTask(TestTask* test_task, ir::IrContext* ctx) {
+bool ParserTest::ConsumeTestTask(TestTask* test_task, pir::IrContext* ctx) {
   std::string test_info = test_task->test_info;
   TestType test_type = test_task->test_type;
-  std::unique_ptr<ir::IrPrinter> printer;
-  std::unique_ptr<ir::IrParser> parser;
+  std::unique_ptr<pir::IrPrinter> printer;
+  std::unique_ptr<pir::IrParser> parser;
   std::stringstream is(test_info);
-  parser.reset(new ir::IrParser(ctx, is));
+  parser.reset(new pir::IrParser(ctx, is));
   std::vector<std::string> before_parser_tokens;
   while (parser->PeekToken().token_type_ != EOF_) {
     before_parser_tokens.push_back(parser->ConsumeToken().val_);
@@ -106,16 +106,16 @@ bool ParserTest::ConsumeTestTask(TestTask* test_task, ir::IrContext* ctx) {
   std::stringstream is_par(test_info);
   std::stringstream os;
   if (test_type == AttributeTest) {
-    auto attr = ir::Attribute::Parse(is_par, ctx);
+    auto attr = pir::Attribute::Parse(is_par, ctx);
     attr.Print(os);
   } else if (test_type == ProgramTest) {
-    auto program = ir::Program::Parse(is_par, ctx);
+    auto program = pir::Program::Parse(is_par, ctx);
     program->Print(os);
   } else if (test_type == TypeTest) {
-    auto type = ir::Type::Parse(is_par, ctx);
+    auto type = pir::Type::Parse(is_par, ctx);
     type.Print(os);
   }
-  parser.reset(new ir::IrParser(ctx, os));
+  parser.reset(new pir::IrParser(ctx, os));
   std::vector<std::string> after_parser_tokens;
   while (parser->PeekToken().token_type_ != EOF_) {
     auto str = parser->ConsumeToken().val_;
@@ -136,9 +136,9 @@ bool ParserTest::ConsumeTestTask(TestTask* test_task, ir::IrContext* ctx) {
 }
 
 TEST(IrParserTest, TestParserByFile) {
-  ir::IrContext* ctx = ir::IrContext::Instance();
+  pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<OperatorDialect>();
-  ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
   std::ifstream is("TestParserText.txt");
   EXPECT_TRUE(is.is_open());
   ParserTest parser_test(is);

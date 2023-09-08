@@ -137,7 +137,7 @@ pir::Type OperatorDialect::ParseType(pir::IrParser &parser) {  // NOLINT
       parser.ctx, dtype, ddim, phi::DataLayout::UNDEFINED, lod, 0);
 }
 
-oir::Attribute OperatorDialect::ParseAttribute(
+pir::Attribute OperatorDialect::ParseAttribute(
     pir::IrParser &parser) {  // NOLINT
   std::string type_name = parser.ConsumeToken().val_;
   std::string attribute_name =
