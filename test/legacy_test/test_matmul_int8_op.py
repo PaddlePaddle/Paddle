@@ -25,12 +25,10 @@ paddle.disable_static()
 
 # TODO: verify the requirments of CUDA ARCH
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11060,
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11060,
     "MatmulInt8 requires CUDA >= 11.6",
 )
 class TestMatmulInt8(unittest.TestCase):
-
     def config(self):
         self.dtype = 'int8'
         self.rtol = 1e-5
@@ -53,29 +51,41 @@ class TestMatmulInt8(unittest.TestCase):
 
         if self.trans_x:
             if self.input_a_np.ndim == 1:
-                self.input_a_np = self.input_a_np.reshape((self.input_a_np.size, ))
+                self.input_a_np = self.input_a_np.reshape(
+                    (self.input_a_np.size,)
+                )
             elif self.input_a_np.ndim == 2:
                 self.input_a_np = self.input_a_np.T
             else:
                 dim = list(range(len(self.input_a_np.shape)))
-                dim[-1], dim[len(self.input_a_np.shape) - 2] = dim[len(self.input_a_np.shape) - 2], dim[-1]
+                dim[-1], dim[len(self.input_a_np.shape) - 2] = (
+                    dim[len(self.input_a_np.shape) - 2],
+                    dim[-1],
+                )
                 self.input_a_np = np.transpose(self.input_a_np, tuple(dim))
         if self.trans_y:
             if self.input_b_np.ndim == 1:
-                self.input_b_np = self.input_b_np.reshape((self.input_b_np.size, ))
+                self.input_b_np = self.input_b_np.reshape(
+                    (self.input_b_np.size,)
+                )
             elif self.input_b_np.ndim == 2:
                 self.input_b_np = self.input_b_np.T
             else:
                 dim = list(range(len(self.input_b_np.shape)))
-                dim[-1], dim[len(self.input_b_np.shape) - 2] = dim[len(self.input_b_np.shape) - 2], dim[-1]
-                self.input_b_np = np.transpose(self.input_b_np, tuple(dim))        
+                dim[-1], dim[len(self.input_b_np.shape) - 2] = (
+                    dim[len(self.input_b_np.shape) - 2],
+                    dim[-1],
+                )
+                self.input_b_np = np.transpose(self.input_b_np, tuple(dim))
 
     def get_reference_out(self):
         out = np.matmul(self.input_a_np, self.input_b_np)
         return out
 
     def get_op_out(self):
-        out = paddle._C_ops.matmul(self.input_a, self.input_b, self.trans_x, self.trans_y)
+        out = paddle._C_ops.matmul(
+            self.input_a, self.input_b, self.trans_x, self.trans_y
+        )
         return out.numpy()
 
     def test_matmul_int8(self):
@@ -96,6 +106,7 @@ class TestMatmulInt8Op2(TestMatmulInt8):
         self.trans_x = False
         self.trans_y = True
 
+
 class TestMatmulInt8Op3(TestMatmulInt8):
     def config(self):
         self.dtype = 'int8'
@@ -105,6 +116,7 @@ class TestMatmulInt8Op3(TestMatmulInt8):
         self.y_shape = (1, 1, 4, 100)
         self.trans_x = False
         self.trans_y = False
+
 
 class TestMatmulInt8Op4(TestMatmulInt8):
     def config(self):
@@ -116,6 +128,7 @@ class TestMatmulInt8Op4(TestMatmulInt8):
         self.trans_x = False
         self.trans_y = False
 
+
 class TestMatmulInt8Op5(TestMatmulInt8):
     def config(self):
         self.dtype = 'int8'
@@ -125,6 +138,7 @@ class TestMatmulInt8Op5(TestMatmulInt8):
         self.y_shape = (100,)
         self.trans_x = True
         self.trans_y = False
+
 
 class TestMatmulInt8Op6(TestMatmulInt8):
     def config(self):
@@ -136,6 +150,7 @@ class TestMatmulInt8Op6(TestMatmulInt8):
         self.trans_x = True
         self.trans_y = False
 
+
 class TestMatmulInt8Op7(TestMatmulInt8):
     def config(self):
         self.dtype = 'int8'
@@ -145,6 +160,7 @@ class TestMatmulInt8Op7(TestMatmulInt8):
         self.y_shape = (100,)
         self.trans_x = False
         self.trans_y = False
+
 
 class TestMatmulInt8Op8(TestMatmulInt8):
     def config(self):
@@ -156,6 +172,7 @@ class TestMatmulInt8Op8(TestMatmulInt8):
         self.trans_x = False
         self.trans_y = False
 
+
 class TestMatmulInt8Op9(TestMatmulInt8):
     def config(self):
         self.dtype = 'int8'
@@ -165,6 +182,7 @@ class TestMatmulInt8Op9(TestMatmulInt8):
         self.y_shape = (2, 1, 8, 100)
         self.trans_x = False
         self.trans_y = True
+
 
 class TestMatmulInt8Op10(TestMatmulInt8):
     def config(self):
@@ -176,6 +194,7 @@ class TestMatmulInt8Op10(TestMatmulInt8):
         self.trans_x = False
         self.trans_y = False
 
+
 class TestMatmulInt8Op11(TestMatmulInt8):
     def config(self):
         self.dtype = 'int8'
@@ -185,6 +204,7 @@ class TestMatmulInt8Op11(TestMatmulInt8):
         self.y_shape = (1, 1, 100, 4)
         self.trans_x = False
         self.trans_y = False
+
 
 class TestMatmulInt8Op12(TestMatmulInt8):
     def config(self):
@@ -196,6 +216,7 @@ class TestMatmulInt8Op12(TestMatmulInt8):
         self.trans_x = True
         self.trans_y = False
 
+
 class TestMatmulInt8Op13(TestMatmulInt8):
     def config(self):
         self.dtype = 'int8'
@@ -205,6 +226,7 @@ class TestMatmulInt8Op13(TestMatmulInt8):
         self.y_shape = (2, 2, 12, 12)
         self.trans_x = True
         self.trans_y = False
+
 
 class TestMatmulInt8Op14(TestMatmulInt8):
     def config(self):
@@ -216,6 +238,7 @@ class TestMatmulInt8Op14(TestMatmulInt8):
         self.trans_x = True
         self.trans_y = False
 
+
 class TestMatmulInt8Op15(TestMatmulInt8):
     def config(self):
         self.dtype = 'int8'
@@ -226,6 +249,7 @@ class TestMatmulInt8Op15(TestMatmulInt8):
         self.trans_x = False
         self.trans_y = False
 
+
 class TestMatmulInt8Op16(TestMatmulInt8):
     def config(self):
         self.dtype = 'int8'
@@ -235,7 +259,8 @@ class TestMatmulInt8Op16(TestMatmulInt8):
         self.y_shape = (1, 2, 2, 100, 4)
         self.trans_x = False
         self.trans_y = False
-   
+
+
 class TestMatmulInt8Op17(TestMatmulInt8):
     def config(self):
         self.dtype = 'int8'
@@ -245,6 +270,7 @@ class TestMatmulInt8Op17(TestMatmulInt8):
         self.y_shape = 100
         self.trans_x = False
         self.trans_y = False
+
 
 class TestMatmulInt8OpBroadcast1(TestMatmulInt8):
     def config(self):
@@ -256,6 +282,7 @@ class TestMatmulInt8OpBroadcast1(TestMatmulInt8):
         self.trans_x = True
         self.trans_y = True
 
+
 class TestMatmulInt8OpBroadcast2(TestMatmulInt8):
     def config(self):
         self.dtype = 'int8'
@@ -265,6 +292,7 @@ class TestMatmulInt8OpBroadcast2(TestMatmulInt8):
         self.y_shape = (1, 2, 12, 12)
         self.trans_x = False
         self.trans_y = True
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -311,10 +311,10 @@ class TestMulBF16Op2(TestMulBF16Op1):
             check_dygraph=False,
         )
 
+
 # TODO: verify the requirments of CUDA ARCH
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11060,
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11060,
     "MatmulInt8 requires CUDA >= 11.6",
 )
 class TestMulInt8Op(OpTest):
@@ -331,7 +331,6 @@ class TestMulInt8Op(OpTest):
         self.inputs['X'] = self.inputs['X'].astype(self.dtype)
         self.inputs['Y'] = self.inputs['Y'].astype(self.dtype)
 
-
     def init_dtype_type(self):
         pass
 
@@ -347,6 +346,7 @@ class TestMulInt8Op(OpTest):
 
     def test_check_grad_ingore_y(self):
         pass
+
 
 class TestMulInt8Op2(TestMulInt8Op):
     def setUp(self):
@@ -370,7 +370,7 @@ class TestMulInt8Op2(TestMulInt8Op):
 
         self.inputs['X'] = self.inputs['X'].astype(self.dtype)
         self.inputs['Y'] = self.inputs['Y'].astype(self.dtype)
-    
+
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(place, check_dygraph=False)
@@ -383,6 +383,7 @@ class TestMulInt8Op2(TestMulInt8Op):
 
     def test_check_grad_ingore_y(self):
         pass
+
 
 if __name__ == "__main__":
     unittest.main()
