@@ -298,14 +298,16 @@ class EagerUtils {
     if (t.defined()) {
       if (t.initialized()) {
         if (t.is_dist_tensor()) {
+          auto dist_t =
+              std::static_pointer_cast<phi::distributed::DistTensor>(t.impl());
           tensor_info_str += paddle::string::Sprintf(
               TENSOR_INFO_TEMPLATE,
               t.impl()->type_info().name(),
               t.dtype(),
               t.place().DebugString(),
-              t.dims(),
-              std::static_pointer_cast<phi::distributed::DistTensor>(t.impl())
-                  ->dist_attr());
+              paddle::string::Sprintf(
+                  "%s, Local Shape: %s", t.dims(), dist_t->local_dims()),
+              dist_t->dist_attr());
         } else {
           tensor_info_str +=
               paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,

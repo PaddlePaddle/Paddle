@@ -647,6 +647,44 @@ void MarginCrossEntropyGradInferMeta(const MetaTensor& logits,
   logits_grad->set_dtype(softmax.dtype());
 }
 
+void MatmulGradInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         const MetaTensor& out_grad,
+                         bool transpose_x,
+                         bool transpose_y,
+                         MetaTensor* x_grad,
+                         MetaTensor* y_grad) {
+  if (transpose_x) {
+    if (transpose_y) {
+      // X'Y': dX = Y'G', dY = G'X'
+      MatmulInferMeta(
+          y, out_grad, /*transpose_x=*/true, /*transpose_y=*/true, x_grad);
+      MatmulInferMeta(
+          out_grad, x, /*transpose_x=*/true, /*transpose_y=*/true, y_grad);
+    } else {
+      // X'Y: dX = YG', dY = XG
+      MatmulInferMeta(
+          y, out_grad, /*transpose_x=*/false, /*transpose_y=*/true, x_grad);
+      MatmulInferMeta(
+          x, out_grad, /*transpose_x=*/false, /*transpose_y=*/false, y_grad);
+    }
+  } else {
+    if (transpose_y) {
+      // XY': dX = GY, dY = G'X
+      MatmulInferMeta(
+          out_grad, y, /*transpose_x=*/false, /*transpose_y=*/false, x_grad);
+      MatmulInferMeta(
+          out_grad, x, /*transpose_x=*/true, /*transpose_y=*/false, y_grad);
+    } else {
+      // XY: dX = GY', dY = X'G
+      MatmulInferMeta(
+          out_grad, y, /*transpose_x=*/false, /*transpose_y=*/true, x_grad);
+      MatmulInferMeta(
+          x, out_grad, /*transpose_x=*/true, /*transpose_y=*/false, y_grad);
+    }
+  }
+}
+
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& mask,
                                    const MetaTensor& dout,

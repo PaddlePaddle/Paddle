@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/data_transform.h"
 
+#include <sstream>
+
 #include "glog/logging.h"
 
 #include "paddle/fluid/platform/device_context.h"
@@ -599,6 +601,17 @@ void TransDataBackend(const phi::SelectedRows* tensor,
 
 /* ------------------ for auto parallel ----------------------- */
 
+std::string ReshardDebugInfo(
+    const phi::distributed::DistTensor& src_tensor,
+    const phi::distributed::TensorDistAttr& dist_attr) {
+  std::stringstream sstream;
+  sstream << "Reshard from src {Global Shape: " << src_tensor.dims()
+          << ", Local Shape: " << src_tensor.local_dims()
+          << ", DistAttr: " << src_tensor.dist_attr()
+          << "} to {DistAttr: " << dist_attr << "}";
+  return sstream.str();
+}
+
 std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
     phi::DeviceContext* dev_ctx,
     const Tensor& tensor,
@@ -608,8 +621,8 @@ std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(tensor_in.get());
     if (dist_tensor->dist_attr() != dist_attr) {
-      VLOG(6) << "Reshard tensor from " << dist_tensor->dist_attr() << " to "
-              << dist_attr;
+      VLOG(6) << "FwdAPI ApiIn to KernelIn - "
+              << ReshardDebugInfo(*dist_tensor, dist_attr);
       auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
                                                                  dist_attr);
       return func->Eval(dev_ctx, *dist_tensor, dist_attr);
@@ -624,8 +637,8 @@ void ReshardPartialOutputToReplicated(
   if (out_tensor->dist_attr().is_partial()) {
     auto dist_attr = out_tensor->dist_attr();
     dist_attr.clean_partial_status();
-    VLOG(6) << "Reshard partial tensor from " << out_tensor->dist_attr()
-            << " to replicated " << dist_attr;
+    VLOG(6) << "FwdAPI Output P2R - "
+            << ReshardDebugInfo(*out_tensor, dist_attr);
     // TODO(chenweihang): no need choose here
     auto* func =
         phi::distributed::ChooseProperReshardFunction(*out_tensor, dist_attr);
@@ -644,9 +657,10 @@ void ReshardKernelOutputToApiOutput(
       phi::errors::InvalidArgument("The output tensor is nullptr."));
   phi::distributed::DistTensor* dist_tensor =
       static_cast<phi::distributed::DistTensor*>(tensor_out.get());
+  dist_tensor->set_dims(src_tensor->dims());
   if (src_tensor->dist_attr() != dist_tensor->dist_attr()) {
-    VLOG(6) << "Reshard tensor from " << src_tensor->dist_attr() << " to "
-            << dist_tensor->dist_attr();
+    VLOG(6) << "BwdAPI KernelOut to ApiOut - "
+            << ReshardDebugInfo(*src_tensor, dist_tensor->dist_attr());
     auto* func = phi::distributed::ChooseProperReshardFunction(
         *src_tensor, dist_tensor->dist_attr());
     func->Eval(dev_ctx, *src_tensor, dist_tensor->dist_attr(), dist_tensor);

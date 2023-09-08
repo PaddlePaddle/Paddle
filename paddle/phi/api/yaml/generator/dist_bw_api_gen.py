@@ -33,7 +33,8 @@ MAIN_DIST_BRANCH_TEMPLATE = """
     // 6. Infer Local DenseTensor Meta{}
     // 7. DenseTensor Kernel Call{}
     // 8. Reshard Output{}\n
-    // 9. Return{}
+    // 9. Return
+    {}
   }}
 """
 

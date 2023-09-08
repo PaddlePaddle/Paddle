@@ -300,6 +300,14 @@ void MarginCrossEntropyGradInferMeta(const MetaTensor& logits,
                                      float scale,
                                      MetaTensor* logits_grad);
 
+void MatmulGradInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         const MetaTensor& out_grad,
+                         bool transpose_x,
+                         bool transpose_y,
+                         MetaTensor* x_grad,
+                         MetaTensor* y_grad);
+
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& mask,
                                    const MetaTensor& dout,
