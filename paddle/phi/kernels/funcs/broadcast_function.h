@@ -34,7 +34,6 @@ enum BroadcastType { kMixed = 1, kBroadcast = 2, kElementwise = 3 };
 template <typename OutT, int Arity, int NumOuts>
 struct BroadcastTypeClassifier {
   int64_t numel{0};
-  int vec_size{4};
   int broadcast_num{0};                   // Not used for XPU
   bool all_elementwise{true};             // Not used for XPU
   phi::Array<bool, Arity> use_broadcast;  // Not used for XPU
@@ -67,14 +66,6 @@ struct BroadcastTypeClassifier {
     }
 
     InitBroadcastConfigs(ins, outs, axis);
-
-#ifdef PADDLE_WITH_XPU_KP
-    auto type = kps::details::OptType::CanNotOptimize;
-    bool is_optimize = configs[0].cmp_type != type;
-    vec_size = is_optimize ? VecSizeL : VecSizeM;
-#else
-    vec_size = GetVectorizedSizeForTensors(ins, *outs);
-#endif
   }
 
   void InitBroadcastConfigs(const std::vector<const DenseTensor *> &ins,
@@ -864,13 +855,22 @@ BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
   auto classifier =
       BroadcastTypeClassifier<OutT, Arity, NumOuts>(ins, outs, axis);
 
+#ifdef PADDLE_WITH_XPU_KP
+  auto type = kps::details::OptType::CanNotOptimize;
+  bool is_optimize = classifier.configs[0].cmp_type != type;
+  int vec_size = is_optimize ? VecSizeL : VecSizeM;
+#else
+  // calculate the max vec_size for all ins and outs
+  int vec_size = GetVectorizedSizeForTensors<OutT, Functor>(ins, *outs);
+#endif
+
 #ifndef PADDLE_WITH_XPU_KP
   constexpr bool kEnabledInt64IndexKernel = (NumOuts == 1 && Arity <= 3);
   bool use_int64_index_kernel =
       kEnabledInt64IndexKernel &&
       (*outs)[0]->numel() >= std::numeric_limits<int32_t>::max();
   if (use_int64_index_kernel) {
-    switch (classifier.vec_size) {
+    switch (vec_size) {
       case VecSizeL: {
         LaunchBroadcastKernelWithInt64IndexHelper<OutT,
                                                   Functor,
@@ -909,7 +909,7 @@ BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
       }
       default: {
         PADDLE_THROW(phi::errors::Unimplemented(
-            "Unsupported vectorized size: %d!", classifier.vec_size));
+            "Unsupported vectorized size: %d!", vec_size));
         break;
       }
     }
@@ -917,7 +917,7 @@ BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
   }
 #endif
 
-  switch (classifier.vec_size) {
+  switch (vec_size) {
     case VecSizeL: {
       LaunchBroadcastKernel<OutT, Functor, Arity, NumOuts, VecSizeL>(
           ctx, classifier, func);
@@ -935,7 +935,7 @@ BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
     }
     default: {
       PADDLE_THROW(phi::errors::Unimplemented(
-          "Unsupported vectorized size: %d!", classifier.vec_size));
+          "Unsupported vectorized size: %d!", vec_size));
       break;
     }
   }

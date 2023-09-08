@@ -560,19 +560,36 @@ struct InputSetter {
   }
 };
 
-static int GetVectorizedSizeForTensors(
-    const std::vector<const DenseTensor *> &ins,
-    const std::vector<DenseTensor *> &outs) {
+template <int Index>
+struct VecSizeGetter {
+  template <typename ArgsT>
+  static HOSTDEVICE void Apply(const std::vector<const DenseTensor *> &ins,
+                               const ArgsT &args,
+                               int *vec_size) {
+    using Type = std::tuple_element_t<Index, ArgsT>;
+    *vec_size = std::min<int>(*vec_size,
+                              phi::GetVectorizedSize(ins[Index]->data<Type>()));
+  }
+};
+
+template <typename OutT, typename Functor>
+int GetVectorizedSizeForTensors(const std::vector<const DenseTensor *> &ins,
+                                const std::vector<DenseTensor *> &outs) {
 #ifdef PADDLE_WITH_XPU_KP
   int vec_size = 256;
 #else
+  using Traits = phi::funcs::FunctionTraits<Functor>;
+  using ArgsT = typename Traits::ArgsTuple;
+  const int Arity = Traits::arity;
   int vec_size = 4;
-  for (size_t i = 0; i < ins.size(); ++i) {
-    vec_size = std::min(vec_size, phi::GetVectorizedSize(ins[i]));
+  uint64_t addr = static_cast<uint64_t>(0);
+  ArgsT arg;
+  UnrollerWithoutVecSize<VecSizeGetter, Arity>::step(ins, arg, &vec_size);
+  for (auto iter = outs.begin(); iter != outs.end(); ++iter) {
+    addr = (addr | reinterpret_cast<uint64_t>((*iter)->data<OutT>()));
   }
-  for (size_t i = 0; i < outs.size(); ++i) {
-    vec_size = std::min(vec_size, phi::GetVectorizedSize(outs[i]));
-  }
+  vec_size = std::min(
+      vec_size, phi::GetVectorizedSize<OutT>(reinterpret_cast<OutT *>(addr)));
 #endif
   return vec_size;
 }
@@ -778,7 +795,7 @@ ElementwiseKernelForDifferentVecSize(
     std::vector<DenseTensor *> *outs,
     Functor func) {
   // calculate the max vec_size for all ins and outs
-  int vec_size = GetVectorizedSizeForTensors(ins, *outs);
+  int vec_size = GetVectorizedSizeForTensors<OutT, Functor>(ins, *outs);
   switch (vec_size) {
     case VecSizeL:
       LaunchElementwiseKernel<OutT, Functor, Arity, NumOuts, VecSizeL>(
