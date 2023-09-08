@@ -25,7 +25,7 @@
 
 TEST(if_op_test, base) {
   pir::IrContext* ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<pir::ControlFlowDialect>();
 
   pir::Program program(ctx);

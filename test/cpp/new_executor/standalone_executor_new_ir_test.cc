@@ -51,7 +51,7 @@ TEST(StandaloneExecutor, run) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::Program program((ctx));
 
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
   pir::Builder builder = pir::Builder(ctx, program.block());
 
@@ -98,7 +98,7 @@ TEST(StandaloneExecutor, run) {
 TEST(StandaloneExecutor, run_inplace_sqrt) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::Program program((ctx));
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Builder builder = pir::Builder(ctx, program.block());
 
   paddle::dialect::FullOp full = builder.Build<paddle::dialect::FullOp>(

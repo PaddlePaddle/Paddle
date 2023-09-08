@@ -19,22 +19,17 @@
 namespace paddle {
 namespace dialect {
 
-class PaddleDialect : public pir::Dialect {
+class OperatorDialect : public pir::Dialect {
  public:
-  explicit PaddleDialect(pir::IrContext* context);
+  explicit OperatorDialect(pir::IrContext* context);
 
   static const char* name() { return "pd_op"; }
 
-<<<<<<< HEAD:paddle/fluid/pir/dialect/operator/ir/op_dialect.h
+  pir::Type ParseType(pir::IrParser& parser) override;            // NOLINT
+  pir::Attribute ParseAttribute(pir::IrParser& parser) override;  // NOLINT
+
   void PrintType(pir::Type type, std::ostream& os) const override;
   void PrintAttribute(pir::Attribute type, std::ostream& os) const override;
-=======
-  ir::Type ParseType(ir::IrParser& parser) override;            // NOLINT
-  ir::Attribute ParseAttribute(ir::IrParser& parser) override;  // NOLINT
-
-  void PrintType(ir::Type type, std::ostream& os) const override;
-  void PrintAttribute(ir::Attribute type, std::ostream& os) const override;
->>>>>>> upstream/develop:paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h
 
   void PrintOperation(pir::Operation* op,
                       pir::IrPrinter& printer) const override;  // NOLINT
@@ -46,4 +41,4 @@ class PaddleDialect : public pir::Dialect {
 }  // namespace dialect
 }  // namespace paddle
 
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::PaddleDialect)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OperatorDialect)

@@ -44,7 +44,7 @@ namespace framework {
 
 TEST(VJP, TanhBackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program((ctx));
   paddle::dialect::APIBuilder::Instance().SetProgram(&program);
 
@@ -99,7 +99,7 @@ TEST(VJP, TanhBackwardTest) {
 
 TEST(VJP, Tanh_BackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program((ctx));
   paddle::dialect::APIBuilder::Instance().SetProgram(&program);
 
@@ -154,7 +154,7 @@ TEST(VJP, Tanh_BackwardTest) {
 
 TEST(VJP, MeanBackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program((ctx));
   paddle::dialect::APIBuilder::Instance().SetProgram(&program);
 
@@ -211,7 +211,7 @@ TEST(VJP, MeanBackwardTest) {
 
 TEST(VJP, ConcatBackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program((ctx));
   paddle::dialect::APIBuilder::Instance().SetProgram(&program);
 
@@ -274,7 +274,7 @@ TEST(VJP, ConcatBackwardTest) {
 
 TEST(VJP, AddBackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program((ctx));
   paddle::dialect::APIBuilder::Instance().SetProgram(&program);
 
@@ -339,7 +339,7 @@ TEST(VJP, AddBackwardTest) {
 
 TEST(VJP, Add_BackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program((ctx));
   paddle::dialect::APIBuilder::Instance().SetProgram(&program);
 

@@ -57,7 +57,7 @@ bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
 TEST(program_test, program) {
   // Prepare ir env
   pir::IrContext* ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program(ctx);
   pir::Builder builder(ctx, program.block());
   pir::Block* block = program.block();
@@ -138,7 +138,7 @@ TEST(program_test, program) {
 TEST(program_test, mutable_attribute) {
   // Prepare ir env
   pir::IrContext* ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program(ctx);
   pir::Builder builder = pir::Builder(ctx, program.block());
   pir::Block* block = program.block();

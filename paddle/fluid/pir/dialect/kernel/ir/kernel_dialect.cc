@@ -26,12 +26,12 @@ REGISTER_FILE_SYMBOLS(kernel_dialect);
 namespace paddle {
 namespace dialect {
 
-PaddleKernelDialect::PaddleKernelDialect(pir::IrContext *context)
-    : pir::Dialect(name(), context, pir::TypeId::get<PaddleKernelDialect>()) {
+KernelDialect::KernelDialect(pir::IrContext *context)
+    : pir::Dialect(name(), context, pir::TypeId::get<KernelDialect>()) {
   initialize();
 }
 
-void PaddleKernelDialect::initialize() {
+void KernelDialect::initialize() {
   RegisterTypes<paddle::dialect::AllocatedDenseTensorType>();
   RegisterTypes<paddle::dialect::AllocatedDenseTensorType,
                 paddle::dialect::AllocatedSelectedRowsType>();
@@ -39,7 +39,7 @@ void PaddleKernelDialect::initialize() {
   RegisterAttributes<paddle::dialect::KernelAttribute>();
 }
 
-void PaddleKernelDialect::PrintType(pir::Type type, std::ostream &os) const {
+void KernelDialect::PrintType(pir::Type type, std::ostream &os) const {
   if (type.isa<AllocatedDenseTensorType>()) {
     AllocatedDenseTensorType tensor_type =
         type.dyn_cast<AllocatedDenseTensorType>();
@@ -67,16 +67,16 @@ void PaddleKernelDialect::PrintType(pir::Type type, std::ostream &os) const {
   }
 }
 
-void PaddleKernelDialect::PrintAttribute(pir::Attribute attr,
-                                         std::ostream &os) const {
+void KernelDialect::PrintAttribute(pir::Attribute attr,
+                                   std::ostream &os) const {
   phi::KernelKey kernel = attr.dyn_cast<KernelAttribute>().data();
 
   os << "<backend:" << kernel.backend() << "|layout:" << kernel.layout()
      << "|dtype:" << kernel.dtype() << ">";
 }
 
-void PaddleKernelDialect::PrintOperation(pir::Operation *op,
-                                         pir::IrPrinter &printer) const {
+void KernelDialect::PrintOperation(pir::Operation *op,
+                                   pir::IrPrinter &printer) const {
   if (op->dyn_cast<PhiKernelOp>() || op->dyn_cast<LegacyKernelOp>()) {
     auto &os = printer.os;
     printer.PrintOpResult(op);
@@ -117,4 +117,4 @@ void PaddleKernelDialect::PrintOperation(pir::Operation *op,
 }  // namespace dialect
 }  // namespace paddle
 
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::PaddleKernelDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::KernelDialect)

@@ -429,7 +429,7 @@ void BindUtils(pybind11::module *m) {
          []() { APIBuilder::Instance().ResetInsertionPointToEnd(); });
   m->def("register_paddle_dialect", []() {
     pir::IrContext::Instance()
-        ->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+        ->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   });
   m->def(
       "translate_to_new_ir",

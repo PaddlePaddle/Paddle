@@ -16,11 +16,11 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/attribute_storage.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/pir/core/ir_parser.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/ir_parser.h"
 
 namespace paddle {
 namespace dialect {
@@ -86,7 +86,7 @@ class PlaceAttribute : public pir::Attribute {
     return storage() < right.storage();
   }
 
-  static PlaceAttribute Parse(ir::IrParser &parser);  // NOLINT
+  static PlaceAttribute Parse(pir::IrParser &parser);  // NOLINT
 
   phi::Place data() const;
 };

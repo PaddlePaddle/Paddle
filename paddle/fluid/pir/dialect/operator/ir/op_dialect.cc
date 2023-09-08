@@ -26,12 +26,12 @@
 namespace paddle {
 namespace dialect {
 
-PaddleDialect::PaddleDialect(pir::IrContext *context)
-    : pir::Dialect(name(), context, pir::TypeId::get<PaddleDialect>()) {
+OperatorDialect::OperatorDialect(pir::IrContext *context)
+    : pir::Dialect(name(), context, pir::TypeId::get<OperatorDialect>()) {
   initialize();
 }
 
-void PaddleDialect::initialize() {
+void OperatorDialect::initialize() {
   RegisterTypes<paddle::dialect::DenseTensorType>();
   RegisterTypes<paddle::dialect::SelectedRowsType>();
 
@@ -82,7 +82,8 @@ void OperatorDialect::PrintType(pir::Type type, std::ostream &os) const {
   }
 }
 
-void OperatorDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
+void OperatorDialect::PrintAttribute(pir::Attribute attr,
+                                     std::ostream &os) const {
   os << "(" << attr.dialect().name();
   os << '.';
   if (auto int_array_attr = attr.dyn_cast<IntArrayAttribute>()) {
@@ -107,8 +108,57 @@ void OperatorDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) cons
   }
 }
 
+pir::Type OperatorDialect::ParseType(pir::IrParser &parser) {  // NOLINT
+  parser.ConsumeAToken("pd.tensor");
+  parser.ConsumeAToken("<");
+  std::vector<int> dim{};
+  Token dim_token = parser.PeekToken();
+  while (dim_token.token_type_ == DIGIT) {
+    dim_token = parser.ConsumeToken();
+    dim.push_back(atoi(dim_token.val_.c_str()));
+    std::string peek_token_val = parser.PeekToken().val_;
+    if (peek_token_val[0] != 'x') {
+      break;
+    }
+    parser.ConsumeToken();
+    parser.lexer->Unget(peek_token_val.size() - 1);
+    if (parser.PeekToken().token_type_ != DIGIT) {
+      break;
+    }
+  }
+  phi::DDim ddim = phi::make_ddim(dim);
+  pir::Type dtype = parser.ParseType();
+  std::vector<std::vector<size_t>> lod;
+  std::vector<size_t> lodv;
+  lodv.push_back(0);
+  lod.push_back(lodv);
+  parser.ConsumeAToken(">");
+  return DenseTensorType::get(
+      parser.ctx, dtype, ddim, phi::DataLayout::UNDEFINED, lod, 0);
+}
+
+oir::Attribute OperatorDialect::ParseAttribute(
+    pir::IrParser &parser) {  // NOLINT
+  std::string type_name = parser.ConsumeToken().val_;
+  std::string attribute_name =
+      type_name.substr(type_name.find('.') + 1, std::string::npos);
+  parser.ConsumeAToken(")");
+  if (attribute_name == "IntArray") {
+    return IntArrayAttribute::Parse(parser);
+  } else if (attribute_name == "DataType") {
+    return DataTypeAttribute::Parse(parser);
+  } else if (attribute_name == "Place") {
+    return PlaceAttribute::Parse(parser);
+  } else if (attribute_name == "DataLayout") {
+    return DataLayoutAttribute::Parse(parser);
+  } else {
+    IR_THROW("No function to parse " + attribute_name + " exists!" +
+             parser.GetErrorLocationInfo());
+  }
+}
+
 void OperatorDialect::PrintOperation(pir::Operation *op,
-                                   pir::IrPrinter &printer) const {
+                                     pir::IrPrinter &printer) const {
   if (auto if_op = op->dyn_cast<IfOp>()) {
     if_op.Print(printer);
   } else {
@@ -119,4 +169,4 @@ void OperatorDialect::PrintOperation(pir::Operation *op,
 }  // namespace dialect
 }  // namespace paddle
 
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::PaddleDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OperatorDialect)

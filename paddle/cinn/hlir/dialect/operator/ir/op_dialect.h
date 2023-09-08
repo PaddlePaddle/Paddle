@@ -19,9 +19,9 @@
 namespace cinn {
 namespace dialect {
 
-class CinnDialect : public ::pir::Dialect {
+class OperatorDialect : public ::pir::Dialect {
  public:
-  explicit CinnDialect(::pir::IrContext* context);
+  explicit OperatorDialect(::pir::IrContext* context);
 
   static const char* name() { return "cinn_op"; }
 
@@ -32,4 +32,4 @@ class CinnDialect : public ::pir::Dialect {
 }  // namespace dialect
 }  // namespace cinn
 
-IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::CinnDialect)
+IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::OperatorDialect)

@@ -205,7 +205,7 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
 
 TEST(pass_manager, PassManager) {
   pir::IrContext *ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program(ctx);
   pir::Builder builder = pir::Builder(ctx, program.block());
   BuildProgram(builder);

@@ -14,11 +14,11 @@
 
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/pir/core/builtin_op.h"
@@ -64,8 +64,8 @@ static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
 }
 
 static bool IsNoNeedBuffer(pir::Operation* op, pir::Value value) {
-  if (op->dialect()->name().compare(
-          paddle::dialect::PaddleKernelDialect::name()) != 0) {
+  if (op->dialect()->name().compare(paddle::dialect::KernelDialect::name()) !=
+      0) {
     VLOG(8) << op->name()
             << "is not a kernel_dialect op, no need buffer is false";
     return false;
@@ -96,8 +96,8 @@ static bool IsNoNeedBuffer(pir::Operation* op, pir::Value value) {
 static std::unordered_set<pir::Value> GetSkipDeletionValues(pir::Block* block) {
   std::unordered_set<pir::Value> skip_dels;
   for (auto& op : *block) {
-    if (op->dialect()->name().compare(
-            paddle::dialect::PaddleKernelDialect::name()) != 0) {
+    if (op->dialect()->name().compare(paddle::dialect::KernelDialect::name()) !=
+        0) {
       continue;
     }
     IR_ENFORCE(op->attributes().count("op_name") > 0,
@@ -128,8 +128,8 @@ GetEagerDeletionValues(pir::Block* block) {
   std::unordered_map<pir::Value, pir::Operation*> del_value_2_op;
   for (auto& op : *block) {
     std::string upper_op_name = op->name();
-    if (op->dialect()->name().compare(
-            paddle::dialect::PaddleKernelDialect::name()) == 0) {
+    if (op->dialect()->name().compare(paddle::dialect::KernelDialect::name()) ==
+        0) {
       IR_ENFORCE(op->attributes().count("op_name") > 0,
                  "kernel_dialect op should own an 'op_name' attribute.");
       upper_op_name = op->attributes()
@@ -185,8 +185,8 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
       visited_values.insert(op->operand_source(i));
     }
 
-    if (op->dialect()->name().compare(
-            paddle::dialect::PaddleKernelDialect::name()) != 0) {
+    if (op->dialect()->name().compare(paddle::dialect::KernelDialect::name()) !=
+        0) {
       VLOG(6) << op->name()
               << "is not a kernel_dialect op, inplace only support "
                  "kernel_dialect operators";

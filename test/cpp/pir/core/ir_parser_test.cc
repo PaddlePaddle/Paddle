@@ -21,17 +21,17 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
-#include "paddle/ir/core/attribute.h"
-#include "paddle/ir/core/attribute_base.h"
-#include "paddle/ir/core/builtin_attribute.h"
-#include "paddle/ir/core/builtin_attribute_storage.h"
-#include "paddle/ir/core/builtin_dialect.h"
-#include "paddle/ir/core/dialect.h"
-#include "paddle/ir/core/ir_parser.h"
-#include "paddle/ir/core/ir_printer.h"
-#include "paddle/ir/core/utils.h"
+#include "paddle/pir/core/attribute.h"
+#include "paddle/pir/core/attribute_base.h"
+#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/builtin_attribute_storage.h"
+#include "paddle/pir/core/builtin_dialect.h"
+#include "paddle/pir/core/dialect.h"
+#include "paddle/pir/core/ir_parser.h"
+#include "paddle/pir/core/ir_printer.h"
+#include "paddle/pir/core/utils.h"
 
-using PaddleDialect = paddle::dialect::PaddleDialect;
+using OperatorDialect = paddle::dialect::OperatorDialect;
 using AttributeStorage = ir::AttributeStorage;
 
 enum TestType {
@@ -137,7 +137,7 @@ bool ParserTest::ConsumeTestTask(TestTask* test_task, ir::IrContext* ctx) {
 
 TEST(IrParserTest, TestParserByFile) {
   ir::IrContext* ctx = ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<PaddleDialect>();
+  ctx->GetOrRegisterDialect<OperatorDialect>();
   ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
   std::ifstream is("TestParserText.txt");
   EXPECT_TRUE(is.is_open());

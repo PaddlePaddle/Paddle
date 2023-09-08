@@ -94,6 +94,63 @@ class AddNWithKernelOp : public pir::Op<AddNWithKernelOp,
   static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 
+class FusedGemmEpilogueOp
+    : public pir::Op<FusedGemmEpilogueOp,
+                     paddle::dialect::OpYamlInfoInterface,
+                     paddle::dialect::InferMetaInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd.fused_gemm_epilogue"; }
+  static const char *attributes_name[3];
+  static constexpr uint32_t attributes_num = 3;
+  static OpInfoTuple GetOpInfo();
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::OpResult x_,
+                    pir::OpResult y_,
+                    pir::OpResult bias_,
+                    pir::AttributeMap attributes);
+  void Verify();
+  pir::Value x() { return operand_source(0); }
+  pir::Value y() { return operand_source(1); }
+  pir::Value bias() { return operand_source(2); }
+  pir::OpResult out() { return result(0); }
+  pir::OpResult reserve_space() { return result(1); }
+
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+};
+
+class FusedGemmEpilogueGradOp
+    : public pir::Op<FusedGemmEpilogueGradOp,
+                     paddle::dialect::OpYamlInfoInterface,
+                     paddle::dialect::InferMetaInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd.fused_gemm_epilogue_grad"; }
+  static const char *attributes_name[3];
+  static constexpr uint32_t attributes_num = 3;
+  static OpInfoTuple GetOpInfo();
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::OpResult x_,
+                    pir::OpResult y_,
+                    pir::OpResult reserve_space_,
+                    pir::OpResult out_grad_,
+                    pir::AttributeMap attributes);
+  void Verify();
+  pir::Value x() { return operand_source(0); }
+  pir::Value y() { return operand_source(1); }
+  pir::Value reserve_space() { return operand_source(2); }
+  pir::Value out_grad() { return operand_source(3); }
+  pir::OpResult x_grad() { return result(0); }
+  pir::OpResult y_grad() { return result(1); }
+  pir::OpResult bias_grad() { return result(2); }
+
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+};
+
 class SplitGradOp : public pir::Op<SplitGradOp, OpYamlInfoInterface> {
  public:
   using Op::Op;
@@ -141,5 +198,7 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)
 #endif

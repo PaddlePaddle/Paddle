@@ -211,7 +211,7 @@ IR_DEFINE_EXPLICIT_TYPE_ID(IntegerDialect)
 
 TEST(type_test, custom_type_dialect) {
   pir::IrContext *ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
   // Test 1: Test the function of IrContext to register Dialect.
   ctx->GetOrRegisterDialect<IntegerDialect>();
@@ -243,7 +243,7 @@ TEST(type_test, custom_type_dialect) {
 
 TEST(type_test, pd_op_dialect) {
   pir::IrContext *ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Type fp32_dtype = pir::Float32Type::get(ctx);
   phi::DDim dims = {2, 2};
   phi::DataLayout data_layout = phi::DataLayout::NCHW;

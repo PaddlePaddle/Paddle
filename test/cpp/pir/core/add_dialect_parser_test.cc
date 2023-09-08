@@ -18,27 +18,27 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
-#include "paddle/ir/core/attribute.h"
-#include "paddle/ir/core/attribute_base.h"
-#include "paddle/ir/core/builtin_attribute.h"
-#include "paddle/ir/core/builtin_attribute_storage.h"
-#include "paddle/ir/core/builtin_dialect.h"
-#include "paddle/ir/core/dialect.h"
-#include "paddle/ir/core/ir_parser.h"
-#include "paddle/ir/core/utils.h"
+#include "paddle/pir/core/attribute.h"
+#include "paddle/pir/core/attribute_base.h"
+#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/builtin_attribute_storage.h"
+#include "paddle/pir/core/builtin_dialect.h"
+#include "paddle/pir/core/dialect.h"
+#include "paddle/pir/core/ir_parser.h"
+#include "paddle/pir/core/utils.h"
 
-using PaddleDialect = paddle::dialect::PaddleDialect;
-using AttributeStorage = ir::AttributeStorage;
+using OperatorDialect = paddle::dialect::OperatorDialect;
+using AttributeStorage = pir::AttributeStorage;
 
-class TestParserDialect : public ir::Dialect {
+class TestParserDialect : public pir::Dialect {
  public:
-  explicit TestParserDialect(ir::IrContext* context);
+  explicit TestParserDialect(pir::IrContext* context);
 
   static const char* name() { return "tp"; }
 
-  void PrintAttribute(ir::Attribute attr, std::ostream& os) const;
+  void PrintAttribute(pir::Attribute attr, std::ostream& os) const;
 
-  ir::Attribute ParseAttribute(ir::IrParser& parser);  // NOLINT
+  pir::Attribute ParseAttribute(pir::IrParser& parser);  // NOLINT
 
  private:
   void initialize();
@@ -49,7 +49,7 @@ IR_DEFINE_EXPLICIT_TYPE_ID(TestParserDialect);
 
 DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(CharAttributeStorage, char);
 
-class CharAttribute : public ir::Attribute {
+class CharAttribute : public pir::Attribute {
  public:
   using Attribute::Attribute;
 
@@ -57,7 +57,7 @@ class CharAttribute : public ir::Attribute {
 
   char data() const;
 
-  static CharAttribute Parse(ir::IrParser& parser) {  // NOLINT
+  static CharAttribute Parse(pir::IrParser& parser) {  // NOLINT
     std::string char_val = parser.ConsumeToken().val_;
     return CharAttribute::get(parser.ctx, char_val[0]);
   }
@@ -71,19 +71,19 @@ void TestParserDialect::initialize() { RegisterAttributes<CharAttribute>(); }
 
 char CharAttribute::data() const { return storage()->data(); }
 
-TestParserDialect::TestParserDialect(ir::IrContext* context)
-    : ir::Dialect(name(), context, ir::TypeId::get<TestParserDialect>()) {
+TestParserDialect::TestParserDialect(pir::IrContext* context)
+    : pir::Dialect(name(), context, pir::TypeId::get<TestParserDialect>()) {
   initialize();
 }
 
-void TestParserDialect::PrintAttribute(ir::Attribute attr,
+void TestParserDialect::PrintAttribute(pir::Attribute attr,
                                        std::ostream& os) const {
   auto byte_attr = attr.dyn_cast<CharAttribute>();
   os << "(tp.char)" << byte_attr.data();
 }
 
 ir::Attribute TestParserDialect::ParseAttribute(
-    ir::IrParser& parser) {  // NOLINT
+    pir::IrParser& parser) {  // NOLINT
   std::string type_name = parser.ConsumeToken().val_;
   std::string parenthesis_token_val = parser.ConsumeToken().val_;
   IR_ENFORCE(parenthesis_token_val == ")",
@@ -93,9 +93,9 @@ ir::Attribute TestParserDialect::ParseAttribute(
 }
 
 TEST(IrParserTest, AddAttribute) {
-  ir::IrContext* ctx = ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<PaddleDialect>();
-  ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
   ctx->GetOrRegisterDialect<TestParserDialect>();
 
   std::string op_str =
@@ -104,8 +104,8 @@ TEST(IrParserTest, AddAttribute) {
       "pd.tensor<64x3x7x7xf32>";
   std::stringstream ss;
   ss << op_str;
-  ir::IrParser* parser = new ir::IrParser(ctx, ss);
-  ir::Operation* op = parser->ParseOperation();
+  pir::IrParser* parser = new pir::IrParser(ctx, ss);
+  pir::Operation* op = parser->ParseOperation();
   std::stringstream ssp;
   op->Print(ssp);
   delete parser;

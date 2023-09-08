@@ -39,7 +39,7 @@ using ProgramInfo =
     std::tuple<std::shared_ptr<::pir::Program>, std::vector<GroupPtr>>;
 ProgramInfo BuildProgram() {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   auto program = std::make_shared<::pir::Program>(ctx);
   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
 

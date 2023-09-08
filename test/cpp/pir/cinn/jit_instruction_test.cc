@@ -35,7 +35,7 @@
 
 std::unique_ptr<::pir::Program> BuildProgram() {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   auto program = std::make_unique<::pir::Program>(ctx);
   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
 

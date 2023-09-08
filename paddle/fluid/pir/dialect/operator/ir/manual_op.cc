@@ -449,32 +449,32 @@ OpInfoTuple FusedGemmEpilogueOp::GetOpInfo() {
       inputs, attributes, outputs, run_time_info, "fused_gemm_epilogue");
 }
 
-void FusedGemmEpilogueOp::Build(ir::Builder &builder,
-                                ir::OperationArgument &argument,
-                                ir::OpResult x_,
-                                ir::OpResult y_,
-                                ir::OpResult bias_,
-                                ir::AttributeMap attributes) {
-  bool trans_x = attributes.at("trans_x").dyn_cast<ir::BoolAttribute>().data();
+void FusedGemmEpilogueOp::Build(pir::Builder &builder,
+                                pir::OperationArgument &argument,
+                                pir::OpResult x_,
+                                pir::OpResult y_,
+                                pir::OpResult bias_,
+                                pir::AttributeMap attributes) {
+  bool trans_x = attributes.at("trans_x").dyn_cast<pir::BoolAttribute>().data();
 
-  bool trans_y = attributes.at("trans_y").dyn_cast<ir::BoolAttribute>().data();
+  bool trans_y = attributes.at("trans_y").dyn_cast<pir::BoolAttribute>().data();
 
   std::string activation =
-      attributes.at("activation").dyn_cast<ir::StrAttribute>().AsString();
+      attributes.at("activation").dyn_cast<pir::StrAttribute>().AsString();
 
   VLOG(4) << "Builder construction inputs";
-  std::vector<ir::OpResult> argument_inputs = {x_, y_, bias_};
+  std::vector<pir::OpResult> argument_inputs = {x_, y_, bias_};
   argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
 
   VLOG(4) << "Builder construction attributes";
-  ir::Attribute attr_trans_x =
-      ir::BoolAttribute::get(ir::IrContext::Instance(), trans_x);
+  pir::Attribute attr_trans_x =
+      pir::BoolAttribute::get(pir::IrContext::Instance(), trans_x);
   argument.AddAttribute("trans_x", attr_trans_x);
-  ir::Attribute attr_trans_y =
-      ir::BoolAttribute::get(ir::IrContext::Instance(), trans_y);
+  pir::Attribute attr_trans_y =
+      pir::BoolAttribute::get(pir::IrContext::Instance(), trans_y);
   argument.AddAttribute("trans_y", attr_trans_y);
-  ir::Attribute attr_activation =
-      ir::StrAttribute::get(ir::IrContext::Instance(), activation);
+  pir::Attribute attr_activation =
+      pir::StrAttribute::get(pir::IrContext::Instance(), activation);
   argument.AddAttribute("activation", attr_activation);
 
   VLOG(4) << "Builder construction outputs";
@@ -541,9 +541,9 @@ void FusedGemmEpilogueOp::Build(ir::Builder &builder,
       &meta_out,
       activation == "none" ? nullptr : &meta_reserve_space);
 
-  std::vector<ir::Type> argument_outputs;
-  ir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
-      ir::IrContext::Instance(),
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
       paddle::dialect::TransToIrDataType(dense_out.dtype()),
       dense_out.dims(),
       dense_out.layout(),
@@ -551,11 +551,11 @@ void FusedGemmEpilogueOp::Build(ir::Builder &builder,
       dense_out.offset());
   argument_outputs.push_back(out_dense_tensor_type);
 
-  ir::Type reserve_space_dense_tensor_type =
+  pir::Type reserve_space_dense_tensor_type =
       activation == "none"
-          ? ir::Type()
+          ? pir::Type()
           : paddle::dialect::DenseTensorType::get(
-                ir::IrContext::Instance(),
+                pir::IrContext::Instance(),
                 paddle::dialect::TransToIrDataType(dense_reserve_space.dtype()),
                 dense_reserve_space.dims(),
                 dense_reserve_space.layout(),
@@ -600,15 +600,15 @@ void FusedGemmEpilogueOp::Verify() {
   {
     auto &attributes = this->attributes();
     PADDLE_ENFORCE(attributes.count("trans_x") > 0 &&
-                       attributes.at("trans_x").isa<ir::BoolAttribute>(),
+                       attributes.at("trans_x").isa<pir::BoolAttribute>(),
                    phi::errors::PreconditionNotMet(
                        "Type of attribute: trans_x is not right."));
     PADDLE_ENFORCE(attributes.count("trans_y") > 0 &&
-                       attributes.at("trans_y").isa<ir::BoolAttribute>(),
+                       attributes.at("trans_y").isa<pir::BoolAttribute>(),
                    phi::errors::PreconditionNotMet(
                        "Type of attribute: trans_y is not right."));
     PADDLE_ENFORCE(attributes.count("activation") > 0 &&
-                       attributes.at("activation").isa<ir::StrAttribute>(),
+                       attributes.at("activation").isa<pir::StrAttribute>(),
                    phi::errors::PreconditionNotMet(
                        "Type of attribute: activation is not right."));
   }
@@ -690,34 +690,34 @@ OpInfoTuple FusedGemmEpilogueGradOp::GetOpInfo() {
       inputs, attributes, outputs, run_time_info, "fused_gemm_epilogue_grad");
 }
 
-void FusedGemmEpilogueGradOp::Build(ir::Builder &builder,
-                                    ir::OperationArgument &argument,
-                                    ir::OpResult x_,
-                                    ir::OpResult y_,
-                                    ir::OpResult reserve_space_,
-                                    ir::OpResult out_grad_,
-                                    ir::AttributeMap attributes) {
-  bool trans_x = attributes.at("trans_x").dyn_cast<ir::BoolAttribute>().data();
+void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
+                                    pir::OperationArgument &argument,
+                                    pir::OpResult x_,
+                                    pir::OpResult y_,
+                                    pir::OpResult reserve_space_,
+                                    pir::OpResult out_grad_,
+                                    pir::AttributeMap attributes) {
+  bool trans_x = attributes.at("trans_x").dyn_cast<pir::BoolAttribute>().data();
 
-  bool trans_y = attributes.at("trans_y").dyn_cast<ir::BoolAttribute>().data();
+  bool trans_y = attributes.at("trans_y").dyn_cast<pir::BoolAttribute>().data();
 
   std::string activation_grad =
-      attributes.at("activation_grad").dyn_cast<ir::StrAttribute>().AsString();
+      attributes.at("activation_grad").dyn_cast<pir::StrAttribute>().AsString();
 
   VLOG(4) << "Builder construction inputs";
-  std::vector<ir::OpResult> argument_inputs = {
+  std::vector<pir::OpResult> argument_inputs = {
       x_, y_, reserve_space_, out_grad_};
   argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
 
   VLOG(4) << "Builder construction attributes";
-  ir::Attribute attr_trans_x =
-      ir::BoolAttribute::get(ir::IrContext::Instance(), trans_x);
+  pir::Attribute attr_trans_x =
+      pir::BoolAttribute::get(pir::IrContext::Instance(), trans_x);
   argument.AddAttribute("trans_x", attr_trans_x);
-  ir::Attribute attr_trans_y =
-      ir::BoolAttribute::get(ir::IrContext::Instance(), trans_y);
+  pir::Attribute attr_trans_y =
+      pir::BoolAttribute::get(pir::IrContext::Instance(), trans_y);
   argument.AddAttribute("trans_y", attr_trans_y);
-  ir::Attribute attr_activation_grad =
-      ir::StrAttribute::get(ir::IrContext::Instance(), activation_grad);
+  pir::Attribute attr_activation_grad =
+      pir::StrAttribute::get(pir::IrContext::Instance(), activation_grad);
   argument.AddAttribute("activation_grad", attr_activation_grad);
 
   VLOG(4) << "Builder construction outputs";
@@ -810,9 +810,9 @@ void FusedGemmEpilogueGradOp::Build(ir::Builder &builder,
                                       &meta_y_grad,
                                       &meta_bias_grad);
 
-  std::vector<ir::Type> argument_outputs;
-  ir::Type x_grad_dense_tensor_type = paddle::dialect::DenseTensorType::get(
-      ir::IrContext::Instance(),
+  std::vector<pir::Type> argument_outputs;
+  pir::Type x_grad_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
       paddle::dialect::TransToIrDataType(dense_x_grad.dtype()),
       dense_x_grad.dims(),
       dense_x_grad.layout(),
@@ -820,8 +820,8 @@ void FusedGemmEpilogueGradOp::Build(ir::Builder &builder,
       dense_x_grad.offset());
   argument_outputs.push_back(x_grad_dense_tensor_type);
 
-  ir::Type y_grad_dense_tensor_type = paddle::dialect::DenseTensorType::get(
-      ir::IrContext::Instance(),
+  pir::Type y_grad_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
       paddle::dialect::TransToIrDataType(dense_y_grad.dtype()),
       dense_y_grad.dims(),
       dense_y_grad.layout(),
@@ -829,8 +829,8 @@ void FusedGemmEpilogueGradOp::Build(ir::Builder &builder,
       dense_y_grad.offset());
   argument_outputs.push_back(y_grad_dense_tensor_type);
 
-  ir::Type bias_grad_dense_tensor_type = paddle::dialect::DenseTensorType::get(
-      ir::IrContext::Instance(),
+  pir::Type bias_grad_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
       paddle::dialect::TransToIrDataType(dense_bias_grad.dtype()),
       dense_bias_grad.dims(),
       dense_bias_grad.layout(),

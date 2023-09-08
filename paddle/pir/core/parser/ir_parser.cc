@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/core/ir_parser.h"
+#include "paddle/pir/core/ir_parser.h"
 
-#include "paddle/ir/core/builtin_dialect.h"
-#include "paddle/ir/core/builtin_type.h"
+#include "paddle/pir/core/builtin_dialect.h"
+#include "paddle/pir/core/builtin_type.h"
 
-namespace ir {
+namespace pir {
 IrParser::IrParser(IrContext* ctx, std::istream& is) {
   lexer.reset(new Lexer{is});
   this->ctx = ctx;
@@ -218,7 +218,7 @@ Operation* IrParser::ParseOperation() {
 
   std::vector<OpResult> inputs = ParseOpRandList();
 
-  ir::AttributeMap attributeMap = ParseAttributeMap();
+  pir::AttributeMap attributeMap = ParseAttributeMap();
 
   ConsumeAToken(":");
   ConsumeAToken("(");
@@ -348,4 +348,4 @@ std::unique_ptr<Program> Program::Parse(std::istream& is, IrContext* ctx) {
   return parser.ParseProgram();
 }
 
-}  // namespace ir
+}  // namespace pir

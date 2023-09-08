@@ -1025,7 +1025,7 @@ void BuildOpFuncList(
   vec_func_list->reserve(block->size());
   pir::IrContext* ctx = pir::IrContext::Instance();
 
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
   for (auto op : *block) {
     OpFuncNode op_func_node;

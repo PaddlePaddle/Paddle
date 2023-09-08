@@ -56,7 +56,7 @@ TEST(program_test, program) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::Program program((ctx));
 
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
   pir::Builder builder = pir::Builder(ctx, program.block());
 
@@ -111,9 +111,9 @@ TEST(dialect_attr, attr) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::Program program((ctx));
 
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   auto kernel_dialect =
-      ctx->GetOrRegisterDialect<paddle::dialect::PaddleKernelDialect>();
+      ctx->GetOrRegisterDialect<paddle::dialect::KernelDialect>();
 
   phi::KernelKey kernel_key(
       phi::Backend::CPU, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT32);
@@ -150,7 +150,7 @@ TEST(kernel_dialect, legacy_op_test) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::Program program((ctx));
 
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   phi::KernelKey kernel_key(
       phi::Backend::CPU, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT32);
 

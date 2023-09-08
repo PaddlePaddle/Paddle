@@ -48,7 +48,7 @@ phi::Scalar ScalarAttribute::data() {
   }
 }
 
-IntArrayAttribute IntArrayAttribute::Parse(ir::IrParser &parser) {  // NOLINT
+IntArrayAttribute IntArrayAttribute::Parse(pir::IrParser &parser) {  // NOLINT
   Token buket_token = parser.ConsumeToken();
   std::vector<int32_t> vec{};
   while (parser.PeekToken().val_ != "]") {
@@ -66,7 +66,7 @@ IntArrayAttribute IntArrayAttribute::Parse(ir::IrParser &parser) {  // NOLINT
 //                       |int32|uint64|int64|float32|complex64
 //                       |complex128|Undefined|psting|flaot16
 //                       |bfloat16|num_data_types|all_dtype
-DataTypeAttribute DataTypeAttribute::Parse(ir::IrParser &parser) {  // NOLINT
+DataTypeAttribute DataTypeAttribute::Parse(pir::IrParser &parser) {  // NOLINT
   std::unordered_map<std::string, phi::DataType> StringToDataType{
       {"bool", phi::DataType::BOOL},
       {"uint8", phi::DataType::UINT8},
@@ -96,7 +96,7 @@ DataTypeAttribute DataTypeAttribute::Parse(ir::IrParser &parser) {  // NOLINT
 // Parse a PlaceAttribute
 // PlaceAttribute   :=    Place(cpu)|Place(gpu:0)|Place(gpu_pinned)
 //                        |Place(xpu:0)|Place(ipu:0)|Place(:0)|undefined
-PlaceAttribute PlaceAttribute::Parse(ir::IrParser &parser) {  // NOLINT
+PlaceAttribute PlaceAttribute::Parse(pir::IrParser &parser) {  // NOLINT
   std::unordered_map<std::string, phi::Place> StringToPlace{
       {"cpu", phi::CPUPlace{}},
       {"gpu", phi::GPUPlace{}},
@@ -126,7 +126,7 @@ PlaceAttribute PlaceAttribute::Parse(ir::IrParser &parser) {  // NOLINT
 //                           |SPARSE_COO|SPARSE_CSR|NDHWC
 //                           |NCDHW|PSTRING_UNION|STRIDED
 DataLayoutAttribute DataLayoutAttribute::Parse(
-    ir::IrParser &parser) {  // NOLINT
+    pir::IrParser &parser) {  // NOLINT
   std::unordered_map<std::string, phi::DataLayout> StringToDataLayout{
       {"NHWC", phi::DataLayout::kNHWC},
       {"NCHW", phi::DataLayout::kNCHW},

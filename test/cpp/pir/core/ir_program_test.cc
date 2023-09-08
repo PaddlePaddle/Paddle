@@ -75,7 +75,7 @@ TEST(program_test, program) {
       ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
   builtin_dialect->RegisterOp<AddOp>();
   pir::Dialect *paddle_dialect =
-      ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+      ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
   // (2) Create an empty program object
   pir::Program program(ctx);
@@ -263,7 +263,7 @@ TEST(program_test, slice_combine_test) {
 
 TEST(program_test, builder) {
   pir::IrContext *ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program(ctx);
   pir::Builder builder = pir::Builder(ctx, program.block());
 

@@ -100,7 +100,7 @@ TEST(assist_struct_test, symbolic_dim_mgr_simple) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Program program(ctx);
   ctx->GetOrRegisterDialect<pir::dialect::ShapeDialect>();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
   pir::SymbolicDimMgr symDimMgr(program.module_op());
   pir::dialect::SymbolicDim symDimS0 = symDimMgr.newSymbolicDim();
@@ -151,7 +151,7 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Program program(ctx);
   ctx->GetOrRegisterDialect<pir::dialect::ShapeDialect>();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Builder builder = pir::Builder(ctx, program.block());
 
   pir::dialect::SymbolicDim symDimS0 = builder.Build<pir::dialect::SymbolicDim>(

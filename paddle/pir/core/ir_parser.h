@@ -13,16 +13,16 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/ir/core/ir_context.h"
-#include "paddle/ir/core/operation.h"
-#include "paddle/ir/core/parser/lexer.h"
-#include "paddle/ir/core/program.h"
+#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/core/operation.h"
+#include "paddle/pir/core/parser/lexer.h"
+#include "paddle/pir/core/program.h"
 
-using OpResultMap = std::map<std::string, ir::OpResult>;
-using AttributeMap = std::unordered_map<std::string, ir::Attribute>;
+using OpResultMap = std::map<std::string, pir::OpResult>;
+using AttributeMap = std::unordered_map<std::string, pir::Attribute>;
 using OpAttributeInfoMap = std::map<std::string, std::string>;
 
-namespace ir {
+namespace pir {
 class IrParser {
  public:
   std::unique_ptr<Lexer> lexer;
@@ -68,4 +68,4 @@ class IrParser {
   void ConsumeAToken(std::string expect_token_val);
 };
 
-}  // namespace ir
+}  // namespace pir

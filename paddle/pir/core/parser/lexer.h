@@ -16,7 +16,7 @@
 #include <istream>
 #include <memory>
 
-#include "paddle/ir/core/parser/token.h"
+#include "paddle/pir/core/parser/token.h"
 
 class Lexer {
  private:

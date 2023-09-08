@@ -30,7 +30,7 @@ using Program = pir::Program;
 std::unique_ptr<Program> TranslateLegacyProgramToProgram(
     const LegacyProgramDesc& legacy_program) {
   pir::IrContext* ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<dialect::OperatorDialect>();
   auto program = std::make_unique<Program>(ctx);
   translator::ProgramTranslator program_translator(&legacy_program,
                                                    program.get());

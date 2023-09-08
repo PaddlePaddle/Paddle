@@ -80,7 +80,7 @@ std::vector<std::string> CheckUnregisteredOperationInBlock(
 
 std::vector<std::string> CheckUnregisteredOperation(
     pir::IrContext* ctx, const framework::ProgramDesc& legacy_program) {
-  ctx->GetOrRegisterDialect<dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<dialect::OperatorDialect>();
 
   std::vector<std::string> unregistered_ops;
   for (size_t block_idx = 0; block_idx < legacy_program.Size(); block_idx++) {

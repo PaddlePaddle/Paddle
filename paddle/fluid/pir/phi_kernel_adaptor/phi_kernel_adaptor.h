@@ -72,7 +72,7 @@ class PhiKernelAdaptor {
                &variable_list);
     pir::IrContext* ctx = pir::IrContext::Instance();
 
-    ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+    ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
     auto* dev_ctx = phi::DeviceContextPool::Instance().Get(phi::CPUPlace());
     phi::Place cpu_place(phi::AllocationType::CPU);

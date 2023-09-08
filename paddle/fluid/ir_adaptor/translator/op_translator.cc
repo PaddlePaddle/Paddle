@@ -1714,7 +1714,7 @@ struct LegacySetValueDispatcher : public OpTranscriber {
 
 OpTranslator::OpTranslator() {
   pir::IrContext* ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
   general_handler = OpTranscriber();
   special_handlers["add_n"] = AddNOpTranscriber();

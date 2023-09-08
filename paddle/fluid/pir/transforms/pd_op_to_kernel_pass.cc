@@ -791,8 +791,8 @@ std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
   auto block = prog->block();
 
   pir::IrContext* ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleKernelDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::KernelDialect>();
 
   std::unordered_map<pir::Operation*, pir::Operation*> map_op_pair;
   std::unordered_map<pir::Value, pir::OpResult> map_value_pair;
@@ -819,7 +819,7 @@ std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
       continue;
     }
 
-    // Lower from PaddleDialect to KernelDialect
+    // Lower from OperatorDialect to KernelDialect
     paddle::dialect::OpYamlInfoInterface op_info_interface =
         op_item->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
 

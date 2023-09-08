@@ -35,7 +35,7 @@
 #include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/program.h"
 
-using PaddleDialect = paddle::dialect::PaddleDialect;
+using OperatorDialect = paddle::dialect::OperatorDialect;
 using ProgramDesc = paddle::framework::ProgramDesc;
 using BlockDesc = paddle::framework::BlockDesc;
 using OpDesc = paddle::framework::OpDesc;
@@ -53,12 +53,12 @@ ProgramDesc load_from_file(const std::string &file_name) {
   return ProgramDesc(buffer);
 }
 
-TEST(PaddleDialectTest, MainProgram) {
+TEST(OperatorDialectTest, MainProgram) {
   auto p = load_from_file("resnet50_main.prog");
   EXPECT_EQ(p.Size(), 1u);
 
   pir::IrContext *ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<PaddleDialect>();
+  ctx->GetOrRegisterDialect<OperatorDialect>();
   ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
   auto program = paddle::TranslateLegacyProgramToProgram(p);
 
@@ -72,12 +72,12 @@ TEST(PaddleDialectTest, MainProgram) {
   EXPECT_GT(ss.str().size(), 0u);
 }
 
-TEST(PaddleDialectTest, StartupProgram) {
+TEST(OperatorDialectTest, StartupProgram) {
   auto p = load_from_file("resnet50_startup.prog");
   EXPECT_EQ(p.Size(), 1u);
 
   pir::IrContext *ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<PaddleDialect>();
+  ctx->GetOrRegisterDialect<OperatorDialect>();
   ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
   auto program = paddle::TranslateLegacyProgramToProgram(p);
 
@@ -114,7 +114,7 @@ TEST(IrParserTest, MainProgram) {
   auto p = load_from_file("resnet50_main.prog");
   EXPECT_EQ(p.Size(), 1u);
   ir::IrContext *ctx = ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<PaddleDialect>();
+  ctx->GetOrRegisterDialect<OperatorDialect>();
   ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
   auto program = paddle::TranslateLegacyProgramToProgram(p);
 
@@ -131,7 +131,7 @@ TEST(IrParserTest, StartupProgram) {
   auto p = load_from_file("resnet50_startup.prog");
   EXPECT_EQ(p.Size(), 1u);
   ir::IrContext *ctx = ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<PaddleDialect>();
+  ctx->GetOrRegisterDialect<OperatorDialect>();
   ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
   auto program = paddle::TranslateLegacyProgramToProgram(p);
 

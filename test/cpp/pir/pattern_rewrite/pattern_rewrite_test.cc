@@ -1112,7 +1112,7 @@ TEST(pattern_rewrite, Patterns) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   auto *test_dialect = ctx->GetOrRegisterDialect<Conv2dFusionTestDialect>();
   test_dialect->RegisterOp<paddle::dialect::Conv2dFusionOpTest>();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program(ctx);
   pir::Builder builder = pir::Builder(ctx, program.block());
   BuildProgram(builder);

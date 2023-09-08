@@ -19,9 +19,9 @@
 namespace paddle {
 namespace dialect {
 
-class PaddleKernelDialect : public pir::Dialect {
+class KernelDialect : public pir::Dialect {
  public:
-  explicit PaddleKernelDialect(pir::IrContext* context);
+  explicit KernelDialect(pir::IrContext* context);
 
   static const char* name() { return "pd_kernel"; }
 
@@ -39,4 +39,4 @@ class PaddleKernelDialect : public pir::Dialect {
 }  // namespace dialect
 }  // namespace paddle
 
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::PaddleKernelDialect)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::KernelDialect)
