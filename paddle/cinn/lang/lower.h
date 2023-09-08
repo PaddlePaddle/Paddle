@@ -74,12 +74,12 @@ std::vector<ir::LoweredFunc> LowerVec(
     const Target &target = common::DefaultHostTarget(),
     bool support_ir_schedule = false);
 
-ir::LoweredFunc Lower(const std::string &name,
-                      const std::vector<Tensor> &tensor_args,
-                      ast_gen_ius::TensorGroup *tensor_group,
-                      const Target &target = common::DefaultHostTarget());
+ir::LoweredFunc LowerToAst(const std::string &name,
+                           const std::vector<Tensor> &tensor_args,
+                           ast_gen_ius::TensorGroup *tensor_group,
+                           const Target &target = common::DefaultHostTarget());
 
-std::vector<ir::LoweredFunc> LowerVec(
+std::vector<ir::LoweredFunc> LowerToAstVec(
     const std::string &name,
     const std::vector<Tensor> &tensor_args,
     std::vector<ast_gen_ius::TensorGroup *> tensor_groups,

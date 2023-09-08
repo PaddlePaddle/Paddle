@@ -297,10 +297,10 @@ std::set<ir::Tensor> CollectTempTensorsFromCtrlDepends(
   return res;
 }
 
-ir::LoweredFunc Lower(const std::string& name,
-                      const std::vector<Tensor>& tensor_args,
-                      ast_gen_ius::TensorGroup* tensor_group,
-                      const Target& target) {
+ir::LoweredFunc LowerToAst(const std::string& name,
+                           const std::vector<Tensor>& tensor_args,
+                           ast_gen_ius::TensorGroup* tensor_group,
+                           const Target& target) {
   // Init the reduce tensors first before any process.
   for (auto& t : tensor_args) {
     InitReduceTensor(tensor_group, t, target);
@@ -325,14 +325,14 @@ ir::LoweredFunc Lower(const std::string& name,
   return result[0];
 }
 
-std::vector<ir::LoweredFunc> LowerVec(
+std::vector<ir::LoweredFunc> LowerToAstVec(
     const std::string& name,
     const std::vector<Tensor>& tensor_args,
     std::vector<ast_gen_ius::TensorGroup*> tensor_groups,
     const Target& target) {
   std::vector<ir::LoweredFunc> ret;
   for (ast_gen_ius::TensorGroup* tg : tensor_groups) {
-    ret.push_back(Lower(name, tensor_args, tg, target));
+    ret.push_back(LowerToAst(name, tensor_args, tg, target));
   }
   return ret;
 }
