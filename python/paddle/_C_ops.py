@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import core
+from paddle.base import core
 
 __all__ = []
 
-UNIFIED_APIS = ['mean']
+UNIFIED_APIS = ['mean', 'concat', 'add_n', 'scale']
 
 for name in dir(core.eager.ops):
     globals()[name] = getattr(core.eager.ops, name)

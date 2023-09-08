@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestTrilIndicesOp(OpTest):
@@ -60,8 +60,8 @@ class TestTrilIndicesOpCase2(TestTrilIndicesOp):
 class TestTrilIndicesAPICaseStatic(unittest.TestCase):
     def test_static(self):
         places = (
-            [paddle.CPUPlace(), paddle.fluid.CUDAPlace(0)]
-            if fluid.core.is_compiled_with_cuda()
+            [paddle.CPUPlace(), paddle.base.CUDAPlace(0)]
+            if base.core.is_compiled_with_cuda()
             else [paddle.CPUPlace()]
         )
         paddle.enable_static()
@@ -79,12 +79,12 @@ class TestTrilIndicesAPICaseStatic(unittest.TestCase):
 class TestTrilIndicesAPICaseDygraph(unittest.TestCase):
     def test_dygraph(self):
         places = (
-            [paddle.CPUPlace(), paddle.fluid.CUDAPlace(0)]
-            if fluid.core.is_compiled_with_cuda()
+            [paddle.CPUPlace(), paddle.base.CUDAPlace(0)]
+            if base.core.is_compiled_with_cuda()
             else [paddle.CPUPlace()]
         )
         for place in places:
-            with fluid.dygraph.base.guard(place=place):
+            with base.dygraph.base.guard(place=place):
                 out1 = paddle.tril_indices(4, 4, 2)
             expected_result1 = np.tril_indices(4, 2, 4)
             self.assertEqual((out1.numpy() == expected_result1).all(), True)
@@ -120,7 +120,7 @@ class TestTrilIndicesAPICaseDefault(unittest.TestCase):
         expected_result = np.tril_indices(4, 2)
         np.testing.assert_allclose(result, expected_result, rtol=1e-05)
 
-        with fluid.dygraph.base.guard(paddle.CPUPlace()):
+        with base.dygraph.base.guard(paddle.CPUPlace()):
             out = paddle.tril_indices(4, None, 2)
         expected_result = np.tril_indices(4, 2)
         self.assertEqual((out.numpy() == expected_result).all(), True)

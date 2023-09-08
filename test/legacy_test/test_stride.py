@@ -629,7 +629,7 @@ class TestStrideCPU(TestStride):
 
 
 @unittest.skipIf(
-    not paddle.fluid.core.is_compiled_with_cuda(),
+    not paddle.base.core.is_compiled_with_cuda(),
     "core is not compiled with CUDA",
 )
 class TestStrideGPU(TestStride):

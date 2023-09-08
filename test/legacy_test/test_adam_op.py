@@ -19,8 +19,8 @@ from eager_op_test import OpTest
 from op import Operator
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def adam_wrapper(
@@ -649,13 +649,13 @@ class TestAdamOpWithSkipUpdate(OpTest):
 
 class TestAdamOpV2(unittest.TestCase):
     def test_adam_op(self):
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         shape = [2, 3, 8, 8]
-        exe = fluid.Executor(place)
-        train_prog = fluid.Program()
-        startup = fluid.Program()
-        with fluid.program_guard(train_prog, startup):
-            with fluid.unique_name.guard():
+        exe = base.Executor(place)
+        train_prog = base.Program()
+        startup = base.Program()
+        with base.program_guard(train_prog, startup):
+            with base.unique_name.guard():
                 data = paddle.static.data(name="data", shape=shape)
                 conv = paddle.static.nn.conv2d(data, 8, 3)
                 loss = paddle.mean(conv)
@@ -684,7 +684,7 @@ class TestAdamOpV2(unittest.TestCase):
     def test_adam_op_dygraph(self):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
-        a = fluid.dygraph.to_variable(value)
+        a = base.dygraph.to_variable(value)
         linear = paddle.nn.Linear(13, 5)
 
         adam = paddle.optimizer.Adam(
@@ -732,7 +732,7 @@ class TestAdamOpV2(unittest.TestCase):
     def test_adam_with_grad_clip(self):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
-        a = fluid.dygraph.to_variable(value)
+        a = base.dygraph.to_variable(value)
         linear = paddle.nn.Linear(13, 5)
         clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
         adam = paddle.optimizer.Adam(

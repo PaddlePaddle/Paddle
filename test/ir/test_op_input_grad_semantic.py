@@ -20,7 +20,7 @@ from paddle import ir
 paddle.enable_static()
 
 
-def get_ir_program_0():
+def get_gather_program_new_ir():
     main_program, start_program = (
         paddle.static.Program(),
         paddle.static.Program(),
@@ -36,7 +36,7 @@ def get_ir_program_0():
     return newir_program
 
 
-def get_ir_program_1():
+def get_multiply_program_new_ir():
     main_program, start_program = (
         paddle.static.Program(),
         paddle.static.Program(),
@@ -54,15 +54,17 @@ def get_ir_program_1():
 
 
 class TestOpInputGradSemantic(unittest.TestCase):
-    def test_gatherop_input_grad_semantic(self):
-        newir_program = get_ir_program_0()
-        op = newir_program.block().ops[-1]
-        self.assertEqual(op.get_input_grad_semantics(), [True, False, False])
+    def test_gather_op_input_grad_semantic(self):
+        newir_program = get_gather_program_new_ir()
+        gather_op = newir_program.block().ops[-1]
+        self.assertEqual(
+            gather_op.get_input_grad_semantics(), [True, False, False]
+        )
 
-    def test_multiplyop_input_grad_semantic(self):
-        newir_program = get_ir_program_1()
-        op = newir_program.block().ops[-1]
-        self.assertEqual(op.get_input_grad_semantics(), [True, True])
+    def test_multiply_op_input_grad_semantic(self):
+        newir_program = get_multiply_program_new_ir()
+        multiply_op = newir_program.block().ops[-1]
+        self.assertEqual(multiply_op.get_input_grad_semantics(), [True, True])
 
 
 if __name__ == "__main__":
