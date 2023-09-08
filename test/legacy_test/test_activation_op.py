@@ -78,6 +78,9 @@ class TestActivation(OpTest):
     def test_check_output(self):
         self.check_output()
 
+    def test_check_output_new_ir(self):
+        self.check_output(check_new_ir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
@@ -203,6 +206,9 @@ class TestExpm1(TestActivation):
 
     def test_check_output(self):
         self.check_output()
+    
+    def test_check_output_new_ir(self):
+        self.check_output(check_new_ir=True)
 
 
 class TestExpm1_ZeroDim(TestExpm1):
