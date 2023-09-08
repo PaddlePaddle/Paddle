@@ -104,8 +104,6 @@ class CCommInitOp : public framework::OperatorBase {
       PADDLE_ENFORCE_NOT_NULL(
           var, platform::errors::InvalidArgument("Input con not be empty."));
 
-      UniqueId* comm_id = var->GetMutable<UniqueId>();
-
       int nranks = Attr<int>("nranks");
       int rid = Attr<int>("ring_id");
 

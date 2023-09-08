@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/softmax_impl.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
 
 namespace paddle {
 namespace operators {
@@ -139,7 +140,6 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     const int rank = ctx.Attr<int>("rank");
 
     const auto& place = ctx.GetPlace();
-    const auto& comm = platform::NCCLCommContext::Instance().Get(rid, place);
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     gpuStream_t stream = nullptr;
@@ -174,11 +174,6 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
                    ->stream();
       VLOG(3) << "old NCCLCommContext has rid " << rid;
     }
-
-    // use global calculate stream
-    const auto stream = static_cast<phi::GPUContext*>(
-                            platform::DeviceContextPool::Instance().Get(place))
-                            ->stream();
 
     // allocate memory on device.
     softmax->mutable_data<T>(place);

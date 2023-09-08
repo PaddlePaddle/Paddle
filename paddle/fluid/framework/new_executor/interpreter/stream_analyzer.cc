@@ -23,6 +23,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
 
 namespace paddle {
 namespace framework {
@@ -238,9 +239,8 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
         op->Attr<bool>("use_calc_stream") == false) {
       int ring_id = op->Attr<int>("ring_id");
       if (FLAGS_dynamic_static_unified_comm) {
-        .Get(ring_id, place_)
-            phi::GPUContext* dev_ctx(->dev_context(); new phi::GPUContext(
-                                         phi::GPUPlace(place_.device)));
+        phi::GPUContext* dev_ctx(
+            new phi::GPUContext(phi::GPUPlace(place_.device)));
         return dev_ctx;
       } else {
         return platform::NCCLCommContext::Instance()

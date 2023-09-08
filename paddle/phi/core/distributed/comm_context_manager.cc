@@ -54,7 +54,8 @@ void CommContextManager::CreateNCCLCommContext(
     const std::shared_ptr<Store>& store,
     const std::string& unique_comm_key,
     int rank,
-    int size) {
+    int size,
+    const std::string& hash_key) {
   auto& comm_context_manager = CommContextManager::GetInstance();
   if (comm_context_manager.Has(unique_comm_key)) {
     return;
@@ -64,7 +65,7 @@ void CommContextManager::CreateNCCLCommContext(
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetUniqueId(&nccl_id));
   }
 
-  std::string unique_key = "NCCLCommContext/" + unique_comm_key;
+  std::string unique_key = "NCCLCommContext/" + unique_comm_key + hash_key;
   if (rank == 0) {
     std::vector<uint8_t> nccl_id_wrapper(
         reinterpret_cast<uint8_t*>(&nccl_id),
