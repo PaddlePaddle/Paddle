@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestMathOpPatchesVarBase(unittest.TestCase):
@@ -29,76 +29,76 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
     def test_add(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
-            b = fluid.dygraph.to_variable(b_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
             res = a + b
             np.testing.assert_array_equal(res.numpy(), a_np + b_np)
 
     def test_sub(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
-            b = fluid.dygraph.to_variable(b_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
             res = a - b
             np.testing.assert_array_equal(res.numpy(), a_np - b_np)
 
     def test_mul(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
-            b = fluid.dygraph.to_variable(b_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
             res = a * b
             np.testing.assert_array_equal(res.numpy(), a_np * b_np)
 
     def test_div(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
-            b = fluid.dygraph.to_variable(b_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
             res = a / b
             # NOTE: Not sure why array_equal fails on windows, allclose is acceptable
             np.testing.assert_allclose(res.numpy(), a_np / b_np, rtol=1e-05)
 
     def test_add_scalar(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
             b = 0.1
             res = a + b
             np.testing.assert_array_equal(res.numpy(), a_np + b)
 
     def test_add_scalar_reverse(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
             b = 0.1
             res = b + a
             np.testing.assert_array_equal(res.numpy(), b + a_np)
 
     def test_sub_scalar(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
             b = 0.1
             res = a - b
             np.testing.assert_array_equal(res.numpy(), a_np - b)
 
     def test_sub_scalar_reverse(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
             b = 0.1
             res = b - a
             np.testing.assert_array_equal(res.numpy(), b - a_np)
 
     def test_mul_scalar(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
             b = 0.1
             res = a * b
             np.testing.assert_array_equal(res.numpy(), a_np * b)
@@ -106,8 +106,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
     # div_scalar, not equal
     def test_div_scalar(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
             b = 0.1
             res = a / b
             np.testing.assert_allclose(res.numpy(), a_np / b, rtol=1e-05)
@@ -116,27 +116,27 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
     def test_pow(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
-            b = fluid.dygraph.to_variable(b_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
             res = a**b
             np.testing.assert_allclose(res.numpy(), a_np**b_np, rtol=1e-05)
 
     def test_floor_div(self):
         a_np = np.random.randint(1, 100, size=self.shape)
         b_np = np.random.randint(1, 100, size=self.shape)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
-            b = fluid.dygraph.to_variable(b_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
             res = a // b
             np.testing.assert_array_equal(res.numpy(), a_np // b_np)
 
     def test_mod(self):
         a_np = np.random.randint(1, 100, size=self.shape)
         b_np = np.random.randint(1, 100, size=self.shape)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
-            b = fluid.dygraph.to_variable(b_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
             res = a % b
             np.testing.assert_array_equal(res.numpy(), a_np % b_np)
 
@@ -170,10 +170,10 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         a_np = np.asarray([1, 2, 3, 4, 5])
         b_np = np.asarray([1, 2, 3, 4, 5])
         c_np = np.asarray([1, 2, 2, 4, 5])
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
-            b = fluid.dygraph.to_variable(b_np)
-            c = fluid.dygraph.to_variable(c_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
+            c = base.dygraph.to_variable(c_np)
             res1 = a == b
             res2 = a == c
             np.testing.assert_array_equal(res1.numpy(), a_np == b_np)
@@ -183,10 +183,10 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         a_np = np.asarray([1, 2, 3, 4, 5])
         b_np = np.asarray([1, 2, 3, 4, 5])
         c_np = np.asarray([1, 2, 2, 4, 5])
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
-            b = fluid.dygraph.to_variable(b_np)
-            c = fluid.dygraph.to_variable(c_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
+            c = base.dygraph.to_variable(c_np)
             res1 = a != b
             res2 = a != c
             np.testing.assert_array_equal(res1.numpy(), a_np != b_np)
@@ -195,49 +195,49 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
     def test_less_than(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
-            b = fluid.dygraph.to_variable(b_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
             res = a < b
             np.testing.assert_array_equal(res.numpy(), a_np < b_np)
 
     def test_less_equal(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
-            b = fluid.dygraph.to_variable(b_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
             res = a <= b
             np.testing.assert_array_equal(res.numpy(), a_np <= b_np)
 
     def test_greater_than(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
-            b = fluid.dygraph.to_variable(b_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
             res = a > b
             np.testing.assert_array_equal(res.numpy(), a_np > b_np)
 
     def test_greater_equal(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
-            b = fluid.dygraph.to_variable(b_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
             res = a >= b
             np.testing.assert_array_equal(res.numpy(), a_np >= b_np)
 
     def test_neg(self):
         a_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
             res = -a
             np.testing.assert_array_equal(res.numpy(), -a_np)
 
     def test_float_int_long(self):
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(np.array([100.1]))
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(np.array([100.1]))
             self.assertTrue(float(a) == 100.1)
             self.assertTrue(int(a) == 100)
             self.assertTrue(int(a) == 100)
@@ -249,13 +249,13 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
 
     def test_len(self):
         a_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
             self.assertTrue(len(a) == 10)
 
     def test_index(self):
-        with fluid.dygraph.guard():
-            var1 = fluid.dygraph.to_variable(np.array([2]))
+        with base.dygraph.guard():
+            var1 = base.dygraph.to_variable(np.array([2]))
             i_tmp = 0
             for i in range(var1):
                 self.assertTrue(i == i_tmp)
@@ -276,7 +276,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertTrue(str1[var1] == 's')
 
     def test_np_left_mul(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             t = np.sqrt(2.0 * np.pi)
             x = paddle.ones((2, 2), dtype="float32")
             y = t * x
@@ -291,16 +291,16 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
     def test_add_different_dtype(self):
         a_np = np.random.random(self.shape).astype(np.float32)
         b_np = np.random.random(self.shape).astype(np.float16)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
-            b = fluid.dygraph.to_variable(b_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
             res = a + b
             np.testing.assert_array_equal(res.numpy(), a_np + b_np)
 
     def test_floordiv_different_dtype(self):
         a_np = np.full(self.shape, 10, np.int64)
         b_np = np.full(self.shape, 2, np.int32)
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             a = paddle.to_tensor(a_np)
             b = paddle.to_tensor(b_np)
             res = a // b
@@ -308,11 +308,11 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
 
     def test_astype(self):
         a_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
             res1 = a.astype(np.float16)
             res2 = a.astype('float16')
-            res3 = a.astype(fluid.core.VarDesc.VarType.FP16)
+            res3 = a.astype(base.core.VarDesc.VarType.FP16)
 
             self.assertEqual(res1.dtype, res2.dtype)
             self.assertEqual(res1.dtype, res3.dtype)
@@ -323,11 +323,11 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
     def test_conpare_op_broadcast(self):
         a_np = np.random.uniform(-1, 1, [10, 1, 10]).astype(self.dtype)
         b_np = np.random.uniform(-1, 1, [1, 1, 10]).astype(self.dtype)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
-            b = fluid.dygraph.to_variable(b_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
+            b = base.dygraph.to_variable(b_np)
 
-            self.assertEqual((a != b).dtype, fluid.core.VarDesc.VarType.BOOL)
+            self.assertEqual((a != b).dtype, base.core.VarDesc.VarType.BOOL)
             np.testing.assert_array_equal((a != b).numpy(), a_np != b_np)
 
     def test_tensor_patch_method(self):
@@ -400,7 +400,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         )
         d = d.matmul(d.t())
         # ROCM not support cholesky
-        if not fluid.core.is_compiled_with_rocm():
+        if not base.core.is_compiled_with_rocm():
             np.testing.assert_array_equal(
                 d.cholesky().numpy(), paddle.cholesky(d).numpy()
             )
@@ -611,8 +611,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
 
     def test_complex_scalar(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
+        with base.dygraph.guard():
+            a = base.dygraph.to_variable(a_np)
             res = 1j * a
             np.testing.assert_array_equal(res.numpy(), 1j * a_np)
 
@@ -621,7 +621,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         y_np = np.random.uniform(-1, 1, [3, 2]).astype(self.dtype)
         except_out = x_np @ y_np
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             x = paddle.to_tensor(x_np)
             y = paddle.to_tensor(y_np)
             out = x @ y

@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle import base
+from paddle.base import Program, program_guard
 
 
 def nce(
@@ -161,7 +161,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
 
     @staticmethod
     def get_place():
-        place = fluid.core.CPUPlace()
+        place = base.core.CPUPlace()
         return place
 
     @staticmethod
@@ -195,7 +195,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
             )
 
             w_param = (
-                fluid.default_main_program()
+                base.default_main_program()
                 .global_block()
                 .create_parameter(
                     shape=[num_total_classes, 10],
@@ -205,7 +205,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
                 )
             )
             b_param = (
-                fluid.default_main_program()
+                base.default_main_program()
                 .global_block()
                 .create_parameter(
                     shape=[num_total_classes, 1],
@@ -238,7 +238,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
     def test_input_is_selected_rows(self):
         with paddle_static_guard():
             place = self.get_place()
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
 
             data = self.get_train_data(self.batch_size)
             nid_freq_arr = np.random.dirichlet(np.ones(20) * 1000).astype(
@@ -247,17 +247,17 @@ class TestNCECase1SelectedRows(unittest.TestCase):
 
             rets = []
             # for dense
-            dense_scope = fluid.core.Scope()
-            dense_startup_program = fluid.framework.Program()
-            dense_train_program = fluid.framework.Program()
-            with fluid.scope_guard(dense_scope):
-                with fluid.program_guard(
+            dense_scope = base.core.Scope()
+            dense_startup_program = base.framework.Program()
+            dense_train_program = base.framework.Program()
+            with base.scope_guard(dense_scope):
+                with base.program_guard(
                     dense_train_program, dense_startup_program
                 ):
                     cost, feeds = self.train_network(
                         20, 5, "custom_dist", nid_freq_arr.tolist(), False
                     )
-                    feeder = fluid.DataFeeder(feed_list=feeds, place=place)
+                    feeder = base.DataFeeder(feed_list=feeds, place=place)
                     paddle.enable_static()
                     exe.run(dense_startup_program)
                     loss_val = exe.run(
@@ -268,17 +268,17 @@ class TestNCECase1SelectedRows(unittest.TestCase):
                     rets.append(np.mean(loss_val))
 
             # for sparse
-            sparse_scope = fluid.core.Scope()
-            sparse_startup_program = fluid.framework.Program()
-            sparse_train_program = fluid.framework.Program()
-            with fluid.scope_guard(sparse_scope):
-                with fluid.program_guard(
+            sparse_scope = base.core.Scope()
+            sparse_startup_program = base.framework.Program()
+            sparse_train_program = base.framework.Program()
+            with base.scope_guard(sparse_scope):
+                with base.program_guard(
                     sparse_train_program, sparse_startup_program
                 ):
                     cost, feeds = self.train_network(
                         20, 5, "custom_dist", nid_freq_arr.tolist(), True
                     )
-                    feeder = fluid.DataFeeder(feed_list=feeds, place=place)
+                    feeder = base.DataFeeder(feed_list=feeds, place=place)
                     paddle.enable_static()
                     exe.run(sparse_startup_program)
                     loss_val = exe.run(
@@ -295,10 +295,10 @@ class TestNCE_OpError(unittest.TestCase):
     def test_errors(self):
         with paddle_static_guard():
             with program_guard(Program(), Program()):
-                input1 = fluid.create_lod_tensor(
+                input1 = base.create_lod_tensor(
                     np.array([0.0, 3.0, 2.0, 4.0]),
                     [[1, 1, 2]],
-                    fluid.CPUPlace(),
+                    base.CPUPlace(),
                 )
                 label1 = paddle.static.data(
                     name='label1', shape=[-1, 4], dtype="int64"
@@ -311,10 +311,10 @@ class TestNCE_OpError(unittest.TestCase):
                 input2 = paddle.static.data(
                     name='input2', shape=[-1, 4], dtype="float32"
                 )
-                label2 = fluid.create_lod_tensor(
+                label2 = base.create_lod_tensor(
                     np.array([0.0, 3.0, 2.0, 4.0]),
                     [[1, 1, 2]],
-                    fluid.CPUPlace(),
+                    base.CPUPlace(),
                 )
                 # the input(label) of nce layer must be Variable.
                 self.assertRaises(

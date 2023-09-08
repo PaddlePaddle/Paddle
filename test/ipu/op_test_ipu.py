@@ -23,7 +23,7 @@ import numpy as np
 import paddle
 import paddle.static
 
-map_np_dtype_to_fluid_dtype = {
+map_np_dtype_to_base_dtype = {
     'bool': "bool",
     'int8': "int8",
     'uint8': "uint8",
@@ -35,8 +35,8 @@ map_np_dtype_to_fluid_dtype = {
 }
 
 
-def np_dtype_to_fluid_str(dtype: np.dtype) -> str:
-    return map_np_dtype_to_fluid_dtype[dtype.name]
+def np_dtype_to_base_str(dtype: np.dtype) -> str:
+    return map_np_dtype_to_base_dtype[dtype.name]
 
 
 class ExecutionModeFull(IntEnum):

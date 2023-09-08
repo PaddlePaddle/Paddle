@@ -73,11 +73,6 @@ bool SpmdRuleFactory::ContainsSpmdRule(const std::string& kernel_name) const {
 }
 
 int SpmdRuleFactory::InsertSpmdRule(std::string kernel_name, SpmdRule rule) {
-  PADDLE_ENFORCE_NE(
-      ContainsSpmdRule(kernel_name),
-      true,
-      phi::errors::AlreadyExists(
-          "`%s` Kernel's Spmd rules has been registered.", kernel_name));
   spmd_rule_map_.insert({std::move(kernel_name), std::move(rule)});
   return 0;
 }

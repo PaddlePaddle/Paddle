@@ -17,9 +17,9 @@ import unittest
 import numpy
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.executor import Executor
+from paddle import base
+from paddle.base import core
+from paddle.base.executor import Executor
 
 
 class TestTrunctedGaussianRandomOp(unittest.TestCase):
@@ -35,16 +35,16 @@ class TestTrunctedGaussianRandomOp(unittest.TestCase):
         self.outputs = ["Out"]
 
     def test_cpu(self):
-        self.gaussian_random_test(place=fluid.CPUPlace())
-        self.gaussian_random_test_eager(place=fluid.CPUPlace())
+        self.gaussian_random_test(place=base.CPUPlace())
+        self.gaussian_random_test_eager(place=base.CPUPlace())
 
     def test_gpu(self):
         if core.is_compiled_with_cuda():
-            self.gaussian_random_test(place=fluid.CUDAPlace(0))
-            self.gaussian_random_test_eager(place=fluid.CUDAPlace(0))
+            self.gaussian_random_test(place=base.CUDAPlace(0))
+            self.gaussian_random_test_eager(place=base.CUDAPlace(0))
 
     def gaussian_random_test(self, place):
-        program = fluid.Program()
+        program = base.Program()
         block = program.global_block()
         vout = block.create_var(name="Out")
         op = block.append_op(
@@ -67,7 +67,7 @@ class TestTrunctedGaussianRandomOp(unittest.TestCase):
     # TruncatedNormal.__call__ has no return value, so here call _C_ops api
     # directly
     def gaussian_random_test_eager(self, place):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             out = paddle._C_ops.truncated_gaussian_random(
                 self.attrs["shape"],
                 self.attrs["mean"],

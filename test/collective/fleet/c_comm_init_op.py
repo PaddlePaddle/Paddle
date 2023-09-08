@@ -16,7 +16,7 @@ import os
 import unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
@@ -31,20 +31,20 @@ class TestCCommInitOp(unittest.TestCase):
         self.nranks = len(self.endpoints)
         self.rank = self.endpoints.index(self.current_endpoint)
         self.gpu_id = int(os.getenv("FLAGS_selected_gpus"))
-        self.place = fluid.CUDAPlace(self.gpu_id)
-        self.exe = fluid.Executor(self.place)
+        self.place = base.CUDAPlace(self.gpu_id)
+        self.exe = base.Executor(self.place)
         self.endpoints.remove(self.current_endpoint)
         self.other_endpoints = self.endpoints
         if self.rank == 0:
             wait_server_ready(self.other_endpoints)
 
     def test_specifying_devices(self):
-        program = fluid.Program()
+        program = base.Program()
         block = program.global_block()
         nccl_id_var = block.create_var(
-            name=fluid.unique_name.generate('nccl_id'),
+            name=base.unique_name.generate('nccl_id'),
             persistable=True,
-            type=fluid.core.VarDesc.VarType.RAW,
+            type=base.core.VarDesc.VarType.RAW,
         )
         block.append_op(
             type='c_gen_nccl_id',

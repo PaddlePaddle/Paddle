@@ -21,8 +21,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base import core
+from paddle.base.layer_helper import LayerHelper
 
 
 class TestSetValueBase(unittest.TestCase):
@@ -1828,9 +1828,9 @@ class TestGradientTruncated(unittest.TestCase):
             sgd = paddle.optimizer.Adam()
             sgd.minimize(loss)
             place = (
-                paddle.fluid.CPUPlace()
-                if not paddle.fluid.core.is_compiled_with_cuda()
-                else paddle.fluid.CUDAPlace(0)
+                paddle.base.CPUPlace()
+                if not paddle.base.core.is_compiled_with_cuda()
+                else paddle.base.CUDAPlace(0)
             )
 
             prog = paddle.static.default_main_program()
@@ -1874,7 +1874,7 @@ class TestGradientTruncated(unittest.TestCase):
 class TestSetValueInplace(unittest.TestCase):
     def test_inplace(self):
         paddle.disable_static()
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             paddle.seed(100)
             a = paddle.rand(shape=[1, 4])
             a.stop_gradient = False
@@ -1894,7 +1894,7 @@ class TestSetValueInplaceLeafVar(unittest.TestCase):
         paddle.disable_static()
 
         a_grad_1, b_grad_1, a_grad_2, b_grad_2 = 0, 1, 2, 3
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             paddle.seed(100)
             a = paddle.rand(shape=[1, 4])
             b = paddle.rand(shape=[1, 4])
@@ -1905,7 +1905,7 @@ class TestSetValueInplaceLeafVar(unittest.TestCase):
             a_grad_1 = a.grad.numpy()
             b_grad_1 = b.grad.numpy()
 
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             paddle.seed(100)
             a = paddle.rand(shape=[1, 4])
             b = paddle.rand(shape=[1, 4])

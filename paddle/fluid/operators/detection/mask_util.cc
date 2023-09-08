@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/detection/mask_util.h"
 
-#include <math.h>
-#include <stdlib.h>
+#include <cmath>
+#include <cstdlib>
 
 #include "paddle/fluid/memory/memory.h"
 

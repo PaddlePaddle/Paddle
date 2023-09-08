@@ -1034,7 +1034,7 @@ void BindImperative(py::module *m_ptr) {
         import paddle
 
         data = np.random.randint(10, size=(3, 4))
-        tensor = paddle.fluid.core.to_uva_tensor(data)
+        tensor = paddle.base.core.to_uva_tensor(data)
         print(tensor)
 )DOC");
 
@@ -1165,7 +1165,7 @@ void BindImperative(py::module *m_ptr) {
 
           import numpy as np
           import paddle
-          from paddle.fluid import core
+          from paddle.base import core
           from paddle.device import cuda
 
           if core.is_compiled_with_cuda():
@@ -1397,7 +1397,7 @@ void BindImperative(py::module *m_ptr) {
 
           import numpy as np
           import paddle
-          from paddle.fluid import core
+          from paddle.base import core
           from paddle.device import cuda
 
           if core.is_compiled_with_cuda():
