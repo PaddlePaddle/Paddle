@@ -23,8 +23,9 @@
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/utils/data_type.h"
 
+#include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
-
+#define PROFILER_PERFIX "XCCL_EVENT_"
 constexpr int64_t kWaitBlockTImeout = 10;
 
 PD_DECLARE_bool(use_stream_safe_cuda_allocator);
@@ -82,7 +83,9 @@ ProcessGroupCustom::ProcessGroupCustom(
     int gid)
     : ProcessGroupWithStream(rank, size, gid),
       store_(store),
-      device_type_(device_type) {}
+      device_type_(device_type) {
+  comm_type_.resize(9);
+}
 
 void ProcessGroupCustom::GroupStart(const std::string& dev_type) {
   phi::DeviceManager::CCLGroupStart(dev_type);
@@ -125,6 +128,40 @@ phi::ccl::CCLComm ProcessGroupCustom::XCCLComm(const Place& place) const {
   return iter->second->xccl_comm();
 }
 
+void ProcessGroupCustom::BuildCommunicationField(std::vector<Place> places,
+                                                 std::string key,
+                                                 int i,
+                                                 bool use_calc_stream) {
+  comm_group_.resize(size_);
+
+  const auto* calc_ctx = place_to_calc_ctx_.at(key);
+  const auto& comm_ctx = place_to_comm_ctx_.at(key);
+  auto& xccl_stream =
+      use_calc_stream ? *calc_ctx->GetStream() : *comm_ctx->GetStream();
+
+  Tensor rank_tensor = paddle::experimental::full({1},
+                                                  places[0].GetDeviceId(),
+                                                  phi::DataType::INT64,
+                                                  phi::CustomPlace(places[i]));
+  Tensor store_tensor = paddle::experimental::empty(
+      IntArray({size_}), phi::DataType::INT64, phi::CustomPlace(places[i]));
+
+  auto p_out_tensor =
+      std::dynamic_pointer_cast<phi::DenseTensor>(store_tensor.impl());
+  auto* out_dense = p_out_tensor.get();
+  auto p_in_tensor =
+      std::dynamic_pointer_cast<phi::DenseTensor>(rank_tensor.impl());
+  auto in_dense = *p_in_tensor;
+
+  auto comm_context = this->GetCommContext();
+  comm_context->AllGather(out_dense, in_dense, xccl_stream);
+
+  const auto* dev_ctx_cus =
+      platform::DeviceContextPool::Instance().Get(phi::CustomPlace(places[i]));
+  framework::TensorToVector<int64_t>(*out_dense, *dev_ctx_cus, &comm_group_);
+}
+// create CustomCCLManager cache for places_key
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
     phi::DenseTensor* out_tensor,
     const phi::DenseTensor& in_tensor,
@@ -152,6 +189,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
     const AllreduceOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
+  comm_type_[static_cast<int>(CommunicationType::Allreduce)] =
+      static_cast<int>(opts.reduce_op);
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
@@ -257,6 +296,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
     const BroadcastOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
+  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
+  std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
+  int root_id = opts.source_rank * in_wrapper.size() + opts.source_root;
+  comm_type_[static_cast<int>(CommunicationType::Broadcast)] = root_id;
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         int root = opts.source_rank + opts.source_root;
@@ -421,6 +464,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Recv(
     bool sync_op,
     bool use_calc_stream) {
   // numel > 0 indicates the tensor need to be sliced
+  comm_type_[static_cast<int>(CommunicationType::Recv)] = src_rank;
   phi::DenseTensor partial_tensor;
   if (numel > 0) {
     partial_tensor = GetPartialTensor(*tensor, offset, numel);
@@ -448,7 +492,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Send(
   // numel > 0 indicates the tensor need to be sliced
   const phi::DenseTensor& tensor_maybe_partial =
       numel > 0 ? GetPartialTensor(tensor, offset, numel) : tensor;
-
+  comm_type_[static_cast<int>(CommunicationType::Send)] = dst_rank;
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
@@ -557,6 +601,30 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::RunFnInXCCLEnv(
   const auto& comm_ctx = place_to_comm_ctx_.at(key);
   auto& xccl_stream =
       use_calc_stream ? *calc_ctx->GetStream() : *comm_ctx->GetStream();
+
+  std::string event_name;
+  if (comm_group_.empty()) {
+    BuildCommunicationField({place}, key, /*i*/ 0, use_calc_stream);
+    event_name = "first_all_gather";
+  } else {
+    event_name =
+        PROFILER_PERFIX +
+        static_cast<std::string>(CommType_Name[static_cast<int>(comm_type)]);
+  }
+  platform::RecordEvent record_event(
+      event_name, platform::TracerEventType::Communication, 1);
+  const std::vector<int64_t> size_vec{tensor.numel()};
+  const std::vector<int64_t> dtype_vec{static_cast<int>(tensor.dtype())};
+
+  std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+      comm_groups{
+          {"size", {size_vec}},
+          {"dtype", {dtype_vec}},
+          {"param", {comm_type_}},
+          {"group", {comm_group_}},
+      };
+  phi::RecordCommInfoSupplement("meta_info ", comm_groups);
+
   fn(xccl_stream);
 
   if (!use_calc_stream) {
@@ -688,9 +756,31 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Collective(
   // construct uninitialize guard for device
   {
     GroupStart(device_type_);
+    std::string event_name;
     for (size_t i = 0; i < inputs.size(); ++i) {
       phi::DeviceGuard guard(places[i]);
       const auto& xccl_stream = *places_to_ctx_.at(key)[i]->GetStream();
+      if (comm_group_.empty()) {
+        BuildCommunicationField(places, key, i, /*use_calc_stream*/ false);
+        event_name = "first_all_gather";
+      } else {
+        event_name = PROFILER_PERFIX +
+                     std::string(CommType_Name[static_cast<int>(op_type)]);
+      }
+      platform::RecordEvent record_event(
+          event_name, platform::TracerEventType::Communication, 1);
+      const std::vector<int64_t> size_vec{inputs[i].numel()};
+      const std::vector<int64_t> dtype_vec{static_cast<int>(inputs[i].dtype())};
+
+      std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+          comm_groups{
+              {"size", {size_vec}},
+              {"dtype", {dtype_vec}},
+              {"param", {comm_type_}},
+              {"group", {comm_group_}},
+          };
+      phi::RecordCommInfoSupplement("meta_info ", comm_groups);
+
       fn(inputs[i],
          outputs[i],
          places_to_ctx_.at(key)[i]->xccl_comm(),
@@ -739,10 +829,32 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::PointToPoint(
 
   {
     GroupStart(device_type_);
+    std::string event_name;
     for (size_t i = 0; i < tensors.size(); ++i) {
       phi::DeviceGuard guard(places[i]);
-
+      if (comm_group_.empty()) {
+        BuildCommunicationField(places, key, i, /*use_calc_stream*/ false);
+        event_name = "first_all_gather";
+      } else {
+        event_name = PROFILER_PERFIX +
+                     std::string(CommType_Name[static_cast<int>(op_type)]);
+      }
       const auto& xccl_stream = *places_to_ctx_.at(key)[i]->GetStream();
+      platform::RecordEvent record_event(
+          event_name, platform::TracerEventType::Communication, 1);
+      const std::vector<int64_t> size_vec{tensors[i].numel()};
+      const std::vector<int64_t> dtype_vec{
+          static_cast<int>(tensors[i].dtype())};
+
+      std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+          comm_groups{
+              {"size", {size_vec}},
+              {"dtype", {dtype_vec}},
+              {"param", {comm_type_}},
+              {"group", {comm_group_}},
+          };
+      phi::RecordCommInfoSupplement("meta_info ", comm_groups);
+
       fn(tensors[i],
          places_to_ctx_.at(key)[i]->xccl_comm(),
          xccl_stream,
@@ -770,6 +882,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
     const AllreduceOptions& opts) {
+  comm_type_[static_cast<int>(CommunicationType::Allreduce)] =
+      static_cast<int>(opts.reduce_op);
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCustomPlace(in_tensors, device_type_),
       true,
@@ -795,6 +909,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
     const BroadcastOptions& opts) {
+  int root_id = opts.source_rank * in_tensors.size() + opts.source_root;
+  comm_type_[static_cast<int>(CommunicationType::Broadcast)] = root_id;
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCustomPlace(in_tensors, device_type_),
       true,
@@ -846,7 +962,7 @@ inline void CheckTensorsInDifferentDevices(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Send(
     std::vector<phi::DenseTensor>& tensors, int dst_rank) {
   CheckTensorsInDifferentDevices(tensors, static_cast<size_t>(GetSize()));
-
+  comm_type_[static_cast<int>(CommunicationType::Send)] = dst_rank;
   auto task = PointToPoint(
       tensors,
       [&](phi::DenseTensor& input,
@@ -863,6 +979,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Send(
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Recv(
     std::vector<phi::DenseTensor>& tensors, int src_rank) {
+  comm_type_[static_cast<int>(CommunicationType::Recv)] = src_rank;
   CheckTensorsInDifferentDevices(tensors, static_cast<size_t>(GetSize()));
 
   auto task = PointToPoint(
@@ -957,6 +1074,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
     const ReduceOptions& opts) {
+  comm_type_[static_cast<int>(CommunicationType::Reduce_OP)] =
+      static_cast<int>(opts.reduce_op);
+  comm_type_[static_cast<int>(CommunicationType::Reduce_DST)] = opts.root_rank;
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCustomPlace(in_tensors, device_type_),
       true,
@@ -982,6 +1102,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Scatter(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
     const ScatterOptions& opts) {
+  comm_type_[static_cast<int>(CommunicationType::Scatter)] =
+      static_cast<int>(opts.root_rank);
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCustomPlace(in_tensors, device_type_),
       true,

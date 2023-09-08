@@ -125,6 +125,10 @@ struct HostPythonNode {
   framework::AttributeMap attributes;
   // op id
   uint64_t op_id;
+  // comm id
+  uint64_t comm_id;
+  // input groups
+  std::map<std::string, std::vector<std::vector<int64_t>>> comm_groups;
   // children node
   std::vector<HostPythonNode*> children_node_ptrs;
   // runtime node

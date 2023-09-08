@@ -39,6 +39,8 @@ class DeserializationReader {
   MemTraceEventNode* RestoreMemTraceEventNode(const MemTraceEventNodeProto&);
   OperatorSupplementEventNode* RestoreOperatorSupplementEventNode(
       const OperatorSupplementEventNodeProto&);
+  CommunicationSupplementEventNode* RestoreCommunicationSupplementEventNode(
+      const CommunicationSupplementEventNodeProto&);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   gpuDeviceProp RestoreDeviceProperty(const DevicePropertyProto&);
 #endif

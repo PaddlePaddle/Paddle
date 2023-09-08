@@ -114,6 +114,18 @@ std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
             RestoreOperatorSupplementEventNode(op_supplement_node_proto);
         host_node->SetOperatorSupplementNode(op_supplement_node);
       }
+      // handle comm supplement node
+      for (int comm_supplement_node_index = 0;
+           comm_supplement_node_index <
+           host_node_proto.comm_supplement_nodes_size();
+           comm_supplement_node_index++) {
+        const CommunicationSupplementEventNodeProto&
+            comm_supplement_node_proto = host_node_proto.comm_supplement_nodes(
+                comm_supplement_node_index);
+        CommunicationSupplementEventNode* comm_supplement_node =
+            RestoreCommunicationSupplementEventNode(comm_supplement_node_proto);
+        host_node->SetCommunicationSupplementNode(comm_supplement_node);
+      }
     }
     // restore parent-child relationship
     for (auto& map_item : child_parent_map) {
@@ -304,6 +316,36 @@ DeserializationReader::RestoreOperatorSupplementEventNode(
   }
   op_supplement_event.dtypes = dtypes;
   return new OperatorSupplementEventNode(op_supplement_event);
+}
+
+CommunicationSupplementEventNode*
+DeserializationReader::RestoreCommunicationSupplementEventNode(
+    const CommunicationSupplementEventNodeProto& comm_supplement_node_proto) {
+  const CommunicationSupplementEventProto& comm_supplement_event_proto =
+      comm_supplement_node_proto.comm_supplement_event();
+  CommunicationSupplementEvent comm_supplement_event;
+  comm_supplement_event.timestamp_ns =
+      comm_supplement_event_proto.timestamp_ns();
+  comm_supplement_event.comm_type = comm_supplement_event_proto.comm_type();
+  comm_supplement_event.comm_id = comm_supplement_event_proto.comm_id();
+  comm_supplement_event.process_id = comm_supplement_event_proto.process_id();
+  comm_supplement_event.thread_id = comm_supplement_event_proto.thread_id();
+  std::map<std::string, std::vector<std::vector<int64_t>>> comm_groups;
+  auto comm_group_proto = comm_supplement_event_proto.comm_groups();
+  for (int i = 0; i < comm_group_proto.key_size(); i++) {
+    auto comm_group_vec = comm_groups[comm_group_proto.key(i)];
+    auto group_vectors_proto = comm_group_proto.group_vecs(i);
+    for (int j = 0; j < group_vectors_proto.groups_size(); j++) {
+      auto group_vector_proto = group_vectors_proto.groups(j);
+      std::vector<int64_t> group;
+      for (int k = 0; k < group_vector_proto.size_size(); k++) {
+        group.push_back(group_vector_proto.size(k));
+      }
+      comm_group_vec.push_back(group);
+    }
+  }
+  comm_supplement_event.comm_groups = comm_groups;
+  return new CommunicationSupplementEventNode(comm_supplement_event);
 }
 
 KernelEventInfo DeserializationReader::HandleKernelEventInfoProto(

@@ -58,6 +58,8 @@ class SerializationLogger : public BaseLogger {
   DeviceTraceEventNodeProto* current_device_trace_event_node_proto_;
   MemTraceEventNodeProto* current_mem_trace_event_node_proto_;
   OperatorSupplementEventNodeProto* current_op_supplement_event_node_proto_;
+  CommunicationSupplementEventNodeProto*
+      current_comm_supplement_event_node_proto_;
 };
 
 }  // namespace platform

@@ -26,8 +26,10 @@ from paddle.base.core import (
     ProfilerOptions,
     TracerEventType,
     _Profiler,
+    disable_comm_info_recorder,
     disable_memory_recorder,
     disable_op_info_recorder,
+    enable_comm_info_recorder,
     enable_memory_recorder,
     enable_op_info_recorder,
 )
@@ -357,6 +359,7 @@ class Profiler:
         timer_only (bool, optional): If it is True, the cost of Dataloader and every step of the model will be count without profiling. Otherwise, the model will
             be timed and profiled. Default: False.
         record_shapes (bool, optional): If it is True, collect op's input shape information. Default: False.
+        record_comm_groups (bool, optional): If it is True, collect communication's group information. Default: False.
         profile_memory (bool, optional): If it is True, collect tensor memory allocation and release information. Default: False.
         custom_device_types (list, optional): If targets contain profiler.ProfilerTarget.CUSTOM_DEVICE, custom_device_types select the custom device type for profiling. The default value represents all custom devices will be selected.
         with_flops (bool, optional): If it is True, the flops of the op will be calculated. Default: False.
@@ -480,6 +483,7 @@ class Profiler:
         scheduler: Union[Callable[[int], ProfilerState], tuple, None] = None,
         on_trace_ready: Optional[Callable[..., Any]] = None,
         record_shapes: Optional[bool] = False,
+        record_comm_groups: Optional[bool] = False,
         profile_memory: Optional[bool] = False,
         timer_only: Optional[bool] = False,
         emit_nvtx: Optional[bool] = False,
@@ -544,6 +548,7 @@ class Profiler:
         self.profiler_result = None
         self.timer_only = timer_only
         self.record_shapes = record_shapes
+        self.record_comm_groups = record_comm_groups
         self.profile_memory = profile_memory
         self.with_flops = with_flops
         self.emit_nvtx = emit_nvtx
@@ -587,6 +592,8 @@ class Profiler:
             return
         if self.record_shapes or self.with_flops:
             enable_op_info_recorder()
+        if self.record_comm_groups:
+            enable_comm_info_recorder()
         if self.profile_memory:
             enable_memory_recorder()
         # CLOSED -> self.current_state
@@ -632,6 +639,8 @@ class Profiler:
             return
         if self.record_shapes or self.with_flops:
             disable_op_info_recorder()
+        if self.record_comm_groups:
+            disable_comm_info_recorder()
         if self.profile_memory:
             disable_memory_recorder()
         # self.current_state -> CLOSED
