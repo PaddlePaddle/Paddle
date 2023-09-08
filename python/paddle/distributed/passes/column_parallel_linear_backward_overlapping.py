@@ -68,6 +68,29 @@ class ColumnParallelLinearBackwardOverlappingPass(PassBase):
                         matmul_grad_id_to_allreduce_id[i] = j
         return matmul_grad_id_to_allreduce_id
 
+    def _insert_reshape_op(self, block, index, x, shape, op_role, out=None):
+        var_x = block.var(x[0])
+        if out is None:
+            out = block.create_var(
+                name=f"{x[0]}@reshape.out",
+                dtype=var_x.dtype,
+                persistable=False,
+            )
+        x_shape = block.create_var(
+            name=f"{x[0]}@reshape.xshape", dtype=var_x.dtype
+        )
+
+        block._insert_op_without_sync(
+            index=index,
+            type="reshape2",
+            inputs={"X": x},
+            outputs={"Out": out, "XShape": x_shape},
+            attrs={"shape": shape, "op_role": op_role},
+        )
+        block._sync_with_cpp()
+
+        return out
+
     def _split_matmul_grad_and_multi_streaming_allreduce(
         self, block, matmul_grad_id_to_allreduce_id
     ):
@@ -103,19 +126,64 @@ class ColumnParallelLinearBackwardOverlappingPass(PassBase):
             # c_allreduce_sum(dX) and matmul(X^T, dOut) cannot be swapped. Otherwise, after buffer_shared_inplace_pass
             # adding share_buffer OP before c_allreduce_sum, c_allreduce_sum will synchronous with comp-stream, and then
             # the matmul op before it cannot be overlapped.
-            block._insert_op_without_sync(
-                allreduce_id + 1,
-                type="matmul_v2",
-                inputs={"X": x, "Y": out_grad},
-                outputs={"Out": y_grad},
-                attrs={"trans_x": True, "trans_y": False, "op_role": op_role},
+            var_x = block.var(x[0])
+            var_out_grad = block.var(out_grad[0])
+            var_y_grad = block.var(y_grad[0])
+
+            x_dims = var_x.shape
+            out_grad_dims = var_out_grad.shape
+            y_grad_dims = var_y_grad.shape
+
+            assert len(x_dims) == len(
+                out_grad_dims
+            ), f"The rank of x must be equal to that of out_grad, but got x rank = {len(x_dims)} and out_grad rank = {len(out_grad_dims)}."
+            if len(x_dims) > 2:
+                assert (
+                    x_dims[0:2] == out_grad_dims[0:2]
+                ), f"The first two dimensions of x must be equal to that of out_grad, but got x_dims:{x_dims} and out_grad_dims:{out_grad_dims}."
+                new_x_dims = [x_dims[0] * x_dims[1]] + list(x_dims[2:])
+                new_out_grad_dims = [
+                    out_grad_dims[0] * out_grad_dims[1]
+                ] + list(out_grad_dims[2:])
+
+            # NOTE(Ruibiao): Why insert reshape op here?
+            # When the rank of input matrix is 3, MatmulGradKernel use reshape to fold the first two dimensions of x and out_grad (see FoldInitDims in matmul_grad_kernel_impl.h), and then calls blas.Matmul to calculate y_grad.
+            # If we directly append matmul op to calculate y_grad without FoldInitDims, blas.BatchedGEMM is actually called in MatmulKernel, which has a larger cost than using blas.Matmul after dimension folding.
+            # Therefore, we imitate MatmulGradKernel here by inserting reshape op before matmul.
+            new_x = self._insert_reshape_op(
+                block, allreduce_id + 1, x, new_x_dims, op_role
+            )
+            new_out_grad = self._insert_reshape_op(
+                block, allreduce_id + 2, out_grad, new_out_grad_dims, op_role
+            )
+            new_y_grad = block.create_var(
+                name=f"{y_grad[0]}@reshape.out",
+                dtype=var_y_grad.dtype,
+                persistable=False,
             )
             block._insert_op_without_sync(
-                matmul_grad_id + 1,
+                index=allreduce_id + 3,
+                type="matmul_v2",
+                inputs={"X": new_x, "Y": new_out_grad},
+                outputs={"Out": new_y_grad},
+                attrs={"trans_x": True, "trans_y": False, "op_role": op_role},
+            )
+            self._insert_reshape_op(
+                block,
+                allreduce_id + 4,
+                [new_y_grad.name],
+                y_grad_dims,
+                op_role,
+                y_grad,
+            )
+
+            block._insert_op_without_sync(
+                index=matmul_grad_id + 1,
                 type="matmul_v2",
                 inputs={"X": out_grad, "Y": y},
                 outputs={"Out": x_grad},
                 attrs={"trans_x": False, "trans_y": True, "op_role": op_role},
             )
+
             block._remove_op(matmul_grad_id)
             block._sync_with_cpp()
