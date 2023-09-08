@@ -40,6 +40,7 @@ list(
   elementwiseadd_transpose_op_plugin.cu
   generic_plugin.cu
   many_emb_layernorm_plugin.cu
+  ms_deform_attn_op_plugin.cu
   many_emb_layernorm_kernel.cu)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)

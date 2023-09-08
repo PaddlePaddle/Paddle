@@ -3024,10 +3024,12 @@ if (dtype ==  framework::proto::VarType::BOOL)
       "unbind",
       "assign",
       "flip",
+     // "ms_deform_attn",
       "quantize_linear",
       "dequantize_linear"};
 
   std::unordered_set<std::string> teller_set{
+   // "ms_deform_attn",
       "matrix_multiply",
       "bmm",
       "range",
