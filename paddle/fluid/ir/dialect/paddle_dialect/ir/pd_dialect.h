@@ -25,8 +25,8 @@ class PaddleDialect : public ir::Dialect {
 
   static const char* name() { return "pd"; }
 
-  ir::Type ParseType(ir::IrParser& parser);            // NOLINT
-  ir::Attribute ParseAttribute(ir::IrParser& parser);  // NOLINT
+  ir::Type ParseType(ir::IrParser& parser) override;            // NOLINT
+  ir::Attribute ParseAttribute(ir::IrParser& parser) override;  // NOLINT
 
   void PrintType(ir::Type type, std::ostream& os) const override;
   void PrintAttribute(ir::Attribute type, std::ostream& os) const override;
