@@ -411,6 +411,13 @@ class OpInfoParser:
             'scalar' in self.op_compat_item
         ):
             for scalar_attr in self.op_compat_item['scalar'].keys():
+                if (
+                    'support_tensor'
+                    not in self.op_compat_item['scalar'][scalar_attr]
+                    and 'tensor_name'
+                    not in self.op_compat_item['scalar'][scalar_attr]
+                ):
+                    continue
                 if 'data_type' in self.op_compat_item['scalar'][scalar_attr]:
                     if (
                         scalar_attr == "depth"
@@ -449,6 +456,15 @@ class OpInfoParser:
             'int_array' in self.op_compat_item
         ):
             for int_array_attr in self.op_compat_item['int_array']:
+                if (
+                    'support_tensor'
+                    not in self.op_compat_item['int_array'][int_array_attr]
+                    and 'tensor_name'
+                    not in self.op_compat_item['int_array'][int_array_attr]
+                    and 'tensors_name'
+                    not in self.op_compat_item['int_array'][int_array_attr]
+                ):
+                    continue
                 mutable_attribute_name_list.append(int_array_attr)
                 mutable_attribute_type_list.append(
                     [
