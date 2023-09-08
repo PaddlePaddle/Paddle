@@ -20,14 +20,14 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops, framework, in_dynamic_mode
-from paddle.common_ops_import import Variable
-from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
-from paddle.fluid.dygraph.base import NON_PERSISTABLE_VAR_NAME_SUFFIX
-from paddle.fluid.framework import (
+from paddle.base.data_feeder import check_type, check_variable_and_dtype
+from paddle.base.dygraph.base import NON_PERSISTABLE_VAR_NAME_SUFFIX
+from paddle.base.framework import (
     default_startup_program,
     in_dygraph_mode,
     program_guard,
 )
+from paddle.common_ops_import import Variable
 from paddle.framework import core
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
@@ -272,7 +272,7 @@ def _rnn_static_graph(
         )
         mask = paddle.reverse(mask, axis=[0]) if sequence_length else None
 
-    with paddle.fluid.framework.device_guard("cpu"):
+    with paddle.base.framework.device_guard("cpu"):
         start_i = paddle.zeros([], dtype="int64")
         end = max_seq_len
 
@@ -296,12 +296,12 @@ def _rnn_static_graph(
 
     with while_op.block():
         step_in = inputs[start_i]
-        # step_in = paddle.fluid.layers.Print( step_in, message="step in")
+        # step_in = paddle.base.layers.Print( step_in, message="step in")
         pre_state = paddle.utils.map_structure(
             lambda x: paddle.tensor.array_read(x, start_i), init_array
         )
         outputs, new_states = cell(step_in, pre_state, **kwargs)
-        assert isinstance(outputs, paddle.fluid.framework.Variable)
+        assert isinstance(outputs, paddle.base.framework.Variable)
         paddle.utils.assert_same_structure(new_states, pre_state)
         if sequence_length:
             step_mask = paddle.unsqueeze(mask[start_i], 1)
@@ -317,7 +317,7 @@ def _rnn_static_graph(
 
         paddle.tensor.array_write(outputs, start_i, out_array)
 
-        with paddle.fluid.framework.device_guard("cpu"):
+        with paddle.base.framework.device_guard("cpu"):
             start_i = paddle.tensor.increment(x=start_i, value=1)
         paddle.utils.map_structure(
             lambda x, y: paddle.tensor.array_write(x, start_i, y),
@@ -325,7 +325,7 @@ def _rnn_static_graph(
             init_array,
         )
 
-        with paddle.fluid.framework.device_guard("cpu"):
+        with paddle.base.framework.device_guard("cpu"):
             new_cond = paddle.tensor.less_than(start_i, end)
             paddle.assign(new_cond, cond)
 
@@ -740,7 +740,7 @@ class SimpleRNNCell(RNNCellBase):
         - **states** (Tensor): shape `[batch_size, hidden_size]`, the new hidden state, corresponding to :math:`h_{t}` in the formula.
 
     Notes:
-        All the weights and bias are initialized with `Uniform(-std, std)` by default. Where std = :math:`\frac{1}{\sqrt{hidden\_size}}`. For more information about parameter initialization, please refer to :ref:`api_fluid_ParamAttr`.
+        All the weights and bias are initialized with `Uniform(-std, std)` by default. Where std = :math:`\frac{1}{\sqrt{hidden\_size}}`. For more information about parameter initialization, please refer to :ref:`api_base_ParamAttr`.
 
     Examples:
 
@@ -893,7 +893,7 @@ class LSTMCell(RNNCellBase):
     Notes:
         All the weights and bias are initialized with `Uniform(-std, std)` by
         default. Where std = :math:`\frac{1}{\sqrt{hidden\_size}}`. For more
-        information about parameter initialization, please refer to :ref:`api_fluid_ParamAttr`.
+        information about parameter initialization, please refer to :ref:`api_base_ParamAttr`.
 
     Examples:
 
@@ -1054,7 +1054,7 @@ class GRUCell(RNNCellBase):
     Notes:
         All the weights and bias are initialized with `Uniform(-std, std)` by
         default. Where std = :math:`\frac{1}{\sqrt{hidden\_size}}`. For more
-        information about parameter initialization, please refer to s:ref:`api_fluid_ParamAttr`.
+        information about parameter initialization, please refer to s:ref:`api_base_ParamAttr`.
 
     Examples:
 

@@ -16,6 +16,8 @@ import logging
 from collections import OrderedDict
 from enum import Enum
 
+from paddle.base import core
+from paddle.base.framework import Parameter, Program
 from paddle.distributed.auto_parallel.static.utils import (
     get_logger,
     is_backward_op,
@@ -24,8 +26,6 @@ from paddle.distributed.auto_parallel.static.utils import (
     is_optimize_op,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.fluid import core
-from paddle.fluid.framework import Parameter, Program
 
 __not_shape_var_type__ = [
     core.VarDesc.VarType.READER,
@@ -34,6 +34,14 @@ __not_shape_var_type__ = [
     core.VarDesc.VarType.FEED_MINIBATCH,
     core.VarDesc.VarType.FETCH_LIST,
 ]
+
+
+# NOTE Here stream is just a presentation with different name,
+# it is up to executor to create the exact streams given the name.
+class AutoParallelStreamType(Enum):
+    CALC_STREAM = "default"
+    MP_STREAM = "auto_parallel_mp"
+    SHARDING_STREAM = "auto_parallel_sharding"
 
 
 def list_to_ordered_dict(list_obj, ordered_dict=None):
@@ -347,7 +355,7 @@ def _create_program(src_block, dst_block, src_op, force_create=False):
 
 def _insert_sync_for_fthenb_1f1b(program):
     """
-    This implementation refers to lots of Paddle/python/paddle/fluid/optimizer.py.
+    This implementation refers to lots of Paddle/python/paddle/base/optimizer.py.
     The difference between this function with 'PipelineOptimizer' is that
     'send_v2' op and 'recv_v2' op have been inserted in program by 'reshard'.
     """
@@ -542,9 +550,18 @@ def _program_for_fthenb_and_1f1b(program):
     return [lr_prog, fwd_prog, bwd_prog, opt_prog]
 
 
-# NOTE here stream is just a presentation with different name,
-# it is up to executor to create the exact streams given the name.
-class AutoParallelStreamType(Enum):
-    CALC_STREAM = "default"
-    MP_STREAM = "auto_parallel_mp"
-    SHARDING_STREAM = "auto_parallel_sharding"
+def _add_event_dependency(recorder_op_desc, waiter_op_desc):
+    '''
+    Add the extra event dependcy of the two operators.
+    This function mainly aims for the cross-programs in pipeline parallelism,
+    especial for the 'send_v2' 'recv_v2' etc.
+    '''
+    if not recorder_op_desc.dist_attr.force_record_event:
+        recorder_op_desc.dist_attr.force_record_event = True
+    # NOTE(lizhiyu): Here is the copy of 'waiter_op_desc.dist_attr.events_to_wait' not the reference,
+    #                because the type of 'events_to_wait' is 'const vector<string>&' while the type of
+    #                'waiter_wait_list' is python list.
+    waiter_wait_list = waiter_op_desc.dist_attr.events_to_wait
+    if recorder_op_desc.dist_attr.event_to_record not in waiter_wait_list:
+        waiter_wait_list.append(recorder_op_desc.dist_attr.event_to_record)
+        waiter_op_desc.dist_attr.events_to_wait = waiter_wait_list

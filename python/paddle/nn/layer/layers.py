@@ -23,26 +23,26 @@ import numpy as np
 
 import paddle
 from paddle import nn, profiler
-from paddle.fluid import core, framework, unique_name
-from paddle.fluid.core import VarDesc
-from paddle.fluid.dygraph import no_grad
-from paddle.fluid.dygraph.base import (
+from paddle.base import core, framework, unique_name
+from paddle.base.core import VarDesc
+from paddle.base.dygraph import no_grad
+from paddle.base.dygraph.base import (
     _convert_into_variable,
     in_declarative_mode,
     program_desc_tracing_guard,
 )
-from paddle.fluid.dygraph_utils import _append_activation_in_dygraph
-from paddle.fluid.executor import Executor, global_scope
-from paddle.fluid.framework import Parameter, Program
-from paddle.fluid.framework import _current_expected_place as _get_device
-from paddle.fluid.framework import (
+from paddle.base.dygraph_utils import _append_activation_in_dygraph
+from paddle.base.executor import Executor, global_scope
+from paddle.base.framework import Parameter, Program
+from paddle.base.framework import _current_expected_place as _get_device
+from paddle.base.framework import (
     _global_flags,
     convert_np_dtype_to_dtype_,
     default_main_program,
     in_dygraph_mode,
 )
-from paddle.fluid.layer_helper_base import LayerHelperBase
-from paddle.fluid.param_attr import ParamAttr
+from paddle.base.layer_helper_base import LayerHelperBase
+from paddle.base.param_attr import ParamAttr
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
 
@@ -2164,9 +2164,7 @@ class Layer:
 
         # 2. cast param / Tensor to dtype
         if dtype is not None and dtype != t_used.dtype:
-            with paddle.fluid.framework._dygraph_place_guard(
-                place=t_used.place
-            ):
+            with paddle.base.framework._dygraph_place_guard(place=t_used.place):
                 t_casted = t_used.cast(dtype=dtype)
         else:
             t_casted = t_used

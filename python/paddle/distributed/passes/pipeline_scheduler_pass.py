@@ -15,8 +15,8 @@
 import logging
 import os
 
+from paddle.base import core
 from paddle.distributed.auto_parallel.static.cost import calc_time_by_cost_model
-from paddle.fluid import core
 
 from ..utils.log_utils import get_logger
 from .pass_base import PassContext, new_pass, register_pass

@@ -16,13 +16,9 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops, in_dynamic_mode
+from paddle.base.data_feeder import check_type, check_variable_and_dtype
+from paddle.base.framework import convert_np_dtype_to_dtype_, core, dygraph_only
 from paddle.common_ops_import import Variable
-from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
-from paddle.fluid.framework import (
-    convert_np_dtype_to_dtype_,
-    core,
-    dygraph_only,
-)
 from paddle.framework import LayerHelper
 
 __all__ = []

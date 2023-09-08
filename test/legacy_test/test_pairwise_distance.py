@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 def np_pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False):
@@ -48,9 +48,9 @@ def test_static(
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
     place = (
-        fluid.CUDAPlace(0)
-        if paddle.fluid.core.is_compiled_with_cuda()
-        else fluid.CPUPlace()
+        base.CUDAPlace(0)
+        if paddle.base.core.is_compiled_with_cuda()
+        else base.CPUPlace()
     )
     paddle.enable_static()
     with paddle.static.program_guard(prog, startup_prog):

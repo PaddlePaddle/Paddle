@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from paddle.fluid import core
+from paddle.base import core
 
 from .pass_base import PassBase
 from .pass_utils import set_skip_gc_vars

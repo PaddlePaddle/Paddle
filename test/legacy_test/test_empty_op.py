@@ -18,9 +18,9 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle import base
+from paddle.base import core
+from paddle.base.framework import convert_np_dtype_to_dtype_
 
 
 # Situation 1: Attr(shape) is a list(without tensor)
@@ -263,7 +263,7 @@ class TestEmptyAPI(unittest.TestCase):
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
         res_1, res_2, res_3, res_4, res_5, res_6 = exe.run(
-            fluid.default_main_program(),
+            base.default_main_program(),
             feed={
                 "shape_tensor_int32": np.array([200, 3]).astype("int32"),
                 "shape_tensor_int64": np.array([200, 3]).astype("int64"),
