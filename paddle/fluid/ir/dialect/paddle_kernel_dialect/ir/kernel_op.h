@@ -20,7 +20,6 @@
 
 namespace paddle {
 namespace dialect {
-
 class PhiKernelOp : public ir::Op<PhiKernelOp> {
  public:
   using Op::Op;
@@ -33,7 +32,20 @@ class PhiKernelOp : public ir::Op<PhiKernelOp> {
   void Verify();
 };
 
+class LegacyKernelOp : public ir::Op<LegacyKernelOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_kernel.legacy_kernel"; }
+  static constexpr uint32_t attributes_num = 3;
+  static const char *attributes_name[attributes_num];
+  std::string op_name();
+  std::string kernel_name();
+  phi::KernelKey kernel_key();
+  void Verify();
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::PhiKernelOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::LegacyKernelOp)

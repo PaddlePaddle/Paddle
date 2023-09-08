@@ -28,8 +28,8 @@ from eager_op_test import convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
 import paddle.distributed as dist
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def create_bool_test_data(shape=None, seed=None):
@@ -119,8 +119,8 @@ class TestCollectiveAPIRunnerBase:
         )
 
     def run_trainer(self, args):
-        train_prog = fluid.Program()
-        startup_prog = fluid.Program()
+        train_prog = base.Program()
+        startup_prog = base.Program()
         endpoints = args["endpoints"].split(",")
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
@@ -131,14 +131,14 @@ class TestCollectiveAPIRunnerBase:
             paddle.distributed.init_parallel_env()
         if args['backend'] == 'nccl':
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-            place = fluid.CUDAPlace(
+            place = base.CUDAPlace(
                 device_id
-            )  # if args.use_gpu else fluid.CPUPlace()
+            )  # if args.use_gpu else base.CPUPlace()
         elif args['backend'] == 'bkcl':
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
-            place = fluid.XPUPlace(device_id)
+            place = base.XPUPlace(device_id)
         else:
-            place = fluid.CPUPlace()
+            place = base.CPUPlace()
         indata = create_test_data(
             shape=(10, 1000), dtype=args["dtype"], seed=os.getpid()
         )
@@ -154,7 +154,7 @@ class TestCollectiveAPIRunnerBase:
                 if args["use_comm_context"]
                 else self.get_model(train_prog, startup_prog, rank)
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             exe.run(startup_prog)
             fetch_list = []
             for elem in result:

@@ -18,9 +18,9 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle import base
+from paddle.base import Program, core, program_guard
+from paddle.base.framework import convert_np_dtype_to_dtype_
 
 
 class TestSumOp(OpTest):
@@ -1578,11 +1578,11 @@ class TestReduceWithDtype2(TestReduceWithDtype):
 
 class TestReduceSumOpError(unittest.TestCase):
     def test_errors(self):
-        with paddle.fluid.framework._static_guard():
+        with paddle.base.framework._static_guard():
             with program_guard(Program(), Program()):
                 # The input type of reduce_sum_op must be Variable.
-                x1 = fluid.create_lod_tensor(
-                    np.array([[-1]]), [[1]], fluid.CPUPlace()
+                x1 = base.create_lod_tensor(
+                    np.array([[-1]]), [[1]], base.CPUPlace()
                 )
                 self.assertRaises(TypeError, paddle.sum, x1)
                 # The input dtype of reduce_sum_op  must be float32 or float64 or int32 or int64.
@@ -1597,17 +1597,17 @@ class API_TestSumOp(unittest.TestCase):
         if np_axis is None:
             np_axis = attr_axis
 
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for place in places:
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with base.program_guard(base.Program(), base.Program()):
                 data = paddle.static.data("data", shape=shape, dtype=x_dtype)
                 result_sum = paddle.sum(
                     x=data, axis=attr_axis, dtype=attr_dtype
                 )
 
-                exe = fluid.Executor(place)
+                exe = base.Executor(place)
                 input_data = np.random.rand(*shape).astype(x_dtype)
                 (res,) = exe.run(
                     feed={"data": input_data}, fetch_list=[result_sum]
@@ -1654,8 +1654,8 @@ class API_TestSumOp(unittest.TestCase):
 
     def test_dygraph(self):
         np_x = np.random.random([2, 3, 4]).astype('int32')
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(np_x)
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(np_x)
             out0 = paddle.sum(x).numpy()
             out1 = paddle.sum(x, axis=0).numpy()
             out2 = paddle.sum(x, axis=(0, 1)).numpy()
@@ -1671,49 +1671,49 @@ class TestAllAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input = paddle.static.data(name="input", shape=[4, 4], dtype="bool")
             result = paddle.all(x=input)
             input_np = np.random.randint(0, 2, [4, 4]).astype("bool")
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[result],
             )
             self.assertTrue((fetches[0] == np.all(input_np)).all())
 
     def check_static_float_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input = paddle.static.data(
                 name="input", shape=[4, 4], dtype="float"
             )
             result = paddle.all(x=input)
             input_np = np.random.randint(0, 2, [4, 4]).astype("float")
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[result],
             )
             self.assertTrue((fetches[0] == np.all(input_np)).all())
 
     def check_static_int_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input = paddle.static.data(name="input", shape=[4, 4], dtype="int")
             result = paddle.all(x=input)
             input_np = np.random.randint(0, 2, [4, 4]).astype("int")
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[result],
             )
@@ -1728,7 +1728,7 @@ class TestAllAPI(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static()
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 np_x = np.random.randint(0, 2, (12, 10)).astype(np.bool_)
                 x = paddle.assign(np_x)
                 x = paddle.cast(x, 'bool')
@@ -1772,49 +1772,49 @@ class TestAnyAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input = paddle.static.data(name="input", shape=[4, 4], dtype="bool")
             result = paddle.any(x=input)
             input_np = np.random.randint(0, 2, [4, 4]).astype("bool")
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[result],
             )
             self.assertTrue((fetches[0] == np.any(input_np)).all())
 
     def check_static_float_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input = paddle.static.data(
                 name="input", shape=[4, 4], dtype="float"
             )
             result = paddle.any(x=input)
             input_np = np.random.randint(0, 2, [4, 4]).astype("float")
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[result],
             )
             self.assertTrue((fetches[0] == np.any(input_np)).all())
 
     def check_static_int_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input = paddle.static.data(name="input", shape=[4, 4], dtype="int")
             result = paddle.any(x=input)
             input_np = np.random.randint(0, 2, [4, 4]).astype("int")
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[result],
             )
@@ -1829,7 +1829,7 @@ class TestAnyAPI(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static()
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 np_x = np.random.randint(0, 2, (12, 10)).astype(np.bool_)
                 x = paddle.assign(np_x)
                 x = paddle.cast(x, 'bool')
@@ -1874,7 +1874,7 @@ class TestAnyAPI(unittest.TestCase):
 
 class TestAllZeroError(unittest.TestCase):
     def test_errors(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
 
             def test_0_size():
                 array = np.array([], dtype=np.float32)

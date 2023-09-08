@@ -24,6 +24,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/fusion.h"
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/infermeta/ternary.h"
 
@@ -36,7 +37,8 @@ OpInfoTuple AddNOp::GetOpInfo() {
                   "ir::VectorType<paddle::dialect::DenseTensorType>",
                   false,
                   false,
-                  false)};
+                  false,
+                  true)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       OpOutputInfo("out", "paddle::dialect::DenseTensorType", false, false)};
@@ -160,7 +162,8 @@ OpInfoTuple AddN_Op::GetOpInfo() {
           "ir::VectorType<paddle::dialect::DenseTensorType>",
           false,
           false,
-          false)};
+          false,
+          true)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       paddle::dialect::OpOutputInfo(
@@ -181,7 +184,6 @@ void AddN_Op::Build(ir::Builder &builder,
 
   VLOG(4) << "Builder construction outputs";
   ir::VectorType inputs = inputs_.type().dyn_cast<ir::VectorType>();
-  (void)inputs;
   std::vector<phi::DenseTensor> vec_dense_inputs;
   for (size_t i = 0; i < static_cast<size_t>(inputs.size()); i++) {
     vec_dense_inputs.push_back(phi::DenseTensor(
@@ -287,7 +289,8 @@ OpInfoTuple AddNWithKernelOp::GetOpInfo() {
           "ir::VectorType<paddle::dialect::DenseTensorType>",
           false,
           false,
-          false)};
+          false,
+          true)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       paddle::dialect::OpOutputInfo(
@@ -309,7 +312,6 @@ void AddNWithKernelOp::Build(ir::Builder &builder,
 
   VLOG(4) << "Builder construction outputs";
   ir::VectorType inputs = inputs_.type().dyn_cast<ir::VectorType>();
-  (void)inputs;
   std::vector<phi::DenseTensor> vec_dense_inputs;
   for (size_t i = 0; i < static_cast<size_t>(inputs.size()); i++) {
     vec_dense_inputs.push_back(phi::DenseTensor(
@@ -415,11 +417,15 @@ const char *FusedGemmEpilogueOp::attributes_name[3] = {
 OpInfoTuple FusedGemmEpilogueOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
       paddle::dialect::OpInputInfo(
-          "x", "paddle::dialect::DenseTensorType", false, false, false),
+          "x", "paddle::dialect::DenseTensorType", false, false, false, false),
       paddle::dialect::OpInputInfo(
-          "y", "paddle::dialect::DenseTensorType", false, false, false),
-      paddle::dialect::OpInputInfo(
-          "bias", "paddle::dialect::DenseTensorType", false, false, false)};
+          "y", "paddle::dialect::DenseTensorType", false, false, false, false),
+      paddle::dialect::OpInputInfo("bias",
+                                   "paddle::dialect::DenseTensorType",
+                                   false,
+                                   false,
+                                   false,
+                                   false)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {
       paddle::dialect::OpAttributeInfo("trans_x", "ir::BoolAttribute", ""),
       paddle::dialect::OpAttributeInfo("trans_y", "ir::BoolAttribute", ""),
@@ -638,16 +644,21 @@ const char *FusedGemmEpilogueGradOp::attributes_name[3] = {
 OpInfoTuple FusedGemmEpilogueGradOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
       paddle::dialect::OpInputInfo(
-          "x", "paddle::dialect::DenseTensorType", false, false, false),
+          "x", "paddle::dialect::DenseTensorType", false, false, false, false),
       paddle::dialect::OpInputInfo(
-          "y", "paddle::dialect::DenseTensorType", false, false, false),
+          "y", "paddle::dialect::DenseTensorType", false, false, false, false),
       paddle::dialect::OpInputInfo("reserve_space",
                                    "paddle::dialect::DenseTensorType",
                                    true,
                                    false,
+                                   false,
                                    false),
-      paddle::dialect::OpInputInfo(
-          "out_grad", "paddle::dialect::DenseTensorType", false, false, false)};
+      paddle::dialect::OpInputInfo("out_grad",
+                                   "paddle::dialect::DenseTensorType",
+                                   false,
+                                   false,
+                                   false,
+                                   false)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {
       paddle::dialect::OpAttributeInfo("trans_x", "ir::BoolAttribute", ""),
       paddle::dialect::OpAttributeInfo("trans_y", "ir::BoolAttribute", ""),
@@ -844,9 +855,14 @@ OpInfoTuple SplitGradOp::GetOpInfo() {
                   "ir::VectorType<paddle::dialect::DenseTensorType>",
                   false,
                   false,
-                  false),
-      OpInputInfo(
-          "axis", "paddle::dialect::ScalarAttribute", false, false, true)};
+                  false,
+                  true),
+      OpInputInfo("axis",
+                  "paddle::dialect::ScalarAttribute",
+                  false,
+                  false,
+                  true,
+                  false)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       OpOutputInfo("x_grad", "paddle::dialect::DenseTensorType", false, false)};
@@ -1049,12 +1065,52 @@ void SplitGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
   fn(infer_meta);
 }
 
+void IfOp::Build(ir::Builder &builder,             // NOLINT
+                 ir::OperationArgument &argument,  // NOLINT
+                 ir::OpResult cond,
+                 std::vector<ir::Type> &&output_types) {
+  argument.num_regions = 2;
+  argument.AddOperand(cond);
+  argument.output_types.swap(output_types);
+}
+ir::Block *IfOp::true_block() {
+  ir::Region &true_region = (*this)->region(0);
+  if (true_region.empty()) true_region.emplace_back();
+  return true_region.front();
+}
+ir::Block *IfOp::false_block() {
+  ir::Region &false_region = (*this)->region(1);
+  if (false_region.empty()) false_region.emplace_back();
+  return false_region.front();
+}
+void IfOp::Print(ir::IrPrinter &printer) {
+  auto &os = printer.os;
+  auto op = operation();
+  printer.PrintOpResult(op);
+  os << " = pd.if";
+  printer.PrintOpOperands(op);
+  os << " -> ";
+  printer.PrintOpReturnType(op);
+  os << "{";
+  for (auto item : *true_block()) {
+    os << "\n  ";
+    printer.PrintOperation(item);
+  }
+  os << "\n } else {";
+  for (auto item : *false_block()) {
+    os << "\n  ";
+    printer.PrintOperation(item);
+  }
+  os << "\n }";
+}
+void IfOp::Verify() {}
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)

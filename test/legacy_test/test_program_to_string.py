@@ -15,12 +15,12 @@
 import unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestProgram(unittest.TestCase):
     def test_program_to_string(self):
-        prog = fluid.default_main_program()
+        prog = base.default_main_program()
         a = paddle.static.data(name="X", shape=[2, 3], dtype="float32")
         c = paddle.static.nn.fc(a, size=3)
         prog_string = prog.to_string(throw_on_error=True, with_details=False)

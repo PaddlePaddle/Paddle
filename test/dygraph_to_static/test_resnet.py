@@ -23,8 +23,8 @@ from dygraph_to_static_util import test_with_new_ir
 from predictor_utils import PredictorTools
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm
 
@@ -36,13 +36,11 @@ l2_decay = 1e-4
 # NOTE: Reduce batch_size from 8 to 2 to avoid unittest timeout.
 batch_size = 2
 epoch_num = 1
-place = (
-    fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
-)
+place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 
 
-if fluid.is_compiled_with_cuda():
-    fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+if base.is_compiled_with_cuda():
+    base.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
 def optimizer_setting(parameter_list=None):
@@ -189,7 +187,7 @@ class ResNet(paddle.nn.Layer):
         self.out = paddle.nn.Linear(
             self.pool2d_avg_output,
             class_dim,
-            weight_attr=fluid.param_attr.ParamAttr(
+            weight_attr=base.param_attr.ParamAttr(
                 initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
         )
@@ -256,7 +254,7 @@ class ResNetHelper:
         """
         Tests model decorated by `dygraph_to_static_output` in static graph mode. For users, the model is defined in dygraph mode and trained in static graph mode.
         """
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             np.random.seed(SEED)
             paddle.seed(SEED)
             paddle.framework.random._manual_program_seed(SEED)
@@ -337,20 +335,20 @@ class ResNetHelper:
 
     def predict_dygraph(self, data):
         paddle.jit.enable_to_static(False)
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             resnet = ResNet()
 
             model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
             resnet.set_dict(model_dict)
             resnet.eval()
 
-            pred_res = resnet(fluid.dygraph.to_variable(data))
+            pred_res = resnet(base.dygraph.to_variable(data))
 
             return pred_res.numpy()
 
     def predict_static(self, data):
         paddle.enable_static()
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         [
             inference_program,
             feed_target_names,
@@ -371,7 +369,7 @@ class ResNetHelper:
         return pred_res[0]
 
     def predict_dygraph_jit(self, data):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             resnet = paddle.jit.load(self.model_save_prefix)
             resnet.eval()
 
@@ -468,12 +466,12 @@ class TestResnet(unittest.TestCase):
         )
 
     def test_in_static_mode_mkldnn(self):
-        fluid.set_flags({'FLAGS_use_mkldnn': True})
+        base.set_flags({'FLAGS_use_mkldnn': True})
         try:
-            if paddle.fluid.core.is_compiled_with_mkldnn():
+            if paddle.base.core.is_compiled_with_mkldnn():
                 self.resnet_helper.train(to_static=True)
         finally:
-            fluid.set_flags({'FLAGS_use_mkldnn': False})
+            base.set_flags({'FLAGS_use_mkldnn': False})
 
 
 if __name__ == '__main__':

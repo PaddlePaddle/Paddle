@@ -184,17 +184,6 @@ void FusedDropoutAddGradInferMeta(const MetaTensor& seed_offset,
                                   MetaTensor* x_grad,
                                   MetaTensor* y_grad);
 
-void FusedGemmEpilogueGradInferMeta(const MetaTensor& x,
-                                    const MetaTensor& y,
-                                    const MetaTensor& reserve_space,
-                                    const MetaTensor& out_grad,
-                                    bool trans_x,
-                                    bool trans_y,
-                                    const std::string& activation_grad,
-                                    MetaTensor* x_grad,
-                                    MetaTensor* y_grad,
-                                    MetaTensor* bias_grad);
-
 void FusedRopeGradInferMeta(const MetaTensor& sin,
                             const MetaTensor& cos,
                             const MetaTensor& position_ids,
