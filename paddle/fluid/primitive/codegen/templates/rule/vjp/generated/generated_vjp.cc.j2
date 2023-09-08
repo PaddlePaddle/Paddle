@@ -2,14 +2,14 @@
 // Auto Generated, DO NOT EDIT!
 
 #include "paddle/fluid/primitive/rule/vjp/generated/generated_vjp.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_api.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/prim/utils/static/static_global_utils.h"
 #include "paddle/fluid/primitive/backend/backend.h"
 #include "paddle/fluid/primitive/rule/vjp/details.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
-#include "paddle/ir/core/operation.h"
+#include "paddle/pir/core/operation.h"
 
 
 namespace paddle {
@@ -38,16 +38,16 @@ return vjp_res;
 {% macro get_mutable_attribute(attrs, api_name) %}
   {% for i in attrs %}
     {%- if i is mutable_attribute -%}
-auto* {{i.name}}_define_op = std::static_pointer_cast<primitive::LazyTensor>({{i.name~'_'}}.impl())->getValue().dyn_cast<ir::OpResult>().GetDefiningOp();
+auto* {{i.name}}_define_op = std::static_pointer_cast<primitive::LazyTensor>({{i.name~'_'}}.impl())->getValue().dyn_cast<pir::OpResult>().GetDefiningOp();
       {% if i.typename is scalar %}
-if({{i.name}}_define_op->name() != "pd.full") {
+if({{i.name}}_define_op->name() != "pd_op.full") {
   PADDLE_THROW(platform::errors::Unimplemented(
       "We don't support dynamic tensors attribute {{i.name}} for {{api_name}} composite "
       "for now. "));
 }
 auto {{i.name}} = {{i.name}}_define_op->attribute("value").dyn_cast<paddle::dialect::ScalarAttribute>().data();
       {% elif i.typename is intarray %}
-if({{i.name}}_define_op->name() != "pd.full_int_array"){
+if({{i.name}}_define_op->name() != "pd_op.full_int_array"){
   PADDLE_THROW(platform::errors::Unimplemented(
       "We don't support dynamic tensors attribute {{i.name}} for {{api_name}} composite "
       "for now. "));

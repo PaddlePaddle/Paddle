@@ -514,7 +514,7 @@ def _add_new_ir_fetch_ops(program, fetch_list, fetch_var_name):
     import paddle
 
     global_block = program.block()
-    fetch_op = "pd.fetch"
+    fetch_op = "pd_op.fetch"
     if not has_fetch_operations(
         global_block, fetch_list, fetch_var_name, fetch_op
     ):

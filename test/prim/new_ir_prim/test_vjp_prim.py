@@ -76,27 +76,27 @@ class TestVjpPrim(unittest.TestCase):
         self.assertEqual(reshape_op2.result(0), grad_outs[0][0])
         self.assertEqual(reshape_op1.result(0), grad_outs[1][0])
         all_op_names = [
-            "pd.full",
-            "pd.full",
-            "pd.full",
-            "pd.divide",
-            "pd.full",
-            "pd.elementwise_pow",
-            "pd.divide",
-            "pd.multiply",
-            "pd.full",
-            "pd.scale",
-            "pd.full_int_array",
-            "pd.sum",
-            "pd.full_int_array",
-            "pd.reshape",
-            "pd.full",
-            "pd.divide",
-            "pd.multiply",
-            "pd.full_int_array",
-            "pd.sum",
-            "pd.full_int_array",
-            "pd.reshape",
+            "pd_op.full",
+            "pd_op.full",
+            "pd_op.full",
+            "pd_op.divide",
+            "pd_op.full",
+            "pd_op.elementwise_pow",
+            "pd_op.divide",
+            "pd_op.multiply",
+            "pd_op.full",
+            "pd_op.scale",
+            "pd_op.full_int_array",
+            "pd_op.sum",
+            "pd_op.full_int_array",
+            "pd_op.reshape",
+            "pd_op.full",
+            "pd_op.divide",
+            "pd_op.multiply",
+            "pd_op.full_int_array",
+            "pd_op.sum",
+            "pd_op.full_int_array",
+            "pd_op.reshape",
         ]
         for idx, op in enumerate(newir_program.block().ops):
             self.assertEqual(op.name(), all_op_names[idx])
@@ -113,10 +113,10 @@ class TestVjpPrim(unittest.TestCase):
             grad_outs = call_vjp(divide_op, out_grads, stop_gradients)
         self.assertEqual(len(grad_outs), 2)
         self.assertEqual(
-            grad_outs[0][0].get_defining_op().name(), "pd.divide_grad"
+            grad_outs[0][0].get_defining_op().name(), "pd_op.divide_grad"
         )
         self.assertEqual(
-            grad_outs[1][0].get_defining_op().name(), "pd.divide_grad"
+            grad_outs[1][0].get_defining_op().name(), "pd_op.divide_grad"
         )
         self.assertEqual(len(newir_program.block().ops), 5)
 
@@ -135,14 +135,14 @@ class TestVjpPrim(unittest.TestCase):
         self.assertEqual(expand_op.result(0), grad_outs[0][0])
         self.assertEqual(grad_outs[1][0], None)
         all_op_names = [
-            "pd.full",
-            "pd.full",
-            "pd.full_int_array",
-            "pd.sum",
-            "pd.full_int_array",
-            "pd.reshape",
-            "pd.full_int_array",
-            "pd.expand",
+            "pd_op.full",
+            "pd_op.full",
+            "pd_op.full_int_array",
+            "pd_op.sum",
+            "pd_op.full_int_array",
+            "pd_op.reshape",
+            "pd_op.full_int_array",
+            "pd_op.expand",
         ]
         for idx, op in enumerate(newir_program.block().ops):
             self.assertEqual(op.name(), all_op_names[idx])
@@ -159,7 +159,7 @@ class TestVjpPrim(unittest.TestCase):
             grad_outs = call_vjp(sum_op, out_grads, stop_gradients)
         self.assertEqual(len(grad_outs), 2)
         self.assertEqual(
-            grad_outs[0][0].get_defining_op().name(), "pd.sum_grad"
+            grad_outs[0][0].get_defining_op().name(), "pd_op.sum_grad"
         )
         self.assertEqual(grad_outs[1][0], None)
         self.assertEqual(len(newir_program.block().ops), 5)
