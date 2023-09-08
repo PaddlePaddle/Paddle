@@ -457,8 +457,8 @@ class MaxPool2D(Layer):
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
         ceil_mode(bool, optional): when True, will use `ceil` instead of `floor` to compute the output shape
-        return_mask(bool, optional): Whether to return the max indices along with the outputs.
-        data_format(str, optional): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
+        return_mask(bool, optional): Whether to return the max indices along with the outputs. Default is false.
+        data_format(str, optional): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`.
         name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.

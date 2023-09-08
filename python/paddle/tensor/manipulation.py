@@ -1119,7 +1119,7 @@ def concat(x, axis=0, name=None):
             # out1
             # [[ 1  2  3 11 12 13 21 22]
             #  [ 4  5  6 14 15 16 23 24]]
-            # out2 out3
+            # out2 and out3
             # [[ 1  2  3]
             #  [ 4  5  6]
             #  [11 12 13]
