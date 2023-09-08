@@ -14,20 +14,22 @@
 
 #pragma once
 
-#include "paddle/ir/core/dialect.h"
+#include "paddle/pir/core/builder.h"
+#include "paddle/pir/core/op_base.h"
 
-namespace ir {
-class ControlFlowDialect : public Dialect {
+namespace pir {
+class IR_API YieldOp : public Op<YieldOp> {
  public:
-  explicit ControlFlowDialect(IrContext *context)
-      : Dialect(name(), context, TypeId::get<ControlFlowDialect>()) {
-    initialize();
-  }
-  static const char *name() { return "cf"; }
+  using Op::Op;
+  static const char *name() { return "cf.yield"; }
+  static constexpr uint32_t attributes_num = 0;
+  static constexpr const char **attributes_name = nullptr;
 
- private:
-  void initialize();
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    std::vector<OpResult> &&inputs);
+  void Verify() {}
 };
+}  // namespace pir
 
-}  // namespace ir
-IR_DECLARE_EXPLICIT_TYPE_ID(ir::ControlFlowDialect)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::YieldOp);

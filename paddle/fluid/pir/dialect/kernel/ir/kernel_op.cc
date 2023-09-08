@@ -70,12 +70,12 @@ void LegacyKernelOp::Verify() {
   auto& attributes = this->attributes();
 
   PADDLE_ENFORCE(attributes.count("op_name") > 0 &&
-                     attributes.at("op_name").isa<ir::StrAttribute>(),
+                     attributes.at("op_name").isa<pir::StrAttribute>(),
                  phi::errors::PreconditionNotMet(
                      "Type of attribute: op_name is not right."));
 
   PADDLE_ENFORCE(attributes.count("kernel_name") > 0 &&
-                     attributes.at("kernel_name").isa<ir::StrAttribute>(),
+                     attributes.at("kernel_name").isa<pir::StrAttribute>(),
                  phi::errors::PreconditionNotMet(
                      "Type of attribute: kernel_name is not right."));
 
@@ -86,10 +86,13 @@ void LegacyKernelOp::Verify() {
 }
 
 std::string LegacyKernelOp::op_name() {
-  return attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
+  return attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
 }
 std::string LegacyKernelOp::kernel_name() {
-  return attributes().at("kernel_name").dyn_cast<ir::StrAttribute>().AsString();
+  return attributes()
+      .at("kernel_name")
+      .dyn_cast<pir::StrAttribute>()
+      .AsString();
 }
 phi::KernelKey LegacyKernelOp::kernel_key() {
   return attributes().at("kernel_key").dyn_cast<KernelAttribute>().data();

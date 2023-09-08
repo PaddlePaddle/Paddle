@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_meta_tensor.h"
+#include "paddle/fluid/pir/dialect/operator/ir/meta_tensor.h"
 
-#include "paddle/ir/core/enforce.h"
+#include "paddle/pir/core/enforce.h"
 
 namespace paddle {
 namespace dialect {

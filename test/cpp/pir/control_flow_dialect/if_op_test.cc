@@ -17,11 +17,11 @@
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_manual_op.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"
-#include "paddle/ir/core/builder.h"
-#include "paddle/ir/core/builtin_op.h"
-#include "paddle/ir/core/program.h"
-#include "paddle/ir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/ir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/pir/core/builder.h"
+#include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 
 TEST(if_op_test, base) {
   ir::IrContext* ctx = ir::IrContext::Instance();

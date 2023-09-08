@@ -11,16 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 
-#pragma once
-
-#include <memory>
-#include "paddle/ir/core/dll_decl.h"
-
-namespace ir {
-
-class Pass;
-
-IR_API std::unique_ptr<Pass> CreateReorderBlockOpsPass();
-
-}  // namespace ir
+namespace pir {
+void ControlFlowDialect::initialize() { RegisterOps<YieldOp>(); }
+}  // namespace pir
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::ControlFlowDialect)

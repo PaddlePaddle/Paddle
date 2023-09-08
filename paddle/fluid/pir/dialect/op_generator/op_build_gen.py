@@ -323,7 +323,7 @@ def GenBuildOutputs(
     CREATE_SCALAR_MUTABLE_ATTRIBUE_TEMPLATE = """  {dtype} {name} = {name}_.owner()->dyn_cast<paddle::dialect::FullOp>().attributes().at("value").dyn_cast<paddle::dialect::ScalarAttribute>().data().to<{dtype}>(); (void){name};\n"""
 
     CREATE_INTARRAY_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::IntArray {name};
-  if ({name}_.owner()->info().id() == ir::TypeId::get<paddle::dialect::FullIntArrayOp>()) {{
+  if ({name}_.owner()->info().id() == pir::TypeId::get<paddle::dialect::FullIntArrayOp>()) {{
     {name} = std::move(phi::IntArray({name}_.owner()
                           ->dyn_cast<paddle::dialect::FullIntArrayOp>()
                           .attributes()
@@ -331,8 +331,8 @@ def GenBuildOutputs(
                           .dyn_cast<paddle::dialect::IntArrayAttribute>()
                           .data()
                           .GetData()));
-  }} else if ({name}_.type().isa<ir::VectorType>()) {{
-    size_t {name}_size = {name}_.type().dyn_cast<ir::VectorType>().size();
+  }} else if ({name}_.type().isa<pir::VectorType>()) {{
+    size_t {name}_size = {name}_.type().dyn_cast<pir::VectorType>().size();
     {name} = std::move(phi::IntArray(std::vector<int64_t>({name}_size, -1)));
     {name}.SetFromTensor(true);
   }} else if ({name}_.type().isa<paddle::dialect::DenseTensorType>()) {{
@@ -344,7 +344,7 @@ def GenBuildOutputs(
   }}\n"""
 
     CREATE_SCALAR_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::Scalar {name};
-  if ({name}_.owner()->info().id() == ir::TypeId::get<paddle::dialect::FullOp>()) {{
+  if ({name}_.owner()->info().id() == pir::TypeId::get<paddle::dialect::FullOp>()) {{
     {name} = std::move(phi::Scalar({name}_.owner()
                                   ->dyn_cast<paddle::dialect::FullOp>()
                                   .attributes()

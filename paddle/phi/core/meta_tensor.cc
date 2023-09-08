@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_meta_tensor.h"
+#include "paddle/fluid/ir/dialect/operator/ir/meta_tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/enforce.h"

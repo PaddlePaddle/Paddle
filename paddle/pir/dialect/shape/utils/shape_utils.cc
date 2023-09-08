@@ -61,18 +61,19 @@ bool SymbolicDimMgr::loadShapeConstraintGraph() {
   // TODO(liujinnan): add more constraint function. currently, only support
   // tie_product_equal.
   auto constraint_vec =
-      symbolTable_.lookup<ir::dialect::TieProductEqualOp>("tie_product_equal");
+      symbolTable_.lookup<pir::dialect::TieProductEqualOp>("tie_product_equal");
 
   if (!constraint_vec.size()) return true;
 
-  auto build_sym_product = [&](std::vector<ir::Value> range,
+  auto build_sym_product = [&](std::vector<pir::Value> range,
                                SymbolicDimProduct& product) {
     for (Value v : range) {
       auto definingOp = v.GetDefiningOp();
-      if (auto constOp = definingOp->dyn_cast<ir::ConstantOp>()) {
-        product.factor *= constOp.value().dyn_cast<ir::Int32Attribute>().data();
+      if (auto constOp = definingOp->dyn_cast<pir::ConstantOp>()) {
+        product.factor *=
+            constOp.value().dyn_cast<pir::Int32Attribute>().data();
         continue;
-      } else if (auto dimOp = definingOp->dyn_cast<ir::dialect::DimOp>()) {
+      } else if (auto dimOp = definingOp->dyn_cast<pir::dialect::DimOp>()) {
         auto sym = symbolTable_.lookup<SymbolicDim>(dimOp.getName());
         if (!sym) return false;
         product.symbols.push_back(sym);

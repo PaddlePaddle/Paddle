@@ -192,8 +192,8 @@ void DealWithSpecialBuiltinOps(
         auto new_in = GetNewInput(cur_in, *map_value_pair, i, op_item->name());
         vec_inputs.push_back(new_in);
 
-        if (new_in.type().isa<ir::VectorType>()) {
-          auto vec_types = new_in.type().dyn_cast<ir::VectorType>().data();
+        if (new_in.type().isa<pir::VectorType>()) {
+          auto vec_types = new_in.type().dyn_cast<pir::VectorType>().data();
           for (uint64_t idx = 0; idx < vec_types.size(); idx++) {
             op_output_types.push_back(vec_types[idx]);
           }

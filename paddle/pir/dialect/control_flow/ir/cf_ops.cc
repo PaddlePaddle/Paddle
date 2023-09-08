@@ -12,24 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 
-#include "paddle/ir/core/builder.h"
-#include "paddle/ir/core/op_base.h"
+namespace pir {
 
-namespace ir {
-class IR_API YieldOp : public Op<YieldOp> {
- public:
-  using Op::Op;
-  static const char *name() { return "cf.yield"; }
-  static constexpr uint32_t attributes_num = 0;
-  static constexpr const char **attributes_name = nullptr;
+void YieldOp::Build(Builder &builder,
+                    OperationArgument &argument,
+                    std::vector<OpResult> &&inputs) {
+  argument.AddOperands(inputs.begin(), inputs.end());
+}
+}  // namespace pir
 
-  static void Build(Builder &builder,             // NOLINT
-                    OperationArgument &argument,  // NOLINT
-                    std::vector<OpResult> &&inputs);
-  void Verify() {}
-};
-}  // namespace ir
-
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::YieldOp);
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::YieldOp)

@@ -17,9 +17,9 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/platform/init_phi.h"
-#include "paddle/pir/core/ir_printer.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/pir/core/ir_printer.h"
 
 REGISTER_FILE_SYMBOLS(kernel_dialect);
 
@@ -75,8 +75,8 @@ void PaddleKernelDialect::PrintAttribute(pir::Attribute attr,
      << "|dtype:" << kernel.dtype() << ">";
 }
 
-void PaddleKernelDialect::PrintOperation(ir::Operation *op,
-                                         ir::IrPrinter &printer) const {
+void PaddleKernelDialect::PrintOperation(pir::Operation *op,
+                                         pir::IrPrinter &printer) const {
   if (op->dyn_cast<PhiKernelOp>() || op->dyn_cast<LegacyKernelOp>()) {
     auto &os = printer.os;
     printer.PrintOpResult(op);
@@ -86,7 +86,7 @@ void PaddleKernelDialect::PrintOperation(ir::Operation *op,
       if (op->attributes().count("is_inplace") != 0 &&
           op->attributes()
               .at("is_inplace")
-              .dyn_cast<ir::BoolAttribute>()
+              .dyn_cast<pir::BoolAttribute>()
               .data()) {
         kernel_name = kernel_name + "_";
       }
@@ -97,7 +97,7 @@ void PaddleKernelDialect::PrintOperation(ir::Operation *op,
       if (op->attributes().count("is_inplace") != 0 &&
           op->attributes()
               .at("is_inplace")
-              .dyn_cast<ir::BoolAttribute>()
+              .dyn_cast<pir::BoolAttribute>()
               .data()) {
         kernel_name = kernel_name + "_";
       }

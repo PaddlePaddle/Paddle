@@ -3,6 +3,6 @@ cc_test_old(
   SRCS
   if_op_test.cc
   DEPS
-  ir
-  pd_dialect
+  pir
+  pd_op_dialect
   gtest)

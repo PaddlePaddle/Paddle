@@ -14,7 +14,7 @@
 
 #ifdef GET_MANUAL_OP_LIST
 #undef GET_MANUAL_OP_LIST
-paddle::dialect::AddNOp, paddle::dialect::SplitGradOp
+paddle::dialect::AddNOp, paddle::dialect::SplitGradOp, paddle::dialect::IfOp
 
 #else
 
@@ -29,6 +29,7 @@ paddle::dialect::AddNOp, paddle::dialect::SplitGradOp
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/pir/core/builder.h"
+#include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/op_base.h"
 #include "paddle/pir/core/operation_utils.h"
 
@@ -116,6 +117,23 @@ class SplitGradOp : public pir::Op<SplitGradOp, OpYamlInfoInterface> {
   static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 
+class IfOp : public pir::Op<IfOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd.if"; }
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::OpResult cond,
+                    std::vector<pir::Type> &&output_types);
+  pir::Value cond() { return operand_source(0); }
+  pir::Block *true_block();
+  pir::Block *false_block();
+  void Print(pir::IrPrinter &printer);  // NOLINT
+  void Verify();
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -123,5 +141,5 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
-
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)
 #endif

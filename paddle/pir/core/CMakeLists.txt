@@ -1,5 +1,5 @@
-set(NEWIR_SOURCE_DIR "${PADDLE_SOURCE_DIR}/paddle/ir")
-set(NEWIR_BINARY_DIR "${PADDLE_BINARY_DIR}/paddle/ir")
+set(NEWIR_SOURCE_DIR "${PADDLE_SOURCE_DIR}/paddle/pir")
+set(NEWIR_BINARY_DIR "${PADDLE_BINARY_DIR}/paddle/pir")
 
 file(GLOB IR_SRCS "*.cc")
 

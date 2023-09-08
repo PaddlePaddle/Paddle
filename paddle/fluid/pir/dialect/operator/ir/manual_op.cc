@@ -310,8 +310,7 @@ void AddNWithKernelOp::Build(pir::Builder &builder,
   VLOG(4) << "Builder construction attributes";
 
   VLOG(4) << "Builder construction outputs";
-  ir::VectorType inputs = inputs_.type().dyn_cast<ir::VectorType>();
-  (void)inputs;
+  pir::VectorType inputs = inputs_.type().dyn_cast<pir::VectorType>();
   std::vector<phi::DenseTensor> vec_dense_inputs;
   for (size_t i = 0; i < static_cast<size_t>(inputs.size()); i++) {
     vec_dense_inputs.push_back(phi::DenseTensor(
@@ -629,25 +628,25 @@ void SplitGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
   fn(infer_meta);
 }
 
-void IfOp::Build(ir::Builder &builder,             // NOLINT
-                 ir::OperationArgument &argument,  // NOLINT
-                 ir::OpResult cond,
-                 std::vector<ir::Type> &&output_types) {
+void IfOp::Build(pir::Builder &builder,             // NOLINT
+                 pir::OperationArgument &argument,  // NOLINT
+                 pir::OpResult cond,
+                 std::vector<pir::Type> &&output_types) {
   argument.num_regions = 2;
   argument.AddOperand(cond);
   argument.output_types.swap(output_types);
 }
 ir::Block *IfOp::true_block() {
-  ir::Region &true_region = (*this)->region(0);
+  pir::Region &true_region = (*this)->region(0);
   if (true_region.empty()) true_region.emplace_back();
   return true_region.front();
 }
 ir::Block *IfOp::false_block() {
-  ir::Region &false_region = (*this)->region(1);
+  pir::Region &false_region = (*this)->region(1);
   if (false_region.empty()) false_region.emplace_back();
   return false_region.front();
 }
-void IfOp::Print(ir::IrPrinter &printer) {
+void IfOp::Print(pir::IrPrinter &printer) {
   auto &os = printer.os;
   auto op = operation();
   printer.PrintOpResult(op);

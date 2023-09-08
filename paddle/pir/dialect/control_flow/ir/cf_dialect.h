@@ -12,15 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/dialect/control_flow/ir/cf_ops.h"
+#pragma once
 
-namespace ir {
+#include "paddle/pir/core/dialect.h"
 
-void YieldOp::Build(Builder &builder,
-                    OperationArgument &argument,
-                    std::vector<OpResult> &&inputs) {
-  argument.AddOperands(inputs.begin(), inputs.end());
-}
-}  // namespace ir
+namespace pir {
+class ControlFlowDialect : public Dialect {
+ public:
+  explicit ControlFlowDialect(IrContext *context)
+      : Dialect(name(), context, TypeId::get<ControlFlowDialect>()) {
+    initialize();
+  }
+  static const char *name() { return "cf"; }
 
-IR_DEFINE_EXPLICIT_TYPE_ID(ir::YieldOp)
+ private:
+  void initialize();
+};
+
+}  // namespace pir
+IR_DECLARE_EXPLICIT_TYPE_ID(pir::ControlFlowDialect)
