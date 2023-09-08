@@ -13,10 +13,10 @@
 # limitations under the License.
 
 
+from paddle.base import core
+from paddle.base.backward import _append_grad_suffix_
+from paddle.base.framework import Variable
 from paddle.common_ops_import import LayerHelper, check_type, in_dygraph_mode
-from paddle.fluid import core
-from paddle.fluid.backward import _append_grad_suffix_
-from paddle.fluid.framework import Variable
 from paddle.utils import flatten, map_structure
 
 # NOTE(MarioLulab): Borrowed from `python/paddle/static/nn/control_flow.py`
@@ -238,7 +238,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                     )
                 )
 
-    check_type(name, "name", (str, type(None)), "fluid.layers.static_pylayer")
+    check_type(name, "name", (str, type(None)), "base.layers.static_pylayer")
     helper = LayerHelper('static_pylayer', **locals())
     copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)
 

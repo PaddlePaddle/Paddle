@@ -62,7 +62,7 @@ bool HasScale(OpDesc* const op_ptr,
   name->clear();
   std::unordered_map<std::string, Attribute> attr_map = op_ptr->GetAttrMap();
   std::unordered_map<std::string, Attribute>::iterator iter;
-  int len = regexp.size();
+  int len = static_cast<int>(regexp.size());
   for (iter = attr_map.begin(); iter != attr_map.end(); iter++) {
     if (regexp == iter->first.substr(0, len)) {
       *name = iter->first;

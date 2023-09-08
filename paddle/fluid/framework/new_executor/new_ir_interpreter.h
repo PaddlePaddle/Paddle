@@ -208,6 +208,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
       variable_2_var_name_;
 
   std::map<std::string, int> var_name_2_id_;
+  std::unordered_map<int, std::string> id_2_var_name_;
 
   std::vector<Variable*> variable_list_;
 
