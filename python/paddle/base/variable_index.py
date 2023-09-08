@@ -41,16 +41,6 @@ def is_list_tuple(index, contain_type):
     return True
 
 
-def is_one_dim_list(index, contain_type):
-    if isinstance(index, list):
-        for i in index:
-            if not isinstance(i, contain_type):
-                return False
-    else:
-        return False
-    return True
-
-
 def get_list_index_shape(var_dims, index_dims):
     var_dims_size = len(var_dims)
     index_dims_size = len(index_dims)
@@ -405,9 +395,7 @@ def _setitem_impl_(var, item, value):
         return _setitem_for_tensor_array(var, item, value)
 
     inputs = {'Input': var}
-    if isinstance(item, list):
-        if not is_one_dim_list(item, int):
-            item = tuple(item)
+
     # 1. Parse item
     if not isinstance(item, tuple):
         item = (item,)
@@ -701,9 +689,6 @@ def parse_index(x, indices):
     steps = []
     use_strided_slice = False
     has_advanced_index = False
-
-    if isinstance(indices, list) and not is_one_dim_list(indices, int):
-        indices = tuple(indices)
 
     if not isinstance(indices, tuple):
         indices = (indices,)
