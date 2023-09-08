@@ -190,9 +190,6 @@ TEST(NodeTreesTest, LogMe_case0) {
       EXPECT_EQ(thread2_node->GetRuntimeTraceEventNodes().size(), 2u);
       EXPECT_NE(thread2_node->GetCommunicationSupplementEventNode(), nullptr);
     }
-    if (thread2_node->Name() == "allreduce") {
-      EXPECT_NE(thread2_node->GetCommSupplementEventNode().size(), nullptr);
-    }
   }
   tree.LogMe(&logger);
   logger.LogExtraInfo(std::unordered_map<std::string, std::string>());
