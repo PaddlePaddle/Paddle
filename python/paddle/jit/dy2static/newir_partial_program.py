@@ -22,12 +22,12 @@ import paddle.ir.core as ir_static
 from paddle import _legacy_C_ops
 from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.autograd.ir_backward import grad
-from paddle.fluid import core, framework, program_guard
-from paddle.fluid.compiler import BuildStrategy
-from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.framework import _apply_pass
-from paddle.fluid.libpaddle.ir import OpResult, fake_op_result
+from paddle.base import core, framework, program_guard
+from paddle.base.compiler import BuildStrategy
+from paddle.base.data_feeder import check_type, convert_dtype
+from paddle.base.dygraph.base import switch_to_static_graph
+from paddle.base.framework import _apply_pass
+from paddle.base.libpaddle.ir import OpResult, fake_op_result
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
