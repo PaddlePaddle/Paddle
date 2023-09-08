@@ -53,6 +53,8 @@ class LegacyKernelInstruction : public InstructionBase {
 
   const std::string& Name() const override { return legacy_op_name_; }
 
+  OperatorBase* OpBase() const override;
+
  private:
   std::string legacy_op_name_;
 
