@@ -504,8 +504,10 @@ CHECK_BACKWARD_INPLACE_TEMPLATE = """
   bool can_be_inplaced = false;
   if ({}.initialized()) {{
     VLOG(10) << {}.name() << "({}) use_count: " << {}.impl().use_count();
-    if ((({}.is_dense_tensor() && std::dynamic_pointer_cast<phi::DenseTensor>({}.impl())->meta().is_contiguous()) || !{}.is_dense_tensor()) && ({}.impl().use_count() == 1 || ({}.impl().use_count() == 2 && {}.impl().get() == {}.impl().get()))) {{
-      can_be_inplaced = true;
+    if ({}.impl().use_count() == 1 || ({}.impl().use_count() == 2 && {}.impl().get() == {}.impl().get())) {{
+      if (({}.is_dense_tensor() && std::dynamic_pointer_cast<phi::DenseTensor>({}.impl())->meta().is_contiguous()) || !{}.is_dense_tensor()) {{
+        can_be_inplaced = true;
+      }}
     }}
   }}"""
 
@@ -2159,10 +2161,10 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                     transformed_tensor_name,
                     transformed_tensor_name,
                     transformed_tensor_name,
-                    transformed_tensor_name,
-                    transformed_tensor_name,
-                    transformed_tensor_name,
                     tensor_wrapper_intermidiate_tensor_str,
+                    transformed_tensor_name,
+                    transformed_tensor_name,
+                    transformed_tensor_name,
                 )
                 inplace_grad_input_str = transformed_tensor_name
             if is_optional:
@@ -2231,10 +2233,10 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                         transformed_tensor_name,
                         transformed_tensor_name,
                         transformed_tensor_name,
-                        transformed_tensor_name,
-                        transformed_tensor_name,
-                        transformed_tensor_name,
                         grads_tensor_str,
+                        transformed_tensor_name,
+                        transformed_tensor_name,
+                        transformed_tensor_name,
                     )
                     inplace_grad_input_str = transformed_tensor_name
 
