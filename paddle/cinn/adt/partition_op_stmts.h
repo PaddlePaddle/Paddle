@@ -22,7 +22,8 @@
 namespace cinn::adt::partition {
 
 using EquationCtx4OpStmtT =
-    std::function<equation::config::Context*(const m_expr::OpStmt&)>;
+    std::function<std::shared_ptr<equation::config::Context>(
+        const m_expr::OpStmt&)>;
 using TensorIndex = equation::Variable;
 using AnchorIndex = TensorIndex;
 

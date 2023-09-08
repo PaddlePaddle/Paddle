@@ -51,12 +51,6 @@ using MulConstant = Mul<Constant, Constant>;
 OVERLOAD_OPERATOR_EQ_NE(AddConstant, TupleEqual);
 OVERLOAD_OPERATOR_EQ_NE(MulConstant, TupleEqual);
 
-// Undefined = {}
-struct Undefined final {
-  bool operator==(const Undefined&) const { return true; }
-  bool operator!=(const Undefined&) const { return false; }
-};
-
 template <typename IteratorsT>
 struct IndexDot : public Tuple<IteratorsT, Constant> {
   using Tuple<IteratorsT, Constant>::Tuple;

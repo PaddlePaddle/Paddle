@@ -30,11 +30,10 @@ class Context {
   Context(Context&&) = delete;
 
   explicit Context(const std::vector<std::uint64_t>& in_tensors_ranks,
-                   const std::vector<std::uint64_t>& out_tensors_ranks,
-                   const std::shared_ptr<std::vector<Equation>>& equations)
+                   const std::vector<std::uint64_t>& out_tensors_ranks)
       : in_tensors_ranks_(in_tensors_ranks),
         out_tensors_ranks_(out_tensors_ranks),
-        equations_(equations) {
+        equations_{} {
     Init(&in_iterator_tuples_, in_tensors_ranks);
     Init(&out_iterator_tuples_, out_tensors_ranks);
     Init(&in_stride_tuples_, in_tensors_ranks);
@@ -201,7 +200,7 @@ class Context {
   std::vector<DimTuple> in_dim_tuples_;
   std::vector<DimTuple> out_dim_tuples_;
 
-  std::shared_ptr<std::vector<Equation>> equations_;
+  Equations equations_;
   FakeOpPlaceHolder fake_op_placeholder_;
 };
 

@@ -176,6 +176,11 @@ bool TagEqual(const T& lhs, const T& rhs) {
     }                                                                          \
                                                                                \
     template <typename T>                                                      \
+    bool Has() const {                                                         \
+      return std::holds_alternative<T>(variant_);                              \
+    }                                                                          \
+                                                                               \
+    template <typename T>                                                      \
     auto Visit(const T& visitor) const {                                       \
       return std::visit(visitor, variant_);                                    \
     }                                                                          \
@@ -250,6 +255,12 @@ std::size_t TagHashValue(const T& tag) {
   }
 
 using Name = std::string;
+
+// Undefined = {}
+struct Undefined final {
+  bool operator==(const Undefined&) const { return true; }
+  bool operator!=(const Undefined&) const { return false; }
+};
 
 #define ADT_TODO() LOG(FATAL) << "TODO"
 

@@ -16,6 +16,7 @@
 
 #include <function>
 
+#include "paddle/cinn/adt/adapter.h"
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/equation_value.h"
 #include "paddle/cinn/adt/schedule_descriptor.h"
@@ -83,11 +84,8 @@ inline std::size_t GetHashValue(const SSAShadowTensor& shadow_tensor) {
   return hash_combine(GetHashValue(shadow_name), tensor);
 }
 
-// Tensor = const Graph::NodeData* | SSAShadowTensor | TempStorage
-DEFINE_ADT_UNION(Tensor,
-                 const hlir::framework::NodeData*,
-                 SSAShadowTensor,
-                 TempStorage);
+// Tensor = adapter::Tensor | SSAShadowTensor | TempStorage
+DEFINE_ADT_UNION(Tensor, adapter::Tensor, SSAShadowTensor, TempStorage);
 OVERRIDE_UNION_GET_HASH_VALUE(Tensor);
 OVERLOAD_OPERATOR_EQ_NE(Tensor, UnionEqual);
 

@@ -77,6 +77,149 @@ tBreak<bool> MapIR::AggregateTensorPair(const MapIR& that,
   });
 }
 
+namespace {
+
+struct Read {};
+struct Write {};
+DEFINE_ADT_UNION(RW, Read, Write);
+
+inline RW GetRW(tAsOutput<bool> as_output) {
+  return as_output.value() ? Write{} : Read{};
+}
+
+struct ProducerPointwiseToConsumer {};
+struct ProducerBroadcastToConsumer {};
+struct ConsumerBroadcastToProducer {};
+DEFINE_ADT_UNION(PointwiseOrBroadcast,
+                 ProducerPointwiseToConsumer,
+                 ProducerBroadcastToConsumer,
+                 ConsumerBroadcastToProducer);
+
+inline PointwiseOrBroadcast GetPointwiseOrBroadcast(
+    std::size_t tensor_sd_iters_size,
+    std::size_t producer_cluster_sd_iters_size,
+    std::size_t consumer_cluster_sd_iters_size) {
+  ADT_TODO();
+  if (tensor_sd_iters_size == producer_cluster_sd_iters_size &&
+      producer_cluster_sd_iters_size == consumer_cluster_sd_iters_size) {
+    return ProducerPointwiseToConsumer{};
+  }
+  if (producer_sd_iters_size < consumer_sd_iters_size &&
+      producer_sd_iters_size == producer_cluster_sd_iters_size) {
+    return ProducerBroadcastToConsumer{};
+  }
+  if (producer_sd_iters_size > consumer_sd_iters_size &&
+      consumer_sd_iters_size == consumer_cluster_sd_iters_size) {
+    return ConsumerBroadcastToProducer{};
+  }
+  LOG(FATAL) << "Not supported yet! "
+             << " tensor_sd_iters_size = " << tensor_sd_iters_size
+             << " producer_cluster_sd_iters_size = "
+             << producer_cluster_sd_iters_size
+             << " consumer_cluster_sd_iters_size = "
+             << consumer_cluster_sd_iters_size;
+}
+
+DEFINE_ADT_UNION(MergableResult, Undefined, bool);
+
+// R    R    P==C    TRUE
+MergableResult CheckIsMergable(const Read&,
+                               const Read&,
+                               const ProducerPointwiseToConsumer&) {
+  return true;
+}
+// R    R    P < C    TRUE
+MergableResult CheckIsMergable(const Read&,
+                               const Read&,
+                               const ProducerBroadcastToConsumer&) {
+  return true;
+}
+// R    R    P > C    TRUE
+MergableResult CheckIsMergable(const Read&,
+                               const Read&,
+                               const ConsumerBroadcastToProducer&) {
+  return true;
+}
+// R    W    P == C    TRUE
+MergableResult CheckIsMergable(const Read&,
+                               const Write&,
+                               const ProducerPointwiseToConsumer&) {
+  return true;
+}
+// R    W    P < C    Undefined
+MergableResult CheckIsMergable(const Read&,
+                               const Write&,
+                               const ProducerBroadcastToConsumer&) {
+  return Undefined{};
+}
+// R    W    P > C    FALSE
+MergableResult CheckIsMergable(const Read&,
+                               const Write&,
+                               const ConsumerBroadcastToProducer&) {
+  return false;
+}
+// W    R    P == C    TRUE
+MergableResult CheckIsMergable(const Write&,
+                               const Read&,
+                               const ProducerPointwiseToConsumer&) {
+  return true;
+}
+// W    R    P < C    TRUE
+MergableResult CheckIsMergable(const Write&,
+                               const Read&,
+                               const ProducerBroadcastToConsumer&) {
+  return true;
+}
+// W    R    P > C    FALSE
+MergableResult CheckIsMergable(const Write&,
+                               const Read&,
+                               const ConsumerBroadcastToProducer&) {
+  return false;
+}
+// W    W    P == C    TRUE
+MergableResult CheckIsMergable(const Write&,
+                               const Write&,
+                               const ProducerPointwiseToConsumer&) {
+  return true;
+}
+// W    W    P < C    FALSE
+MergableResult CheckIsMergable(const Write&,
+                               const Write&,
+                               const ProducerBroadcastToConsumer&) {
+  return false;
+}
+// W    W    P > C    Undefined
+MergableResult CheckIsMergable(const Write&,
+                               const Write&,
+                               const ConsumerBroadcastToProducer&) {
+  return Undefined{};
+}
+
+MergableResult CheckIsMergable(tAsOutput<bool> producer_as_output,
+                               tAsOutput<bool> consumer_as_output,
+                               std::size_t tensor_sd_iters_size,
+                               std::size_t producer_cluster_sd_iters_size,
+                               std::size_t consumer_cluster_sd_iters_size) {
+  RW producer_rw = GetRW(producer_as_output);
+  RW consumer_rw = GetRW(consumer_as_output);
+  PointwiseOrBroadcast pointwise_or_broadcast =
+      GetPointwiseOrBroadcast(tensor_sd_iters_size,
+                              producer_cluster_sd_iters_size,
+                              consumer_cluster_sd_iters_size);
+  return std::visit(
+      [&](const auto& producer_rw,
+          const auto& consumer_rw,
+          const auto& pointwise_or_broadcast) {
+        return CheckIsMergable(
+            producer_rw, consumer_rw, pointwise_or_broadcast);
+      },
+      producer_rw.variant(),
+      consumer_rw.variant(),
+      pointwise_or_broadcast.variant());
+}
+
+}  // namespace
+
 bool MapIR::IsMergableTo(
     const MapIR& that,
     const std::function<const ScheduleIterators&(const m_expr::Tensor&)>&
@@ -93,20 +236,18 @@ bool MapIR::IsMergableTo(
                                const auto& that_as_output) {
     return this_as_output.value() || that_as_output.value();
   };
-
   bool mergable = true;
-  AggregateTensorPair(that,
-                      [&](const auto& tensor,
-                          tAsOutput<bool> this_as_output,
-                          tAsOutput<bool> that_as_output) {
-                        if (CheckBroadcast(tensor) &&
-                            CheckWrite(this_as_output, that_as_output)) {
-                          mergable = false;
-                          return tBreak{true};
-                        } else {
-                          return tBreak{false};
-                        }
-                      });
+  const auto& UpdataMergable = [&](const auto& tensor,
+                                   tAsOutput<bool> this_as_output,
+                                   tAsOutput<bool> that_as_output) {
+    if (CheckBroadcast(tensor) && CheckWrite(this_as_output, that_as_output)) {
+      mergable = false;
+      return tBreak{true};
+    } else {
+      return tBreak{false};
+    }
+  };
+  AggregateTensorPair(that, UpdataMergable);
   return mergable;
 }
 
@@ -371,7 +512,7 @@ bool MergePrevToNext4LoopFuse(
       auto me = iter;
       auto prev = std::prev(iter);
       auto next = std::next(iter);
-      return IsMergable(*prev, *next) && !IsMergeable(*me, *next) &&
+      return IsMergable(*prev, *next) && !IsMergable(*me, *next) &&
              !HasReadWriteDependence(*prev, *me);
     }
   };
