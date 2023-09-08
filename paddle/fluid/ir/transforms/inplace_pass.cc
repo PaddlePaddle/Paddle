@@ -330,6 +330,8 @@ class InplacePass : public ir::Pass {
           "is_inplace",
           ir::BoolAttribute::get(ir::IrContext::Instance(), true));
     }
+    LOG_FIRST_N(INFO, 1)
+        << "Apply inplace pass on lowering ::ir::Program to Kernel Dialect.";
   }
 
   bool CanApplyOn(ir::Operation* op) const override {

@@ -105,8 +105,7 @@ namespace {
 #ifdef PADDLE_WITH_DISTRIBUTE
 phi::DenseTensor ReshardXToReplicated(
     phi::distributed::DistTensor* dist_tensor) {
-  if (!phi::distributed::IsDimsMappingReplicated(
-          dist_tensor->dist_attr().dims_mapping())) {
+  if (!dist_tensor->dist_attr().is_replicated()) {
     phi::distributed::TensorDistAttr dist_attr(dist_tensor->dist_attr());
     std::vector<int64_t> dims_mapping(dist_tensor->dims().size(), -1);
     dist_attr.set_dims_mapping(dims_mapping);
