@@ -38,28 +38,28 @@ API_FILES=("CMakeLists.txt"
            "python/paddle/distributed/fleet/__init__.py"
            "python/paddle/distributed/fleet/launch.py"
            "python/requirements.txt"
-           "python/paddle/fluid/__init__.py"
-           "python/paddle/fluid/compiler.py"
-           "python/paddle/fluid/parallel_executor.py"
-           "python/paddle/fluid/framework.py"
-           "python/paddle/fluid/backward.py"
+           "python/paddle/base/__init__.py"
+           "python/paddle/base/compiler.py"
+           "python/paddle/base/parallel_executor.py"
+           "python/paddle/base/framework.py"
+           "python/paddle/base/backward.py"
            "paddle/fluid/operators/distributed/send_recv.proto.in"
            "paddle/fluid/framework/unused_var_check.cc"
-           "python/paddle/fluid/tests/unittests/white_list/check_shape_white_list.py"
-           "python/paddle/fluid/tests/unittests/white_list/op_accuracy_white_list.py"
-           "python/paddle/fluid/tests/unittests/white_list/compile_vs_runtime_white_list.py"
-           "python/paddle/fluid/tests/unittests/white_list/no_check_set_white_list.py"
-           "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py"
-           "python/paddle/fluid/tests/unittests/white_list/op_threshold_white_list.py"
-           "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py"
-           "python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py"
+           "python/paddle/base/tests/unittests/white_list/check_shape_white_list.py"
+           "python/paddle/base/tests/unittests/white_list/op_accuracy_white_list.py"
+           "python/paddle/base/tests/unittests/white_list/compile_vs_runtime_white_list.py"
+           "python/paddle/base/tests/unittests/white_list/no_check_set_white_list.py"
+           "python/paddle/base/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py"
+           "python/paddle/base/tests/unittests/white_list/op_threshold_white_list.py"
+           "python/paddle/base/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py"
+           "python/paddle/base/tests/unittests/white_list/no_grad_set_white_list.py"
            "tools/print_signatures.py"
            "tools/sampcd_processor.py"
            "tools/check_pr_approval.py"
            "paddle/scripts/paddle_build.bat"
            "tools/windows/run_unittests.sh"
            "tools/parallel_UT_rule.py"
-           "python/paddle/fluid/dygraph/layers.py"
+           "python/paddle/base/dygraph/layers.py"
            "paddle/fluid/eager/grad_node_info.h"
            "paddle/fluid/eager/grad_node_info.cc"
            "paddle/fluid/eager/grad_tensor_holder.h"
@@ -142,8 +142,8 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "third_party" ];then
           echo_line="You must have one RD (risemeup1 or tianshuo78520a) approval for ${API_FILE}.\n"
           check_approval 1 risemeup1 tianshuo78520a
-      elif [ "${API_FILE}" == "python/paddle/fluid/__init__.py" ];then
-          echo_line="You must have one RD (lanxianghit (Recommend), phlrain, luotao1, Aurelius84 or qili93) approval for the python/paddle/fluid/init.py, which manages the environment variables.\n"
+      elif [ "${API_FILE}" == "python/paddle/base/__init__.py" ];then
+          echo_line="You must have one RD (lanxianghit (Recommend), phlrain, luotao1, Aurelius84 or qili93) approval for the python/paddle/base/init.py, which manages the environment variables.\n"
           check_approval 1 lanxianghit phlrain luotao1 Aurelius84 qili93
       elif [ "${API_FILE}" == "python/requirements.txt" ];then
           echo_line="You must have one RD (phlrain) and one TPM (dingjiaweiww) and one QA (kolinwei) approval for python/requirements.txt, which manages the third-party python package.\n"
@@ -154,29 +154,29 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "paddle/fluid/framework/unused_var_check.cc" ];then
           echo_line="You must have one RD (zhiqiu (Recommend) or chenwhql) approval for the changes of paddle/fluid/framework/unused_var_check.cc, which manages the allow list of operators that have unused input variables. Before change the allow list, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/OP-Should-Not-Have-Unused-Input] and try to refine code first. \n"
           check_approval 1 zhiqiu chenwhql
-      elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/check_shape_white_list.py" ];then
+      elif [ "${API_FILE}" == "python/paddle/base/tests/unittests/white_list/check_shape_white_list.py" ];then
           echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (hong19860320 (Recommend), luotao1, Aurelisu84, phlrain) approval for the changes of check_shape_white_list.py, which manages the white list of operators with limited input size. Inputs size of all cases in the op test must be greater than or equal to 100. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/OP-Test-Input-Shape-Requirements. \n"
           check_approval 1 hong19860320 luotao1 Aurelisu84 phlrain
-      elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/op_accuracy_white_list.py" ];then
-          echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (juncaipeng (Recommend), zhangting2020 (Recommend) or luotao1 or Aurelius84) approval for the python/paddle/fluid/tests/unittests/white_list/op_accuracy_white_list.py, which manages the white list of upgrading the precision of op test to float64. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Upgrade-OP-Precision-to-Float64. \n"
+      elif [ "${API_FILE}" == "python/paddle/base/tests/unittests/white_list/op_accuracy_white_list.py" ];then
+          echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (juncaipeng (Recommend), zhangting2020 (Recommend) or luotao1 or Aurelius84) approval for the python/paddle/base/tests/unittests/white_list/op_accuracy_white_list.py, which manages the white list of upgrading the precision of op test to float64. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Upgrade-OP-Precision-to-Float64. \n"
           check_approval 1 juncaipeng zhangting2020 luotao1 Aurelius84
-      elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/compile_vs_runtime_white_list.py" ];then
-           echo_line="You must have one RD (DannyIsFunny (Recommend), luotao1, Aurelius84, phlrain) approval for the python/paddle/fluid/tests/unittests/white_list/compile_vs_runtime_white_list.py, which manages the white list of compile&runtime lod-level check. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Compile_vs_Runtime-Check-Specification. \n"
+      elif [ "${API_FILE}" == "python/paddle/base/tests/unittests/white_list/compile_vs_runtime_white_list.py" ];then
+           echo_line="You must have one RD (DannyIsFunny (Recommend), luotao1, Aurelius84, phlrain) approval for the python/paddle/base/tests/unittests/white_list/compile_vs_runtime_white_list.py, which manages the white list of compile&runtime lod-level check. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Compile_vs_Runtime-Check-Specification. \n"
           check_approval 1 DannyIsFunny luotao1 Aurelius84 phlrain
-      elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/no_check_set_white_list.py" ];then
-          echo_line="You must have one RD (cryoco (Recommend), luotao1, Aurelius84 or phlrain) approval for the python/paddle/fluid/tests/unittests/white_list/no_check_set_white_list.py, which manages the white list of setting no_check_set of check_output. \n"
+      elif [ "${API_FILE}" == "python/paddle/base/tests/unittests/white_list/no_check_set_white_list.py" ];then
+          echo_line="You must have one RD (cryoco (Recommend), luotao1, Aurelius84 or phlrain) approval for the python/paddle/base/tests/unittests/white_list/no_check_set_white_list.py, which manages the white list of setting no_check_set of check_output. \n"
           check_approval 1 cryoco luotao1 Aurelius84 phlrain
-      elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py" ]; then
+      elif [ "${API_FILE}" == "python/paddle/base/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py" ]; then
           echo_line="You must have one RD (luotao1, Aurelisu84, lanxianghit, phlrain) approval for the ${API_FILE}, which manages the white list of instance size 0 input for sequence op test. For more information, please refer to [https://github.com/PaddlePaddle/Paddle/wiki/It-is-required-to-include-LoDTensor-input-with-instance_size=0-in-sequence-OP-test]. \n"
           check_approval 1 luotao1 Aurelisu84 lanxianghit phlrain
-      elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/op_threshold_white_list.py" ];then
-          echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (juncaipeng (Recommend), zhangting2020 or luotao1, Aurelius84) approval for the python/paddle/fluid/tests/unittests/white_list/op_threshold_white_list.py, which manages the white list of error threshold for op test with float64 precision. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Upgrade-OP-Precision-to-Float64. \n"
+      elif [ "${API_FILE}" == "python/paddle/base/tests/unittests/white_list/op_threshold_white_list.py" ];then
+          echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (juncaipeng (Recommend), zhangting2020 or luotao1, Aurelius84) approval for the python/paddle/base/tests/unittests/white_list/op_threshold_white_list.py, which manages the white list of error threshold for op test with float64 precision. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Upgrade-OP-Precision-to-Float64. \n"
           check_approval 1 juncaipeng zhangting2020 luotao1 Aurelius84
-      elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py" ];then
+      elif [ "${API_FILE}" == "python/paddle/base/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py" ];then
           echo_line="You must have one RD (luotao1, Aurelius84, lanxianghit or phlrain) approval for ${API_FILE}, which manages the white list of batch size 1 input for sequence op test. For more information, please refer to [https://github.com/PaddlePaddle/Paddle/wiki/It-is-required-to-include-LoDTensor-input-with-batch_size=1-in-sequence-OP-test]. \n"
           check_approval 1 luotao1 Aurelius84 lanxianghit phlrain
-      elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py" ];then
-          echo_line="You must have one RD (Shixiaowei02 (Recommend), luotao1, Aurelius84 or phlrain) approval for the python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py, which manages the white list of no_grad_set without value in operators. For more information, please refer to[https://github.com/PaddlePaddle/Paddle/wiki/It's-recommend-to-set-no_grad_set-to-be-None].\n"
+      elif [ "${API_FILE}" == "python/paddle/base/tests/unittests/white_list/no_grad_set_white_list.py" ];then
+          echo_line="You must have one RD (Shixiaowei02 (Recommend), luotao1, Aurelius84 or phlrain) approval for the python/paddle/base/tests/unittests/white_list/no_grad_set_white_list.py, which manages the white list of no_grad_set without value in operators. For more information, please refer to[https://github.com/PaddlePaddle/Paddle/wiki/It's-recommend-to-set-no_grad_set-to-be-None].\n"
           check_approval 1 Shixiaowei02 luotao1 Aurelius84 phlrain
       elif [ "${API_FILE}" == "tools/sampcd_processor.py" ];then
           echo_line="test_sampcd_processor.py will be executed for changed sampcd_processor.py.\n"
@@ -205,10 +205,10 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "tools/parallel_UT_rule.py" ]; then
           echo_line="You must have one RD (zhwesky2010 (Recommend), wanghuancoder, luotao1 or Aurelius84) approval for ${API_FILE} changes, which manages the rule of running unittest with a same GPU. If the unittest failed due to Insufficient GPU memory or CUBLAS_STATUS_ALLOC_FAILED, you can remove it from ${API_FILE}.\n"
           check_approval 1 zhwesky2010 wanghuancoder luotao1 Aurelius84
-      elif [ "${API_FILE}" == "python/paddle/fluid/parallel_executor.py" ]; then
+      elif [ "${API_FILE}" == "python/paddle/base/parallel_executor.py" ]; then
           echo_line="You must have one RD (Xreki, luotao1, zhhsplendid or Aurelius84) approval for ${API_FILE}, which manages the underlying code for PaddlePaddle.\n"
           check_approval 1 Xreki luotao1 zhhsplendid Aurelius84
-      elif [ "${API_FILE}" == "python/paddle/fluid/dygraph/layers.py" ] || [ "${API_FILE}" == "paddle/fluid/eager/grad_node_info.h" ] || [ "${API_FILE}" == "paddle/fluid/eager/grad_node_info.cc" ] || [ "${API_FILE}" == "paddle/fluid/eager/grad_tensor_holder.h" ] || [ "${API_FILE}" == "paddle/fluid/eager/grad_tensor_holder.cc" ] || [ "${API_FILE}" == "paddle/fluid/eager/tensor_wrapper.h" ] || [ "${API_FILE}" == "paddle/fluid/eager/autograd_meta.cc"] || [ "${API_FILE}" == "paddle/fluid/eager/autograd_meta.h"] || [ "${API_FILE}" == "paddle/fluid/eager/backward.cc"] || [ "${API_FILE}" == "paddle/fluid/eager/backward.h"]; then
+      elif [ "${API_FILE}" == "python/paddle/base/dygraph/layers.py" ] || [ "${API_FILE}" == "paddle/fluid/eager/grad_node_info.h" ] || [ "${API_FILE}" == "paddle/fluid/eager/grad_node_info.cc" ] || [ "${API_FILE}" == "paddle/fluid/eager/grad_tensor_holder.h" ] || [ "${API_FILE}" == "paddle/fluid/eager/grad_tensor_holder.cc" ] || [ "${API_FILE}" == "paddle/fluid/eager/tensor_wrapper.h" ] || [ "${API_FILE}" == "paddle/fluid/eager/autograd_meta.cc"] || [ "${API_FILE}" == "paddle/fluid/eager/autograd_meta.h"] || [ "${API_FILE}" == "paddle/fluid/eager/backward.cc"] || [ "${API_FILE}" == "paddle/fluid/eager/backward.h"]; then
           echo_line="You must have one RD (JiabinYang,chenwhql,phlrain) approval for ${API_FILE}, which manages the underlying code for PaddlePaddle.\n"
           check_approval JiabinYang chenwhql phlrain
       elif [ "${API_FILE}" == "paddle/phi/api/include/tensor.h" ] || [ "${API_FILE}" == "paddle/phi/core/tensor_base.h" ] || [ "${API_FILE}" == "paddle/phi/core/dense_tensor.h" ] || [ "${API_FILE}" == "paddle/phi/core/meta_tensor.h" ] || [ "${API_FILE}" == "paddle/phi/core/tensor_meta.h" ] || [ "${API_FILE}" == "paddle/phi/core/attribute.h" ] || [ "${API_FILE}" == "paddle/phi/core/device_context.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_utils.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_registry.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_factory.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_context.h" ] || [ "${API_FILE}" == "paddle/phi/core/infermeta_utils.h" ]; then
@@ -341,9 +341,9 @@ if [ "${HAS_MODIFIED_STATIC_BUILD}" != "" ] && [ "${GIT_PR_ID}" != ""]; then
     check_approval 1 From00 zhiqiu
 fi
 
-HAS_MODIFIED_PY_FLUID=`git diff --name-only upstream/$BRANCH | grep "python/paddle/fluid" || true`
+HAS_MODIFIED_PY_FLUID=`git diff --name-only upstream/$BRANCH | grep "python/paddle/base" || true`
 if [ "${HAS_MODIFIED_PY_FLUID}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (zoooo0820(Recommend), or jeff41404) approval for file changes in python/paddle/fluid, because fluid API is going to be removed.\n"
+    echo_line="You must have one RD (zoooo0820(Recommend), or jeff41404) approval for file changes in python/paddle/base, because fluid API is going to be removed.\n"
     check_approval 1 zoooo0820 jeff41404
 fi
 

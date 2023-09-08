@@ -27,6 +27,7 @@ struct OpInputInfo {
   bool optional = false;
   bool no_need_buffer = false;
   bool is_mutable_attribute = false;
+  bool with_grad_semantic = true;
   OpInputInfo() = default;
   OpInputInfo(const OpInputInfo& input_info) = default;
 
@@ -34,12 +35,14 @@ struct OpInputInfo {
               const std::string& type_name,
               bool optional,
               bool no_need_buffer,
-              bool is_mutable_attribute)
+              bool is_mutable_attribute,
+              bool with_grad_semantic)
       : name(name),
         type_name(type_name),
         optional(optional),
         no_need_buffer(no_need_buffer),
-        is_mutable_attribute(is_mutable_attribute) {}
+        is_mutable_attribute(is_mutable_attribute),
+        with_grad_semantic(with_grad_semantic) {}
 };
 
 struct OpOutputInfo {

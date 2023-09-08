@@ -40,7 +40,7 @@ void AllocCsrPtr(const Context& dev_ctx,
   DenseTensor dx_crows = phi::EmptyLike<IntT>(dev_ctx, x.crows());
   DenseTensor dx_cols = phi::EmptyLike<IntT>(dev_ctx, x.cols());
   DenseTensor dx_values = phi::EmptyLike<T>(dev_ctx, x.values());
-  dx->set_meta(x.meta());
+  dx->set_meta(x.meta());  // NOLINT
   dx->SetMember(dx_crows, dx_cols, dx_values, x.dims());
 }
 
@@ -50,7 +50,7 @@ void AllocCooPtr(const Context& dev_ctx,
                  SparseCooTensor* dx) {
   DenseTensor dx_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
   DenseTensor dx_values = phi::EmptyLike<T>(dev_ctx, x.values());
-  dx->set_meta(x.meta());
+  dx->set_meta(x.meta());  // NOLINT
   dx->SetMember(dx_indices, dx_values, x.dims(), x.coalesced());
 }
 

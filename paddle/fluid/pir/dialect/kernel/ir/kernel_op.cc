@@ -59,7 +59,44 @@ phi::KernelKey PhiKernelOp::kernel_key() {
   return attributes().at("kernel_key").dyn_cast<KernelAttribute>().data();
 }
 
+const char* LegacyKernelOp::attributes_name[attributes_num] = {  // NOLINT
+    "op_name",
+    "kernel_name",
+    "kernel_key"};
+
+void LegacyKernelOp::Verify() {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: LegacyKernelOp.";
+
+  auto& attributes = this->attributes();
+
+  PADDLE_ENFORCE(attributes.count("op_name") > 0 &&
+                     attributes.at("op_name").isa<ir::StrAttribute>(),
+                 phi::errors::PreconditionNotMet(
+                     "Type of attribute: op_name is not right."));
+
+  PADDLE_ENFORCE(attributes.count("kernel_name") > 0 &&
+                     attributes.at("kernel_name").isa<ir::StrAttribute>(),
+                 phi::errors::PreconditionNotMet(
+                     "Type of attribute: kernel_name is not right."));
+
+  PADDLE_ENFORCE(attributes.count("kernel_key") > 0 &&
+                     attributes.at("kernel_key").isa<KernelAttribute>(),
+                 phi::errors::PreconditionNotMet(
+                     "Type of attribute: kernel_key is not right."));
+}
+
+std::string LegacyKernelOp::op_name() {
+  return attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
+}
+std::string LegacyKernelOp::kernel_name() {
+  return attributes().at("kernel_name").dyn_cast<ir::StrAttribute>().AsString();
+}
+phi::KernelKey LegacyKernelOp::kernel_key() {
+  return attributes().at("kernel_key").dyn_cast<KernelAttribute>().data();
+}
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::PhiKernelOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::LegacyKernelOp)

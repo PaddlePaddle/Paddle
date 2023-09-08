@@ -31,7 +31,7 @@ class TestResnetWithPass(unittest.TestCase):
         self.build_strategy.enable_addto = True
         self.resnet_helper = ResNetHelper()
         # NOTE: for enable_addto
-        paddle.fluid.set_flags({"FLAGS_max_inplace_grad_add": 8})
+        paddle.base.set_flags({"FLAGS_max_inplace_grad_add": 8})
 
     def train(self, to_static):
         paddle.jit.enable_to_static(to_static)
@@ -82,12 +82,12 @@ class TestResnetWithPass(unittest.TestCase):
 
     @ast_only_test
     def test_in_static_mode_mkldnn(self):
-        paddle.fluid.set_flags({'FLAGS_use_mkldnn': True})
+        paddle.base.set_flags({'FLAGS_use_mkldnn': True})
         try:
-            if paddle.fluid.core.is_compiled_with_mkldnn():
+            if paddle.base.core.is_compiled_with_mkldnn():
                 self.resnet_helper.train(True, self.build_strategy)
         finally:
-            paddle.fluid.set_flags({'FLAGS_use_mkldnn': False})
+            paddle.base.set_flags({'FLAGS_use_mkldnn': False})
 
 
 class TestError(unittest.TestCase):

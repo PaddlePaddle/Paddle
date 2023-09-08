@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.hapi.model import to_list
 
 
@@ -158,7 +158,7 @@ class TestAccuracyDynamic(unittest.TestCase):
         return label, pred_one_hot
 
     def test_main(self):
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             acc = paddle.metric.Accuracy(topk=self.topk, name=self.name)
             for _ in range(10):
                 label, pred = self.random_pred_label()
@@ -200,11 +200,11 @@ class TestAccuracyStatic(TestAccuracyDynamic):
     def test_main(self):
         paddle.enable_static()
 
-        main_prog = fluid.Program()
-        startup_prog = fluid.Program()
+        main_prog = base.Program()
+        startup_prog = base.Program()
         main_prog.random_seed = 1024
         startup_prog.random_seed = 1024
-        with fluid.program_guard(main_prog, startup_prog):
+        with base.program_guard(main_prog, startup_prog):
             pred = paddle.static.data(
                 name='pred', shape=[None, self.class_num], dtype='float32'
             )
@@ -214,8 +214,8 @@ class TestAccuracyStatic(TestAccuracyDynamic):
             acc = paddle.metric.Accuracy(topk=self.topk, name=self.name)
             state = acc.compute(pred, label)
 
-        exe = fluid.Executor(fluid.CPUPlace())
-        compiled_main_prog = fluid.CompiledProgram(main_prog)
+        exe = base.Executor(base.CPUPlace())
+        compiled_main_prog = base.CompiledProgram(main_prog)
 
         for _ in range(10):
             label, pred = self.random_pred_label()

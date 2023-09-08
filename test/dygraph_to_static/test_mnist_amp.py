@@ -22,8 +22,8 @@ from test_mnist import MNIST, SEED, TestMNIST
 import paddle
 from paddle.optimizer import Adam
 
-if paddle.fluid.is_compiled_with_cuda():
-    paddle.fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+if paddle.base.is_compiled_with_cuda():
+    paddle.base.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
 class TestAMP(TestMNIST):

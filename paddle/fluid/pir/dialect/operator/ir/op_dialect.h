@@ -25,8 +25,11 @@ class PaddleDialect : public pir::Dialect {
 
   static const char* name() { return "pd_op"; }
 
-  void PrintType(pir::Type type, std::ostream& os) const;
-  void PrintAttribute(pir::Attribute type, std::ostream& os) const;
+  void PrintType(pir::Type type, std::ostream& os) const override;
+  void PrintAttribute(pir::Attribute type, std::ostream& os) const override;
+
+  void PrintOperation(pir::Operation* op,
+                      pir::IrPrinter& printer) const override;  // NOLINT
 
  private:
   void initialize();

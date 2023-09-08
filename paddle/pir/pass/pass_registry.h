@@ -80,19 +80,18 @@ class PassRegistrar {
                 msg)
 
 // Register a new pass that can be applied on the IR.
-#define REGISTER_PASS(pass_type, pass_class)                                \
-  STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                                      \
-      __reg_pass__##pass_type,                                              \
-      "REGISTER_PASS must be called in global namespace");                  \
-  static ::pir::PassRegistrar<pass_class> __pass_registrar_##pass_type##__( \
-      #pass_type);                                                          \
-  int TouchPassRegistrar_##pass_type() {                                    \
-    __pass_registrar_##pass_type##__.Touch();                               \
-    return 0;                                                               \
-  }                                                                         \
-  static ::pir::PassRegistrar<pass_class>                                   \
-      &__pass_tmp_registrar_##pass_type##__ UNUSED =                        \
-          __pass_registrar_##pass_type##__
+#define REGISTER_IR_PASS(pass_type, pass_class)                                \
+  STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                                         \
+      __reg_pass__##pass_type,                                                 \
+      "REGISTER_IR_PASS must be called in global namespace");                  \
+  static ::pir::PassRegistrar<pass_class> __pass_registrar_##pass_type##__(     \
+      #pass_type);                                                             \
+  int TouchPassRegistrar_##pass_type() {                                       \
+    __pass_registrar_##pass_type##__.Touch();                                  \
+    return 0;                                                                  \
+  }                                                                            \
+  static ::pir::PassRegistrar<pass_class> &__pass_tmp_registrar_##pass_type##__ \
+      UNUSED = __pass_registrar_##pass_type##__
 
 #define USE_PASS(pass_type)                           \
   STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                \

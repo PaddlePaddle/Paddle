@@ -23,6 +23,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
+#include "paddle/pir/transforms/reorder_block_ops_pass.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_attribute.h"
@@ -431,14 +432,30 @@ const char *Conv2dFusionOpTest::attributes_name[10] = {  // NOLINT
 
 OpInfoTuple Conv2dFusionOpTest::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
-      OpInputInfo(
-          "input", "paddle::dialect::DenseTensorType", false, false, false),
-      OpInputInfo(
-          "filter", "paddle::dialect::DenseTensorType", false, false, false),
-      OpInputInfo(
-          "bias", "paddle::dialect::DenseTensorType", false, false, false),
-      OpInputInfo(
-          "residual", "paddle::dialect::DenseTensorType", true, false, false)};
+      OpInputInfo("input",
+                  "paddle::dialect::DenseTensorType",
+                  false,
+                  false,
+                  false,
+                  true),
+      OpInputInfo("filter",
+                  "paddle::dialect::DenseTensorType",
+                  false,
+                  false,
+                  false,
+                  true),
+      OpInputInfo("bias",
+                  "paddle::dialect::DenseTensorType",
+                  false,
+                  false,
+                  false,
+                  true),
+      OpInputInfo("residual",
+                  "paddle::dialect::DenseTensorType",
+                  true,
+                  false,
+                  false,
+                  true)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {
       OpAttributeInfo("strides", "ir::ArrayAttribute<pir::Int32Attribute>", ""),
       OpAttributeInfo(
@@ -1104,8 +1121,8 @@ TEST(pattern_rewrite, Patterns) {
 
   pir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<TestPass>());
-  pm.AddPass(pir::CreateConstantFoldingPass());
-  pm.AddPass(pir::CreateDeadCodeEliminationPass());
+  pm.AddPass(ir::CreateConstantFoldingPass());
+  pm.AddPass(ir::CreateDeadCodeEliminationPass());
   pm.EnablePassTiming();
   pm.EnableIRPrinting();
   // pm.EnableIRPrinting(std::make_unique<pir::PassManager::IRPrinterOption>(

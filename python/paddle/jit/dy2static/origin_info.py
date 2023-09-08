@@ -15,8 +15,8 @@
 import inspect
 from collections.abc import Sequence
 
-from paddle.fluid import core
-from paddle.fluid.framework import Program
+from paddle.base import core
+from paddle.base.framework import Program
 from paddle.utils import gast
 
 from .utils import ORIGI_INFO, unwrap

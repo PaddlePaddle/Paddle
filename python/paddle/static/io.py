@@ -23,7 +23,7 @@ import warnings
 import numpy as np
 
 import paddle
-from paddle.fluid import (
+from paddle.base import (
     CompiledProgram,
     Program,
     Variable,
@@ -32,9 +32,9 @@ from paddle.fluid import (
     program_guard,
     unique_name,
 )
-from paddle.fluid.executor import Executor, global_scope
-from paddle.fluid.framework import Parameter, dygraph_not_support, static_only
-from paddle.fluid.log_helper import get_logger
+from paddle.base.executor import Executor, global_scope
+from paddle.base.framework import Parameter, dygraph_not_support, static_only
+from paddle.base.log_helper import get_logger
 from paddle.framework.io_utils import (
     _clone_var_in_block_,
     _load_program_scope,
@@ -110,7 +110,7 @@ def _get_valid_program(program=None):
         )
     if not isinstance(program, Program):
         raise TypeError(
-            "The type of input program is invalid, expected type is fluid.Program, but received %s"
+            "The type of input program is invalid, expected type is base.Program, but received %s"
             % type(program)
         )
     return program
@@ -228,7 +228,7 @@ def normalize_program(program, feed_vars, fetch_vars, **kwargs):
     """
     if not isinstance(program, Program):
         raise TypeError(
-            "program type must be `fluid.Program`, but received `%s`"
+            "program type must be `base.Program`, but received `%s`"
             % type(program)
         )
     if not isinstance(feed_vars, list):
@@ -700,7 +700,7 @@ def deserialize_persistables(program, data, executor):
     """
     if not isinstance(program, Program):
         raise TypeError(
-            "program type must be `fluid.Program`, but received `%s`"
+            "program type must be `base.Program`, but received `%s`"
             % type(program)
         )
     # load params to a tmp program
@@ -747,7 +747,7 @@ def deserialize_persistables(program, data, executor):
     for var in check_vars:
         if not isinstance(var, Parameter):
             continue
-        var_tmp = paddle.fluid.global_scope().find_var(var.name)
+        var_tmp = paddle.base.global_scope().find_var(var.name)
         assert var_tmp is not None, "can't not find var: " + var.name
         new_shape = (np.array(var_tmp.get_tensor())).shape
         assert var.name in origin_shape_map, var.name + " MUST in var list."
@@ -1228,7 +1228,7 @@ def load_vars(
             main_program = default_main_program()
         if not isinstance(main_program, Program):
             raise TypeError(
-                "The type of input main_program is invalid, expected type is fluid.Program, but received %s"
+                "The type of input main_program is invalid, expected type is base.Program, but received %s"
                 % type(main_program)
             )
 
@@ -1248,7 +1248,7 @@ def load_vars(
 
         if not isinstance(main_program, Program):
             raise TypeError(
-                "The type of input main_program is invalid, expected type is fluid.Program, but received %s"
+                "The type of input main_program is invalid, expected type is base.Program, but received %s"
                 % type(main_program)
             )
 
@@ -1373,7 +1373,7 @@ def load_vars(
         for each_var in check_vars:
             if not isinstance(each_var, Parameter):
                 continue
-            var_temp = paddle.fluid.global_scope().find_var(each_var.name)
+            var_temp = paddle.base.global_scope().find_var(each_var.name)
             assert var_temp is not None, "can't not find var: " + each_var.name
             new_shape = (np.array(var_temp.get_tensor())).shape
             assert each_var.name in orig_para_shape, (
@@ -1548,7 +1548,7 @@ def load(program, model_path, executor=None, var_list=None):
     parameter_file_name = model_prefix + ".pdparams"
 
     if not os.path.exists(parameter_file_name):
-        # model file save by fluid.save not found, try to load model file saved with
+        # model file save by base.save not found, try to load model file saved with
         # [save_vars, save_params, save_persistables]
         _logger.debug(
             "{} not found, try to load model file saved with [ save_params, save_persistables, save_vars ]".format(
@@ -1641,30 +1641,30 @@ def load(program, model_path, executor=None, var_list=None):
         t = global_scope().find_var(var.name).get_tensor()
         p = t._place()
         if p.is_cpu_place():
-            place = paddle.fluid.CPUPlace()
+            place = paddle.base.CPUPlace()
         elif p.is_cuda_pinned_place():
-            place = paddle.fluid.CUDAPinnedPlace()
+            place = paddle.base.CUDAPinnedPlace()
         elif p.is_xpu_place():
-            p = paddle.fluid.core.Place()
+            p = paddle.base.core.Place()
             p.set_place(t._place())
-            place = paddle.fluid.XPUPlace(p.xpu_device_id())
+            place = paddle.base.XPUPlace(p.xpu_device_id())
         elif p.is_custom_place():
-            p = paddle.fluid.core.Place()
+            p = paddle.base.core.Place()
             p.set_place(t._place())
-            place = paddle.fluid.CustomPlace(
+            place = paddle.base.CustomPlace(
                 paddle.device.get_device().split(':')[0], p.custom_device_id()
             )
         else:
-            p = paddle.fluid.core.Place()
+            p = paddle.base.core.Place()
             p.set_place(t._place())
-            place = paddle.fluid.CUDAPlace(p.gpu_device_id())
+            place = paddle.base.CUDAPlace(p.gpu_device_id())
 
         t.set(ndarray, place)
 
     parameter_list = list(filter(is_parameter, program.list_vars()))
 
     if executor:
-        paddle.fluid.core._create_loaded_parameter(
+        paddle.base.core._create_loaded_parameter(
             parameter_list, global_scope(), executor._default_executor
         )
     with open(parameter_file_name, 'rb') as f:
@@ -1693,7 +1693,7 @@ def load(program, model_path, executor=None, var_list=None):
         ), f"Optimizer file [{opt_file_name}] not exits"
 
         if executor:
-            paddle.fluid.core._create_loaded_parameter(
+            paddle.base.core._create_loaded_parameter(
                 optimizer_var_list, global_scope(), executor._default_executor
             )
 
@@ -1750,7 +1750,7 @@ def set_program_state(program, state_dict):
 
     used_para_list = {}
     for para in parameter_list:
-        var_temp = paddle.fluid.global_scope().find_var(para.name)
+        var_temp = paddle.base.global_scope().find_var(para.name)
         assert (
             var_temp is not None
         ), "Variable [ {} ] Not found, Please make sure run startup program".format(
@@ -1778,17 +1778,17 @@ def set_program_state(program, state_dict):
 
             # assert ten_place.is_gpu_place() or ten_place.is_cpu_place(), \
             #    "Place not support, only support CPUPlace and GPUPlace, now is {}".format(str(ten_place))
-            py_place = paddle.fluid.CPUPlace()
+            py_place = paddle.base.CPUPlace()
             if ten_place.is_cuda_pinned_place():
-                place = paddle.fluid.CUDAPinnedPlace()
+                place = paddle.base.CUDAPinnedPlace()
             elif ten_place.is_gpu_place():
-                p = paddle.fluid.core.Place()
+                p = paddle.base.core.Place()
                 p.set_place(ten_place)
-                py_place = paddle.fluid.CUDAPlace(p.gpu_device_id())
+                py_place = paddle.base.CUDAPlace(p.gpu_device_id())
             elif ten_place.is_xpu_place():
-                p = paddle.fluid.core.Place()
+                p = paddle.base.core.Place()
                 p.set_place(ten_place)
-                py_place = paddle.fluid.XPUPlace(p.xpu_device_id())
+                py_place = paddle.base.XPUPlace(p.xpu_device_id())
 
             ten.set(new_para_np, py_place)
 
@@ -1874,7 +1874,7 @@ def load_program_state(model_path, var_list=None):
 
     parameter_file_name = model_prefix + ".pdparams"
     if not os.path.exists(parameter_file_name):
-        # model file saved with fluid.save is not found, try to load model file saved with
+        # model file saved with base.save is not found, try to load model file saved with
         # [save_vars, save_params, save_persistables]
         _logger.debug(
             "{} not found, try to load model file saved with [ save_params, save_persistables, save_vars ]".format(
@@ -1941,8 +1941,8 @@ def load_program_state(model_path, var_list=None):
                         warnings.warn(error_str % filenames, RuntimeWarning)
                 return False
 
-            place = paddle.fluid.CPUPlace()
-            exe = paddle.fluid.Executor(place)
+            place = paddle.base.CPUPlace()
+            exe = paddle.base.Executor(place)
 
             loaded_var_list = []
 
@@ -1982,7 +1982,7 @@ def load_program_state(model_path, var_list=None):
             res_dict = {}
             for var in loaded_var_list:
                 res_dict[var.name] = np.asarray(
-                    paddle.fluid.global_scope().find_var(var.name).get_tensor()
+                    paddle.base.global_scope().find_var(var.name).get_tensor()
                 )
 
             return res_dict

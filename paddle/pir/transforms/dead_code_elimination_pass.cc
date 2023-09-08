@@ -77,4 +77,4 @@ std::unique_ptr<Pass> CreateDeadCodeEliminationPass() {
 
 }  // namespace pir
 
-REGISTER_PASS(dead_code_elimination, DeadCodeEliminationPass);
+REGISTER_IR_PASS(dead_code_elimination, DeadCodeEliminationPass);

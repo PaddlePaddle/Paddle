@@ -75,7 +75,7 @@ class IR_API alignas(8) Operation final {
   const Region &region(unsigned index) const;
   uint32_t num_regions() const { return num_regions_; }
 
-  void Print(std::ostream &os) const;
+  void Print(std::ostream &os);
 
   const AttributeMap &attributes() const { return attributes_; }
 
@@ -107,6 +107,11 @@ class IR_API alignas(8) Operation final {
   template <typename T>
   T dyn_cast() {
     return CastUtil<T>::call(this);
+  }
+
+  template <typename T>
+  bool isa() const {
+    return T::classof(this);
   }
 
   template <typename Trait>
