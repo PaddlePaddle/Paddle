@@ -25,7 +25,6 @@ an increase of memory usage.
 After implementing custom vjp manually, the backward pass of complex operators
 can be split to several primitive operators directly by calling custom vjp
 rules.
-
 */
 
 #pragma once
