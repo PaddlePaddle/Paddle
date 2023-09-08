@@ -157,6 +157,7 @@ void DefaultElementwiseAddGrad(const GPUContext &ctx,
     auto *dx_data = ctx.template Alloc<T>(dx);
     if (dx->dims() == dout.dims()) {
       if (dx_data != dout_data) {
+        dx->set_layout(dout.layout());
         phi::Copy(ctx, dout, ctx.GetPlace(), false, dx);
       }
     } else {
@@ -178,6 +179,7 @@ void DefaultElementwiseAddGrad(const GPUContext &ctx,
     auto *dy_data = ctx.template Alloc<T>(dy);
     if (dy->dims() == dout.dims()) {
       if (dy_data != dout_data) {
+        dy->set_layout(dout.layout());
         phi::Copy(ctx, dout, ctx.GetPlace(), false, dy);
       }
     } else {
