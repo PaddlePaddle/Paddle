@@ -61,17 +61,6 @@ void ElementWiseAddCooGPUKernel(const GPUContext& dev_ctx,
   out->SetIndicesDict(x.GetIndicesDict());
 }
 
-template <typename T, typename Context>
-void ElementWiseAddCooKernel(const Context& dev_ctx,
-                             const SparseCooTensor& x,
-                             const SparseCooTensor& y,
-                             SparseCooTensor* out) {
-  PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "VerifyIndices", ([&] {
-                                 ElementWiseAddCooGPUKernel<T, data_t>(
-                                     dev_ctx, x, y, out);
-                               }));
-}
-
 }  // namespace sparse
 }  // namespace phi
 
