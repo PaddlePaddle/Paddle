@@ -56,11 +56,6 @@ std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
   for (ast_gen_ius::TensorGroup* tensor_group : tensor_groups_) {
     // 1. Generate function body
     ir::Expr func_body = GenerateFunctionBody(tensor_group);
-    ir::Expr schedule_func_body = ir::ScheduleBlockRealize::Make(
-        {},
-        ir::ScheduleBlock::Make(
-            {}, {}, {}, common::UniqName("root"), func_body));
-
     // 2. Assign buffer to tensors
     auto tensor_map = tensor_group->AllocateBuffers();
     // copy the tensor(with buffer assigned) back to func's args.
@@ -93,7 +88,7 @@ std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
 
     // Some store tensors are also temp tensors;
     auto store_exprs = ir::CollectIRNodes(
-        schedule_func_body, [](const Expr* x) { return x->As<ir::Store>(); });
+        func_body, [](const Expr* x) { return x->As<ir::Store>(); });
     for (auto& expr : store_exprs) {
       auto* store_node = expr.As<ir::Store>();
       CHECK(store_node);
@@ -121,7 +116,7 @@ std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
 
     // 4. Handle function args
     std::vector<ir::Argument> func_args =
-        GenerateFunctionArgumentList(schedule_func_body);
+        GenerateFunctionArgumentList(func_body);
 
     // 5. Actual function make
     std::string actual_fn_name = fn_name_;
@@ -136,7 +131,7 @@ std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
       VLOG(3) << "temp_buffers is : " << i->name;
     }
     ir::LoweredFunc func = ir::_LoweredFunc_::Make(
-        actual_fn_name, func_args, schedule_func_body, temp_buffers);
+        actual_fn_name, func_args, func_body, temp_buffers);
 
     // 6. Final clean up
     optim::RemoveNestedBlock(&func->body);
@@ -167,11 +162,13 @@ std::vector<ir::Argument> LowerTensorGroup::GenerateFunctionArgumentList(
   for (auto& tensor : tensor_args_) {
     auto* tensor_node = tensor.As<ir::_Tensor_>();
     bool is_output = teller.IsWrite(tensor->name);
-    VLOG(1) << "tensor argument " << tensor->name << " buffer "
-            << tensor->buffer->name;
+    VLOG(6) << "tensor argument " << tensor->name << ", buffer "
+            << tensor->buffer->name << ", is output: " << is_output;
 
     // avoid duplicate
-    if (!tensor_node->buffer.defined()) continue;
+    if (!tensor_node->buffer.defined()) {
+      continue;
+    }
     // if a argument is already marked as kInput, mark it as kOutput and move it
     // to the back.
     if (arg_names.count(tensor_node->buffer->name)) {
@@ -190,7 +187,7 @@ std::vector<ir::Argument> LowerTensorGroup::GenerateFunctionArgumentList(
     arg_names.insert(tensor_node->buffer->name);
 
     auto io = is_output ? ir::Argument::IO::kOutput : ir::Argument::IO::kInput;
-    VLOG(3) << "Collect " << (is_output ? "W" : "R") << " argument "
+    VLOG(6) << "Collect " << (is_output ? "W" : "R") << " argument "
             << tensor->buffer->name;
     args.emplace_back(tensor_node->buffer, io);
   }
@@ -204,7 +201,7 @@ ir::Expr LowerTensorGroup::GenerateFunctionBody(
       tensor_group->GetGenFuncTopoOrder(tensor_args_);
   std::vector<ir::Expr> bodies;
   for (const ir::Tensor& tensor : ordered_tensors) {
-    bodies.push_back(ast_gen_ius::AstGen::Build(tensor));
+    bodies.emplace_back(ast_gen_ius::AstGen::Build(tensor));
   }
   if (bodies.size() == 1) {
     return bodies[0];

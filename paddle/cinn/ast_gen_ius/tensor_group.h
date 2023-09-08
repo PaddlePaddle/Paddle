@@ -64,6 +64,8 @@ class TensorGroup {
   ir::Tensor MarkReduceInit(const std::string& tensor_name);
 
  private:
+  std::set<std::string> output_tensor_names_;
+
   absl::flat_hash_map<std::string, ir::Tensor> name_to_tensor_;
 
   // Stores vector of tensor names, which the key tensor depends on

@@ -29,7 +29,8 @@ TensorGroup::TensorGroup(const std::vector<ir::Tensor>& tensors) {
   std::set<ir::Tensor> all_tensors(tensors.begin(), tensors.end());
 
   for (auto& tensor : tensors) {
-    std::set<ir::Expr> used_tensors = ir::CollectIRNodesWithoutTensor(
+    output_tensor_names_.insert(tensor->name);
+    std::set<ir::Expr> used_tensors = ir::CollectIRNodes(
         tensor->body(), [](const Expr* x) { return x->as_tensor(); });
     for (const Expr& x : used_tensors) {
       const ir::Tensor to_dep = x.as_tensor_ref();
@@ -70,13 +71,7 @@ std::vector<ir::Tensor> TensorGroup::GetGenFuncTopoOrder(
   std::unordered_map<std::string, int> in_degree;
   for (const auto& dep_pair : ctrl_dep_) {
     const std::unordered_set<std::string>& dep_tensor_names = dep_pair.second;
-    for (const std::string& name : dep_tensor_names) {
-      if (in_degree.count(name)) {
-        ++in_degree[name];
-      } else {
-        in_degree[name] = 1;
-      }
-    }
+    in_degree[dep_pair.first] = dep_tensor_names.size();
   }
 
   std::vector<ir::Tensor> ret;
@@ -87,28 +82,31 @@ std::vector<ir::Tensor> TensorGroup::GetGenFuncTopoOrder(
     }
   }
 
+  std::set<std::string> input_arg_names;
+  for (const ir::Tensor& arg : func_args) {
+    input_arg_names.insert(arg->name);
+  }
+  for (const std::string& name : output_tensor_names_) {
+    input_arg_names.erase(name);
+  }
+
   while (!stack.empty()) {
     const std::string& cur = stack.back();
+    stack.pop_back();
 
-    bool name_in_args = false;
-    for (const ir::Tensor& arg : func_args) {
-      if (cur == arg->name) {
-        name_in_args = true;
-      }
-    }
-    if (!name_in_args) {
+    if (!input_arg_names.count(cur)) {
       ret.push_back(name_to_tensor_[cur]);
     }
 
-    if (ctrl_dep_.count(cur)) {
-      for (const std::string& name : ctrl_dep_[cur]) {
-        --in_degree[name];
-        if (in_degree[name] == 0) {
-          stack.emplace_back(name);
+    for (const auto& dep_pair : ctrl_dep_) {
+      const std::unordered_set<std::string>& dep_tensor_names = dep_pair.second;
+      if (dep_tensor_names.count(cur)) {
+        --in_degree[dep_pair.first];
+        if (in_degree[dep_pair.first] == 0) {
+          stack.emplace_back(dep_pair.first);
         }
       }
     }
-    stack.pop_back();
   }
   return ret;
 }
@@ -125,6 +123,9 @@ ir::Tensor TensorGroup::MarkReduceInit(const std::string& tensor_name) {
 void TensorGroup::CtrlDepend(const ir::Tensor& tensor,
                              const ir::Tensor& to_dep) {
   ctrl_dep_[tensor->name].insert(to_dep->name);
+  if (!name_to_tensor_.count(tensor->name)) {
+    name_to_tensor_[tensor->name] = tensor;
+  }
   if (!name_to_tensor_.count(to_dep->name)) {
     name_to_tensor_[to_dep->name] = to_dep;
   }
@@ -171,6 +172,8 @@ absl::flat_hash_map<std::string, ir::Tensor> TensorGroup::AllocateBuffers() {
       ir::Tensor root_tensor = name_to_tensor_[root_name];
       if (!root_tensor->buffer.defined() && !root_tensor->type().is_void()) {
         root_tensor->WithBuffer();
+        VLOG(6) << "Bind root_tensor " << root_name << " with buffer "
+                << root_tensor->buffer->name;
       }
       allocated_roots.insert(root_name);
     }
@@ -184,6 +187,7 @@ absl::flat_hash_map<std::string, ir::Tensor> TensorGroup::AllocateBuffers() {
       tensor->Bind(root_tensor->buffer);
       root_tensor->buffer->shape = keep_shape;
       tensor->buffer->shape = keep_shape;
+      VLOG(6) << "Share buffer " << root_name << " with " << name_tensor.first;
     }
   }
 

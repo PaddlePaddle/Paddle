@@ -18,6 +18,7 @@
 
 #include <set>
 
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/lang/buffer.h"
 #include "paddle/cinn/lang/compute.h"
@@ -26,6 +27,10 @@
 
 namespace cinn {
 namespace lang {
+
+#define TEST_SOUTPUT(x, out)           \
+  std::cout << "\n" << x << std::endl; \
+  EXPECT_EQ(utils::GetStreamCnt(x), utils::Trim(out));
 
 TEST(lower, basic) {
   auto M = Expr(100);
@@ -41,10 +46,6 @@ TEST(lower, basic) {
   auto lower_funcs = Lower("cal_B", stages, {A, B});
 
   LOG(INFO) << "lower_size " << lower_funcs;
-
-#define TEST_SOUTPUT(x, out)           \
-  std::cout << "\n" << x << std::endl; \
-  EXPECT_EQ(utils::GetStreamCnt(x), utils::Trim(out));
 
   auto out = R"ROC(
 {
@@ -155,6 +156,35 @@ TEST(lower, temp_buffer_collects) {
   for (auto& buffer : module.buffers()) {
     ASSERT_TRUE(detected_buffer_names.count(buffer->name));
   }
+}
+
+TEST(lower_to_ast, basic) {
+  auto M = Expr(100);
+  auto N = Expr(15);
+
+  Placeholder<float> A("A", {Expr(M), Expr(N)});
+
+  ir::Tensor B = Compute(
+      {M, N}, [=](Var i, Var j) -> Expr { return A(i, j) + 1.f; }, "B");
+
+  ast_gen_ius::TensorGroup tensor_group({B});
+
+  auto lower_funcs = LowerToAst("cal_B", {A, B}, &tensor_group);
+
+  LOG(INFO) << "lower_func " << lower_funcs;
+
+  auto out = R"ROC(
+{
+  serial for (i, 0, 100)
+  {
+    serial for (j, 0, 15)
+    {
+      B[i, j] = (A[i, j] + 1.00000000f)
+    }
+  }
+}
+)ROC";
+  TEST_SOUTPUT(lower_funcs->body, out);
 }
 
 }  // namespace lang
