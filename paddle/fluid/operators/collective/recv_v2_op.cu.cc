@@ -198,9 +198,10 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
         However, this temporal implementation may be completely replaced by a
         more elegant version in the future releases of Paddle.
         **/
-        out->mutable_data(place,
-                          out_array->dtype(),
-                          phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+        // out->mutable_data(place,
+        //                   out_array->dtype(),
+        //                   phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+        ctx.cuda_device_context().Alloc<T>(out);
 
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
             out->data<T>(), out->numel(), dtype, peer, comm->comm(), stream));
@@ -229,9 +230,10 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
       this temporal implementation may be completely replaced by a more elegant
       version in the future releases of Paddle.
       **/
-      out->mutable_data(place,
-                        out->dtype(),
-                        phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+      // out->mutable_data(place,
+      //                   out->dtype(),
+      //                   phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+      ctx.cuda_device_context().Alloc<T>(out);
 
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
           out->data<T>(), out->numel(), dtype, peer, comm->comm(), stream));
