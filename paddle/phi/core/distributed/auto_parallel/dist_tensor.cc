@@ -61,6 +61,10 @@ void DistTensor::set_dims(const DDim& dims) {
   dims_ = dims;
 }
 
+void DistTensor::unsafe_set_dims(const DDim& dims) {
+  dims_ = dims;
+}
+
 int64_t DistTensor::numel() const {
   check_defined(*this, "numel");
   return value_.numel();

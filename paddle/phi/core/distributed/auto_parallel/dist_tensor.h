@@ -58,6 +58,10 @@ class DistTensor final
   /// \return void
   void set_dims(const DDim& dims);
 
+  /// \brief Set the global dims of the dist tensor after kernel execution.
+  /// \return void
+  void unsafe_set_dims(const DDim& dims);
+
   /// \brief Returns the dist attr of current dist tensor.
   /// \return The TensorDistAttr's const reference
   const TensorDistAttr& dist_attr() const { return dist_attr_; }

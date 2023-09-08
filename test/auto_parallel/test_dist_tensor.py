@@ -60,10 +60,13 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
         np.testing.assert_allclose(np1, np2, rtol=1e-05)
 
     def create_local_and_dist_tensor_pair(self, np_array):
-        local_t = paddle.to_tensor(np_array, dtype='float32')
+        if np_array.dtype == np.float32:
+            local_t = paddle.to_tensor(np_array, dtype='float32')
+        else:
+            local_t = paddle.to_tensor(np_array, dtype='int32')
 
         mesh = dist.ProcessMesh([0], dim_names=["x"])
-        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None, None])
+        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None] * np_array.ndim)
         dist_t = dist.shard_tensor(np_array, dist_attr=dist_attr)
 
         local_t.stop_gradient = False
@@ -137,6 +140,107 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
         local_out.backward()
         dist_out.backward()
         self.check_tensor_eq(local_in.grad, dist_in.grad)
+
+    # input: paddle::optional<phi::Tensor>, output: phi::Tensor
+    def test_expand_as_api_for_dist_tensor(self):
+        x1 = np.random.random(size=[2, 8]).astype("float32")
+        x2 = np.random.random(size=[2, 2, 8]).astype("float32")
+        local_in1, dist_in1 = self.create_local_and_dist_tensor_pair(x1)
+        local_in2, dist_in2 = self.create_local_and_dist_tensor_pair(x2)
+        local_out = paddle.expand_as(local_in1, local_in2)
+        dist_out = paddle.expand_as(dist_in1, dist_in2)
+        self.check_tensor_eq(local_out, dist_out)
+        local_out.backward()
+        dist_out.backward()
+        self.check_tensor_eq(local_in1.grad, dist_in1.grad)
+
+    def test_bincount_api_for_dist_tensor(self):
+        x = np.random.random(size=[16]).astype("int32")
+        weight = np.random.random(size=[16]).astype("float32")
+        local_x, dist_x = self.create_local_and_dist_tensor_pair(x)
+        local_weight, dist_weight = self.create_local_and_dist_tensor_pair(weight)
+
+        local_out = paddle.bincount(local_x, weights=local_weight)
+        dist_out = paddle.bincount(dist_x, weights=dist_weight)
+
+        self.check_tensor_eq(local_out, dist_out)
+
+    # def test_layer_norm_api_for_dist_tensor(self):
+    #     x = np.random.random(size=[2, 8, 8]).astype("float32")
+    #     weight = np.random.random(size=[64]).astype("float32")
+    #     bias = np.random.random(size=[64]).astype("float32")
+    #     local_x, dist_x = self.create_local_and_dist_tensor_pair(x)
+    #     local_weight, dist_weight = self.create_local_and_dist_tensor_pair(weight)
+    #     local_bias, dist_bias = self.create_local_and_dist_tensor_pair(bias)
+    #     # local_out = paddle.nn.functional.layer_norm(local_x, local_x.shape[1:], local_weight, local_bias)
+    #     # dist_out = paddle.nn.functional.layer_norm(dist_x, dist_x.shape[1:], dist_weight, dist_bias)
+    #     # dist_out = paddle.nn.functional.layer_norm(dist_x, dist_x.shape[1:], None, None)
+
+    #     local_out = paddle.nn.functional.layer_norm(local_x, local_x.shape[1:], None, None)
+    #     dist_out = paddle.nn.functional.layer_norm(dist_x, dist_x.shape[1:], None, None)
+
+    #     self.check_tensor_eq(local_out, dist_out)
+
+
+
+    #     local_in1, dist_in1 = self.create_local_and_dist_tensor_pair(x1)
+    #     local_in2, dist_in2 = self.create_local_and_dist_tensor_pair(x2)
+    #     local_out = paddle.expand_as(local_in1, local_in2)
+    #     print("local_out: ", local_out)
+    #     dist_out = paddle.expand_as(dist_in1, dist_in2)
+    #     print("dist_out: ", dist_out)
+    #     self.check_tensor_eq(local_out, dist_out)
+    #     local_out.backward()
+    #     dist_out.backward()
+    #     self.check_tensor_eq(local_in1.grad, dist_in1.grad)
+
+
+    # input: paddle::optional<std::vector<phi::Tensor>>, output: phi::Tensor
+    def test_linear_interp_api_for_dist_tensor(self):
+        out_size = np.array([50,]).astype("int32")
+        shape = [1, 3, 100]
+        scale = 0.5
+        scale_list = []
+        for _ in range(len(shape) - 2):
+            scale_list.append(scale)
+        scale = list(map(float, scale_list))
+        print("scale: ", scale)
+
+        x = np.random.random(size=shape).astype("float32")
+        local_x, dist_x = self.create_local_and_dist_tensor_pair(x)
+        local_out_size, dist_out_size = self.create_local_and_dist_tensor_pair(out_size)
+        local_scale, dist_scale = self.create_local_and_dist_tensor_pair(np.array([0.5]).astype("float32"))
+        local_out = paddle._C_ops.linear_interp(
+            local_x,
+            local_out_size, # Outsize
+            None, # SizeTensor
+            local_scale, # Scale
+            'NCHW', # data_layout
+            -1, # out_d
+            -1, # out_h
+            50, # in_w * out_w
+            scale,
+            'linear', # interp_method
+            False, # align_corners
+            1, # align_mode
+        )
+        # print("local_out: ", local_out)
+        dist_out = paddle._C_ops.linear_interp(
+            dist_x,
+            dist_out_size, # Outsize
+            None, # SizeTensor
+            dist_scale, # Scale
+            'NCHW', # data_layout
+            -1, # out_d
+            -1, # out_h
+            50, # in_w * out_w
+            scale,
+            'linear',
+            False, # align_corners
+            1, # align_mode
+        )
+        self.check_tensor_eq(local_out, dist_out)
+
 
     def test_matmul_api_for_dist_tensor(self):
         x = np.random.random(size=[4, 4]).astype("float32")
