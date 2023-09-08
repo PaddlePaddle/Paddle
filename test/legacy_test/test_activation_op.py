@@ -149,9 +149,46 @@ class TestExpFp64_Prim(TestExpFp32_Prim):
         self.dtype = np.float64
 
 
-class TestExpPrim_ZeroDim(TestExpFp32_Prim):
+class TestExp_Complex64(OpTest):
+    def setUp(self):
+        self.op_type = "exp"
+        self.python_api = paddle.exp
+        self.public_python_api = paddle.exp
+        self.init_dtype()
+        self.init_shape()
+        self.if_enable_cinn()
+        np.random.seed(1024)
+        x = (
+            np.random.uniform(-1, 1, self.shape)
+            + 1j * np.random.uniform(-1, 1, self.shape)
+        ).astype(self.dtype)
+        out = np.exp(x)
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.convert_input_output()
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', max_relative_error=0.006)
+
+    def init_dtype(self):
+        self.dtype = np.complex64
+
     def init_shape(self):
-        self.shape = []
+        self.shape = [10, 12]
+
+    def if_enable_cinn(self):
+        pass
+
+    def convert_input_output(self):
+        pass
+
+
+class TestExp_Complex128(TestExp_Complex64):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class Test_Exp_Op_Fp16(unittest.TestCase):
@@ -189,9 +226,13 @@ class TestExpm1(TestActivation):
         self.python_api = paddle.expm1
         self.init_dtype()
         self.init_shape()
-
         np.random.seed(2049)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.expm1(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -203,6 +244,16 @@ class TestExpm1(TestActivation):
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestExpm1_Complex64(TestExpm1):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestExpm1_Complex128(TestExpm1):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestExpm1_ZeroDim(TestExpm1):
