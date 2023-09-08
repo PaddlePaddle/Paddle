@@ -47,7 +47,7 @@ void ExpandAsGradKernel(const Context& context,
   } else {
     std::vector<int> reduce_dims = funcs::GetReduceDim(in_dims, out_dims, -1);
 
-    phi::SumKernel<T, GPUContext>(
+    phi::SumKernel<T, Context>(
         context, out_grad, reduce_dims, out_grad.dtype(), false, in_grad);
   }
 }

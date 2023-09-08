@@ -27,7 +27,7 @@ void MaxRawKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
-  phi::MaxKernel<T, GPUContext>(dev_ctx, x, dims, keep_dim, out);
+  phi::MaxKernel<T, Context>(dev_ctx, x, dims, keep_dim, out);
 }
 
 }  // namespace phi

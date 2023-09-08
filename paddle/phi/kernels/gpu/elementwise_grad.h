@@ -301,8 +301,8 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
     } else {
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(y.dims(), out.dims(), axis);
-      phi::SumKernel<T, GPUContext>(
-          ctx, dout, reduce_dims, dout.dtype(), false, dy);
+      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::InverseFunctor<T>>(
+          ctx, dout, dy, kps::InverseFunctor<T>(), reduce_dims);
     }
   }
 }

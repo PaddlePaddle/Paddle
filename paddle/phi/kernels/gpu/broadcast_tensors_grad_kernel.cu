@@ -89,12 +89,12 @@ void BroadcastTensorsGradKernel(const Context& ctx,
       phi::Copy(ctx, *input_tensor, ctx.GetPlace(), false, output_tensor);
     } else {
       // reduce_sum implementation on CUDA
-      phi::SumKernel<T, GPUContext>(ctx,
-                                    *input_tensor,
-                                    reduce_dims_vec,
-                                    input_tensor->dtype(),
-                                    false,
-                                    output_tensor);
+      phi::SumKernel<T, Context>(ctx,
+                                 *input_tensor,
+                                 reduce_dims_vec,
+                                 input_tensor->dtype(),
+                                 false,
+                                 output_tensor);
     }
   }
 }
