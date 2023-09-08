@@ -45,7 +45,7 @@ std::vector<std::vector<pir::OpResult>> SumOp::Vjp(
   if (tensor_res[0][0].defined()) {
     res[0][0] =
         std::static_pointer_cast<primitive::LazyTensor>(tensor_res[0][0].impl())
-            ->getValue()
+            ->value()
             .dyn_cast<pir::OpResult>();
   }
   return res;

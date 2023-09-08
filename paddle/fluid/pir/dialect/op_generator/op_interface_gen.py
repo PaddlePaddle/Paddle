@@ -62,7 +62,7 @@ OP_VJP_STOPGRADIENT_TEMPLATE = """
         res[i].resize(tensor_res[i].size());
         for (size_t j = 0; j < tensor_res[i].size(); ++j) {
             if(tensor_res[i][j].defined()){
-                res[i][j] = std::static_pointer_cast<primitive::LazyTensor>(tensor_res[i][j].impl())->getValue().dyn_cast<pir::OpResult>();
+                res[i][j] = std::static_pointer_cast<primitive::LazyTensor>(tensor_res[i][j].impl())->value().dyn_cast<pir::OpResult>();
             }
         }
     }"""
