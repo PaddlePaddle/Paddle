@@ -15,6 +15,7 @@
 #pragma once
 #include <absl/container/flat_hash_map.h>
 
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -45,16 +46,32 @@ class TensorGroup {
 
   std::set<ir::Tensor> GetCrtlDepTensors(const std::string& tensor_name);
 
-  bool HasMarkedReduceInit(const ir::_Tensor_& tensor) const;
+  std::string GetShareMemRootName(const std::string& tensor_name);
+
+  void ShareMemoryBuffer(const ir::Tensor& tensor, const ir::Tensor& to_share);
+
+  absl::flat_hash_map<std::string, ir::Tensor> AllocateBuffers();
+
+  // Returns tensors in topological order and remove those args
+  // Becuase the order is used for generating function body, we don't have to
+  // generate args
+  std::vector<ir::Tensor> GetGenFuncTopoOrder(
+      const std::vector<ir::Tensor>& func_args = {});
+
+  bool HasMarkedReduceInit(const std::string& tensor_name) const;
 
   // Marks a tensor needs to do reduce init
-  ir::Tensor MarkReduceInit(const ir::_Tensor_& tensor);
+  ir::Tensor MarkReduceInit(const std::string& tensor_name);
 
  private:
   absl::flat_hash_map<std::string, ir::Tensor> name_to_tensor_;
 
   // Stores vector of tensor names, which the key tensor depends on
   std::unordered_map<std::string, std::unordered_set<std::string>> ctrl_dep_;
+
+  // Keeps Union Find Set style, each tensor name whose buffer is shared maps to
+  // the same name tensor
+  std::unordered_map<std::string, std::string> share_memory_tensor_;
 
   std::unordered_set<std::string> tensor_name_needs_reduce_init_;
 };

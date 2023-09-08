@@ -253,7 +253,7 @@ Expr *_Tensor_::mutable_body() {
 
 ir::Tensor _Tensor_::InitReduction(
     ast_gen_ius::TensorGroup *tensor_group) const {
-  return tensor_group->MarkReduceInit(*this);
+  return tensor_group->MarkReduceInit(this->name);
 }
 
 ir::Tensor _Tensor_::InitReduction(poly::StageMap stages,

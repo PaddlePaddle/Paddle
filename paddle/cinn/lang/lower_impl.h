@@ -25,7 +25,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/common/graph_utils.h"
 #include "paddle/cinn/ir/buffer.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
@@ -41,6 +40,11 @@
 #include "paddle/cinn/poly/ast_gen.h"
 
 namespace cinn {
+
+namespace poly {
+class Stage;
+}  // namespace poly
+
 namespace lang {
 namespace detail {
 
@@ -96,14 +100,23 @@ std::unique_ptr<common::Graph> CreateCompGraph(
     StageMap stages,
     bool hide_inline = false);
 
-class LowerGroup {
+class LowerImpl {
  public:
-  LowerGroup(const std::string& fn_name,
-             const std::vector<Tensor>& tensor_args,
-             const std::vector<Var>& scalar_args,
-             ast_gen_ius::TensorGroup* tensor_group,
-             const std::vector<Tensor>& temp_tensor_args = {},
-             const Target& target = common::DefaultHostTarget());
+  /**
+   * @param fn_name the name of the final output function.
+   * @param tensor_args the tensor arguments for the function
+   * @param scalar_args the scalar arguments for the function
+   * @param temp_tensor_args the extra temporary tensor arguments
+   *
+   * The \p tensor_args contains both input and output tensors.
+   */
+  LowerImpl(const std::string& fn_name,
+            StageMap stages,
+            const std::vector<Tensor>& tensor_args,
+            const std::vector<Var>& scalar_args,
+            const std::vector<Tensor>& temp_tensor_args = {},
+            const Target& target = common::DefaultHostTarget(),
+            bool support_ir_schedule = false);
 
   std::vector<ir::LoweredFunc> operator()();
 
@@ -194,6 +207,113 @@ class LowerGroup {
  * schedule.
  */
 bool TensorContainsGPUInfo(ir::Tensor t, poly::Stage* stage);
+
+/**
+ * Mark the PolyFor as Vectorized if it is scheduled Vectorize in Stage.
+ */
+struct MarkVectorizeMutator : public ir::IRMutator<Expr*> {
+  const std::map<std::string, ir::VectorizeInfo>& vectorizes;
+
+  explicit MarkVectorizeMutator(const std::map<std::string /*tensor name*/,
+                                               ir::VectorizeInfo>& vectorizes)
+      : vectorizes(vectorizes) {}
+
+  void operator()(Expr* expr) { ir::IRMutator<Expr*>::Visit(expr, expr); }
+
+  // NOTE This mutator takes PolyFor as input, not For.
+  void Visit(const ir::PolyFor* op, Expr* expr) override {
+    auto* node = expr->As<ir::PolyFor>();
+    forloop_stack.push_back(node);
+    ir::IRMutator<ir::Expr*>::Visit(op, expr);
+    forloop_stack.pop_back();
+  }
+
+  // each statement in ISL is bound to a Store node.
+  void Visit(const ir::Store* op, Expr* expr) override {
+    auto* tensor_n = op->tensor.As<ir::_Tensor_>();
+    CHECK(tensor_n);
+    auto it = vectorizes.find(tensor_n->name);
+    if (it != vectorizes.end()) {
+      CHECK_LT(it->second.level, forloop_stack.size());
+      forloop_stack[it->second.level]->set_vectorize_info(it->second);
+      CHECK(it->second.valid());
+    }
+  }
+
+  std::vector<ir::PolyFor*> forloop_stack;
+};
+
+/**
+ * Mark the PolyFor as Unroll if is called Unroll in Stage.
+ */
+struct MarkUnrollMutator : public ir::IRMutator<Expr*> {
+  std::map<std::string, std::set<int> /*level*/> unrolls;
+
+  explicit MarkUnrollMutator(
+      const std::map<std::string, std::set<int>>& unrolls)
+      : unrolls(unrolls) {}
+
+  void operator()(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+
+  void Visit(const ir::PolyFor* op, Expr* expr) override {
+    auto* node = expr->As<ir::PolyFor>();
+    stack.push_back(node);
+    ir::IRMutator<>::Visit(op, expr);
+    stack.pop_back();
+  }
+
+  // each statement in ISL is bound to a Store node.
+  void Visit(const ir::Store* op, Expr* expr) override {
+    auto* tensor_n = op->tensor.As<ir::_Tensor_>();
+    CHECK(tensor_n);
+    auto it = unrolls.find(tensor_n->name);
+    if (it != unrolls.end()) {
+      for (int level : it->second) {
+        VLOG(1) << "Mark " << level << " Unrolled";
+        CHECK_LT(level, stack.size());
+        stack[level]->set_unrolled();
+      }
+    }
+  }
+
+  std::vector<ir::PolyFor*> stack;
+};
+
+/**
+ * Mark the PolyFor as Parallel if is called Parallel in Stage.
+ */
+struct MarkParallelMutator : public ir::IRMutator<Expr*> {
+  std::map<std::string, std::set<int> /*level*/> parallels;
+
+  explicit MarkParallelMutator(
+      const std::map<std::string, std::set<int>>& parallels)
+      : parallels(parallels) {}
+
+  void operator()(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+
+  void Visit(const ir::PolyFor* op, Expr* expr) override {
+    auto* node = expr->As<ir::PolyFor>();
+    stack.push_back(node);
+    ir::IRMutator<>::Visit(op, expr);
+    stack.pop_back();
+  }
+
+  // each statement in ISL is bound to a Store node.
+  void Visit(const ir::Store* op, Expr* expr) override {
+    auto* tensor_n = op->tensor.As<ir::_Tensor_>();
+    CHECK(tensor_n);
+    auto it = parallels.find(tensor_n->name);
+    if (it != parallels.end()) {
+      for (int level : it->second) {
+        VLOG(1) << "Mark " << level << " Paralled";
+        CHECK_LT(level, stack.size());
+        stack[level]->set_parallel();
+      }
+    }
+  }
+
+  std::vector<ir::PolyFor*> stack;
+};
 
 }  // namespace detail
 }  // namespace lang

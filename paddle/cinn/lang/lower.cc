@@ -24,6 +24,7 @@
 #include "paddle/cinn/ir/buffer.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/lang/lower_impl.h"
+#include "paddle/cinn/lang/lower_tensor_group.h"
 #include "paddle/cinn/optim/optimize.h"
 #include "paddle/cinn/utils/string.h"
 
@@ -104,9 +105,9 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor>& tensor_args,
       ir::CollectIRNodesWithoutTensor(body, [&](const Expr* x) {
         return x->as_tensor() && x->as_tensor()->buffer.defined() &&
                (!tensor_group.Contain(x->as_tensor()->name) &&
-               ((!buffer_arg_names.count(x->as_tensor()->buffer->name) &&
-                 !tensor_arg_names.count(x->as_tensor()->name)) ||
-                utils::Endswith(x->as_tensor()->buffer->name, "temp_buffer"));
+                ((!buffer_arg_names.count(x->as_tensor()->buffer->name) &&
+                  !tensor_arg_names.count(x->as_tensor()->name)) ||
+                 utils::Endswith(x->as_tensor()->buffer->name, "temp_buffer")));
       });
   for (auto& e : all_temp_tensors) {
     auto buffer_name = e.as_tensor()->buffer->name;
@@ -246,17 +247,18 @@ void InitReduceTensor(TensorGroup* tensor_group,
                       const Tensor& tensor,
                       const Target& target) {
   if (tensor->is_reduce_tensor()) {
-    tensor_group->MarkReduceInit(tensor);
+    tensor_group->MarkReduceInit(tensor->name);
   }
   auto uninited_reduce_tensors =
       ir::CollectIRNodes(tensor->body(), [&](const Expr* x) {
         return x && x->defined() && x->as_tensor() &&
                x->as_tensor()->is_reduce_tensor() &&
-               !tensor_group->HasMarkedReduceInit(*(x->as_tensor()));
+               !tensor_group->HasMarkedReduceInit(x->as_tensor()->name);
       });
   for (auto& t : uninited_reduce_tensors) {
-    VLOG(3) << "Init reduce tensor: " << t.as_tensor()->name;
-    tnensor_group->MarkReduceInit(*(t.as_tensor()));
+    std::string reduce_name = t.as_tensor()->name;
+    VLOG(3) << "Init reduce tensor: " << reduce_name;
+    tensor_group->MarkReduceInit(reduce_name);
   }
 }
 
@@ -282,11 +284,15 @@ std::set<ir::Tensor> CollectTempTensorsFromCtrlDepends(
     ast_gen_ius::TensorGroup* tensor_group,
     const std::vector<Tensor>& tensor_args) {
   std::set<ir::Tensor> res;
-  for (ir::Tensor& t : tensor_group->GetAllTensors()) {
-    res.emplace(t);
+  for (const ir::Tensor& a : tensor_group->GetAllTensors()) {
+    for (const ir::Tensor& t : tensor_group->GetCrtlDepTensors(a->name)) {
+      res.emplace(t);
+    }
   }
-  for (ir::Tensor& t : tensor_args) {
-    if (res.count(t)) res.erase(t);
+  for (const ir::Tensor& t : tensor_args) {
+    if (res.count(t)) {
+      res.erase(t);
+    }
   }
   return res;
 }
@@ -294,7 +300,7 @@ std::set<ir::Tensor> CollectTempTensorsFromCtrlDepends(
 ir::LoweredFunc Lower(const std::string& name,
                       const std::vector<Tensor>& tensor_args,
                       ast_gen_ius::TensorGroup* tensor_group,
-                      const Target& target = common::DefaultHostTarget()) {
+                      const Target& target) {
   // Init the reduce tensors first before any process.
   for (auto& t : tensor_args) {
     InitReduceTensor(tensor_group, t, target);
@@ -302,34 +308,31 @@ ir::LoweredFunc Lower(const std::string& name,
   // Merge the ctrl_deps with the given temp_tensors ang get a new temp_tensors
   std::set<ir::Tensor> ctrl_deps =
       CollectTempTensorsFromCtrlDepends(tensor_group, tensor_args);
-  auto lower_impl_instance =
-      detail::LowerImpl(name,
-                        tensor_group,
-                        tensor_args,
-                        {},
-                        std::vector<Tensor>(ctrl_deps.begin(), ctrl_deps.end()),
-                        target);
-  auto result = lower_impl_instance();
-  std::vector<ir::LoweredFunc> return_value;
+  std::vector<ast_gen_ius::TensorGroup*> group_vec = {tensor_group};
+  auto lower_instance = detail::LowerTensorGroup(
+      name,
+      tensor_args,
+      {},
+      group_vec,
+      std::vector<Tensor>(ctrl_deps.begin(), ctrl_deps.end()),
+      target);
+  std::vector<ir::LoweredFunc> result = lower_instance();
   for (auto& res : result) {
-    auto temp_buffers = GetTempBuffers(tensor_args, tensor_group, res->body);
     if (target == common::DefaultNVGPUTarget()) {
       res->device_api = ir::DeviceAPI::GPU;
     }
-    res->temp_bufs = temp_buffers;
-    return_value.push_back(res);
   }
-  return return_value[0];
+  return result[0];
 }
 
 std::vector<ir::LoweredFunc> LowerVec(
     const std::string& name,
     const std::vector<Tensor>& tensor_args,
     std::vector<ast_gen_ius::TensorGroup*> tensor_groups,
-    const Target& target = common::DefaultHostTarget()) {
+    const Target& target) {
   std::vector<ir::LoweredFunc> ret;
   for (ast_gen_ius::TensorGroup* tg : tensor_groups) {
-    ret.push_back(Lower(name, tensor_args, *tg, target));
+    ret.push_back(Lower(name, tensor_args, tg, target));
   }
   return ret;
 }
