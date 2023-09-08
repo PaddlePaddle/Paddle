@@ -21,8 +21,8 @@ from dygraph_to_static_util import test_and_compare_with_new_ir
 from yolov3 import YOLOv3, cfg
 
 import paddle
-from paddle import fluid
-from paddle.fluid.dygraph import to_variable
+from paddle import base
+from paddle.base.dygraph import to_variable
 
 paddle.enable_static()
 random.seed(0)
@@ -83,10 +83,10 @@ def train(to_static):
     random.seed(0)
     np.random.seed(0)
 
-    place = fluid.CUDAPlace(0) if cfg.use_gpu else fluid.CPUPlace()
-    with fluid.dygraph.guard(place):
-        fluid.default_startup_program().random_seed = 1000
-        fluid.default_main_program().random_seed = 1000
+    place = base.CUDAPlace(0) if cfg.use_gpu else base.CPUPlace()
+    with base.dygraph.guard(place):
+        base.default_startup_program().random_seed = 1000
+        base.default_main_program().random_seed = 1000
         model = YOLOv3(3, is_train=True)
 
         boundaries = cfg.lr_steps

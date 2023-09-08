@@ -17,9 +17,9 @@ import unittest
 
 import numpy as np
 
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.framework import Program
+from paddle import base
+from paddle.base import core
+from paddle.base.framework import Program
 
 
 class TestFetchHandler(unittest.TestCase):
@@ -35,26 +35,24 @@ class TestFetchHandler(unittest.TestCase):
         var_emb = block.create_var(name='emb', type=core.VarDesc.VarType.FP32)
         var_emb3 = block.create_var(name='emb3', type=core.VarDesc.VarType.FP32)
 
-        class FH(fluid.executor.FetchHandler):
+        class FH(base.executor.FetchHandler):
             def handler(self, fetch_dict):
                 assert len(fetch_dict) == 1
 
         table_var = scope.var('emb').get_tensor()
         table_var.set(table, place)
         fh = FH(var_dict={'emb': var_emb}, period_secs=2)
-        fm = fluid.trainer_factory.FetchHandlerMonitor(scope, fh)
+        fm = base.trainer_factory.FetchHandlerMonitor(scope, fh)
 
         fm.start()
         time.sleep(3)
         fm.stop()
 
-        default_fh = fluid.executor.FetchHandler(
+        default_fh = base.executor.FetchHandler(
             var_dict={'emb': var_emb, 'emb2': None, 'emb3': var_emb3},
             period_secs=1,
         )
-        default_fm = fluid.trainer_factory.FetchHandlerMonitor(
-            scope, default_fh
-        )
+        default_fm = base.trainer_factory.FetchHandlerMonitor(scope, default_fh)
         default_fm.start()
         time.sleep(5)
         default_fm.stop()

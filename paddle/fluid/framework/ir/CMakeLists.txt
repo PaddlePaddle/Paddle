@@ -239,6 +239,8 @@ if(WITH_XPU)
   pass_library(cast_mixed_precision_op_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(yolo_box_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(cast_embedding_trans_ids_to_int32_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
   pass_library(conv1d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(conv2d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(redundant_unsqueeze_squeeze_elimination_pass inference DIR xpu
@@ -287,6 +289,10 @@ if(WITH_XPU)
   pass_library(gather_squeeze_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(fast_where_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(fast_layernorm_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
+  pass_library(squeeze_excitation_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
+  pass_library(elementwise_mul_add_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
 endif()
 
@@ -611,4 +617,8 @@ if(WITH_XPU)
     test_fast_where_xpu_fuse_pass
     SRCS xpu/fast_where_xpu_fuse_pass_test.cc
     DEPS fast_where_xpu_fuse_pass)
+  cc_test(
+    test_squeeze_excitation_fuse_pass
+    SRCS xpu/squeeze_excitation_fuse_pass_test.cc
+    DEPS squeeze_excitation_fuse_pass)
 endif()

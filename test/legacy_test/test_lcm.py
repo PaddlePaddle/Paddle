@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -31,9 +31,9 @@ class TestLcmAPI(unittest.TestCase):
         self.y_shape = []
 
     def test_static_graph(self):
-        startup_program = fluid.Program()
-        train_program = fluid.Program()
-        with fluid.program_guard(startup_program, train_program):
+        startup_program = base.Program()
+        train_program = base.Program()
+        with base.program_guard(startup_program, train_program):
             x1 = paddle.static.data(
                 name='input1', dtype='int32', shape=self.x_shape
             )
@@ -43,13 +43,13 @@ class TestLcmAPI(unittest.TestCase):
             out = paddle.lcm(x1, x2)
 
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             res = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={'input1': self.x_np, 'input2': self.y_np},
                 fetch_list=[out],
             )

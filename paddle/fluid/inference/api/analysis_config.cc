@@ -448,6 +448,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   // Mixed precision related.
   CP_MEMBER(mixed_black_list_);
+  CP_MEMBER(mixed_white_list_);
   CP_MEMBER(enable_gpu_mixed_);
   CP_MEMBER(mixed_precision_mode_);
   CP_MEMBER(enable_low_precision_io_);
@@ -460,6 +461,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_min_subgraph_size_);
   CP_MEMBER(tensorrt_precision_mode_);
   CP_MEMBER(trt_mark_output_);
+  CP_MEMBER(trt_mark_output_with_id_);
   CP_MEMBER(trt_output_tensor_names_);
   CP_MEMBER(trt_disabled_ops_);
   CP_MEMBER(trt_use_dla_);
@@ -761,8 +763,10 @@ void AnalysisConfig::EnableTensorRtEngine(int64_t workspace_size,
 }
 
 void AnalysisConfig::MarkTrtEngineOutputs(
-    const std::vector<std::string> &output_tensor_names) {
+    const std::vector<std::string> &output_tensor_names,
+    const bool mark_output_with_id) {
   trt_mark_output_ = true;
+  trt_mark_output_with_id_ = mark_output_with_id;
   trt_output_tensor_names_ = output_tensor_names;
 }
 
@@ -1154,6 +1158,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
     for (auto attr : pattern) ss << attr;
   ss << ";";
   for (auto &op : mixed_black_list_) ss << op.c_str();
+  for (auto &op : mixed_white_list_) ss << op.c_str();
   return ss.str();
 }
 
@@ -1533,6 +1538,11 @@ bool AnalysisConfig::trt_allow_build_at_runtime() const {
 void AnalysisConfig::Exp_DisableMixedPrecisionOps(
     const std::unordered_set<std::string> &black_list) {
   mixed_black_list_ = black_list;
+}
+
+void AnalysisConfig::Exp_EnableMixedPrecisionOps(
+    const std::unordered_set<std::string> &white_list) {
+  mixed_white_list_ = white_list;
 }
 
 void AnalysisConfig::Exp_EnableCINNCompiler() {

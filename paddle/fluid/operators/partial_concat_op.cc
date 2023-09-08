@@ -74,12 +74,12 @@ class PartialConcatOp : public framework::OperatorWithKernel {
       }
     }
 
-    int start_index = ComputeStartIndex(
+    int start_index = static_cast<int>(ComputeStartIndex(
         static_cast<int64_t>(ctx->Attrs().Get<int>("start_index")),
-        inputs_dims[0][1]);
+        inputs_dims[0][1]));
     int partial_len = ctx->Attrs().Get<int>("length");
     if (partial_len < 0) {
-      partial_len = inputs_dims[0][1] - start_index;
+      partial_len = static_cast<int>(inputs_dims[0][1] - start_index);
     }
 
     ctx->SetOutputDim(

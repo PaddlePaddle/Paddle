@@ -21,14 +21,14 @@ import warnings
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
+from paddle.base import core, executor
+from paddle.base.compiler import CompiledProgram
+from paddle.base.framework import Program, program_guard
 from paddle.distributed.io import (
     load_inference_model_distributed,
     save_persistables,
 )
-from paddle.fluid import core, executor
-from paddle.fluid.compiler import CompiledProgram
-from paddle.fluid.framework import Program, program_guard
 from paddle.static.io import load_inference_model, save_inference_model
 
 paddle.enable_static()
@@ -264,8 +264,8 @@ class TestSaveInferenceModelNew(unittest.TestCase):
     def test_save_and_load_inference_model(self):
         root_path = tempfile.TemporaryDirectory()
         MODEL_DIR = os.path.join(root_path.name, "inference_model5")
-        init_program = fluid.default_startup_program()
-        program = fluid.default_main_program()
+        init_program = base.default_startup_program()
+        program = base.default_main_program()
 
         # fake program without feed/fetch
         with program_guard(program, init_program):
@@ -443,8 +443,8 @@ class TestSaveInferenceModelNew(unittest.TestCase):
         self.assertRaises(TypeError, paddle.static.io._get_valid_program, cp)
 
     def test_serialize_program_and_persistables(self):
-        init_program = fluid.default_startup_program()
-        program = fluid.default_main_program()
+        init_program = base.default_startup_program()
+        program = base.default_main_program()
 
         # fake program without feed/fetch
         with program_guard(program, init_program):
@@ -492,8 +492,8 @@ class TestSaveInferenceModelNew(unittest.TestCase):
         )
 
     def test_normalize_program(self):
-        init_program = fluid.default_startup_program()
-        program = fluid.default_main_program()
+        init_program = base.default_startup_program()
+        program = base.default_main_program()
 
         # fake program without feed/fetch
         with program_guard(program, init_program):

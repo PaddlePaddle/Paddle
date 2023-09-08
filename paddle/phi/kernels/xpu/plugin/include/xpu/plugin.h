@@ -104,6 +104,20 @@ DLL_EXPORT int fast_reduce_min(Context* ctx,
                                const std::vector<int>& xshape,
                                const std::vector<int>& rdims);
 
+template <typename T, typename TID>
+DLL_EXPORT int fast_embedding(Context* ctx,
+                              const T* x,
+                              const TID* indices,
+                              T* y,
+                              int64_t xm,
+                              int64_t n,
+                              int64_t ym,
+                              int64_t padding_idx,
+                              TID start_index = 0);
+template <typename T>
+DLL_EXPORT int fast_addcmul(
+    Context* ctx, const T* w, const T* x, const T* y, T* z, int64_t len);
+
 }  // namespace plugin
 }  // namespace api
 }  // namespace xpu

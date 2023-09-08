@@ -17,7 +17,7 @@ import datetime
 import paddle
 
 # (TODO: GhostScreaming) It will be removed later.
-from paddle.fluid import core
+from paddle.base import core
 from paddle.framework import in_dynamic_mode
 
 from .communication.group import Group, _add_new_group, is_initialized
@@ -330,7 +330,13 @@ def _init_parallel_env(backend):
             store, "0", rank, world_size
         )
     elif backend == "nccl":
-        core.CommContextManager.set_cuda_device_id(dev_id)
+        core.CommContextManager.set_device_id(dev_id)
         core.CommContextManager.create_nccl_comm_context(
             store, "0", rank, world_size
+        )
+    elif backend == "xccl":
+        dev_type = global_env.device_type
+        paddle.device.set_device(f"{dev_type}:{dev_id}")
+        core.CommContextManager.create_xccl_comm_context(
+            store, "0", rank, world_size, dev_type
         )

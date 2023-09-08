@@ -84,3 +84,20 @@ def supports_no_need_buffer(op):
 
 def is_tensor_list(s):
     return s == 'Tensor[]'
+
+
+def exist_mutable_attribute(attributes):
+    for attribute in attributes:
+        if (
+            is_scalar(attribute['typename'])
+            or is_intarray(attribute['typename'])
+        ) and attribute.get('support_tensor', False):
+            return True
+    else:
+        return False
+
+
+def is_mutable_attribute(attribute):
+    return (
+        is_scalar(attribute['typename']) or is_intarray(attribute['typename'])
+    ) and attribute.get('support_tensor', False)

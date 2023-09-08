@@ -22,7 +22,7 @@
 #include "paddle/ir/core/value.h"
 
 namespace ir {
-
+class Block;
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 
 //===----------------------------------------------------------------------===//
@@ -36,7 +36,8 @@ struct OperationArgument {
   AttributeMap attributes;
   std::vector<Type> output_types;
   OpInfo info;
-  std::vector<std::unique_ptr<Region>> regions;
+  size_t num_regions{0};
+  std::vector<Block*> successors;
 
  public:
   OperationArgument(IrContext* ir_context, const std::string& name);
@@ -45,12 +46,14 @@ struct OperationArgument {
                     const AttributeMap& attributes,
                     const std::vector<Type>& types,
                     OpInfo info,
-                    std::vector<std::unique_ptr<Region>>&& regions = {})
+                    size_t num_regions = 0,
+                    const std::vector<Block*> successors = {})
       : inputs(operands),
         attributes(attributes),
         output_types(types),
         info(info),
-        regions(std::move(regions)) {}
+        num_regions(num_regions),
+        successors(successors) {}
 
   /// Add Operand.
   void AddOperand(OpResult operand) { inputs.emplace_back(operand); }
@@ -74,10 +77,7 @@ struct OperationArgument {
   /// Get the context held by this operation state.
   IrContext* getContext() const { return info.ir_context(); }
 
-  Region* AddRegion() {
-    regions.emplace_back(new Region);
-    return regions.back().get();
-  }
+  void AddSuccessor(Block* successor) { successors.emplace_back(successor); }
 };
 
 template <class InputIt>

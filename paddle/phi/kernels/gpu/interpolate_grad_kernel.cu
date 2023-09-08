@@ -1096,11 +1096,7 @@ static void Interpolate2DCUDABwd(
                                                   interp_divmods);
     }
   } else if ("bicubic" == interp_method) {
-#ifdef __HIPCC__
-    constexpr int thread_per_block = 256;
-#else
     constexpr int thread_per_block = 512;
-#endif
     KeBicubicInterpBw<T>
         <<<config.block_per_grid, thread_per_block, 0, dev_ctx.stream()>>>(
             input_grad_data,
@@ -1576,6 +1572,7 @@ PD_REGISTER_KERNEL(bilinear_interp_grad,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
+  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1587,6 +1584,7 @@ PD_REGISTER_KERNEL(nearest_interp_grad,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
+  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1598,6 +1596,7 @@ PD_REGISTER_KERNEL(trilinear_interp_grad,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
+  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1609,6 +1608,7 @@ PD_REGISTER_KERNEL(linear_interp_grad,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
+  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1620,6 +1620,7 @@ PD_REGISTER_KERNEL(bicubic_interp_grad,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
+  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }

@@ -59,12 +59,12 @@ class TestWeightSharing(IPUOpTest):
                 input=x,
                 size=[768, 768],
                 dtype='float32',
-                param_attr=paddle.fluid.ParamAttr(name='word_embedding'),
+                param_attr=paddle.base.ParamAttr(name='word_embedding'),
                 is_sparse=False,
             )
         with paddle.static.ipu_shard_guard(index=1, stage=1):
             z = paddle.static.nn.fc(
-                x=y, size=768, weight_attr=paddle.fluid.ParamAttr(name="fc")
+                x=y, size=768, weight_attr=paddle.base.ParamAttr(name="fc")
             )
         with paddle.static.ipu_shard_guard(index=0, stage=2):
             out = paddle.matmul(
