@@ -699,11 +699,10 @@ void BuildOpFuncList(const platform::Place& place,
             if (dynamic_cast<framework::OperatorWithKernel*>(ops[j].get()) !=
                 nullptr) {
               is_skip_fake_init = false;
-              break;
-            }
-            auto input_vars_info = ops[j]->InputVarsInfo(local_scope);
-            for (auto& input_var_info : input_vars_info) {
-              following_input_vars.insert(input_var_info.name_);
+              auto input_vars_info = ops[j]->InputVarsInfo(local_scope);
+              for (auto& input_var_info : input_vars_info) {
+                following_input_vars.insert(input_var_info.name_);
+              }
             }
           }
         }

@@ -378,7 +378,7 @@ void FakeInitializeOutputsForOperatorBase(
     if (out_var_info_before_build.size() != out_var_info_after_build.size()) {
       can_static_build = false;
     } else {
-      follow for (size_t i = 0; i < out_var_info_before_build.size(); ++i) {
+      for (size_t i = 0; i < out_var_info_before_build.size(); ++i) {
         // static build is supported in case of the output's dtype/place
         // is changed but the following op is not use this output
         if (out_var_info_before_build[i] != out_var_info_after_build[i]) {
