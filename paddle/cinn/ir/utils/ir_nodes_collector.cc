@@ -210,7 +210,13 @@ std::set<Expr> CollectReferencedTensors(
 std::set<std::string> CollectTensorNeedsWrite(const Expr* e) {
   std::set<std::string> tensor_written;
   IrNodesCollector::handler_t handler = [&](const Expr* x) {
-    tensor_written.insert(x->As<ir::_Tensor_>()->name);
+    if (x->As<ir::Store>()) {
+      tensor_written.insert(
+          x->As<ir::Store>()->tensor.As<ir::_Tensor_>()->name);
+    }
+    if (x->As<ir::_Tensor_>()) {
+      tensor_written.insert(x->As<ir::_Tensor_>()->name);
+    }
   };
   IrNodesCollector::teller_t teller = [](const Expr* x) {
     if (x->As<ir::Store>() && x->As<ir::Store>()->tensor.As<ir::_Tensor_>()) {
