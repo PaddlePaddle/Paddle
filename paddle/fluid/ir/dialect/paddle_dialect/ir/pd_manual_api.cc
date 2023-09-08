@@ -26,18 +26,18 @@ ir::OpResult embedding_grad(ir::OpResult x,
                             bool sparse) {
   if (weight.type().isa<paddle::dialect::DenseTensorType>()) {
     if (sparse) {
-      return paddle::dialect::embedding_sparse_grad(
+      return paddle::dialect::embedding_grad_sparse(
           x, weight, out_grad, padding_idx, sparse);
     } else {
-      return paddle::dialect::embedding_grad(
+      return paddle::dialect::embedding_grad_dense(
           x, weight, out_grad, padding_idx, sparse);
     }
   } else {
     if (sparse) {
-      return paddle::dialect::sparse_weight_embedding_sparse_grad(
+      return paddle::dialect::sparse_weight_embedding_grad_sparse(
           x, weight, out_grad, padding_idx, sparse);
     } else {
-      return paddle::dialect::sparse_weight_embedding_grad(
+      return paddle::dialect::sparse_weight_embedding_grad_dense(
           x, weight, out_grad, padding_idx, sparse);
     }
   }

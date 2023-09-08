@@ -335,7 +335,7 @@
     data_type : weight
   backward : embedding_grad
 
-- op : embedding_grad
+- op : embedding_grad_dense
   args : (Tensor x, Tensor weight, Tensor out_grad, int64_t padding_idx=-1, bool sparse=false)
   output : Tensor(weight_grad)
   infer_meta :
