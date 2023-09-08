@@ -40,11 +40,14 @@ select = [
 
     # NumPy-specific rules
     "NPY001",
+    # "NPY003",
 
     # Bugbear
     "B002",
     "B003",
     "B004",
+    # "B006", # To be confirmed
+    # "B007",
     "B009",
     "B010",
     "B011",
@@ -69,6 +72,10 @@ select = [
     "PLC3002",
     "PLR0206",
     "PLR0402",
+    # "PLR1701",
+    # "PLR1711",
+    # "PLR1722",
+    # "PLW3301",
 ]
 unfixable = [
     "NPY001"
