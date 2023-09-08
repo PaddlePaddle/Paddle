@@ -18,13 +18,13 @@ import numpy as np
 
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 
-from ...common_ops_import import Variable
-from ...fluid.data_feeder import (
+from ...base.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
 )
-from ...fluid.layer_helper import LayerHelper
+from ...base.layer_helper import LayerHelper
+from ...common_ops_import import Variable
 from ...framework import convert_np_dtype_to_dtype_, core
 from ...tensor.creation import assign
 

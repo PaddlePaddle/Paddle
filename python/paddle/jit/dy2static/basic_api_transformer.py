@@ -230,7 +230,7 @@ def is_to_variable(node):
 
 
 def to_assign_node(node):
-    # Transform dygraph api `fluid.dygraph.to_variable` alias `paddle.to_tensor` to static api `paddle.assign`.
+    # Transform dygraph api `base.dygraph.to_variable` alias `paddle.to_tensor` to static api `paddle.assign`.
     # NOTE:
     #   1. Api `to_variable` supports data type {float16, float32, float64, int16, int32, int64, uint8, uint16},
     #   but api `assign` only supports {float32, float64, int32, int64, bool};
