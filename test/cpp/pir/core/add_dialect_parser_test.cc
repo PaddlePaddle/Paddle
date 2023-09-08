@@ -82,7 +82,7 @@ void TestParserDialect::PrintAttribute(pir::Attribute attr,
   os << "(tp.char)" << byte_attr.data();
 }
 
-ir::Attribute TestParserDialect::ParseAttribute(
+pir::Attribute TestParserDialect::ParseAttribute(
     pir::IrParser& parser) {  // NOLINT
   std::string type_name = parser.ConsumeToken().val_;
   std::string parenthesis_token_val = parser.ConsumeToken().val_;

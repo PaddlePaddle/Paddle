@@ -113,14 +113,14 @@ TEST(RegisterInfoTest, MainProgram) {
 TEST(IrParserTest, MainProgram) {
   auto p = load_from_file("resnet50_main.prog");
   EXPECT_EQ(p.Size(), 1u);
-  ir::IrContext *ctx = ir::IrContext::Instance();
+  pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<OperatorDialect>();
-  ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
   auto program = paddle::TranslateLegacyProgramToProgram(p);
 
   std::stringstream ss;
   program->Print(ss);
-  std::unique_ptr<ir::Program> parser_program = ir::Program::Parse(ss, ctx);
+  std::unique_ptr<pir::Program> parser_program = pir::Program::Parse(ss, ctx);
   std::stringstream ssp;
   parser_program->Print(ssp);
 
@@ -130,14 +130,14 @@ TEST(IrParserTest, MainProgram) {
 TEST(IrParserTest, StartupProgram) {
   auto p = load_from_file("resnet50_startup.prog");
   EXPECT_EQ(p.Size(), 1u);
-  ir::IrContext *ctx = ir::IrContext::Instance();
+  pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<OperatorDialect>();
-  ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
   auto program = paddle::TranslateLegacyProgramToProgram(p);
 
   std::stringstream ss;
   program->Print(ss);
-  std::unique_ptr<ir::Program> parser_program = ir::Program::Parse(ss, ctx);
+  std::unique_ptr<pir::Program> parser_program = pir::Program::Parse(ss, ctx);
   std::stringstream ssp;
   parser_program->Print(ssp);
 
