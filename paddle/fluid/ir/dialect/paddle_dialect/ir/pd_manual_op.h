@@ -14,7 +14,7 @@
 
 #ifdef GET_MANUAL_OP_LIST
 #undef GET_MANUAL_OP_LIST
-paddle::dialect::AddNOp, paddle::dialect::SplitGradOp
+paddle::dialect::AddNOp, paddle::dialect::SplitGradOp, paddle::dialect::IfOp
 
 #else
 
@@ -28,6 +28,7 @@ paddle::dialect::AddNOp, paddle::dialect::SplitGradOp
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_util.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/ir/core/builder.h"
+#include "paddle/ir/core/ir_printer.h"
 #include "paddle/ir/core/op_base.h"
 #include "paddle/ir/core/operation_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -116,6 +117,23 @@ class SplitGradOp : public ir::Op<SplitGradOp, OpYamlInfoInterface> {
   static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 
+class IfOp : public ir::Op<IfOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd.if"; }
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+  static void Build(ir::Builder &builder,             // NOLINT
+                    ir::OperationArgument &argument,  // NOLINT
+                    ir::OpResult cond,
+                    std::vector<ir::Type> &&output_types);
+  ir::Value cond() { return operand_source(0); }
+  ir::Block *true_block();
+  ir::Block *false_block();
+  void Print(ir::IrPrinter &printer);  // NOLINT
+  void Verify();
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -123,5 +141,5 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
-
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)
 #endif

@@ -78,16 +78,23 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   py_test_modules(test_pass_quantization MODULES test_pass_quantization)
   set_tests_properties(test_pass_quantization
-                       PROPERTIES LABELS "RUN_TYPE=EXECLUSIVE" TIMEOUT 60)
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 60)
   py_test_modules(test_reshard_s_to_r MODULES test_reshard_s_to_r)
   set_tests_properties(test_reshard_s_to_r
-                       PROPERTIES LABELS "RUN_TYPE=EXECLUSIVE" TIMEOUT 100)
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   py_test_modules(test_reshard_r_to_s MODULES test_reshard_r_to_s)
   set_tests_properties(test_reshard_r_to_s
-                       PROPERTIES LABELS "RUN_TYPE=EXECLUSIVE" TIMEOUT 100)
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   py_test_modules(test_reshard_r_to_p MODULES test_reshard_r_to_p)
   set_tests_properties(test_reshard_r_to_p
-                       PROPERTIES LABELS "RUN_TYPE=EXECLUSIVE" TIMEOUT 100)
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+  py_test_modules(test_semi_auto_parallel_basic MODULES
+                  test_semi_auto_parallel_basic)
+  set_tests_properties(test_semi_auto_parallel_basic
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+  py_test_modules(test_gpt_with_newir MODULES test_gpt_with_newir)
+  set_tests_properties(test_gpt_with_newir
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout

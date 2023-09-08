@@ -15,16 +15,16 @@
 import unittest
 
 import paddle
+from paddle.base import program_guard
+from paddle.base.backward import append_backward
 from paddle.distributed.fleet import auto
-from paddle.fluid import program_guard
-from paddle.fluid.backward import append_backward
 
 paddle.enable_static()
 
 
 def make_program_dp2_axis_None():
-    main_program = paddle.fluid.Program()
-    start_program = paddle.fluid.Program()
+    main_program = paddle.base.Program()
+    start_program = paddle.base.Program()
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 5, 6], dtype='float32')
         x.stop_gradient = False
@@ -36,8 +36,8 @@ def make_program_dp2_axis_None():
 
 
 def make_program_dp2_axis_0():
-    main_program = paddle.fluid.Program()
-    start_program = paddle.fluid.Program()
+    main_program = paddle.base.Program()
+    start_program = paddle.base.Program()
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 5, 6], dtype='float32')
         x.stop_gradient = False
@@ -49,8 +49,8 @@ def make_program_dp2_axis_0():
 
 
 def make_program_dp2_axis_1():
-    main_program = paddle.fluid.Program()
-    start_program = paddle.fluid.Program()
+    main_program = paddle.base.Program()
+    start_program = paddle.base.Program()
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 5, 6], dtype='float32')
         x.stop_gradient = False
@@ -62,8 +62,8 @@ def make_program_dp2_axis_1():
 
 
 def make_program_serial():
-    main_program = paddle.fluid.Program()
-    start_program = paddle.fluid.Program()
+    main_program = paddle.base.Program()
+    start_program = paddle.base.Program()
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 5, 6], dtype='float32')
         x.stop_gradient = False
