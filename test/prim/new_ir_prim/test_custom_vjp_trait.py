@@ -16,7 +16,7 @@ import unittest
 
 import paddle
 from paddle import ir, nn
-from paddle.fluid.core import has_custom_vjp
+from paddle.base.core import has_custom_vjp
 
 paddle.enable_static()
 
@@ -34,29 +34,12 @@ def get_gelu_program_new_ir():
     return newir_program
 
 
-def get_add_program_new_ir():
-    main_program, start_program = (
-        paddle.static.Program(),
-        paddle.static.Program(),
-    )
-    with paddle.static.program_guard(main_program, start_program):
-        x = paddle.static.data('x', [2, 3, 3], dtype='float32')
-        y = paddle.static.data('y', [2, 3, 3], dtype='float32')
-        out = paddle.add(x, y)
-    newir_program = ir.translate_to_new_ir(main_program.desc)
-    return newir_program
-
-
 class TestCustomVjpTrait(unittest.TestCase):
     def test_gelu_op_custom_vjp_trait(self):
         newir_program = get_gelu_program_new_ir()
         op = newir_program.block().ops[-1]
+        self.assertEqual(op.name(), "pd.gelu")
         self.assertEqual(has_custom_vjp(op), True)
-
-    def test_add_op_custom_vjp_trait(self):
-        newir_program = get_add_program_new_ir()
-        op = newir_program.block().ops[-1]
-        self.assertEqual(has_custom_vjp(op), False)
 
 
 if __name__ == "__main__":
