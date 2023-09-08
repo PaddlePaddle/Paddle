@@ -18,6 +18,7 @@
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/ir/core/attribute.h"
 #include "paddle/ir/core/builtin_attribute.h"
+#include "paddle/ir/core/ir_parser.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -33,6 +34,8 @@ class IntArrayAttribute : public ir::Attribute {
   bool operator<(const IntArrayAttribute &right) const {
     return storage() < right.storage();
   }
+
+  static IntArrayAttribute Parse(ir::IrParser &parser);  // NOLINT
 
   const phi::IntArray &data() const;
 };
@@ -68,6 +71,8 @@ class DataTypeAttribute : public ir::Attribute {
     return storage() < right.storage();
   }
 
+  static DataTypeAttribute Parse(ir::IrParser &parser);  // NOLINT
+
   phi::DataType data() const;
 };
 
@@ -80,6 +85,8 @@ class PlaceAttribute : public ir::Attribute {
   bool operator<(const PlaceAttribute &right) const {
     return storage() < right.storage();
   }
+
+  static PlaceAttribute Parse(ir::IrParser &parser);  // NOLINT
 
   phi::Place data() const;
 };
@@ -95,6 +102,7 @@ class DataLayoutAttribute : public ir::Attribute {
     return storage() < right.storage();
   }
 
+  static DataLayoutAttribute Parse(ir::IrParser &parser);  // NOLINT
   phi::DataLayout data() const;
 };
 
