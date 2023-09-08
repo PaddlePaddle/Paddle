@@ -27,7 +27,7 @@ from paddle.fluid.compiler import BuildStrategy
 from paddle.fluid.data_feeder import check_type, convert_dtype
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import _apply_pass
-from paddle.fluid.libpaddle.ir import OpResult
+from paddle.fluid.libpaddle.ir import OpResult, fake_op_result
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
@@ -662,11 +662,18 @@ class PartialProgramLayer:
                     grad_info_map = grad(inputs=inputs, outputs=targets)
 
                 forward_outputs_grads = []
-                for i in range(len(self._outputs.tolist())):
+                not_stop_gradient_num = 0
+                for out_op_result in self._outputs.tolist():
+                    if out_op_result.stop_gradient is True:
+                        forward_outputs_grads.append(None)
+                        continue
                     opres = (
-                        program.block().ops[forward_end_idx + i].results()[0]
+                        program.block()
+                        .ops[forward_end_idx + not_stop_gradient_num]
+                        .results()[0]
                     )
                     forward_outputs_grads.append(opres)
+                    not_stop_gradient_num += 1
 
             # TODO: add later.
             # if self._hooker:
@@ -679,11 +686,18 @@ class PartialProgramLayer:
             # start_idx + 1, main_program, program
             # )
 
+        mapping_op_result = (
+            lambda x: x if isinstance(x, OpResult) else fake_op_result()
+        )
         hash_id = paddle.utils._hash_with_id(program, self)
         extra_info = self._program_extra_info.get(hash_id, {})
         extra_info['forward_end_op_idx'] = forward_end_idx
-        extra_info['forward_inputs_grads'] = grad_info_map
-        extra_info['forward_outputs_grads'] = forward_outputs_grads
+        extra_info['forward_inputs_grads'] = list(
+            map(mapping_op_result, grad_info_map)
+        )
+        extra_info['forward_outputs_grads'] = list(
+            map(mapping_op_result, forward_outputs_grads)
+        )
         self._program_extra_info[hash_id] = extra_info
 
         return program
@@ -782,7 +796,7 @@ class PartialProgramLayer:
             'forward_outputs_grads'
         ]
         backward_start_op_index = forward_end_op_index + len(
-            self._outputs.var_ids
+            list(filter(lambda r: r.stop_gradient is False, self._outputs))
         )
         backward_end_op_index = len(whole_program.block().ops)
         # For Backward process in CINN, all param@GRAD shoule be skipped for GC, because
@@ -792,16 +806,6 @@ class PartialProgramLayer:
         # backward_skip_vars = self._parse_skip_gc_vars(
         # whole_program
         # ) + self._grad_var_names.get('param', [])
-
-        assert whole_program.block().ops[0].results()[0] == forward_inputs[0]
-        assert whole_program.block().ops[1].results()[0] == forward_outputs[0]
-        assert (
-            whole_program.block().ops[2].results()[0]
-            == forward_outputs_grads[0]
-        )
-        assert (
-            whole_program.block().ops[3].results()[0] == forward_inputs_grads[0]
-        )
 
         (
             forward_program,

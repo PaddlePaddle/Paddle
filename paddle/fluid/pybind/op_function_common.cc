@@ -861,7 +861,11 @@ void CastPyArg2AttrValues(PyObject* obj,
       void** vh = inst->simple_layout ? inst->simple_value_holder
                                       : &inst->nonsimple.values_and_holders[0];
       ::ir::OpResult* opresult = reinterpret_cast<::ir::OpResult*>(vh[0]);
-      results.emplace_back(ir::Value(opresult->value_impl()));
+      if (opresult->impl() == nullptr) {
+        results.emplace_back(ir::Value(nullptr));
+      } else {
+        results.emplace_back(ir::Value(opresult->value_impl()));
+      }
     }
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(

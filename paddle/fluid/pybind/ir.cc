@@ -526,12 +526,20 @@ void mapping_value(const std::vector<ir::Value> &origin,
   std::transform(origin.begin(),
                  origin.end(),
                  std::back_inserter(out),
-                 [&value_map](const ir::Value &v) { return value_map.at(v); });
+                 [&value_map](const ir::Value &v) {
+                   if (v.impl() == nullptr) return Value(nullptr);
+                   return value_map.at(v);
+                 });
 }
 
 using SplitedProgram = std::vector<std::shared_ptr<Program>>;
 using SplitedAttribute = std::map<std::string, std::vector<ir::Value>>;
 using SplitedResult = std::pair<SplitedProgram, SplitedAttribute>;
+
+ir::OpResult FakeOpResult() {
+  // create a fake opresults to simplify `ForwardBackwardSplit`.
+  return ir::OpResult(nullptr);
+}
 
 SplitedResult ForwardBackwardSplit(
     const Program &program,
@@ -547,6 +555,7 @@ SplitedResult ForwardBackwardSplit(
       forward_outputs_grads;
 
   auto op_result_to_value = [](const ir::OpResult &r) {
+    if (r.impl() == nullptr) return Value(nullptr);
     return Value(r.value_impl());
   };
 
@@ -599,6 +608,9 @@ SplitedResult ForwardBackwardSplit(
   int counter = 0;
   auto create_data_fn = [&backward_builder, &backward_value_map, &counter](
                             const ir::Value &v) {
+    if (v.impl() == nullptr) {
+      return;
+    }
     auto value_type = v.type().dyn_cast<DenseTensorType>();
     auto dtype = paddle::dialect::TransToPhiDataType(value_type.dtype());
     auto shape = phi::vectorize(value_type.dims());
@@ -618,6 +630,9 @@ SplitedResult ForwardBackwardSplit(
                                    &forward_value_map,
                                    &counter,
                                    &forward_program](const ir::Value &v) {
+    if (v.impl() == nullptr) {
+      return;
+    }
     auto op_info = ctx->GetRegisteredOpInfo(ir::SetParameterOp::name());
     ir::AttributeMap attribute_map = {
         {"parameter_name",
@@ -634,6 +649,9 @@ SplitedResult ForwardBackwardSplit(
                                     &backward_value_map,
                                     &counter,
                                     &backward_program](const ir::Value &v) {
+    if (v.impl() == nullptr) {
+      return;
+    }
     auto op_info = ctx->GetRegisteredOpInfo(ir::SetParameterOp::name());
     ir::AttributeMap attribute_map = {
         {"parameter_name",
@@ -656,7 +674,7 @@ SplitedResult ForwardBackwardSplit(
   std::for_each(forward_outputs_grads.begin(),
                 forward_outputs_grads.end(),
                 create_data_fn);
-  VLOG(1) << "After call create_data_fn";
+  VLOG(1) << "After create pd.data for backward program.";
 
   counter = 0;
   std::for_each(
@@ -665,7 +683,6 @@ SplitedResult ForwardBackwardSplit(
       forward_outputs.begin(), forward_outputs.end(), create_output_fn_forward);
 
   VLOG(1) << "After call create_output_fn";
-
   // Step2. copy backward ops .
   range_block_do(program.block(),
                  backward_range,
@@ -682,7 +699,6 @@ SplitedResult ForwardBackwardSplit(
 
   VLOG(1) << "forward_value_map.size() is " << forward_value_map.size();
   VLOG(1) << "backward_value_map.size() is " << backward_value_map.size();
-
   std::ostringstream print_stream;
   print_stream << "ForwardProgram is :\n";
   forward_program->Print(print_stream);
@@ -722,6 +738,7 @@ SplitedResult ForwardBackwardSplit(
 void BindUtils(pybind11::module *m) {
   m->def("program_clone", ProgramClone);
   m->def("program_split", ForwardBackwardSplit);
+  m->def("fake_op_result", FakeOpResult);
   m->def("set_global_program",
          [](Program *program) { APIBuilder::Instance().SetProgram(program); });
   m->def("set_insertion_point",

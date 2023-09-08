@@ -260,6 +260,11 @@ static void ShareTensorsFromScopeByValue(const ::ir::Block *block,
   auto names = GetNameFromValue(block, values);
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &name = names[i];
+    auto &value = values[i];
+    if (value.impl() == nullptr) {
+      // skip stop_gradient.
+      continue;
+    }
     auto *var = scope->FindVar(name);
     PADDLE_ENFORCE_NOT_NULL(
         var,

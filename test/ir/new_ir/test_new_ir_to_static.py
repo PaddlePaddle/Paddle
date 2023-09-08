@@ -59,7 +59,6 @@ class TestDy2staticNewIR(unittest.TestCase):
         x.clear_gradient()
 
         # ==== to static compuatation ====
-
         out = static_func(x)
         out = out * 2
         out.backward()
@@ -68,6 +67,62 @@ class TestDy2staticNewIR(unittest.TestCase):
         np.testing.assert_allclose(
             x_grad_ans, st_grad.numpy(), rtol=1e-05, atol=1e-8
         )
+
+
+# class TestDy2staticNewIR2(unittest.TestCase):
+# def test_basic_layer(self):
+# class SimpleNet(paddle.nn.Layer):
+# def __init__(self):
+# super().__init__()
+# self.linear = paddle.nn.Linear(10, 10)
+
+# def forward(self, x):
+# return self.linear(x)
+
+# net = SimpleNet()
+# x = paddle.randn((10, 10))
+# x.stop_gradient = False
+# ans = net(x)
+# print("Ans: ", ans)
+# net = paddle.jit.to_static(net)
+# print(net.forward.get_concrete_program(x)[1].train_program)
+# out = net(x)
+
+# np.testing.assert_allclose(
+# out.numpy(), ans.numpy(), rtol=1e-05, atol=1e-8
+# )
+
+
+class TestDy2staticNewIR3(unittest.TestCase):
+    def test_complex_layer(self):
+        def output_pure_func(x, y):
+            outx = paddle.mean(x)
+            outy = paddle.mean(y)
+            outy.stop_gradient = True
+            return paddle.add(outx, outy), outy
+
+        def run_function(to_static=True):
+            import paddle
+
+            # 设置随机种子
+            paddle.seed(2023)
+            # 生成随机数
+            x = paddle.randn((10, 10))
+            y = paddle.randn((10, 10))
+            x.stop_gradient = False
+            y.stop_gradient = True
+            func = output_pure_func
+            if to_static:
+                func = paddle.jit.to_static(func)
+            y, y_mean = func(x, y)
+            loss = y.mean()
+            loss.backward()
+            return (y, x.grad)
+
+        for dy, st in zip(run_function(False), run_function(True)):
+            np.testing.assert_allclose(
+                dy.numpy(), st.numpy(), rtol=1e-05, atol=1e-8
+            )
 
 
 if __name__ == "__main__":
