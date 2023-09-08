@@ -36,6 +36,7 @@ class InferMetaInterface : public ir::OpInterfaceBase<InferMetaInterface> {
     Model() : Concept(InferMeta) {}
   };
 
+  /// Constructor
   InferMetaInterface(ir::Operation *op, Concept *impl)
       : ir::OpInterfaceBase<InferMetaInterface>(op), impl_(impl) {}
 

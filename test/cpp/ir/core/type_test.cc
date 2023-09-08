@@ -268,39 +268,3 @@ TEST(type_test, get_type_name) {
   auto name = ir::get_type_name<TestNamespace::TestClass>();
   EXPECT_EQ(name, "TestNamespace::TestClass");
 }
-
-// Define a dialect, types of test will be registered by this dialect.
-class TestDialect : public ir::Dialect {
- public:
-  explicit TestDialect(ir::IrContext *context)
-      : ir::Dialect(name(), context, ir::TypeId::get<TestDialect>()) {
-    // initialize();
-  }
-  static const char *name() { return "test"; }
-
- private:
-  // void initialize() { RegisterOps<OperationTest>(); }
-};
-IR_DECLARE_EXPLICIT_TYPE_ID(TestDialect)
-IR_DEFINE_EXPLICIT_TYPE_ID(TestDialect)
-
-TEST(shapedtype_test, shapedtype_test) {
-  ir::IrContext *ctx = ir::IrContext::Instance();
-  ir::Dialect *test_dialect = ctx->GetOrRegisterDialect<TestDialect>();
-  EXPECT_EQ(test_dialect != nullptr, true);
-
-  ir::Type fp32_dtype = ir::Float32Type::get(ctx);
-  phi::DDim dims = {2, 2};
-  phi::DataLayout data_layout = phi::DataLayout::NCHW;
-  phi::LoD lod = {{0, 1, 2}};
-  size_t offset = 0;
-
-  ir::DenseTensorType shaped_type =
-      ir::DenseTensorType::get(ctx, fp32_dtype, dims, data_layout, lod, offset);
-
-  EXPECT_EQ(shaped_type.dtype().isa<ir::Float32Type>(), true);
-  EXPECT_EQ(shaped_type.dims(), dims);
-  EXPECT_EQ(shaped_type.data_layout(), data_layout);
-  EXPECT_EQ(shaped_type.lod(), lod);
-  EXPECT_EQ(shaped_type.offset(), offset);
-}

@@ -86,27 +86,25 @@ class ShapedTypeInterface : public ir::TypeInterfaceBase<ShapedTypeInterface> {
   template <class ConcreteType>
   struct Model : public Concept {
     static inline DataType getElementType(ir::Type type) {
-      return (::ir::cast<ConcreteType>(type)).dtype();
+      return (type.cast<ConcreteType>()).dtype();
     }
 
     static inline DDim getShape(ir::Type type) {
-      return (::ir::cast<ConcreteType>(type)).dims();
+      return (type.cast<ConcreteType>()).dims();
     }
 
     Model() : Concept(getElementType, getShape) {}
   };
 
+  /// Constructor
   ShapedTypeInterface(ir::Type type, Concept *impl)
       : ir::TypeInterfaceBase<ShapedTypeInterface>(type), impl_(impl) {}
 
   /// Get the element type.
-  DataType getElementType(ir::Type type) const {
-    return impl_->get_element_type_(type);
-  }
+  DataType getElementType() const { return impl_->get_element_type_(*this); }
 
   /// Get the shape of this type.
-  DDim getShape(ir::Type type) const { return impl_->get_shape_(type); }
-  DDim getShape() const;
+  DDim getShape() const { return impl_->get_shape_(*this); }
 
   static constexpr int64_t kDynamic = std::numeric_limits<int64_t>::min();
 

@@ -110,6 +110,11 @@ class IR_API Type {
     return ir::dyn_cast<U>(*this);
   }
 
+  template <typename U>
+  U dyn_cast_() const {
+    return CastInfo<U>::call(*this);
+  }
+
   void Print(std::ostream &os) const;
 
   ///
@@ -117,9 +122,9 @@ class IR_API Type {
   ///
   friend struct std::hash<Type>;
 
-  template <typename T>
-  T dyn_cast_interface() {
-    return CastUtil<T>::call(*this);
+  template <typename U>
+  U cast() {
+    return CastUtil<U>::call(*this);
   }
 
  protected:
@@ -129,7 +134,7 @@ class IR_API Type {
   template <typename T, typename Enabler = void>
   struct CastUtil {
     static T call(Type type) {
-      throw("Can't dyn_cast to T, T should be a Op or Trait or Interface");
+      throw("Can't dyn_cast to T, T should be a Type or Interface");
     }
   };
 
@@ -137,7 +142,21 @@ class IR_API Type {
   struct CastUtil<
       T,
       typename std::enable_if<std::is_base_of<ir::Type, T>::value>::type> {
-    static T call(Type type) { return T::dyn_cast(type); }
+    static inline T call(ir::Type type) { return T(type.storage()); }
+  };
+
+  template <typename T, typename Enabler = void>
+  struct CastInfo {
+    static T call(Type type) {
+      throw("Can't dyn_cast to T, T should be a Type or Interface");
+    }
+  };
+
+  template <typename T>
+  struct CastInfo<
+      T,
+      typename std::enable_if<std::is_base_of<ir::Type, T>::value>::type> {
+    static inline T call(ir::Type type) { return T::dyn_cast(type); }
   };
 };
 
