@@ -368,11 +368,11 @@ class TestStaticPyLayerBackward(unittest.TestCase):
             append_backward(loss)
 
         place = (
-            fluid.CUDAPlace(0)
+            paddle.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else paddle.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         randn_x = np.random.random(size=input_shape).astype(np.float32)
         ret, x_grad = exe.run(
             main_program,
@@ -429,11 +429,11 @@ class TestStaticPyLayerBackward(unittest.TestCase):
             append_backward(loss)
 
         place = (
-            fluid.CUDAPlace(0)
+            paddle.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else paddle.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         ret, x_grad = exe.run(
             main_program, fetch_list=[out.name, data.grad_name]
         )
