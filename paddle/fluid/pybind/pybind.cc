@@ -1534,7 +1534,9 @@ All parameter, weight, gradient are variables in Paddle.
           ProgramDesc prog_with_targets(origin);
 
           for (const auto &t : targets) {
-            prog_with_targets.MutableBlock(t[0])->Op(t[1])->SetIsTarget(true);
+            prog_with_targets.MutableBlock(t[0])
+                ->Op(static_cast<int>(t[1]))
+                ->SetIsTarget(true);
           }
           proto::ProgramDesc pruned_desc;
           auto pruned_origin_block_id_map =

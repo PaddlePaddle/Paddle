@@ -986,7 +986,7 @@ void SqueezeExcitationInferMeta(const MetaTensor& x,
   std::vector<int64_t> out_shape(
       {in_dims[0], filter_dims[1], in_dims[2], in_dims[3]});
   // set output dims
-  out->set_dims(DDim(out_shape.data(), out_shape.size()));
+  out->set_dims(DDim(out_shape.data(), static_cast<int>(out_shape.size())));
 }
 
 }  // namespace phi

@@ -46,7 +46,7 @@ ProgramDesc load_from_file(const std::string &file_name) {
 
   std::string buffer(fin.tellg(), ' ');
   fin.seekg(0, std::ios::beg);
-  fin.read(&buffer[0], buffer.size());
+  fin.read(&buffer[0], buffer.size());  // NOLINT
   fin.close();
   return ProgramDesc(buffer);
 }

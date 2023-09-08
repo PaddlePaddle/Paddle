@@ -585,7 +585,9 @@ void OpTranscriber::RecordOpResultMapping(ir::IrContext* ctx,
     bool generated_by_vector = value.type().isa<ir::VectorType>();
 
     (*param_map)[arg_name] = VariableDefiningInfo(
-        value, generated_by_vector, generated_by_vector ? idx_in_vec : -1);
+        value,
+        generated_by_vector,
+        static_cast<int>(generated_by_vector ? idx_in_vec : -1));
   }
 }
 
@@ -1468,10 +1470,11 @@ struct ElementwiseTranscriber : public OpTranscriber {
     std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
 
     if (axis < 0) {
-      axis += x_shape.size();
+      axis += static_cast<int>(x_shape.size());
     }
 
-    int append_size = x_shape.size() - axis - 1 - y_shape.size();
+    int append_size =
+        static_cast<int>(x_shape.size() - axis - 1 - y_shape.size());
     if (append_size < 0) {  // which means x.rank <= y.rank, mostly
                             // x.rank=y.rank
       return {x_value, y_value};

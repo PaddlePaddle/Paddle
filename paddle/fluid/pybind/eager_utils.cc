@@ -1007,8 +1007,8 @@ PyObject* ToPyObject(const paddle::framework::Vocab& value) {
   PyObject* dict = PyDict_New();
   for (const auto& map_iter : value) {
     // Convert Key
-    PyObject* key_string =
-        PyUnicode_FromWideChar(map_iter.first.c_str(), map_iter.first.size());
+    PyObject* key_string = PyUnicode_FromWideChar(
+        map_iter.first.c_str(), map_iter.first.size());  // NOLINT
     if (!key_string) {
       PADDLE_THROW(platform::errors::Fatal(
           "Unable to convert std::wstring to PyObject"));

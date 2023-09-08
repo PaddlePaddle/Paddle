@@ -244,7 +244,7 @@ class RedundantTransposeFusePattern
 
   std::vector<int> GetPerm(const std::vector<int> &perm1,
                            const std::vector<int> &perm2) const {
-    int n = perm1.size();
+    int n = static_cast<int>(perm1.size());
     std::vector<int> axis(n), axis1(n), axis2(n);
     std::iota(axis.begin(), axis.end(), 0);
     for (int i = 0; i < n; ++i) {

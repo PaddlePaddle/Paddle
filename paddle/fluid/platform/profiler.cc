@@ -859,9 +859,8 @@ std::string PrintHostEvents() {
     oss << thr_evt_sec.thread_id << std::endl;
     for (const auto &evt : thr_evt_sec.events) {
       oss << "{ " << evt.name << " | " << evt.start_ns << "ns | " << evt.end_ns
-          << "ns | " << (evt.end_ns - evt.start_ns) / 1000.000
-          << "us }"  // NOLINT
-          << std::endl;
+          << "ns | " << (evt.end_ns - evt.start_ns) / 1000.000  // NOLINT
+          << "us }" << std::endl;
     }
   }
   return oss.str();
