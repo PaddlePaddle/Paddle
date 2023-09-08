@@ -17,6 +17,7 @@ import time
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
 
@@ -317,6 +318,7 @@ def train_dygraph(place):
     return train(place)
 
 
+@test_and_compare_with_new_ir(True)
 def train_static(place):
     paddle.jit.enable_to_static(True)
     return train(place)
