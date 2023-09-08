@@ -228,6 +228,9 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                         self.api
                     )
                 )
+        else:
+            # do nothing
+            pass
 
         return reshard_output_code
 

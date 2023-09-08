@@ -293,15 +293,28 @@ class EagerUtils {
       tensor_name_str = t.name();
     }
     const char* TENSOR_INFO_TEMPLATE =
-        "Type: %s, Dtype: %s, Place: %s, Shape: %s";
+        "Type: %s, Dtype: %s, Place: %s, Shape: %s, DistAttr: %s";
     std::string tensor_info_str = "";
     if (t.defined()) {
       if (t.initialized()) {
-        tensor_info_str += paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
-                                                   t.impl()->type_info().name(),
-                                                   t.dtype(),
-                                                   t.place().DebugString(),
-                                                   t.dims());
+        if (t.is_dist_tensor()) {
+          tensor_info_str += paddle::string::Sprintf(
+              TENSOR_INFO_TEMPLATE,
+              t.impl()->type_info().name(),
+              t.dtype(),
+              t.place().DebugString(),
+              t.dims(),
+              std::static_pointer_cast<phi::distributed::DistTensor>(t.impl())
+                  ->dist_attr());
+        } else {
+          tensor_info_str +=
+              paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
+                                      t.impl()->type_info().name(),
+                                      t.dtype(),
+                                      t.place().DebugString(),
+                                      t.dims(),
+                                      "Unknown");
+        }
       } else {
         tensor_info_str += paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
                                                    t.impl()->type_info().name(),

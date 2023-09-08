@@ -39,7 +39,7 @@ class DistTensor final
              const TensorDistAttr& dist_attr);
 
   /// \brief Construct a empty dist tensor (for infer spmd)
-  /// \param dims The global dimension of the currnet Tensor.
+  /// \param dims The global dimension of the current Tensor.
   /// \param dist_attr The distributed attributes of the current tensor.
   DistTensor(const DDim& dims, const TensorDistAttr& dist_attr);
 

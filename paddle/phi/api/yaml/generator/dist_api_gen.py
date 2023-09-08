@@ -52,7 +52,8 @@ MAIN_DIST_BRANCH_TEMPLATE = """
     // 6. PrepareData (DataTransform & Prepare Dense Input){}
     // 7. Infer Local DenseTensor Meta{}
     // 8. DenseTensor Kernel Call{}
-    // 9. Return
+    // 9. Reshard Partial Output to Replicated (Temporary){}\n
+    // 10. Return
     {}
   }}
 """
@@ -223,6 +224,12 @@ KERNEL_CALL_TEMPLATE = """
 """
 PREFIX_VECTOR_TENSOR_NAME = "dense_input_"
 SUFFIX_VECTOR_TENSOR_NAME = "_vec"
+
+# 9. Reshard Partial Output to Replicated
+RESHARD_P2R_SINGLE_OUTPUT_TEMPLATE = """
+    ReshardPartialOutputToReplicated(dev_ctx, dist_out);"""
+RESHARD_P2R_MULTI_SINGLE_OUTPUT_TEMPLATE = """
+    ReshardPartialOutputToReplicated(dev_ctx, dist_out_{});"""
 
 # BaseAPI members:
 # inputs:
@@ -818,6 +825,35 @@ class DistForwardAPI(ForwardAPI):
             ", ".join(self.dense_output_args),
         )
 
+    def generate_reshard_partial_out_to_replicated_code(self) -> str:
+        reshard_p2r_code = ""
+        if self.infer_meta['spmd_rule'] is not None:
+            output_num = len(self.outputs['types'])
+            if output_num == 1:
+                if self.outputs['types'][0] == 'Tensor':
+                    reshard_p2r_code += RESHARD_P2R_SINGLE_OUTPUT_TEMPLATE
+                else:
+                    self.vector_output_size_assertion_check()
+            elif output_num > 1:
+                for i, out_type in enumerate(self.outputs['types']):
+                    if out_type == 'Tensor':
+                        reshard_p2r_code += (
+                            RESHARD_P2R_MULTI_SINGLE_OUTPUT_TEMPLATE.format(i)
+                        )
+                    else:
+                        self.vector_output_size_assertion_check()
+            else:
+                raise ValueError(
+                    "{} : Output error: the output should not be empty.".format(
+                        self.api
+                    )
+                )
+        else:
+            # do nothing
+            pass
+
+        return reshard_p2r_code
+
     def generate_return_code(self) -> str:
         return self.gene_return_code()
 
@@ -835,6 +871,7 @@ class DistForwardAPI(ForwardAPI):
             self.generate_prepare_data_code(),
             self.generate_infer_meta_code(),
             self.generate_kernel_call_code(),
+            self.generate_reshard_partial_out_to_replicated_code(),
             self.generate_return_code(),
         )
 

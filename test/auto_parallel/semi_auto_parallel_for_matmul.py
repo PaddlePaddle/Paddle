@@ -40,6 +40,8 @@ class TestMatmulApiForSemiAutoParallel:
 
         dist_x = dist.shard_tensor(x, dist_attr=x_dist_attr)
         dist_y = dist.shard_tensor(y, dist_attr=y_dist_attr)
+        dist_x.stop_gradient = False
+        dist_y.stop_gradient = False
 
         dist_out = paddle.matmul(dist_x, dist_y)
         # verify global shape
@@ -118,7 +120,9 @@ class TestMatmulApiForSemiAutoParallel:
         else:
             raise ValueError("Only support cpu or gpu backend.")
 
+        # backward need P2R
         self.test_case1()
+        # forward need P2R
         self.test_case2()
 
 

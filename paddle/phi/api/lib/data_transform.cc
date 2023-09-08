@@ -619,6 +619,20 @@ std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
   return nullptr;
 }
 
+void ReshardPartialOutputToReplicated(
+    phi::DeviceContext* dev_ctx, phi::distributed::DistTensor* out_tensor) {
+  if (out_tensor->dist_attr().is_partial()) {
+    auto dist_attr = out_tensor->dist_attr();
+    dist_attr.clean_partial_status();
+    VLOG(6) << "Reshard partial tensor from " << out_tensor->dist_attr()
+            << " to replicated " << dist_attr;
+    // TODO(chenweihang): no need choose here
+    auto* func =
+        phi::distributed::ChooseProperReshardFunction(*out_tensor, dist_attr);
+    func->Eval(dev_ctx, *out_tensor, dist_attr, out_tensor);
+  }
+}
+
 void ReshardKernelOutputToApiOutput(
     phi::DeviceContext* dev_ctx,
     const std::shared_ptr<phi::distributed::DistTensor>& src_tensor,
