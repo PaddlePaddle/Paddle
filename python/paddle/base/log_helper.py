@@ -36,6 +36,7 @@ def get_logger(name, level, fmt=None):
         .. code-block:: python
 
             >>> import paddle
+            >>> import logging
             >>> from paddle.base import log_helper
 
             >>> logger = log_helper.get_logger(__name__, logging.INFO,

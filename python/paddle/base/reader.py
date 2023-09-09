@@ -1332,6 +1332,8 @@ class PyReader(DataLoaderBase):
                 >>> import paddle.base as base
                 >>> import numpy as np
 
+                >>> paddle.enable_static()
+
                 >>> BATCH_SIZE = 10
 
                 >>> def generator():
@@ -1368,6 +1370,8 @@ class PyReader(DataLoaderBase):
                 >>> import paddle
                 >>> import paddle.base as base
                 >>> import numpy as np
+
+                >>> paddle.enable_static()
 
                 >>> BATCH_SIZE = 10
 
@@ -1423,6 +1427,8 @@ class PyReader(DataLoaderBase):
                 >>> import paddle
                 >>> import paddle.base as base
                 >>> import numpy as np
+
+                >>> paddle.enable_static()
 
                 >>> EPOCH_NUM = 3
                 >>> ITER_NUM = 15
