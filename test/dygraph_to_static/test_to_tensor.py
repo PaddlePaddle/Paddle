@@ -15,11 +15,7 @@
 import unittest
 
 import numpy
-from dygraph_to_static_util import (
-    ast_only_test,
-    dy2static_unittest,
-    sot_only_test,
-)
+from dygraph_to_static_util import dy2static_unittest
 
 import paddle
 from paddle.base import core
@@ -154,7 +150,6 @@ class TestToTensorReturnVal(unittest.TestCase):
         self.assertTrue(a.stop_gradient == b.stop_gradient)
         self.assertTrue(a.place._equals(b.place))
 
-    @ast_only_test
     def test_to_tensor_err_log(self):
         paddle.disable_static()
         x = paddle.to_tensor([3])
@@ -163,18 +158,6 @@ class TestToTensorReturnVal(unittest.TestCase):
         except Exception as e:
             self.assertTrue(
                 "Do not support transform type `<class 'dict'>` to tensor"
-                in str(e)
-            )
-
-    @sot_only_test
-    def test_to_tensor_err_log_sot(self):
-        paddle.disable_static()
-        x = paddle.to_tensor([3])
-        try:
-            a = paddle.jit.to_static(case8)(x)
-        except Exception as e:
-            self.assertTrue(
-                "Can't constructs a 'paddle.Tensor' with data type <class 'dict'>"
                 in str(e)
             )
 
