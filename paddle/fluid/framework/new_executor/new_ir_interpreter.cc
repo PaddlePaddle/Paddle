@@ -541,7 +541,7 @@ void NewIRInterpreter::BuildInstruction() {
                                                    variable_2_var_name_));
       }
 #ifdef PADDLE_WITH_CINN
-    } else if (op->dialect()->name() == "cinn") {
+    } else if (op->dialect()->name() == "cinn_runtime") {
       vec_instruction_base_.emplace_back(
           std::make_unique<CinnJitInstruction>(op_idx++, place_, op, scope_));
 #endif
