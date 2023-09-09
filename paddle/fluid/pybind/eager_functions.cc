@@ -356,7 +356,7 @@ static void ConstructFwdAndBwdMap(
               "All Grad outputs should be grad and we got %s is not grad var, "
               "please check your op and change to fit the rule.",
               grad_outputs_names[i]));
-      for (int j = 0; j < inputs_names.size(); j++) {
+      for (size_t j = 0; j < inputs_names.size(); j++) {
         if (grad_outputs_names[i].substr(0, end) == inputs_names[j]) {
           VLOG(7) << " ==== Custom Operator: " << op_type << "'s No." << j
                   << " inputs: " << inputs_names[j] << " related to No." << i
