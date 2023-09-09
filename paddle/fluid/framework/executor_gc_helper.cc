@@ -252,7 +252,7 @@ GetEagerDeletionCleanVarsForPartial(const ProgramDesc &origin_program,
     size_t op_num = block.OpSize();
     for (size_t j = 0; j < op_num; ++j) {
       auto *op = block.Op(static_cast<int>(j));
-      if (!op->HasAttr(kSubBlock) || !op->HasAttr(kBlocks) ||
+      if ((!op->HasAttr(kSubBlock) && !op->HasAttr(kBlocks)) ||
           !op->HasAttr(kSkipEagerDeletionVars)) {
         continue;
       }
