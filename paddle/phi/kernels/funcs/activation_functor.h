@@ -2175,7 +2175,8 @@ struct LogGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct LogGradFunctor<ComplexType<T>> : public BaseActivationFunctor<ComplexType<T>> {
+struct LogGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
   template <typename Device,
             typename X,
             typename Out,
