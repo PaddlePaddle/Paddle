@@ -262,8 +262,8 @@ def monkey_patch_variable():
                 >>> import paddle
                 >>> import paddle.base as base
                 >>> paddle.enable_static()
-                >>> startup_prog = base.Program()
-                >>> main_prog = base.Program()
+                >>> startup_prog = paddle.static.Program()
+                >>> main_prog = paddle.static.Program()
                 >>> with base.program_guard(startup_prog, main_prog):
                 ...     original_variable = paddle.static.data(name = "new_variable", shape=[2,2], dtype='float32')
                 ...     new_variable = original_variable.astype('int64')
@@ -422,7 +422,7 @@ def monkey_patch_variable():
                 >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
                 >>> # print the dimension of the Variable
                 >>> print(x.ndimension())
-                <bound method monkey_patch_variable.<locals>.<lambda> of var x : LOD_TENSOR.shape(3, 2, 1).dtype(float32).stop_gradient(True)>
+                3
         """
         return len(self.shape)
 
@@ -444,7 +444,7 @@ def monkey_patch_variable():
                 >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
                 >>> # print the dimension of the Variable
                 >>> print(x.dim())
-                <bound method monkey_patch_variable.<locals>.<lambda> of var x : LOD_TENSOR.shape(3, 2, 1).dtype(float32).stop_gradient(True)>
+                3
         """
         return len(self.shape)
 
