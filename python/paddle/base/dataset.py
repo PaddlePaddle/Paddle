@@ -30,9 +30,8 @@ class DatasetFactory:
     Example:
         .. code-block:: python
 
-          import paddle.base as base
-          dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-
+            >>> import paddle.base as base
+            >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
     """
 
     def __init__(self):
@@ -51,9 +50,8 @@ class DatasetFactory:
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset()
-
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset()
         """
         try:
             dataset = globals()[datafeed_class]()
@@ -87,9 +85,9 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset()
-              dataset.set_pipe_command("python my_script.py")
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset()
+                >>> dataset.set_pipe_command("python my_script.py")
 
         Args:
             pipe_command(str): pipe command
@@ -104,9 +102,9 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset()
-              dataset.set_so_parser_name("./abc.so")
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset()
+                >>> dataset.set_so_parser_name("./abc.so")
 
         Args:
             pipe_command(str): pipe command
@@ -121,9 +119,9 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset()
-              dataset.set_rank_offset("rank_offset")
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset()
+                >>> dataset.set_rank_offset("rank_offset")
 
         Args:
             rank_offset(str): rank_offset's name
@@ -183,9 +181,9 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset()
-              dataset.set_batch_size(128)
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset()
+                >>> dataset.set_batch_size(128)
 
         Args:
             batch_size(int): batch size
@@ -200,9 +198,9 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset()
-              dataset.set_pv_batch(128)
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset()
+                >>> dataset.set_pv_batch(128)
         Args:
             pv_batch_size(int): pv batch size
 
@@ -216,9 +214,9 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset()
-               dataset.set_thread(12)
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset()
+                >>> dataset.set_thread(12)
 
         Args:
             thread_num(int): thread num
@@ -233,9 +231,9 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset()
-              dataset.set_filelist(['a.txt', 'b.txt'])
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset()
+                >>> dataset.set_filelist(['a.txt', 'b.txt'])
 
         Args:
             filelist(list): file list
@@ -253,9 +251,9 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset()
-              dataset.set_use_var([data, label])
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset()
+                >>> dataset.set_use_var([data, label])
 
         Args:
             var_list(list): variable list
@@ -286,9 +284,9 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset()
-              dataset.set_hdfs_config("my_fs_name", "my_fs_ugi")
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset()
+                >>> dataset.set_hdfs_config("my_fs_name", "my_fs_ugi")
 
         Args:
             fs_name(str): fs name
@@ -303,9 +301,9 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset()
-              dataset.set_download_cmd("./read_from_afs")
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset()
+                >>> dataset.set_download_cmd("./read_from_afs")
 
         Args:
             download_cmd(str): customized download command
@@ -347,9 +345,9 @@ class DatasetBase:
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset()
-              print(dataset.desc())
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset()
+                >>> print(dataset.desc())
 
         Returns:
             A string message
@@ -465,9 +463,9 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              dataset.set_queue_num(12)
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> dataset.set_queue_num(12)
 
         """
         self.is_user_set_queue_num = True
@@ -487,9 +485,9 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              dataset.set_parse_ins_id(True)
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> dataset.set_parse_ins_id(True)
 
         """
         self.parse_ins_id = parse_ins_id
@@ -508,9 +506,9 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              dataset.set_parse_content(True)
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> dataset.set_parse_content(True)
 
         """
         self.parse_content = parse_content
@@ -525,9 +523,9 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              dataset.set_parse_logkey(True)
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> dataset.set_parse_logkey(True)
 
         """
         self.parse_logkey = parse_logkey
@@ -542,9 +540,9 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              dataset._set_trainer_num(1)
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> dataset._set_trainer_num(1)
 
         """
         self.trainer_num = trainer_num
@@ -563,9 +561,9 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              dataset.set_merge_by_sid(True)
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> dataset.set_merge_by_sid(True)
 
         """
         self.merge_by_sid = merge_by_sid
@@ -580,9 +578,9 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              dataset.set_enable_pv_merge(True)
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> dataset.set_enable_pv_merge(True)
 
         """
         self.enable_pv_merge = enable_pv_merge
@@ -595,12 +593,13 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              filelist = ["a.txt", "b.txt"]
-              dataset.set_filelist(filelist)
-              dataset.load_into_memory()
-              dataset.preprocess_instance()
+                >>> # doctest: +SKIP('Depends on external files.')
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.load_into_memory()
+                >>> dataset.preprocess_instance()
 
         """
         self.dataset.preprocess_instance()
@@ -613,12 +612,13 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              filelist = ["a.txt", "b.txt"]
-              dataset.set_filelist(filelist)
-              dataset.load_into_memory()
-              dataset.set_current_phase(1)
+                >>> # doctest: +SKIP('Depends on external files.')
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.load_into_memory()
+                >>> dataset.set_current_phase(1)
 
         """
         self.dataset.set_current_phase(current_phase)
@@ -630,14 +630,15 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              filelist = ["a.txt", "b.txt"]
-              dataset.set_filelist(filelist)
-              dataset.load_into_memory()
-              dataset.preprocess_instance()
-              exe.train_from_dataset(dataset)
-              dataset.postprocess_instance()
+                >>> # doctest: +SKIP('Depends on external files.')
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.load_into_memory()
+                >>> dataset.preprocess_instance()
+                >>> exe.train_from_dataset(dataset)
+                >>> dataset.postprocess_instance()
 
         """
         self.dataset.postprocess_instance()
@@ -656,9 +657,9 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              dataset.set_fleet_send_batch_size(800)
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> dataset.set_fleet_send_batch_size(800)
 
         """
         self.fleet_send_batch_size = fleet_send_batch_size
@@ -677,9 +678,9 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              dataset.set_fleet_send_sleep_seconds(2)
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> dataset.set_fleet_send_sleep_seconds(2)
 
         """
         self.fleet_send_sleep_seconds = fleet_send_sleep_seconds
@@ -699,9 +700,9 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              dataset.set_merge_by_lineid()
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> dataset.set_merge_by_lineid()
 
         """
         self.dataset.set_merge_by_lineid(merge_size)
@@ -740,10 +741,10 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-                import paddle.base as base
+                >>> import paddle.base as base
 
-                dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-                dataset.set_date("20211111")
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> dataset.set_date("20211111")
         """
         year = int(date[:4])
         month = int(date[4:6])
@@ -765,12 +766,12 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              # required: skiptest
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              filelist = ["a.txt", "b.txt"]
-              dataset.set_filelist(filelist)
-              dataset.load_into_memory()
+                >>> # doctest: +SKIP('Depends on external files.')
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.load_into_memory()
         """
         self._prepare_to_run()
         if not self.use_ps_gpu:
@@ -793,13 +794,13 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              # required: skiptest
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              filelist = ["a.txt", "b.txt"]
-              dataset.set_filelist(filelist)
-              dataset.preload_into_memory()
-              dataset.wait_preload_done()
+                >>> # doctest: +SKIP('Depends on external files.')
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.preload_into_memory()
+                >>> dataset.wait_preload_done()
         """
         self._prepare_to_run()
         if thread_num is None:
@@ -819,13 +820,13 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              # required: skiptest
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              filelist = ["a.txt", "b.txt"]
-              dataset.set_filelist(filelist)
-              dataset.preload_into_memory()
-              dataset.wait_preload_done()
+                >>> # doctest: +SKIP('Depends on external files.')
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.preload_into_memory()
+                >>> dataset.wait_preload_done()
         """
         self.dataset.wait_preload_done()
         self.dataset.destroy_preload_readers()
@@ -841,13 +842,13 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              # required: skiptest
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              filelist = ["a.txt", "b.txt"]
-              dataset.set_filelist(filelist)
-              dataset.load_into_memory()
-              dataset.local_shuffle()
+                >>> # doctest: +SKIP('Depends on external files.')
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.load_into_memory()
+                >>> dataset.local_shuffle()
         """
         self.dataset.local_shuffle()
 
@@ -865,14 +866,14 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              # required: skiptest
-              import paddle.base as base
-              from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              filelist = ["a.txt", "b.txt"]
-              dataset.set_filelist(filelist)
-              dataset.load_into_memory()
-              dataset.global_shuffle(fleet)
+                >>> # doctest: +SKIP('Depends on external files.')
+                >>> import paddle.base as base
+                >>> from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.load_into_memory()
+                >>> dataset.global_shuffle(fleet)
 
         Args:
             fleet(Fleet): fleet singleton. Default None.
@@ -927,18 +928,18 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              # required: skiptest
-              import paddle.base as base
-              from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              filelist = ["a.txt", "b.txt"]
-              dataset.set_filelist(filelist)
-              dataset.load_into_memory()
-              dataset.global_shuffle(fleet)
-              exe = base.Executor(base.CPUPlace())
-              exe.run(base.default_startup_program())
-              exe.train_from_dataset(base.default_main_program(), dataset)
-              dataset.release_memory()
+                >>> # doctest: +SKIP('Depends on external files.')
+                >>> import paddle.base as base
+                >>> from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.load_into_memory()
+                >>> dataset.global_shuffle(fleet)
+                >>> exe = base.Executor(base.CPUPlace())
+                >>> exe.run(base.default_startup_program())
+                >>> exe.train_from_dataset(base.default_main_program(), dataset)
+                >>> dataset.release_memory()
 
         """
         self.dataset.release_memory()
@@ -957,12 +958,13 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              filelist = ["a.txt", "b.txt"]
-              dataset.set_filelist(filelist)
-              dataset.load_into_memory()
-              print dataset.get_pv_data_size()
+                >>> # doctest: +SKIP('Depends on external files.')
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.load_into_memory()
+                >>> print dataset.get_pv_data_size()
 
         """
         return self.dataset.get_pv_data_size()
@@ -991,14 +993,14 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              # required: skiptest
-              import paddle.base as base
-              from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              filelist = ["a.txt", "b.txt"]
-              dataset.set_filelist(filelist)
-              dataset.load_into_memory()
-              print dataset.get_memory_data_size(fleet)
+                >>> # doctest: +SKIP('Depends on external files.')
+                >>> import paddle.base as base
+                >>> from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.load_into_memory()
+                >>> print dataset.get_memory_data_size(fleet)
 
         """
         import numpy as np
@@ -1035,15 +1037,15 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              # required: skiptest
-              import paddle.base as base
-              from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              filelist = ["a.txt", "b.txt"]
-              dataset.set_filelist(filelist)
-              dataset.load_into_memory()
-              dataset.global_shuffle(fleet)
-              print dataset.get_shuffle_data_size(fleet)
+                >>> # doctest: +SKIP('Depends on external files.')
+                >>> import paddle.base as base
+                >>> from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.load_into_memory()
+                >>> dataset.global_shuffle(fleet)
+                >>> print dataset.get_shuffle_data_size(fleet)
 
         """
         import numpy as np
@@ -1082,20 +1084,20 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              # required: skiptest
-              import paddle.base as base
-              from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              graph_config = {"walk_len": 24,
-                    "walk_degree": 10,
-                    "once_sample_startid_len": 80000,
-                    "sample_times_one_chunk": 5,
-                    "window": 3,
-                    "debug_mode": 0,
-                    "batch_size": 800,
-                    "meta_path": "cuid2clk-clk2cuid;cuid2conv-conv2cuid;clk2cuid-cuid2clk;clk2cuid-cuid2conv",
-                    "gpu_graph_training": 1}
-              dataset.set_graph_config(graph_config)
+                >>> # doctest: +SKIP
+                >>> import paddle.base as base
+                >>> from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> graph_config = {"walk_len": 24,
+                ...     "walk_degree": 10,
+                ...     "once_sample_startid_len": 80000,
+                ...     "sample_times_one_chunk": 5,
+                ...     "window": 3,
+                ...     "debug_mode": 0,
+                ...     "batch_size": 800,
+                ...     "meta_path": "cuid2clk-clk2cuid;cuid2conv-conv2cuid;clk2cuid-cuid2clk;clk2cuid-cuid2conv",
+                ...     "gpu_graph_training": 1}
+                >>> dataset.set_graph_config(graph_config)
 
         """
         self.proto_desc.graph_config.walk_degree = config.get("walk_degree", 1)
@@ -1145,10 +1147,10 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              pass_id = 0
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              dataset.set_pass_id(pass_id)
+                >>> import paddle.base as base
+                >>> pass_id = 0
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> dataset.set_pass_id(pass_id)
         """
         self.pass_id = pass_id
         self.dataset.set_pass_id(pass_id)
@@ -1163,9 +1165,9 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-              pass_id = dataset.get_pass_id()
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> pass_id = dataset.get_pass_id()
         """
         return self.pass_id
 
@@ -1183,8 +1185,8 @@ class QueueDataset(DatasetBase):
     Examples:
         .. code-block:: python
 
-          import paddle.base as base
-          dataset = base.DatasetFactory().create_dataset("QueueDataset")
+            >>> import paddle.base as base
+            >>> dataset = base.DatasetFactory().create_dataset("QueueDataset")
 
     """
 
@@ -1224,9 +1226,9 @@ class QueueDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("QueueDataset")
-              dataset.local_shuffle()
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("QueueDataset")
+                >>> dataset.local_shuffle()
 
         Raises:
             NotImplementedError: QueueDataset does not support local shuffle
@@ -1250,10 +1252,10 @@ class QueueDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
-              dataset = base.DatasetFactory().create_dataset("QueueDataset")
-              #dataset.global_shuffle(fleet)
+                >>> import paddle.base as base
+                >>> from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
+                >>> dataset = base.DatasetFactory().create_dataset("QueueDataset")
+                >>> #dataset.global_shuffle(fleet)
 
         Raises:
             NotImplementedError: QueueDataset does not support global shuffle
@@ -1272,8 +1274,8 @@ class FileInstantDataset(DatasetBase):
     Examples:
         .. code-block:: python
 
-          import paddle.base as base
-          dataset = base.DatasetFactory.create_dataset("FileInstantDataset")
+            >>> import paddle.base as base
+            >>> dataset = base.DatasetFactory.create_dataset("FileInstantDataset")
     """
 
     def __init__(self):
@@ -1312,8 +1314,8 @@ class BoxPSDataset(InMemoryDataset):
     Examples:
         .. code-block:: python
 
-          import paddle.base as base
-          dataset = base.DatasetFactory().create_dataset("BoxPSDataset")
+            >>> import paddle.base as base
+            >>> dataset = base.DatasetFactory().create_dataset("BoxPSDataset")
     """
 
     def __init__(self):
@@ -1342,9 +1344,9 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("BoxPSDataset")
-              dataset.begin_pass()
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("BoxPSDataset")
+                >>> dataset.begin_pass()
         """
         self.boxps.begin_pass()
 
@@ -1355,9 +1357,9 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("BoxPSDataset")
-              dataset.end_pass(True)
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("BoxPSDataset")
+                >>> dataset.end_pass(True)
         """
         self.boxps.end_pass(need_save_delta)
 
@@ -1368,12 +1370,13 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("BoxPSDataset")
-              filelist = ["a.txt", "b.txt"]
-              dataset.set_filelist(filelist)
-              dataset.preload_into_memory()
-              dataset.wait_preload_done()
+                >>> # doctest: +SKIP('Depends on external files.')
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("BoxPSDataset")
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.preload_into_memory()
+                >>> dataset.wait_preload_done()
         """
         self.boxps.wait_feed_pass_done()
 
@@ -1383,11 +1386,12 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("BoxPSDataset")
-              filelist = ["a.txt", "b.txt"]
-              dataset.set_filelist(filelist)
-              dataset.load_into_memory()
+                >>> # doctest: +SKIP('Depends on external files.')
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("BoxPSDataset")
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.load_into_memory()
         """
         self._prepare_to_run()
         self.boxps.load_into_memory()
@@ -1398,11 +1402,12 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle.base as base
-              dataset = base.DatasetFactory().create_dataset("BoxPSDataset")
-              filelist = ["a.txt", "b.txt"]
-              dataset.set_filelist(filelist)
-              dataset.preload_into_memory()
+                >>> # doctest: +SKIP('Depends on external files.')
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("BoxPSDataset")
+                >>> filelist = ["a.txt", "b.txt"]
+                >>> dataset.set_filelist(filelist)
+                >>> dataset.preload_into_memory()
         """
         self._prepare_to_run()
         self.boxps.preload_into_memory()
@@ -1427,11 +1432,13 @@ class BoxPSDataset(InMemoryDataset):
             slots(list[string]): the set of slots(string) to do slots shuffle.
 
         Examples:
-            import paddle.base as base
-            dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-            dataset.set_merge_by_lineid()
-            #suppose there is a slot 0
-            dataset.slots_shuffle(['0'])
+            .. code-block:: python
+
+                >>> import paddle.base as base
+                >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+                >>> dataset.set_merge_by_lineid()
+                >>> #suppose there is a slot 0
+                >>> dataset.slots_shuffle(['0'])
         """
         slots_set = set(slots)
         self.boxps.slots_shuffle(slots_set)
