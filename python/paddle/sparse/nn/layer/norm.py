@@ -292,7 +292,7 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
             ...     sync_batch_norm = nn.SyncBatchNorm(2)
             ...     hidden1 = sync_batch_norm(x)
             ...     print(hidden1)
-            Tensor(shape=[1, 2, 2, 2], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[1, 2, 2, 2], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=False,
                    indices=[[0, 0, 0, 0],
                             [0, 0, 1, 1],
                             [0, 1, 0, 1]],
