@@ -17,23 +17,23 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 class TestBatchNorm(unittest.TestCase):
     def test_name(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
-            with fluid.dygraph.guard(p):
+            with base.dygraph.guard(p):
                 batch_norm1d = paddle.nn.BatchNorm1D(1, name="test")
 
     def test_error(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             # paddle.disable_static()
             x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
@@ -69,7 +69,7 @@ class TestBatchNorm(unittest.TestCase):
                 batch_norm3d = paddle.nn.BatchNorm3D(1)
                 batch_norm3d(paddle.to_tensor(x_data_4))
 
-            with fluid.dygraph.guard(p):
+            with base.dygraph.guard(p):
                 self.assertRaises(ValueError, error1d)
                 self.assertRaises(ValueError, error2d)
                 self.assertRaises(ValueError, error3d)
@@ -79,7 +79,7 @@ class TestBatchNorm(unittest.TestCase):
 
     def test_large_batch(self):
         def compute_baseline(x):
-            with fluid.dygraph.guard(p):
+            with base.dygraph.guard(p):
                 bn = paddle.nn.BatchNorm(shape[1])
                 x1 = paddle.to_tensor(x)
                 x1.stop_gradient = False
@@ -88,7 +88,7 @@ class TestBatchNorm(unittest.TestCase):
                 return y.numpy(), x1.gradient()
 
         def compute_1d(x):
-            with fluid.dygraph.guard(p):
+            with base.dygraph.guard(p):
                 bn = paddle.nn.BatchNorm1D(shape[1])
                 x1 = paddle.to_tensor(x)
                 x1.stop_gradient = False
@@ -96,9 +96,9 @@ class TestBatchNorm(unittest.TestCase):
                 y.backward()
                 return y.numpy(), x1.gradient()
 
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             # [N, C]
             shape = [200000, 4]
@@ -117,14 +117,14 @@ class TestBatchNorm(unittest.TestCase):
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
     def test_eager_api(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             shape = [4, 10, 4, 4]
 
             def compute_v1(x):
-                with fluid.dygraph.guard(p):
+                with base.dygraph.guard(p):
                     bn = paddle.nn.BatchNorm(shape[1])
                     # bn = paddle.nn.BatchNorm2D(shape[1])
                     x1 = paddle.to_tensor(x)
@@ -134,7 +134,7 @@ class TestBatchNorm(unittest.TestCase):
                     return y.numpy(), x1.gradient()
 
             def compute_v2(x):
-                with fluid.dygraph.guard(p):
+                with base.dygraph.guard(p):
                     print("v2")
                     bn = paddle.nn.BatchNorm2D(shape[1])
                     x1 = paddle.to_tensor(x)
@@ -150,14 +150,14 @@ class TestBatchNorm(unittest.TestCase):
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
     def test_dygraph(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             shape = [4, 10, 4, 4]
 
             def compute_v1(x, is_test, trainable_statistics):
-                with fluid.dygraph.guard(p):
+                with base.dygraph.guard(p):
                     bn = paddle.nn.BatchNorm(
                         shape[1],
                         is_test=is_test,
@@ -167,7 +167,7 @@ class TestBatchNorm(unittest.TestCase):
                 return y.numpy()
 
             def compute_v2(x):
-                with fluid.dygraph.guard(p):
+                with base.dygraph.guard(p):
                     bn = paddle.nn.BatchNorm2D(shape[1])
                     y = bn(paddle.to_tensor(x))
 
@@ -177,15 +177,15 @@ class TestBatchNorm(unittest.TestCase):
                 return y.numpy()
 
             def compute_v3(x, is_test, trainable_statistics):
-                with fluid.dygraph.guard(p):
+                with base.dygraph.guard(p):
                     bn = paddle.nn.BatchNorm(
                         shape[1],
                         is_test=is_test,
-                        param_attr=fluid.ParamAttr(
+                        param_attr=base.ParamAttr(
                             initializer=paddle.nn.initializer.Constant(1.0),
                             trainable=False,
                         ),
-                        bias_attr=fluid.ParamAttr(
+                        bias_attr=base.ParamAttr(
                             initializer=paddle.nn.initializer.Constant(0.0),
                             trainable=False,
                         ),
@@ -195,7 +195,7 @@ class TestBatchNorm(unittest.TestCase):
                 return y.numpy()
 
             def compute_v4(x):
-                with fluid.dygraph.guard(p):
+                with base.dygraph.guard(p):
                     bn = paddle.nn.BatchNorm2D(
                         shape[1], weight_attr=False, bias_attr=False
                     )
@@ -211,11 +211,11 @@ class TestBatchNorm(unittest.TestCase):
             np.testing.assert_allclose(y3, y4, rtol=1e-05)
 
     def test_static(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
-            exe = fluid.Executor(p)
+            exe = base.Executor(p)
             shape = [4, 10, 16, 16]
 
             def compute_v1(x_np, is_test, trainable_statistics):
@@ -229,7 +229,7 @@ class TestBatchNorm(unittest.TestCase):
                         name='x', shape=x_np.shape, dtype=x_np.dtype
                     )
                     y = bn(x)
-                    exe.run(fluid.default_startup_program())
+                    exe.run(base.default_startup_program())
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
                 return r
 
@@ -240,7 +240,7 @@ class TestBatchNorm(unittest.TestCase):
                         name='x', shape=x_np.shape, dtype=x_np.dtype
                     )
                     y = bn(x)
-                    exe.run(fluid.default_startup_program())
+                    exe.run(base.default_startup_program())
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
                 return r
 
@@ -258,16 +258,16 @@ class TestBatchNormChannelLast(unittest.TestCase):
             paddle.set_default_dtype("float32")
         else:
             paddle.set_default_dtype("float64")
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def tearDown(self):
         paddle.set_default_dtype(self.original_dtyep)
 
     def test_1d(self):
         for p in self.places:
-            with fluid.dygraph.guard(p):
+            with base.dygraph.guard(p):
                 x = paddle.randn([2, 6, 4])
                 net1 = paddle.nn.BatchNorm1D(4, data_format="NLC")
                 net2 = paddle.nn.BatchNorm1D(4)
@@ -289,7 +289,7 @@ class TestBatchNormChannelLast(unittest.TestCase):
 
     def test_2d(self):
         for p in self.places:
-            with fluid.dygraph.guard(p):
+            with base.dygraph.guard(p):
                 x = paddle.randn([2, 6, 6, 4])
                 net1 = paddle.nn.BatchNorm2D(4, data_format="NHWC")
                 net2 = paddle.nn.BatchNorm2D(4)
@@ -311,7 +311,7 @@ class TestBatchNormChannelLast(unittest.TestCase):
 
     def test_3d(self):
         for p in self.places:
-            with fluid.dygraph.guard(p):
+            with base.dygraph.guard(p):
                 x = paddle.randn([2, 6, 6, 6, 4])
                 net1 = paddle.nn.BatchNorm3D(4, data_format="NDHWC")
                 net2 = paddle.nn.BatchNorm3D(4)
@@ -332,7 +332,7 @@ class TestBatchNormChannelLast(unittest.TestCase):
                     )
 
     def test_1d_opt(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             batch_size = 13700
             channels = 16
             shape = (batch_size, channels)
@@ -364,9 +364,9 @@ class TestBatchNormChannelLast(unittest.TestCase):
 
 class TestBatchNormUseGlobalStats(unittest.TestCase):
     def setUp(self):
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
         self.init_test()
 
     # train mode
@@ -376,11 +376,11 @@ class TestBatchNormUseGlobalStats(unittest.TestCase):
 
     def test_global_stats(self):
         for p in self.places:
-            with fluid.dygraph.guard(p):
+            with base.dygraph.guard(p):
                 x = paddle.randn([2, 6, 6, 4])
                 net1 = paddle.nn.BatchNorm(
                     6,
-                    param_attr=fluid.ParamAttr(
+                    param_attr=base.ParamAttr(
                         initializer=paddle.nn.initializer.Constant(1.0)
                     ),
                     use_global_stats=self.use_global_stats,

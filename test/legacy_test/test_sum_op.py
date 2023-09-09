@@ -29,9 +29,9 @@ from op import Operator
 
 import paddle
 import paddle.inference as paddle_infer
-from paddle import enable_static, fluid
-from paddle.fluid import core
-from paddle.fluid.layer_helper import LayerHelper
+from paddle import base, enable_static
+from paddle.base import core
+from paddle.base.layer_helper import LayerHelper
 
 
 def sum_wrapper(X, use_mkldnn=False):
@@ -358,7 +358,7 @@ class TestSumBF16Op(OpTest):
 
 class API_Test_Add_n(unittest.TestCase):
     def test_api(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input0 = paddle.tensor.fill_constant(
                 shape=[2, 3], dtype='int64', value=5
             )
@@ -368,12 +368,12 @@ class API_Test_Add_n(unittest.TestCase):
             expected_result = np.empty((2, 3))
             expected_result.fill(8)
             sum_value = paddle.add_n([input0, input1])
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             result = exe.run(fetch_list=[sum_value])
 
             self.assertEqual((result == expected_result).all(), True)
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             input0 = paddle.ones(shape=[2, 3], dtype='float32')
             expected_result = np.empty((2, 3))
             expected_result.fill(2)
@@ -382,7 +382,7 @@ class API_Test_Add_n(unittest.TestCase):
             self.assertEqual((sum_value.numpy() == expected_result).all(), True)
 
     def test_dygraph_api(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             input0 = paddle.ones(shape=[2, 3], dtype='float32')
             input1 = paddle.ones(shape=[2, 3], dtype='float32')
             input0.stop_gradient = False
@@ -403,7 +403,7 @@ class API_Test_Add_n(unittest.TestCase):
             )
 
     def test_add_n_and_add_and_grad(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             np_x = np.array([[1, 2, 3], [4, 5, 6]])
             np_y = [[7, 8, 9], [10, 11, 12]]
             np_z = [[1, 1, 1], [1, 1, 1]]
@@ -495,12 +495,12 @@ class TestRaiseSumsError(unittest.TestCase):
 class TestSumOpError(unittest.TestCase):
     def test_errors(self):
         def test_empty_list_input():
-            with fluid.dygraph.guard():
-                fluid._legacy_C_ops.sum([])
+            with base.dygraph.guard():
+                base._legacy_C_ops.sum([])
 
         def test_list_of_none_input():
-            with fluid.dygraph.guard():
-                fluid._legacy_C_ops.sum([None])
+            with base.dygraph.guard():
+                base._legacy_C_ops.sum([None])
 
         self.assertRaises(Exception, test_empty_list_input)
         self.assertRaises(Exception, test_list_of_none_input)
@@ -645,9 +645,9 @@ class TestAddNDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -687,9 +687,9 @@ class TestAddNTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -718,9 +718,9 @@ class TestSumDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -749,9 +749,9 @@ class TestSumTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 

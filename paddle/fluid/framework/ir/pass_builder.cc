@@ -38,7 +38,7 @@ void PassBuilder::RemovePass(size_t idx) {
       idx,
       platform::errors::InvalidArgument(
           "Passes size is %d, %d is not a valid index.", passes_.size(), idx));
-  passes_.erase(passes_.begin() + idx);
+  passes_.erase(passes_.begin() + idx);  // NOLINT
 }
 
 std::shared_ptr<Pass> PassBuilder::InsertPass(size_t idx,
@@ -50,7 +50,7 @@ std::shared_ptr<Pass> PassBuilder::InsertPass(size_t idx,
           "Passes size is %d, %d is not a valid index.", passes_.size(), idx));
   std::shared_ptr<Pass> pass(
       ir::PassRegistry::Instance().Get(pass_type).release());
-  passes_.insert(passes_.begin() + idx, std::move(pass));
+  passes_.insert(passes_.begin() + idx, std::move(pass));  // NOLINT
   return passes_[idx];
 }
 

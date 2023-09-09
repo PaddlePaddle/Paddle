@@ -21,7 +21,7 @@ from eager_op_test import OpTest
 import paddle
 import paddle.nn.functional as F
 from paddle import tensor
-from paddle.fluid.framework import default_main_program
+from paddle.base.framework import default_main_program
 from paddle.incubate.nn import FusedMultiTransformer
 from paddle.incubate.nn.functional import fused_multi_transformer
 from paddle.nn.layer.common import Dropout, Linear
@@ -57,7 +57,7 @@ class TestFusedMultiTransformerOp(OpTest):
         # use autograd to check grad in this unittest.
         self.__class__.no_need_check_grad = False
 
-        bias_attr = paddle.fluid.ParamAttr(
+        bias_attr = paddle.base.ParamAttr(
             initializer=paddle.paddle.nn.initializer.Constant(value=0.0005)
         )
         self.q_proj = Linear(
@@ -996,13 +996,13 @@ class TestFusedMultiTransformerOp(OpTest):
         }
         if self.has_pre_cache:
             out = exe.run(
-                paddle.fluid.default_main_program(),
+                paddle.base.default_main_program(),
                 feed=feed_data,
                 fetch_list=[final_out[0].name],
             )
         else:
             out = exe.run(
-                paddle.fluid.default_main_program(),
+                paddle.base.default_main_program(),
                 feed=feed_data,
                 fetch_list=[final_out.name],
             )

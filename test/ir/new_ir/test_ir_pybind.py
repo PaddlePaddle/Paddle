@@ -77,14 +77,14 @@ class TestPybind(unittest.TestCase):
         tanh_op = newir_program.block().ops[3]
 
         self.assertEqual(
-            matmul_op.result(0).dtype, paddle.fluid.core.DataType.FLOAT32
+            matmul_op.result(0).dtype, paddle.base.core.DataType.FLOAT32
         )
         self.assertEqual(matmul_op.result(0).shape, [4, 4])
         self.assertEqual(
-            matmul_op.results()[0].get_defining_op().name(), "pd.matmul"
+            matmul_op.results()[0].get_defining_op().name(), "pd_op.matmul"
         )
         self.assertEqual(
-            matmul_op.result(0).get_defining_op().name(), "pd.matmul"
+            matmul_op.result(0).get_defining_op().name(), "pd_op.matmul"
         )
         matmul_op.result(0).stop_gradient = True
         self.assertEqual(matmul_op.result(0).stop_gradient, True)
@@ -111,12 +111,13 @@ class TestPybind(unittest.TestCase):
         self.assertEqual(add_op.operands()[0].source(), matmul_op.results()[0])
 
         self.assertEqual(
-            tanh_op.operands()[0].source().get_defining_op().name(), "pd.add"
+            tanh_op.operands()[0].source().get_defining_op().name(), "pd_op.add"
         )
 
         add_op.replace_all_uses_with(matmul_op.results())
         self.assertEqual(
-            tanh_op.operands()[0].source().get_defining_op().name(), "pd.matmul"
+            tanh_op.operands()[0].source().get_defining_op().name(),
+            "pd_op.matmul",
         )
 
         self.assertEqual(add_op.result(0).use_empty(), True)
@@ -161,8 +162,8 @@ class TestPybind(unittest.TestCase):
         self.assertEqual(conv_attr["paddings"], [0, 0])
         self.assertEqual(conv_attr["padding_algorithm"], "EXPLICIT")
         self.assertEqual(conv_attr["groups"], 1)
-        self.assertEqual(full_attr["dtype"], paddle.fluid.core.DataType.FLOAT32)
-        self.assertTrue(isinstance(full_attr["place"], paddle.fluid.core.Place))
+        self.assertEqual(full_attr["dtype"], paddle.base.core.DataType.FLOAT32)
+        self.assertTrue(isinstance(full_attr["place"], paddle.base.core.Place))
 
     def test_operands(self):
         newir_program = get_ir_program()

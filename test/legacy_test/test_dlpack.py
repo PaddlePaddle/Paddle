@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestDLPack(unittest.TestCase):
@@ -29,7 +29,7 @@ class TestDLPack(unittest.TestCase):
         out_from_dlpack = paddle.utils.dlpack.from_dlpack(dlpack)
         if paddle.in_dynamic_mode():
             self.assertTrue(
-                isinstance(out_from_dlpack, paddle.fluid.core.eager.Tensor)
+                isinstance(out_from_dlpack, paddle.base.core.eager.Tensor)
             )
         else:
             self.assertTrue(isinstance(out_from_dlpack, paddle.Tensor))
@@ -48,14 +48,14 @@ class TestDLPack(unittest.TestCase):
 
     def test_dlpack_static(self):
         paddle.enable_static()
-        tensor = fluid.create_lod_tensor(
+        tensor = base.create_lod_tensor(
             np.array([[1], [2], [3], [4]]).astype('int'),
             [[1, 3]],
-            fluid.CPUPlace(),
+            base.CPUPlace(),
         )
         dlpack = paddle.utils.dlpack.to_dlpack(tensor)
         out_from_dlpack = paddle.utils.dlpack.from_dlpack(dlpack)
-        self.assertTrue(isinstance(out_from_dlpack, fluid.core.Tensor))
+        self.assertTrue(isinstance(out_from_dlpack, base.core.Tensor))
         np.testing.assert_array_equal(
             np.array(out_from_dlpack),
             np.array([[1], [2], [3], [4]]).astype('int'),
@@ -63,14 +63,14 @@ class TestDLPack(unittest.TestCase):
 
         # when build with cuda
         if core.is_compiled_with_cuda():
-            gtensor = fluid.create_lod_tensor(
+            gtensor = base.create_lod_tensor(
                 np.array([[1], [2], [3], [4]]).astype('int'),
                 [[1, 3]],
-                fluid.CUDAPlace(0),
+                base.CUDAPlace(0),
             )
             gdlpack = paddle.utils.dlpack.to_dlpack(gtensor)
             gout_from_dlpack = paddle.utils.dlpack.from_dlpack(gdlpack)
-            self.assertTrue(isinstance(gout_from_dlpack, fluid.core.Tensor))
+            self.assertTrue(isinstance(gout_from_dlpack, base.core.Tensor))
             np.testing.assert_array_equal(
                 np.array(gout_from_dlpack),
                 np.array([[1], [2], [3], [4]]).astype('int'),

@@ -405,50 +405,6 @@ void CConcatInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
   out->set_dtype(x.dtype());
 }
 
-void SendV2InferMeta(const int peer, const int ring_id) {
-  PADDLE_ENFORCE_GE(
-      peer,
-      0,
-      errors::InvalidArgument(
-          "The peer (%d) for send_v2 op must be non-negative.", peer));
-  PADDLE_ENFORCE_GE(
-      ring_id,
-      0,
-      errors::InvalidArgument(
-          "The ring_id (%d) for send_v2 op must be non-negative.", ring_id));
-}
-
-void RecvV2InferMeta(int peer,
-                     DataType dtype,
-                     const std::vector<int>& out_shape,
-                     MetaTensor* out) {
-  PADDLE_ENFORCE_GE(
-      peer,
-      0,
-      errors::InvalidArgument(
-          "The peer (%d) for p_recv op must be non-negative.", peer));
-
-  PADDLE_ENFORCE_GE(out_shape.size(),
-                    1,
-                    errors::InvalidArgument(
-                        "The size of the output shape must be greater than 0 "
-                        "but the value given is %d.",
-                        out_shape.size()));
-
-  for (size_t i = 0; i < out_shape.size(); ++i) {
-    PADDLE_ENFORCE_GE(
-        out_shape[i],
-        1,
-        errors::InvalidArgument("The shape attribute for recv must be set "
-                                "explicitly, but the %dth element is %d which "
-                                "is less than 1. Or dynamic_shape should be "
-                                "set to True for both send_v2 and recv_v2.",
-                                i,
-                                out_shape[i]));
-  }
-  out->set_dtype(dtype);
-}
-
 void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
   auto dims = x.dims();
   auto rank = dims.size();
@@ -3043,6 +2999,19 @@ void PSendArrayInferMeta(const MetaTensor& x, int peer) {
       0,
       errors::InvalidArgument(
           "The peer (%d) for p_send op must be non-negative.", peer));
+}
+
+void SendV2InferMeta(const int peer, const int ring_id) {
+  PADDLE_ENFORCE_GE(
+      peer,
+      0,
+      errors::InvalidArgument(
+          "The peer (%d) for send_v2 op must be non-negative.", peer));
+  PADDLE_ENFORCE_GE(
+      ring_id,
+      0,
+      errors::InvalidArgument(
+          "The ring_id (%d) for send_v2 op must be non-negative.", ring_id));
 }
 
 void PoolInferMeta(const MetaTensor& x,

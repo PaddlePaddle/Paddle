@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.base import core
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.utils import deprecated
 
 from .streams import Stream  # noqa: F401

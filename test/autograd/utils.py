@@ -31,7 +31,7 @@ def _product(t):
 
 def _get_item(t, idx):
     assert isinstance(
-        t, paddle.fluid.framework.Variable
+        t, paddle.base.framework.Variable
     ), "The first argument t must be Tensor."
     assert isinstance(
         idx, int
@@ -42,7 +42,7 @@ def _get_item(t, idx):
 
 def _set_item(t, idx, value):
     assert isinstance(
-        t, paddle.fluid.framework.Variable
+        t, paddle.base.framework.Variable
     ), "The first argument t must be Tensor."
     assert isinstance(
         idx, int

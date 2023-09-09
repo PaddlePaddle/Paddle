@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-from paddle import fluid, static
+from paddle import base, static
 
 numpy_apis = {
     "real": np.real,
@@ -125,7 +125,7 @@ class TestRealAPI(unittest.TestCase):
             np_res = numpy_apis[self.api](input)
             for place in self.places:
                 # it is more convenient to use `guard` than `enable/disable_**` here
-                with fluid.dygraph.guard(place):
+                with base.dygraph.guard(place):
                     input_t = paddle.to_tensor(input)
                     res = paddle_apis[self.api](input_t).numpy()
                     np.testing.assert_array_equal(np_res, res)
@@ -151,7 +151,7 @@ class TestRealAPI(unittest.TestCase):
 
         # in dynamic mode
         with self.assertRaises(RuntimeError):
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 input = np.random.random(self._shape).astype("float32")
                 input_t = paddle.to_tensor(input)
                 res = paddle_apis[self.api](input_t)

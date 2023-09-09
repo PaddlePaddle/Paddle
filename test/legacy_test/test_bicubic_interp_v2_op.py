@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 from paddle.nn.functional import interpolate
 
 
@@ -591,15 +591,15 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
         actual_size_data = np.array([12, 12]).astype("int32")
         scale_data = np.array([2.0]).astype("float32")
 
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
+        prog = base.Program()
+        startup_prog = base.Program()
         place = (
-            fluid.CUDAPlace(0)
-            if fluid.core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
 
-        with fluid.program_guard(prog, startup_prog):
+        with base.program_guard(prog, startup_prog):
             x = paddle.static.data(
                 name="x", shape=[2, 3, 6, 6], dtype="float32"
             )
@@ -640,10 +640,10 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
                 x, scale_factor=[2.0, 2.0], mode='bicubic', align_corners=False
             )
 
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
             results = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={
                     "x": x_data,
                     "dim": dim_data,
@@ -661,8 +661,8 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
             for res in results:
                 np.testing.assert_allclose(res, expect_res, rtol=1e-05)
 
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(x_data)
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(x_data)
             interp = interpolate(
                 x, size=[12, 12], mode='bicubic', align_corners=False
             )
@@ -676,8 +676,8 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
 class TestBicubicOpError(unittest.TestCase):
     def test_imperative_errors(self):
         # the input of interpoalte must be Variable.
-        x1 = fluid.create_lod_tensor(
-            np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
+        x1 = base.create_lod_tensor(
+            np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], base.CPUPlace()
         )
         self.assertRaises(TypeError, interpolate, x1)
 
@@ -720,8 +720,8 @@ class TestBicubicOpError(unittest.TestCase):
 
         def test_actual_shape():
             # the actual_shape  must be Variable.
-            x = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
+            x = base.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], base.CPUPlace()
             )
             out = interpolate(
                 x, size=[12, 12], mode='BICUBIC', align_corners=False
@@ -754,8 +754,8 @@ class TestBicubicOpError(unittest.TestCase):
             x = paddle.static.data(
                 name="x", shape=[2, 3, 6, 6], dtype="float32"
             )
-            scale = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
+            scale = base.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], base.CPUPlace()
             )
             out = interpolate(
                 x,
@@ -914,7 +914,7 @@ class TestBicubicOpError(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestBicubicInterpOpForFloat16(unittest.TestCase):
     def init_test_case(self):

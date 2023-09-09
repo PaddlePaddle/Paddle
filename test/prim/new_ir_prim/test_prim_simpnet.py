@@ -79,7 +79,8 @@ class TestPrimMode(unittest.TestCase):
         if flag == "all":
             core._set_prim_all_enabled(False)
             assert (
-                'pd.gelu' not in whole_ops and 'pd.divide_grad' not in whole_ops
+                'pd_op.gelu' not in whole_ops
+                and 'pd_op.divide_grad' not in whole_ops
             )
         return outs
 
