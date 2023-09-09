@@ -33,26 +33,26 @@ class DataFeedDesc:
 
     .. code-block:: python
 
-      import paddle.base as base
-      f = open("data.proto", "w")
-      print >> f, 'name: "MultiSlotDataFeed"'
-      print >> f, 'batch_size: 2'
-      print >> f, 'multi_slot_desc {'
-      print >> f, '    slots {'
-      print >> f, '         name: "words"'
-      print >> f, '         type: "uint64"'
-      print >> f, '         is_dense: false'
-      print >> f, '         is_used: true'
-      print >> f, '     }'
-      print >> f, '     slots {'
-      print >> f, '         name: "label"'
-      print >> f, '         type: "uint64"'
-      print >> f, '         is_dense: false'
-      print >> f, '         is_used: true'
-      print >> f, '    }'
-      print >> f, '}'
-      f.close()
-      data_feed = base.DataFeedDesc('data.proto')
+        >>> import paddle.base as base
+        >>> f = open("data.proto", "w")
+        >>> print >> f, 'name: "MultiSlotDataFeed"'
+        >>> print >> f, 'batch_size: 2'
+        >>> print >> f, 'multi_slot_desc {'
+        >>> print >> f, '    slots {'
+        >>> print >> f, '         name: "words"'
+        >>> print >> f, '         type: "uint64"'
+        >>> print >> f, '         is_dense: false'
+        >>> print >> f, '         is_used: true'
+        >>> print >> f, '     }'
+        >>> print >> f, '     slots {'
+        >>> print >> f, '         name: "label"'
+        >>> print >> f, '         type: "uint64"'
+        >>> print >> f, '         is_dense: false'
+        >>> print >> f, '         is_used: true'
+        >>> print >> f, '    }'
+        >>> print >> f, '}'
+        >>> f.close()
+        >>> data_feed = base.DataFeedDesc('data.proto')
 
     However, users usually shouldn't care about the message format; instead,
     they are encouraged to use :code:`Data Generator` as a tool to generate a
@@ -64,17 +64,17 @@ class DataFeedDesc:
 
     .. code-block:: python
 
-      import paddle.base as base
-      data_feed = base.DataFeedDesc('data.proto')
-      data_feed.set_batch_size(128)
-      data_feed.set_dense_slots('wd')  # The slot named 'wd' will be dense
-      data_feed.set_use_slots('wd')    # The slot named 'wd' will be used
+        >>> import paddle.base as base
+        >>> data_feed = base.DataFeedDesc('data.proto')
+        >>> data_feed.set_batch_size(128)
+        >>> data_feed.set_dense_slots('wd')  # The slot named 'wd' will be dense
+        >>> data_feed.set_use_slots('wd')    # The slot named 'wd' will be used
 
     Finally, the content can be dumped out for debugging purpose:
 
     .. code-block:: python
 
-      print(data_feed.desc())
+        >>> print(data_feed.desc())
 
     Args:
         proto_file(string): Disk file containing a data feed description.
@@ -99,27 +99,27 @@ class DataFeedDesc:
         Example:
             .. code-block:: python
 
-              import paddle.base as base
-              f = open("data.proto", "w")
-              print >> f, 'name: "MultiSlotDataFeed"'
-              print >> f, 'batch_size: 2'
-              print >> f, 'multi_slot_desc {'
-              print >> f, '    slots {'
-              print >> f, '         name: "words"'
-              print >> f, '         type: "uint64"'
-              print >> f, '         is_dense: false'
-              print >> f, '         is_used: true'
-              print >> f, '     }'
-              print >> f, '     slots {'
-              print >> f, '         name: "label"'
-              print >> f, '         type: "uint64"'
-              print >> f, '         is_dense: false'
-              print >> f, '         is_used: true'
-              print >> f, '    }'
-              print >> f, '}'
-              f.close()
-              data_feed = base.DataFeedDesc('data.proto')
-              data_feed.set_batch_size(128)
+                >>> import paddle.base as base
+                >>> f = open("data.proto", "w")
+                >>> print >> f, 'name: "MultiSlotDataFeed"'
+                >>> print >> f, 'batch_size: 2'
+                >>> print >> f, 'multi_slot_desc {'
+                >>> print >> f, '    slots {'
+                >>> print >> f, '         name: "words"'
+                >>> print >> f, '         type: "uint64"'
+                >>> print >> f, '         is_dense: false'
+                >>> print >> f, '         is_used: true'
+                >>> print >> f, '     }'
+                >>> print >> f, '     slots {'
+                >>> print >> f, '         name: "label"'
+                >>> print >> f, '         type: "uint64"'
+                >>> print >> f, '         is_dense: false'
+                >>> print >> f, '         is_used: true'
+                >>> print >> f, '    }'
+                >>> print >> f, '}'
+                >>> f.close()
+                >>> data_feed = base.DataFeedDesc('data.proto')
+                >>> data_feed.set_batch_size(128)
 
         Args:
             batch_size (int): The number of batch size.
@@ -140,27 +140,27 @@ class DataFeedDesc:
         Example:
             .. code-block:: python
 
-              import paddle.base as base
-              f = open("data.proto", "w")
-              print >> f, 'name: "MultiSlotDataFeed"'
-              print >> f, 'batch_size: 2'
-              print >> f, 'multi_slot_desc {'
-              print >> f, '    slots {'
-              print >> f, '         name: "words"'
-              print >> f, '         type: "uint64"'
-              print >> f, '         is_dense: false'
-              print >> f, '         is_used: true'
-              print >> f, '     }'
-              print >> f, '     slots {'
-              print >> f, '         name: "label"'
-              print >> f, '         type: "uint64"'
-              print >> f, '         is_dense: false'
-              print >> f, '         is_used: true'
-              print >> f, '    }'
-              print >> f, '}'
-              f.close()
-              data_feed = base.DataFeedDesc('data.proto')
-              data_feed.set_dense_slots(['words'])
+                >>> import paddle.base as base
+                >>> f = open("data.proto", "w")
+                >>> print >> f, 'name: "MultiSlotDataFeed"'
+                >>> print >> f, 'batch_size: 2'
+                >>> print >> f, 'multi_slot_desc {'
+                >>> print >> f, '    slots {'
+                >>> print >> f, '         name: "words"'
+                >>> print >> f, '         type: "uint64"'
+                >>> print >> f, '         is_dense: false'
+                >>> print >> f, '         is_used: true'
+                >>> print >> f, '     }'
+                >>> print >> f, '     slots {'
+                >>> print >> f, '         name: "label"'
+                >>> print >> f, '         type: "uint64"'
+                >>> print >> f, '         is_dense: false'
+                >>> print >> f, '         is_used: true'
+                >>> print >> f, '    }'
+                >>> print >> f, '}'
+                >>> f.close()
+                >>> data_feed = base.DataFeedDesc('data.proto')
+                >>> data_feed.set_dense_slots(['words'])
 
         Args:
             dense_slots_name (list(str)): a list of slot names which will be set dense.
@@ -187,27 +187,27 @@ class DataFeedDesc:
         Example:
             .. code-block:: python
 
-              import paddle.base as base
-              f = open("data.proto", "w")
-              print >> f, 'name: "MultiSlotDataFeed"'
-              print >> f, 'batch_size: 2'
-              print >> f, 'multi_slot_desc {'
-              print >> f, '    slots {'
-              print >> f, '         name: "words"'
-              print >> f, '         type: "uint64"'
-              print >> f, '         is_dense: false'
-              print >> f, '         is_used: true'
-              print >> f, '     }'
-              print >> f, '     slots {'
-              print >> f, '         name: "label"'
-              print >> f, '         type: "uint64"'
-              print >> f, '         is_dense: false'
-              print >> f, '         is_used: true'
-              print >> f, '    }'
-              print >> f, '}'
-              f.close()
-              data_feed = base.DataFeedDesc('data.proto')
-              data_feed.set_use_slots(['words'])
+                >>> import paddle.base as base
+                >>> f = open("data.proto", "w")
+                >>> print >> f, 'name: "MultiSlotDataFeed"'
+                >>> print >> f, 'batch_size: 2'
+                >>> print >> f, 'multi_slot_desc {'
+                >>> print >> f, '    slots {'
+                >>> print >> f, '         name: "words"'
+                >>> print >> f, '         type: "uint64"'
+                >>> print >> f, '         is_dense: false'
+                >>> print >> f, '         is_used: true'
+                >>> print >> f, '     }'
+                >>> print >> f, '     slots {'
+                >>> print >> f, '         name: "label"'
+                >>> print >> f, '         type: "uint64"'
+                >>> print >> f, '         is_dense: false'
+                >>> print >> f, '         is_used: true'
+                >>> print >> f, '    }'
+                >>> print >> f, '}'
+                >>> f.close()
+                >>> data_feed = base.DataFeedDesc('data.proto')
+                >>> data_feed.set_use_slots(['words'])
 
         Args:
             use_slots_name: a list of slot names which will be used in training
@@ -231,27 +231,27 @@ class DataFeedDesc:
         Example:
             .. code-block:: python
 
-              import paddle.base as base
-              f = open("data.proto", "w")
-              print >> f, 'name: "MultiSlotDataFeed"'
-              print >> f, 'batch_size: 2'
-              print >> f, 'multi_slot_desc {'
-              print >> f, '    slots {'
-              print >> f, '         name: "words"'
-              print >> f, '         type: "uint64"'
-              print >> f, '         is_dense: false'
-              print >> f, '         is_used: true'
-              print >> f, '     }'
-              print >> f, '     slots {'
-              print >> f, '         name: "label"'
-              print >> f, '         type: "uint64"'
-              print >> f, '         is_dense: false'
-              print >> f, '         is_used: true'
-              print >> f, '    }'
-              print >> f, '}'
-              f.close()
-              data_feed = base.DataFeedDesc('data.proto')
-              print(data_feed.desc())
+                >>> import paddle.base as base
+                >>> f = open("data.proto", "w")
+                >>> print >> f, 'name: "MultiSlotDataFeed"'
+                >>> print >> f, 'batch_size: 2'
+                >>> print >> f, 'multi_slot_desc {'
+                >>> print >> f, '    slots {'
+                >>> print >> f, '         name: "words"'
+                >>> print >> f, '         type: "uint64"'
+                >>> print >> f, '         is_dense: false'
+                >>> print >> f, '         is_used: true'
+                >>> print >> f, '     }'
+                >>> print >> f, '     slots {'
+                >>> print >> f, '         name: "label"'
+                >>> print >> f, '         type: "uint64"'
+                >>> print >> f, '         is_dense: false'
+                >>> print >> f, '         is_used: true'
+                >>> print >> f, '    }'
+                >>> print >> f, '}'
+                >>> f.close()
+                >>> data_feed = base.DataFeedDesc('data.proto')
+                >>> print(data_feed.desc())
 
         Returns:
             A string message
