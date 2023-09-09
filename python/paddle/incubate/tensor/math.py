@@ -63,7 +63,7 @@ def segment_sum(data, segment_ids, name=None):
             >>> print(out)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[4., 4., 4.],
-            [4., 5., 6.]])
+             [4., 5., 6.]])
 
     """
     if in_dynamic_mode():
@@ -131,7 +131,7 @@ def segment_mean(data, segment_ids, name=None):
             >>> print(out)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[2., 2., 2.],
-            [4., 5., 6.]])
+             [4., 5., 6.]])
 
     """
 
@@ -199,7 +199,7 @@ def segment_min(data, segment_ids, name=None):
             >>> print(out)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[1., 2., 1.],
-            [4., 5., 6.]])
+             [4., 5., 6.]])
 
     """
 
@@ -267,7 +267,7 @@ def segment_max(data, segment_ids, name=None):
             >>> print(out)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[3., 2., 3.],
-            [4., 5., 6.]])
+             [4., 5., 6.]])
 
     """
 
