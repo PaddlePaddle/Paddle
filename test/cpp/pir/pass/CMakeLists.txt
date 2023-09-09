@@ -1,0 +1,9 @@
+cc_test_old(
+  pass_manager_test
+  SRCS
+  pass_manager_test.cc
+  DEPS
+  pir
+  pd_op_dialect
+  phi
+  gtest)
