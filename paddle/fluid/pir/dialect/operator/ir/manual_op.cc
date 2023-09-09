@@ -427,9 +427,9 @@ OpInfoTuple FusedGemmEpilogueOp::GetOpInfo() {
                                    false,
                                    false)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {
-      paddle::dialect::OpAttributeInfo("trans_x", "ir::BoolAttribute", ""),
-      paddle::dialect::OpAttributeInfo("trans_y", "ir::BoolAttribute", ""),
-      paddle::dialect::OpAttributeInfo("activation", "ir::StrAttribute", "")};
+      paddle::dialect::OpAttributeInfo("trans_x", "pir::BoolAttribute", ""),
+      paddle::dialect::OpAttributeInfo("trans_y", "pir::BoolAttribute", ""),
+      paddle::dialect::OpAttributeInfo("activation", "pir::StrAttribute", "")};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       paddle::dialect::OpOutputInfo(
           "out", "paddle::dialect::DenseTensorType", false, false),
@@ -660,10 +660,10 @@ OpInfoTuple FusedGemmEpilogueGradOp::GetOpInfo() {
                                    false,
                                    false)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {
-      paddle::dialect::OpAttributeInfo("trans_x", "ir::BoolAttribute", ""),
-      paddle::dialect::OpAttributeInfo("trans_y", "ir::BoolAttribute", ""),
+      paddle::dialect::OpAttributeInfo("trans_x", "pir::BoolAttribute", ""),
+      paddle::dialect::OpAttributeInfo("trans_y", "pir::BoolAttribute", ""),
       paddle::dialect::OpAttributeInfo(
-          "activation_grad", "ir::StrAttribute", "")};
+          "activation_grad", "pir::StrAttribute", "")};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       paddle::dialect::OpOutputInfo(
           "x_grad", "paddle::dialect::DenseTensorType", false, false),

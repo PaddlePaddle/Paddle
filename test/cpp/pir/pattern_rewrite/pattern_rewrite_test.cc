@@ -457,23 +457,24 @@ OpInfoTuple Conv2dFusionOpTest::GetOpInfo() {
                   false,
                   true)};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {
-      OpAttributeInfo("strides", "ir::ArrayAttribute<pir::Int32Attribute>", ""),
       OpAttributeInfo(
-          "paddings_t", "ir::ArrayAttribute<pir::Int32Attribute>", ""),
-      OpAttributeInfo("padding_algorithm", "ir::StrAttribute", ""),
+          "strides", "pir::ArrayAttribute<pir::Int32Attribute>", ""),
       OpAttributeInfo(
-          "dilations_t", "ir::ArrayAttribute<pir::Int32Attribute>", ""),
-      OpAttributeInfo("groups", "ir::Int32Attribute", ""),
-      OpAttributeInfo("data_format", "ir::StrAttribute", ""),
-      OpAttributeInfo("activation", "ir::StrAttribute", ""),
-      OpAttributeInfo("exhaustive_search", "ir::BoolAttribute", ""),
+          "paddings_t", "pir::ArrayAttribute<pir::Int32Attribute>", ""),
+      OpAttributeInfo("padding_algorithm", "pir::StrAttribute", ""),
       OpAttributeInfo(
-          "channels", "ir::ArrayAttribute<pir::Int32Attribute>", ""),
-      OpAttributeInfo("user_workspace_size", "ir::Int32Attribute", "")};
+          "dilations_t", "pir::ArrayAttribute<pir::Int32Attribute>", ""),
+      OpAttributeInfo("groups", "pir::Int32Attribute", ""),
+      OpAttributeInfo("data_format", "pir::StrAttribute", ""),
+      OpAttributeInfo("activation", "pir::StrAttribute", ""),
+      OpAttributeInfo("exhaustive_search", "pir::BoolAttribute", ""),
+      OpAttributeInfo(
+          "channels", "pir::ArrayAttribute<pir::Int32Attribute>", ""),
+      OpAttributeInfo("user_workspace_size", "pir::Int32Attribute", "")};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       OpOutputInfo("output", "paddle::dialect::DenseTensorType", false, false),
       OpOutputInfo("outputs",
-                   "ir::VectorType<paddle::dialect::DenseTensorType>",
+                   "pir::VectorType<paddle::dialect::DenseTensorType>",
                    false,
                    false)};
   paddle::dialect::OpRunTimeInfo run_time_info =
