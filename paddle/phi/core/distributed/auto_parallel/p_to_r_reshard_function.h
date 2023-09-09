@@ -14,25 +14,24 @@
 
 #pragma once
 
-#include "paddle/ir/core/builder.h"
-#include "paddle/ir/core/op_base.h"
-#include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
 
-namespace paddle {
-namespace dialect {
-class LegacyKernelOp : public ir::Op<LegacyKernelOp> {
+namespace phi {
+namespace distributed {
+
+class PToRReshardFunction final : public ReshardFunction {
  public:
-  using Op::Op;
-  static const char *name() { return "pd_kernel.legacy_kernel"; }
-  static constexpr uint32_t attributes_num = 3;
-  static const char *attributes_name[attributes_num];
-  std::string op_name();
-  std::string kernel_name();
-  phi::KernelKey kernel_key();
-  void Verify();
+  PToRReshardFunction() = default;
+  ~PToRReshardFunction() = default;
+
+  bool IsSuitable(const DistTensor& in,
+                  const TensorDistAttr& out_dist_attr) override;
+
+  void Eval(DeviceContext* dev_ctx,
+            const DistTensor& in,
+            const TensorDistAttr& out_dist_attr,
+            DistTensor* out) override;
 };
 
-}  // namespace dialect
-}  // namespace paddle
-
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::LegacyKernelOp)
+}  // namespace distributed
+}  // namespace phi

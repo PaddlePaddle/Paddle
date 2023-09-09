@@ -253,7 +253,8 @@ void HandleForSpecialOp(
                variable_list);
   }
 
-  if (op_name == "pd.feed") {
+  if (op_name == "pd.feed" || op_name == "pd.data") {
+    VLOG(6) << "Handle for" << op_name;
     auto value = op->result(0);
     VLOG(6) << "link feed output to feed in variable" << inner_scope;
 
@@ -266,27 +267,6 @@ void HandleForSpecialOp(
 
     AddNewData(value,
                name,
-               var,
-               value_2_var_name,
-               variable_2_var_name,
-               var_name_2_id,
-               variable_list);
-  }
-
-  if (op_name == "pd.data") {
-    VLOG(6) << "Handle for pd.data";
-    auto var_name =
-        op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
-
-    auto value = op->result(0);
-
-    paddle::framework::Variable* var = inner_scope->FindVar(var_name);
-    PADDLE_ENFORCE(var,
-                   paddle::platform::errors::InvalidArgument(
-                       "The variable %s shoud exist", var_name));
-
-    AddNewData(value,
-               var_name,
                var,
                value_2_var_name,
                variable_2_var_name,

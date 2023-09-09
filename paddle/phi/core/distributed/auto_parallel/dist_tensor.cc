@@ -34,10 +34,14 @@ inline void check_defined(const DistTensor& dist_tensor,
 DistTensor::DistTensor(const phi::DenseTensor& global_value,
                        const TensorDistAttr& dist_attr)
     : dims_(global_value.dims()), dist_attr_(dist_attr), value_(global_value) {
-  if (!IsDimsMappingReplicated(dist_attr_.dims_mapping())) {
+  if (!dist_attr.is_replicated()) {
     // 1. create replicated global tensor
     int64_t dims_size = global_value.dims().size();
     std::vector<int64_t> dims_mapping(dims_size, -1);
+    dist_attr_.set_dims_mapping(dims_mapping);
+    if (dist_attr_.is_partial()) {
+      dist_attr_.clean_partial_status();
+    }
     dist_attr_.set_dims_mapping(dims_mapping);
 
     // 2. reshard from replicated to other state

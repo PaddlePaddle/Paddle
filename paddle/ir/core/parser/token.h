@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,19 +13,27 @@
 // limitations under the License.
 
 #pragma once
+#include <string>
 
-#include "paddle/cinn/ir/ir.h"
+enum Token_type {
+  EOF_ = -1,
+  IDENTIFER = 0,
+  DIGIT = 1,
+  SDIGIT = 2,
+  ENDTAG = 3,
+  VALUEID = 4,
+  OPNAME = 5,
+  ARRAOW = 6,
+  NULL_ = 7,
+};
 
-namespace cinn::optim {
-
-/**
- * Simplify the Cast nodes.
- *
- * There are several patterns:
- * 1. the source and target type are the same, drop the Cast node
- * 2. for intermediate numbers, just replace the Cast node with a Node of the
- * target type
- */
-void CastSimplify(Expr* e);
-
-}  // namespace cinn::optim
+struct Token {
+ public:
+  std::string val_;
+  Token_type token_type_;
+  Token() = default;
+  Token(const std::string& val, Token_type token_type) {
+    val_ = val;
+    token_type_ = token_type;
+  }
+};

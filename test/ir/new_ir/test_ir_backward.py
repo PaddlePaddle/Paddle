@@ -113,7 +113,7 @@ class TesBackward_1(unittest.TestCase):
             "builtin.split",
             "pd.full",
             "builtin.combine",
-            "pd.split_grad",
+            "pd.concat",
             "pd.tanh_grad",
         ]
         for i, op in enumerate(newir_program.block().ops):
