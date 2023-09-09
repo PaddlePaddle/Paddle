@@ -943,7 +943,7 @@ cudaMemsetAsync(outputs[0], 0, batch * num_query * num_heads * channels * sizeof
             num_levels,
             num_query, 
             num_point,
-            (float*)(outputs[0]) + n * im2col_step_ * per_output_size);
+            (float*)(outputs[0]) + n * im2col_step_new * per_output_size);
   }
 
 
