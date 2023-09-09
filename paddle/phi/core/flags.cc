@@ -1312,7 +1312,7 @@ PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_trace_run,
 PHI_DEFINE_EXPORTED_bool(new_ir_apply_inplace_pass,
                          true,
                          "Whether to apply inplace pass on lowering "
-                         "::ir::Program to Kernel Dialect");
+                         "::pir::Program to Kernel Dialect");
 
 PHI_DEFINE_EXPORTED_bool(enable_record_memory, false, "Enable memory recorder");
 
