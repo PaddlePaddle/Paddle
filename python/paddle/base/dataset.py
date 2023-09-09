@@ -252,6 +252,7 @@ class DatasetBase:
             .. code-block:: python
 
                 >>> import paddle.base as base
+                >>> paddle.enable_static()
                 >>> dataset = base.DatasetFactory().create_dataset()
                 >>> data = paddle.static.data(name="data", shape=[None, 10, 10], dtype="int64")
                 >>> label = paddle.static.data(name="label", shape=[None, 1], dtype="int64", lod_level=1)
