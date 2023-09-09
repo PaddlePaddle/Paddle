@@ -28,5 +28,11 @@ void FullKernel(const Context& dev_ctx,
                 DataType dtype,
                 SelectedRows* out);
 
+template <typename T, typename Context>
+void FullWithTensorKernel(const Context& dev_ctx,
+                          const DenseTensor& shape,
+                          const DenseTensor& value,
+                          DataType dtype,
+                          SelectedRows* out);
 }  // namespace sr
 }  // namespace phi

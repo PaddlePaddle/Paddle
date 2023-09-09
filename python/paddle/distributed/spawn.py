@@ -18,6 +18,9 @@ import signal
 import sys
 import warnings
 
+# deprecated module import
+# (TODO: GhostScreaming) It will be removed later.
+from paddle.base import core
 from paddle.device import get_device
 from paddle.distributed.cloud_utils import (
     _get_trainers_num,
@@ -35,10 +38,6 @@ from paddle.distributed.utils.launch_utils import (
     _print_arguments,
     get_host_name_ip,
 )
-
-# deprecated module import
-# (TODO: GhostScreaming) It will be removed later.
-from paddle.fluid import core
 from paddle.framework import set_flags
 
 __all__ = []
@@ -110,6 +109,8 @@ def _get_default_nprocs():
         return core.get_xpu_device_count()
     elif 'cpu' in device:
         return multiprocessing.cpu_count()
+    elif device in core.get_available_custom_device():
+        return core.get_custom_device_count(device.split(":")[0])
     else:
         raise RuntimeError(
             "`paddle.distributed.spawn` does not support parallel training on device `{}` now.".format(
@@ -126,6 +127,8 @@ def _get_default_backend():
         return 'bkcl'
     elif 'cpu' in device:
         return 'gloo'
+    elif device in core.get_available_custom_device():
+        return 'xccl'
     else:
         raise RuntimeError(
             "`paddle.distributed.spawn` does not support parallel training on device `{}` now.".format(
@@ -275,6 +278,29 @@ def _get_subprocess_env_list(nprocs, options):
         assert (
             _get_trainers_num() == 1
         ), "CPUONLY spawn doesn't support multi-trainer"
+    elif options['backend'] == 'xccl':
+        args.selected_devices = None
+        custom_device_name = core.get_all_custom_device_type()[0]
+        env_devices = os.getenv(f"FLAGS_selected_{custom_device_name}s", None)
+        if env_devices is None or env_devices == "":
+            env_devices_list = [
+                str(x)
+                for x in range(core.get_custom_device_count(custom_device_name))
+            ]
+        else:
+            env_devices_list = env_devices.split(',')
+
+        if len(env_devices_list) < nprocs:
+            raise RuntimeError(
+                "the number of visible devices(%d) is less than the number "
+                "of spawn processes(%d), please ensure that the correct "
+                "`nprocs` argument is passed or the environment variable "
+                "`FLAGS_selected_%ss` is correctly configured."
+                % (len(env_devices_list), nprocs, custom_device_name)
+            )
+        args.selected_devices = ",".join(
+            [str(env_devices_list[x]) for x in range(0, nprocs)]
+        )
 
     # set other inner args
     args.node_ip = options.get('node_ip', None)

@@ -20,8 +20,8 @@ from operator import mul
 import numpy as np
 from eager_op_test import OpTestTool, _set_use_system_allocator
 
-from paddle import enable_static, fluid
-from paddle.fluid import core
+from paddle import base, enable_static
+from paddle.base import core
 
 np.random.random(123)
 
@@ -92,8 +92,8 @@ class TestLayerNormMKLDNNOp(unittest.TestCase):
             var_names.append('bias')
         ground_truth = {name: var_dict[name] for name in var_names}
 
-        program = fluid.Program()
-        with fluid.program_guard(program):
+        program = base.Program()
+        with base.program_guard(program):
             block = program.global_block()
 
             for name in ground_truth:
@@ -122,7 +122,7 @@ class TestLayerNormMKLDNNOp(unittest.TestCase):
                 },
             )
 
-            exe = fluid.Executor(core.CPUPlace())
+            exe = base.Executor(core.CPUPlace())
 
             input_list = ['x']
             if with_scale_bias:

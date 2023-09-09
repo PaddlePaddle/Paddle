@@ -25,12 +25,15 @@
 #include "paddle/cinn/frontend/optimize.h"
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
+#include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/cinn/runtime/flags.h"
 
 namespace cinn {
 namespace auto_schedule {
 
 using ::cinn::hlir::framework::BuildScope;
+using ::cinn::hlir::framework::CompilationContext;
 using ::cinn::hlir::framework::Graph;
 using ::cinn::hlir::framework::GraphCompiler;
 
@@ -62,7 +65,8 @@ class TestMeasurer : public ::testing::Test {
     auto program = CreateAddReluProgram();
     auto graph = cinn::frontend::Optimize(&program, fetch_ids, target);
     auto scope = BuildScope(target, graph);
-    graph_compiler = std::make_unique<GraphCompiler>(target, scope, graph);
+    CompilationContext context(graph, scope, target);
+    graph_compiler = std::make_unique<GraphCompiler>(context);
     TaskCreator task_creator;
     tasks = task_creator.CreateTuneTaskOpLevel(graph.get());
     const auto& dtype_dict =
@@ -72,12 +76,12 @@ class TestMeasurer : public ::testing::Test {
         absl::flat_hash_map<std::string, hlir::framework::shape_t>>(
         "infershape");
 
-    auto op_lowerer = std::make_unique<hlir::framework::OpLowerer>(
-        dtype_dict, shape_dict, target);
+    auto op_lowerer =
+        hlir::framework::CreateOpLowerer(dtype_dict, shape_dict, target);
     inputs.reserve(tasks.size());
     for (int i = 0; i < tasks.size(); ++i) {
       auto* task = &tasks[i];
-      task->Initialize(shape_dict, dtype_dict, op_lowerer.get());
+      task->Initialize(shape_dict, dtype_dict, &op_lowerer);
       MeasureInput input;
       input.task = task;
       input.lowered_funcs = task->lowered_funcs;

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 from paddle.utils import deprecated
 
 __all__ = [
@@ -28,7 +28,7 @@ __all__ = [
     reason="synchronize in paddle.device.xpu will be removed in future",
 )
 def synchronize(device=None):
-    '''
+    """
     Wait for the compute on the given XPU device to finish.
 
     Parameters:
@@ -38,14 +38,14 @@ def synchronize(device=None):
     Examples:
         .. code-block:: python
 
-            # required: xpu
-            import paddle
+            >>> # doctest: +REQUIRES(env:XPU)
+            >>> import paddle
+            >>> paddle.device.set_device('xpu')
+            >>> paddle.device.xpu.synchronize()
+            >>> paddle.device.xpu.synchronize(0)
+            >>> paddle.device.xpu.synchronize(paddle.XPUPlace(0))
 
-            paddle.device.xpu.synchronize()
-            paddle.device.xpu.synchronize(0)
-            paddle.device.xpu.synchronize(paddle.XPUPlace(0))
-
-    '''
+    """
 
     device_id = -1
 

@@ -20,8 +20,8 @@ from decorator_helper import prog_scope
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 # Situation 1: shape is a list(without tensor)
@@ -278,8 +278,8 @@ class TestExpandV2BF16Op(OpTest):
 class TestExpandV2Error(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            x1 = base.create_lod_tensor(
+                np.array([[-1]]), [[1]], base.CPUPlace()
             )
             shape = [2, 2]
             self.assertRaises(TypeError, paddle.tensor.expand, x1, shape)
@@ -307,11 +307,11 @@ class TestExpandV2API(unittest.TestCase):
         out_2 = paddle.expand(x, shape=[positive_2, 14])
         out_3 = paddle.expand(x, shape=expand_shape)
 
-        g0 = fluid.backward.calc_gradient(out_2, x)
+        g0 = base.backward.calc_gradient(out_2, x)
 
-        exe = fluid.Executor(place=fluid.CPUPlace())
+        exe = base.Executor(place=base.CPUPlace())
         res_1, res_2, res_3 = exe.run(
-            fluid.default_main_program(),
+            base.default_main_program(),
             feed={
                 "x": input,
                 "expand_shape": np.array([12, 14]).astype("int32"),
@@ -340,7 +340,7 @@ class TestExpandInferShape(unittest.TestCase):
 # Test python Dygraph API
 class TestExpandV2DygraphAPI(unittest.TestCase):
     def test_expand_times_is_tensor(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             paddle.seed(1)
             a = paddle.rand([2, 5])
             expand_1 = paddle.expand(a, shape=[2, 5])
@@ -373,9 +373,9 @@ class TestExpandDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -404,9 +404,9 @@ class TestExpandTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 

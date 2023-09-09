@@ -64,7 +64,7 @@ class Layer1(nn.Layer):
 class TestDuplicateOutput(unittest.TestCase):
     """
     TestCase for the transformation from control flow `if/else`
-    dependent on tensor in Dygraph into Static `fluid.layers.cond`.
+    dependent on tensor in Dygraph into Static `base.layers.cond`.
     """
 
     def test_case(self):

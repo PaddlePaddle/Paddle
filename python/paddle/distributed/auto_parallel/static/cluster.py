@@ -429,6 +429,7 @@ class Cluster:
         # This property only be valid when the cluster consists of machines,
         # which have the same number accelerators.
         self._num_devices_per_machine = None
+        self._gpu_model = None
 
     def gen_default_config_cluster(
         self,
@@ -451,6 +452,7 @@ class Cluster:
         dcu_models = ["DCU"]
         all_gpu_models = gpu_models + xpu_models + dcu_models
         self._num_devices_per_machine = device_count
+        self._gpu_model = gpu_model
 
         def _convert_to_type(gpu_model):
             type = None
@@ -882,7 +884,7 @@ def get_default_cluster(json_config=None):
             gpu_name = os.getenv("PADDLE_XCCL_BACKEND", None)
             gpu_model = gpu_name
             memory = int(
-                paddle.fluid.core.libpaddle._get_device_total_memory(gpu_name)
+                paddle.base.core.libpaddle._get_device_total_memory(gpu_name)
             ) // (1000**3)
         else:
             gpu_info = paddle.device.cuda.get_device_properties()
