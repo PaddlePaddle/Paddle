@@ -18,14 +18,14 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.core import AnalysisConfig
+from paddle import base
+from paddle.base import core
+from paddle.base.core import AnalysisConfig
 
 
 class FCFusePassTRTTest(InferencePassTest):
     def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name="data", shape=[32, 128, 2, 2], dtype="float32"
             )
@@ -55,7 +55,7 @@ class FCFusePassTRTTest(InferencePassTest):
 
 class FCFusePassTRTStaticDims4Cols1Test(InferencePassTest):
     def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name="data", shape=[32, 128, 32, 8], dtype="float32"
             )
@@ -83,7 +83,7 @@ class FCFusePassTRTStaticDims4Cols1Test(InferencePassTest):
 
 class FCFusePassTRTStaticDims4Cols2Test(InferencePassTest):
     def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name="data", shape=[3, 24, 16, 16], dtype="float32"
             )
@@ -111,7 +111,7 @@ class FCFusePassTRTStaticDims4Cols2Test(InferencePassTest):
 
 class FCFusePassTRTDynamicDims2Test(InferencePassTest):
     def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name="data", shape=[32, 128], dtype="float32"
             )
@@ -145,7 +145,7 @@ class FCFusePassTRTDynamicDims2Test(InferencePassTest):
 
 class FCFusePassTRTDynamicDims3Cols1Test(InferencePassTest):
     def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name="data", shape=[32, 128, 32], dtype="float32"
             )
@@ -179,7 +179,7 @@ class FCFusePassTRTDynamicDims3Cols1Test(InferencePassTest):
 
 class FCFusePassTRTDynamicDims3Cols2Test(InferencePassTest):
     def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name="data", shape=[32, 128, 32], dtype="float32"
             )
@@ -213,7 +213,7 @@ class FCFusePassTRTDynamicDims3Cols2Test(InferencePassTest):
 
 class FCFusePassTRTDynamicDims4Cols1Test(InferencePassTest):
     def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name="data", shape=[32, 12, 4, 6], dtype="float32"
             )
@@ -249,7 +249,7 @@ class FCFusePassTRTDynamicDims4Cols1Test(InferencePassTest):
 
 class FCFusePassTRTDynamicDims4Cols2Test(InferencePassTest):
     def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name="data", shape=[32, 128, 32, 32], dtype="float32"
             )
@@ -285,7 +285,7 @@ class FCFusePassTRTDynamicDims4Cols2Test(InferencePassTest):
 
 class FCFusePassTRTDynamicDims4Cols3Test(InferencePassTest):
     def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name="data", shape=[32, 128, 32, 32], dtype="float32"
             )

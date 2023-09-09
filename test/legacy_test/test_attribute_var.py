@@ -20,7 +20,7 @@ import numpy as np
 
 import paddle
 import paddle.inference as paddle_infer
-from paddle.fluid.framework import OpProtoHolder, Program, program_guard
+from paddle.base.framework import OpProtoHolder, Program, program_guard
 
 paddle.enable_static()
 

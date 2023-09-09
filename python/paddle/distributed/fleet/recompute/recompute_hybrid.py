@@ -175,7 +175,7 @@ class _HPRecomputeFunction(PyLayer):
 
     @staticmethod
     def backward(ctx, *args):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             # Restore inputs
             inputs = list(ctx.inputs)
             tensor_indices = ctx.tensor_indices

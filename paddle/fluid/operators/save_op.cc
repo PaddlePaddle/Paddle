@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/save_op.h"
 
-#include <stdint.h>
+#include <cstdint>
 
 #include <fstream>
 #include <numeric>

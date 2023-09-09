@@ -24,7 +24,7 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -404,13 +404,13 @@ class XPUTestElementwiseDivOp(XPUOpTestWrapper):
 
     class TestElementwiseDivBroadcast(unittest.TestCase):
         def test_shape_with_batch_sizes(self):
-            with fluid.program_guard(fluid.Program()):
+            with base.program_guard(base.Program()):
                 x_var = paddle.static.data(
                     name='x', dtype='float32', shape=[None, 3, None, None]
                 )
                 one = 2.0
                 out = one / x_var
-                exe = fluid.Executor(fluid.XPUPlace(0))
+                exe = base.Executor(base.XPUPlace(0))
                 x = np.random.uniform(0.1, 0.6, (1, 3, 32, 32)).astype(
                     'float32'
                 )

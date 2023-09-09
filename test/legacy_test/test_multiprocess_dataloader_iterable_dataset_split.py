@@ -17,7 +17,7 @@ import unittest
 
 import numpy as np
 
-from paddle import fluid
+from paddle import base
 from paddle.io import DataLoader, IterableDataset, get_worker_info
 
 
@@ -47,8 +47,8 @@ class RangeIterableDatasetSplit(IterableDataset):
 
 class TestDynamicDataLoaderIterSplit(unittest.TestCase):
     def test_main(self):
-        place = fluid.CPUPlace()
-        with fluid.dygraph.guard(place):
+        place = base.CPUPlace()
+        with base.dygraph.guard(place):
             dataset = RangeIterableDatasetSplit(0, 10)
             dataloader = DataLoader(
                 dataset,
@@ -77,8 +77,8 @@ class RangeIterableDataset(IterableDataset):
 
 class TestDynamicDataLoaderIterInitFuncSplit(unittest.TestCase):
     def test_main(self):
-        place = fluid.CPUPlace()
-        with fluid.dygraph.guard(place):
+        place = base.CPUPlace()
+        with base.dygraph.guard(place):
             dataset = RangeIterableDataset(0, 10)
 
             def worker_spliter(worker_id):

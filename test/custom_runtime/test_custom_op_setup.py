@@ -133,7 +133,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
 
         # [Why specific paddle_includes directory?]
         # Add paddle_includes to pass CI, for more details,
-        # please refer to the comments in `paddle/fluid/tests/custom_op/utils.py``
+        # please refer to the comments in `paddle/tests/custom_op/utils.py``
         paddle_includes = []
         for site_packages_path in getsitepackages():
             paddle_includes.append(
