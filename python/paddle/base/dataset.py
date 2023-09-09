@@ -200,7 +200,7 @@ class DatasetBase:
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset()
-                >>> dataset.set_pv_batch(128)
+                >>> dataset.set_pv_batch_size(128)
         Args:
             pv_batch_size(int): pv batch size
 
@@ -253,6 +253,8 @@ class DatasetBase:
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset()
+                >>> data = paddle.static.data(name="data", shape=[None, 10, 10], dtype="int64")
+                >>> label = paddle.static.data(name="label", shape=[None, 1], dtype="int64", lod_level=1)
                 >>> dataset.set_use_var([data, label])
 
         Args:
@@ -964,7 +966,7 @@ class InMemoryDataset(DatasetBase):
                 >>> filelist = ["a.txt", "b.txt"]
                 >>> dataset.set_filelist(filelist)
                 >>> dataset.load_into_memory()
-                >>> print dataset.get_pv_data_size()
+                >>> print(dataset.get_pv_data_size())
 
         """
         return self.dataset.get_pv_data_size()
@@ -1000,7 +1002,7 @@ class InMemoryDataset(DatasetBase):
                 >>> filelist = ["a.txt", "b.txt"]
                 >>> dataset.set_filelist(filelist)
                 >>> dataset.load_into_memory()
-                >>> print dataset.get_memory_data_size(fleet)
+                >>> print(dataset.get_memory_data_size(fleet))
 
         """
         import numpy as np
@@ -1045,7 +1047,7 @@ class InMemoryDataset(DatasetBase):
                 >>> dataset.set_filelist(filelist)
                 >>> dataset.load_into_memory()
                 >>> dataset.global_shuffle(fleet)
-                >>> print dataset.get_shuffle_data_size(fleet)
+                >>> print(dataset.get_shuffle_data_size(fleet))
 
         """
         import numpy as np
@@ -1226,6 +1228,7 @@ class QueueDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +SKIP('NotImplementedError will be raised.')
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset("QueueDataset")
                 >>> dataset.local_shuffle()
