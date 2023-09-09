@@ -256,27 +256,37 @@ def monkey_patch_tensor():
                 ...     y = paddle.pow(x, 4.0)
                 ...     y.backward()
                 ...     print("{}: {}".format(i, x.grad))
-                0: [500.]
-                1: [1000.]
-                2: [1500.]
-                3: [2000.]
-                4: [2500.]
+                0: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+                500.)
+                1: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+                1000.)
+                2: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+                1500.)
+                3: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+                2000.)
+                4: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+                2500.)
 
                 >>> x.clear_grad()
                 >>> print("{}".format(x.grad))
-                0.
+                Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+                0.)
 
                 >>> grad_tensor=paddle.to_tensor(2.)
                 >>> for i in range(5):
                 ...     y = paddle.pow(x, 4.0)
                 ...     y.backward(grad_tensor)
                 ...     print("{}: {}".format(i, x.grad))
-                0: [1000.]
-                1: [2000.]
-                2: [3000.]
-                3: [4000.]
-                4: [5000.]
-
+                0: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+                1000.)
+                1: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+                2000.)
+                2: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+                3000.)
+                3: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+                4000.)
+                4: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+                5000.)
         """
         if framework.in_dygraph_mode():
             if in_profiler_mode():
@@ -338,7 +348,7 @@ def monkey_patch_tensor():
                 >>> y = paddle.pow(x, 4.0)
                 >>> y.backward()
                 >>> print("grad of x: {}".format(x.gradient()))
-                [500.]
+                grad of x: 500.0
 
         """
         if self.grad is None:
@@ -396,15 +406,17 @@ def monkey_patch_tensor():
                 >>> o = z.matmul(w)
                 >>> o.backward()
                 >>> # print_hook_fn print content in backward
-                Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+                Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=False,
                 [2., 4., 6., 8.])
 
                 >>> print("w.grad:", w.grad)
-                w.grad: [1. 2. 3. 4.]
+                w.grad: None
                 >>> print("x.grad:", x.grad)
-                x.grad: [ 4.  8. 12. 16.]
+                x.grad: Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [4. , 8. , 12., 16.])
                 >>> print("y.grad:", y.grad)
-                y.grad: [2. 4. 6. 8.]
+                y.grad: Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [2., 4., 6., 8.])
 
                 >>> # remove hook
                 >>> h.remove()
@@ -636,12 +648,12 @@ def monkey_patch_tensor():
             .. code-block:: python
 
                 >>> import paddle
+                >>> paddle.seed(2023)
                 >>> x = paddle.rand([2, 5])
                 >>> print(x)
-
-                Tensor(shape=[2, 5], dtype=float32, place=CPUPlace,
-                [[0.30574632, 0.55739117, 0.30902600, 0.39413780, 0.44830436],
-                 [0.79010487, 0.53972793, 0.09495186, 0.44267157, 0.72112119]])
+                Tensor(shape=[2, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [[0.86583614, 0.52014720, 0.25960937, 0.90525323, 0.42400089],
+                 [0.40641287, 0.97020894, 0.74437362, 0.51785129, 0.73292869]])
         """
         from paddle.tensor.to_string import tensor_to_string
 
@@ -658,13 +670,11 @@ def monkey_patch_tensor():
                 >>> import copy
                 >>> x = paddle.to_tensor(2.)
                 >>> y = copy.deepcopy(x)
-
                 >>> print(x)
-                Tensor(shape=[], dtype=float32, place=CPUPlace, stop_gradient=True,
+                Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                 2.)
-
                 >>> print(y)
-                Tensor(shape=[], dtype=float32, place=CPUPlace, stop_gradient=True,
+                Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                 2.)
         """
         if not self.is_leaf:
