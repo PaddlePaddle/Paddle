@@ -208,6 +208,17 @@ struct MatmulDescriptor {
     is_cached = obj.is_cached;
   }
 
+  MatmulDescriptor& operator=(const MatmulDescriptor& obj) {
+    algo = obj.algo;
+    x_desc = obj.x_desc;
+    y_desc = obj.y_desc;
+    op_desc = obj.op_desc;
+    out_desc = obj.out_desc;
+    is_cached = obj.is_cached;
+
+    return *this;
+  }
+
   ~MatmulDescriptor() PADDLE_MAY_THROW {
     if (!is_cached) {
       PADDLE_WARN_GPU_SUCCESS(dynload::cublasLtMatmulDescDestroy(op_desc));
