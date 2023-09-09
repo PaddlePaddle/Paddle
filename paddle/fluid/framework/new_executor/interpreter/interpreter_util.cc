@@ -698,6 +698,8 @@ void BuildOpFuncList(const platform::Place& place,
           for (size_t j = i + 1; j < ops.size(); ++j) {
             if (dynamic_cast<framework::OperatorWithKernel*>(ops[j].get()) !=
                 nullptr) {
+              VLOG(4) << "Find op with kernel after conditional_block : "
+                      << ops[j]->Type();
               is_skip_fake_init = false;
               auto input_vars_info = ops[j]->InputVarsInfo(local_scope);
               for (auto& input_var_info : input_vars_info) {

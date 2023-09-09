@@ -374,9 +374,11 @@ void FakeInitializeOutputsForOperatorBase(
 
     // Note(sonder): static_build is not supported if the output of
     // conditional_block is changed after static build.
-    bool can_static_build = true;
     if (out_var_info_before_build.size() != out_var_info_after_build.size()) {
-      can_static_build = false;
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
+          "The output of conditional_block is "
+          "changed after static build. Static build "
+          "is not supported in this case."));
     } else {
       for (size_t i = 0; i < out_var_info_before_build.size(); ++i) {
         // static build is supported in case of the output's dtype/place
@@ -384,18 +386,15 @@ void FakeInitializeOutputsForOperatorBase(
         if (out_var_info_before_build[i] != out_var_info_after_build[i]) {
           auto var_name = out_var_info_before_build[i].name_;
           if (following_input_vars.count(var_name)) {
-            can_static_build = false;
-            break;
+            PADDLE_THROW(phi::errors::PreconditionNotMet(
+                "The output of conditional_block is "
+                "changed after static build. The changed variable %s is used "
+                "by the following op. "
+                "Static build is not supported in this case. ",
+                var_name));
           }
         }
       }
-    }
-
-    if (!can_static_build) {
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
-          "The output of conditional_block is "
-          "changed after static build. Static build "
-          "is not supported in this case."));
     }
   } else {
     PADDLE_THROW(
