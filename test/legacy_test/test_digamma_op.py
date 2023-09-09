@@ -19,8 +19,8 @@ from eager_op_test import OpTest, convert_float_to_uint16
 from scipy.special import psi
 
 import paddle
-from paddle import fluid, static
-from paddle.fluid import core
+from paddle import base, static
+from paddle.base import core
 
 
 class TestDigammaOp(OpTest):
@@ -126,7 +126,7 @@ class TestDigammaAPI(unittest.TestCase):
             sc_res = psi(input)
             for place in self.places:
                 # it is more convenient to use `guard` than `enable/disable_**` here
-                with fluid.dygraph.guard(place):
+                with base.dygraph.guard(place):
                     input_t = paddle.to_tensor(input)
                     res = paddle.digamma(input_t).numpy()
                     np.testing.assert_allclose(res, sc_res, rtol=1e-05)
@@ -146,7 +146,7 @@ class TestDigammaAPI(unittest.TestCase):
 
         # in dynamic mode
         with self.assertRaises(RuntimeError):
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 input = np.random.random(self._shape).astype("int32")
                 input_t = paddle.to_tensor(input)
                 res = paddle.digamma(input_t)

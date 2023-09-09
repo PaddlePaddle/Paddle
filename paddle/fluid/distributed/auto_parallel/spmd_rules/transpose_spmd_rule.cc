@@ -33,10 +33,7 @@ TransposeSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   VerifySpecs(input_specs, "transpose");
 
   // step1: Build Einsum Notation
-  std::vector<int64_t> perm_dims =
-      ExtractAttr<std::vector<int64_t>>("perm", attrs);
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
-
   // get einsum notation for input
   int64_t ndim = input_specs[0].shape().size();
   std::vector<std::string> input_axes_vec;
@@ -44,16 +41,7 @@ TransposeSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   input_axes_vec.emplace_back(input_axes);
 
   // get einsum notation for output
-  for (int64_t i = 0, n = perm_dims.size(); i < n; ++i) {
-    // convert the negative dim value to normal dim value
-    if (perm_dims[i] < 0) {
-      perm_dims[i] = ndim + perm_dims[i];
-    }
-  }
-  std::string output_axes = "";
-  for (int64_t i = 0; i < ndim; i++) {
-    output_axes.append(1, input_axes[perm_dims[i]]);
-  }
+  std::string output_axes = GetOutputNotation(ndim, input_axes, attrs);
 
   // step2: Sharding Propogation
   // step2.1: merge input shardings
@@ -72,17 +60,19 @@ TransposeSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
       CopyTensorDistAttrForOutput(input_specs[0].dist_attr());
   output_dist_attr.set_dims_mapping(output_dims_mapping);
 
-  // Step2.3  handle input tensor partial (TODO)
+  // step3  Handle partial (TODO)
+
   VLOG(4) << "TransposeSPMDRule InferForward:";
   for (int64_t i = 0; i < ninputs; i++) {
     VLOG(4) << "Input" << std::to_string(i) << " shape: ["
             << str_join(input_specs[i].shape()) << "] "
             << "src_dims_mapping: [" << str_join(input_specs[i].dims_mapping())
             << "] "
-            << "perm: [" << str_join(perm_dims) << "] "
             << "dst_dims_mapping: [" << str_join(input_specs[i].dims_mapping())
             << "]";
   }
+  VLOG(4) << "Perm: ["
+          << str_join(ExtractAttr<std::vector<int64_t>>("perm", attrs)) << "]";
   VLOG(4) << "Output dims_mapping: [" + str_join(output_dims_mapping) + "]\n\n";
 
   return {{input_specs[0].dist_attr()}, {output_dist_attr}};
@@ -90,12 +80,92 @@ TransposeSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
 
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
 TransposeSPMDRule::InferBackward(
+    const std::vector<DistTensorSpec>& input_specs,
     const std::vector<DistTensorSpec>& output_specs,
     const paddle::framework::AttributeMap& attrs) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "InferBackward of TransposeSPMDRule is NOT implemented yet."));
+  // step0: Verify Input Args Based on Transpose Logic
+  int64_t ninputs = input_specs.size();
+  int64_t noutputs = output_specs.size();
+  PADDLE_ENFORCE_EQ(
+      ninputs,
+      1,
+      phi::errors::InvalidArgument("The size of InputSpec in transpose must "
+                                   "be equal to 1, but got [%d].",
+                                   ninputs));
+  PADDLE_ENFORCE_EQ(
+      noutputs,
+      1,
+      phi::errors::InvalidArgument("The size of OutputSpec in transpose must "
+                                   "be equal to 1, but got [%d].",
+                                   noutputs));
+  VerifySpecs(output_specs, "transpose_backward");
 
-  return {};
+  // step1: Build Einsum Notation
+  std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
+  // get einsum notation for input
+  int64_t ndim = input_specs[0].shape().size();
+  std::string input_axes = alphabet.substr(0, ndim);
+
+  // get einsum notation for output
+  std::string output_axes = GetOutputNotation(ndim, input_axes, attrs);
+  std::vector<std::string> output_axes_vec;
+  output_axes_vec.emplace_back(output_axes);
+
+  // step2: Sharding Propogation
+  // step2.1: merge input shardings
+  std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
+  axes_sharding_info = GetAxesDimsMappingPair(output_axes_vec, output_specs);
+  std::unordered_map<std::string, int64_t> axis_to_dim_map =
+      ShardingMergeForTensors(axes_sharding_info);
+
+  // step2.2: infer output dimsmapping from merged input dimsmapping
+  std::vector<int64_t> input_dims_mapping =
+      GetDimsMappingForAxes(input_axes, axis_to_dim_map);
+
+  // initialize output dist_attr's process_mesh, batch_dim and dynamic dims with
+  // input dist_attr.
+  TensorDistAttr input_dist_attr =
+      CopyTensorDistAttrForOutput(input_specs[0].dist_attr());
+  input_dist_attr.set_dims_mapping(input_dims_mapping);
+
+  // Step3  Handle partial (TODO)
+
+  VLOG(4) << "TransposeSPMDRule InferBackward:";
+  VLOG(4) << "Output shape: [" << str_join(output_specs[0].shape()) << "] "
+          << "dims_mapping: [" << str_join(output_specs[0].dims_mapping())
+          << "]";
+  VLOG(4) << "Perm: ["
+          << str_join(ExtractAttr<std::vector<int64_t>>("perm", attrs)) << "]";
+  for (int64_t i = 0; i < ninputs; i++) {
+    VLOG(4) << "Input" << std::to_string(i) << " shape: ["
+            << str_join(input_specs[i].shape()) << "] "
+            << "dims_mapping: [" << str_join(input_dims_mapping) << "]";
+  }
+  VLOG(4) << std::endl;
+
+  return {{input_dist_attr}, {output_specs[0].dist_attr()}};
+}
+
+std::string TransposeSPMDRule::GetOutputNotation(
+    int64_t input_ndim,
+    const std::string& input_axes,
+    const paddle::framework::AttributeMap& attrs) {
+  std::vector<int64_t> perm_dims =
+      ExtractAttr<std::vector<int64_t>>("perm", attrs);
+
+  // convert the negative dim value to normal dim value
+  for (int64_t i = 0, n = perm_dims.size(); i < n; ++i) {
+    if (perm_dims[i] < 0) {
+      perm_dims[i] = input_ndim + perm_dims[i];
+    }
+  }
+
+  std::string output_axes = "";
+  for (int64_t i = 0; i < input_ndim; i++) {
+    output_axes.append(1, input_axes[perm_dims[i]]);
+  }
+
+  return output_axes;
 }
 
 }  // namespace auto_parallel

@@ -72,16 +72,18 @@ std::shared_ptr<ComputationContext> CompileProgram(
   }
 
   ctx->scope = hlir::framework::BuildScope(target, ctx->graph, scope);
-  ctx->graph_compiler.reset(
-      new hlir::framework::GraphCompiler(target, ctx->scope, ctx->graph));
 
   std::unordered_set<std::string> fetch_var_ids;
   for (auto &out : outputs) {
     fetch_var_ids.insert(out->id);
   }
 
-  ctx->program = ctx->graph_compiler->Build(options, std::move(fetch_var_ids))
-                     .runtime_program;
+  ctx->compile_options.graph = ctx->graph;
+  ctx->compile_options.scope = ctx->scope;
+  ctx->compile_options.fetch_var_ids = fetch_var_ids;
+  ctx->graph_compiler.reset(
+      new hlir::framework::GraphCompiler(ctx->compile_options));
+  ctx->program = ctx->graph_compiler->Build();
   if (ctx->compile_options.do_prerun) {
     ctx->program->PreRun();
   }

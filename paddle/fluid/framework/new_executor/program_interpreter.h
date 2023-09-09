@@ -53,17 +53,11 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   void ShareBuildResultsFrom(const InterpreterBaseImpl& src) override;
 
   // op dependences
-  const interpreter::DependencyBuilder& GetDependencyBuilder() const override;
+  const interpreter::DependencyBuilder& GetDependencyBuilder() const;
 
   std::shared_ptr<std::vector<size_t>> GetDependencyCount() const override;
 
-  const interpreter::StreamAnalyzer& GetStreamAnalyzer() const override;
-
-  const interpreter::NewIrDependencyBuilder& GetNewIrDependencyBuilder()
-      const override;
-
-  const interpreter::NewIrStreamAnalyzer& GetNewIrStreamAnalyzer()
-      const override;
+  const interpreter::StreamAnalyzer& GetStreamAnalyzer() const;
 
   bool IsSharedResultsBuild() const override;
 
@@ -86,6 +80,19 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) override {
     hookfuncs_ = hookfuncs;
   }
+
+  std::unordered_map<std::string, std::shared_ptr<EventInter>>*
+  GetForceEventsToWaitInfo() {
+    return force_evnets_to_wait_;
+  }
+
+  void SetForceEventsToWaitInfo(
+      std::unordered_map<std::string, std::shared_ptr<EventInter>>*
+          force_evnets_to_wait) {
+    force_evnets_to_wait_ = force_evnets_to_wait;
+  }
+
+  bool IsStaticBuild() const { return static_build_; }
 
  private:
   // build graph
@@ -165,6 +172,9 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   std::atomic<size_t> unfinished_op_number_{0};
 
   ExecutionConfig execution_config_;
+
+  std::unordered_map<std::string, std::shared_ptr<EventInter>>*
+      force_evnets_to_wait_;
 
   VariableScope var_scope_;
   Scope* local_scope_{nullptr};  // not owned

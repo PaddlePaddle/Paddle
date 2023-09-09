@@ -55,6 +55,7 @@ void BuiltinDialect::initialize() {
               SetParameterOp,
               CombineOp,
               SliceOp,
+              SplitOp,
               ConstantOp>();
 }
 

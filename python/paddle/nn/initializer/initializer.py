@@ -17,7 +17,7 @@ import math
 
 import numpy as np
 
-from ...fluid.framework import default_main_program, in_dygraph_mode
+from ...base.framework import default_main_program, in_dygraph_mode
 from .lazy_init import lazy_init_helper
 
 __all__ = []

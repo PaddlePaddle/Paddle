@@ -13,12 +13,16 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/executor_cache.h"
+
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/op_info.h"
+#include "paddle/fluid/ir/transforms/inplace_pass.h"
 #include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/ir/core/program.h"
 #include "paddle/ir/core/value.h"
+#include "paddle/ir/pass/pass.h"
+#include "paddle/ir/pass/pass_manager.h"
 
 namespace paddle {
 namespace framework {
@@ -367,7 +371,7 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
     }
   }
 
-  // add fetch with place op to program
+  // add data op to program
   auto *block = local_program.MutableBlock(0);
   for (auto &in_t : x) {
     auto name = in_t.name();
@@ -378,7 +382,7 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
 
     auto op_desc = block->PrependOp();
     op_desc->SetType("data");
-    op_desc->SetAttr("index", 0);
+    op_desc->SetAttr("shape", std::vector<int64_t>());
     // TODO(phlrain) : using tensor dtype
     op_desc->SetAttr("dtype", 0);
     op_desc->SetAttr("place", static_cast<int>(place));
@@ -393,7 +397,7 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
 
     auto op_desc = local_program.MutableBlock(0)->PrependOp();
     op_desc->SetType("data");
-    op_desc->SetAttr("index", 0);
+    op_desc->SetAttr("shape", std::vector<int64_t>());
     // TODO(phlrain) : using tensor dtype
     op_desc->SetAttr("dtype", 0);
     op_desc->SetAttr("place", static_cast<int>(place));
@@ -440,6 +444,10 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
 
   auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program.get());
 
+  ::ir::PassManager pm(::ir::IrContext::Instance(), 3);
+  pm.AddPass(::ir::CreateInplacePass());
+  pm.Run(ir_res.get());
+
   return ir_res;
 }
 
@@ -479,7 +487,7 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
       }
       auto op_desc = local_program.MutableBlock(0)->PrependOp();
       op_desc->SetType("data");
-      op_desc->SetAttr("index", 0);
+      op_desc->SetAttr("shape", std::vector<int64_t>());
       // TODO(phlrain) : using tensor dtype
       op_desc->SetAttr("dtype", 0);
       op_desc->SetAttr("place", static_cast<int>(place));
@@ -512,6 +520,10 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
   program_translator.Translate();
 
   auto res = paddle::dialect::PdOpLowerToKernelPass(program.get());
+
+  ::ir::PassManager pm(::ir::IrContext::Instance(), 3);
+  pm.AddPass(::ir::CreateInplacePass());
+  pm.Run(res.get());
 
   return res;
 }

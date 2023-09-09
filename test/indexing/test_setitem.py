@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.variable_index import _setitem_static
+from paddle.base.variable_index import _setitem_static
 
 
 class TestSetitemInDygraph(unittest.TestCase):
@@ -48,6 +48,15 @@ class TestSetitemInDygraph(unittest.TestCase):
 
         np_data[:, [True, False, True, False], [1, 4]] = 10
         x[:, [True, False, True, False], [1, 4]] = 10
+
+        np.testing.assert_allclose(x.numpy(), np_data)
+
+    def test_index_has_range(self):
+        np_data = np.ones((3, 4, 5, 6), dtype='int32')
+        x = paddle.to_tensor(np_data)
+
+        np_data[:, range(3), [1, 2, 4]] = 10
+        x[:, range(3), [1, 2, 4]] = 10
 
         np.testing.assert_allclose(x.numpy(), np_data)
 
@@ -133,6 +142,22 @@ class TestSetitemInStatic(unittest.TestCase):
                 x,
                 (..., [1, 4, 3], slice(None, None, 2)),
                 5,
+            )
+            res = self.exe.run(fetch_list=[y.name])
+
+        np.testing.assert_allclose(res[0], np_data)
+
+    def test_index_has_range(self):
+        np_data = np.ones((3, 4, 5, 6), dtype='int32')
+        np_data[:, range(3), [1, 2, 4]] = 10
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.ones((3, 4, 5, 6), dtype='int32')
+            y = _setitem_static(
+                x,
+                (slice(None, None), range(3), [1, 2, 4]),
+                10,
             )
             res = self.exe.run(fetch_list=[y.name])
 

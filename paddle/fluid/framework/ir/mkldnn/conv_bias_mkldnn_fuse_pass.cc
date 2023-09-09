@@ -354,8 +354,9 @@ void ConvBiasFusePass::FuseConvBias(ir::Graph* graph,
               "must have same shape, but they are different: %s, %s.",
               conv_bias_tensor->dims(),
               eltwise_bias_tensor->dims()));
-      *conv_bias_tensor = tensor_apply_eltwise(
-          *conv_bias_tensor, *eltwise_bias_tensor, std::plus<float>());
+      *conv_bias_tensor = tensor_apply_eltwise(*conv_bias_tensor,
+                                               *eltwise_bias_tensor,
+                                               std::plus<float>());  // NOLINT
 
       conv->Op()->SetOutput("Output",
                             std::vector<std::string>({eltwise_out->Name()}));

@@ -23,8 +23,8 @@ paddle.enable_static()
 
 
 def make_program():
-    main_program = paddle.fluid.Program()
-    start_program = paddle.fluid.Program()
+    main_program = paddle.base.Program()
+    start_program = paddle.base.Program()
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 6, 8], dtype='float32')
         y = paddle.static.data(name='y', shape=[4, 6, 6], dtype='float32')
@@ -80,7 +80,8 @@ def parallelizer(program_func, rank):
     strategy = auto.Strategy()
     amp = strategy.amp
     amp.enable = True
-    amp.use_pure_fp16 = True
+    amp.dtype = "float16"
+    amp.level = "o2"
     amp.init_loss_scaling = 32768
     amp.use_fp16_guard = False
     amp.custom_black_list = ['where']
