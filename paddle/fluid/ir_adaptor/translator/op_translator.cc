@@ -987,7 +987,7 @@ struct SplitOpTranscriber : public OpTranscriber {
     } else {
       auto& attribute_translator = AttributeTranslator::instance();
       pir::Attribute new_attr =
-          attribute_translator("ir::Int32Attribute", op_desc.GetAttr("axis"));
+          attribute_translator("pir::Int32Attribute", op_desc.GetAttr("axis"));
 
       auto sec_defin_op =
           InsertFullOperationForAttributeInput(ctx, program, new_attr);

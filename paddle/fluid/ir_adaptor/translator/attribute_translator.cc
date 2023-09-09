@@ -238,9 +238,9 @@ AttributeTranslator::AttributeTranslator() {
       new DataTypeAttributeVisitor();
   special_visitors["paddle::dialect::PlaceAttribute"] =
       new PlaceAttributeVisitor();
-  special_visitors["ir::ArrayAttribute<pir::Int64Attribute>"] =
+  special_visitors["pir::ArrayAttribute<pir::Int64Attribute>"] =
       new Int64ArrayAttributeVisitor();
-  special_visitors["ir::Int64Attribute"] = new Int64AttributeVisitor();
+  special_visitors["pir::Int64Attribute"] = new Int64AttributeVisitor();
 }
 
 pir::Attribute AttributeTranslator::operator()(

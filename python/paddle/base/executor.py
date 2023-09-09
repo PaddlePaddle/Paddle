@@ -409,7 +409,7 @@ def has_fetch_operators(
 
 
 def has_fetch_operations(
-    block, fetch_targets, fetch_holder_name, fetch_op='pd.fetch'
+    block, fetch_targets, fetch_holder_name, fetch_op='pd_op.fetch'
 ):
     """Check whether the block already has fetch operation.
 
@@ -1249,7 +1249,7 @@ class Executor:
         # feed var to framework
         global_block = program.block()
         for op in global_block.ops:
-            if op.name() == 'pd.data':
+            if op.name() == 'pd_op.data':
                 feed_target_name = op.attrs()["name"]
                 var_type = paddle_type_to_proto_type[op.attrs()["dtype"]]
                 var_shape = op.attrs()["shape"]
