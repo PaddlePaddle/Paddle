@@ -2467,7 +2467,8 @@ struct FloorFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct FloorFunctor<ComplexType<T>> : public BaseActivationFunctor<ComplexType<T>> {
+struct FloorFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
     out.device(d) = x.floor();
@@ -4274,7 +4275,8 @@ struct CudaFloorFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct CudaFloorFunctor<ComplexType<T>> : public BaseActivationFunctor<ComplexType<T>> {
+struct CudaFloorFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   // floor(x) = floor(x)
