@@ -1879,7 +1879,7 @@ def nms(
     Args:
         boxes(Tensor): The input boxes data to be computed, it's a 2D-Tensor with
             the shape of [num_boxes, 4]. The data type is float32 or float64.
-            Given as [[x1, y1, x2, y2], ��],  (x1, y1) is the top left coordinates,
+            Given as [[x1, y1, x2, y2], ...],  (x1, y1) is the top left coordinates,
             and (x2, y2) is the bottom right coordinates.
             Their relation should be ``0 <= x1 < x2 && 0 <= y1 < y2``.
         iou_threshold(float32, optional): IoU threshold for determine overlapping boxes. Default value: 0.3.
