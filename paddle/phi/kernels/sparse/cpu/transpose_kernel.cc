@@ -33,7 +33,7 @@ void TransposeCooKernel(const Context& dev_ctx,
   int64_t x_nnz = x.nnz();
   DDim out_dims = x.dims().transpose(perm);
   DenseTensor out_indices = EmptyLike<int64_t, Context>(dev_ctx, x.indices());
-  const DenseTensor& out_values(x.values());
+  const DenseTensor out_values(x.values());
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 
   // compute values of indices
