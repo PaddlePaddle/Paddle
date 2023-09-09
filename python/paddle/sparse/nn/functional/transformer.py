@@ -66,30 +66,31 @@ def attention(
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
 
-            batch_size = 16
-            num_heads = 16
-            seq_len = 512
-            head_dim = 32
+            >>> batch_size = 16
+            >>> num_heads = 16
+            >>> seq_len = 512
+            >>> head_dim = 32
 
-            query = paddle.rand([batch_size, num_heads, seq_len, head_dim])
-            key = paddle.rand([batch_size, num_heads, seq_len, head_dim])
-            value = paddle.rand([batch_size, num_heads, seq_len, head_dim])
+            >>> query = paddle.rand([batch_size, num_heads, seq_len, head_dim])
+            >>> key = paddle.rand([batch_size, num_heads, seq_len, head_dim])
+            >>> value = paddle.rand([batch_size, num_heads, seq_len, head_dim])
 
-            query.stop_gradient = False
-            key.stop_gradient = False
-            value.stop_gradient = False
+            >>> query.stop_gradient = False
+            >>> key.stop_gradient = False
+            >>> value.stop_gradient = False
 
-            mask = paddle.nn.functional.dropout(paddle.ones([seq_len, seq_len])).expand([batch_size, num_heads, seq_len, seq_len])
-            sp_mask = mask.reshape([-1, seq_len, seq_len]).to_sparse_csr()
+            >>> mask = paddle.nn.functional.dropout(paddle.ones([seq_len, seq_len])).expand([batch_size, num_heads, seq_len, seq_len])
+            >>> sp_mask = mask.reshape([-1, seq_len, seq_len]).to_sparse_csr()
 
-            kp_mask = paddle.randint(0, 2, [batch_size, seq_len])
-            attn_mask = paddle.randint(0, 2, [seq_len, seq_len])
+            >>> kp_mask = paddle.randint(0, 2, [batch_size, seq_len])
+            >>> attn_mask = paddle.randint(0, 2, [seq_len, seq_len])
 
-            output = paddle.sparse.nn.functional.attention(query, key, value, sp_mask, kp_mask, attn_mask)
-            output.backward()
+            >>> output = paddle.sparse.nn.functional.attention(query, key, value, sp_mask, kp_mask, attn_mask)
+            >>> output.backward()
     """
     return _C_ops.sparse_fused_attention(
         query, key, value, sparse_mask, key_padding_mask, attn_mask
