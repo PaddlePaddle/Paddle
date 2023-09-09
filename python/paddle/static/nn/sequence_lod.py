@@ -760,7 +760,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
             - shape: [8, 1]
             - layout: NCHW
             - dtype: float32
-            - data: [1 2 3 4 5 6 7 8] 0]
+            - data: [1 2 3 4 5 6 7 8]
 
             >>> out_main = exe.run(base.default_main_program(),
             ...                 feed={'x': x_lod_tensor, 'y': y_lod_tensor},
