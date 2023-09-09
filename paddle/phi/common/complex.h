@@ -537,19 +537,15 @@ HOSTDEVICE inline complex<T> log1p(const complex<T>& a) {
     return complex<T>({thrust::log(z0), theta});
   }
 #else
-  T x = a.real();
-  T y = a.imag();
-  T zabs = std::abs(a);
-  T theta = std::atan2(y, x + T(1));
-  if (zabs < 0.5) {
-    T r = x * (T(2) + x) + y * y;
-    if (r == 0) {
-      return complex<T>({x, theta});
-    }
-    return complex<T>({T(0.5) * std::log1p(r), theta});
+  complex<T> u = z + T(1);
+  if (u == T(1)) {
+    return z;
   } else {
-    T z0 = std::hypot(x + 1, y);
-    return complex<T>({std::log(z0), theta});
+    auto log_u = log(u);
+    if (u - T(1) == z) {
+      return log_u;
+    }
+    return log_u * (z / (u - T(1)));
   }
 #endif
 }

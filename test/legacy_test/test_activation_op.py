@@ -2997,6 +2997,16 @@ class Test_Log_Op_Int(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestLog_Complex64(TestLog):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestLog_Complex128(TestLog):
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+
 class TestLog_ZeroDim(TestLog):
     def init_shape(self):
         self.shape = []
@@ -3052,6 +3062,16 @@ class TestLog2(TestActivation):
         np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
 
 
+class TestLog2_Complex64(TestLog2):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestLog2_Complex128(TestLog2):
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+
 class TestLog2_ZeroDim(TestLog2):
     def init_shape(self):
         self.shape = []
@@ -3100,6 +3120,16 @@ class TestLog10(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestLog10_Complex64(TestLog10):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestLog10_Complex128(TestLog10):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestLog10_ZeroDim(TestLog10):
@@ -3223,6 +3253,16 @@ class TestLog1p_Op_Int(unittest.TestCase):
                     place = paddle.CUDAPlace(0)
                     exe = paddle.static.Executor(place)
                     (res,) = exe.run(fetch_list=[out])
+
+
+class TestLog1p_Complex64(TestLog1p):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestLog1p_Complex128(TestLog1p):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestLog1p_ZeroDim(TestLog1p):

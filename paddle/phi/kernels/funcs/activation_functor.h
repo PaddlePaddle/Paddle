@@ -2175,6 +2175,20 @@ struct LogGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct LogGradFunctor<ComplexType<T>> : public BaseActivationFunctor<ComplexType<T>> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
+    dx.device(d) = dout * (static_cast<T>(1) / x);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
 struct Log2 {
   HOSTDEVICE T operator()(const T& val) const { return std::log2(val); }
 };

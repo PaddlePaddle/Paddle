@@ -177,7 +177,16 @@ def log(x, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['int32', 'int64', 'uint16', 'float16', 'float32', 'float64'],
+            [
+                'int32',
+                'int64',
+                'uint16',
+                'float16',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+            ],
             "log",
         )
         inputs = {'X': [x]}
@@ -3296,7 +3305,16 @@ def log1p(x, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['int32', 'int64', 'float16', 'uint16', 'float32', 'float64'],
+            [
+                'int32',
+                'int64',
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+            ],
             "log1p",
         )
         inputs = {'X': [x]}
@@ -3370,7 +3388,16 @@ def log2(x, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['int32', 'int64', 'float16', 'uint16', 'float32', 'float64'],
+            [
+                'int32',
+                'int64',
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+            ],
             "log2",
         )
         inputs = {'X': [x]}
@@ -3444,7 +3471,16 @@ def log10(x, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['int32', 'int64', 'float16', 'uint16', 'float32', 'float64'],
+            [
+                'int32',
+                'int64',
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+            ],
             "log10",
         )
         inputs = {'X': [x]}
