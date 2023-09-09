@@ -112,6 +112,7 @@ list(
   flip_op.cc
   quantize_linear_op.cc
   ms_deform_attn_op.cc
+  put_along_axis_op.cc
   dequantize_linear_op.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)

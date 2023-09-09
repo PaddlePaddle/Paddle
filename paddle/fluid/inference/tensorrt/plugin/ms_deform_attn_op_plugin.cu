@@ -864,8 +864,12 @@ bool MsDeformAttnPluginDynamic::supportsFormatCombination(
   } else if (pos == 4) {
       return (in.type == nvinfer1::DataType::kINT32) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
+  } else if (pos == 5) {
+    // 必须指定你的输出是这样的！
+          return (in.type == nvinfer1::DataType::kFLOAT) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
   }
-  return true;
+
 }
 
 nvinfer1::DataType MsDeformAttnPluginDynamic::getOutputDataType(
