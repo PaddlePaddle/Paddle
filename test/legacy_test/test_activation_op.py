@@ -1553,6 +1553,16 @@ class TestCeil(TestActivation):
         pass
 
 
+class TestCeil_Complex64(TestCeil):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestCeil_Complex128(TestCeil):
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+
 class TestCeil_ZeroDim(TestCeil):
     def init_shape(self):
         self.shape = []
