@@ -680,8 +680,6 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
                             d, dtype, stop_gradient
                         )
                     data = paddle.stack(to_stack_list)
-                    data = paddle.squeeze(data, -1)
-
             else:
                 raise RuntimeError(
                     f"Do not support transform type `{type(data)}` to tensor"
