@@ -27,7 +27,6 @@
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_dialect.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_op.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_type.h"
-#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/legacy_kernel_op.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
@@ -61,6 +60,166 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     "builtin.set_parameter",
     "builtin.get_parameter",
     "pd.shadow_output"};
+
+const std::unordered_set<std::string> SpecialOpList = {
+    "builtin.combine", "builtin.slice", "builtin.split"};
+
+ir::OpResult GetNewInput(
+    const ir::Value cur_in,
+    const std::unordered_map<ir::Value, ir::OpResult>& map_value_pair,
+    const int index,
+    const std::string op_name) {
+  PADDLE_ENFORCE_EQ(
+      map_value_pair.count(cur_in),
+      true,
+      phi::errors::PreconditionNotMet(
+          "[%d]'s input of [%s] op MUST be in map pair", index, op_name));
+  auto new_in = map_value_pair.at(cur_in);
+  return new_in;
+}
+
+void DealWithSpecialBuiltinOps(
+    ir::Operation* op_item,
+    ir::Program* program,
+    std::unordered_map<ir::Operation*, ir::Operation*>* map_op_pair,
+    std::unordered_map<ir::Value, ir::OpResult>* map_value_pair,
+    ir::IrContext* ctx) {
+  if (op_item->name() == "builtin.combine") {
+    std::vector<phi::Place> out_places;
+    // Copy op inputs
+    std::vector<ir::OpResult> vec_inputs;
+    std::vector<ir::Type> vec_inner_types;
+    if (op_item->num_operands() > 0) {
+      for (size_t i = 0; i < op_item->num_operands(); ++i) {
+        auto cur_in = op_item->operand_source(i);
+        if (!cur_in) {
+          vec_inputs.emplace_back();
+          continue;
+        }
+        auto new_in = GetNewInput(cur_in, *map_value_pair, i, op_item->name());
+        vec_inputs.push_back(new_in);
+        vec_inner_types.push_back(new_in.type());
+        if (new_in.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+          out_places.push_back(
+              new_in.type()
+                  .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+                  .place());
+        } else if (new_in.type()
+                       .isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+          out_places.push_back(
+              new_in.type()
+                  .dyn_cast<paddle::dialect::AllocatedSelectedRowsType>()
+                  .place());
+        } else {
+          PADDLE_THROW(phi::errors::Unimplemented(
+              "only support dense tensor type for now"));
+        }
+      }
+    }
+    // Copy op output type
+    std::vector<ir::Type> op_output_types;
+    ir::Type t1 = ir::VectorType::get(ctx, vec_inner_types);
+    op_output_types.push_back(t1);
+
+    // Get op info
+    ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_item->name());
+    // Generate new op
+    ir::Operation* op = ir::Operation::Create(
+        vec_inputs, op_item->attributes(), op_output_types, op_info);
+    program->block()->push_back(op);
+    (*map_op_pair)[op_item] = op;
+    // only deal with single output
+    if (op_item->num_results() > 0) {
+      for (size_t i = 0; i < op_item->num_results(); ++i) {
+        (*map_value_pair)[op_item->result(i)] = op->result(i);
+      }
+    }
+  }
+
+  if (op_item->name() == "builtin.slice") {
+    std::vector<ir::OpResult> vec_inputs;
+    std::vector<ir::Type> op_output_types;
+    if (op_item->num_operands() > 0) {
+      for (size_t i = 0; i < op_item->num_operands(); ++i) {
+        auto cur_in = op_item->operand_source(i);
+        if (!cur_in) {
+          vec_inputs.emplace_back();
+          continue;
+        }
+        auto new_in = GetNewInput(cur_in, *map_value_pair, i, op_item->name());
+        vec_inputs.push_back(new_in);
+        if (new_in.type().isa<ir::VectorType>()) {
+          auto vec_types = new_in.type().dyn_cast<ir::VectorType>().data();
+          auto index = op_item->attributes()
+                           .at("index")
+                           .dyn_cast<ir::Int32Attribute>()
+                           .data();
+          op_output_types.push_back(vec_types[index]);
+        } else {
+          PADDLE_THROW(
+              phi::errors::Unimplemented("only support vector type for now"));
+        }
+      }
+    }
+
+    // Get op info
+    ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_item->name());
+    // Generate new op
+    ir::Operation* op = ir::Operation::Create(
+        vec_inputs, op_item->attributes(), op_output_types, op_info);
+    program->block()->push_back(op);
+    (*map_op_pair)[op_item] = op;
+    // only deal with single output
+    if (op_item->num_results() > 0) {
+      for (size_t i = 0; i < op_item->num_results(); ++i) {
+        (*map_value_pair)[op_item->result(i)] = op->result(i);
+      }
+    }
+  }
+
+  if (op_item->name() == "builtin.split") {
+    std::vector<phi::Place> out_places(op_item->num_results());
+    // Copy op inputs
+    std::vector<ir::OpResult> vec_inputs;
+    std::vector<ir::Type> op_output_types;
+    if (op_item->num_operands() > 0) {
+      for (size_t i = 0; i < op_item->num_operands(); ++i) {
+        auto cur_in = op_item->operand_source(i);
+        if (!cur_in) {
+          vec_inputs.emplace_back();
+          continue;
+        }
+        auto new_in = GetNewInput(cur_in, *map_value_pair, i, op_item->name());
+        vec_inputs.push_back(new_in);
+
+        if (new_in.type().isa<ir::VectorType>()) {
+          auto vec_types = new_in.type().dyn_cast<ir::VectorType>().data();
+          for (uint64_t idx = 0; idx < vec_types.size(); idx++) {
+            op_output_types.push_back(vec_types[idx]);
+          }
+        } else {
+          PADDLE_THROW(
+              phi::errors::Unimplemented("only support vector type for now"));
+        }
+      }
+    }
+
+    // Get op info
+    ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_item->name());
+    // Generate new op
+    ir::Operation* op = ir::Operation::Create(
+        vec_inputs, op_item->attributes(), op_output_types, op_info);
+    program->block()->push_back(op);
+    (*map_op_pair)[op_item] = op;
+    // only deal with single output
+    if (op_item->num_results() > 0) {
+      for (size_t i = 0; i < op_item->num_results(); ++i) {
+        (*map_value_pair)[op_item->result(i)] = op->result(i);
+      }
+    }
+  }
+  VLOG(6) << "Deep copy a new builtin op: " << op_item->name();
+}
 
 bool NeedFallBackCpu(const ir::Operation* op,
                      const std::string& kernel_fn_name,
@@ -149,34 +308,67 @@ bool SkipFeedOp(ir::Operation* op, const std::set<std::string>& feed_names) {
       op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString());
 }
 
-std::vector<phi::DenseTensor> GetFakeTensorList(ir::Value new_input_tmp) {
-  std::vector<phi::DenseTensor> vec_res;
+std::vector<std::shared_ptr<phi::TensorBase>> GetFakeTensorList(
+    ir::Value new_input_tmp) {
+  std::vector<std::shared_ptr<phi::TensorBase>> vec_res;
   auto input_type = new_input_tmp.type();
-  std::vector<dialect::AllocatedDenseTensorType> types;
+
+  auto build_fake_dense_tensor =
+      [](const dialect::AllocatedDenseTensorType& type) {
+        auto ptr = new phi::Allocation(nullptr, 0, type.place());
+
+        std::shared_ptr<phi::Allocation> holder(ptr);
+
+        auto dtype = TransToPhiDataType(type.dtype());
+
+        phi::DenseTensorMeta meta(
+            dtype, type.dims(), type.data_layout(), type.lod(), type.offset());
+
+        return std::make_shared<phi::DenseTensor>(holder, meta);
+      };
+
+  auto build_fake_selected_rows =
+      [](const dialect::AllocatedSelectedRowsType& type) {
+        auto ptr = new phi::Allocation(nullptr, 0, type.place());
+
+        std::shared_ptr<phi::Allocation> holder(ptr);
+
+        auto dtype = TransToPhiDataType(type.dtype());
+
+        phi::DenseTensorMeta meta(
+            dtype, type.dims(), type.data_layout(), type.lod(), type.offset());
+
+        std::vector<int64_t> rows;
+        int64_t height = 0;
+        rows.clear();
+
+        auto sr = std::make_shared<phi::SelectedRows>(rows, height);
+
+        phi::DenseTensor dense_tensor(holder, meta);
+        *(sr->mutable_value()) = dense_tensor;
+
+        return sr;
+      };
+
   if (input_type.isa<dialect::AllocatedDenseTensorType>()) {
-    types.push_back(input_type.dyn_cast<dialect::AllocatedDenseTensorType>());
+    vec_res.push_back(build_fake_dense_tensor(
+        input_type.dyn_cast<dialect::AllocatedDenseTensorType>()));
+  } else if (input_type.isa<dialect::AllocatedSelectedRowsType>()) {
+    vec_res.push_back(build_fake_selected_rows(
+        input_type.dyn_cast<dialect::AllocatedSelectedRowsType>()));
   } else if (input_type.isa<ir::VectorType>()) {
     auto vec_inner_types = input_type.dyn_cast<ir::VectorType>().data();
     for (size_t i = 0; i < vec_inner_types.size(); ++i) {
-      types.push_back(
-          vec_inner_types[0].dyn_cast<dialect::AllocatedDenseTensorType>());
+      if (vec_inner_types[i].isa<dialect::AllocatedDenseTensorType>()) {
+        vec_res.push_back(build_fake_dense_tensor(
+            vec_inner_types[i].dyn_cast<dialect::AllocatedDenseTensorType>()));
+      } else if (vec_inner_types[i].isa<dialect::AllocatedSelectedRowsType>()) {
+        vec_res.push_back(build_fake_selected_rows(
+            vec_inner_types[i].dyn_cast<dialect::AllocatedSelectedRowsType>()));
+      }
     }
   }
 
-  for (auto& type : types) {
-    auto ptr = new phi::Allocation(nullptr, 0, type.place());
-
-    std::shared_ptr<phi::Allocation> holder(ptr);
-
-    auto dtype = TransToPhiDataType(type.dtype());
-
-    phi::DenseTensorMeta meta(
-        dtype, type.dims(), type.data_layout(), type.lod(), type.offset());
-
-    phi::DenseTensor fake_tensor(holder, meta);
-
-    vec_res.push_back(fake_tensor);
-  }
   return vec_res;
 }
 
@@ -514,7 +706,7 @@ phi::KernelKey GetKernelKey(
 
       auto fake_tensors = GetFakeTensorList(new_input_tmp);
       for (auto& fake_tensor : fake_tensors) {
-        kernel_key_parser.AssignKernelKeySet(fake_tensor);
+        kernel_key_parser.AssignKernelKeySet(*fake_tensor);
       }
 
       // Because we can't make sure the place when build data op
@@ -536,6 +728,29 @@ phi::KernelKey GetKernelKey(
         kernel_key_parser.key_set.backend_set =
             kernel_key_parser.key_set.backend_set |
             paddle::experimental::BackendSet(data_op_backend);
+      } else if (op->operand_source(i).GetDefiningOp()->name() ==
+                 "builtin.combine") {
+        auto combine_op = op->operand_source(i).GetDefiningOp();
+        for (size_t j = 0; j < combine_op->num_operands(); ++j) {
+          if (combine_op->operand_source(j).GetDefiningOp()->name() ==
+              "pd.data") {
+            auto data_op = combine_op->operand_source(j).GetDefiningOp();
+            auto data_place = data_op->attributes()
+                                  .at("place")
+                                  .dyn_cast<dialect::PlaceAttribute>()
+                                  .data();
+
+            auto data_op_backend =
+                paddle::experimental::ParseBackend(data_place);
+            if (data_op_backend == phi::Backend::UNDEFINED) {
+              data_op_backend = paddle::experimental::ParseBackend(place);
+            }
+            kernel_key_parser.key_set.backend_set =
+                kernel_key_parser.key_set.backend_set |
+                paddle::experimental::BackendSet(data_op_backend);
+            break;
+          }
+        }
       }
     }
 
@@ -564,6 +779,11 @@ phi::KernelKey GetKernelKey(
 
 std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
                                                    phi::Place place) {
+  if (VLOG_IS_ON(2)) {
+    std::stringstream ss;
+    prog->Print(ss);
+    VLOG(2) << "Program after lowering to kernel pass : " << ss.str();
+  }
   auto program = std::make_unique<ir::Program>(ir::IrContext::Instance());
 
   auto block = prog->block();
@@ -591,157 +811,9 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
       continue;
     }
 
-    if (op_item->name() == "builtin.combine") {
-      std::vector<phi::Place> out_places;
-      // Copy op inputs
-      std::vector<ir::OpResult> vec_inputs;
-      std::vector<ir::Type> vec_inner_types;
-      if (op_item->num_operands() > 0) {
-        for (size_t i = 0; i < op_item->num_operands(); ++i) {
-          auto cur_in = op_item->operand_source(i);
-          if (!cur_in) {
-            vec_inputs.emplace_back();
-            continue;
-          }
-          PADDLE_ENFORCE_EQ(map_value_pair.count(cur_in),
-                            true,
-                            phi::errors::PreconditionNotMet(
-                                "[%d]'s input of [%s] op MUST in map pair",
-                                i,
-                                op_item->name()));
-          auto new_in = map_value_pair.at(cur_in);
-          vec_inputs.push_back(new_in);
-          vec_inner_types.push_back(new_in.type());
-          if (new_in.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
-            out_places.push_back(
-                new_in.type()
-                    .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
-                    .place());
-          } else {
-            PADDLE_THROW(phi::errors::Unimplemented(
-                "only support dense tensor type for now"));
-          }
-        }
-      }
-      // Copy op output type
-      std::vector<ir::Type> op_output_types;
-      ir::Type t1 = ir::VectorType::get(ctx, vec_inner_types);
-      op_output_types.push_back(t1);
-
-      // Get op info
-      ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_item->name());
-      // Generate new op
-      ir::Operation* op = ir::Operation::Create(
-          vec_inputs, op_item->attributes(), op_output_types, op_info);
-      program->block()->push_back(op);
-      map_op_pair[op_item] = op;
-      // only deal with single output
-      if (op_item->num_results() > 0) {
-        for (size_t i = 0; i < op_item->num_results(); ++i) {
-          map_value_pair[op_item->result(i)] = op->result(i);
-        }
-      }
-      VLOG(6) << "Deep copy a new builtin op: " << op_item->name();
-      continue;
-    }
-
-    if (op_item->name() == "builtin.slice") {
-      std::vector<ir::OpResult> vec_inputs;
-      std::vector<ir::Type> op_output_types;
-      if (op_item->num_operands() > 0) {
-        for (size_t i = 0; i < op_item->num_operands(); ++i) {
-          auto cur_in = op_item->operand_source(i);
-          if (!cur_in) {
-            vec_inputs.emplace_back();
-            continue;
-          }
-          PADDLE_ENFORCE_EQ(map_value_pair.count(cur_in),
-                            true,
-                            phi::errors::PreconditionNotMet(
-                                "[%d]'s input of [%s] op MUST in map pair",
-                                i,
-                                op_item->name()));
-          auto new_in = map_value_pair.at(cur_in);
-          vec_inputs.push_back(new_in);
-
-          if (new_in.type().isa<ir::VectorType>()) {
-            auto vec_types = new_in.type().dyn_cast<ir::VectorType>().data();
-            auto index = op_item->attributes()
-                             .at("index")
-                             .dyn_cast<ir::Int32Attribute>()
-                             .data();
-            op_output_types.push_back(vec_types[index]);
-          } else {
-            PADDLE_THROW(
-                phi::errors::Unimplemented("only support vector type for now"));
-          }
-        }
-      }
-
-      // Get op info
-      ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_item->name());
-      // Generate new op
-      ir::Operation* op = ir::Operation::Create(
-          vec_inputs, op_item->attributes(), op_output_types, op_info);
-      program->block()->push_back(op);
-      map_op_pair[op_item] = op;
-      // only deal with single output
-      if (op_item->num_results() > 0) {
-        for (size_t i = 0; i < op_item->num_results(); ++i) {
-          map_value_pair[op_item->result(i)] = op->result(i);
-        }
-      }
-      VLOG(6) << "Deep copy a new builtin op: " << op_item->name();
-      continue;
-    }
-
-    if (op_item->name() == "builtin.split") {
-      std::vector<phi::Place> out_places(op_item->num_results());
-      // Copy op inputs
-      std::vector<ir::OpResult> vec_inputs;
-      std::vector<ir::Type> op_output_types;
-      if (op_item->num_operands() > 0) {
-        for (size_t i = 0; i < op_item->num_operands(); ++i) {
-          auto cur_in = op_item->operand_source(i);
-          if (!cur_in) {
-            vec_inputs.emplace_back();
-            continue;
-          }
-          PADDLE_ENFORCE_EQ(map_value_pair.count(cur_in),
-                            true,
-                            phi::errors::PreconditionNotMet(
-                                "[%d]'s input of [%s] op MUST in map pair",
-                                i,
-                                op_item->name()));
-          auto new_in = map_value_pair.at(cur_in);
-          vec_inputs.push_back(new_in);
-
-          if (new_in.type().isa<ir::VectorType>()) {
-            auto vec_types = new_in.type().dyn_cast<ir::VectorType>().data();
-            for (uint64_t idx = 0; idx < vec_types.size(); idx++) {
-              op_output_types.push_back(vec_types[idx]);
-            }
-          } else {
-            PADDLE_THROW(
-                phi::errors::Unimplemented("only support vector type for now"));
-          }
-        }
-      }
-
-      // Get op info
-      ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_item->name());
-      // Generate new op
-      ir::Operation* op = ir::Operation::Create(
-          vec_inputs, op_item->attributes(), op_output_types, op_info);
-      program->block()->push_back(op);
-      map_op_pair[op_item] = op;
-      // only deal with single output
-      if (op_item->num_results() > 0) {
-        for (size_t i = 0; i < op_item->num_results(); ++i) {
-          map_value_pair[op_item->result(i)] = op->result(i);
-        }
-      }
-      VLOG(6) << "Deep copy a new builtin op: " << op_item->name();
+    if (SpecialOpList.count(op_item->name())) {
+      DealWithSpecialBuiltinOps(
+          op_item, program.get(), &map_op_pair, &map_value_pair, ctx);
       continue;
     }
 
@@ -759,6 +831,14 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     if (op_info_parser != nullptr) {
       kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func[0];
     }
+
+    if (op_item->name() == "pd.add_n_" ||
+        op_item->name() == "pd.add_n_with_kernel") {
+      if (op_item->result(0).type().isa<dialect::SelectedRowsType>()) {
+        kernel_fn_str = "add_n_sr";
+      }
+    }
+
     auto kernel_key =
         GetKernelKey(op_item, place, map_value_pair, op_info_parser.get());
     VLOG(6) << "kernel type " << kernel_key;
@@ -929,9 +1009,22 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
               for (size_t j = 0; j < pre_define_op->num_operands(); ++j) {
                 auto in_i = map_value_pair.at(pre_define_op->operand_source(j));
                 auto in_i_type = in_i.type();
-                auto place =
-                    in_i_type.dyn_cast<dialect::AllocatedDenseTensorType>()
-                        .place();
+                phi::Place place;
+                if (in_i_type.isa<dialect::AllocatedDenseTensorType>()) {
+                  place =
+                      in_i_type.dyn_cast<dialect::AllocatedDenseTensorType>()
+                          .place();
+                } else if (in_i_type
+                               .isa<dialect::AllocatedSelectedRowsType>()) {
+                  place =
+                      in_i_type.dyn_cast<dialect::AllocatedSelectedRowsType>()
+                          .place();
+                } else {
+                  PADDLE_THROW(phi::errors::Unimplemented(
+                      "builtin.combine Input type only support "
+                      "VectorType<DenseTensorType> and "
+                      "VectorType<SelectedRowsType>"));
+                }
 
                 // get input args def type
                 auto args_def = kernel.args_def();
@@ -949,12 +1042,30 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
                   // build memcopy op
                   auto out_place =
                       phi::TransToPhiPlace(kernel.InputAt(i).backend);
-                  auto out_type = dialect::AllocatedDenseTensorType::get(
-                      ctx,
-                      out_place,
-                      pre_define_op->operand_source(j)
-                          .type()
-                          .dyn_cast<dialect::DenseTensorType>());
+
+                  ir::Type out_type;
+                  if (in_i_type.isa<dialect::AllocatedDenseTensorType>()) {
+                    out_type = dialect::AllocatedDenseTensorType::get(
+                        ctx,
+                        out_place,
+                        pre_define_op->operand_source(j)
+                            .type()
+                            .dyn_cast<dialect::DenseTensorType>());
+                  } else if (in_i_type
+                                 .isa<dialect::AllocatedSelectedRowsType>()) {
+                    out_type = dialect::AllocatedSelectedRowsType::get(
+                        ctx,
+                        out_place,
+                        pre_define_op->operand_source(j)
+                            .type()
+                            .dyn_cast<dialect::SelectedRowsType>());
+                  } else {
+                    PADDLE_THROW(phi::errors::Unimplemented(
+                        "builtin.combine Input type only support "
+                        "VectorType<DenseTensorType> and "
+                        "VectorType<SelectedRowsType>"));
+                  }
+
                   in_i = AddPlaceTransferOp(in_i,
                                             out_type,
                                             place,
@@ -1066,7 +1177,11 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
       }
     }
   }
-
+  if (VLOG_IS_ON(2)) {
+    std::stringstream ss1;
+    program->Print(ss1);
+    VLOG(2) << "Program after lowering to kernel pass : " << ss1.str();
+  }
   return program;
 }
 

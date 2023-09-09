@@ -20,6 +20,7 @@
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type_storage.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/transforms/param_to_variable.h"
+#include "paddle/ir/core/ir_printer.h"
 #include "paddle/ir/core/utils.h"
 
 namespace paddle {
@@ -48,7 +49,13 @@ void PaddleDialect::initialize() {
 #define GET_OP_LIST
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"  // NOLINT
       >();
-  RegisterOps<paddle::dialect::AddNOp, paddle::dialect::SplitGradOp>();
+  RegisterOps<paddle::dialect::AddNOp,
+              paddle::dialect::AddN_Op,
+              paddle::dialect::AddNWithKernelOp,
+              paddle::dialect::FusedGemmEpilogueOp,
+              paddle::dialect::FusedGemmEpilogueGradOp,
+              paddle::dialect::SplitGradOp,
+              paddle::dialect::IfOp>();
 
   RegisterInterfaces<ParameterConvertInterface>();
 }
@@ -76,9 +83,12 @@ void PaddleDialect::PrintType(ir::Type type, std::ostream &os) const {
 }
 
 void PaddleDialect::PrintAttribute(ir::Attribute attr, std::ostream &os) const {
+  os << "(" << attr.dialect().name();
+  os << '.';
   if (auto int_array_attr = attr.dyn_cast<IntArrayAttribute>()) {
     phi::IntArray data = int_array_attr.data();
-    os << "IntArray[";
+    os << "IntArray)"
+       << "[";
     const auto &inner_data = data.GetData();
     ir::PrintInterleave(
         inner_data.begin(),
@@ -87,13 +97,70 @@ void PaddleDialect::PrintAttribute(ir::Attribute attr, std::ostream &os) const {
         [&os]() { os << ","; });
     os << "]";
   } else if (auto data_type_attr = attr.dyn_cast<DataTypeAttribute>()) {
-    os << data_type_attr.data();
+    os << "DataType)" << data_type_attr.data();
   } else if (auto place_type_attr = attr.dyn_cast<PlaceAttribute>()) {
-    os << place_type_attr.data();
+    os << "Place)" << place_type_attr.data();
   } else if (auto data_layout_attr = attr.dyn_cast<DataLayoutAttribute>()) {
-    os << data_layout_attr.data();
+    os << "DataLayout)" << data_layout_attr.data();
   } else {
     os << "<#AttrNotImplemented>";
+  }
+}
+
+ir::Type PaddleDialect::ParseType(ir::IrParser &parser) {  // NOLINT
+  parser.ConsumeAToken("pd.tensor");
+  parser.ConsumeAToken("<");
+  std::vector<int> dim{};
+  Token dim_token = parser.PeekToken();
+  while (dim_token.token_type_ == DIGIT) {
+    dim_token = parser.ConsumeToken();
+    dim.push_back(atoi(dim_token.val_.c_str()));
+    std::string peek_token_val = parser.PeekToken().val_;
+    if (peek_token_val[0] != 'x') {
+      break;
+    }
+    parser.ConsumeToken();
+    parser.lexer->Unget(peek_token_val.size() - 1);
+    if (parser.PeekToken().token_type_ != DIGIT) {
+      break;
+    }
+  }
+  phi::DDim ddim = phi::make_ddim(dim);
+  ir::Type dtype = parser.ParseType();
+  std::vector<std::vector<size_t>> lod;
+  std::vector<size_t> lodv;
+  lodv.push_back(0);
+  lod.push_back(lodv);
+  parser.ConsumeAToken(">");
+  return DenseTensorType::get(
+      parser.ctx, dtype, ddim, phi::DataLayout::UNDEFINED, lod, 0);
+}
+
+ir::Attribute PaddleDialect::ParseAttribute(ir::IrParser &parser) {  // NOLINT
+  std::string type_name = parser.ConsumeToken().val_;
+  std::string attribute_name =
+      type_name.substr(type_name.find('.') + 1, std::string::npos);
+  parser.ConsumeAToken(")");
+  if (attribute_name == "IntArray") {
+    return IntArrayAttribute::Parse(parser);
+  } else if (attribute_name == "DataType") {
+    return DataTypeAttribute::Parse(parser);
+  } else if (attribute_name == "Place") {
+    return PlaceAttribute::Parse(parser);
+  } else if (attribute_name == "DataLayout") {
+    return DataLayoutAttribute::Parse(parser);
+  } else {
+    IR_THROW("No function to parse " + attribute_name + " exists!" +
+             parser.GetErrorLocationInfo());
+  }
+}
+
+void PaddleDialect::PrintOperation(ir::Operation *op,
+                                   ir::IrPrinter &printer) const {
+  if (auto if_op = op->dyn_cast<IfOp>()) {
+    if_op.Print(printer);
+  } else {
+    printer.PrintGeneralOperation(op);
   }
 }
 

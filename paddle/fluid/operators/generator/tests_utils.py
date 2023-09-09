@@ -86,19 +86,18 @@ def is_tensor_list(s):
     return s == 'Tensor[]'
 
 
-def exist_mutable_attribute(attrs):
-    for attr in attrs:
+def exist_mutable_attribute(attributes):
+    for attribute in attributes:
         if (
-            attr['typename'] in ['Scalar', 'IntArray']
-            and attr['support_tensor'] is True
-        ):
+            is_scalar(attribute['typename'])
+            or is_intarray(attribute['typename'])
+        ) and attribute.get('support_tensor', False):
             return True
-        else:
-            return False
+    else:
+        return False
 
 
-def is_mutable_attribute(attr):
+def is_mutable_attribute(attribute):
     return (
-        attr['typename'] in ['Scalar', 'IntArray']
-        and attr['support_tensor'] is True
-    )
+        is_scalar(attribute['typename']) or is_intarray(attribute['typename'])
+    ) and attribute.get('support_tensor', False)

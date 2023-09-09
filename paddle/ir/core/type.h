@@ -84,6 +84,8 @@ class IR_API Type {
 
   void Print(std::ostream &os) const;
 
+  static Type Parse(std::istream &is, IrContext *ctx);
+
   ///
   /// \brief Enable hashing Type.
   ///

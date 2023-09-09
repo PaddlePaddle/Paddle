@@ -23,7 +23,7 @@ from eager_op_test import (
 )
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 paddle.seed(100)
@@ -106,7 +106,7 @@ class TestPoissonAPI(unittest.TestCase):
             self.assertTrue(np.min(y_np) >= 0)
 
     def test_dygraph(self):
-        with paddle.fluid.dygraph.base.guard():
+        with paddle.base.dygraph.base.guard():
             x = paddle.randn([10, 10], dtype='float32')
             y = paddle.poisson(x)
             self.assertTrue(np.min(y.numpy()) >= 0)

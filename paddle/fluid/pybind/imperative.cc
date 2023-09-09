@@ -1179,7 +1179,8 @@ void BindImperative(py::module *m_ptr) {
           ...     offset_a = paddle.gather(dst, paddle.to_tensor(np.arange(0, 40)))
           ...     offset_b = paddle.gather(dst, paddle.to_tensor(np.arange(60, 120)))
           ...     offset_array = paddle.concat([offset_a, offset_b], axis=0)
-          ...     print(np.allclose(src.numpy(), offset_array.numpy())) # True
+          ...     print(np.allclose(src.numpy(), offset_array.numpy())) 
+          True
 )DOC");
 
   m.def(

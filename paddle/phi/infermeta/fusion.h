@@ -123,6 +123,26 @@ void MultiEncoderXPUInferMeta(
     MetaTensor* x_fp16,
     MetaTensor* out_fp16);
 
+void FusedGemmEpilogueInferMeta(const MetaTensor& x,
+                                const MetaTensor& y,
+                                const MetaTensor& bias,
+                                bool trans_x,
+                                bool trans_y,
+                                const std::string& activation,
+                                MetaTensor* out,
+                                MetaTensor* reserve_space);
+
+void FusedGemmEpilogueGradInferMeta(const MetaTensor& x,
+                                    const MetaTensor& y,
+                                    const MetaTensor& reserve_space,
+                                    const MetaTensor& out_grad,
+                                    bool trans_x,
+                                    bool trans_y,
+                                    const std::string& activation_grad,
+                                    MetaTensor* x_grad,
+                                    MetaTensor* y_grad,
+                                    MetaTensor* bias_grad);
+
 void FusedMultiTransformerXpuInferMeta(
     const MetaTensor& x,
     const std::vector<const MetaTensor*>& ln_scale,
@@ -201,6 +221,11 @@ void FastLayernormXPUInferMeta(const MetaTensor& x,
                                float epsilon,
                                MetaTensor* out);
 
+void AddCMulXPUInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         const MetaTensor& w,
+                         MetaTensor* out);
+
 void FusedScaleBiasReluConvBnstatsInferMeta(
     const MetaTensor& x,
     const MetaTensor& w,
@@ -228,5 +253,15 @@ void FusedScaleBiasReluConvBnstatsInferMeta(
     MetaTensor* saved_var,
     MetaTensor* eq_scale,
     MetaTensor* eq_bias);
+
+void SqueezeExcitationInferMeta(const MetaTensor& x,
+                                const MetaTensor& filter,
+                                const MetaTensor& filter_max,
+                                const MetaTensor& bias,
+                                const MetaTensor& branch,
+                                const std::vector<int>& act_type,
+                                const std::vector<float>& act_param,
+                                const std::vector<int>& filter_dims,
+                                MetaTensor* out);
 
 }  // namespace phi

@@ -87,22 +87,27 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
   }
 
   if (auto s = attr.dyn_cast<StrAttribute>()) {
-    os << s.AsString();
+    os << "(String)" << s.AsString();
   } else if (auto b = attr.dyn_cast<BoolAttribute>()) {
-    os << b.data();
+    if (b.data()) {
+      os << "true";
+    } else {
+      os << "false";
+    }
   } else if (auto f = attr.dyn_cast<FloatAttribute>()) {
-    os << f.data();
+    os << "(Float)" << f.data();
   } else if (auto d = attr.dyn_cast<DoubleAttribute>()) {
-    os << d.data();
+    os << "(Double)" << d.data();
   } else if (auto i = attr.dyn_cast<Int32Attribute>()) {
-    os << i.data();
+    os << "(Int32)" << i.data();
   } else if (auto i = attr.dyn_cast<Int64Attribute>()) {
-    os << i.data();
+    os << "(Int64)" << i.data();
   } else if (auto p = attr.dyn_cast<PointerAttribute>()) {
-    os << p.data();
+    os << "(Pointer)" << p.data();
   } else if (auto arr = attr.dyn_cast<ArrayAttribute>()) {
     const auto& vec = arr.AsVector();
-    os << "array[";
+    os << "(Array)"
+       << "[";
     PrintInterleave(
         vec.begin(),
         vec.end(),
@@ -125,7 +130,7 @@ void IrPrinter::PrintProgram(const Program* program) {
   }
 }
 
-void IrPrinter::PrintOperation(const Operation* op) {
+void IrPrinter::PrintOperation(Operation* op) {
   if (auto* dialect = op->dialect()) {
     dialect->PrintOperation(op, *this);
     return;
@@ -156,7 +161,7 @@ void IrPrinter::PrintGeneralOperation(const Operation* op) {
 }
 
 void IrPrinter::PrintFullOperation(const Operation* op) {
-  PrintOperation(op);
+  PrintGeneralOperation(op);
   if (op->num_regions() > 0) {
     os << newline;
   }
@@ -290,7 +295,7 @@ void IrPrinter::PrintOpReturnType(const Operation* op) {
       [this]() { this->os << ", "; });
 }
 
-void Dialect::PrintOperation(const Operation* op, IrPrinter& printer) const {
+void Dialect::PrintOperation(Operation* op, IrPrinter& printer) const {
   printer.PrintGeneralOperation(op);
 }
 
@@ -299,9 +304,9 @@ void Program::Print(std::ostream& os) const {
   printer.PrintProgram(this);
 }
 
-void Operation::Print(std::ostream& os) const {
+void Operation::Print(std::ostream& os) {
   IrPrinter printer(os);
-  printer.PrintFullOperation(this);
+  printer.PrintOperation(this);
 }
 
 void Type::Print(std::ostream& os) const {

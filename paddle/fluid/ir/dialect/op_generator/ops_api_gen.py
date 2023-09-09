@@ -21,7 +21,9 @@ CPP_FILE_TEMPLATE = """
 #include <pybind11/pybind11.h>
 
 #include "paddle/fluid/pybind/static_op_function.h"
+#include "paddle/fluid/pybind/eager_op_function.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 
 {body}
 
@@ -44,11 +46,47 @@ void BindOpsAPI(pybind11::module *module) {{
 
 FUNCTION_IMPL_TEMPLATE = """
 static PyObject *{name}(PyObject *self, PyObject *args, PyObject *kwargs) {{
+  if (egr::Controller::Instance().GetCurrentTracer() == nullptr) {{
+    VLOG(6) << "Call static_api_{name}";
+    return static_api_{name}(self, args, kwargs);
+  }} else {{
+    VLOG(6) << "Call eager_api_{name}";
+    return eager_api_{name}(self, args, kwargs);
+  }}
+}}"""
+
+NO_DY_FUNCTION_IMPL_TEMPLATE = """
+static PyObject *{name}(PyObject *self, PyObject *args, PyObject *kwargs) {{
+  VLOG(6) << "Call static_api_{name}";
   return static_api_{name}(self, args, kwargs);
 }}"""
 
 OPS_API_TEMPLATE = """
 {{"{name}", (PyCFunction)(void (*)(void)){name}, METH_VARARGS | METH_KEYWORDS, "C++ interface function for {name}."}},"""
+
+SPECIAL_STATIC_ONLY_APIS = [
+    'fetch',
+    'set_value_with_tensor',
+    'set_value_with_tensor_',
+    'fused_bn_add_activation_',
+    'fused_batch_norm_act_',
+    'add_n_',
+    'set_value',
+    'assign_value',
+    'set_value_',
+    'embedding_grad_sparse',
+    'add_n_with_kernel',
+    'print',
+    'send_v2',
+    'shadow_feed',
+    'recv_v2',
+    'rnn_',
+    'fused_scale_bias_relu_conv_bnstats',
+    'batch_norm_',
+    'c_allreduce_sum',
+    'c_embedding',
+    'c_identity',
+]
 
 
 class OpsAPIGen(CodeGen):
@@ -56,7 +94,15 @@ class OpsAPIGen(CodeGen):
         super().__init__()
 
     def _gen_one_function_impl(self, name):
-        return FUNCTION_IMPL_TEMPLATE.format(name=name)
+        if (
+            name.endswith('_grad')
+            or name.endswith('_grad_')
+            or name.endswith('xpu')
+            or name in SPECIAL_STATIC_ONLY_APIS
+        ):
+            return NO_DY_FUNCTION_IMPL_TEMPLATE.format(name=name)
+        else:
+            return FUNCTION_IMPL_TEMPLATE.format(name=name)
 
     def _gen_one_ops_api(self, name):
         return OPS_API_TEMPLATE.format(name=name)

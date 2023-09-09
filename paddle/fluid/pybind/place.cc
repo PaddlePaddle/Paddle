@@ -394,6 +394,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     **Note**:
     Examples:
         .. code-block:: python
+
           >>> import paddle.base as base
           >>> xpu_place = base.XPUPlace(0)
         )DOC");

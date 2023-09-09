@@ -21,19 +21,20 @@ from paddle import _C_ops
 from paddle.tensor import fill_constant
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..fluid.data_feeder import (
+from ..base.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
     convert_dtype,
 )
-from ..fluid.framework import Variable
+from ..base.framework import Variable
 from ..framework import (
     LayerHelper,
     convert_np_dtype_to_dtype_,
     core,
     dygraph_only,
     in_dynamic_mode,
+    in_new_ir_mode,
 )
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
@@ -1131,11 +1132,11 @@ def concat(x, axis=0, name=None):
         if not isinstance(input, Variable):
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
+    elif in_new_ir_mode():
+        if not isinstance(input, paddle.ir.Value):
+            input = [t for t in input if t.shape.count(0) == 0]
+        return _C_ops.concat(input, axis)
     else:
-        if paddle.ir.core._use_new_ir_api():
-            if not isinstance(input, paddle.ir.Value):
-                input = [t for t in input if t.shape.count(0) == 0]
-            return paddle._ir_ops.concat(input, axis)
         check_type(input, 'input', (list, tuple, Variable), 'concat')
         if not isinstance(input, Variable):
             for id, x in enumerate(input):
@@ -5033,7 +5034,7 @@ def as_strided(x, shape, stride, offset=0, name=None):
         .. code-block:: python
 
             import paddle
-            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
+            paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
 
             x = paddle.rand([2, 4, 6], dtype="float32")
 
@@ -5065,7 +5066,7 @@ def view(x, shape_or_dtype, name=None):
         .. code-block:: python
 
             import paddle
-            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
+            paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
 
             x = paddle.rand([2, 4, 6], dtype="float32")
 
@@ -5074,7 +5075,7 @@ def view(x, shape_or_dtype, name=None):
 
 
             import paddle
-            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
+            paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
 
             x = paddle.rand([2, 4, 6], dtype="float32")
 
@@ -5109,7 +5110,7 @@ def view_as(x, other, name=None):
         .. code-block:: python
 
             import paddle
-            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
+            paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
 
             x = paddle.rand([2, 4, 6], dtype="float32")
             y = paddle.rand([8, 6], dtype="float32")
@@ -5142,7 +5143,7 @@ def unfold(x, axis, size, step, name=None):
         .. code-block:: python
 
             import paddle
-            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
+            paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
 
             x = paddle.arange(9, dtype="float64")
 

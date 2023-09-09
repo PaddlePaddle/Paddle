@@ -22,7 +22,7 @@ import numpy as np
 from PIL import Image
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.dataset.common import download
 from paddle.static.quantization import PostTrainingQuantization
 
@@ -271,8 +271,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
         is_optimize_model=False,
         onnx_format=False,
     ):
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
         val_reader = val()
 
         ptq = PostTrainingQuantization(

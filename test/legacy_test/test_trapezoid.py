@@ -228,7 +228,7 @@ class Testfp16Trapezoid(TestTrapezoidAPI):
 
     def test_fp16_with_gpu(self):
         paddle.enable_static()
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
@@ -253,7 +253,7 @@ class Testfp16Trapezoid(TestTrapezoidAPI):
                 )
 
     def test_fp16_func_dygraph(self):
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             paddle.disable_static()
             input_y = np.random.random([4, 4])

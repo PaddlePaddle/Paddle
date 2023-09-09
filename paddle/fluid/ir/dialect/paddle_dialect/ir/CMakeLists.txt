@@ -58,8 +58,12 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir}
   COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
           ${pd_op_forward_yaml_file} --output_path ${op_yaml_file3}
+  COMMENT "Generate pd_ops.parsed.yaml"
   COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
           ${pd_op_backward_yaml_file} --output_path ${op_yaml_file4} --backward
+  COMMENT "Generate pd_ops_backward.parsed.yaml"
+  DEPENDS ${op_gen_parsed_yaml_file} ${pd_op_forward_yaml_file}
+          ${pd_op_backward_yaml_file}
   VERBATIM)
 
 add_custom_command(
@@ -88,6 +92,9 @@ add_custom_command(
           ${op_yaml_file4}
   VERBATIM)
 
+set(api_gen_yaml_files
+    ${op_forward_yaml_file1},${op_forward_yaml_file2},${op_backward_yaml_file1},${op_backward_yaml_file2},${op_yaml_file3},${op_yaml_file4}
+)
 set(api_gen_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/ir/dialect/op_generator/api_gen.py)
 set(api_header_file ${PD_DIALECT_BINARY_DIR}/pd_api.h)
@@ -98,7 +105,7 @@ set(api_source_file_tmp ${api_source_file}.tmp)
 add_custom_command(
   OUTPUT ${api_header_file} ${api_source_file}
   COMMAND
-    ${PYTHON_EXECUTABLE} ${api_gen_file} --op_yaml_files ${op_yaml_files}
+    ${PYTHON_EXECUTABLE} ${api_gen_file} --op_yaml_files ${api_gen_yaml_files}
     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
     --api_def_h_file ${api_header_file_tmp} --api_def_cc_file
     ${api_source_file_tmp}
@@ -129,9 +136,10 @@ set(python_c_source_file_tmp ${python_c_source_file}.tmp)
 add_custom_command(
   OUTPUT ${python_c_header_file} ${python_c_source_file}
   COMMAND
-    ${PYTHON_EXECUTABLE} ${python_c_gen_file} --op_yaml_files ${op_yaml_files}
-    --op_compat_yaml_file ${op_compat_yaml_file} --namespaces "paddle,pybind"
-    --python_c_def_h_file ${python_c_header_file_tmp} --python_c_def_cc_file
+    ${PYTHON_EXECUTABLE} ${python_c_gen_file} --op_yaml_files
+    ${api_gen_yaml_files} --op_compat_yaml_file ${op_compat_yaml_file}
+    --namespaces "paddle,pybind" --python_c_def_h_file
+    ${python_c_header_file_tmp} --python_c_def_cc_file
     ${python_c_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${python_c_header_file_tmp}
           ${python_c_header_file}
@@ -159,9 +167,9 @@ set(ops_api_source_file_tmp ${ops_api_source_file}.tmp)
 add_custom_command(
   OUTPUT ${ops_api_source_file}
   COMMAND
-    ${PYTHON_EXECUTABLE} ${ops_api_gen_file} --op_yaml_files ${op_yaml_files}
-    --op_compat_yaml_file ${op_compat_yaml_file} --namespaces "paddle,pybind"
-    --ops_api_file ${ops_api_source_file_tmp}
+    ${PYTHON_EXECUTABLE} ${ops_api_gen_file} --op_yaml_files
+    ${api_gen_yaml_files} --op_compat_yaml_file ${op_compat_yaml_file}
+    --namespaces "paddle,pybind" --ops_api_file ${ops_api_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${ops_api_source_file_tmp}
           ${ops_api_source_file}
   COMMENT "copy_if_different ${ops_api_source_file}"
@@ -179,7 +187,7 @@ add_custom_target(ops_api_gen ALL DEPENDS ${ops_api_source_file})
 
 cc_library(
   pd_dialect_core
-  SRCS pd_attribute.cc pd_type.cc
+  SRCS pd_attribute.cc pd_type.cc pd_meta_tensor.cc
   DEPS phi pd_interface pd_trait type_info)
 cc_library(
   pd_dialect_op
