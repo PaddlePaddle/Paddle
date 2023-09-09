@@ -58,7 +58,10 @@ def sin(x, name=None):
             >>> dense_x = paddle.to_tensor([-2., 0., 1.])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.sin(sparse_x)
-
+            >>> out
+            Tensor(shape=[3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                indices=[[0, 2]],
+                values=[-0.90929741,  0.84147102])
     """
     return _C_ops.sparse_sin(x)
 
@@ -88,7 +91,10 @@ def tan(x, name=None):
             >>> dense_x = paddle.to_tensor([-2., 0., 1.])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.tan(sparse_x)
-
+            >>> out
+            Tensor(shape=[3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                indices=[[0, 2]],
+                values=[2.18503976, 1.55740774])
     """
     return _C_ops.sparse_tan(x)
 
@@ -118,7 +124,10 @@ def asin(x, name=None):
             >>> dense_x = paddle.to_tensor([-2., 0., 1.])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.asin(sparse_x)
-
+            >>> out
+            Tensor(shape=[3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                indices=[[0, 2]],
+                values=[nan       , 1.57079625])
     """
     return _C_ops.sparse_asin(x)
 
@@ -149,7 +158,11 @@ def transpose(x, perm, name=None):
             >>> dense_x = paddle.to_tensor([[-2., 0.], [1., 2.]])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.transpose(sparse_x, [1, 0])
-
+            >>> out
+            Tensor(shape=[2, 2], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                indices=[[0, 0]],
+                values=[[-2.,  0.],
+                        [ 1.,  2.]])
     """
     return _C_ops.sparse_transpose(x, perm)
 
@@ -281,7 +294,10 @@ def atan(x, name=None):
             >>> dense_x = paddle.to_tensor([-2., 0., 1.])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.atan(sparse_x)
-
+            >>> out
+            Tensor(shape=[3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                indices=[[0, 2]],
+                values=[-1.10714877,  0.78539819])
     """
     return _C_ops.sparse_atan(x)
 
@@ -311,7 +327,10 @@ def sinh(x, name=None):
             >>> dense_x = paddle.to_tensor([-2., 0., 1.])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.sinh(sparse_x)
-
+            >>> out
+            Tensor(shape=[3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                indices=[[0, 2]],
+                values=[-3.62686038,  1.17520118])
     """
     return _C_ops.sparse_sinh(x)
 
@@ -341,7 +360,10 @@ def asinh(x, name=None):
             >>> dense_x = paddle.to_tensor([-2., 0., 1.])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.asinh(sparse_x)
-
+            >>> out
+            Tensor(shape=[3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                indices=[[0, 2]],
+                values=[-1.44363546,  0.88137358])
     """
     return _C_ops.sparse_asinh(x)
 
@@ -371,7 +393,10 @@ def atanh(x, name=None):
             >>> dense_x = paddle.to_tensor([-2., 0., 1.])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.atanh(sparse_x)
-
+            >>> out
+            Tensor(shape=[3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                indices=[[0, 2]],
+                values=[nan , inf.])
     """
     return _C_ops.sparse_atanh(x)
 
@@ -401,7 +426,10 @@ def tanh(x, name=None):
             >>> dense_x = paddle.to_tensor([-2., 0., 1.])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.tanh(sparse_x)
-
+            >>> out
+            Tensor(shape=[3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                indices=[[0, 2]],
+                values=[-0.96402758,  0.76159418])
     """
     return _C_ops.sparse_tanh(x)
 
@@ -431,7 +459,10 @@ def square(x, name=None):
             >>> dense_x = paddle.to_tensor([-2., 0., 1.])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.square(sparse_x)
-
+            >>> out
+            Tensor(shape=[3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                indices=[[0, 2]],
+                values=[4., 1.])
     """
     return _C_ops.sparse_square(x)
 
@@ -461,7 +492,10 @@ def sqrt(x, name=None):
             >>> dense_x = paddle.to_tensor([-2., 0., 1.])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.sqrt(sparse_x)
-
+            >>> out
+            Tensor(shape=[3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                indices=[[0, 2]],
+                values=[nan, 1. ])
     """
     return _C_ops.sparse_sqrt(x)
 
@@ -491,7 +525,10 @@ def log1p(x, name=None):
             >>> dense_x = paddle.to_tensor([-2, 0, 1], dtype='float32')
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.log1p(sparse_x)
-
+            >>> out
+            Tensor(shape=[3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                indices=[[0, 2]],
+                values=[nan       , 0.69314718])
     """
     return _C_ops.sparse_log1p(x)
 
@@ -522,7 +559,10 @@ def cast(x, index_dtype=None, value_dtype=None, name=None):
             >>> dense_x = paddle.to_tensor([-2, 0, 1])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.cast(sparse_x, 'int32', 'float64')
-
+            >>> out
+            Tensor(shape=[3], dtype=paddle.float64, place=Place(cpu), stop_gradient=True,
+                indices=[[0, 2]],
+                values=[-2.,  1.])
     """
     if index_dtype and not isinstance(index_dtype, core.VarDesc.VarType):
         index_dtype = convert_np_dtype_to_dtype_(index_dtype)
@@ -557,7 +597,10 @@ def pow(x, factor, name=None):
             >>> dense_x = paddle.to_tensor([-2, 0, 3], dtype='float32')
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.pow(sparse_x, 2)
-
+            >>> out
+            Tensor(shape=[3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                indices=[[0, 2]],
+                values=[4., 9.])
     """
     return _C_ops.sparse_pow(x, float(factor))
 
@@ -587,7 +630,10 @@ def neg(x, name=None):
             >>> dense_x = paddle.to_tensor([-2, 0, 3], dtype='float32')
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.neg(sparse_x)
-
+            >>> out
+            Tensor(shape=[3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                indices=[[0, 2]],
+                values=[ 2., -3.])
     """
     return _C_ops.sparse_scale(x, -1.0, 0.0, True)
 
@@ -617,7 +663,10 @@ def abs(x, name=None):
             >>> dense_x = paddle.to_tensor([-2, 0, 3], dtype='float32')
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.abs(sparse_x)
-
+            >>> out
+            Tensor(shape=[3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                indices=[[0, 2]],
+                values=[2., 3.])
     """
     return _C_ops.sparse_abs(x)
 
@@ -681,7 +730,10 @@ def rad2deg(x, name=None):
             >>> dense_x = paddle.to_tensor([3.142, 0., -3.142])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.rad2deg(sparse_x)
-
+            >>> out
+            Tensor(shape=[3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                indices=[[0, 2]],
+                values=[ 180.02334595, -180.02334595])
     """
     if x.dtype in _int_dtype_:
         x = _C_ops.sparse_cast(x, None, core.VarDesc.VarType.FP32)
@@ -714,7 +766,10 @@ def deg2rad(x, name=None):
             >>> dense_x = paddle.to_tensor([-180, 0, 180])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.deg2rad(sparse_x)
-
+            >>> out
+            Tensor(shape=[3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                indices=[[0, 2]],
+                values=[-3.14159274,  3.14159274])
     """
     if x.dtype in _int_dtype_:
         x = _C_ops.sparse_cast(x, None, core.VarDesc.VarType.FP32)
@@ -746,6 +801,10 @@ def expm1(x, name=None):
             >>> dense_x = paddle.to_tensor([-2., 0., 1.])
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.expm1(sparse_x)
+            >>> out
+            Tensor(shape=[3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                indices=[[0, 2]],
+                values=[-0.86466473,  1.71828187])
     """
     return _C_ops.sparse_expm1(x)
 
