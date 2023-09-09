@@ -26,6 +26,7 @@ import numpy as np
 import subprocess
 import multiprocessing
 import sys
+import logging  # noqa: F401
 
 from .proto import framework_pb2
 
