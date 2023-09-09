@@ -76,6 +76,7 @@ Conv2dGradNodeFinal::operator()(
 
   // Inplace Strategy
 
+
   // Call grad_api function
   VLOG(3) << "Final State Running: Conv2dGradNodeFinal";
 
@@ -161,6 +162,41 @@ Conv2dGradNodeFinal::operator()(
     grad_node->SetGradInMeta(grad_filter, 1);
     // Set TensorWrappers for Forward Outputs if needed
   }
+
+    VLOG(6) << "gradnode_ptr = " << this;
+    if (VLOG_IS_ON(6)) {
+    const char *INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
+    std::string input_str = "";
+    std::string output_str = "";
+
+    const char *TENSOR_INPUT_TEMPLATE = " \n( input , [%s]), ";
+    std::string input_input_str =
+        paddle::string::Sprintf(TENSOR_INPUT_TEMPLATE, egr::EagerUtils::TensorStr(input));
+    input_str += input_input_str;
+
+    const char *TENSOR_FILTER_TEMPLATE = " \n( filter , [%s]), ";
+    std::string input_filter_str =
+        paddle::string::Sprintf(TENSOR_FILTER_TEMPLATE, egr::EagerUtils::TensorStr(filter));
+    input_str += input_filter_str;
+
+    const char *TENSOR_GRAD_OUT_TEMPLATE = " \n( grad_out , [%s]), ";
+    std::string input_grad_out_str =
+        paddle::string::Sprintf(TENSOR_GRAD_OUT_TEMPLATE, egr::EagerUtils::TensorStr(grad_out));
+    input_str += input_grad_out_str;
+
+    const char *TENSOR_GRAD_INPUT_TEMPLATE = " \n ( grad_input , [%s]), ";
+    std::string output_grad_input_str = paddle::string::Sprintf(
+        TENSOR_GRAD_INPUT_TEMPLATE, egr::EagerUtils::TensorStr(grad_input));
+    output_str += output_grad_input_str;
+
+    const char *TENSOR_GRAD_FILTER_TEMPLATE = " \n ( grad_filter , [%s]), ";
+    std::string output_grad_filter_str = paddle::string::Sprintf(
+        TENSOR_GRAD_FILTER_TEMPLATE, egr::EagerUtils::TensorStr(grad_filter));
+    output_str += output_grad_filter_str;
+
+    VLOG(6) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
+  }
+
 
   // Return
   if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
@@ -282,6 +318,57 @@ Conv2dDoubleGradNodeFinal::operator()(
     grad_out_grad_autograd_meta->SetStopGradient(false);
 
   // Create Grad Node
+
+
+   VLOG(6) << "gradnode_ptr = " << this;
+  if (VLOG_IS_ON(6)) {
+    const char *INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
+    std::string input_str = "";
+    std::string output_str = "";
+
+    const char *TENSOR_INPUT_TEMPLATE = " \n( input , [%s]), ";
+    std::string input_input_str =
+        paddle::string::Sprintf(TENSOR_INPUT_TEMPLATE, egr::EagerUtils::TensorStr(input));
+    input_str += input_input_str;
+
+    const char *TENSOR_FILTER_TEMPLATE = " \n( filter , [%s]), ";
+    std::string input_filter_str =
+        paddle::string::Sprintf(TENSOR_FILTER_TEMPLATE, egr::EagerUtils::TensorStr(filter));
+    input_str += input_filter_str;
+
+    const char *TENSOR_GRAD_OUT_TEMPLATE = " \n( grad_out , [%s]), ";
+    std::string input_grad_out_str =
+        paddle::string::Sprintf(TENSOR_GRAD_OUT_TEMPLATE, egr::EagerUtils::TensorStr(grad_out));
+    input_str += input_grad_out_str;
+
+    const char *TENSOR_GRAD_INPUT_GRAD_TEMPLATE = " \n( grad_input_grad , [%s]), ";
+    std::string input_grad_input_grad_str =
+        paddle::string::Sprintf(TENSOR_GRAD_INPUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(grad_input_grad));
+    input_str += input_grad_input_grad_str;
+
+    const char *TENSOR_GRAD_FILTER_GRAD_TEMPLATE = " \n( grad_filter_grad , [%s]), ";
+    std::string input_grad_filter_grad_str =
+        paddle::string::Sprintf(TENSOR_GRAD_FILTER_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(grad_filter_grad));
+    input_str += input_grad_filter_grad_str;
+
+    const char *TENSOR_INPUT_GRAD_TEMPLATE = " \n( input_grad , [%s]), ";
+    std::string output_input_grad_str =
+        paddle::string::Sprintf(TENSOR_INPUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(input_grad));
+    output_str += output_input_grad_str;
+
+    const char *TENSOR_FILTER_GRAD_TEMPLATE = " \n( filter_grad , [%s]), ";
+    std::string output_filter_grad_str =
+        paddle::string::Sprintf(TENSOR_FILTER_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(filter_grad));
+    output_str += output_filter_grad_str;
+
+    const char *TENSOR_GRAD_OUT_GRAD_TEMPLATE = " \n( grad_out_grad , [%s]) ";
+    std::string output_grad_out_grad_str =
+        paddle::string::Sprintf(TENSOR_GRAD_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(grad_out_grad));
+    output_str += output_grad_out_grad_str;
+
+    VLOG(6) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
+  }
+
 
   // Return
   if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);

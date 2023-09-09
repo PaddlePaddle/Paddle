@@ -566,10 +566,11 @@ MultiplyGradNode::operator()(
         "op. If you don't intend calculating higher order"
         "derivatives, please set `create_graph`to False."));
   }
-  VLOG(4) << "Finish AD API GRAD: multiply_grad";
+  VLOG(6) << "Finish AD API GRAD: multiply_grad";
   // LOG IF DEBUG
 
-  if (VLOG_IS_ON(4)) {
+  VLOG(6) << "gradnode_ptr = " << this;
+  if (VLOG_IS_ON(6)) {
     const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
 
     std::string input_str = "";

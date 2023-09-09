@@ -409,7 +409,8 @@ SyncBatchNormGradNode::operator()(
   VLOG(4) << "Finish AD API GRAD: sync_batch_norm_grad";
   // LOG IF DEBUG
 
-  if (VLOG_IS_ON(4)) {
+  VLOG(6) << "gradnode_ptr = " << this;
+  if (VLOG_IS_ON(6)) {
     const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
 
     std::string input_str = "";
@@ -457,7 +458,7 @@ SyncBatchNormGradNode::operator()(
     std::string output_bias_grad_str = paddle::string::Sprintf(
         TENSOR_BIAS_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(bias_grad));
     output_str += output_bias_grad_str;
-    VLOG(4) << paddle::string::Sprintf(
+    VLOG(6) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
 
