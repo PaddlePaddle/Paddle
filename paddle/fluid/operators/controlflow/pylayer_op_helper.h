@@ -38,11 +38,6 @@ void PrepareSafeEagerDeletionOnPyLayerOpAndPyLayerGradOp(
 
 void PrepareSafeEagerDeletionOnPyLayerOpAndPyLayerGradOp(
     const framework::ProgramDesc &program,
-    int block_id,
-    const std::vector<framework::OperatorBase *> &all_ops);
-
-void PrepareSafeEagerDeletionOnPyLayerOpAndPyLayerGradOp(
-    const framework::ProgramDesc &program,
     const std::vector<OpVariant> &pylayer_ops,
     const std::vector<OpVariant> &pylayer_grad_ops);
 

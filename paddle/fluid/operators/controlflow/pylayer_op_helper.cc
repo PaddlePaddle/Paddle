@@ -161,33 +161,6 @@ void PrepareSafeEagerDeletionOnPyLayerOpAndPyLayerGradOp(
   PrepareSafeEagerDeletionOnPyLayerOpAndPyLayerGradOp(
       program, &fwd_ops, &bwd_ops);
 }
-void PrepareSafeEagerDeletionOnPyLayerOpAndPyLayerGradOp(
-    const framework::ProgramDesc &program,
-    int block_id,
-    const std::vector<framework::OperatorBase *> &all_ops) {
-  // If block_id is not 0, returns
-  // This is because all pylayer_ops and pylayer_grad_ops
-  // in the whole program would be processed when block_id is 0 (i.e.
-  // when Executor::Run() or ParallelExecutor constructs).
-
-  // What's more, all pylayer_ops and pylayer_grad_ops
-  // must be processed when block_id is zero. If not, pylayer_op
-  // may run first and erase variables used in pylayer_grad_op,
-  // and in this moment, pylayer_grad_ops may be not constructed yet.
-  if (block_id != 0) return;
-
-  std::vector<OpVariant> fwd_ops, bwd_ops;
-  for (auto *op : all_ops) {
-    if (op->Type() == "pylayer") {
-      fwd_ops.emplace_back(op);
-    } else if (op->Type() == "pylayer_grad") {
-      bwd_ops.emplace_back(op);
-    }
-  }
-
-  PrepareSafeEagerDeletionOnPyLayerOpAndPyLayerGradOp(
-      program, &fwd_ops, &bwd_ops);
-}
 
 void PrepareSafeEagerDeletionOnPyLayerOpAndPyLayerGradOp(
     const framework::ProgramDesc &program,
