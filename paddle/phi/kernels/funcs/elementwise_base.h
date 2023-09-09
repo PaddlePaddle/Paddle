@@ -553,20 +553,12 @@ struct Loader {
 
 template <int Index>
 struct InputSetter {
-  template <typename Array>
-  static HOSTDEVICE void Apply(
-      const std::vector<const DenseTensor *> &ins_tensor, Array *ins_data) {
-    (*ins_data)[Index] = (const _ptr_ char *)(ins_tensor[Index]->data());
-  }
-};
-
-template <int Index>
-struct InputChecker {
-  template <typename ArgsT>
-  static auto Apply(const std::vector<const DenseTensor *> &ins,
-                    const ArgsT &args) {
+  template <typename Array, typename ArgsT>
+  static void Apply(const std::vector<const DenseTensor *> &ins_tensor,
+                    const ArgsT &args,
+                    Array *ins_data) {
     using Type = std::tuple_element_t<Index, ArgsT>;
-    return ins[Index]->data<Type>();
+    (*ins_data)[Index] = (const _ptr_ char *)(ins_tensor[Index]->data<Type>());
   }
 };
 
@@ -742,7 +734,10 @@ void LaunchElementwiseKernel(const KPDevice &ctx,
   phi::Array<const _ptr_ char *__restrict__, Arity> ins_data;
   phi::Array<_ptr_ OutT *, NumOuts> outs_data;
 
-  UnrollerWithoutVecSize<InputSetter, Arity>::step(ins, &ins_data);
+  using Traits = phi::funcs::FunctionTraits<Functor>;
+  using ArgsT = typename Traits::ArgsTuple;
+  ArgsT arg;
+  UnrollerWithoutVecSize<InputSetter, Arity>::step(ins, arg, &ins_data);
   for (int i = 0; i < outs->size(); ++i) {
     outs_data[i] = (*outs)[i]->data<OutT>();
   }
@@ -816,7 +811,6 @@ void ElementwiseKernel(const KPDevice &ctx,
                        std::vector<DenseTensor *> *outs,
                        Functor func) {
   using Traits = phi::funcs::FunctionTraits<Functor>;
-  using ArgsT = typename Traits::ArgsTuple;
   const int kArity = Traits::arity;
   PADDLE_ENFORCE_EQ(ins.size(),
                     kArity,
@@ -834,8 +828,6 @@ void ElementwiseKernel(const KPDevice &ctx,
                         outs->size(),
                         NumOuts));
 
-  ArgsT arg;
-  UnrollerWithoutVecSize<InputChecker, kArity>::step(ins, arg);
   for (int i = 0; i < outs->size(); ++i) {
     if (i > 0) {
       PADDLE_ENFORCE_EQ(

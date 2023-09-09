@@ -31,7 +31,7 @@ namespace funcs {
 
 enum BroadcastType { kMixed = 1, kBroadcast = 2, kElementwise = 3 };
 
-template <typename OutT, int Arity, int NumOuts>
+template <typename OutT, typename Functor, int Arity, int NumOuts>
 struct BroadcastTypeClassifier {
   int64_t numel{0};
   int broadcast_num{0};                   // Not used for XPU
@@ -62,7 +62,10 @@ struct BroadcastTypeClassifier {
 
     InitBroadcastConfigs(ins, outs, axis);
 
-    UnrollerWithoutVecSize<InputSetter, Arity>::step(ins, &ins_data);
+    using Traits = phi::funcs::FunctionTraits<Functor>;
+    using ArgsT = typename Traits::ArgsTuple;
+    ArgsT arg;
+    UnrollerWithoutVecSize<InputSetter, Arity>::step(ins, arg, &ins_data);
     for (int i = 0; i < NumOuts; ++i) {
       outs_data[i] = (*outs)[i]->data<OutT>();
     }
@@ -429,7 +432,7 @@ __global__ void VectorizedBroadcastKernel(
 template <typename OutT, typename Functor, int Arity, int NumOuts, int VecSize>
 void LaunchBroadcastKernel(
     const KPDevice &ctx,
-    const BroadcastTypeClassifier<OutT, Arity, NumOuts> &classifier,
+    const BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts> &classifier,
     Functor func) {
 #ifdef PADDLE_WITH_XPU_KP
   int numel = classifier.numel;
@@ -628,9 +631,12 @@ struct LaunchBroadcastKernelWithInt64IndexHelper<OutT,
                   std::vector<DenseTensor *> *outs,
                   int axis,
                   Functor functor) {
+    using Traits = phi::funcs::FunctionTraits<Functor>;
+    using ArgsT = typename Traits::ArgsTuple;
+    ArgsT arg;
     phi::Array<const _ptr_ char *__restrict__, MaxWithOne<Arity>::kValue>
         ins_ptrs;
-    UnrollerWithoutVecSize<InputSetter, Arity>::step(ins, &ins_ptrs);
+    UnrollerWithoutVecSize<InputSetter, Arity>::step(ins, arg, &ins_ptrs);
 
     auto *out_tensor = (*outs)[0];
     auto *out_ptr = ctx.Alloc<OutT>(out_tensor);
@@ -839,7 +845,7 @@ BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
 #endif
 
   auto classifier =
-      BroadcastTypeClassifier<OutT, Arity, NumOuts>(ins, outs, axis);
+      BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts>(ins, outs, axis);
   LaunchBroadcastKernel<OutT, Functor, Arity, NumOuts, VecSizeS>(
       ctx, classifier, func);
 }
@@ -914,7 +920,7 @@ BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
 #endif
 
   auto classifier =
-      BroadcastTypeClassifier<OutT, Arity, NumOuts>(ins, outs, axis);
+      BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts>(ins, outs, axis);
   switch (vec_size) {
     case VecSizeL: {
       LaunchBroadcastKernel<OutT, Functor, Arity, NumOuts, VecSizeL>(
@@ -948,7 +954,6 @@ void BroadcastKernel(const KPDevice &ctx,
   // When there are multiple inputs, the outputs's rank should be equal the
   // maximum rank of all inputs.
   using Traits = phi::funcs::FunctionTraits<Functor>;
-  using ArgsT = typename Traits::ArgsTuple;
   const int kArity = Traits::arity;
 
 #ifdef PADDLE_WITH_XPU_KP
@@ -979,8 +984,6 @@ void BroadcastKernel(const KPDevice &ctx,
                                    outs->size(),
                                    NumOuts));
 
-  ArgsT arg;
-  UnrollerWithoutVecSize<InputChecker, kArity>::step(ins, arg);
   for (auto i = 0; i < outs->size(); ++i) {
     if (i > 0) {
       PADDLE_ENFORCE_EQ(
