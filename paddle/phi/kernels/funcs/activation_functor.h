@@ -2485,7 +2485,8 @@ struct CeilFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct CeilFunctor<ComplexType<T>> : public BaseActivationFunctor<ComplexType<T>> {
+struct CeilFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
     out.device(d) = x.ceil();
@@ -4263,7 +4264,8 @@ struct CudaCeilFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct CudaCeilFunctor<ComplexType<T>> : public BaseActivationFunctor<ComplexType<T>> {
+struct CudaCeilFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   // ceil(x) = ceil(x)
