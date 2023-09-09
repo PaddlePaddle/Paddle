@@ -77,6 +77,22 @@ class cus_tanh_1(PyLayer):
         return grad
 
 
+class nested_layer(PyLayer):
+    @staticmethod
+    def forward(ctx, x1, x2):
+        y = cus_tanh_1.apply(x1)
+        ctx.save_for_backward(y)
+        ret = y + x2
+        return ret
+
+    @staticmethod
+    def backward(ctx, dy):
+        (y,) = ctx.saved_tensor()
+        grad1 = scaled_layer_1.apply(dy)
+        grad2 = dy - paddle.square(y)
+        return grad1, grad2
+
+
 class SimpleNet_1(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
@@ -239,6 +255,21 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1.stop_gradient = False
 
         self._run_and_compare(input1)
+
+    def test_nested_pylayer(self):
+        @paddle.jit.to_static
+        def test_func(x1, x2):
+            y = nested_layer.apply(x1, x2)
+            return y
+
+        self.dygraph_func = test_func
+
+        input1 = paddle.randn([2, 3]).astype("float32")
+        input2 = paddle.randn([2, 3]).astype("float32")
+        input1.stop_gradient = False
+        input2.stop_gradient = False
+
+        self._run_and_compare(input1, input2)
 
 
 class TestPyLayerInsideNet(TestPyLayerBase):

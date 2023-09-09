@@ -206,7 +206,7 @@ def _rename_var_recursively_(cur_block, var_old_to_new):
                 sub_block_id = op._block_attr_id(attr_name)
                 sub_block = cur_block.program.block(sub_block_id)
                 _rename_var_recursively_(sub_block, var_old_to_new)
-            elif op.attr_type(attr_name) == core.Attrtype.BLOCKS:
+            elif op.attr_type(attr_name) == core.AttrType.BLOCKS:
                 sub_blocks_ids = op._blocks_attr_ids(attr_name)
                 for sub_block_id in sub_blocks_ids:
                     sub_block = cur_block.program.block(sub_block_id)
