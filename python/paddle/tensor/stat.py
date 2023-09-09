@@ -468,8 +468,8 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
 
     Args:
         x (Tensor): The input Tensor, it's data type can be float32, float64, int32, int64.
-        q (int|float|list|Tensor): The q for calculate quantile, which should be in range [0, 1]. If q is a list or
-            a 1-D Tensor, each q will be calculated and the first dimension of output is same to the number of ``q`` .
+        q (int|float|list|Tensor): The q for calculate quantile, which should be in range [0, 1]. If q is a list,
+            a 1-D Tensor or a 0-D Tensor, each q will be calculated and the first dimension of output is same to the number of ``q`` .
         axis (int|list, optional): The axis along which to calculate quantile. ``axis`` should be int or list of int.
             ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
             If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
@@ -610,8 +610,8 @@ def quantile(x, q, axis=None, keepdim=False):
 
     Args:
         x (Tensor): The input Tensor, it's data type can be float32, float64, int32, int64.
-        q (int|float|list|Tensor): The q for calculate quantile, which should be in range [0, 1]. If q is a list or
-            a 1-D Tensor, each q will be calculated and the first dimension of output is same to the number of ``q`` .
+        q (int|float|list|Tensor): The q for calculate quantile, which should be in range [0, 1]. If q is a list,
+            a 1-D Tensor or a 0-D Tensor, each q will be calculated and the first dimension of output is same to the number of ``q`` .
         axis (int|list, optional): The axis along which to calculate quantile. ``axis`` should be int or list of int.
             ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
             If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
@@ -678,8 +678,8 @@ def nanquantile(x, q, axis=None, keepdim=False):
 
     Args:
         x (Tensor): The input Tensor, it's data type can be float32, float64, int32, int64.
-        q (int|float|list): The q for calculate quantile, which should be in range [0, 1]. If q is a list,
-            each q will be calculated and the first dimension of output is same to the number of ``q`` .
+        q (int|float|list|Tensor): The q for calculate quantile, which should be in range [0, 1]. If q is a list or
+            a 1-D Tensor, each q will be calculated and the first dimension of output is same to the number of ``q`` .
         axis (int|list, optional): The axis along which to calculate quantile. ``axis`` should be int or list of int.
             ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
             If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
