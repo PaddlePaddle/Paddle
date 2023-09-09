@@ -2466,6 +2466,14 @@ struct FloorFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct FloorFunctor<ComplexType<T>> : public BaseActivationFunctor<ComplexType<T>> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.floor();
+  }
+};
+
 // round(x) = [x]
 template <typename T>
 struct RoundFunctor : public BaseActivationFunctor<T> {
@@ -4256,6 +4264,17 @@ struct CudaCeilFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct CudaFloorFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  // floor(x) = floor(x)
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    return static_cast<T>(floor(x));
+  }
+};
+
+template <typename T>
+struct CudaFloorFunctor<ComplexType<T>> : public BaseActivationFunctor<ComplexType<T>> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   // floor(x) = floor(x)

@@ -1603,6 +1603,16 @@ class TestFloor(TestActivation):
             )
 
 
+class TestFloor_Complex64(TestFloor):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestFloor_Complex128(TestFloor):
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+
 class TestFloor_ZeroDim(TestFloor):
     def init_shape(self):
         self.shape = []
