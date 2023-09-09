@@ -29,7 +29,7 @@ import filters as op_gen_filters
 import tests_utils as op_gen_tests
 from parse_utils import to_named_dict
 
-# import from paddle/fluid/ir/dialect/op_generator/api_gen.py
+# import from paddle/fluid/pir/dialect/op_generator/api_gen.py
 sys.path.append(
     str(pathlib.Path(__file__).resolve().parents[2] / 'ir/dialect/op_generator')
 )
