@@ -19,7 +19,7 @@ from eager_op_test import convert_float_to_uint16
 from test_sum_op import TestSumOp
 
 from paddle import enable_static
-from paddle.fluid import core
+from paddle.base import core
 
 
 @unittest.skipIf(

@@ -15,8 +15,8 @@
 import paddle
 
 # TODO: define loss functions of neural network
-from paddle import fluid, in_dynamic_mode
-from paddle.fluid.framework import in_dygraph_mode
+from paddle import base, in_dynamic_mode
+from paddle.base.framework import in_dygraph_mode
 
 from .. import functional as F
 from .layers import Layer
@@ -231,7 +231,7 @@ class CrossEntropyLoss(Layer):
 
             where, N is the number of samples and C is the number of categories.
 
-            2.3.2. If the 'weight' parameter is not 'None', the weighted average value of the previous result will be returned
+            2.3.2. If the ``weight`` parameter is ``None`` , the weighted average value of the previous result will be returned
 
             1. Hard labels (soft_label = False)
 
@@ -302,6 +302,7 @@ class CrossEntropyLoss(Layer):
     Examples:
 
         .. code-block:: python
+            :name: code-example1
 
             >>> # hard labels
             >>> import paddle
@@ -321,6 +322,7 @@ class CrossEntropyLoss(Layer):
             5.33697682)
 
         .. code-block:: python
+            :name: code-example2
 
             >>> # soft labels
             >>> import paddle
@@ -581,10 +583,10 @@ class MSELoss(Layer):
 
     def forward(self, input, label):
         if not in_dynamic_mode():
-            fluid.data_feeder.check_variable_and_dtype(
+            base.data_feeder.check_variable_and_dtype(
                 input, 'input', ['float32', 'float64'], 'MSELoss'
             )
-            fluid.data_feeder.check_variable_and_dtype(
+            base.data_feeder.check_variable_and_dtype(
                 label, 'label', ['float32', 'float64'], 'MSELoss'
             )
 

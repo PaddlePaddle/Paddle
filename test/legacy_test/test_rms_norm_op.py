@@ -16,8 +16,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def quant_helper(
@@ -331,7 +331,7 @@ class TestRMSNormStaticOp(unittest.TestCase):
                 self.epsilon,
                 begin_norm_axis=1,
             )
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             out_s = exe.run(
                 feed={
                     "x_static": x_np.astype(dtype),
@@ -381,7 +381,7 @@ class TestRMSNormStaticOp(unittest.TestCase):
                 quant_max_bound=self.quant_max_bound,
                 quant_min_bound=self.quant_min_bound,
             )
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             out_s = exe.run(
                 feed={
                     "x_static": x_np.astype(dtype),
@@ -435,7 +435,7 @@ class TestRMSNormStaticOp(unittest.TestCase):
                 residual=residual_static,
             )
 
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             out_s = exe.run(
                 feed={
                     "x_static": x_np.astype(dtype),
@@ -487,7 +487,6 @@ class TestRMSNormStaticOp(unittest.TestCase):
         paddle_rmsnorm, paddle_naive_rmsnorm = self.check_rmsnorm_int8(
             self.x_np, self.norm_weight_np, self.norm_bias_np, 'float16'
         )
-        print("1111")
         np.testing.assert_allclose(
             paddle_rmsnorm,
             paddle_naive_rmsnorm.numpy(),

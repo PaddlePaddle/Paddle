@@ -200,7 +200,8 @@ TEST(Decomposer, BatchNormTrain) {
   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto run_program = gc.Build();
 
   // set input
@@ -399,7 +400,8 @@ TEST(Decomposer, BatchNormGrad) {
   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto run_program = gc.Build();
 
   // set input

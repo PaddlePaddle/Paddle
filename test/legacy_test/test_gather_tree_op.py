@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-from paddle.fluid.framework import Program, program_guard
+from paddle.base.framework import Program, program_guard
 
 
 class TestGatherTreeOp(OpTest):

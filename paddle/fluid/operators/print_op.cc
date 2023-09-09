@@ -34,7 +34,6 @@ class OpBase;
 
 namespace paddle {
 namespace operators {
-using framework::GradVarName;
 
 #define CLOG std::cout
 

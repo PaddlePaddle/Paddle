@@ -477,6 +477,16 @@ HOSTDEVICE inline complex<T> conj(const complex<T>& a) {
 }
 
 template <typename T>
+HOSTDEVICE inline complex<T> exp(const complex<T>& a) {
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+  return complex<T>(thrust::exp(thrust::complex<T>(a)));
+#else
+  return complex<T>(std::exp(std::complex<T>(a)));
+#endif
+}
+
+template <typename T>
 HOSTDEVICE inline complex<T> log(const complex<T>& a) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
     (defined(__CUDA_ARCH__) || defined(__HIPCC__))

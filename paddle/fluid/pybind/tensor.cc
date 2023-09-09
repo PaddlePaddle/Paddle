@@ -170,13 +170,11 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/tensor.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#endif
 
 PHI_DECLARE_bool(use_mkldnn);
 PHI_DECLARE_bool(use_shm_cache);
@@ -395,11 +393,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle.base as base
                 import numpy as np
 
-                t = fluid.Tensor()
-                t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                t = base.Tensor()
+                t.set(np.ndarray([5, 30]), base.CPUPlace())
           )DOC")
 
       .def(
@@ -415,11 +413,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            Examples:
                .. code-block:: python
 
-                  import paddle.fluid as fluid
+                  import paddle.base as base
                   import numpy as np
 
-                  t = fluid.Tensor()
-                  t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                  t = base.Tensor()
+                  t.set(np.ndarray([5, 30]), base.CPUPlace())
                   print(t.shape())  # [5, 30]
            )DOC")
       .def("_to_dlpack",
@@ -519,11 +517,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            Examples:
                .. code-block:: python
 
-                 import paddle.fluid as fluid
+                 import paddle.base as base
                  import numpy as np
 
-                 t = fluid.Tensor()
-                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                 t = base.Tensor()
+                 t.set(np.ndarray([5, 30]), base.CPUPlace())
                  t.set_lod([[0, 2, 5]])
                  print(t.lod()) # [[0, 2, 5]]
            )DOC")
@@ -568,11 +566,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            Examples:
                .. code-block:: python
 
-                 import paddle.fluid as fluid
+                 import paddle.base as base
                  import numpy as np
 
-                 t = fluid.Tensor()
-                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                 t = base.Tensor()
+                 t.set(np.ndarray([5, 30]), base.CPUPlace())
                  t.set_recursive_sequence_lengths([[2, 3]])
                  print(t.recursive_sequence_lengths())  # [[2, 3]]
                  print(t.lod())  # [[0, 2, 5]]
@@ -596,11 +594,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            Examples:
                .. code-block:: python
 
-                 import paddle.fluid as fluid
+                 import paddle.base as base
                  import numpy as np
 
-                 t = fluid.Tensor()
-                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                 t = base.Tensor()
+                 t.set(np.ndarray([5, 30]), base.CPUPlace())
                  t.set_lod([[0, 2, 5]])
                  print(t.lod()) # [[0, 2, 5]]
            )DOC")
@@ -625,11 +623,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            Examples:
                .. code-block:: python
 
-                 import paddle.fluid as fluid
+                 import paddle.base as base
                  import numpy as np
 
-                 t = fluid.Tensor()
-                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                 t = base.Tensor()
+                 t.set(np.ndarray([5, 30]), base.CPUPlace())
                  t.set_recursive_sequence_lengths([[2, 3]])
                  print(t.recursive_sequence_lengths()) # [[2, 3]]
            )DOC")
@@ -649,11 +647,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            Examples:
                .. code-block:: python
 
-                 import paddle.fluid as fluid
+                 import paddle.base as base
                  import numpy as np
 
-                 t = fluid.Tensor()
-                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                 t = base.Tensor()
+                 t.set(np.ndarray([5, 30]), base.CPUPlace())
                  t.set_recursive_sequence_lengths([[2, 3]])
                  print(t.has_valid_recursive_sequence_lengths()) # True
            )DOC")
@@ -826,7 +824,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                  import paddle
                  tensor = paddle.ones([3,3])
                  metainfo = tensor.value().get_tensor()._share_cuda()
-                 tensor_from_shared = paddle.to_tensor(paddle.fluid.core.LoDTensor._new_shared_cuda(metainfo))
+                 tensor_from_shared = paddle.to_tensor(paddle.base.core.LoDTensor._new_shared_cuda(metainfo))
 
         )DOC")
 #endif
@@ -947,7 +945,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                  import paddle
                  tensor = paddle.ones([3,3])
                  metainfo = tensor.value().get_tensor()._share_filename()
-                 tensor_from_shared = paddle.to_tensor(paddle.fluid.core.LoDTensor._new_shared_filename(metainfo))
+                 tensor_from_shared = paddle.to_tensor(paddle.base.core.LoDTensor._new_shared_filename(metainfo))
 
         )DOC")
       .def("_shared_incref",
@@ -1029,7 +1027,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
   py::class_<DistTensor>(m, "DistTensor")
       .def(
           "get_tensor",
-          [](DistTensor &self) { return self.mutable_value(); },
+          [](DistTensor &self) { return self.value(); },
           py::return_value_policy::reference)
       .def("numel",
            [](DistTensor &self) -> int64_t { return self.value().numel(); });

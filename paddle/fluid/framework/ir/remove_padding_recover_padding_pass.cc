@@ -453,7 +453,9 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     }
 
     if (PADDLE_GET_CONST(
-            int, matrix_multiply_op->Op()->GetAttr("x_num_col_dims")) != 2) {
+            int, matrix_multiply_op->Op()->GetAttr("x_num_col_dims")) != 2 &&
+        PADDLE_GET_CONST(
+            int, matrix_multiply_op->Op()->GetAttr("x_num_col_dims")) != -1) {
       check_flag = false;
     }
     if (!check_flag) {

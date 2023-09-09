@@ -24,9 +24,14 @@
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
 
-DECLARE_bool(cudnn_deterministic);
+PD_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
+
+int get_num_split() {
+  // 0 for an internal heuristic, which is optimal
+  return FLAGS_cudnn_deterministic ? 1 : 0;
+}
 
 template <typename T, typename Context>
 void FlashAttnUnpaddedGradImpl(const Context& ctx,
@@ -70,7 +75,6 @@ void FlashAttnUnpaddedGradImpl(const Context& ctx,
       phi::errors::InvalidArgument("The head_dim is expected to be either 32, "
                                    "64, or 128, but recieved %d.",
                                    head_size));
-
   const int64_t* seed_offset_data = seed_offset.data<int64_t>();
   uint64_t seed = static_cast<uint64_t>(seed_offset_data[0]);
   uint64_t offset = static_cast<uint64_t>(seed_offset_data[1]);
@@ -88,8 +92,13 @@ void FlashAttnUnpaddedGradImpl(const Context& ctx,
   bool fa_zero_tensors = false;
 
   uint64_t workspace_size;
+
+  int64_t q_size = total_q * num_heads * head_size;
+  DenseTensor scaled_q = Empty<T>(ctx, {total_q, num_heads, head_size});
+  ComputeScaleQ(ctx, q_size, scale, q.data<T>(), scaled_q.data<T>());
+
   bool succ = phi::dynload::flash_attn_bwd_with_bias_and_mask(
-      static_cast<const void*>(q.data()),
+      static_cast<const void*>(scaled_q.data<T>()),
       static_cast<const void*>(k.data()),
       static_cast<const void*>(v.data()),
       static_cast<void*>(dq->data()),
@@ -124,7 +133,6 @@ void FlashAttnUnpaddedGradImpl(const Context& ctx,
       mask_dims.data() ? mask_dims.data() : nullptr,
       nullptr);
   CheckFlashAttnStatus(succ);
-
   DenseTensor workspace;
   if (workspace_size > 0) {
     workspace = Empty<float>(
@@ -132,7 +140,7 @@ void FlashAttnUnpaddedGradImpl(const Context& ctx,
   }
 
   succ = phi::dynload::flash_attn_bwd_with_bias_and_mask(
-      static_cast<const void*>(q.data()),
+      static_cast<const void*>(scaled_q.data<T>()),
       static_cast<const void*>(k.data()),
       static_cast<const void*>(v.data()),
       static_cast<void*>(dq->data()),
@@ -168,7 +176,6 @@ void FlashAttnUnpaddedGradImpl(const Context& ctx,
       nullptr);
   CheckFlashAttnStatus(succ);
 
-  int64_t q_size = total_q * num_heads * head_size;
   ComputeScaleQ(ctx, q_size, scale, dq->data<T>(), dq->data<T>());
 #else
   RaiseNotSupportedError();
@@ -234,11 +241,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
     const int64_t total_k = k.dims()[0];
     const int64_t num_heads_k = k.dims()[1];
 
-    // TODO(umiswing): add deterministic in fa2.
-    // int num_splits = 0;  // 0 for an internal heuristic, which is optimal
-    // if (FLAGS_cudnn_deterministic) {
-    //   num_splits = 1;
-    // }
+    int num_splits = get_num_split();
 
     // TODO(umiswing): add shape check
     PADDLE_ENFORCE_EQ(
@@ -292,6 +295,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                                             params.scale,
                                             params.causal,
                                             params.is_bf16,
+                                            num_splits,
                                             stream,
                                             params.seed,
                                             params.offset);
@@ -399,6 +403,8 @@ void FlashAttnGradKernel(const Context& ctx,
     VLOG(10) << "FlashAttn bwd seed: " << params.seed
              << ", offset: " << params.offset;
 
+    int num_splits = get_num_split();
+
     bool succ = phi::dynload::flash_attn_bwd(dout.data(),
                                              q.data(),
                                              k.data(),
@@ -424,6 +430,7 @@ void FlashAttnGradKernel(const Context& ctx,
                                              params.scale,
                                              params.causal,
                                              params.is_bf16,
+                                             num_splits,
                                              stream,
                                              params.seed,
                                              params.offset);

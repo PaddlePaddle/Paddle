@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/tensor_array.h"
 #include "paddle/phi/core/tensor_meta.h"
+
 namespace phi {
 
 class DenseTensorUtils {

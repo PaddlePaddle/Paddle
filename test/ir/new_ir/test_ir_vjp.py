@@ -16,7 +16,7 @@ import unittest
 
 import paddle
 from paddle import ir
-from paddle.fluid.core import call_vjp, has_vjp
+from paddle.base.core import call_vjp, has_vjp
 
 paddle.enable_static()
 
@@ -106,7 +106,7 @@ class TestMeanVjp(unittest.TestCase):
                 .source()
                 .get_defining_op()
                 .name(),
-                "builtin.get_parameter",
+                "pd.data",
             )
             self.assertEqual(
                 grad_outs[0][0]

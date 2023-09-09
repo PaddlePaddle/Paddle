@@ -34,7 +34,6 @@ limitations under the License.
 // The following code modified from OneFlow's implementation, and change to use
 // single Pass algorithm. Support Int8 quant, dequant Load/Store implementation.
 
-#include "paddle/phi/kernels/fusion/gpu/fused_layernorm_kernel.h"
 #include <assert.h>
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -1075,14 +1074,22 @@ PD_REGISTER_KERNEL(fused_bias_residual_layernorm,
                    phi::fusion::FusedLayerNormKernel,
                    float,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+}
 #else
 PD_REGISTER_KERNEL(fused_bias_residual_layernorm,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedLayerNormKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+}
 #endif  // CUDNN_VERSION_MIN
 #else
 PD_REGISTER_KERNEL(fused_bias_residual_layernorm,
@@ -1090,5 +1097,9 @@ PD_REGISTER_KERNEL(fused_bias_residual_layernorm,
                    ALL_LAYOUT,
                    phi::fusion::FusedLayerNormKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+}
 #endif  // PADDLE_WITH_HIP

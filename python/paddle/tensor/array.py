@@ -14,8 +14,8 @@
 
 # Define functions about array.
 
+from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
-from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..framework import LayerHelper, core, in_dynamic_mode
 
 __all__ = []
@@ -34,16 +34,17 @@ def array_length(array):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            arr = paddle.tensor.create_array(dtype='float32')
-            x = paddle.full(shape=[3, 3], fill_value=5, dtype="float32")
-            i = paddle.zeros(shape=[1], dtype="int32")
+            >>> arr = paddle.tensor.create_array(dtype='float32')
+            >>> x = paddle.full(shape=[3, 3], fill_value=5, dtype="float32")
+            >>> i = paddle.zeros(shape=[1], dtype="int32")
 
-            arr = paddle.tensor.array_write(x, i, array=arr)
+            >>> arr = paddle.tensor.array_write(x, i, array=arr)
 
-            arr_len = paddle.tensor.array_length(arr)
-            print(arr_len)  # 1
+            >>> arr_len = paddle.tensor.array_length(arr)
+            >>> print(arr_len)
+            1
     """
     if in_dynamic_mode():
         assert isinstance(
@@ -98,16 +99,17 @@ def array_read(array, i):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            arr = paddle.tensor.create_array(dtype="float32")
-            x = paddle.full(shape=[1, 3], fill_value=5, dtype="float32")
-            i = paddle.zeros(shape=[1], dtype="int32")
+            >>> arr = paddle.tensor.create_array(dtype="float32")
+            >>> x = paddle.full(shape=[1, 3], fill_value=5, dtype="float32")
+            >>> i = paddle.zeros(shape=[1], dtype="int32")
 
-            arr = paddle.tensor.array_write(x, i, array=arr)
+            >>> arr = paddle.tensor.array_write(x, i, array=arr)
 
-            item = paddle.tensor.array_read(arr, i)
-            print(item)     # [[5., 5., 5.]]
+            >>> item = paddle.tensor.array_read(arr, i)
+            >>> print(item.numpy())
+            [[5. 5. 5.]]
     """
     if in_dynamic_mode():
         assert isinstance(
@@ -158,16 +160,17 @@ def array_write(x, i, array=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            arr = paddle.tensor.create_array(dtype="float32")
-            x = paddle.full(shape=[1, 3], fill_value=5, dtype="float32")
-            i = paddle.zeros(shape=[1], dtype="int32")
+            >>> arr = paddle.tensor.create_array(dtype="float32")
+            >>> x = paddle.full(shape=[1, 3], fill_value=5, dtype="float32")
+            >>> i = paddle.zeros(shape=[1], dtype="int32")
 
-            arr = paddle.tensor.array_write(x, i, array=arr)
+            >>> arr = paddle.tensor.array_write(x, i, array=arr)
 
-            item = paddle.tensor.array_read(arr, i)
-            print(item)     # [[5., 5., 5.]]
+            >>> item = paddle.tensor.array_read(arr, i)
+            >>> print(item.numpy())
+            [[5. 5. 5.]]
     """
     if in_dynamic_mode():
         assert isinstance(
@@ -236,16 +239,17 @@ def create_array(dtype, initialized_list=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            arr = paddle.tensor.create_array(dtype="float32")
-            x = paddle.full(shape=[1, 3], fill_value=5, dtype="float32")
-            i = paddle.zeros(shape=[1], dtype="int32")
+            >>> arr = paddle.tensor.create_array(dtype="float32")
+            >>> x = paddle.full(shape=[1, 3], fill_value=5, dtype="float32")
+            >>> i = paddle.zeros(shape=[1], dtype="int32")
 
-            arr = paddle.tensor.array_write(x, i, array=arr)
+            >>> arr = paddle.tensor.array_write(x, i, array=arr)
 
-            item = paddle.tensor.array_read(arr, i)
-            print(item)     # [[5., 5., 5.]]
+            >>> item = paddle.tensor.array_read(arr, i)
+            >>> print(item.numpy())
+            [[5. 5. 5.]]
 
     """
     array = []

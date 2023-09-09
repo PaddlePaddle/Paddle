@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
+
 #include <map>
 #include <string>
 #include <unordered_map>
 #include <vector>
-
-#include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -42,7 +42,7 @@ std::vector<int> GetValueIds(
     const std::unordered_map<const paddle::framework::Variable*, std::string>&
         variable_2_var_name) {
   std::vector<int> ids;
-  std::string var_name = value_2_var_name.at(value);
+  auto& var_name = value_2_var_name.at(value);
   ids.push_back(var_name_2_id.at(var_name));
   // NOTE(zhangbo): Value maybe a VariableRefArray
   auto var = inner_scope->FindVar(var_name);
@@ -61,7 +61,7 @@ platform::DeviceContext* ParseDeviceContext(
     const platform::Place& place,
     const std::string& execution_stream,
     const int stream_priority) {
-  auto op_attributes = op->attributes();
+  auto& op_attributes = op->attributes();
   auto op_name =
       op_attributes.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
   interpreter::ContextManager& ctx_manager =
@@ -149,7 +149,7 @@ OpFuncType AnalyseOpFuncType(::ir::Operation* op,
   // computing. They execute serially in device thread and block CUDA kernel
   // launching in other GPU OPs. To improve performance, set them as kGpuSync
   // and so that they would be dispatched to host thread.
-  auto op_attributes = op->attributes();
+  auto& op_attributes = op->attributes();
   auto op_name =
       op_attributes.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
   if (op_name == kCoalesceTensor &&

@@ -26,11 +26,11 @@ from dist_fleet_ctr import TestDistCTR2x2, fake_ctr_reader
 from test_dist_fleet_base import runtime_main
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 # Fix seed for test
-fluid.default_startup_program().random_seed = 1
-fluid.default_main_program().random_seed = 1
+base.default_startup_program().random_seed = 1
+base.default_main_program().random_seed = 1
 
 
 class TestDistGpuPsCTR2x2(TestDistCTR2x2):
@@ -44,7 +44,7 @@ class TestDistGpuPsCTR2x2(TestDistCTR2x2):
         with open(model_filename, "rb") as f:
             program_desc_str = f.read()
 
-        program = fluid.Program.parse_from_string(program_desc_str)
+        program = base.Program.parse_from_string(program_desc_str)
         with open(os.path.join(dirname, "__model__.proto"), "w") as wn:
             wn.write(str(program))
 
@@ -55,8 +55,8 @@ class TestDistGpuPsCTR2x2(TestDistCTR2x2):
             fleet(Fleet api): the fleet object of Parameter Server, define distribute training role
         """
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-        place = fluid.CUDAPlace(device_id)
-        exe = fluid.Executor(place)
+        place = base.CUDAPlace(device_id)
+        exe = base.Executor(place)
 
         exe.run(fleet.startup_program)
         fleet.init_worker()
@@ -86,7 +86,7 @@ class TestDistGpuPsCTR2x2(TestDistCTR2x2):
                     fleet.util.print_on_rank(message, 0)
 
                 pass_time = time.time() - pass_start
-            except fluid.core.EOFException:
+            except base.core.EOFException:
                 self.reader.reset()
 
         model_dir = tempfile.mkdtemp()
@@ -107,8 +107,8 @@ class TestDistGpuPsCTR2x2(TestDistCTR2x2):
         ) = ctr_dataset_reader.prepare_data()
 
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-        place = fluid.CUDAPlace(device_id)
-        exe = fluid.Executor(place)
+        place = base.CUDAPlace(device_id)
+        exe = base.Executor(place)
 
         exe.run(fleet.startup_program)
         fleet.init_worker()
