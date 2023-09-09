@@ -25,8 +25,7 @@ std::size_t GetTensorNumel(const m_expr::Tensor& tensor) {
 
 ScheduleDescriptor KGroup::GetDefaultScheduleDescriptor(
     const std::shared_ptr<IGroup>& igroup) const {
-  const std::shared_ptr<AnchorTensor>& anchor_tensor = igroup->anchor_tensor();
-  const m_expr::Tensor& tensor = igroup->GetTensor();
+  const m_expr::Tensor& tensor = igroup->anchor_tensor();
 
   CHECK_EQ(GetTensorNumel(tensor) % 64, 0);
   return {{cinn::adt::m_expr::S0x{}, GetTensorNumel(tensor) / 64},

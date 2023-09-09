@@ -74,25 +74,24 @@ std::unordered_map<Variable, Value> InferValues(
 }
 
 std::unordered_map<Variable, Value> InferValues(
-    const ConstructFakeOpPlaceHolder<tOut<FakeOpPlaceHolder>, tIn<List<Index>>>&
-        construct_placeholder,
+    const InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>, tIn<tInMsgBox<OpArgIndexes>>>&
+        in_msg_box2out_msg_box,
     IndexExprInferContext* ctx) {
-  const auto& [out_placeholder, in_indexes] = construct_placeholder.tuple();
-  List<Value> in_values;
-  for (const auto& iter : *in_indexes.value()) {
-    in_values->emplace_back(ctx->GetValue(iter));
+  const auto& [op_placeholder, out_box_indexes, in_box_indexes] = in_msg_box2out_msg_box.tuple();
+  const auto& [out_box_in_indexes, out_box_out_indexes] = out_box_indexes.value().value().tuple();
+  const auto& [in_box_in_indexes, in_box_out_indexes] = in_box_indexes.value().value().tuple();
+  std::unordered_map<Variable, Value> ret{{op_placeholder, equation::Ok{}}};
+  CHECK_EQ(out_box_in_indexes->size(), in_box_in_indexes->size()); 
+  CHECK_EQ(out_box_out_indexes->size(), in_box_out_indexes->size()); 
+  for (std::size_t i = 0; i < out_box_in_indexes->size(); ++i) {
+    const auto& value = ctx->GetValue(in_box_in_indexes->at(i));
+    CHECK(ret.emplace(out_box_in_indexes->at(i), value).second);
   }
-  return {{out_placeholder.value(), in_values}};
-}
-
-std::unordered_map<Variable, Value> InferValues(
-    const ConstructTensorIndex2Tensor<cinn::hlir::framework::NodeData*,
-                                      tIn<Index>>&
-        construct_tensor_index2tensor,
-    IndexExprInferContext* ctx) {
-  const auto& [tensor, in_index] = construct_tensor_index2tensor.tuple();
-  ctx->AddTensorIndex2Tensor(in_index.value(), tensor);
-  return {};
+  for (std::size_t i = 0; i < out_box_out_indexes->size(); ++i) {
+    const auto& value = ctx->GetValue(in_box_in_indexes->at(i));
+    CHECK(ret.emplace(out_box_out_indexes->at(i), value).second);
+  }
+  return ret;
 }
 
 std::unordered_map<Variable, Value> InferValues(const Function* function,

@@ -108,6 +108,8 @@ class List final {
   std::vector<T>& operator*() const { return *vector_; }
   std::vector<T>* operator->() const { return vector_.get(); }
 
+  const std::vector<T>& vector() const { return *vector_; }
+
   const auto& Get(std::size_t idx) const { return vector_->at(idx); }
 
  private:
@@ -262,9 +264,10 @@ struct Undefined final {
   bool operator!=(const Undefined&) const { return false; }
 };
 
-struct MockValue final {
-  bool operator==(const MockValue&) const { return true; }
-  bool operator!=(const MockValue&) const { return false; }
+// Ok = {}
+struct Ok final {
+  bool operator==(const Ok&) const { return true; }
+  bool operator!=(const Ok&) const { return false; }
 };
 
 #define ADT_TODO() LOG(FATAL) << "TODO"

@@ -108,7 +108,7 @@ struct PtrGetItem final : public Tuple<tPointer<UniqueId>, T> {
 
 DEFINE_ADT_UNION(Value,
                  Undefined,
-                 MockValue,
+                 Ok,
                  SchedulePolicy,
                  List<Value>,
                  IndexDot<Value>,

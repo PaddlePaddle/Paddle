@@ -96,9 +96,19 @@ inline List<Stride> MakeStrides(std::size_t num_strides) {
 }
 
 template <typename DoEachT>
+void IdentityConnect(const Index& out, const Index& in, const DoEachT& DoEach) {
+  DoEach(Identity<tOut<Index>, tIn<Index>>{out, in});
+}
+
+void IdentityConnect(const Index& out, const Index& in, Equations* equations) {
+  IdentityConnect(out, in,
+                 [&](const auto& equation) { (*equations)->push_back(equation); });
+}
+
+template <typename DoEachT>
 void Equal(const Index& lhs, const Index& rhs, const DoEachT& DoEach) {
-  DoEach(Identity<tOut<Index>, tIn<Index>>{lhs, rhs});
-  DoEach(Identity<tOut<Index>, tIn<Index>>{rhs, lhs});
+  IdentityConnect(lhs, rhs, DoEach);
+  IdentityConnect(rhs, lhs, DoEach);
 }
 
 inline void Equal(const Index& lhs, const Index& rhs, Equations* equations) {

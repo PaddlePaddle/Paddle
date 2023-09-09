@@ -15,6 +15,7 @@
 #include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/partition_op_stmts.h"
+#include "paddle/cinn/adt/naive_op_equation_context.h"
 
 namespace cinn::adt {
 
@@ -36,13 +37,13 @@ std::vector<std::uint64_t> MakeTensorRanks(const List<m_expr::Arg>& arg_lists) {
 }
 
 void GenerateOpEquations(const m_expr::OpStmt& op_stmt,
-                         equation::config::OpEquationContext* ctx) {
+                         equation::config::NativeOpEquationContext* ctx) {
   const auto& [op, inputs, outputs] = op_stmt;
   CHECK(op.Has<const hlir::framework::Node*>());
   const hlir::framework::Node* op_node = op.Get<const hlir::framework::Node*>();
 
   using GenerateEquationFunc =
-      std::function<void(equation::config::OpEquationContext * ctx)>;
+      std::function<void(equation::config::NativeOpEquationContext * ctx)>;
 
   const auto& generate_equations =
       Operator::GetAttrs<GenerateEquationFunc>("generate_equations");
@@ -51,10 +52,10 @@ void GenerateOpEquations(const m_expr::OpStmt& op_stmt,
   iter->second(ctx);
 }
 
-std::shared_ptr<equation::config::OpEquationContext>
+std::shared_ptr<equation::config::NativeOpEquationContext>
 MakeContextAndGenerateEquations(const m_expr::OpStmt& op_stmt) {
   const auto& [op, inputs, outputs] = op_stmt;
-  const auto& ctx = std::make_shared<equation::config::OpEquationContext>(
+  const auto& ctx = std::make_shared<equation::config::NativeOpEquationContext>(
       MakeTensorRanks(inputs.value()), MakeTensorRanks(outputs.value()));
 
   GenerateOpEquations(op_stmt, ctx.get());
@@ -63,11 +64,11 @@ MakeContextAndGenerateEquations(const m_expr::OpStmt& op_stmt) {
 }
 
 std::function<
-    std::shared_ptr<equation::config::OpEquationContext>(const m_expr::OpStmt&)>
+    std::shared_ptr<equation::config::NativeOpEquationContext>(const m_expr::OpStmt&)>
 GenerateContext4LocalOpStmt(const List<m_expr::OpStmt>& op_stmts) {
   using OpStmt2EquationContext =
       std::unordered_map<m_expr::OpStmt,
-                         std::shared_ptr<equation::config::OpEquationContext>>;
+                         std::shared_ptr<equation::config::NativeOpEquationContext>>;
   const auto& op_stmt2equation_ctx = std::make_shared<OpStmt2EquationContext>();
 
   for (const auto& op_stmt : op_stmts) {
@@ -121,7 +122,8 @@ List<m_expr::Arg> MakeOpStmtOutputList(const hlir::framework::Node* op,
 }
 
 template <typename DoEachT>
-void VisitEachOpStmt(const cinn::hlir::framework::Graph::Group& group) {
+void VisitEachOpStmt(const cinn::hlir::framework::Graph::Group& group,
+                     const DoEachT& DoEach) {
   for (const auto* op : group.nodes) {
     // Tuple<Op, In<List<Arg>>, Out<List<Arg>>>
     DoEachT(m_expr::OpStmt{MakeOp(op),
@@ -174,6 +176,7 @@ std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
 std::shared_ptr<KGroup> GenerateKGroups(
     const cinn::hlir::framework::Graph::Group& group,
     const std::vector<std::shared_ptr<IGroup>>& igroups) {
+  CHECK_EQ(igroup.size(), 1);
   const auto& cinn_group =
       std::make_shared<cinn::hlir::framework::Graph::Group>(group);
   return std::make_shared<KGroup>(cinn_group, igroups);
@@ -232,7 +235,8 @@ MakeGetterTensorIndexExpr(const std::shared_ptr<IGroup>& igroup,
                                                igroup->sd_iterators()->end()};
   eqaution::value::SolveEquations(merged_view, starts, ctx.get());
   return [ctx](const m_expr::Tensor& tensor) {
-    const auto index = ctx->GetIndex(tensor);
+     // All indexes of same tensor share the same TensorIndexExpr.
+    const auto index = igroup->GetIndexes(tensor).at(0);
     return ctx->GetValue(index);
   }
 }
