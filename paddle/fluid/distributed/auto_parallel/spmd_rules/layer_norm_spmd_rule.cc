@@ -123,15 +123,20 @@ LayerNormSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   out_dims_mapping.reserve(out_axes.size());
 
   int64_t mean_shard_dim = -1;
-  for (size_t i = 0; i < out_axes.size(); ++i) {
-    if (i < static_cast<size_t>(begin_norm_axis)) {
-      out_dims_mapping.push_back(x_dims_mapping[i]);
+  // As the mean and variance in outputs are `flattened` from
+  // x[0:begin_norm_axis], only the first axis can be sharded,
+  // the axes 1 to begin_norm_axis-1 are set to be replicated.
+  std::vector<int64_t> x_dims_mapping_dst(x_ndim, -1);
+  x_dims_mapping_dst[0] = x_dims_mapping[0];
+  for (int i = 0; i < x_ndim; ++i) {
+    if (i < begin_norm_axis) {
+      out_dims_mapping.push_back(x_dims_mapping_dst[i]);
       // if ijk,k,k->ijk,z,z (x,scale,bias->out,mean,variance,
       // begin_norm_axis=2, z=ij), and the dims_mapping of input is (0,1,-1),
       // the mean and varience is sharded by dim 0 and 1,
       // which is not supported currently.
-      mean_shard_dim =
-          ShardingMergeForAxis(mean_axes, mean_shard_dim, x_dims_mapping[i]);
+      mean_shard_dim = ShardingMergeForAxis(
+          mean_axes, mean_shard_dim, x_dims_mapping_dst[i]);
     } else {
       out_dims_mapping.push_back(-1);
     }
@@ -141,7 +146,7 @@ LayerNormSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   varience_dist_attr_dst.set_dims_mapping({mean_shard_dim});
 
   // step2.3: Merge and get Inputs' New Dims Mapping.
-  x_dist_attr_dst.set_dims_mapping(out_dims_mapping);
+  x_dist_attr_dst.set_dims_mapping(x_dims_mapping_dst);
   input_dist_attrs.emplace_back(x_dist_attr_dst);
   // TODO(zhiqiu): support shardding on scale and bias
   // Now, apply replicating.
@@ -202,7 +207,7 @@ LayerNormSPMDRule::InferBackward(
   std::string x_axes = alphabet.substr(0, x_ndim);
   // the axes after norm_axis should be replicated,
   // so set their notation to '1'.
-  for (int i = begin_norm_axis; i < x_ndim; i++) {
+  for (int i = 1; i < x_ndim; i++) {
     x_axes[i] = '1';
   }
   std::string out_axes = x_axes;
@@ -246,31 +251,6 @@ LayerNormSPMDRule::InferBackward(
   std::vector<int64_t> out_dims_mapping =
       GetDimsMappingForAxes(output_axes_vec[0], axis_to_dim_map);
   output_dist_attrs[0].set_dims_mapping(out_dims_mapping);
-  VLOG(4) << "*********";
-  for (int64_t i = 0; i < 1; i++) {
-    VLOG(4) << "Output" << std::to_string(i) << " shape: ["
-            << str_join(output_specs[i].shape()) << "] "
-            << "Einsum Notation: " << output_axes_vec[i]
-            << " src_dims_mapping: ["
-            << str_join(output_specs[i].dims_mapping()) << "] "
-            << "dst_dims_mapping: ["
-            << str_join(output_dist_attrs[i].dims_mapping()) << "]";
-  }
-  VLOG(4) << "*********";
-  // The shape of mean and variance tensors is the product of
-  // out_shape[0:begin_norm_axis] (out_shape is output tensor's
-  // shape). So, the dims mapping of out_axes[0:begin_norm_axis]
-  // is merged to mean and variance. Now, the dims mapping is
-  // merged when only one axis is sharded. If two or more axes
-  // are sharded, the dims mapping of mean and variance are conflict,
-  // this is not supported now.
-  int64_t mean_shard_dim = -1;
-  for (int i = 0; i < begin_norm_axis; i++) {
-    mean_shard_dim =
-        ShardingMergeForAxis(mean_axes, mean_shard_dim, out_dims_mapping[i]);
-  }
-  output_dist_attrs[1].set_dims_mapping({mean_shard_dim});
-  output_dist_attrs[2].set_dims_mapping({mean_shard_dim});
 
   VLOG(4) << "LayerNormSPMDRule InferBackward:";
   VLOG(4) << "begin_norm_axis: " << begin_norm_axis;

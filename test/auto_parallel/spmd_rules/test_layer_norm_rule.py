@@ -239,8 +239,8 @@ class TestLayerNormSPMDRule(unittest.TestCase):
         self.assertEqual(infered_output_dist_attrs[2].dims_mapping, [0])
 
         # [-1, 1, -1], [-1], [-1] (outputs) -->
-        # [-1, 1, -1], [-1], [-1], (inputs)
-        # [-1, 1, -1], [1], [1] (outputs)
+        # [-1, -1, -1], [-1], [-1], (inputs)
+        # [-1, -1, -1], [-1], [-1] (outputs)
         # begin_norm_axis=2
         self.attrs['begin_norm_axis'] = 2
         self.scale_spec.shape = [
@@ -271,12 +271,14 @@ class TestLayerNormSPMDRule(unittest.TestCase):
         self.assertEqual(len(infered_input_dist_attrs), 3)
         self.assertEqual(len(infered_output_dist_attrs), 3)
 
-        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [-1, 1, -1])
+        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [-1, -1, -1])
         self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [-1])
         self.assertEqual(infered_input_dist_attrs[2].dims_mapping, [-1])
-        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, 1, -1])
-        self.assertEqual(infered_output_dist_attrs[1].dims_mapping, [1])
-        self.assertEqual(infered_output_dist_attrs[2].dims_mapping, [1])
+        self.assertEqual(
+            infered_output_dist_attrs[0].dims_mapping, [-1, -1, -1]
+        )
+        self.assertEqual(infered_output_dist_attrs[1].dims_mapping, [-1])
+        self.assertEqual(infered_output_dist_attrs[2].dims_mapping, [-1])
 
         # [1, -1, -1], [0], [-1] (outputs) --> error
         # begin_norm_axis=2
@@ -303,10 +305,10 @@ class TestLayerNormSPMDRule(unittest.TestCase):
                 [self.out_spec, self.mean_spec, self.var_spec],
                 self.attrs,
             )
-        infered_input_dist_attrs = result_dist_attrs[0]
-        infered_output_dist_attrs = result_dist_attrs[1]
 
-        # [-1, 1, -1], [0], [-1] (outputs) --> error
+        # [-1, 1, -1], [0], [-1] (outputs) -->
+        # [0, -1, -1], [-1], [-1] (inputs)
+        # [0, -1, -1], [0], [0] (outputs)
         # begin_norm_axis=2
         self.attrs['begin_norm_axis'] = 2
         self.scale_spec.shape = [
@@ -325,14 +327,28 @@ class TestLayerNormSPMDRule(unittest.TestCase):
         self.mean_spec.set_dims_mapping([0])
         self.var_spec.set_dims_mapping([-1])
 
-        with self.assertRaises(BaseException):
-            result_dist_attrs = self.rule.infer_backward(
-                [self.x_spec, self.scale_spec, self.bias_spec],
-                [self.out_spec, self.mean_spec, self.var_spec],
-                self.attrs,
-            )
+        result_dist_attrs = self.rule.infer_backward(
+            [self.x_spec, self.scale_spec, self.bias_spec],
+            [self.out_spec, self.mean_spec, self.var_spec],
+            self.attrs,
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
 
-        # [0, 1, -1], [-1], [-1] (outputs) --> error
+        self.assertEqual(len(result_dist_attrs), 2)
+        self.assertEqual(len(infered_input_dist_attrs), 3)
+        self.assertEqual(len(infered_output_dist_attrs), 3)
+
+        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [0, -1, -1])
+        self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [-1])
+        self.assertEqual(infered_input_dist_attrs[2].dims_mapping, [-1])
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1, -1])
+        self.assertEqual(infered_output_dist_attrs[1].dims_mapping, [0])
+        self.assertEqual(infered_output_dist_attrs[2].dims_mapping, [0])
+
+        # [0, 1, -1], [-1], [-1] (outputs) -->
+        # [0, -1, -1], [-1], [-1] (inputs)
+        # [0, -1, -1], [0], [0] (outputs)
         # begin_norm_axis=2
         self.attrs['begin_norm_axis'] = 2
         self.scale_spec.shape = [
@@ -351,12 +367,24 @@ class TestLayerNormSPMDRule(unittest.TestCase):
         self.mean_spec.set_dims_mapping([-1])
         self.var_spec.set_dims_mapping([-1])
 
-        with self.assertRaises(BaseException):
-            result_dist_attrs = self.rule.infer_backward(
-                [self.x_spec, self.scale_spec, self.bias_spec],
-                [self.out_spec, self.mean_spec, self.var_spec],
-                self.attrs,
-            )
+        result_dist_attrs = self.rule.infer_backward(
+            [self.x_spec, self.scale_spec, self.bias_spec],
+            [self.out_spec, self.mean_spec, self.var_spec],
+            self.attrs,
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(len(result_dist_attrs), 2)
+        self.assertEqual(len(infered_input_dist_attrs), 3)
+        self.assertEqual(len(infered_output_dist_attrs), 3)
+
+        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [0, -1, -1])
+        self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [-1])
+        self.assertEqual(infered_input_dist_attrs[2].dims_mapping, [-1])
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1, -1])
+        self.assertEqual(infered_output_dist_attrs[1].dims_mapping, [0])
+        self.assertEqual(infered_output_dist_attrs[2].dims_mapping, [0])
 
         # [0, 1, -1], [-1], [-1] (outputs) -->
         # [0, -1, -1], [-1], [-1], (inputs)
