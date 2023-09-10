@@ -157,7 +157,7 @@ class InferencePassTest(unittest.TestCase):
                     self.trt_parameters.use_calib_mode,
                 )
                 if self.trt_parameters.use_inspector:
-                    config.enable_tensorrt_inspector()
+                    config.enable_tensorrt_inspector(True)
                     self.assertTrue(
                         config.tensorrt_inspector_enabled(),
                         "The inspector option is not set correctly.",
