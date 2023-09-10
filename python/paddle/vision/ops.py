@@ -172,20 +172,20 @@ def yolo_loss(
     Examples:
         .. code-block:: python
 
-        >>> import paddle
-        >>> x = paddle.rand([2, 14, 8, 8]).astype('float32')
-        >>> gt_box = paddle.rand([2, 10, 4]).astype('float32')
-        >>> gt_label = paddle.rand([2, 10]).astype('int32')
-        >>> loss = paddle.vision.ops.yolo_loss(x,
-        ...                                    gt_box=gt_box,
-        ...                                    gt_label=gt_label,
-        ...                                    anchors=[10, 13, 16, 30],
-        ...                                    anchor_mask=[0, 1],
-        ...                                    class_num=2,
-        ...                                    ignore_thresh=0.7,
-        ...                                    downsample_ratio=8,
-        ...                                    use_label_smooth=True,
-        ...                                    scale_x_y=1.)
+            >>> import paddle
+            >>> x = paddle.rand([2, 14, 8, 8]).astype('float32')
+            >>> gt_box = paddle.rand([2, 10, 4]).astype('float32')
+            >>> gt_label = paddle.rand([2, 10]).astype('int32')
+            >>> loss = paddle.vision.ops.yolo_loss(x,
+            ...                                    gt_box=gt_box,
+            ...                                    gt_label=gt_label,
+            ...                                    anchors=[10, 13, 16, 30],
+            ...                                    anchor_mask=[0, 1],
+            ...                                    class_num=2,
+            ...                                    ignore_thresh=0.7,
+            ...                                    downsample_ratio=8,
+            ...                                    use_label_smooth=True,
+            ...                                    scale_x_y=1.)
     """
 
     if in_dygraph_mode():
@@ -350,22 +350,20 @@ def yolo_box(
         scores of boxes.
 
     Examples:
+        .. code-block:: python
 
-    .. code-block:: python
+            >>> import paddle
 
-        >>> import paddle
-
-        >>> x = paddle.rand([2, 14, 8, 8]).astype('float32')
-        >>> img_size = paddle.ones((2, 2)).astype('int32')
-
-        >>> boxes, scores = paddle.vision.ops.yolo_box(x,
-        ...                                             img_size=img_size,
-        ...                                             anchors=[10, 13, 16, 30],
-        ...                                             class_num=2,
-        ...                                             conf_thresh=0.01,
-        ...                                             downsample_ratio=8,
-        ...                                             clip_bbox=True,
-        ...                                             scale_x_y=1.)
+            >>> x = paddle.rand([2, 14, 8, 8]).astype('float32')
+            >>> img_size = paddle.ones((2, 2)).astype('int32')
+            >>> boxes, scores = paddle.vision.ops.yolo_box(x,
+            ...                                             img_size=img_size,
+            ...                                             anchors=[10, 13, 16, 30],
+            ...                                             class_num=2,
+            ...                                             conf_thresh=0.01,
+            ...                                             downsample_ratio=8,
+            ...                                             clip_bbox=True,
+            ...                                             scale_x_y=1.)
     """
     if in_dygraph_mode():
         boxes, scores = _C_ops.yolo_box(
@@ -481,7 +479,6 @@ def prior_box(
 
             >>> input = paddle.rand((1, 3, 6, 9), dtype=paddle.float32)
             >>> image = paddle.rand((1, 3, 9, 12), dtype=paddle.float32)
-
             >>> box, var = paddle.vision.ops.prior_box(
             ...     input=input,
             ...     image=image,
@@ -2091,6 +2088,7 @@ def generate_proposals(
         .. code-block:: python
 
             >>> import paddle
+            >>> paddle.seed(2023)
 
             >>> scores = paddle.rand((2,4,5,5), dtype=paddle.float32)
             >>> bbox_deltas = paddle.rand((2, 16, 5, 5), dtype=paddle.float32)
@@ -2103,9 +2101,15 @@ def generate_proposals(
             Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0., 0., 0., 0.],
              [0., 0., 0., 0.]])
+
+            >>> # doctest: +SKIP('random sample')
+            >>> print(roi_probs, roi_nums)
             Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.],
              [0.]])
+
+            >>> # doctest: -SKIP
+            >>> print(roi_nums)
             Tensor(shape=[2], dtype=int32, place=Place(cpu), stop_gradient=True,
             [1, 1])
     """
