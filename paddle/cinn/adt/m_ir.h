@@ -16,6 +16,7 @@
 
 #include <list>
 
+#include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/m_expr.h"
 
 namespace cinn::adt {
@@ -35,7 +36,7 @@ class MapIR final {
 
   const std::list<m_expr::OpStmt>& op_stmts() const { return op_stmts_; }
 
-  const m_expr::ScheduleIterators& sd_iters() const { return sd_iters_; }
+  const cinn::adt::ScheduleIterators& sd_iters() const { return sd_iters_; }
 
   bool IsMergableTo(
       const MapIR& that,
@@ -69,9 +70,9 @@ using MapIRList = std::list<MapIR>;
 MapIRList GenerateClusterOpsForLoopFuse(
     const List<m_expr::OpStmt>& op_stmts,
     const ScheduleIterators& sd_iters,
-    const std::function<const m_expr::SchedulePolicy&(
+    const std::function<const cinn::adt::SchedulePolicy&(
         const equation::IterVar&)>& GetSchedulePolicy,
-    const std::function<const TensorIndexExpr&(const m_expr::Tensor&)>&
+    const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
         GetTensorIndexes);
 
 }  // namespace cinn::adt::m_ir

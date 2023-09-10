@@ -15,6 +15,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "glog/logging.h"
@@ -24,7 +25,6 @@
 #include "paddle/cinn/hlir/framework/node.h"
 
 namespace cinn::adt::equation::config {
-
 
 class NativeOpEquationContext final : public OpEquationContext {
  public:
@@ -51,6 +51,8 @@ class NativeOpEquationContext final : public OpEquationContext {
     fake_op_placeholder_ = GenerateFakeOpPlaceholder();
   }
 
+  ~NativeOpEquationContext() = default;
+
   const std::vector<std::uint64_t>& GetInTensorsRanks() const override {
     return in_tensors_ranks_;
   }
@@ -74,11 +76,13 @@ class NativeOpEquationContext final : public OpEquationContext {
     }
   }
 
-  const IteratorTuple& GetInIteratorTuple(std::size_t input_idx) const override {
+  const IteratorTuple& GetInIteratorTuple(
+      std::size_t input_idx) const override {
     return in_iterator_tuples_.at(input_idx);
   }
 
-  const IteratorTuple& GetOutIteratorTuple(std::size_t output_idx) const override {
+  const IteratorTuple& GetOutIteratorTuple(
+      std::size_t output_idx) const override {
     return out_iterator_tuples_.at(output_idx);
   }
 
@@ -108,10 +112,18 @@ class NativeOpEquationContext final : public OpEquationContext {
 
   const Equations& equations() const { return equations_; }
 
-  const tInMsgBox<List<Index>>& in_msg_box_in_indexes() const { return in_msg_box_in_indexes_; }
-  const tInMsgBox<List<Index>>& in_msg_box_out_indexes() const { return in_msg_box_out_indexes_; }
-  const tOutMsgBox<List<Index>>& out_msg_box_in_indexes() const { return out_msg_box_in_indexes_; }
-  const tOutMsgBox<List<Index>>& out_msg_box_out_indexes() const { return out_msg_box_out_indexes_; }
+  const tInMsgBox<List<Index>>& in_msg_box_in_indexes() const {
+    return in_msg_box_in_indexes_;
+  }
+  const tInMsgBox<List<Index>>& in_msg_box_out_indexes() const {
+    return in_msg_box_out_indexes_;
+  }
+  const tOutMsgBox<List<Index>>& out_msg_box_in_indexes() const {
+    return out_msg_box_in_indexes_;
+  }
+  const tOutMsgBox<List<Index>>& out_msg_box_out_indexes() const {
+    return out_msg_box_out_indexes_;
+  }
 
   const FakeOpPlaceHolder& fake_op_placeholder() const {
     return fake_op_placeholder_;
@@ -144,22 +156,31 @@ class NativeOpEquationContext final : public OpEquationContext {
     }
   }
 
-  std::optional<Index> OutMsgBoxIndex4InMsgBoxIndex(const Index& index) const {
+  std::optional<equation::Index> OutMsgBoxIndex4InMsgBoxIndex(
+      const equation::Index& index) const {
     std::optional<Index> ret = OutMsgBoxInIndex4InMsgBoxInIndex(index);
-    if (ret.has_value()) { return ret.value(); }
+    if (ret.has_value()) {
+      return ret.value();
+    }
     return OutMsgBoxOutIndex4InMsgBoxOutIndex(index);
   }
 
-  std::optional<Index> OutMsgBoxInIndex4InMsgBoxInIndex(const Index& index) const {
+  std::optional<equation::Index> OutMsgBoxInIndex4InMsgBoxInIndex(
+      const equation::Index& index) const {
     std::optional<std::size_t> pos = FindPos(in_msg_box_in_indexes_, index);
-    if (!pos.has_value()) { return std::nullopt; }
+    if (!pos.has_value()) {
+      return std::nullopt;
+    }
     CHECK_LT(pos.value(), out_msg_box_in_indexes()->size());
     return out_msg_box_in_indexes()->at(pos.value());
   }
 
-  std::optional<Index> OutMsgBoxOutIndex4InMsgBoxOutIndex(const Index& index) const {
+  std::optional<equation::Index> OutMsgBoxOutIndex4InMsgBoxOutIndex(
+      const equation::Index& index) const {
     std::optional<std::size_t> pos = FindPos(in_msg_box_out_indexes_, index);
-    if (!pos.has_value()) { return std::nullopt; }
+    if (!pos.has_value()) {
+      return std::nullopt;
+    }
     CHECK_LT(pos.value(), out_msg_box_out_indexes()->size());
     return out_msg_box_out_indexes()->at(pos.value());
   }
@@ -216,24 +237,31 @@ class NativeOpEquationContext final : public OpEquationContext {
   FakeOpPlaceHolder GenerateFakeOpPlaceholder() const {
     FakeOpPlaceHolder fake_op_placeholder{UniqueId::New()};
 
-    equations_->emplace_back(
-        InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>, tIn<tInMsgBox<OpArgIndexes>>>{
-            fake_op_placeholder, MakeOutMsgBoxOpArgIndexes(), MakeInMsgBoxOpArgIndexes()});
+    equations_->emplace_back(InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>,
+                                                tIn<tInMsgBox<OpArgIndexes>>>{
+        fake_op_placeholder,
+        MakeOutMsgBoxOpArgIndexes(),
+        MakeInMsgBoxOpArgIndexes()});
 
     return fake_op_placeholder;
   }
 
   tOutMsgBox<OpArgIndexes> MakeOutMsgBoxOpArgIndexes() const {
-    return OpArgIndexes{out_msg_box_in_indexes_.value(), out_msg_box_out_indexes_.value()};
+    return OpArgIndexes{out_msg_box_in_indexes_.value(),
+                        out_msg_box_out_indexes_.value()};
   }
 
   tInMsgBox<OpArgIndexes> MakeInMsgBoxOpArgIndexes() const {
-    return OpArgIndexes{in_msg_box_in_indexes_.value(), in_msg_box_out_indexes_.value()};
+    return OpArgIndexes{in_msg_box_in_indexes_.value(),
+                        in_msg_box_out_indexes_.value()};
   }
 
-  static std::optional<std::size_t> FindPos(const List<Index>& vector, const Index& index) {
+  static std::optional<std::size_t> FindPos(const List<Index>& vector,
+                                            const Index& index) {
     for (std::size_t i = 0; i < vector->size(); ++i) {
-      if (vector->at(i) == index) { return i; }
+      if (vector->at(i) == index) {
+        return i;
+      }
     }
     return std::nullopt;
   }

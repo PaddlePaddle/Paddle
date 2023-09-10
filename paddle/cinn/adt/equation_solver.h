@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "paddle/cinn/adt/equation_value.h"
+#include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/common/equation_graph_topo_walker.h"
 
 namespace cinn::adt::equation::value {
@@ -31,6 +32,6 @@ void SolveEquations(
 bool IsEquationsSolvable(
     const EquationGraphTopoWalker<const Variable, const Function*>& walker,
     const Variable& start,
-    IndexExprInferContext* ctx);
+    equation::IndexExprInferContext* ctx);
 
 }  // namespace cinn::adt::equation::value

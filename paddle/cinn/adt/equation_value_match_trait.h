@@ -97,7 +97,7 @@ struct MatchTrait<equation::Constant, Mul<T0, T1>> final {
 };
 
 template <>
-struct MatchTrait<equation::Value, equation::Undefined> final {
+struct MatchTrait<equation::Value, Undefined> final {
   static constexpr int is_template = false;
 };
 

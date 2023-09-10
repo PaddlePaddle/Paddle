@@ -17,13 +17,15 @@
 #include <memory>
 #include <vector>
 
+#include "paddle/cinn/adt/igroup.h"
 #include "paddle/cinn/adt/m_expr.h"
+#include "paddle/cinn/adt/schedule_policy.h"
 #include "paddle/cinn/hlir/framework/graph.h"
 
 namespace cinn::adt {
 
 class IGroup;
-using m_expr::ScheduleDescriptor;
+using cinn::adt::ScheduleDescriptor;
 
 class KGroup final {
  public:
@@ -40,7 +42,9 @@ class KGroup final {
   const std::shared_ptr<IGroup>& GetSoleIGroup() const {
     return igroups_.at(0);
   }
-  const std::vector<std::shared_ptr<IGroup>>& igroups() const { return  igroups_; }
+  const std::vector<std::shared_ptr<IGroup>>& igroups() const {
+    return igroups_;
+  }
 
   ScheduleDescriptor GetDefaultScheduleDescriptor(
       const std::shared_ptr<IGroup>& igroup) const;

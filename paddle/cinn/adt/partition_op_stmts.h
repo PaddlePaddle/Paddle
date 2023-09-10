@@ -15,10 +15,14 @@
 #pragma once
 
 #include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/equation_graph.h"
+#include "paddle/cinn/adt/equation_solver.h"
+#include "paddle/cinn/adt/equation_util.h"
+#include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/m_expr.h"
-#include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
+#include "paddle/cinn/hlir/framework/graph.h"
 
 namespace cinn::adt::partition {
 

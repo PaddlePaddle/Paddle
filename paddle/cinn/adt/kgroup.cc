@@ -16,7 +16,7 @@
 
 namespace cinn::adt {
 
-using AnchorTensor = eqaution::Variable;
+using AnchorTensor = equation::Variable;
 
 std::size_t GetTensorNumel(const m_expr::Tensor& tensor) {
   CHECK(tensor.Has<adapter::Tensor>());
