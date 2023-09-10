@@ -531,10 +531,10 @@ def GenBuildOutputs(
 
     CREATE_OUTPUT_INPLACE_OPTIONAL_DENSE_TENSOR_TEMPLATE = """
   if ({input_name}_.impl() != nullptr) {{
-    ir::Type {output_name}_dense_tensor_type = paddle::dialect::DenseTensorType::get(ir::IrContext::Instance(), paddle::dialect::TransToIrDataType(dense_{output_name}.dtype()), dense_{output_name}.dims(), dense_{output_name}.layout(), dense_{output_name}.lod(), dense_{output_name}.offset());
+    pir::Type {output_name}_dense_tensor_type = paddle::dialect::DenseTensorType::get(pir::IrContext::Instance(), paddle::dialect::TransToIrDataType(dense_{output_name}.dtype()), dense_{output_name}.dims(), dense_{output_name}.layout(), dense_{output_name}.lod(), dense_{output_name}.offset());
     argument_outputs.push_back({output_name}_dense_tensor_type);
   }} else {{
-    ir::Type {output_name}_type;
+    pir::Type {output_name}_type;
     argument_outputs.push_back({output_name}_type);
   }}
 

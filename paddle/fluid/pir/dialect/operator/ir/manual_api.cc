@@ -46,14 +46,14 @@ pir::OpResult get_parameter(const std::string& name,
   phi::LoD lod;
   size_t offset{0};
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
-      ir::IrContext::Instance(),
+      pir::IrContext::Instance(),
       TransToIrDataType(dtype),
       phi::DDim(shape.data(), shape.size()),
       phi::DataLayout::UNDEFINED,
       lod,
       offset);
   pir::GetParameterOp get_parameter_op =
-      APIBuilder::Instance().GetBuilder()->Build<ir::GetParameterOp>(
+      APIBuilder::Instance().GetBuilder()->Build<pir::GetParameterOp>(
           name, out_dense_tensor_type);
   return get_parameter_op.result(0);
 }

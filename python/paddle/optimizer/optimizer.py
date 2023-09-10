@@ -474,9 +474,7 @@ class Optimizer:
                         return
                     else:
                         place = _current_expected_place()
-                        if not isinstance(
-                            _lr_dtype, paddle.fluid.core.DataType
-                        ):
+                        if not isinstance(_lr_dtype, paddle.base.core.DataType):
                             lr_dtype = (
                                 paddle.ir.core.convert_np_dtype_to_dtype_(
                                     _lr_dtype

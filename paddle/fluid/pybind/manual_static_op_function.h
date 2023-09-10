@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_manual_api.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/op_function_common.h"

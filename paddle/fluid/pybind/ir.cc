@@ -74,7 +74,7 @@ inline int64_t GetProgramInt64Attr(const std::shared_ptr<Program> &program,
                                    int64_t default_value = 0) {
   auto op = program->module_op();
   if (op->HasAttribute(attr_name)) {
-    auto val = op->attribute(attr_name).dyn_cast<ir::Int64Attribute>().data();
+    auto val = op->attribute(attr_name).dyn_cast<pir::Int64Attribute>().data();
     return val;
   } else {
     return default_value;
@@ -85,8 +85,8 @@ inline void SetProgramInt64Attr(std::shared_ptr<Program> program,
                                 const std::string &attr_name,
                                 int64_t value) {
   auto op = program->module_op();
-  op->set_attribute(attr_name,
-                    ir::Int64Attribute::get(ir::IrContext::Instance(), value));
+  op->set_attribute(
+      attr_name, pir::Int64Attribute::get(pir::IrContext::Instance(), value));
 }
 
 void BindProgram(py::module *m) {
@@ -207,11 +207,11 @@ void BindBlock(py::module *m) {
           auto op = *iter;
           if (op->HasAttribute(kAttrIsPersisable)) {
             auto attrs = op->attribute(kAttrIsPersisable)
-                             .dyn_cast<ir::ArrayAttribute>()
+                             .dyn_cast<pir::ArrayAttribute>()
                              .AsVector();
             for (uint32_t i = 0; i < attrs.size(); i++) {
               bool is_persistable =
-                  attrs[i].dyn_cast<ir::BoolAttribute>().data();
+                  attrs[i].dyn_cast<pir::BoolAttribute>().data();
               if (is_persistable) {
                 param_list.append(op->result(i));
               }
@@ -425,7 +425,7 @@ void BindOpResult(py::module *m) {
               auto param_name = self.GetDefiningOp()
                                     ->attributes()
                                     .at("parameter_name")
-                                    .dyn_cast<ir::StrAttribute>()
+                                    .dyn_cast<pir::StrAttribute>()
                                     .AsString();
               return param_name;
             } else {
