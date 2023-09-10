@@ -21,11 +21,5 @@
 #include "paddle/pir/core/value.h"
 
 namespace paddle {
-namespace dialect {
-
-pir::OpResult split_grad(std::vector<pir::OpResult> out_grads,
-                         pir::OpResult axis);
-
-pir::OpResult split_grad(std::vector<pir::OpResult> out_grads, int axis);
-}  // namespace dialect
+namespace dialect {}  // namespace dialect
 }  // namespace paddle
