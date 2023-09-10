@@ -157,7 +157,7 @@ class InferencePassTest(unittest.TestCase):
                     self.trt_parameters.use_calib_mode,
                 )
                 if self.trt_parameters.use_inspector:
-                    config.enable_tensorrt_inspector(True)
+                    config.enable_tensorrt_inspector(self.serialize_engine_info)
                     self.assertTrue(
                         config.tensorrt_inspector_enabled(),
                         "The inspector option is not set correctly.",
@@ -319,6 +319,7 @@ class InferencePassTest(unittest.TestCase):
             use_static,
             use_calib_mode,
             use_inspector=False,
+            serialize_engine_info=False,
         ):
             self.workspace_size = workspace_size
             self.max_batch_size = max_batch_size
@@ -327,6 +328,7 @@ class InferencePassTest(unittest.TestCase):
             self.use_static = use_static
             self.use_calib_mode = use_calib_mode
             self.use_inspector = use_inspector
+            self.serialize_engine_info = serialize_engine_info
 
     class DynamicShapeParam:
         '''
