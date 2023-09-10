@@ -2097,19 +2097,14 @@ def generate_proposals(
             >>> variances = paddle.rand((2,5,10,4), dtype=paddle.float32)
             >>> rois, roi_probs, roi_nums = paddle.vision.ops.generate_proposals(scores, bbox_deltas,
             ...                 img_size, anchors, variances, return_rois_num=True)
+            >>> # doctest: +SKIP('random sample')
             >>> print(rois, roi_probs, roi_nums)
             Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0., 0., 0., 0.],
              [0., 0., 0., 0.]])
-
-            >>> # doctest: +SKIP('random sample')
-            >>> print(roi_probs, roi_nums)
             Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.],
              [0.]])
-
-            >>> # doctest: -SKIP
-            >>> print(roi_nums)
             Tensor(shape=[2], dtype=int32, place=Place(cpu), stop_gradient=True,
             [1, 1])
     """
