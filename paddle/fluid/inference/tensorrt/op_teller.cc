@@ -2852,6 +2852,32 @@ if (dtype ==  framework::proto::VarType::BOOL)
 #endif
     }
 
+
+    if (op_type == "atan2") {
+#if !IS_TRT_VERSION_GE(8400)
+      VLOG(3) << "these are not supported when TensorRT < 8.4";
+      return false;
+#endif
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the atan2 does not support "
+                   "static shape yet";
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto* x1_var_desc = block->FindVar(desc.Input("X1")[0]);
+      if (x1_var_desc->GetDataType() !=
+          paddle::framework::proto::VarType_Type::VarType_Type_FP32) {
+        VLOG(3) << "atan2 only support float32 datatype in TensorRT.";
+        return false;
+      }
+    }
+
     if (use_no_calib_int8) {
       return int8_teller_set.count(op_type);
     } else {
@@ -3025,12 +3051,14 @@ if (dtype ==  framework::proto::VarType::BOOL)
       "assign",
       "flip",
      "ms_deform_attn",
+        "atan2",
      "put_along_axis",
       "quantize_linear",
       "dequantize_linear"};
 
   std::unordered_set<std::string> teller_set{
    "ms_deform_attn",
+      "atan2",
    "put_along_axis",
       "matrix_multiply",
       "bmm",

@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+//#include <cuda_fp16.h>
 
 namespace paddle {
 namespace inference {
@@ -849,27 +850,13 @@ bool MsDeformAttnPluginDynamic::supportsFormatCombination(
     int nb_inputs,
     int nb_outputs) TRT_NOEXCEPT {
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
-  if (pos == 0) {
+  if (pos == 0 || pos == 1 || pos == 2 || pos == 5) {
       return (in.type == nvinfer1::DataType::kFLOAT) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
-  } else if (pos == 1) {
-      return (in.type == nvinfer1::DataType::kFLOAT) &&
-             (in.format == nvinfer1::TensorFormat::kLINEAR);
-  } else if (pos == 2) {
-      return (in.type == nvinfer1::DataType::kFLOAT) &&
-             (in.format == nvinfer1::TensorFormat::kLINEAR);
-  } else if (pos == 3) {
+  } else if (pos == 3 || pos == 4) {
       return (in.type == nvinfer1::DataType::kINT32) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
-  } else if (pos == 4) {
-      return (in.type == nvinfer1::DataType::kINT32) &&
-             (in.format == nvinfer1::TensorFormat::kLINEAR);
-  } else if (pos == 5) {
-    // 必须指定你的输出是这样的！
-          return (in.type == nvinfer1::DataType::kFLOAT) &&
-             (in.format == nvinfer1::TensorFormat::kLINEAR);
-  }
-
+  } 
 }
 
 nvinfer1::DataType MsDeformAttnPluginDynamic::getOutputDataType(
@@ -920,11 +907,13 @@ cudaMemsetAsync(outputs[0], 0, batch * num_query * num_heads * channels * sizeof
   auto per_attn_weight_size = num_query * num_heads * num_levels * num_point;
   auto per_output_size = num_query * num_heads * channels;
 
+  auto input_type = input_desc[0].type;
+
   for (int n = 0; n < batch / im2col_step_new; ++n) {
     const int num_kernels = im2col_step_new * per_output_size;
     const int num_actual_kernels = im2col_step_new * per_output_size;
     const int num_threads = CUDA_NUM_THREADS;
-
+if(input_type == nvinfer1::DataType::kFLOAT){
     ms_deformable_im2col_gpu_kernel<float>
         <<<GET_BLOCKS(num_actual_kernels, num_threads), 
            num_threads, 
@@ -944,6 +933,27 @@ cudaMemsetAsync(outputs[0], 0, batch * num_query * num_heads * channels * sizeof
             num_query, 
             num_point,
             (float*)(outputs[0]) + n * im2col_step_new * per_output_size);
+} else if (input_type == nvinfer1::DataType::kHALF) {
+      // ms_deformable_im2col_gpu_kernel<half>
+      //   <<<GET_BLOCKS(num_actual_kernels, num_threads), 
+      //      num_threads, 
+      //      0,
+      //      stream>>>(
+      //       num_kernels,
+      //       (half*)(value) + n * im2col_step_new * per_value_size,
+      //       (int*)(spatial_shapes), 
+      //       (int*)(level_start_index),
+      //       (half*)(sampling_locations) + n * im2col_step_new * per_sample_loc_size,
+      //       (half*)(attention_weights) + n * im2col_step_new * per_attn_weight_size,
+      //       im2col_step_new, 
+      //       spatial_size, 
+      //       num_heads, 
+      //       channels, 
+      //       num_levels,
+      //       num_query, 
+      //       num_point,
+      //       (half*)(outputs[0]) + n * im2col_step_new * per_output_size);
+}          
   }
 
 
