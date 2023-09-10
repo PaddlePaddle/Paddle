@@ -1538,8 +1538,17 @@ class TestCeil(TestActivation):
         self.init_shape()
 
         np.random.seed(1024)
-        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        out = np.ceil(x)
+        if self.dtype is np.complex64 or self.dtype is np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
+            real = np.ceil(x.real)
+            imag = np.ceil(x.imag)
+            out = (real + 1j * imag).astype(self.dtype)
+        else:
+            x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+            out = np.ceil(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
