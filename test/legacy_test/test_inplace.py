@@ -838,6 +838,34 @@ class TestDygraphInplaceGcd(TestDygraphInplace):
         self.assertRaises(ValueError, paddle.gcd_, x, y)
 
 
+class TestDygraphInplaceHypot(TestDygraphInplace):
+    def init_data(self):
+        self.input_var_numpy = np.random.randint(2, size=200)
+        self.input_var_numpy = self.input_var_numpy.reshape([10, 20])
+        self.dtype = "float32"
+        self.y = paddle.randn(low=-5, high=5, shape=[10, 20], dtype="float32")
+
+    def inplace_api_processing(self, var):
+        return paddle.hypot_(var, self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.hypot(var, self.y)
+
+    def test_forward_version(self):
+        with paddle.base.dygraph.guard():
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            self.assertEqual(var.inplace_version, 0)
+
+            inplace_var = self.inplace_api_processing(var)
+            self.assertEqual(var.inplace_version, 3)
+
+            inplace_var[0] = 2.0
+            self.assertEqual(var.inplace_version, 4)
+
+            inplace_var = self.inplace_api_processing(inplace_var)
+            self.assertEqual(var.inplace_version, 7)
+
+
 class TestDygraphInplaceNanToNum(TestDygraphInplace):
     def init_data(self):
         self.input_var_numpy = np.array(
