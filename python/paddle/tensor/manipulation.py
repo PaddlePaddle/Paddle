@@ -34,6 +34,7 @@ from ..framework import (
     core,
     dygraph_only,
     in_dynamic_mode,
+    in_dynamic_or_new_ir_mode,
     in_new_ir_mode,
 )
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
@@ -181,7 +182,7 @@ def cast(x, dtype):
     """
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    if in_dynamic_mode():
+    if in_dynamic_or_new_ir_mode():
         return _C_ops.cast(x, dtype)
     else:
         check_variable_and_dtype(
