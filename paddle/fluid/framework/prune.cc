@@ -89,7 +89,7 @@ int GetSubBlockIndex(const proto::OpDesc& op_desc) {
 }
 
 void GetSubBlocksIndices(const proto::OpDesc& op_desc,
-                         std::vector<int>& indices) {
+                         std::vector<int>* indices) {
   for (auto& attr : op_desc.attrs()) {
     if (attr.type() == proto::AttrType::BLOCKS) {
       PADDLE_ENFORCE_GT(
@@ -97,9 +97,9 @@ void GetSubBlocksIndices(const proto::OpDesc& op_desc,
           0,
           platform::errors::NotFound(
               "Attribute blocks is not found in operator %s", op_desc.type()));
-      indices.resize(attr.blocks_idx_size());
+      indices->resize(attr.blocks_idx_size());
       for (int i = 0; i < attr.blocks_idx_size(); i++) {
-        indices[i] = attr.blocks_idx(i);
+        (*indices)[i] = attr.blocks_idx(i);
       }
     }
   }
@@ -342,7 +342,7 @@ void prune_impl(const proto::ProgramDesc& input,
     if (should_run[i]) {
       auto* op = op_field->Add();
       *op = input.blocks(block_id).ops(static_cast<int>(i));
-      if (HasSubBlock(*op)) {
+      if (HasSubBlock(*op) || HasSubBlocks(*op)) {
         VLOG(2) << "Pruning op which has sub block: " << op->type();
         // create sub_block_dependent_vars here to help prune the sub block
         std::unordered_set<std::string> sub_block_dependent_vars;
@@ -389,7 +389,7 @@ void prune_impl(const proto::ProgramDesc& input,
           // input desc output_block_id is the idx of the current block in the
           // output desc
           std::vector<int> sub_indices;
-          GetSubBlocksIndices(*op, sub_indices);
+          GetSubBlocksIndices(*op, &sub_indices);
           for (auto& sub_index : sub_indices) {
             // create a copy of dependent_vars to avoid being overwrited by the
             // other sub_block
@@ -490,7 +490,7 @@ std::map<int, int> Prune(const proto::ProgramDesc& input,
         SetSubBlockIndex(&op_desc, sub_idx);
       } else if (HasSubBlocks(op_desc)) {
         std::vector<int> origin_sub_indices;
-        GetSubBlocksIndices(op_desc, origin_sub_indices);
+        GetSubBlocksIndices(op_desc, &origin_sub_indices);
         std::vector<int> sub_indices;
         for (int index : origin_sub_indices) {
           auto sub_idx = FindMapByValue(pruned_origin_block_id_map, index);
@@ -542,7 +542,7 @@ void PruneBackwardImpl(proto::BlockDesc* origin, proto::BlockDesc* pruned) {
       // attribute because the backward block will be pruned
       if (op->type() == kPyLayer && HasSubBlocks(*op)) {
         std::vector<int> sub_indices;
-        GetSubBlocksIndices(*op, sub_indices);
+        GetSubBlocksIndices(*op, &sub_indices);
         if (sub_indices.size() > 1) {
           // sub_indices contains both forward block id and backward block id
           std::vector<int> new_sub_indices(sub_indices.begin(),
@@ -550,7 +550,7 @@ void PruneBackwardImpl(proto::BlockDesc* origin, proto::BlockDesc* pruned) {
           SetSubBlocksIndices(op, new_sub_indices);
 
           std::vector<int> after_sub_indices;
-          GetSubBlocksIndices(*op, after_sub_indices);
+          GetSubBlocksIndices(*op, &after_sub_indices);
         }
       }
     }
@@ -665,7 +665,7 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
         SetSubBlockIndex(&op_desc, sub_idx);
       } else if (HasSubBlocks(op_desc)) {
         std::vector<int> origin_sub_indices;
-        GetSubBlocksIndices(op_desc, origin_sub_indices);
+        GetSubBlocksIndices(op_desc, &origin_sub_indices);
         std::vector<int> sub_indices;
         for (int index : origin_sub_indices) {
           auto sub_idx = FindMapByValue(pruned_progin_block_id_map, index);

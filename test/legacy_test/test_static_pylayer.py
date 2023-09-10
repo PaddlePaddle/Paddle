@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.base import core
+from paddle.base import core, framework
 from paddle.base.backward import append_backward
 from paddle.base.framework import Program, program_guard
 
@@ -454,6 +454,257 @@ class TestStaticPyLayerBackward(unittest.TestCase):
             ),
             rtol=1e-05,
         )
+
+
+class TestStaticPyLayerPrune(unittest.TestCase):
+    def net(self):
+        def forward_fn(x):
+            y = 3 * x
+            return y
+
+        def backward_fn(dy):
+            grad = paddle.exp(dy)
+            return grad
+
+        x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+        x.desc.set_need_check_feed(False)
+        hidden = paddle.static.nn.fc(x=[x], size=4, activation="softmax")
+        y = paddle.static.nn.static_pylayer(forward_fn, [hidden], backward_fn)
+        loss = paddle.mean(y)
+        return x, hidden, y, loss
+
+    def net_with_weight(self):
+        def forward_fn(x):
+            y = 3 * x
+            return y
+
+        def backward_fn(dy):
+            grad = paddle.exp(dy)
+            return grad
+
+        x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+        x.desc.set_need_check_feed(False)
+        label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
+        label.desc.set_need_check_feed(False)
+        w_param_attrs = base.ParamAttr(
+            name="fc_weight",
+            learning_rate=0.5,
+            initializer=paddle.nn.initializer.Constant(1.0),
+            trainable=True,
+        )
+
+        y = paddle.static.nn.static_pylayer(forward_fn, [x], backward_fn)
+        hidden = paddle.static.nn.fc(
+            x=[y], size=4, activation="softmax", weight_attr=w_param_attrs
+        )
+        loss1 = paddle.nn.functional.cross_entropy(
+            input=hidden, label=label, reduction='none', use_softmax=False
+        )
+        loss1 = paddle.mean(x=loss1)
+        loss2 = paddle.nn.functional.cross_entropy(
+            input=hidden, label=label, reduction='none', use_softmax=False
+        )
+        loss2 = paddle.mean(x=loss2)
+        loss1.persistable = True
+        loss2.persistable = True
+
+        return x, hidden, label, loss1, loss2, w_param_attrs
+
+    def test_prune_with_input(self):
+        paddle.enable_static()
+
+        program = framework.Program()
+        startup_program = framework.Program()
+        block = program.global_block()
+        with base.program_guard(program, startup_program):
+            (x, hidden, y, loss) = self.net()
+
+        self.assertEqual(len(block.ops), 5)
+        self.assertEqual(
+            [op.type for op in block.ops],
+            [
+                "mul",
+                "elementwise_add",
+                "softmax",
+                "pylayer",
+                "reduce_mean",
+            ],
+        )
+
+        pruned_program = program._prune_with_input(
+            feeded_var_names=[hidden.name], targets=[loss]
+        )
+
+        self.assertEqual(len(pruned_program.global_block().ops), 2)
+        self.assertEqual(
+            [op.type for op in pruned_program.global_block().ops],
+            ["pylayer", "reduce_mean"],
+        )
+
+    def test_prune(self):
+        paddle.enable_static()
+
+        program = framework.Program()
+        startup_program = framework.Program()
+        block = program.global_block()
+        with base.program_guard(program, startup_program):
+            (x, hidden, y, loss) = self.net()
+
+        self.assertEqual(len(block.ops), 5)
+        self.assertEqual(
+            [op.type for op in block.ops],
+            [
+                "mul",
+                "elementwise_add",
+                "softmax",
+                "pylayer",
+                "reduce_mean",
+            ],
+        )
+
+        pruned_program = program._prune(targets=[loss])
+
+        self.assertEqual(len(pruned_program.global_block().ops), 5)
+        self.assertEqual(
+            [op.type for op in pruned_program.global_block().ops],
+            [
+                "mul",
+                "elementwise_add",
+                "softmax",
+                "pylayer",
+                "reduce_mean",
+            ],
+        )
+
+    def test_prune_fetches_without_optimizer(self):
+        """
+        Prune operators and variables which are not needed to generate 'fetches'.
+        """
+        paddle.enable_static()
+
+        program = framework.Program()
+        startup_program = framework.Program()
+        scope = base.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(program, startup_program):
+                (
+                    x,
+                    y,
+                    label,
+                    loss1,
+                    loss2,
+                    w_param_attrs,
+                ) = self.net_with_weight()
+                exe = base.Executor(base.CPUPlace())
+                exe.run(startup_program)
+                weight_init = np.array(
+                    scope.find_var(w_param_attrs.name).get_tensor()
+                )
+                x_np = np.random.random(size=(10, 2)).astype('float32')
+                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+                res = exe.run(
+                    program,
+                    feed={'x': x_np, 'label': label_np},
+                    fetch_list=[loss1.name],
+                    use_prune=True,
+                )
+                self.assertIsNotNone(scope.find_var(loss1.name))
+                self.assertIsNone(scope.find_var(loss2.name))  # loss2 is pruned
+                weight = np.array(
+                    scope.find_var(w_param_attrs.name).get_tensor()
+                )
+                np.testing.assert_array_equal(
+                    weight_init, weight
+                )  # weight not changed
+
+    def test_prune_fetches_with_optimizer(self):
+        """
+        Prune operators and operators which are not needed to generate 'fetches'.
+        In train mode, the operators and operators in backward and optimization should be kept.
+        """
+        paddle.enable_static()
+
+        program = framework.Program()
+        startup_program = framework.Program()
+        scope = base.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(program, startup_program):
+                (
+                    x,
+                    y,
+                    label,
+                    loss1,
+                    loss2,
+                    w_param_attrs,
+                ) = self.net_with_weight()
+                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
+                sgd_optimizer.minimize(loss1)
+                exe = base.Executor(base.CPUPlace())
+                exe.run(startup_program)
+                weight_init = np.array(
+                    scope.find_var(w_param_attrs.name).get_tensor()
+                )
+                x_np = np.random.random(size=(10, 2)).astype('float32')
+                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+                res = exe.run(
+                    program,
+                    feed={'x': x_np, 'label': label_np},
+                    fetch_list=[loss1.name],
+                    use_prune=True,
+                )
+                self.assertIsNotNone(scope.find_var(loss1.name))
+                self.assertIsNone(scope.find_var(loss2.name))  # loss2 is pruned
+                weight = np.array(
+                    scope.find_var(w_param_attrs.name).get_tensor()
+                )
+                self.assertFalse(
+                    np.array_equal(weight_init, weight)
+                )  # weight changed
+
+    def test_prune_compiled_program(self):
+        paddle.enable_static()
+
+        program = framework.Program()
+        startup_program = framework.Program()
+        scope = base.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(program, startup_program):
+                (
+                    x,
+                    y,
+                    label,
+                    loss1,
+                    loss2,
+                    w_param_attrs,
+                ) = self.net_with_weight()
+                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
+                sgd_optimizer.minimize(loss1)
+                exe = base.Executor(base.CPUPlace())
+                exe.run(startup_program)
+                compiled_prog = base.CompiledProgram(program)
+                weight_init = np.array(
+                    scope.find_var(w_param_attrs.name).get_tensor()
+                )
+                x_np = np.random.random(size=(10, 2)).astype('float32')
+                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+                res = exe.run(
+                    compiled_prog,
+                    feed={'x': x_np, 'label': label_np},
+                    fetch_list=[loss1.name],
+                    use_prune=True,
+                )
+                self.assertIsNotNone(scope.find_var(loss1.name))
+                self.assertIsNone(scope.find_var(loss2.name))
+                weight = np.array(
+                    scope.find_var(w_param_attrs.name).get_tensor()
+                )
+                self.assertFalse(
+                    np.array_equal(weight_init, weight)
+                )  # weight changed
+
+
+class TestLoadModel(unittest.TestCase):
+    ...
 
 
 if __name__ == '__main__':
