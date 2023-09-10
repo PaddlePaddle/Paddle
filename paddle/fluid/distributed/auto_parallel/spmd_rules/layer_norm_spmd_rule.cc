@@ -247,10 +247,9 @@ LayerNormSPMDRule::InferBackward(
   std::vector<TensorDistAttr> output_dist_attrs;
   for (int64_t i = 0; i < noutputs; i++) {
     output_dist_attrs.emplace_back(output_specs[i].dist_attr());
+    output_dist_attrs[i].set_dims_mapping(
+        GetDimsMappingForAxes(output_axes_vec[i], axis_to_dim_map));
   }
-  std::vector<int64_t> out_dims_mapping =
-      GetDimsMappingForAxes(output_axes_vec[0], axis_to_dim_map);
-  output_dist_attrs[0].set_dims_mapping(out_dims_mapping);
 
   VLOG(4) << "LayerNormSPMDRule InferBackward:";
   VLOG(4) << "begin_norm_axis: " << begin_norm_axis;
