@@ -1487,12 +1487,12 @@ void MatmulKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void MatmulWithFlattenKernel(const Context& dev_ctx,
-                             const DenseTensor& x,
-                             const DenseTensor& y,
-                             int x_num_col_dims,
-                             int y_num_col_dims,
-                             DenseTensor* out) {
+void MatmulWithFlattenKernelImpl(const Context& dev_ctx,
+                                 const DenseTensor& x,
+                                 const DenseTensor& y,
+                                 int x_num_col_dims,
+                                 int y_num_col_dims,
+                                 DenseTensor* out) {
   const DenseTensor x_matrix =
       x.dims().size() > 2 ? phi::ReshapeToMatrix(x, x_num_col_dims) : x;
   const DenseTensor y_matrix =
@@ -1513,14 +1513,14 @@ void MatmulWithFlattenKernel(const Context& dev_ctx,
 }
 
 #ifdef PADDLE_WITH_CUDA
-template <>
-void MatmulWithFlattenKernel<int8_t, phi::GPUContext>(
-    const phi::GPUContext& dev_ctx,
-    const DenseTensor& x,
-    const DenseTensor& y,
-    int x_num_col_dims,
-    int y_num_col_dims,
-    DenseTensor* out) {
+
+template <typename Context>
+void MatmulWithFlattenKernelInt8Impl(const Context& dev_ctx,
+                                     const DenseTensor& x,
+                                     const DenseTensor& y,
+                                     int x_num_col_dims,
+                                     int y_num_col_dims,
+                                     DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
       x.dtype(),
       DataType::INT8,
@@ -1613,5 +1613,50 @@ void MatmulWithFlattenKernel<int8_t, phi::GPUContext>(
 #endif
 }
 #endif
+
+#ifdef PADDLE_WITH_CUDA
+template <typename Context>
+typename std::enable_if<std::is_same<Context, phi::GPUContext>::value,
+                        void>::type
+DispatchMatmulWithFlattenInt8Kernel(const phi::GPUContext& dev_ctx,
+                                    const DenseTensor& x,
+                                    const DenseTensor& y,
+                                    int x_num_col_dims,
+                                    int y_num_col_dims,
+                                    DenseTensor* out) {
+  MatmulWithFlattenKernelInt8Impl<Context>(
+      dev_ctx, x, y, x_num_col_dims, y_num_col_dims, out);
+}
+#endif
+
+template <typename Context>
+typename std::enable_if<std::is_same<Context, phi::CPUContext>::value,
+                        void>::type
+DispatchMatmulWithFlattenInt8Kernel(const phi::CPUContext& dev_ctx,
+                                    const DenseTensor& x,
+                                    const DenseTensor& y,
+                                    int x_num_col_dims,
+                                    int y_num_col_dims,
+                                    DenseTensor* out) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "MatmulWithFlatten with CPU is NOT implemented "
+      "yet."));
+}
+
+template <typename T, typename Context>
+void MatmulWithFlattenKernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             const DenseTensor& y,
+                             int x_num_col_dims,
+                             int y_num_col_dims,
+                             DenseTensor* out) {
+  if (!std::is_integral<T>::value) {
+    MatmulWithFlattenKernelImpl<T, Context>(
+        dev_ctx, x, y, x_num_col_dims, y_num_col_dims, out);
+  } else {
+    DispatchMatmulWithFlattenInt8Kernel<Context>(
+        dev_ctx, x, y, x_num_col_dims, y_num_col_dims, out);
+  }
+}
 
 }  // namespace phi
