@@ -3567,6 +3567,11 @@ class TestSoftplus(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
         out = ref_softplus(x, beta, threshold)
         self.inputs = {'X': x}
         self.attrs = {'beta': beta, "threshold": threshold}
@@ -3584,6 +3589,16 @@ class TestSoftplus(TestActivation):
 class TestSoftplus_ZeroDim(TestSoftplus):
     def init_shape(self):
         self.shape = []
+
+
+class TestSoftplus_Complex64(TestSoftplus):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestSoftplus_Complex128(TestSoftplus):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 @unittest.skipIf(
