@@ -345,6 +345,7 @@ void FlashAttnGradKernel(const Context& ctx,
            << "], v[" << v.dims() << "]";
 
   const float scale = 1.0f / std::sqrt(head_size);
+#if 0
   if (attn_mask.get_ptr()) {
     DenseTensor q_t_s, k_t_s, v_t_s;
     q_t_s.ShareDataWith(q).Resize({total_q, num_heads, head_size});
@@ -378,59 +379,74 @@ void FlashAttnGradKernel(const Context& ctx,
                                             dk,
                                             dv);
   } else {
-    FlashAttnBwdParamsV2 params =
-        FlashAttnBwdParamsV2(ctx,
-                             batch_size,
-                             seqlen_q,
-                             seqlen_k,
-                             num_heads,
-                             num_heads_k,
-                             head_size,
-                             dropout,
-                             scale,
-                             causal,
-                             q.dtype(),
-                             seed_offset.data<int64_t>());
+#endif
+  FlashAttnBwdParamsV2 params =
+      FlashAttnBwdParamsV2(ctx,
+                           batch_size,
+                           seqlen_q,
+                           seqlen_k,
+                           num_heads,
+                           num_heads_k,
+                           head_size,
+                           dropout,
+                           scale,
+                           causal,
+                           q.dtype(),
+                           seed_offset.data<int64_t>());
 
-    ctx.template Alloc<T>(dq);
-    ctx.template Alloc<T>(dk);
-    ctx.template Alloc<T>(dv);
+  ctx.template Alloc<T>(dq);
+  ctx.template Alloc<T>(dk);
+  ctx.template Alloc<T>(dv);
 
-    cudaStream_t stream = ctx.stream();
+  cudaStream_t stream = ctx.stream();
 
-    VLOG(10) << "FlashAttn bwd seed: " << params.seed
-             << ", offset: " << params.offset;
+  VLOG(10) << "FlashAttn bwd seed: " << params.seed
+           << ", offset: " << params.offset;
 
-    bool succ = phi::dynload::flash_attn_bwd(dout.data(),
-                                             q.data(),
-                                             k.data(),
-                                             v.data(),
-                                             out.data(),
-                                             params.softmax_d.data(),
-                                             softmax_lse.data(),
-                                             params.rng_state.data(),
-                                             dq->data(),
-                                             dk->data(),
-                                             dv->data(),
-                                             params.dq_accum.data(),
-                                             params.batch_size,
-                                             params.max_seqlen_q,
-                                             params.max_seqlen_k,
-                                             params.seqlen_q_rounded,
-                                             params.seqlen_k_rounded,
-                                             params.num_heads,
-                                             params.num_heads_k,
-                                             params.head_size,
-                                             params.head_size_rounded,
-                                             params.dropout,
-                                             params.scale,
-                                             params.causal,
-                                             params.is_bf16,
-                                             stream,
-                                             params.seed,
-                                             params.offset);
-    CheckFlashAttnStatus(succ);
+  const DenseTensor* attn_mask_tensor = attn_mask.get_ptr();
+  std::vector<int64_t> mask_dims = GetAttnMaskDims(attn_mask_tensor);
+
+  int64_t q_size = batch_size * seqlen_q * num_heads * head_size;
+  DenseTensor scaled_q =
+      Empty<T>(ctx, {batch_size, seqlen_q, num_heads, head_size});
+  ComputeScaleQ(ctx, q_size, scale, q.data<T>(), scaled_q.data<T>());
+
+  bool succ = phi::dynload::flash_attn_bwd(
+      dout.data(),
+      q.data(),
+      k.data(),
+      v.data(),
+      out.data(),
+      params.softmax_d.data(),
+      softmax_lse.data(),
+      params.rng_state.data(),
+      dq->data(),
+      dk->data(),
+      dv->data(),
+      params.dq_accum.data(),
+      params.batch_size,
+      params.max_seqlen_q,
+      params.max_seqlen_k,
+      params.seqlen_q_rounded,
+      params.seqlen_k_rounded,
+      params.num_heads,
+      params.num_heads_k,
+      params.head_size,
+      params.head_size_rounded,
+      params.dropout,
+      // attn_mask_tensor ? 1.0f : params.scale,
+      params.scale,
+      params.causal,
+      params.is_bf16,
+      stream,
+      params.seed,
+      params.offset,
+      attn_mask_tensor ? attn_mask_tensor->data() : nullptr,
+      mask_dims.data());
+  CheckFlashAttnStatus(succ);
+#if 0
   }
+#endif
 #else
   RaiseNotSupportedError();
 #endif
