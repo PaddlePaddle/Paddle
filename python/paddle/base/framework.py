@@ -6104,7 +6104,7 @@ class Program:
                 >>> paddle.enable_static()
 
                 >>> img = static.data(name='image', shape=[None, 784])
-                >>> pred = static.nn.fc(x=img, size=10, actvation='relu')
+                >>> pred = static.nn.fc(x=img, size=10, activation='relu')
                 >>> loss = paddle.mean(pred)
                 >>> # Here we use clone before Momentum
                 >>> test_program = static.default_main_program().clone(for_test=True)
