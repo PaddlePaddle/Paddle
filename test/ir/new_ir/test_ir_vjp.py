@@ -45,7 +45,7 @@ class TestTanhVjp(unittest.TestCase):
         with paddle.ir.core.program_guard(newir_program):
             grad_outs = call_vjp(tanh_op, out_grads, stop_gradients)
         self.assertEqual(
-            grad_outs[0][0].get_defining_op().name(), "pd.tanh_grad"
+            grad_outs[0][0].get_defining_op().name(), "pd_op.tanh_grad"
         )
         self.assertEqual(
             grad_outs[0][0]
@@ -54,7 +54,7 @@ class TestTanhVjp(unittest.TestCase):
             .source()
             .get_defining_op()
             .name(),
-            "pd.tanh",
+            "pd_op.tanh",
         )
         self.assertEqual(
             grad_outs[0][0]
@@ -63,7 +63,7 @@ class TestTanhVjp(unittest.TestCase):
             .source()
             .get_defining_op()
             .name(),
-            "pd.full",
+            "pd_op.full",
         )
         self.assertEqual(len(newir_program.global_block().ops), 4)
 
@@ -97,7 +97,7 @@ class TestMeanVjp(unittest.TestCase):
         with paddle.ir.core.program_guard(newir_program):
             grad_outs = call_vjp(mean_op, out_grads, stop_gradients)
             self.assertEqual(
-                grad_outs[0][0].get_defining_op().name(), "pd.mean_grad"
+                grad_outs[0][0].get_defining_op().name(), "pd_op.mean_grad"
             )
             self.assertEqual(
                 grad_outs[0][0]
@@ -106,7 +106,7 @@ class TestMeanVjp(unittest.TestCase):
                 .source()
                 .get_defining_op()
                 .name(),
-                "pd.data",
+                "pd_op.data",
             )
             self.assertEqual(
                 grad_outs[0][0]
@@ -115,7 +115,7 @@ class TestMeanVjp(unittest.TestCase):
                 .source()
                 .get_defining_op()
                 .name(),
-                "pd.full",
+                "pd_op.full",
             )
             self.assertEqual(len(newir_program.global_block().ops), 4)
 

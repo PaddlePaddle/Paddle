@@ -43,14 +43,14 @@ class TestBuildOp(unittest.TestCase):
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
         with paddle.ir.core.program_guard(newir_program):
             out = paddle.mean(tanh_out)
-        self.assertEqual(out.get_defining_op().name(), "pd.mean")
+        self.assertEqual(out.get_defining_op().name(), "pd_op.mean")
         self.assertEqual(
             out.get_defining_op()
             .operands()[0]
             .source()
             .get_defining_op()
             .name(),
-            "pd.tanh",
+            "pd_op.tanh",
         )
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
@@ -64,7 +64,7 @@ class TestBuildOp2(unittest.TestCase):
             out1 = paddle.mean(tanh_out)
             out2 = paddle.mean(tanh_out)
             out = paddle.add_n([out1, out2])
-        self.assertEqual(out.get_defining_op().name(), "pd.add_n")
+        self.assertEqual(out.get_defining_op().name(), "pd_op.add_n")
         self.assertEqual(
             out.get_defining_op()
             .operands()[0]
@@ -97,7 +97,7 @@ class TestBuildOp3(unittest.TestCase):
 
         print(newir_program)
         self.assertEqual(
-            tanh_operand.source().get_defining_op().name(), "pd.mean"
+            tanh_operand.source().get_defining_op().name(), "pd_op.mean"
         )
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
@@ -109,7 +109,7 @@ class TestBuildOp4(unittest.TestCase):
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
         with paddle.ir.core.program_guard(newir_program):
             out = paddle.concat([tanh_out, tanh_out], 0)
-        self.assertEqual(out.get_defining_op().name(), "pd.concat")
+        self.assertEqual(out.get_defining_op().name(), "pd_op.concat")
         self.assertEqual(
             out.get_defining_op()
             .operands()[0]
@@ -136,7 +136,7 @@ class TestBuildOp5(unittest.TestCase):
             .source()
             .get_defining_op()
             .name(),
-            "pd.split",
+            "pd_op.split",
         )
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 

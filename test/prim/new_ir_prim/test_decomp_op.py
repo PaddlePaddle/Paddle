@@ -56,14 +56,14 @@ class TestBuildOp(unittest.TestCase):
         self.assertEqual(
             op_name_list,
             [
-                'pd.data',
-                'pd.matmul',
-                'pd.add',
-                'pd.full_int_array',
-                'pd.sum',
-                'pd.full',
-                'pd.divide',
-                'pd.tanh',
+                'pd_op.data',
+                'pd_op.matmul',
+                'pd_op.add',
+                'pd_op.full_int_array',
+                'pd_op.sum',
+                'pd_op.full',
+                'pd_op.divide',
+                'pd_op.tanh',
             ],
         )
 

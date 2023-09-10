@@ -81,10 +81,10 @@ class TestPybind(unittest.TestCase):
         )
         self.assertEqual(matmul_op.result(0).shape, [4, 4])
         self.assertEqual(
-            matmul_op.results()[0].get_defining_op().name(), "pd.matmul"
+            matmul_op.results()[0].get_defining_op().name(), "pd_op.matmul"
         )
         self.assertEqual(
-            matmul_op.result(0).get_defining_op().name(), "pd.matmul"
+            matmul_op.result(0).get_defining_op().name(), "pd_op.matmul"
         )
         matmul_op.result(0).stop_gradient = True
         self.assertEqual(matmul_op.result(0).stop_gradient, True)
@@ -111,12 +111,13 @@ class TestPybind(unittest.TestCase):
         self.assertEqual(add_op.operands()[0].source(), matmul_op.results()[0])
 
         self.assertEqual(
-            tanh_op.operands()[0].source().get_defining_op().name(), "pd.add"
+            tanh_op.operands()[0].source().get_defining_op().name(), "pd_op.add"
         )
 
         add_op.replace_all_uses_with(matmul_op.results())
         self.assertEqual(
-            tanh_op.operands()[0].source().get_defining_op().name(), "pd.matmul"
+            tanh_op.operands()[0].source().get_defining_op().name(),
+            "pd_op.matmul",
         )
 
         self.assertEqual(add_op.result(0).use_empty(), True)

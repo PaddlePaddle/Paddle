@@ -1716,7 +1716,7 @@ class Optimizer:
                 >>> adam.step()
                 >>> adam.clear_grad()
         """
-        if paddle.base.dygraph.base.in_declarative_mode():
+        if paddle.base.dygraph.base.in_to_static_mode():
             self._declarative_step()
             return
 
