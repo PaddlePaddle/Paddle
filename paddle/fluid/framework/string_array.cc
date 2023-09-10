@@ -69,7 +69,7 @@ void StringMapToStream(std::ostream& os,
       // write the token
       size_t length = token.size();
       os.write(reinterpret_cast<const char*>(&length), sizeof(length));
-      os.write(token.c_str(), length);
+      os.write(token.c_str(), length);  // NOLINT
       // write the token_id
       os.write(reinterpret_cast<const char*>(&token_id), sizeof(token_id));
     }
@@ -90,7 +90,7 @@ void StringMapFromStream(std::istream& is,
     size_t token_length;
     is.read(reinterpret_cast<char*>(&token_length), sizeof(token_length));
     char* tmp = new char[token_length];
-    is.read(tmp, token_length);
+    is.read(tmp, token_length);  // NOLINT
     std::string token(tmp, tmp + token_length);
     delete[] tmp;
     // read the token_id

@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -37,9 +37,9 @@ class TestAllcloseLayer(unittest.TestCase):
             a, b, rtol=0.01, atol=0.0, name="corner_case"
         )
 
-        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
 
         x = np.array([10000.0, 1e-07]).astype(dtype)
         y = np.array([10000.1, 1e-08]).astype(dtype)
@@ -73,33 +73,33 @@ class TestAllcloseLayer(unittest.TestCase):
         self.assertEqual(result_c, corner_res)
 
     def test_allclose_cpu_fp32(self):
-        main = fluid.Program()
-        startup = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, startup):
+        main = base.Program()
+        startup = base.Program()
+        with base.unique_name.guard():
+            with base.program_guard(main, startup):
                 self.allclose_check(use_cuda=False, dtype='float32')
 
     def test_allclose_cpu_fp64(self):
-        main = fluid.Program()
-        startup = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, startup):
+        main = base.Program()
+        startup = base.Program()
+        with base.unique_name.guard():
+            with base.program_guard(main, startup):
                 self.allclose_check(use_cuda=False, dtype='float64')
 
     def test_allclose_gpu_fp32(self):
-        if fluid.core.is_compiled_with_cuda():
-            main = fluid.Program()
-            startup = fluid.Program()
-            with fluid.unique_name.guard():
-                with fluid.program_guard(main, startup):
+        if base.core.is_compiled_with_cuda():
+            main = base.Program()
+            startup = base.Program()
+            with base.unique_name.guard():
+                with base.program_guard(main, startup):
                     self.allclose_check(use_cuda=True, dtype='float32')
 
     def test_allclose_gpu_fp64(self):
-        if fluid.core.is_compiled_with_cuda():
-            main = fluid.Program()
-            startup = fluid.Program()
-            with fluid.unique_name.guard():
-                with fluid.program_guard(main, startup):
+        if base.core.is_compiled_with_cuda():
+            main = base.Program()
+            startup = base.Program()
+            with base.unique_name.guard():
+                with base.program_guard(main, startup):
                     self.allclose_check(use_cuda=True, dtype='float64')
 
     def test_dygraph_mode(self):
@@ -114,7 +114,7 @@ class TestAllcloseLayer(unittest.TestCase):
         x_5 = np.array([10.1]).astype("float64")
         y_5 = np.array([10]).astype("float64")
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             x_v_1 = paddle.to_tensor(x_1)
             y_v_1 = paddle.to_tensor(y_1)
             ret_1 = paddle.allclose(

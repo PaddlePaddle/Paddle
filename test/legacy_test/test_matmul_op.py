@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y):
@@ -168,11 +168,11 @@ for dim in [4]:
 class API_TestMm(unittest.TestCase):
     def test_out(self):
         with paddle_static_guard():
-            with fluid.program_guard(fluid.Program()):
+            with base.program_guard(base.Program()):
                 x = paddle.static.data(name="x", shape=[2], dtype="float64")
                 y = paddle.static.data(name='y', shape=[2], dtype='float64')
                 result = paddle.mm(x, y)
-                exe = fluid.Executor(fluid.CPUPlace())
+                exe = base.Executor(base.CPUPlace())
                 data1 = np.random.rand(2)
                 data2 = np.random.rand(2)
                 np_res = exe.run(
@@ -191,12 +191,12 @@ class API_TestMm(unittest.TestCase):
             )
 
     def test_dygraph_without_out(self):
-        device = fluid.CPUPlace()
-        with fluid.dygraph.guard(device):
+        device = base.CPUPlace()
+        with base.dygraph.guard(device):
             input_array1 = np.random.rand(3, 4).astype("float64")
             input_array2 = np.random.rand(4, 3).astype("float64")
-            data1 = fluid.dygraph.to_variable(input_array1)
-            data2 = fluid.dygraph.to_variable(input_array2)
+            data1 = base.dygraph.to_variable(input_array1)
+            data2 = base.dygraph.to_variable(input_array2)
             out = paddle.mm(data1, data2)
             expected_result = np.matmul(input_array1, input_array2)
         np.testing.assert_allclose(expected_result, out.numpy(), rtol=1e-05)
@@ -204,12 +204,12 @@ class API_TestMm(unittest.TestCase):
 
 class Test_API_Matmul(unittest.TestCase):
     def test_dygraph_without_out(self):
-        device = fluid.CPUPlace()
-        with fluid.dygraph.guard(device):
+        device = base.CPUPlace()
+        with base.dygraph.guard(device):
             input_array1 = np.random.rand(3, 4).astype("float64")
             input_array2 = np.random.rand(4, 3).astype("float64")
-            data1 = fluid.dygraph.to_variable(input_array1)
-            data2 = fluid.dygraph.to_variable(input_array2)
+            data1 = base.dygraph.to_variable(input_array1)
+            data2 = base.dygraph.to_variable(input_array2)
             out = paddle.matmul(data1, data2)
             expected_result = np.matmul(input_array1, input_array2)
         np.testing.assert_allclose(expected_result, out.numpy(), rtol=1e-05)
@@ -220,7 +220,7 @@ class API_TestMmError(unittest.TestCase):
         with paddle_static_guard():
 
             def test_error1():
-                with fluid.program_guard(fluid.Program(), fluid.Program()):
+                with base.program_guard(base.Program(), base.Program()):
                     data1 = paddle.static.data(
                         name="data1", shape=[10, 2], dtype="float32"
                     )
@@ -232,7 +232,7 @@ class API_TestMmError(unittest.TestCase):
             self.assertRaises(ValueError, test_error1)
 
             def test_error2():
-                with fluid.program_guard(fluid.Program(), fluid.Program()):
+                with base.program_guard(base.Program(), base.Program()):
                     data1 = paddle.static.data(
                         name="data1", shape=[-1, 10, 2], dtype="float32"
                     )
@@ -244,7 +244,7 @@ class API_TestMmError(unittest.TestCase):
             test_error2()
 
             def test_error3():
-                with fluid.program_guard(fluid.Program(), fluid.Program()):
+                with base.program_guard(base.Program(), base.Program()):
                     data1 = paddle.static.data(
                         name="data1", shape=[10, 10, 2], dtype="float32"
                     )

@@ -56,8 +56,8 @@ class LstmUnitOp : public framework::OperatorWithKernel {
                             c_prev_dims[1] * 4));
     }
 
-    int b_size = c_prev_dims[0];  // batch size
-    int s_dim = c_prev_dims[1];   // state dim
+    int b_size = static_cast<int>(c_prev_dims[0]);  // batch size
+    int s_dim = static_cast<int>(c_prev_dims[1]);   // state dim
     ctx->SetOutputDim("C", {b_size, s_dim});
     ctx->SetOutputDim("H", {b_size, s_dim});
   }
