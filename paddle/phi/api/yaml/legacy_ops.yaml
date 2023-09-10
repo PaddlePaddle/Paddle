@@ -1166,3 +1166,11 @@
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
   output : Tensor(out)
   invoke : full_like(x, 0, dtype, place)
+
+- op : fc
+  args: (Tensor x, Tensor w, Tensor bias, int in_num_col_dims, str activation_type, bool use_mkldnn, bool padding_weights, bool use_quantizer, str mkl_data_type, float scale_in, float[] scale_weights, float scale_out, bool force_fp32_output, bool is_quant, int quant_round_type, float quant_max_bound, float quant_min_bound)
+  output: Tensor(out)
+  infer_meta:
+    func: FcInferMeta
+  kernel:
+    func: fc

@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fc_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/infermeta/ternary.h"
 
 #include <vector>
 
@@ -22,106 +24,6 @@ namespace operators {
 class FCOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "FC");
-    OP_INOUT_CHECK(ctx->HasInput("W"), "Input", "W", "FC");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "FC");
-
-    auto w_dims = ctx->GetInputDim("W");
-    bool padding_weights = ctx->Attrs().Get<bool>("padding_weights");
-    PADDLE_ENFORCE_EQ(
-        w_dims.size(),
-        2,
-        platform::errors::InvalidArgument(
-            "The input Weight of fc is expected to be a 2-D tensor. "
-            "But received the number of Weight's dimensions is %d, "
-            "Weight's shape is %s.",
-            w_dims.size(),
-            w_dims));
-
-    if (ctx->HasInput("Bias")) {
-      auto bias_dims = ctx->GetInputDim("Bias");
-      auto w_dims1 = padding_weights ? w_dims[1] - 4 : w_dims[1];
-
-      PADDLE_ENFORCE_LE(
-          bias_dims.size(),
-          2,
-          platform::errors::InvalidArgument(
-              "The input Bias of fc is expected to be a 1-D or 2-D tensor. But "
-              "received the number of Bias's dimensions is %d, "
-              "Bias's shape is %s.",
-              bias_dims.size(),
-              bias_dims));
-
-      PADDLE_ENFORCE_EQ(
-          bias_dims[bias_dims.size() - 1],
-          w_dims1,
-          platform::errors::InvalidArgument(
-              "The last dimension of input Bias is expected be equal "
-              "to the actual width of input Weight. But received the last "
-              "dimension of Bias is %d, Bias's shape is %s; "
-              "the actual width of Weight is %d, Weight's shape is %s.",
-              bias_dims[bias_dims.size() - 1],
-              bias_dims,
-              w_dims1,
-              w_dims));
-
-      if (bias_dims.size() == 2) {
-        PADDLE_ENFORCE_EQ(
-            bias_dims[0],
-            1,
-            platform::errors::InvalidArgument(
-                "The first dimension of input Bias is expected to be 1, "
-                "but received %d, Bias's shape is %s.",
-                bias_dims[0],
-                bias_dims));
-      }
-    }
-
-    auto in_dims = ctx->GetInputDim("Input");
-    int in_num_col_dims = ctx->Attrs().Get<int>("in_num_col_dims");
-    PADDLE_ENFORCE_LT(
-        in_num_col_dims,
-        in_dims.size(),
-        platform::errors::InvalidArgument(
-            "The attribute in_num_col_dims used to flatten Input to "
-            "a 2-D tensor, is expected to be less than the number of "
-            "Input's dimensions. But received in_num_col_dims is %d, "
-            "the number of Input's dimensions is %d, Input's shape is %s.",
-            in_num_col_dims,
-            in_dims.size(),
-            in_dims));
-
-    auto& activation_type = ctx->Attrs().Get<std::string>("activation_type");
-    if (!activation_type.empty()) {
-      PADDLE_ENFORCE_EQ(activation_type,
-                        "relu",
-                        platform::errors::InvalidArgument(
-                            "The attribute activation_type of fc is expected "
-                            "to be \"relu\", but received %s.",
-                            activation_type.c_str()));
-    }
-
-    if (ctx->Attrs().Get<bool>("use_mkldnn")) {
-      PADDLE_ENFORCE_EQ(
-          in_dims.size() >= 2 && in_dims.size() <= 4,
-          true,
-          platform::errors::Unimplemented(
-              "The Input of fc is expected to be a 2-D, 3-D or 4-D tensor when "
-              "use_mkldnn is set. But received the number of Input's "
-              "dimensions is %d, Input's shape is %s.",
-              in_dims.size(),
-              in_dims));
-    }
-
-    std::vector<int64_t> output_dims;
-    FCOutputSize(
-        in_dims, w_dims, output_dims, in_num_col_dims, padding_weights);
-
-    ctx->SetOutputDim("Out", phi::make_ddim(output_dims));
-    ctx->ShareLoD("Input", "Out");
-  }
 
  protected:
   phi::KernelKey GetExpectedKernelType(
@@ -200,12 +102,14 @@ The size of each dimension of the parameters checked in the infer-shape.
 
 namespace ops = paddle::operators;
 
+DECLARE_INFER_SHAPE_FUNCTOR(fc,
+                            FcInferShapeFunctor,
+                            PD_INFER_META(phi::FcInferMeta));
+
 REGISTER_OPERATOR(
     fc,
     ops::FCOp,
     ops::FCOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-PD_REGISTER_STRUCT_KERNEL(fc, CPU, ALL_LAYOUT, ops::FCOpKernel, float, double) {
-}
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    FcInferShapeFunctor);

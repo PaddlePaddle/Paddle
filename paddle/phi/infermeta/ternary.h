@@ -210,4 +210,19 @@ void ViterbiDecodeInferMeta(const MetaTensor& input,
                             MetaTensor* path,
                             MetaConfig config = MetaConfig());
 
+void FcInferMeta(const MetaTensor& x,
+                 const MetaTensor& w,
+                 const MetaTensor& bias,
+                 int in_num_col_dims,
+                 const std::string& activation_type,
+                 bool use_mkldnn,
+                 bool padding_weights,
+                 bool use_quantizer,
+                 const std::string& mkl_data_type,
+                 float scale_in,
+                 const std::vector<float>& scale_weights,
+                 float scale_out,
+                 bool force_fp32_output,
+                 MetaTensor* y);
+
 }  // namespace phi
