@@ -94,7 +94,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
     force_evnets_to_wait_ = force_evnets_to_wait;
   }
 
-  bool IsStaticBuild() const { return static_build_; }
+  bool IsStaticBuild() const override { return static_build_; }
 
  private:
   // build graph
