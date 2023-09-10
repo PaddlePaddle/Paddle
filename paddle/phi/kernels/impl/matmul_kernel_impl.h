@@ -1514,7 +1514,7 @@ void MatmulWithFlattenKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_CUDA
 template <>
-void inline MatmulWithFlattenKernel<int8_t, phi::GPUContext>(
+void MatmulWithFlattenKernel<int8_t, phi::GPUContext>(
     const phi::GPUContext& dev_ctx,
     const DenseTensor& x,
     const DenseTensor& y,
