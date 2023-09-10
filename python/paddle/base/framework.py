@@ -1005,7 +1005,7 @@ def name_scope(prefix=None):
             >>> paddle.enable_static()
             >>> with paddle.static.name_scope("s1"):
             ...     a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
-            ...     b = a + 1
+            ...     b = a + paddle.to_tensor(1)
             ...     with paddle.static.name_scope("s2"):
             ...         c = b * 1
             ...     with paddle.static.name_scope("s3"):
@@ -1665,7 +1665,7 @@ class Variable(metaclass=VariableMetaClass):
             .. code-block:: python
 
                 >>> import paddle
-                >>> import paddle.fluid as base
+                >>> import paddle.base as base
                 >>> import numpy as np
 
                 >>> x = np.ones([2, 2], np.float32)
