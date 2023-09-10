@@ -169,12 +169,13 @@ class TensorRTEngine {
     // affected, closing the plugin fp16 may bring some improvement on accuracy.
     bool disable_trt_plugin_fp16{false};
     int optimization_level{3};
+    bool use_explicit_quantization{false};
   };
 
   // Weight is model parameter.
   class Weight {
    public:
-    Weight() = default;
+    Weight() { w_ = nvinfer1::Weights{}; }
     Weight(nvinfer1::DataType dtype, void* value, size_t num_elem) {
       w_.type = dtype;
       w_.values = value;

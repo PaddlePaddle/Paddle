@@ -225,7 +225,7 @@ void TensorRTEngine::FreezeNetwork() {
 
     if (params_.calibrator) {
       infer_builder_config_->setInt8Calibrator(params_.calibrator);
-    } else {
+    } else if (!params_.use_explicit_quantization) {
       infer_builder_config_->setInt8Calibrator(nullptr);
 
       for (auto &quant_range : quant_dynamic_range_) {
