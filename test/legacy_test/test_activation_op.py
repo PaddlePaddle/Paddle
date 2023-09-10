@@ -424,6 +424,14 @@ class TestSilu_Complex128(TestSilu):
         self.dtype = np.complex128
 
 
+class TestSilu_NewIR(TestSilu):
+    def test_check_output(self):
+        self.check_output(check_new_ir=True)
+
+    def test_checkout_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
+
+
 class TestSiluAPI(unittest.TestCase):
     # test paddle.nn.Silu, paddle.nn.functional.silu
     def setUp(self):
