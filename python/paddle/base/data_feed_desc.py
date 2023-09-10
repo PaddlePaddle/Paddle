@@ -136,7 +136,7 @@ class DataFeedDesc:
         Features for a dense slot will be fed into a Tensor, while those for a
         sparse slot will be fed into a LoDTensor.
 
-        Example:
+        Examples:
             .. code-block:: python
 
                 >>> import paddle.base as base
@@ -182,7 +182,7 @@ class DataFeedDesc:
         contain a lot of features, through this function one can select which
         ones will be used for a specific model.
 
-        Example:
+        Examples:
             .. code-block:: python
 
                 >>> import paddle.base as base
@@ -225,7 +225,7 @@ class DataFeedDesc:
         """
         Returns a protobuf message for this DataFeedDesc
 
-        Example:
+        Examples:
             .. code-block:: python
 
                 >>> import paddle.base as base
