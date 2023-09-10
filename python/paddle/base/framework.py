@@ -1006,10 +1006,10 @@ def name_scope(prefix=None):
             >>> with paddle.static.name_scope("s1"):
             ...     a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
             ...     b = a + 1
-            >>> with paddle.static.name_scope("s2"):
-            ...     c = b * 1
-            >>> with paddle.static.name_scope("s3"):
-            ...     d = c / 1
+            ...     with paddle.static.name_scope("s2"):
+            ...         c = b * 1
+            ...     with paddle.static.name_scope("s3"):
+            ...         d = c / 1
             >>> with paddle.static.name_scope("s1"):
             ...     f = paddle.tensor.pow(d, 2.0)
             >>> with paddle.static.name_scope("s4"):
@@ -1538,7 +1538,7 @@ class Variable(metaclass=VariableMetaClass):
 
                 >>> import paddle.base as base
                 >>> from paddle.base.dygraph.base import to_variable
-                >>> from paddle.base.dygraph import Linear
+                >>> from paddle.nn import Linear
                 >>> import numpy as np
 
                 >>> data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
@@ -1628,6 +1628,7 @@ class Variable(metaclass=VariableMetaClass):
                 ...         inputs2.append(tmp)
                 ...     ret2 = paddle.add_n(inputs2)
                 ...     loss2 = paddle.sum(ret2)
+                ...     loss2.retain_grads()
                 ...     loss2.backward()
                 ...     print(loss2.gradient())
 
@@ -1664,7 +1665,7 @@ class Variable(metaclass=VariableMetaClass):
             .. code-block:: python
 
                 >>> import paddle
-                >>> import paddle.base as base
+                >>> import paddle.fluid as base
                 >>> import numpy as np
 
                 >>> x = np.ones([2, 2], np.float32)
@@ -1676,11 +1677,13 @@ class Variable(metaclass=VariableMetaClass):
                 ...         inputs2.append(tmp)
                 ...     ret2 = paddle.add_n(inputs2)
                 ...     loss2 = paddle.sum(ret2)
+                ...     loss2.retain_grads()
                 ...     loss2.backward()
                 ...     print(loss2.gradient())
                 ...     loss2.clear_gradient()
                 ...     print("After clear {}".format(loss2.gradient()))
-
+                1.0
+                After clear 0.0
         """
         pass
 
