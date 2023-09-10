@@ -31,6 +31,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/phi/core/enforce.h"
@@ -358,6 +359,26 @@ void BindOpResult(py::module *m) {
       .def("__eq__",
            [](OpResult &self, Value &other) {
              return self.value_impl() == other.impl();
+           })
+      .def("__neg__",
+           [](OpResult &self) {
+             return paddle::dialect::scale(self, -1.0, 0.0, true);
+           })
+      .def("__add__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::add(self, other);
+           })
+      .def("__sub__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::subtract(self, other);
+           })
+      .def("__mul__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::multiply(self, other);
+           })
+      .def("__truediv__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::divide(self, other);
            })
       .def("__hash__",
            [](OpResult &self) {
