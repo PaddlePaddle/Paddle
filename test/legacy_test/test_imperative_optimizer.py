@@ -18,9 +18,9 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-from paddle import fluid
+from paddle import base
+from paddle.base import core
 from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
-from paddle.fluid import core
 
 # Note(wangzhongpu)
 # In dygraph, don't support ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.
@@ -63,12 +63,12 @@ class TestImperativeOptimizerBase(unittest.TestCase):
         batch_size = 128
         if place is None:
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
 
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             try:
                 paddle.seed(seed)
                 paddle.framework.random._manual_program_seed(seed)
@@ -85,12 +85,12 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
         if place is None:
             place = (
-                fluid.CPUPlace()
+                base.CPUPlace()
                 if not core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                else base.CUDAPlace(0)
             )
 
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
@@ -99,14 +99,14 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 parameter_list=mlp.parameters()
             )
 
-            batch_py_reader = fluid.io.PyReader(capacity=1)
+            batch_py_reader = base.io.PyReader(capacity=1)
             batch_py_reader.decorate_sample_list_generator(
                 paddle.batch(
                     self.reader_decorator(paddle.dataset.mnist.train()),
                     batch_size=batch_size,
                     drop_last=True,
                 ),
-                places=fluid.CPUPlace(),
+                places=base.CPUPlace(),
             )
 
             dy_param_init_value = {}
@@ -140,12 +140,12 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
             if place is None:
                 place = (
-                    fluid.CPUPlace()
+                    base.CPUPlace()
                     if not core.is_compiled_with_cuda()
-                    else fluid.CUDAPlace(0)
+                    else base.CUDAPlace(0)
                 )
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
 
             mlp = MLP()
             optimizer = self.get_optimizer()
@@ -171,7 +171,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 static_param_name_list.append(param.name)
 
             out = exe.run(
-                fluid.default_startup_program(),
+                base.default_startup_program(),
                 fetch_list=static_param_name_list,
             )
 
@@ -194,7 +194,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 fetch_list = [avg_loss.name]
                 fetch_list.extend(static_param_name_list)
                 out = exe.run(
-                    fluid.default_main_program(),
+                    base.default_main_program(),
                     feed={"pixel": static_x_data, "label": y_data},
                     fetch_list=fetch_list,
                 )
@@ -229,12 +229,12 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
 class TestOptimizerLearningRate(unittest.TestCase):
     def test_constant_lr(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             a = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
 
             linear = paddle.nn.Linear(10, 10)
 
-            a = fluid.dygraph.to_variable(a)
+            a = base.dygraph.to_variable(a)
 
             b = linear(a)
 
@@ -253,12 +253,12 @@ class TestOptimizerLearningRate(unittest.TestCase):
                 np.testing.assert_allclose(lr, 0.001, rtol=1e-06, atol=0.0)
 
     def test_lr_decay(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             a = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
 
             linear = paddle.nn.Linear(10, 10)
 
-            a = fluid.dygraph.to_variable(a)
+            a = base.dygraph.to_variable(a)
 
             b = linear(a)
 
@@ -284,12 +284,12 @@ class TestOptimizerLearningRate(unittest.TestCase):
                 np.testing.assert_allclose(lr, ret[i], rtol=1e-06, atol=0.0)
 
     def test_lr_decay_natural_exp(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             a = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
 
             linear = paddle.nn.Linear(10, 10)
 
-            a = fluid.dygraph.to_variable(a)
+            a = base.dygraph.to_variable(a)
 
             b = linear(a)
 
@@ -319,12 +319,12 @@ class TestOptimizerLearningRate(unittest.TestCase):
                 np.testing.assert_allclose(lr, ret[i], rtol=1e-06, atol=0.0)
 
     def test_set_lr(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             a = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
 
             linear = paddle.nn.Linear(10, 10)
 
-            a = fluid.dygraph.to_variable(a)
+            a = base.dygraph.to_variable(a)
 
             b = linear(a)
 

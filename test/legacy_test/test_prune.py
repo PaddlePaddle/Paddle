@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import framework
+from paddle import base
+from paddle.base import framework
 
 
 class TestPrune(unittest.TestCase):
@@ -39,7 +39,7 @@ class TestPrune(unittest.TestCase):
         program = framework.Program()
         startup_program = framework.Program()
         block = program.global_block()
-        with fluid.program_guard(program, startup_program):
+        with base.program_guard(program, startup_program):
             (x, y, label, loss) = self.net()
         self.assertEqual(len(block.ops), 5)
         self.assertEqual(
@@ -65,7 +65,7 @@ class TestPrune(unittest.TestCase):
         program = framework.Program()
         startup_program = framework.Program()
         block = program.global_block()
-        with fluid.program_guard(program, startup_program):
+        with base.program_guard(program, startup_program):
             (x, y, label, loss) = self.net()
         self.assertEqual(len(block.ops), 5)
         self.assertEqual(
@@ -95,7 +95,7 @@ class TestPrune(unittest.TestCase):
         program = framework.Program()
         startup_program = framework.Program()
         block = program.global_block()
-        with fluid.program_guard(program, startup_program):
+        with base.program_guard(program, startup_program):
             (x, y, label, loss) = self.net()
         self.assertEqual(len(block.ops), 5)
         self.assertEqual(
@@ -125,7 +125,7 @@ class TestPrune(unittest.TestCase):
         program = framework.Program()
         startup_program = framework.Program()
         block = program.global_block()
-        with fluid.program_guard(program, startup_program):
+        with base.program_guard(program, startup_program):
             (x, y, label, loss) = self.net()
         self.assertEqual(len(block.ops), 5)
         self.assertEqual(
@@ -154,10 +154,10 @@ def mock(self, program, feed, fetch, optimize_ops):
 
 @contextlib.contextmanager
 def _mock_guard(mock):
-    original = fluid.Executor._prune_program
-    fluid.Executor._prune_program = mock
+    original = base.Executor._prune_program
+    base.Executor._prune_program = mock
     yield
-    fluid.Executor._prune_program = original
+    base.Executor._prune_program = original
 
 
 class TestExecutorRunAutoPrune(unittest.TestCase):
@@ -166,7 +166,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         x.desc.set_need_check_feed(False)
         label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
         label.desc.set_need_check_feed(False)
-        w_param_attrs = fluid.ParamAttr(
+        w_param_attrs = base.ParamAttr(
             name="fc_weight",
             learning_rate=0.5,
             initializer=paddle.nn.initializer.Constant(1.0),
@@ -194,13 +194,13 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         x2.desc.set_need_check_feed(False)
         label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
         label.desc.set_need_check_feed(False)
-        w1_param_attrs = fluid.ParamAttr(
+        w1_param_attrs = base.ParamAttr(
             name="fc_weight1",
             learning_rate=0.5,
             initializer=paddle.nn.initializer.Constant(1.0),
             trainable=True,
         )
-        w2_param_attrs = fluid.ParamAttr(
+        w2_param_attrs = base.ParamAttr(
             name="fc_weight2",
             learning_rate=0.5,
             initializer=paddle.nn.initializer.Constant(1.0),
@@ -238,11 +238,11 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         """
         program = framework.Program()
         startup_program = framework.Program()
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(program, startup_program):
+        scope = base.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(program, startup_program):
                 (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                exe = fluid.Executor(fluid.CPUPlace())
+                exe = base.Executor(base.CPUPlace())
                 exe.run(startup_program)
                 x_np = np.random.random(size=(10, 2)).astype('float32')
                 label_np = np.random.randint(1, size=(10, 1)).astype('int64')
@@ -261,11 +261,11 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         """
         program = framework.Program()
         startup_program = framework.Program()
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(program, startup_program):
+        scope = base.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(program, startup_program):
                 (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                exe = fluid.Executor(fluid.CPUPlace())
+                exe = base.Executor(base.CPUPlace())
                 exe.run(startup_program)
                 weight_init = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor()
@@ -294,13 +294,13 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         """
         program = framework.Program()
         startup_program = framework.Program()
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(program, startup_program):
+        scope = base.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(program, startup_program):
                 (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
                 sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
                 sgd_optimizer.minimize(loss1)
-                exe = fluid.Executor(fluid.CPUPlace())
+                exe = base.Executor(base.CPUPlace())
                 exe.run(startup_program)
                 weight_init = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor()
@@ -325,15 +325,15 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
     def test_prune_compiled_program(self):
         program = framework.Program()
         startup_program = framework.Program()
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(program, startup_program):
+        scope = base.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(program, startup_program):
                 (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
                 sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
                 sgd_optimizer.minimize(loss1)
-                exe = fluid.Executor(fluid.CPUPlace())
+                exe = base.Executor(base.CPUPlace())
                 exe.run(startup_program)
-                compiled_prog = fluid.CompiledProgram(program)
+                compiled_prog = base.CompiledProgram(program)
                 weight_init = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor()
                 )
@@ -357,11 +357,11 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
     def test_prune_feed_without_optimizer(self):
         program = framework.Program()
         startup_program = framework.Program()
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(program, startup_program):
+        scope = base.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(program, startup_program):
                 (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                exe = fluid.Executor(fluid.CPUPlace())
+                exe = base.Executor(base.CPUPlace())
                 exe.run(startup_program)
                 weight_init = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor()
@@ -386,13 +386,13 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
     def test_prune_feed_with_optimizer(self):
         program = framework.Program()
         startup_program = framework.Program()
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(program, startup_program):
+        scope = base.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(program, startup_program):
                 (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
                 sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
                 sgd_optimizer.minimize(loss1)
-                exe = fluid.Executor(fluid.CPUPlace())
+                exe = base.Executor(base.CPUPlace())
                 exe.run(startup_program)
                 x_np = np.random.random(size=(10, 2)).astype('float32')
                 label_np = np.random.randint(1, size=(10, 1)).astype('int64')
@@ -417,13 +417,13 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         10 times with the same input arguments.
         '''
         with _mock_guard(mock):
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             exe.prune_called_times = 0
             program = framework.Program()
             startup_program = framework.Program()
-            scope = fluid.Scope()
-            with fluid.scope_guard(scope):
-                with fluid.program_guard(program, startup_program):
+            scope = base.Scope()
+            with base.scope_guard(scope):
+                with base.program_guard(program, startup_program):
                     (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
                     sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
                     sgd_optimizer.minimize(loss1)
@@ -451,13 +451,13 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         the cache_keys should be different and get different pruned program.
         '''
         with _mock_guard(mock):
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             exe.prune_called_times = 0
             program = framework.Program()
             startup_program = framework.Program()
-            scope = fluid.Scope()
-            with fluid.scope_guard(scope):
-                with fluid.program_guard(program, startup_program):
+            scope = base.Scope()
+            with base.scope_guard(scope):
+                with base.program_guard(program, startup_program):
                     (
                         x1,
                         x2,
@@ -519,13 +519,13 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         10 times with the same input arguments.
         '''
         with _mock_guard(mock):
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             exe.prune_called_times = 0
             program = framework.Program()
             startup_program = framework.Program()
-            scope = fluid.Scope()
-            with fluid.scope_guard(scope):
-                with fluid.program_guard(program, startup_program):
+            scope = base.Scope()
+            with base.scope_guard(scope):
+                with base.program_guard(program, startup_program):
                     (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
                     sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
                     sgd_optimizer.minimize(loss1)
@@ -534,7 +534,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                     label_np = np.random.randint(1, size=(10, 1)).astype(
                         'int64'
                     )
-                    compiled_prog = fluid.CompiledProgram(program)
+                    compiled_prog = base.CompiledProgram(program)
                     for i in range(10):
                         res = exe.run(
                             compiled_prog,
@@ -552,13 +552,13 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         If there are multiple optimizers in the program, we can run specific one by
         pass the return of optimize.minimize() to fetch_list.
         '''
-        exe = fluid.Executor(fluid.CPUPlace())
+        exe = base.Executor(base.CPUPlace())
         program = framework.Program()
         startup_program = framework.Program()
-        scope = fluid.Scope()
+        scope = base.Scope()
         # do not use_prune
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(program, startup_program):
+        with base.scope_guard(scope):
+            with base.program_guard(program, startup_program):
                 (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
                 sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
                 train1, _ = sgd_optimizer.minimize(loss1)
@@ -577,9 +577,9 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                     scope.find_var(w_param_attrs.name).get_tensor()
                 )
 
-        scope = fluid.Scope()
+        scope = base.Scope()
         # use_prune
-        with fluid.scope_guard(scope):
+        with base.scope_guard(scope):
             exe.run(startup_program)
             res = exe.run(
                 program,
@@ -592,8 +592,8 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             )
 
         # expected
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
+        scope = base.Scope()
+        with base.scope_guard(scope):
             exe.run(startup_program)
             exe.run(
                 cloned_program,
@@ -613,13 +613,13 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         If there are multiple optimizers in the program, we can run specific one by
         pass the return of optimize.minimize() to fetch_list.
         '''
-        exe = fluid.Executor(fluid.CPUPlace())
+        exe = base.Executor(base.CPUPlace())
         program = framework.Program()
         startup_program = framework.Program()
-        scope = fluid.Scope()
+        scope = base.Scope()
         # do not use_prune
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(program, startup_program):
+        with base.scope_guard(scope):
+            with base.program_guard(program, startup_program):
                 (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
                 sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
                 train1 = sgd_optimizer.minimize(loss1)
@@ -641,9 +641,9 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                     scope.find_var(w_param_attrs.name).get_tensor()
                 )
 
-        scope = fluid.Scope()
+        scope = base.Scope()
         # use_prune
-        with fluid.scope_guard(scope):
+        with base.scope_guard(scope):
             exe.run(startup_program)
             res = exe.run(
                 program,
@@ -656,8 +656,8 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             )
 
         # expected
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
+        scope = base.Scope()
+        with base.scope_guard(scope):
             exe.run(startup_program)
             exe.run(
                 cloned_program,
@@ -679,9 +679,9 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         """
         program = framework.Program()
         startup_program = framework.Program()
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(program, startup_program):
+        scope = base.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(program, startup_program):
                 (
                     x1,
                     x2,
@@ -699,7 +699,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 train1 = sgd_optimizer.minimize(loss1)
                 sgd_optimizer1 = paddle.optimizer.SGD(learning_rate=0.5)
                 train2 = sgd_optimizer1.minimize(loss2)
-                exe = fluid.Executor(fluid.CPUPlace())
+                exe = base.Executor(base.CPUPlace())
                 exe.run(startup_program)
                 weight1_init = np.array(
                     scope.find_var(w1_param_attrs.name).get_tensor()
@@ -737,13 +737,13 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         '''
         If optimize_ops in provided in the fetch_list, the argument use_prune is always override to True.
         '''
-        exe = fluid.Executor(fluid.CPUPlace())
+        exe = base.Executor(base.CPUPlace())
         program = framework.Program()
         startup_program = framework.Program()
-        scope = fluid.Scope()
+        scope = base.Scope()
         # do not use_prune
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(program, startup_program):
+        with base.scope_guard(scope):
+            with base.program_guard(program, startup_program):
                 (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
                 sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
                 train1, _ = sgd_optimizer.minimize(loss1)
@@ -763,9 +763,9 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                     scope.find_var(w_param_attrs.name).get_tensor()
                 )
 
-        scope = fluid.Scope()
+        scope = base.Scope()
         # use_prune
-        with fluid.scope_guard(scope):
+        with base.scope_guard(scope):
             exe.run(startup_program)
             res = exe.run(
                 program,
@@ -777,8 +777,8 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             )
 
         # expected
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
+        scope = base.Scope()
+        with base.scope_guard(scope):
             exe.run(startup_program)
             exe.run(
                 cloned_program,
@@ -797,11 +797,11 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         # the variable to be fed is not leaf
         program = framework.Program()
         startup_program = framework.Program()
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(program, startup_program):
+        scope = base.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(program, startup_program):
                 (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                exe = fluid.Executor(fluid.CPUPlace())
+                exe = base.Executor(base.CPUPlace())
                 exe.run(startup_program)
                 weight_init = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor()
@@ -828,11 +828,11 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         # the variable to be fed is leaf
         program = framework.Program()
         startup_program = framework.Program()
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(program, startup_program):
+        scope = base.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(program, startup_program):
                 (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                exe = fluid.Executor(fluid.CPUPlace())
+                exe = base.Executor(base.CPUPlace())
                 exe.run(startup_program)
                 weight_init = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor()

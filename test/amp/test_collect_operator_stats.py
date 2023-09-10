@@ -22,7 +22,7 @@ import paddle
 class TestOpStatsEager(unittest.TestCase):
     def _check_result(self, dtype):
         # Returned the dict.
-        op_list = paddle.fluid.core.get_low_precision_op_list()
+        op_list = paddle.base.core.get_low_precision_op_list()
 
         self.assertTrue('elementwise_add' in op_list)
         self.assertTrue('conv2d' in op_list)

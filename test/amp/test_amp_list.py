@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 from paddle.static.amp import AutoMixedPrecisionLists, fp16_lists
 
 

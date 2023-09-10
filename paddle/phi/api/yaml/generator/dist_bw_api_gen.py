@@ -22,10 +22,24 @@ from dist_api_gen import DistForwardAPI
 # Code Gen Templates #
 ######################
 
+MAIN_DIST_BRANCH_TEMPLATE = """
+  // Auto Parallel condition
+  if ({}) {{
+    // 1. Create API Output & Prepare Dist and Dense Output{}
+    // 2. Infer DistTensor's Global Shape{}
+    // 3. Select Kernel{}
+    // 4. PrepareData (DataTransform & Prepare Dense Input){}
+    // 5. Infer Local DenseTensor Meta{}
+    // 6. DenseTensor Kernel Call{}
+    // 7. Return
+    {}
+  }}
+"""
+
 # 1. Create API Outputs
 SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput({});
-    auto dense_out = const_cast<phi::DenseTensor*>(&dist_out->value());
+    auto dense_out = dist_out->unsafe_mutable_value();
 """
 VECTOR_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput({name});
@@ -39,7 +53,21 @@ INPLACE_OUT_CREATION_TEMPLATE = """
 """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out_{} = SetKernelDistOutput({});
-    auto dense_out_{} = const_cast<phi::DenseTensor*>(&dist_out_{}->value());
+    auto dense_out_{} = dist_out_{}->unsafe_mutable_value();
+"""
+
+# 2. Infer Global Shape
+SINGLE_DIST_META_IN_TEMPLATE = """MakeDistMetaTensor(*{}.impl()), """
+SINGLE_DIST_META_OUT_DECL_TEMPLATE = """
+    phi::distributed::DistMetaTensor meta_{}({});"""
+INFER_GLOBAL_SHAPE_TEMPLATE = """
+    phi::{}({}{});
+"""
+
+# 4. PrepareData (DataTransform & Prepare Dist and Dense Input)
+SINGLE_PREPARE_DATA_TEMPLATE = """
+    auto dist_input_{arg} = PrepareDataForDistTensor({arg}, GetKernelInputArgDef(kernel.InputAt({idx}), kernel_backend), {flag}, kernel_result.is_stride_kernel);
+    auto input_{arg} = &dist_input_{}->value();
 """
 
 
@@ -130,6 +158,21 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
     # override BaseAPI's method
     def gene_api_declaration(self) -> str:
         return BackwardAPI.gene_api_declaration(self)
+
+    def generate_auto_paralel_branch(self) -> str:
+        # if no tensor input, do not genetate auto parallel branch
+        if len(self.inputs['names']) == 0:
+            return ""
+        return MAIN_DIST_BRANCH_TEMPLATE.format(
+            self.generate_if_condition_code(),
+            self.generate_output_creation_code(),
+            self.generate_infer_global_shape_code(),
+            self.generate_kernel_selection_code(),
+            self.generate_prepare_data_code(),
+            self.generate_infer_meta_code(),
+            self.generate_kernel_call_code(),
+            self.generate_return_code(),
+        )
 
 
 def header_include():

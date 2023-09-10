@@ -17,11 +17,11 @@ import re
 import os
 import ctypes
 import paddle
-from paddle.fluid import core
-from paddle.fluid import framework
-from paddle.fluid.framework import is_compiled_with_cinn  # noqa: F401
-from paddle.fluid.framework import is_compiled_with_cuda  # noqa: F401
-from paddle.fluid.framework import is_compiled_with_rocm  # noqa: F401
+from paddle.base import core
+from paddle.base import framework
+from paddle.base.framework import is_compiled_with_cinn  # noqa: F401
+from paddle.base.framework import is_compiled_with_cuda  # noqa: F401
+from paddle.base.framework import is_compiled_with_rocm  # noqa: F401
 from . import cuda
 from . import xpu
 
@@ -854,8 +854,8 @@ class stream_guard:
 
         self.src_prev_stream = current_stream(cur_stream.device)
         if self.src_prev_stream.device != cur_stream.device:
-            self.tmp_place = paddle.fluid.framework._current_expected_place()
-            paddle.fluid.framework._set_expected_place(cur_stream.device)
+            self.tmp_place = paddle.base.framework._current_expected_place()
+            paddle.base.framework._set_expected_place(cur_stream.device)
             self.dst_prev_stream = current_stream(cur_stream.device)
             set_stream(cur_stream)
         else:
@@ -868,7 +868,7 @@ class stream_guard:
 
         if self.src_prev_stream.device != cur_stream.device:
             set_stream(self.dst_prev_stream)
-            paddle.fluid.framework._set_expected_place(self.tmp_place)
+            paddle.base.framework._set_expected_place(self.tmp_place)
             set_stream(self.src_prev_stream)
         else:
             set_stream(self.src_prev_stream)

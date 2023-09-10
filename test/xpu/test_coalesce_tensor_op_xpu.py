@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 
-from paddle.fluid import core
+from paddle.base import core
 
 alignment = 256
 from get_test_cover_info import (
@@ -40,7 +40,7 @@ class XPUTestCoalesceTensorOp(XPUOpTestWrapper):
         def setUp(self):
             self.op_type = "coalesce_tensor"
             self.use_xpu = True
-            self.dtype, self.fluid_dtype = self.init_dtype()
+            self.dtype, self.base_dtype = self.init_dtype()
             attrs = self.init_attr()
             self.copy_data = attrs["copy_data"]
             self.constant = attrs["constant"]
@@ -76,7 +76,7 @@ class XPUTestCoalesceTensorOp(XPUOpTestWrapper):
                 "copy_data": True,
                 "set_constant": False,
                 "constant": 0.0,
-                "dtype": self.fluid_dtype,
+                "dtype": self.base_dtype,
             }
 
         def init_output(self, input_list, set_constant, constant):
@@ -115,7 +115,7 @@ class XPUTestCoalesceTensorOp(XPUOpTestWrapper):
                 "copy_data": False,
                 "set_constant": True,
                 "constant": 0.5,
-                "dtype": self.fluid_dtype,
+                "dtype": self.base_dtype,
                 "user_defined_size_of_dtype": 2,
             }
 
