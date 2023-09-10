@@ -1,14 +1,29 @@
-from symbol import parameters
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 import paddle
 from paddle.autograd import PyLayer
 from paddle.jit import to_static
 
+
 # Inherit from PyLayer
 class cus_tanh(PyLayer):
     @staticmethod
-    def forward(ctx, x): 
+    def forward(ctx, x):
         # ctx is a context object that store some objects for backward.
-        y = paddle.tanh(x)       # <------ 仅仅包含 Paddle API 的计算
+        y = paddle.tanh(x)  # <------ 仅仅包含 Paddle API 的计算
         # Pass tensors to backward.
         ctx.save_for_backward(y)
         return y
@@ -17,16 +32,30 @@ class cus_tanh(PyLayer):
     # forward has only one output, so there is only one gradient in the input of backward.
     def backward(ctx, dy):
         # Get the tensors passed by forward.
-        y, = ctx.saved_tensor()
-        grad = dy * (1 - paddle.square(y))   # <------ 仅仅包含 Paddle API 的计算
+        (y,) = ctx.saved_tensor()
+        grad = dy * (1 - paddle.square(y))  # <------ 仅仅包含 Paddle API 的计算
         # forward has only one input, so only one gradient tensor is returned.
         return grad
 
+
+# class cus_tanh(PyLayer):
+#     @staticmethod
+#     def forward(ctx, x):
+#         y = 3 * x
+#         return y
+
+#     @staticmethod
+#     # forward has only one output, so there is only one gradient in the input of backward.
+#     def backward(ctx, dy):
+#         grad = paddle.exp(dy)
+#         return grad
+
+
 class SimpleNet(paddle.nn.Layer):
     def __init__(self):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.linear = paddle.nn.Linear(4, 8)
-    
+
     @to_static
     def forward(self, x):
         y = self.linear(x)
@@ -44,13 +73,15 @@ def train(net, opt):
         opt.step()
         opt.clear_grad()
         print("loss: ", out.item())
-    
+
     save(net)
 
 
 def save(net):
     path = "using_anchor/simple_net"
-    x_spec = paddle.static.InputSpec(shape=[-1, 4], dtype='float32', name='x', stop_gradient=True)
+    x_spec = paddle.static.InputSpec(
+        shape=[-1, 4], dtype='float32', name='x', stop_gradient=True
+    )
     paddle.jit.save(net, path, input_spec=[x_spec])
 
 
