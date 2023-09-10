@@ -273,56 +273,65 @@ class DrrRewritePattern : public ir::RewritePattern {
     return matched;
   }
 
-  bool Bottom2UpMatch(vector<OpCall*> drr_output_sequence_candidate, 
-                      vecotr<ir::Operator*> ir_output_sequence,
-                      const std::shared_ptr<MatchContextImpl>& source_pattern_match_ctx) const {
+  bool Bottom2UpMatch(
+      std::vector<OpCall*> drr_output_sequence_candidate,
+      std::vector<ir::Operation*> ir_output_sequence,
+      const std::shared_ptr<MatchContextImpl>& source_pattern_match_ctx) const {
     // assert: equal sequence length
-    IR_ENFORCE(drr_output_candidate.size() == ir_output_sequence.size());
+    IR_ENFORCE(drr_output_sequence_candidate.size() ==
+               ir_output_sequence.size());
     // init
     std::unordered_set<const OpCall*> drr_visited;
     std::unordered_set<Operation*> ir_visited;
     std::queue<const OpCall*> drr_q;
     std::queue<ir::Operation*> ir_q;
     bool matched = true;
-    for(size_t i = 0; i < ir_output_sequence.size(); ++i){
-      drr_q.push(drr_output_candidate[i]);
+    for (size_t i = 0; i < ir_output_sequence.size(); ++i) {
+      drr_q.push(drr_output_sequence_candidate[i]);
       drr_visited.insert(drr_output_sequence_candidate[i]);
       ir_q.push(ir_output_sequence[i]);
-      ir_visited.insert(in_output_sequence[i]);
+      ir_visited.insert(ir_output_sequence[i]);
       source_pattern_match_ctx->BindIrOperation(
-        drr_output_candidate[i], std::make_shared<IrOperation>(ir_output_sequence[i]);
-      )
+          drr_output_sequence_candidate[i],
+          std::make_shared<IrOperation>(ir_output_sequence[i]));
     }
     size_t step = 0;
-    while (!drr_q.empty()){
-      if(!matched) break;
+    while (!drr_q.empty()) {
+      if (!matched) break;
       auto* drr_node = drr_q.front();
       auto* ir_node = ir_q.front();
       drr_q.pop();
       ir_q.pop();
-      if (drr_node->name() != ir_node->name()){
+      if (drr_node->name() != ir_node->name()) {
         matched = false;
         break;
       }
       const auto& drr_input_tensors = drr_node->inputs();
       auto ir_Operands = ir_node->operands();
       // check input size
-      if (drr_input_tensors.size() != ir_Operands.size()){
+      if (drr_input_tensors.size() != ir_Operands.size()) {
         matched = false;
         break;
       }
       // check output size
-      if (drr_node->outputs().size() != ir_node->operands().size()){
+      if (drr_node->outputs().size() != ir_node->operands().size()) {
+        matched = false;
+        break;
+      }
+      // check visited
+      if (!drr_visited.count(drr_node) && !ir_visited.count(ir_node)) {
+        continue;
+      } else if (!(drr_visited.count(drr_node) && ir_visited.count(ir_node))) {
         matched = false;
         break;
       }
       source_pattern_match_ctx->BindIrOperation(
-        drr_node, std::make_shared<IrOperation>(ir_node));
+          drr_node, std::make_shared<IrOperation>(ir_node));
       // join the producerOp of input
-      for(size_t i = 0; i < drr_input_tensors.size(); ++i){
-        auto *drr_ancestor_op = drr_input_tensors[i]->producer();
-        auto *ir_ancestor_op = ir_input_value.GetDefiningOp();
-        if (drr_ancestor_op->name() != ir_ancestor_op->name()){
+      for (size_t i = 0; i < drr_input_tensors.size(); ++i) {
+        auto* drr_ancestor_op = drr_input_tensors[i]->producer();
+        auto* ir_ancestor_op = ir_Operands[i];
+        if (drr_ancestor_op->name() != ir_ancestor_op->name()) {
           matched = false;
           break;
         } else {
@@ -333,7 +342,7 @@ class DrrRewritePattern : public ir::RewritePattern {
         }
       }
 
-      ++step;    
+      ++step;
     }
 
     if (matched) {
@@ -343,7 +352,7 @@ class DrrRewritePattern : public ir::RewritePattern {
     }
 
     MatchContext match_context{source_pattern_match_ctx};
-    for (const auto& constrain : constraints_){
+    for (const auto& constraint : constraints_) {
       matched = constraint(match_context);
       if (!matched) break;
     }
