@@ -146,18 +146,6 @@ SplitSPMDRule::InferBackward(const std::vector<DistTensorSpec>& input_specs,
                                    noutputs,
                                    specified_split_num));
 
-  // check whether all dims mapping in output_specs are the same
-  const std::vector<int64_t>& dims_mapping0 = output_specs[0].dims_mapping();
-  for (int64_t i = 1; i < noutputs; i++) {
-    const std::vector<int64_t>& dims_mapping = output_specs[i].dims_mapping();
-    if (!std::equal(
-            dims_mapping0.begin(), dims_mapping0.end(), dims_mapping.begin())) {
-      PADDLE_THROW(
-          phi::errors::InvalidArgument("Not all dims_mappings in "
-                                       "output_specs are the same."));
-    }
-  }
-
   // step1: Build Einsum Notation
   int64_t ndim = input_specs[0].shape().size();
   int64_t axis = ExtractAttr<int>("axis", attrs);
@@ -173,14 +161,16 @@ SplitSPMDRule::InferBackward(const std::vector<DistTensorSpec>& input_specs,
 
   // get einsum notation for output
   std::string output_axes(input_axes);
-  // the splitted axis cannot be sharded, set its notation
-  // with the special '1' to set its dim mapping to -1.
-  output_axes[axis] = '1';
+  output_axes[axis] = 'k';
 
   // step2: Sharding Propogation
   // step2.1: merge input shardings
+  std::vector<std::string> output_axes_vec;
+  for (int64_t i = 0; i < noutputs; i++) {
+    output_axes_vec.emplace_back(output_axes);
+  }
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
-  axes_sharding_info = {{output_axes, dims_mapping0}};
+  axes_sharding_info = GetAxesDimsMappingPair(output_axes_vec, output_specs);
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(axes_sharding_info);
 
@@ -188,16 +178,20 @@ SplitSPMDRule::InferBackward(const std::vector<DistTensorSpec>& input_specs,
   // the split axis in input is set to -1.
   std::vector<int64_t> input_dims_mapping =
       GetDimsMappingForAxes(input_axes, axis_to_dim_map, true);
+  input_dims_mapping[axis] = -1;
+  TensorDistAttr input_dist_attr(input_specs[0].dist_attr());
+  input_dist_attr.set_dims_mapping(input_dims_mapping);
 
+  // step2.3 get new dist attribute for output. the splitted
+  // cannot be sharded, if it is sharded, set it to replicated.
   std::vector<TensorDistAttr> output_dist_attrs;
   for (int64_t i = 0; i < noutputs; i++) {
     output_dist_attrs.emplace_back(output_specs[i].dist_attr());
+    std::vector<int64_t> out_dims_mapping =
+        GetDimsMappingForAxes(output_axes, axis_to_dim_map, true);
+    out_dims_mapping[axis] = -1;
+    output_dist_attrs[i].set_dims_mapping(out_dims_mapping);
   }
-
-  // step2.3 get new dist attribute for input. the splitted
-  // cannot be sharded, if it is sharded, set it to replicated.
-  TensorDistAttr input_dist_attr(input_specs[0].dist_attr());
-  input_dist_attr.set_dims_mapping(input_dims_mapping);
 
   // step3 Handle input tensor partial (TODO)
 

@@ -330,6 +330,38 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1, -1])
         self.assertEqual(infered_output_dist_attrs[1].dims_mapping, [0, -1, -1])
 
+        # num_or_sections = 2, axis = -2
+        # [-1, 0, -1], [-1, -1, -1] --> [-1, -1, -1], [-1, -1, -1], [-1, -1, -1]
+        # (outputs --> input, outputs)
+        self.rule = get_spmd_rule("split_with_num")
+        self.attrs = {}
+        self.attrs['num'] = 2
+        self.attrs['axis'] = -2
+        self.out_spec_list = []
+        self.out_spec_list.append(DistTensorSpec(self.x_dist_tensor_spec))
+        self.out_spec_list.append(DistTensorSpec(self.x_dist_tensor_spec))
+        self.out_spec_list[0].shape = [x_shape[0], x_shape[1] // 2, x_shape[2]]
+        self.out_spec_list[1].shape = [x_shape[0], x_shape[1] // 2, x_shape[2]]
+        self.out_spec_list[0].set_dims_mapping([-1, 0, -1])
+        self.out_spec_list[1].set_dims_mapping([-1, -1, -1])
+        result_dist_attrs = self.rule.infer_backward(
+            [self.x_dist_tensor_spec], self.out_spec_list, self.attrs
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(len(result_dist_attrs), 2)
+        self.assertEqual(len(infered_input_dist_attrs), 1)
+        self.assertEqual(len(infered_output_dist_attrs), 2)
+
+        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [-1, -1, -1])
+        self.assertEqual(
+            infered_output_dist_attrs[0].dims_mapping, [-1, -1, -1]
+        )
+        self.assertEqual(
+            infered_output_dist_attrs[1].dims_mapping, [-1, -1, -1]
+        )
+
     def test_backward_multi_mesh_dim(self):
         x_shape = [96, 32, 48, 24]
         process_mesh = auto.ProcessMesh(mesh=[[0, 1, 2], [3, 4, 5]])
@@ -433,12 +465,46 @@ class TestReductionSPMDRule(unittest.TestCase):
             infered_output_dist_attrs[2].dims_mapping, [-1, 1, -1, -1]
         )
 
-        # [-1, 1, -1, -1], [0, 1, -1, -1], [-1, 1, -1, -1] --> error
-        self.out_spec_list[1].set_dims_mapping([0, 1, -1, -1])
-        with self.assertRaises(BaseException):
-            self.rule.infer_backward(
-                [self.x_dist_tensor_spec], self.out_spec_list, self.attrs
-            )
+        # num_or_sections = [32, 32, 32], axis = 2
+        # [0, -1, 1, -1], [-1, 1, -1, -1], [-1, -1, -1, -1] -->
+        # [0, -1, -1, -1], [0, -1, -1, -1], [0, -1, -1, -1], [0, -1, -1, -1]
+        # (outputs --> input, outputs)
+        self.rule = get_spmd_rule("split")
+        self.attrs = {}
+        self.attrs['sections'] = [32, 32, 32]
+        self.attrs['axis'] = 2
+        self.out_spec_list = []
+        self.out_spec_list.append(DistTensorSpec(self.x_dist_tensor_spec))
+        self.out_spec_list.append(DistTensorSpec(self.x_dist_tensor_spec))
+        self.out_spec_list.append(DistTensorSpec(self.x_dist_tensor_spec))
+        self.out_spec_list[0].shape = [32, x_shape[1], x_shape[2], x_shape[3]]
+        self.out_spec_list[1].shape = [32, x_shape[1], x_shape[2], x_shape[3]]
+        self.out_spec_list[2].shape = [32, x_shape[1], x_shape[2], x_shape[3]]
+        self.out_spec_list[0].set_dims_mapping([0, -1, 1, -1])
+        self.out_spec_list[1].set_dims_mapping([-1, 1, -1, -1])
+        self.out_spec_list[2].set_dims_mapping([-1, -1, -1, -1])
+        result_dist_attrs = self.rule.infer_backward(
+            [self.x_dist_tensor_spec], self.out_spec_list, self.attrs
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(len(result_dist_attrs), 2)
+        self.assertEqual(len(infered_input_dist_attrs), 1)
+        self.assertEqual(len(infered_output_dist_attrs), 3)
+
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [0, -1, -1, -1]
+        )
+        self.assertEqual(
+            infered_output_dist_attrs[0].dims_mapping, [0, -1, -1, -1]
+        )
+        self.assertEqual(
+            infered_output_dist_attrs[1].dims_mapping, [0, -1, -1, -1]
+        )
+        self.assertEqual(
+            infered_output_dist_attrs[2].dims_mapping, [0, -1, -1, -1]
+        )
 
 
 if __name__ == "__main__":
