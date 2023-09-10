@@ -42,7 +42,8 @@ void TransposeCooKernel(const Context& dev_ctx,
   auto* out_indices_data = out_indices.data<int64_t>();
   for (unsigned int i = 0; i < perm.size(); ++i) {
     for (int64_t j = 0; j < x_indices_dim0; ++j) {
-      out_indices_data[j + i * x_indices_dim0] = x_indices_data[j + perm[i] * x_indices_dim0];
+      out_indices_data[j + i * x_indices_dim0] =
+          x_indices_data[j + perm[i] * x_indices_dim0];
     }
   }
 }
