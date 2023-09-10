@@ -16,7 +16,6 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -34,9 +33,7 @@ void TransposeCooKernel(const Context& dev_ctx,
   int64_t x_nnz = x.nnz();
   DDim out_dims = x.dims().transpose(perm);
   DenseTensor out_indices = EmptyLike<int64_t, Context>(dev_ctx, x.indices());
-  DenseTensor out_values = EmptyLike<T, Context>(dev_ctx, x.values());
-
-  phi::Copy(dev_ctx, x.values(), dev_ctx.GetPlace(), false, &out_values);
+  const DenseTensor& out_values(x.values());
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 
   // compute values of indices
