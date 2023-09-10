@@ -74,10 +74,10 @@ class IR_API Type {
   /// \brief Support PointerLikeTypeTraits.
   ///
   ///
-  const void *getAsOpaquePointer() const {
+  const void *AsOpaquePointer() const {
     return static_cast<const void *>(storage_);
   }
-  static Type getFromOpaquePointer(const void *pointer) {
+  static Type RecoverFromOpaquePointer(const void *pointer) {
     return Type(reinterpret_cast<Storage *>(const_cast<void *>(pointer)));
   }
 
@@ -123,28 +123,15 @@ class IR_API Type {
   friend struct std::hash<Type>;
 
   template <typename U>
-  U cast() {
-    return CastUtil<U>::call(*this);
+  U cast() const {
+    return ir::cast<U>(*this);
+    // return CastUtil<U>::call(*this);
   }
 
  protected:
   const Storage *storage_{nullptr};
 
  private:
-  template <typename T, typename Enabler = void>
-  struct CastUtil {
-    static T call(Type type) {
-      throw("Can't dyn_cast to T, T should be a Type or Interface");
-    }
-  };
-
-  template <typename T>
-  struct CastUtil<
-      T,
-      typename std::enable_if<std::is_base_of<ir::Type, T>::value>::type> {
-    static inline T call(ir::Type type) { return T(type.storage()); }
-  };
-
   template <typename T, typename Enabler = void>
   struct CastInfo {
     static T call(Type type) {
@@ -169,15 +156,22 @@ template <typename ConcreteInterface>
 class TypeInterfaceBase : public ir::Type {
  public:
   TypeInterfaceBase() : Type() {}
-  explicit TypeInterfaceBase(Type type) : Type() {}
 
   // Accessor for the ID of this interface.
   static TypeId GetInterfaceId() { return TypeId::get<ConcreteInterface>(); }
 
   static ConcreteInterface dyn_cast(Type type) {
     return ConcreteInterface(
-        type, type.abstract_type().GetInterfaceImpl<ConcreteInterface>());
+        type.abstract_type().GetInterfaceImpl<ConcreteInterface>());
   }
+};
+
+template <typename To, typename From>
+struct cast_impl<
+    To,
+    From,
+    typename std::enable_if<std::is_base_of<ir::Type, From>::value>::type> {
+  static inline To call(ir::Type type) { return To(type.storage()); }
 };
 
 }  // namespace ir

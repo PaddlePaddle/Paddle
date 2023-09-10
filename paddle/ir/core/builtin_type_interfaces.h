@@ -21,20 +21,17 @@
 #include "paddle/phi/core/tensor_base.h"
 
 namespace details {
-using std::begin;
 
 template <typename RangeT>
 constexpr auto begin_impl(RangeT &&range)
-    -> decltype(begin(std::forward<RangeT>(range))) {
-  return begin(std::forward<RangeT>(range));
+    -> decltype(std::begin(std::forward<RangeT>(range))) {
+  return std::begin(std::forward<RangeT>(range));
 }
-
-using std::end;
 
 template <typename RangeT>
 constexpr auto end_impl(RangeT &&range)
-    -> decltype(end(std::forward<RangeT>(range))) {
-  return end(std::forward<RangeT>(range));
+    -> decltype(std::end(std::forward<RangeT>(range))) {
+  return std::end(std::forward<RangeT>(range));
 }
 
 /// Returns the begin iterator to \p range using `std::begin` and
@@ -86,19 +83,21 @@ class ShapedTypeInterface : public ir::TypeInterfaceBase<ShapedTypeInterface> {
   template <class ConcreteType>
   struct Model : public Concept {
     static inline DataType getElementType(ir::Type type) {
-      return (type.cast<ConcreteType>()).dtype();
+      return ir::cast<ConcreteType>(type).dtype();
+      // return (type.cast<ConcreteType>()).dtype();
     }
 
     static inline DDim getShape(ir::Type type) {
-      return (type.cast<ConcreteType>()).dims();
+      return ir::cast<ConcreteType>(type).dims();
+      // return (type.cast<ConcreteType>()).dims();
     }
 
     Model() : Concept(getElementType, getShape) {}
   };
 
   /// Constructor
-  ShapedTypeInterface(ir::Type type, Concept *impl)
-      : ir::TypeInterfaceBase<ShapedTypeInterface>(type), impl_(impl) {}
+  explicit ShapedTypeInterface(Concept *impl)
+      : ir::TypeInterfaceBase<ShapedTypeInterface>(), impl_(impl) {}
 
   /// Get the element type.
   DataType getElementType() const { return impl_->get_element_type_(*this); }

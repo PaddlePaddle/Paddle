@@ -73,7 +73,6 @@ class StorageHelperBase : public BaseT {
   /// Utility for easy access to the storage instance.
   const Storage *storage() const {
     return static_cast<const Storage *>(this->storage_);
-    return static_cast<const Storage *>(this->storage_);
   }
 
   /// Get the identifier for the concrete type.

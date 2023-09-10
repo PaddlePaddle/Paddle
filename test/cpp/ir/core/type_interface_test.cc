@@ -42,12 +42,19 @@ TEST(shapedtype_test, shapedtype_test) {
   EXPECT_EQ(shaped_type.dims(), dims);
   EXPECT_EQ(shaped_type.data_layout(), data_layout);
   EXPECT_EQ(shaped_type.lod(), lod);
+  printf("000000000000000000000000000000000000000000000\n");
   EXPECT_EQ(shaped_type.offset(), offset);
+
+  printf("111111111111111111111111111111111111111111111\n");
 
   ir::ShapedTypeInterface interface =
       shaped_type.dyn_cast_<ir::ShapedTypeInterface>();
 
   EXPECT_EQ(interface.getElementType().isa<ir::Float32Type>(), true);
+
+  printf("222222222222222222222222222222222222222222222\n");
+  intptr_t a = reinterpret_cast<intptr_t>(&interface);
+  EXPECT_EQ(a, true);
   // EXPECT_EQ(interface.getShape(), dims);
   // EXPECT_EQ(interface.kDynamic, std::numeric_limits<int64_t>::min());
   // EXPECT_EQ(interface.hasRank(), true);
