@@ -84,15 +84,13 @@ class GlobalThreadLocal(threading.local):
         TODO(xiongkun): how to access another thread local data ?
         """
         global _dygraph_tracer_
-        self._in_declarative_mode_ = False
+        self._in_to_static_mode_ = False
         self._functional_dygraph_context_manager = None
         self._dygraph_tracer_ = _dygraph_tracer_
 
     def __str__(self):
         strings = []
-        strings.append(
-            "_in_declarative_mode_:" + str(self._in_declarative_mode_)
-        )
+        strings.append("_in_to_static_mode_:" + str(self._in_to_static_mode_))
         strings.append(
             "_functional_dygraph_context_manager:"
             + str(self._functional_dygraph_context_manager)
@@ -528,9 +526,9 @@ def _dygraph_only_(func):
 
 def _non_static_only_(func):
     def __impl__(*args, **kwargs):
-        from .dygraph.base import in_declarative_mode
+        from .dygraph.base import in_to_static_mode
 
-        assert in_dygraph_mode() or in_declarative_mode(), (
+        assert in_dygraph_mode() or in_to_static_mode(), (
             "We only support '%s()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode."
             % func.__name__
         )
@@ -2371,9 +2369,9 @@ class Variable(metaclass=VariableMetaClass):
         return _getitem_static(self, item)
 
     def __setitem__(self, item, value):
-        from .dygraph.base import in_declarative_mode
+        from .dygraph.base import in_to_static_mode
 
-        if in_declarative_mode():
+        if in_to_static_mode():
             if is_compiled_with_xpu():
                 # (NOTE): Currently, there is no index_put_xpu kernel.
                 return _setitem_impl_(self, item, value)
@@ -4325,12 +4323,9 @@ class Block:
                 'while',
                 'while_grad',
             }
-            from .dygraph.base import in_declarative_mode
+            from .dygraph.base import in_to_static_mode
 
-            if (
-                in_declarative_mode()
-                and not _stride_in_no_check_dy2st_diff_mode
-            ):
+            if in_to_static_mode() and not _stride_in_no_check_dy2st_diff_mode:
                 check_if_to_static_diff_with_dygraph(
                     op_type, inplace_map, outputs
                 )
@@ -4347,7 +4342,7 @@ class Block:
                 )
 
             self.ops.append(op)
-            if in_declarative_mode():
+            if in_to_static_mode():
                 record_is_view_var(op_type, inputs, outputs)
 
         return op
@@ -7645,10 +7640,10 @@ def _get_var(name, program=None):
 
 @signature_safe_contextmanager
 def dygraph_guard_if_declarative():
-    from .dygraph.base import in_declarative_mode
+    from .dygraph.base import in_to_static_mode
     from .dygraph import Tracer
 
-    if in_declarative_mode():
+    if in_to_static_mode():
         # Under @paddle.jit.to_static decorator, we switch back dygraph mode temporarily.
         with _dygraph_guard(tracer=Tracer()):
             yield

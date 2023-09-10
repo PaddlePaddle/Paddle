@@ -27,7 +27,6 @@
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_visitor.h"
-#include "paddle/cinn/optim/cast_simplify.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
