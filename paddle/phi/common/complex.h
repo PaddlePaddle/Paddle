@@ -537,15 +537,15 @@ HOSTDEVICE inline complex<T> log1p(const complex<T>& a) {
     return complex<T>({thrust::log(z0), theta});
   }
 #else
-  complex<T> u = z + T(1);
+  complex<T> u = a + T(1);
   if (u == T(1)) {
-    return z;
+    return a;
   } else {
     auto log_u = log(u);
-    if (u - T(1) == z) {
+    if (u - T(1) == a) {
       return log_u;
     }
-    return log_u * (z / (u - T(1)));
+    return log_u * (a / (u - T(1)));
   }
 #endif
 }
