@@ -7,6 +7,10 @@ cc_library(
   SRCS conditional_block_op_eager_deletion_pass.cc
   DEPS conditional_block_op_helper graph_helper pass computation_op_handle)
 cc_library(
+  pylayer_op_eager_deletion_pass
+  SRCS pylayer_op_eager_deletion_pass.cc
+  DEPS pylayer_op_helper graph_helper pass computation_op_handle)
+cc_library(
   while_op_eager_deletion_pass
   SRCS while_op_eager_deletion_pass.cc
   DEPS while_op_helper graph_helper pass computation_op_handle)
@@ -31,6 +35,7 @@ set(EAGER_DELETETION_PASS_DEPS
     graph_helper
     pass
     conditional_block_op_eager_deletion_pass
+    pylayer_op_eager_deletion_pass
     while_op_eager_deletion_pass
     recurrent_op_eager_deletion_pass
     reference_count_pass_helper)

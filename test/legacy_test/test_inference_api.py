@@ -19,8 +19,8 @@ import paddle
 paddle.enable_static()
 import numpy as np
 
-from paddle import fluid
-from paddle.fluid.core import PaddleDType, PaddleTensor
+from paddle import base
+from paddle.base.core import PaddleDType, PaddleTensor
 from paddle.framework import core
 from paddle.inference import (
     Config,
@@ -74,12 +74,12 @@ class TestInferenceApi(unittest.TestCase):
 
 
 def get_sample_model():
-    place = fluid.CPUPlace()
-    exe = fluid.Executor(place)
+    place = base.CPUPlace()
+    exe = base.Executor(place)
 
-    main_program = fluid.Program()
-    startup_program = fluid.Program()
-    with fluid.program_guard(main_program, startup_program):
+    main_program = base.Program()
+    startup_program = base.Program()
+    with base.program_guard(main_program, startup_program):
         data = paddle.static.data(
             name="data", shape=[-1, 6, 64, 64], dtype="float32"
         )
@@ -103,12 +103,12 @@ def get_sample_model():
 
 
 def get_sample_model_cuda(data_type):
-    place = fluid.CUDAPlace(0)
-    exe = fluid.Executor(place)
+    place = base.CUDAPlace(0)
+    exe = base.Executor(place)
 
-    main_program = fluid.Program()
-    startup_program = fluid.Program()
-    with fluid.program_guard(main_program, startup_program):
+    main_program = base.Program()
+    startup_program = base.Program()
+    with base.program_guard(main_program, startup_program):
         data = paddle.static.data(
             name="data", shape=[-1, 6, 64, 64], dtype=data_type
         )
@@ -181,10 +181,10 @@ class TestInferenceBaseAPI(unittest.TestCase):
             predictor = create_predictor(config)
             in_names = predictor.get_input_names()
             in_handle = predictor.get_input_handle(in_names[0])
-            in_data = paddle.fluid.create_lod_tensor(
+            in_data = paddle.base.create_lod_tensor(
                 np.full((1, 6, 32, 32), 1.0, "float32"),
                 [[1]],
-                paddle.fluid.CPUPlace(),
+                paddle.base.CPUPlace(),
             )
             in_handle.share_external_data(in_data)
             predictor.run()

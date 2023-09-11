@@ -21,11 +21,11 @@ import numpy as np
 from google.protobuf import text_format
 
 import paddle
-from paddle import fluid
+from paddle import base
+from paddle.base import core
+from paddle.base.framework import Program
+from paddle.base.proto import framework_pb2
 from paddle.distributed.fleet.base.util_factory import draw_block_graphviz
-from paddle.fluid import core
-from paddle.fluid.framework import Program
-from paddle.fluid.proto import framework_pb2
 from paddle.framework import io_utils
 
 __all__ = [
@@ -168,21 +168,21 @@ def append_load_op(block, var, path):
 
 
 def save_var(np_array, var_name, shape_list, dtype, save_path):
-    program = fluid.Program()
-    place = fluid.CPUPlace()
-    exe = fluid.Executor(place)
+    program = base.Program()
+    place = base.CPUPlace()
+    exe = base.Executor(place)
     shape = list(shape_list)
-    with fluid.program_guard(program):
+    with base.program_guard(program):
         d0_data = paddle.static.data(var_name, shape=shape, dtype=dtype)
         append_save_op(program.global_block(), d0_data, save_path)
         exe.run(feed={var_name: np_array}, fetch_list=[])
 
 
 def load_var(var_name, shape_list, dtype, save_path):
-    program = fluid.Program()
-    place = fluid.CPUPlace()
-    exe = fluid.Executor(place)
-    with fluid.program_guard(program):
+    program = base.Program()
+    place = base.CPUPlace()
+    exe = base.Executor(place)
+    with base.program_guard(program):
         d0_data = paddle.static.data(var_name, shape=shape_list, dtype=dtype)
         append_load_op(program.global_block(), d0_data, save_path)
         outs = exe.run(feed={}, fetch_list=[d0_data])
@@ -230,10 +230,10 @@ def try_load_model_vars(
     save_filename,
     saved_params,
 ):
-    place = fluid.CPUPlace()
-    exe = fluid.Executor(place)
-    scope = fluid.core.Scope()
-    with fluid.scope_guard(scope):
+    place = base.CPUPlace()
+    exe = base.Executor(place)
+    scope = base.core.Scope()
+    with base.scope_guard(scope):
         if is_text_dump_program:
             dump_prog_fn = program_type_trans(
                 dump_dir, dump_prog_fn, is_text_dump_program
@@ -256,7 +256,7 @@ def try_load_model_vars(
             for each_var in saved_params
         }
         for each_var in saved_params:
-            var_temp = fluid.global_scope().find_var(each_var.name)
+            var_temp = base.global_scope().find_var(each_var.name)
             assert var_temp is not None, "can't not find var: " + each_var.name
             new_shape = (np.array(var_temp.get_tensor())).shape
             assert each_var.name in orig_para_shape, (
@@ -381,7 +381,7 @@ def try_load_model_vars(
                         dtype=feed_config.feeded_vars_types[i],
                     )
                     feed_tensors.append(
-                        fluid.create_lod_tensor(t, [[1] * batch_size], place)
+                        base.create_lod_tensor(t, [[1] * batch_size], place)
                     )
                 else:
                     raise RuntimeError(
@@ -408,7 +408,7 @@ def try_load_model_vars(
                 )
                 for i in range(len(feed_config.feeded_vars_names))
             ]
-            feeder = fluid.DataFeeder(feed_list=feed_vars, place=place)
+            feeder = base.DataFeeder(feed_list=feed_vars, place=place)
             batch_feed = feed_gen(
                 batch_size,
                 feed_config.feeded_vars_dims,
