@@ -40,6 +40,7 @@ vjp_interface_declare_gen_op_list = [
     "dropout",
     'exp',
     'expand',
+    'layer_norm',
 ]
 vjp_interface_implementation_gen_op_list = [
     "tanh",
@@ -58,4 +59,5 @@ vjp_interface_implementation_gen_op_list = [
     "dropout",
     'exp',
     'expand',
+    'layer_norm',
 ]
