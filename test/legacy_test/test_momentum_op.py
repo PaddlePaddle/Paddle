@@ -20,8 +20,8 @@ from eager_op_test import OpTest
 from op import Operator
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def calculate_momentum_by_numpy(
@@ -249,7 +249,7 @@ class TestLarsMomentumOpWithMP(OpTest):
     def test_check_output(self):
         paddle.enable_static()
         if core.is_compiled_with_cuda():
-            place = fluid.CUDAPlace(0)
+            place = base.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_output_with_place(place, check_dygraph=False)
 
@@ -528,7 +528,7 @@ class TestSparseMomentumOpWithMultiPrecision(unittest.TestCase):
 
     def test_sparse_momentum(self):
         if core.is_compiled_with_cuda():
-            self.check_with_place(fluid.CUDAPlace(0))
+            self.check_with_place(base.CUDAPlace(0))
 
 
 class TestSparseMomentumOpWithMultiPrecision2(
@@ -555,9 +555,9 @@ class TestMomentumV2(unittest.TestCase):
 
     def test_momentum(self):
         paddle.enable_static()
-        place = fluid.CPUPlace()
-        main = fluid.Program()
-        with fluid.program_guard(main):
+        place = base.CPUPlace()
+        main = base.Program()
+        with base.program_guard(main):
             x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
             y_predict = paddle.static.nn.fc(x, size=1, activation=None)
@@ -575,9 +575,9 @@ class TestMomentumV2(unittest.TestCase):
             train_reader = paddle.batch(
                 paddle.dataset.uci_housing.train(), batch_size=1
             )
-            feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            feeder = base.DataFeeder(place=place, feed_list=[x, y])
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
             for data in train_reader():
                 exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
 
@@ -692,9 +692,9 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
 
     def test_momentum_static(self):
         paddle.enable_static()
-        place = fluid.CPUPlace()
-        main = fluid.Program()
-        with fluid.program_guard(main):
+        place = base.CPUPlace()
+        main = base.Program()
+        with base.program_guard(main):
             x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
             y_predict = paddle.static.nn.fc(x, size=1, activation=None)
@@ -712,9 +712,9 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
             train_reader = paddle.batch(
                 paddle.dataset.uci_housing.train(), batch_size=1
             )
-            feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            feeder = base.DataFeeder(place=place, feed_list=[x, y])
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
             for data in train_reader():
                 exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
 
@@ -810,7 +810,7 @@ class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
             momentum.minimize(loss)
             linear.clear_gradients()
 
-    def __test_vs(self, place=fluid.CPUPlace()):
+    def __test_vs(self, place=base.CPUPlace()):
         paddle.disable_static(place=place)
 
         linear_old = paddle.nn.Linear(
@@ -847,10 +847,10 @@ class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
             'the param weight updated by two Momentum optimizers should equal',
         )
 
-    def test_vs(self, place=fluid.CPUPlace()):
-        places = [fluid.CPUPlace()]
-        if paddle.fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+    def test_vs(self, place=base.CPUPlace()):
+        places = [base.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
 
         for place in places:
             self.__test_vs(place=place)

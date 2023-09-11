@@ -1289,7 +1289,7 @@ PHI_DEFINE_EXPORTED_bool(enable_new_ir_api,
                          "Enable new IR API in Python");
 
 /**
- * Using new IR in executor  FLAG
+ * Using new IR in executor FLAG
  * Name: enable_new_ir_in_executor_trace_run
  * Since Version: 2.6.0
  * Value Range: bool, default=false
@@ -1300,6 +1300,19 @@ PHI_DEFINE_EXPORTED_bool(enable_new_ir_api,
 PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_trace_run,
                          false,
                          "Enable new IR in executor");
+
+/**
+ * Apply inplace pass to new IR FLAG
+ * Name: new_ir_apply_inplace_pass
+ * Since Version: 2.6.0
+ * Value Range: bool, default=true
+ * Example:
+ * Note: If Ture, will apply inplace pass to new IR.
+ */
+PHI_DEFINE_EXPORTED_bool(new_ir_apply_inplace_pass,
+                         true,
+                         "Whether to apply inplace pass on lowering "
+                         "::pir::Program to Kernel Dialect");
 
 PHI_DEFINE_EXPORTED_bool(enable_record_memory, false, "Enable memory recorder");
 
@@ -1315,3 +1328,19 @@ PHI_DEFINE_EXPORTED_int64(host_trace_level,
                           1,
                           "RecordEvent will works "
                           "if host_trace_level >= level.");
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+/**
+ * Communication library related FLAG
+ * Name: FLAGS_dynamic_static_unified_comm
+ * Since Version: 2.5
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether to use new communication library in auto parallel and static
+ * mode. If true, it will use unified CommContextManager for communication.
+ */
+PHI_DEFINE_EXPORTED_bool(dynamic_static_unified_comm,
+                         false,
+                         "Whether to use new communication library in auto "
+                         "parallel and static mode.");
+#endif  // FLAGS_dynamic_static_unified_comm

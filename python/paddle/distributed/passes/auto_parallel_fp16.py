@@ -839,7 +839,7 @@ class FP16Pass(AMPPass):
                         with main_program._optimized_guard([]):
                             block = main_program.global_block()
 
-                            # all_infs = paddle.fluid.layers.concat(found_infs)
+                            # all_infs = paddle.base.layers.concat(found_infs)
                             all_infs = block.create_var(
                                 name=paddle.utils.unique_name.generate_with_ignorable_key(
                                     ".".join(['concat', 'tmp'])
@@ -870,7 +870,7 @@ class FP16Pass(AMPPass):
                                 self.dist_context,
                             )
 
-                            # found_inf = paddle.fluid.layers.reduce_any(all_infs)
+                            # found_inf = paddle.base.layers.reduce_any(all_infs)
                             found_inf = block.create_var(
                                 name=paddle.utils.unique_name.generate_with_ignorable_key(
                                     ".".join(['find_infinite_scale', 'tmp'])

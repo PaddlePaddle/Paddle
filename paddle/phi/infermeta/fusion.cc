@@ -446,6 +446,190 @@ void MultiEncoderXPUInferMeta(
   }
 }
 
+void FusedGemmEpilogueInferMeta(const MetaTensor& x,
+                                const MetaTensor& y,
+                                const MetaTensor& bias,
+                                bool trans_x,
+                                bool trans_y,
+                                const std::string& activation,
+                                MetaTensor* out,
+                                MetaTensor* reserve_space) {
+  const auto& x_dims = x.dims();
+  const auto& y_dims = y.dims();
+  const auto& bias_dims = bias.dims();
+
+  PADDLE_ENFORCE_EQ(y_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The Input tensor Y's dimension of FusedGemmEpilogueOp "
+                        " should be 2, but got %d.",
+                        y_dims.size()));
+
+  PADDLE_ENFORCE_GE(x_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The Input tensor X's dimension of FusedGemmEpilogueOp "
+                        " should be >= 2, but got %d.",
+                        x_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      bias_dims.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "The Input tensor bias's dimension of FusedGemmEpilogueOp "
+          " should be == 1, but got %d.",
+          bias_dims.size()));
+
+  PADDLE_ENFORCE_EQ(bias_dims[0],
+                    trans_y ? y_dims[0] : y_dims[1],
+                    phi::errors::InvalidArgument(
+                        "The Input tensor bias's dimension 0"
+                        " should be == Y[-1], but got bias's shape = [%s] "
+                        "and Y's shape = [%s]",
+                        bias_dims,
+                        y_dims));
+
+  auto x_mat_dims = phi::flatten_to_2d(x_dims, trans_x ? 1 : x_dims.size() - 1);
+
+  int K_from_x = trans_x ? x_mat_dims[0] : x_mat_dims[1];
+  int K_from_y = trans_y ? y_dims[1] : y_dims[0];
+
+  PADDLE_ENFORCE_EQ(
+      K_from_x,
+      K_from_y,
+      phi::errors::InvalidArgument(
+          "The last dimension of X should be equal with Y's first dimension."
+          "But received X[-1] = [%d], Y[0] = [%d].",
+          K_from_x,
+          K_from_y));
+
+  std::vector<int64_t> out_dims;
+  out_dims.reserve(static_cast<size_t>(x_dims.size()));
+  if (trans_x) {
+    for (int i = 1; i < x_dims.size(); ++i) out_dims.push_back(x_dims[i]);
+  } else {
+    for (int i = 0; i < x_dims.size() - 1; ++i) out_dims.push_back(x_dims[i]);
+  }
+
+  if (trans_y) {
+    out_dims.push_back(y_dims[0]);
+  } else {
+    out_dims.push_back(y_dims[1]);
+  }
+  out->set_dims(phi::make_ddim(out_dims));
+  out->set_dtype(x.dtype());
+
+  if (reserve_space) {
+    reserve_space->set_dims(phi::make_ddim(out_dims));
+    reserve_space->set_dtype(x.dtype());
+    if (activation == "none") {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "The ReserveSpace would not be used when activation = \"none\""));
+    } else {
+      int min_size_of_n = activation == "relu" ? 128 : 8;
+      int N_size = trans_y ? y_dims[0] : y_dims[1];
+      PADDLE_ENFORCE_EQ(N_size % min_size_of_n,
+                        0,
+                        phi::errors::InvalidArgument(
+                            "The output dimension N (X(MxK) * Y(KxN) = C(MxN)) "
+                            "should be multiple of %d when auxiliary_key given "
+                            "and activation=%s, but got N = %d.",
+                            min_size_of_n,
+                            activation,
+                            N_size));
+    }
+  }
+}
+
+void FusedGemmEpilogueGradInferMeta(const MetaTensor& x,
+                                    const MetaTensor& y,
+                                    const MetaTensor& reserve_space,
+                                    const MetaTensor& out_grad,
+                                    bool trans_x,
+                                    bool trans_y,
+                                    const std::string& activation_grad,
+                                    MetaTensor* x_grad,
+                                    MetaTensor* y_grad,
+                                    MetaTensor* bias_grad) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  auto dout_dims = out_grad.dims();
+
+  PADDLE_ENFORCE_GE(
+      dout_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The Input tensor DOut's dimension of FusedGemmEpilogueGradOp "
+          " should be >= 2, but got %d.",
+          dout_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      y_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The Input tensor Y's dimension of FusedGemmEpilogueGradOp "
+          " should be 2, but got %d.",
+          y_dims.size()));
+
+  PADDLE_ENFORCE_GE(
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The Input tensor X's dimension of FusedGemmEpilogueGradOp "
+          " should be >= 2, but got %d.",
+          x_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      dout_dims.size(),
+      x_dims.size(),
+      phi::errors::InvalidArgument(
+          "The Input tensor DOut's and X's dimension of "
+          "FusedGemmEpilogueGradOp "
+          " should be the same, but got DOut's dim = %d and X's = %d.",
+          dout_dims.size(),
+          x_dims.size()));
+
+  auto dout_mat_dims = phi::flatten_to_2d(dout_dims, dout_dims.size() - 1);
+  auto x_mat_dims = phi::flatten_to_2d(x_dims, x_dims.size() - 1);
+
+  PADDLE_ENFORCE_EQ(
+      dout_mat_dims[1],
+      trans_y ? y_dims[0] : y_dims[1],
+      phi::errors::InvalidArgument(
+          "The last dimension of DOut should be equal with Y's last"
+          "dimension. But received DOut[-1] = [%d], Y[1] = [%d].",
+          dout_mat_dims[1],
+          y_dims[1]));
+
+  PADDLE_ENFORCE_EQ(
+      dout_mat_dims[0],
+      trans_x ? x_mat_dims[1] : x_mat_dims[0],
+      phi::errors::InvalidArgument(
+          "The first dimension of DOut should be equal with X's first"
+          "dimension. But received DOut[0] = [%d], Y[0] = [%d].",
+          dout_mat_dims[0],
+          x_mat_dims[0]));
+
+  if (activation_grad != "none" && !reserve_space) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The ReserveSpace should not be empty. "
+        "when activation == {relu_grad, gelu_grad}."));
+  }
+
+  if (x_grad) {
+    x_grad->set_dims(x_dims);
+    x_grad->set_dtype(x.dtype());
+  }
+  y_grad->set_dims(y_dims);
+  y_grad->set_dtype(y.dtype());
+
+  if (bias_grad) {
+    int64_t dbias_dim = trans_y ? y_dims[0] : y_dims[1];
+    bias_grad->set_dims(phi::make_ddim({dbias_dim}));
+    bias_grad->set_dtype(y.dtype());
+  }
+}
+
 void FusedMultiTransformerXpuInferMeta(
     const MetaTensor& x,
     const std::vector<const MetaTensor*>& ln_scale,
@@ -1057,6 +1241,31 @@ void FusedScaleBiasReluConvBnstatsInferMeta(
   saved_var->set_dims(c_dims);
   eq_scale->set_dims(c_dims);
   eq_bias->set_dims(c_dims);
+}
+
+void SqueezeExcitationInferMeta(const MetaTensor& x,
+                                const MetaTensor& filter,
+                                const MetaTensor& filter_max,
+                                const MetaTensor& bias,
+                                const MetaTensor& branch,
+                                const std::vector<int>& act_type,
+                                const std::vector<float>& act_param,
+                                const std::vector<int>& filter_dims,
+                                MetaTensor* out) {
+  auto in_dims = x.dims();
+  // do some checks
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      4,
+      phi::errors::InvalidArgument(
+          "The input should be a 4-D Tensor. But "
+          "received: input's dimension is %u, input's shape is [%s].",
+          in_dims.size(),
+          in_dims));
+  std::vector<int64_t> out_shape(
+      {in_dims[0], filter_dims[1], in_dims[2], in_dims[3]});
+  // set output dims
+  out->set_dims(DDim(out_shape.data(), out_shape.size()));
 }
 
 }  // namespace phi
