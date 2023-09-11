@@ -76,15 +76,15 @@ class LayerHelperBase:
 
         Examples:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import numpy as np
-            import paddle.base as base
+                >>> import numpy as np
+                >>> import paddle.base as base
 
-            with base.dygraph.guard():
-                x = np.ones([2, 2], np.float32)
-                y = base.dygraph.to_variable(x)
-
+                >>> with base.dygraph.guard():
+                ...     x = np.ones([2, 2], np.float32)
+                ...     y = base.dygraph.to_variable(x)
+                ...
         """
         if isinstance(value, np.ndarray):
             return core.eager.Tensor(
