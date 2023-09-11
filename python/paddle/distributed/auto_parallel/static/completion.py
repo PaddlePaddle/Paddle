@@ -1916,11 +1916,7 @@ class Completer:
                     for op_dist_impl in op_dist_impls:
                         dim_changed = op_dist_impl.update_dims_mapping(dist_op)
                         if op_dist_impl.is_auto_compatible(dist_op):
-                            # if op_dist_impl.type == "elementwise":
-                            #     dist_op.dist_attr.impl_type = "default"
-                            # else:
                             dist_op.dist_attr.impl_type = op_dist_impl.type
-                            # op_dist_attr.impl_type = op_dist_impl.type
                             dist_op.dist_attr.impl_idx = op_dist_impl.idx
                             break
                         else:
