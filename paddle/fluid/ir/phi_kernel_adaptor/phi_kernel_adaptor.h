@@ -60,6 +60,7 @@ class PhiKernelAdaptor {
         variable_2_var_name;
     std::map<std::string, int> var_name_2_id;
     std::vector<paddle::framework::Variable*> variable_list;
+    std::map<ir::Block*, paddle::framework::Scope*> sub_blocks;
     std::stringstream ss;
     ss << this;
 
@@ -69,7 +70,8 @@ class PhiKernelAdaptor {
                &value_2_var_name,
                &variable_2_var_name,
                &var_name_2_id,
-               &variable_list);
+               &variable_list,
+               &sub_blocks);
     ir::IrContext* ctx = ir::IrContext::Instance();
 
     ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();

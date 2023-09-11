@@ -39,6 +39,7 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
 #endif
+#include "paddle/fluid/framework/new_executor/instruction/cond_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
@@ -531,6 +532,17 @@ void NewIRInterpreter::BuildInstruction() {
                                                       value_2_var_name_,
                                                       var_name_2_id_,
                                                       variable_2_var_name_));
+      }
+      if (op->name() == "pd_op.if") {
+        vec_instruction_base_.emplace_back(
+            std::make_unique<CondInstruction>(op_idx++,
+                                              place_,
+                                              op,
+                                              scope_,
+                                              local_scope_,
+                                              value_2_var_name_,
+                                              var_name_2_id_,
+                                              variable_2_var_name_));
       } else {
         vec_instruction_base_.emplace_back(
             std::make_unique<PhiKernelInstruction>(op_idx++,
@@ -923,7 +935,8 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                      &value_2_var_name_,
                      &variable_2_var_name_,
                      &var_name_2_id_,
-                     &variable_list_);
+                     &variable_list_,
+                     &sub_blocks_);
     VLOG(4) << "Done BuildScope";
     VLOG(4) << DebugValueInfo();
 

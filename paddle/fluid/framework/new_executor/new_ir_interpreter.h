@@ -210,6 +210,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   std::map<std::string, int> var_name_2_id_;
 
   std::vector<Variable*> variable_list_;
+  std::map<ir::Block*, paddle::framework::Scope*> sub_blocks_;
 
   std::vector<int> var_ref_count_;
 

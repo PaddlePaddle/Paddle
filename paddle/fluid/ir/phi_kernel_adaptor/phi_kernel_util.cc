@@ -34,6 +34,7 @@
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor_ref_array.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_manual_op.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_attribute.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_type.h"
@@ -45,6 +46,17 @@
 #include "paddle/fluid/framework/operator.h"
 
 namespace ir {
+
+const std::unordered_set<std::string> SpecialOps = {"pd.feed",
+                                                    "pd.fetch",
+                                                    "builtin.combine",
+                                                    "builtin.set_parameter",
+                                                    "builtin.get_parameter",
+                                                    "builtin.slice",
+                                                    "builtin.split",
+                                                    "pd.data",
+                                                    "pd.shadow_output",
+                                                    "pd.if"};
 
 void AddNewData(ir::Value value,
                 std::string name,
@@ -162,6 +174,17 @@ void CheckInputVars(
   }
 }
 
+std::vector<ir::Operation*> GetYiedOpList(ir::Block* block) {
+  std::vector<ir::Operation*> vec_res;
+  for (auto op : (*block)) {
+    if (op->name() == "cf.yield") {
+      vec_res.push_back(op);
+    }
+  }
+
+  return vec_res;
+}
+
 void BuildValue(ir::Value value,
                 paddle::framework::Scope* inner_scope,
                 const std::string& var_name_prefix,
@@ -226,7 +249,8 @@ void HandleForSpecialOp(
     std::unordered_map<const paddle::framework::Variable*, std::string>*
         variable_2_var_name,
     std::map<std::string, int>* var_name_2_id,
-    std::vector<paddle::framework::Variable*>* variable_list) {
+    std::vector<paddle::framework::Variable*>* variable_list,
+    std::map<ir::Block*, paddle::framework::Scope*>* sub_blocks) {
   std::string op_name = op->name();
   if (op->attributes().count("op_name")) {
     op_name =
@@ -445,6 +469,68 @@ void HandleForSpecialOp(
       value_2_var_name->emplace(out_value, var_name);
     }
   }
+
+  if (op_name == "pd.if") {
+    auto if_op = op->dyn_cast<paddle::dialect::IfOp>();
+
+    auto true_block = if_op.true_block();
+
+    auto false_block = if_op.false_block();
+
+    auto& true_branch_scope = inner_scope->NewScope();
+    sub_blocks->emplace(true_block, &true_branch_scope);
+    // BuildScope( *true_block, &true_branch_scope,  var_name_prefix,
+    // value_2_var_name,
+    //     variable_2_var_name, var_name_2_id, variable_list, sub_blocks);
+
+    auto& false_branch_scope = inner_scope->NewScope();
+    sub_blocks->emplace(false_block, &false_branch_scope);
+
+    // BuildScope( *false_block, &false_branch_scope,  var_name_prefix,
+    // value_2_var_name,
+    //     variable_2_var_name, var_name_2_id, variable_list, sub_blocks);
+
+    auto true_branch_yied_ops = GetYiedOpList(true_block);
+    auto false_branch_yeid_ops = GetYiedOpList(false_block);
+
+    PADDLE_ENFORCE_EQ(
+        true_branch_yied_ops.size(),
+        1u,
+        phi::errors::PreconditionNotMet("true branch only have one yield op"));
+    PADDLE_ENFORCE_EQ(
+        false_branch_yeid_ops.size(),
+        1u,
+        phi::errors::PreconditionNotMet("false branch only have one yield op"));
+    auto true_yeid_op = true_branch_yied_ops[0];
+    auto false_yeid_op = false_branch_yeid_ops[0];
+    PADDLE_ENFORCE_EQ(
+        true_yeid_op->num_operands(),
+        false_yeid_op->num_operands(),
+        phi::errors::PreconditionNotMet(
+            "True branch and false branch yied op should have some inputs"));
+
+    for (size_t i = 0; i < if_op->num_results(); ++i) {
+      // auto true_value = true_yeid_op->operand_source(i);
+
+      auto if_op_out_value = if_op->result(i);
+      BuildValue(if_op_out_value,
+                 inner_scope,
+                 var_name_prefix,
+                 value_2_var_name,
+                 variable_2_var_name,
+                 var_name_2_id,
+                 variable_list);
+
+      // true and false branch output pointing to varaible of it op output
+
+      auto if_op_out_var_name = value_2_var_name->at(if_op_out_value);
+
+      (*value_2_var_name)[true_yeid_op->operand_source(i)] = if_op_out_var_name;
+
+      (*value_2_var_name)[false_yeid_op->operand_source(i)] =
+          if_op_out_var_name;
+    }
+  }
 }
 
 void HandleForInplaceOp(
@@ -512,7 +598,8 @@ void BuildScope(const ir::Block& block,
                 std::unordered_map<const paddle::framework::Variable*,
                                    std::string>* variable_2_var_name,
                 std::map<std::string, int>* var_name_2_id,
-                std::vector<paddle::framework::Variable*>* variable_list) {
+                std::vector<paddle::framework::Variable*>* variable_list,
+                std::map<ir::Block*, paddle::framework::Scope*>* sub_blocks) {
   VLOG(4) << "***** [before build] scope"
           << "(" << inner_scope << ") ******\n"
           << paddle::framework::GenScopeTreeDebugInfo(
@@ -528,18 +615,15 @@ void BuildScope(const ir::Block& block,
     }
     VLOG(4) << "build op:" << op_name;
 
-    if (op_name == "pd.feed" || op_name == "pd.fetch" ||
-        op_name == "builtin.combine" || op_name == "builtin.set_parameter" ||
-        op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
-        op_name == "builtin.split" || op_name == "pd.data" ||
-        op_name == "pd.shadow_output") {
+    if (SpecialOps.count(op_name)) {
       HandleForSpecialOp(op,
                          inner_scope,
                          var_name_prefix,
                          value_2_var_name,
                          variable_2_var_name,
                          var_name_2_id,
-                         variable_list);
+                         variable_list,
+                         sub_blocks);
       continue;
     }
 
