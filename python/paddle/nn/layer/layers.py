@@ -23,26 +23,27 @@ import numpy as np
 
 import paddle
 from paddle import nn, profiler
-from paddle.fluid import core, framework, unique_name
-from paddle.fluid.core import VarDesc
-from paddle.fluid.dygraph import no_grad
-from paddle.fluid.dygraph.base import (
+from paddle.base import core, framework, unique_name
+from paddle.base.core import VarDesc
+from paddle.base.dygraph import no_grad
+from paddle.base.dygraph.base import in_declarative_mode  # noqa F401
+from paddle.base.dygraph.base import (
     _convert_into_variable,
-    in_declarative_mode,
+    in_to_static_mode,
     program_desc_tracing_guard,
 )
-from paddle.fluid.dygraph_utils import _append_activation_in_dygraph
-from paddle.fluid.executor import Executor, global_scope
-from paddle.fluid.framework import Parameter, Program
-from paddle.fluid.framework import _current_expected_place as _get_device
-from paddle.fluid.framework import (
+from paddle.base.dygraph_utils import _append_activation_in_dygraph
+from paddle.base.executor import Executor, global_scope
+from paddle.base.framework import Parameter, Program
+from paddle.base.framework import _current_expected_place as _get_device
+from paddle.base.framework import (
     _global_flags,
     convert_np_dtype_to_dtype_,
     default_main_program,
     in_dygraph_mode,
 )
-from paddle.fluid.layer_helper_base import LayerHelperBase
-from paddle.fluid.param_attr import ParamAttr
+from paddle.base.layer_helper_base import LayerHelperBase
+from paddle.base.param_attr import ParamAttr
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
 
@@ -1336,7 +1337,7 @@ class Layer:
 
     def __call__(self, *inputs, **kwargs):
         if (
-            (not in_declarative_mode())
+            (not in_to_static_mode())
             and (not self._forward_pre_hooks)
             and (not self._forward_post_hooks)
             and (not self._built)
@@ -1561,7 +1562,7 @@ class Layer:
         if '_parameters' in self.__dict__:
             _parameters = self.__dict__['_parameters']
             if name in self._parameters:
-                if in_declarative_mode():
+                if in_to_static_mode():
                     return _convert_into_variable(self._parameters[name])
                 return self._parameters[name]
         if '_sub_layers' in self.__dict__:
@@ -1571,7 +1572,7 @@ class Layer:
         if '_buffers' in self.__dict__:
             _buffers = self.__dict__['_buffers']
             if name in _buffers:
-                if in_declarative_mode():
+                if in_to_static_mode():
                     return _convert_into_variable(_buffers[name])
                 return _buffers[name]
         return object.__getattribute__(self, name)
@@ -1653,7 +1654,7 @@ class Layer:
                         # but should all non-Variable _buffers[name] be re-assign? We
                         # should consider it in the future. I current wrote this as
                         # conservative code.
-                        if in_declarative_mode() and _buffers[name] is None:
+                        if in_to_static_mode() and _buffers[name] is None:
                             raise RuntimeError(
                                 'In Dy2stat, self.{0} is a buffer and self.{0} is '
                                 'not allowed to be set to Variable when self.{0} is None.'.format(
@@ -2164,9 +2165,7 @@ class Layer:
 
         # 2. cast param / Tensor to dtype
         if dtype is not None and dtype != t_used.dtype:
-            with paddle.fluid.framework._dygraph_place_guard(
-                place=t_used.place
-            ):
+            with paddle.base.framework._dygraph_place_guard(place=t_used.place):
                 t_casted = t_used.cast(dtype=dtype)
         else:
             t_casted = t_used

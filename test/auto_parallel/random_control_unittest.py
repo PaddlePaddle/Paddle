@@ -44,8 +44,8 @@ def apply_pass(use_recompute=False, no_recompute_segments=[]):
 
 
 def reset_prog():
-    paddle.fluid.framework.switch_main_program(paddle.static.Program())
-    paddle.fluid.framework.switch_startup_program(paddle.static.Program())
+    paddle.base.framework.switch_main_program(paddle.static.Program())
+    paddle.base.framework.switch_startup_program(paddle.static.Program())
 
 
 class TestRandomControl(unittest.TestCase):
@@ -62,7 +62,7 @@ class TestRandomControl(unittest.TestCase):
         paddle.seed(2022)
         np.random.seed(2022)
         random.seed(2022)
-        place = paddle.fluid.CUDAPlace(paddle.distributed.ParallelEnv().dev_id)
+        place = paddle.base.CUDAPlace(paddle.distributed.ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 
     def get_engine(self, use_recompute=False, no_recompute_segments=[]):

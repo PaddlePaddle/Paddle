@@ -54,7 +54,7 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
       dataset->GetReaders();
   VLOG(3) << "readers num: " << readers.size();
   // change thread num to readers num
-  thread_num_ = readers.size();
+  thread_num_ = static_cast<int>(readers.size());
   VLOG(3) << "worker thread num: " << thread_num_;
   workers_.resize(thread_num_);
 

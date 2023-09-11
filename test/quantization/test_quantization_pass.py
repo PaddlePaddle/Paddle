@@ -19,8 +19,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid.framework import IrGraph
+from paddle import base
+from paddle.base.framework import IrGraph
 from paddle.framework import core
 from paddle.static.quantization import (
     AddQuantDequantPass,
@@ -386,7 +386,7 @@ class TestQuantizationFreezePass(unittest.TestCase):
         test_reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=batch_size
         )
-        feeder = paddle.fluid.DataFeeder(feed_list=feeds, place=place)
+        feeder = paddle.base.DataFeeder(feed_list=feeds, place=place)
         with paddle.static.scope_guard(scope):
             for _ in range(iters):
                 data = next(train_reader())
@@ -407,7 +407,7 @@ class TestQuantizationFreezePass(unittest.TestCase):
 
         test_data = next(test_reader())
         with paddle.static.program_guard(quantized_test_program):
-            w_var = fluid.framework._get_var(
+            w_var = base.framework._get_var(
                 'conv2d_1.w_0.quantized', quantized_test_program
             )
         # Testing

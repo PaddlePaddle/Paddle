@@ -21,7 +21,8 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid, nn, static, utils
+from paddle import base, nn, static, utils
+from paddle.base import core
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.static.cluster import Cluster
 from paddle.distributed.auto_parallel.static.completion import Completer
@@ -39,7 +40,6 @@ from paddle.distributed.auto_parallel.static.parallelizer import (
 from paddle.distributed.auto_parallel.static.partitioner import Partitioner
 from paddle.distributed.auto_parallel.static.reshard import Resharder
 from paddle.distributed.fleet import auto
-from paddle.fluid import core
 
 if os.getenv("CUDA_VISIBLE_DEVICES") is not None:
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
@@ -595,7 +595,7 @@ class TestAutoParallelMapper(unittest.TestCase):
         ring_id = 0
         root_id = 0
         nranks = 2
-        with fluid.program_guard(train_program, startup_program):
+        with base.program_guard(train_program, startup_program):
             input = paddle.static.data(
                 name="input", shape=[-1, 10, 10], dtype='float32'
             )
@@ -635,8 +635,8 @@ class TestAutoParallelMapper(unittest.TestCase):
                 inputs={"X": input},
                 outputs={"Out": output},
                 attrs={
-                    "in_dtype": fluid.core.VarDesc.VarType.FP32,
-                    "out_dtype": fluid.core.VarDesc.VarType.FP32,
+                    "in_dtype": base.core.VarDesc.VarType.FP32,
+                    "out_dtype": base.core.VarDesc.VarType.FP32,
                 },
             )
             self.assertRaises(ValueError, get_comm_volume, cast_op, 0, 1)

@@ -23,8 +23,8 @@ sys.path.append("..")
 from eager_op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 paddle.enable_static()
 
@@ -171,7 +171,7 @@ class TestCholeskySolveAPI(unittest.TestCase):
 
     def check_static_result(self, place):
         paddle.enable_static()
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             x = paddle.static.data(name="x", shape=[10, 2], dtype=self.dtype)
             y = paddle.static.data(name="y", shape=[10, 10], dtype=self.dtype)
             z = paddle.linalg.cholesky_solve(x, y, upper=self.upper)
@@ -185,9 +185,9 @@ class TestCholeskySolveAPI(unittest.TestCase):
             z_np = cholesky_solution(umat, x_np, upper=self.upper)
             z2_np = scipy_cholesky_solution(umat, x_np, upper=self.upper)
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"x": x_np, "y": umat},
                 fetch_list=[z],
             )
@@ -243,11 +243,11 @@ class TestCholeskySolveOpError(unittest.TestCase):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input type of solve_op must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            x1 = base.create_lod_tensor(
+                np.array([[-1]]), [[1]], base.CPUPlace()
             )
-            y1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            y1 = base.create_lod_tensor(
+                np.array([[-1]]), [[1]], base.CPUPlace()
             )
             self.assertRaises(TypeError, paddle.linalg.cholesky_solve, x1, y1)
 

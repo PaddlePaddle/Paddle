@@ -14,8 +14,8 @@
 
 # TODO: define random api
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 __all__ = []
 
@@ -49,7 +49,7 @@ def seed(seed):
     elif core.is_compiled_with_xpu():
         for i in range(core.get_xpu_device_count()):
             core.default_xpu_generator(i).manual_seed(seed)
-    place = fluid.framework._current_expected_place()
+    place = base.framework._current_expected_place()
     if isinstance(place, core.CustomPlace):
         dev_cnt = sum(
             [
@@ -80,7 +80,7 @@ def get_rng_state(device=None):
     """
     state_list = []
     if device is None:
-        place = fluid.framework._current_expected_place()
+        place = base.framework._current_expected_place()
     else:
         place = paddle.device._convert_to_place(device)
 
@@ -164,7 +164,7 @@ def set_rng_state(state_list, device=None):
 
     """
     if device is None:
-        place = fluid.framework._current_expected_place()
+        place = base.framework._current_expected_place()
     else:
         place = device._convert_to_place(device)
 
@@ -250,9 +250,9 @@ def _manual_program_seed(seed):
     Returns:
         None
     """
-    fluid.default_main_program().random_seed = seed
-    fluid.default_startup_program().random_seed = seed
-    program = fluid.Program()
+    base.default_main_program().random_seed = seed
+    base.default_startup_program().random_seed = seed
+    program = base.Program()
     program.global_seed(seed)
 
 
