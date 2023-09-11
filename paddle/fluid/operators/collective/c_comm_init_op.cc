@@ -112,7 +112,7 @@ class CCommInitOp : public framework::OperatorBase {
         device_id = Attr<int>("device_id");
       }
       int rank_id = Attr<int>("rank");
-#endif 
+#endif
 #if defined(PADDLE_WITH_NCCL)
       const char* dynamic_static_unified_comm =
           getenv("FLAGS_dynamic_static_unified_comm");
@@ -132,7 +132,7 @@ class CCommInitOp : public framework::OperatorBase {
       VLOG(3) << "#### use old comm lab ####";
       UniqueId* comm_id = var->GetMutable<UniqueId>();
       CommContext::Instance().CreateComm(
-              comm_id, nranks, rank_id, device_id, rid);
+          comm_id, nranks, rank_id, device_id, rid);
 #endif
     }
   }
