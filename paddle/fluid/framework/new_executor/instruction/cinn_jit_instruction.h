@@ -39,6 +39,7 @@ class CinnJitInstruction : public InstructionBase {
   const std::string& Name() const override;
 
   ::pir::Operation* Operation() const override { return op_; }
+
  private:
   class Impl;
   std::shared_ptr<Impl> impl_{nullptr};
