@@ -14,9 +14,34 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_op.h"
 
 namespace paddle {
-namespace dialect {}  // namespace dialect
+namespace dialect {
+pir::OpResult get_parameter(const std::string& name,
+                            phi::DataType dtype,
+                            const std::vector<int64_t>& shape) {
+  phi::LoD lod;
+  size_t offset{0};
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
+      TransToIrDataType(dtype),
+      phi::DDim(shape.data(), shape.size()),
+      phi::DataLayout::UNDEFINED,
+      lod,
+      offset);
+  pir::GetParameterOp get_parameter_op =
+      APIBuilder::Instance().GetBuilder()->Build<pir::GetParameterOp>(
+          name, out_dense_tensor_type);
+  return get_parameter_op.result(0);
+}
+
+void set_parameter(pir::OpResult parameter, const std::string& name) {
+  APIBuilder::Instance().GetBuilder()->Build<pir::SetParameterOp>(parameter,
+                                                                  name);
+}
+
+}  // namespace dialect
 }  // namespace paddle

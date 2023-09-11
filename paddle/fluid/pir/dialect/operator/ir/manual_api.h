@@ -21,5 +21,10 @@
 #include "paddle/pir/core/value.h"
 
 namespace paddle {
-namespace dialect {}  // namespace dialect
+namespace dialect {
+pir::OpResult get_parameter(const std::string& name,
+                            phi::DataType dtype,
+                            const std::vector<int64_t>& shape);
+void set_parameter(pir::OpResult parameter, const std::string& name);
+}  // namespace dialect
 }  // namespace paddle
