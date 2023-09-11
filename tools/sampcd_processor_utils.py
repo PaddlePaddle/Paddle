@@ -26,14 +26,20 @@ import typing
 logger = logging.getLogger(__name__)
 logger.propagate = False
 
-if logger.handlers:
-    console = logger.handlers[
-        0
-    ]  # we assume the first handler is the one we want to configure
-else:
-    console = logging.StreamHandler(stream=sys.stderr)
-    logger.addHandler(console)
-console.setFormatter(logging.Formatter("%(message)s"))
+formatter = logging.Formatter("%(message)s")
+
+# add stdout for all logs
+handler_stdout = logging.StreamHandler(stream=sys.stdout)
+handler_stdout.setLevel(logging.DEBUG)
+handler_stdout.setFormatter(formatter)
+
+# add stderr for bad code-block
+handler_stderr = logging.StreamHandler(stream=sys.stderr)
+handler_stderr.setLevel(logging.WARNING)
+handler_stderr.setFormatter(formatter)
+
+logger.addHandler(handler_stdout)
+logger.addHandler(handler_stderr)
 
 
 RUN_ON_DEVICE = 'cpu'
@@ -376,6 +382,17 @@ def extract_code_blocks_from_docstr(docstr, google_style=True):
     return code_blocks
 
 
+def log_exit(arg=None):
+    if arg:
+        _logger = logger.warning
+    else:
+        _logger = logger.info
+
+    _logger("----------------End of the Check--------------------")
+
+    sys.exit(arg)
+
+
 def init_logger(debug=True, log_file=None):
     """
     init logger level and file handler
@@ -409,7 +426,7 @@ def check_test_mode(mode="cpu", gpu_id=0):
         logger.error(
             "Unrecognized argument:%s, 'cpu' or 'gpu' is desired.", mode
         )
-        sys.exit("Invalid arguments")
+        log_exit("Invalid arguments")
 
     return mode
 
@@ -465,8 +482,8 @@ def get_docstring(full_test=False):
                 docstrings_to_test[api] = api_obj.__doc__
 
     if len(docstrings_to_test) == 0 and len(whl_error) == 0:
-        logger.info("-----API_PR.spec is the same as API_DEV.spec-----")
-        sys.exit(0)
+        logger.warning("-----API_PR.spec is the same as API_DEV.spec-----")
+        log_exit(0)
     logger.info("API_PR is diff from API_DEV: %s", docstrings_to_test.keys())
     logger.info("Total api: %s", len(docstrings_to_test.keys()))
 
@@ -497,9 +514,6 @@ def check_old_style(docstrings_to_test: typing.Dict[str, str]):
                 old_style_apis.append(docstring_name)
 
     if old_style_apis:
-        stdout_handler = logging.StreamHandler(stream=sys.stdout)
-        logger.addHandler(stdout_handler)
-
         logger.info(
             ">>> %d apis use plain sample code style.",
             len(old_style_apis),
@@ -512,8 +526,7 @@ def check_old_style(docstrings_to_test: typing.Dict[str, str]):
         logger.info(
             "For more information: https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/dev_guides/style_guide_and_references/code_example_writing_specification_cn.html "
         )
-        logger.info("----------------End of the Check--------------------")
-        sys.exit(1)
+        log_exit(1)
 
 
 def exec_gen_doc():

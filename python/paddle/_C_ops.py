@@ -16,22 +16,12 @@ from paddle.base import core
 
 __all__ = []
 
-UNIFIED_APIS = [
-    'add_n',
-    'concat',
-    'full_like',
-    'mean',
-    'scale',
-    'sum',
-]
-
 
 for name in dir(core.eager.ops):
     globals()[name] = getattr(core.eager.ops, name)
     __all__.append(name)
 
 for name in dir(core.ir.ops):
-    if name in UNIFIED_APIS:
-        globals()[name] = getattr(core.ir.ops, name)
-        if name not in __all__:
-            __all__.append(name)
+    globals()[name] = getattr(core.ir.ops, name)
+    if name not in __all__:
+        __all__.append(name)
