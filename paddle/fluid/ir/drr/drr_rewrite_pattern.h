@@ -306,12 +306,12 @@ class DrrRewritePattern : public ir::RewritePattern {
         break;
       }
       const auto& drr_input_tensors = drr_node->inputs();
-      auto ir_Operands = ir_node->operands();
+      auto ir_input_value_size = ir_node->num_operands();
       // check input size
-      if (drr_input_tensors.size() != ir_Operands.size()) {
+      if (drr_input_tensors.size() != ir_input_value_size) {
         VLOG(6) << "Match False! drr_node input size:"
                 << drr_input_tensors.size()
-                << "not equal ir_node input size:" << ir_Operands.size();
+                << "not equal ir_node input size:" << ir_input_value_size;
         matched = false;
         break;
       }
@@ -337,7 +337,7 @@ class DrrRewritePattern : public ir::RewritePattern {
       // join the producerOp of input
       for (size_t i = 0; i < drr_input_tensors.size(); ++i) {
         auto* drr_producer_op = drr_input_tensors[i]->producer();
-        auto* ir_producer_op = ir_Operands[i];
+        auto* ir_producer_op = ir_node->operand(i).source().GetDefiningOp();
         if (drr_producer_op->name() != ir_producer_op->name()) {
           VLOG(6) << "Match False! drr_producer_op name:"
                   << drr_node->outputs().size()
