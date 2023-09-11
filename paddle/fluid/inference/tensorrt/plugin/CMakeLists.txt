@@ -40,7 +40,9 @@ list(
   elementwiseadd_transpose_op_plugin.cu
   generic_plugin.cu
   many_emb_layernorm_plugin.cu
-  many_emb_layernorm_kernel.cu)
+  many_emb_layernorm_kernel.cu
+  prompt_tuning_emb_layernorm_varseqlen_kernel_hface.cu
+  prompt_tuning_emb_layernorm_varseqlen_plugin.cu)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
   list(APPEND TRT_FILES many_emb_layernorm_varseqlen_plugin.cu
