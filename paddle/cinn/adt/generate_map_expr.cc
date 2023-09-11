@@ -235,7 +235,7 @@ MakeGetterTensorIndexExpr(const std::shared_ptr<IGroup>& igroup,
                                                igroup->sd_iterators()->end()};
   eqaution::value::SolveEquations(merged_view, starts, ctx.get());
   return [ctx](const m_expr::Tensor& tensor) {
-     // All indexes of same tensor share the same TensorIndexExpr.
+     // All indexes of same tensor have the same Value.
     const auto index = igroup->GetIndexes(tensor).at(0);
     return ctx->GetValue(index);
   }
