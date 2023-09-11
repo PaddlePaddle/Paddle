@@ -19,6 +19,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
@@ -338,7 +339,8 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
 
 TEST(DrrTest, FusedLinear) {
   pir::IrContext *ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
   pir::Program program(ctx);
   pir::Builder builder = pir::Builder(ctx, program.block());
   BuildProgram(builder);

@@ -24,6 +24,7 @@
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
@@ -244,11 +245,11 @@ class AttentionFusePass : public pir::Pass {
   pir::FrozenRewritePatternSet patterns_;
 };
 
-namespace ir {
+namespace pir {
 std::unique_ptr<Pass> CreateAttentionFusePass() {
   return std::make_unique<AttentionFusePass>();
 }
-}  // namespace ir
+}  // namespace pir
 
 void BuildProgram(pir::Builder &builder) {  // NOLINT
   paddle::dialect::FullOp matmul_1_in_1 =
@@ -360,7 +361,8 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
 
 TEST(DrrTest, AttentionFuse) {
   pir::IrContext *ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
   pir::Program program(ctx);
   pir::Builder builder = pir::Builder(ctx, program.block());
   BuildProgram(builder);
