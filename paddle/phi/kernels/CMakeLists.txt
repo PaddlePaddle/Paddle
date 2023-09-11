@@ -33,7 +33,6 @@ file(
   "gpu/*.cu.cc"
   "gpudnn/*.cu"
   "kps/*.cu"
-  "legacy/kps/*.cu"
   "legacy/gpu/*.cu"
   "selected_rows/gpu/*.cu"
   "sparse/gpu/*.cu"
@@ -144,8 +143,6 @@ endif()
 if(WITH_XPU)
   if(WITH_XPU_KP)
     file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/kps/
-         DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/kps/)
-    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/legacy/kps/
          DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/kps/)
     file(GLOB kernel_xpu_kps "${CMAKE_CURRENT_BINARY_DIR}/kps/*.cu")
     foreach(kernel ${kernel_xpu_kps})
