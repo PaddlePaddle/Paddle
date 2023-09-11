@@ -32,6 +32,7 @@ from vjp_interface_gen_op_list import (
     vjp_interface_implementation_gen_op_list,
 )
 
+# import from paddle/fluid/primitive/code_gen/gen.py
 sys.path.append(
     str(pathlib.Path(__file__).resolve().parents[3] / 'primitive/codegen')
 )
