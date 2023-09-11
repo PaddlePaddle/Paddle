@@ -227,7 +227,7 @@ def in_new_ir_mode():
             False
 
             >>> paddle.enable_static()
-            >>> paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+            >>> paddle.framework.set_flags({"FLAGS_enable_pir_api": True})
             >>> print(paddle.framework.in_new_ir_mode())
             True
 
@@ -255,7 +255,7 @@ def in_dynamic_or_new_ir_mode():
             >>> print(paddle.framework.in_dynamic_or_new_ir_mode())
             False
 
-            >>> paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+            >>> paddle.framework.set_flags({"FLAGS_enable_pir_api": True})
             >>> print(paddle.framework.in_dynamic_or_new_ir_mode())
             True
 

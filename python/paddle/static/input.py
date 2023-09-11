@@ -126,7 +126,7 @@ def data(name, shape, dtype=None, lod_level=0):
             need_check_feed=True,
         )
 
-        is_new_ir_mode = os.environ.get("FLAGS_enable_new_ir_in_executor", None)
+        is_new_ir_mode = os.environ.get("FLAGS_enable_pir_in_executor", None)
         if evaluate_flag(is_new_ir_mode):
             helper = LayerHelper('data', **locals())
             if not isinstance(dtype, core.VarDesc.VarType):

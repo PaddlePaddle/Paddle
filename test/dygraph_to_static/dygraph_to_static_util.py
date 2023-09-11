@@ -131,7 +131,7 @@ def test_with_new_ir(func):
         with static.scope_guard(static.Scope()):
             with static.program_guard(static.Program()):
                 try:
-                    new_ir_flag = 'FLAGS_enable_new_ir_in_executor'
+                    new_ir_flag = 'FLAGS_enable_pir_in_executor'
                     os.environ[new_ir_flag] = 'True'
                     set_flags({new_ir_flag: True})
                     ir_outs = func(*args, **kwargs)

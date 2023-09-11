@@ -79,8 +79,8 @@ class TestNewIR(unittest.TestCase):
         )
 
     def enable_new_ir(self, flag):
-        paddle.set_flags({'FLAGS_enable_new_ir_in_executor': flag})  # for c++
-        os.environ['FLAGS_enable_new_ir_in_executor'] = str(flag)  # for python
+        paddle.set_flags({'FLAGS_enable_pir_in_executor': flag})  # for c++
+        os.environ['FLAGS_enable_pir_in_executor'] = str(flag)  # for python
 
     def test_dp(self):
         self.enable_new_ir(False)

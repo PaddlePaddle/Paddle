@@ -593,7 +593,7 @@ py_test_modules(test_install_check MODULES test_install_check ENVS
                 FLAGS_cudnn_deterministic=1)
 set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
 py_test_modules(test_install_check_new_ir MODULES test_install_check ENVS
-                FLAGS_cudnn_deterministic=1 FLAGS_enable_new_ir_in_executor=1)
+                FLAGS_cudnn_deterministic=1 FLAGS_enable_pir_in_executor=1)
 set_tests_properties(test_install_check_new_ir PROPERTIES LABELS
                                                           "RUN_TYPE=DIST")
 
@@ -1350,7 +1350,7 @@ set(NEW_IR_COVERAGE_TESTS test_label_smooth_op test_instance_norm_op_v2
 foreach(NEW_IR_COVERAGE_TEST ${NEW_IR_COVERAGE_TESTS})
   py_test_modules(
     ${NEW_IR_COVERAGE_TEST}_new_ir MODULES ${NEW_IR_COVERAGE_TEST} ENVS
-    FLAGS_enable_new_ir_in_executor=true)
+    FLAGS_enable_pir_in_executor=true)
 endforeach()
 
 set_tests_properties(test_instance_norm_op_v2_new_ir PROPERTIES TIMEOUT 120)

@@ -839,7 +839,7 @@ class PartialProgramLayer:
                 "mem_opt_skip_vars": forward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not os.getenv("FLAGS_enable_new_ir_in_executor"):
+            if not os.getenv("FLAGS_enable_pir_in_executor"):
                 _apply_pass(
                     forward_program,
                     empty_startup_program,
@@ -853,7 +853,7 @@ class PartialProgramLayer:
                 "mem_opt_skip_vars": backward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not os.getenv("FLAGS_enable_new_ir_in_executor"):
+            if not os.getenv("FLAGS_enable_pir_in_executor"):
                 _apply_pass(
                     backward_program,
                     empty_startup_program,

@@ -27,9 +27,9 @@
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 
-PHI_DECLARE_bool(enable_new_ir_in_executor);
-PHI_DECLARE_bool(enable_new_ir_api);
-PHI_DECLARE_bool(new_ir_apply_inplace_pass);
+PHI_DECLARE_bool(enable_pir_in_executor);
+PHI_DECLARE_bool(enable_pir_api);
+PHI_DECLARE_bool(pir_apply_inplace_pass);
 
 namespace paddle {
 namespace framework {
@@ -55,7 +55,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     const std::string& job_type = job->Type();
     std::shared_ptr<ProgramDesc> program = nullptr;
     std::shared_ptr<::pir::Program> ir_program = nullptr;
-    if (FLAGS_enable_new_ir_api) {
+    if (FLAGS_enable_pir_api) {
       ir_program = plan_.IrProgram(job_type);
     } else {
       program = std::make_shared<ProgramDesc>(*(plan_.Program(job_type)));
@@ -69,7 +69,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                  micro_batch_id,
                                  micro_batch_num));
 
-    if (micro_batch_num > 1 && !FLAGS_enable_new_ir_api) {
+    if (micro_batch_num > 1 && !FLAGS_enable_pir_api) {
       SetColAttrForFeedFetchOps(program, micro_batch_num, micro_batch_id);
     }
 
@@ -78,9 +78,9 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     execution_config.skip_gc_vars = job->SkipGcVars();
 
     // TODO(phlrain) we only support cpu for now
-    if (FLAGS_enable_new_ir_in_executor) {
+    if (FLAGS_enable_pir_in_executor) {
       std::shared_ptr<::pir::Program> base_program = ir_program;
-      if (!FLAGS_enable_new_ir_api) {
+      if (!FLAGS_enable_pir_api) {
         VLOG(6) << "begin to translate" << std::endl;
         base_program = paddle::TranslateLegacyProgramToProgram(*program);
       }
@@ -108,7 +108,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
 
-      if (FLAGS_new_ir_apply_inplace_pass) {
+      if (FLAGS_pir_apply_inplace_pass) {
         pir::PassManager pm(pir::IrContext::Instance(), 3);
         pm.AddPass(pir::CreateInplacePass());
         pm.Run(kernel_program.get());
@@ -190,7 +190,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
 
     // Note(sonder): Share build results don't work for new IR now.
     if (type_to_first_id.count(job_type) != 0 &&
-        !FLAGS_enable_new_ir_in_executor) {
+        !FLAGS_enable_pir_in_executor) {
       interpretercores_[job_idx]->ShareBuildResultsFrom(
           interpretercores_[type_to_first_id[job_type]]);
     }
@@ -204,7 +204,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   }
 
   // return Fetch Tensors
-  if (FLAGS_enable_new_ir_in_executor) {
+  if (FLAGS_enable_pir_in_executor) {
     framework::FetchList fetch_res;
     for (auto& var_name : fetch_var_names_) {
       auto* var = scope_->FindVar(var_name);

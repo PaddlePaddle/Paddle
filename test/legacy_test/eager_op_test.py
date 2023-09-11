@@ -1370,15 +1370,15 @@ class OpTest(unittest.TestCase):
             return
         stored_flag = get_flags(
             [
-                'FLAGS_enable_new_ir_in_executor',
-                "FLAGS_new_ir_apply_inplace_pass",
+                'FLAGS_enable_pir_in_executor',
+                "FLAGS_pir_apply_inplace_pass",
             ]
         )
         try:
             set_flags(
                 {
-                    "FLAGS_enable_new_ir_in_executor": True,
-                    "FLAGS_new_ir_apply_inplace_pass": 0,
+                    "FLAGS_enable_pir_in_executor": True,
+                    "FLAGS_pir_apply_inplace_pass": 0,
                 }
             )
             new_scope = paddle.static.Scope()
@@ -1873,7 +1873,7 @@ class OpTest(unittest.TestCase):
         if getattr(self, "no_need_check_inplace", False):
             return
 
-        if os.getenv("FLAGS_enable_new_ir_in_executor"):
+        if os.getenv("FLAGS_enable_pir_in_executor"):
             return
 
         has_infer_inplace = base.core.has_infer_inplace(self.op_type)
@@ -2623,7 +2623,7 @@ class OpTest(unittest.TestCase):
                 self.op_type
                 not in compile_vs_runtime_white_list.COMPILE_RUN_OP_WHITE_LIST
             ):
-                if os.getenv("FLAGS_enable_new_ir_in_executor"):
+                if os.getenv("FLAGS_enable_pir_in_executor"):
                     return
                 self.check_compile_vs_runtime(fetch_list, outs)
 
@@ -3224,15 +3224,15 @@ class OpTest(unittest.TestCase):
 
         stored_flag = get_flags(
             [
-                'FLAGS_enable_new_ir_in_executor',
-                "FLAGS_new_ir_apply_inplace_pass",
+                'FLAGS_enable_pir_in_executor',
+                "FLAGS_pir_apply_inplace_pass",
             ]
         )
         try:
             set_flags(
                 {
-                    "FLAGS_enable_new_ir_in_executor": True,
-                    "FLAGS_new_ir_apply_inplace_pass": 0,
+                    "FLAGS_enable_pir_in_executor": True,
+                    "FLAGS_pir_apply_inplace_pass": 0,
                 }
             )
             executor = Executor(place)

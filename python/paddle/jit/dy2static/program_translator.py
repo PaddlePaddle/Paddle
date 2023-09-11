@@ -226,7 +226,7 @@ class CacheKey:
             input_args_with_spec, input_kwargs_with_spec
         )
         self._new_ir_flags = os.environ.get(
-            'FLAGS_enable_new_ir_in_executor', None
+            'FLAGS_enable_pir_in_executor', None
         )
 
     @classmethod

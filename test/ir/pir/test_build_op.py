@@ -40,7 +40,7 @@ class TestBuildOp(unittest.TestCase):
     def test_build_mean_op(self):
         newir_program = get_ir_program()
         tanh_out = newir_program.block().ops[-1].result(0)
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+        paddle.framework.set_flags({"FLAGS_enable_pir_api": True})
         with paddle.ir.core.program_guard(newir_program):
             out = paddle.mean(tanh_out)
         self.assertEqual(out.get_defining_op().name(), "pd_op.mean")
@@ -52,14 +52,14 @@ class TestBuildOp(unittest.TestCase):
             .name(),
             "pd_op.tanh",
         )
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+        paddle.framework.set_flags({"FLAGS_enable_pir_api": False})
 
 
 class TestBuildOp2(unittest.TestCase):
     def test_build_add_n_op(self):
         newir_program = get_ir_program()
         tanh_out = newir_program.block().ops[-1].result(0)
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+        paddle.framework.set_flags({"FLAGS_enable_pir_api": True})
         with paddle.ir.core.program_guard(newir_program):
             out1 = paddle.mean(tanh_out)
             out2 = paddle.mean(tanh_out)
@@ -73,13 +73,13 @@ class TestBuildOp2(unittest.TestCase):
             .name(),
             "builtin.combine",
         )
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+        paddle.framework.set_flags({"FLAGS_enable_pir_api": False})
 
 
 class TestBuildOp3(unittest.TestCase):
     def test_insertion_point(self):
         newir_program = get_ir_program()
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+        paddle.framework.set_flags({"FLAGS_enable_pir_api": True})
         add_op = newir_program.block().ops[-2]
         tanh_op = newir_program.block().ops[-1]
         add_out = add_op.result(0)
@@ -99,14 +99,14 @@ class TestBuildOp3(unittest.TestCase):
         self.assertEqual(
             tanh_operand.source().get_defining_op().name(), "pd_op.mean"
         )
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+        paddle.framework.set_flags({"FLAGS_enable_pir_api": False})
 
 
 class TestBuildOp4(unittest.TestCase):
     def test_build_concat_op(self):
         newir_program = get_ir_program()
         tanh_out = newir_program.block().ops[-1].result(0)
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+        paddle.framework.set_flags({"FLAGS_enable_pir_api": True})
         with paddle.ir.core.program_guard(newir_program):
             out = paddle.concat([tanh_out, tanh_out], 0)
         self.assertEqual(out.get_defining_op().name(), "pd_op.concat")
@@ -118,14 +118,14 @@ class TestBuildOp4(unittest.TestCase):
             .name(),
             "builtin.combine",
         )
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+        paddle.framework.set_flags({"FLAGS_enable_pir_api": False})
 
 
 class TestBuildOp5(unittest.TestCase):
     def test_build_split_op(self):
         newir_program = get_ir_program()
         tanh_out = newir_program.block().ops[-1].result(0)
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+        paddle.framework.set_flags({"FLAGS_enable_pir_api": True})
         with paddle.ir.core.program_guard(newir_program):
             out = paddle.split(tanh_out, [2, 2], 0)
         self.assertEqual(out[0].get_defining_op().name(), "builtin.split")
@@ -138,7 +138,7 @@ class TestBuildOp5(unittest.TestCase):
             .name(),
             "pd_op.split",
         )
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+        paddle.framework.set_flags({"FLAGS_enable_pir_api": False})
 
 
 if __name__ == "__main__":

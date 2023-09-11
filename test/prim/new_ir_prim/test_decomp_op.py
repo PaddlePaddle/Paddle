@@ -44,7 +44,7 @@ class TestBuildOp(unittest.TestCase):
         newir_program = get_ir_program()
         y = newir_program.block().ops[-2].results()
         orig_shape = y[0].shape
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+        paddle.framework.set_flags({"FLAGS_enable_pir_api": True})
         core._set_prim_forward_enabled(True)
         y_new = decompose(newir_program, y)
         core._set_prim_forward_enabled(False)

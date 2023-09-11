@@ -977,7 +977,7 @@ class _ExecutorCache:
             else False
         )
 
-        if os.getenv("FLAGS_enable_new_ir_in_executor"):
+        if os.getenv("FLAGS_enable_pir_in_executor"):
             # todo(phlrain), skip inplace add addto pass in new IR
             enable_inplace = False
             enable_addto = False
@@ -1204,7 +1204,7 @@ class Executor:
                         )
                     check_feed_shape_type(var, cur_feed)
                 idx = op.desc.attr('col')
-                new_ir_flag_name = 'FLAGS_enable_new_ir_in_executor'
+                new_ir_flag_name = 'FLAGS_enable_pir_in_executor'
                 if get_flags(new_ir_flag_name)[new_ir_flag_name]:
                     core.set_feed_variable(
                         scope, cur_feed, feed_target_name, idx
