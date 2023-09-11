@@ -17,7 +17,7 @@
 #include <memory>
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 
-namespace ir {
+namespace pir {
 class Operation;
 }
 
@@ -29,7 +29,7 @@ class CinnJitInstruction : public InstructionBase {
  public:
   CinnJitInstruction(size_t id,
                      const platform::Place& place,
-                     ::ir::Operation* op,
+                     ::pir::Operation* op,
                      Scope* scope);
 
   // TODO(Aurelius84): Only implement core interface and need implement GC and

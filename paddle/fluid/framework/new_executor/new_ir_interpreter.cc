@@ -41,16 +41,15 @@
 #endif
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
-#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_attribute.h"
-#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_dialect.h"
-#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_op.h"
-#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_type.h"
-#include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
-#include "paddle/ir/core/builtin_attribute.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/phi_kernel_adaptor/phi_kernel_util.h"
+#include "paddle/pir/core/builtin_attribute.h"
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
-
 PHI_DECLARE_bool(enable_new_ir_in_executor_trace_run);
 
 namespace paddle {
@@ -59,7 +58,7 @@ namespace framework {
 NewIRInterpreter::NewIRInterpreter(
     const platform::Place& place,
     const std::vector<std::string>& fetch_var_names,
-    std::unique_ptr<::ir::Program> ir_prog,
+    std::unique_ptr<::pir::Program> ir_prog,
     framework::Scope* scope,
     const ExecutionConfig& execution_config)
     : place_(place),
@@ -349,79 +348,79 @@ void NewIRInterpreter::UpdateSyncOpNum() {
 
 void NewIRInterpreter::UpdateNcclOpNum() {
   static std::set<std::string> nccl_op_set = {
-      "pd.c_softmax_with_cross_entropy",
-      "pd.c_allgather",
-      "pd.c_allreduce_max",
-      "pd.c_allreduce_min",
-      "pd.c_allreduce_sum",
-      "pd.c_allreduce_prod",
-      "pd.c_reduce_max",
-      "pd.c_reduce_min",
-      "pd.c_reduce_prod",
-      "pd.c_reducescatter",
-      "pd.c_broadcast",
-      "pd.c_broadcast_",
-      "pd.c_scatter",
-      "pd.partial_send",
-      "pd.partial_recv",
-      "pd.partial_allgather",
-      "pd.recv_v2",
-      "pd.send_v2",
-      "pd.mp_allreduce_sum",
-      "pd.barrier",
-      "pd.alltoall",
-      "pd.global_gather",
-      "pd.distributed_fused_lamb",
-      "pd.margin_cross_entropy",
-      "pd.sync_batch_norm",
-      "pd.sync_batch_norm_",
-      "pd.data_norm",
-      "pd.class_center_sample",
-      "pd.all_to_all",
-      "pd.dist_concat",
-      "pd.all_gather",
-      "pd.broadcast",
-      "pd.p_recv",
-      "pd.p_send",
-      "pd.reduce_scatter",
-      "pd.all_reduce",
-      "pd.reduce",
-      "pd.c_softmax_with_cross_entropy_grad",
-      "pd.c_allgather_grad",
-      "pd.c_allreduce_max_grad",
-      "pd.c_allreduce_min_grad",
-      "pd.c_allreduce_sum_grad",
-      "pd.c_allreduce_prod_grad",
-      "pd.c_reduce_max_grad",
-      "pd.c_reduce_min_grad",
-      "pd.c_reduce_prod_grad",
-      "pd.c_reducescatter_grad",
-      "pd.c_broadcast_grad",
-      "pd.c_scatter_grad",
-      "pd.partial_send_grad",
-      "pd.partial_recv_grad",
-      "pd.partial_allgather_grad",
-      "pd.recv_v2_grad",
-      "pd.send_v2_grad",
-      "pd.mp_allreduce_sum_grad",
-      "pd.barrier_grad",
-      "pd.alltoall_grad",
-      "pd.global_gather_grad",
-      "pd.distributed_fused_lamb_grad",
-      "pd.margin_cross_entropy_grad",
-      "pd.margin_cross_entropy_grad_"
-      "pd.sync_batch_norm_grad",
-      "pd.data_norm_grad",
-      "pd.class_center_sample_grad",
-      "pd.all_to_all_grad",
-      "pd.dist_concat_grad",
-      "pd.all_gather_grad",
-      "pd.broadcast_grad",
-      "pd.p_recv_grad",
-      "pd.p_send_grad",
-      "pd.reduce_scatter_grad",
-      "pd.all_reduce_grad",
-      "pd.reduce_grad"};
+      "pd_op.c_softmax_with_cross_entropy",
+      "pd_op.c_allgather",
+      "pd_op.c_allreduce_max",
+      "pd_op.c_allreduce_min",
+      "pd_op.c_allreduce_sum",
+      "pd_op.c_allreduce_prod",
+      "pd_op.c_reduce_max",
+      "pd_op.c_reduce_min",
+      "pd_op.c_reduce_prod",
+      "pd_op.c_reducescatter",
+      "pd_op.c_broadcast",
+      "pd_op.c_broadcast_",
+      "pd_op.c_scatter",
+      "pd_op.partial_send",
+      "pd_op.partial_recv",
+      "pd_op.partial_allgather",
+      "pd_op.recv_v2",
+      "pd_op.send_v2",
+      "pd_op.mp_allreduce_sum",
+      "pd_op.barrier",
+      "pd_op.alltoall",
+      "pd_op.global_gather",
+      "pd_op.distributed_fused_lamb",
+      "pd_op.margin_cross_entropy",
+      "pd_op.sync_batch_norm",
+      "pd_op.sync_batch_norm_",
+      "pd_op.data_norm",
+      "pd_op.class_center_sample",
+      "pd_op.all_to_all",
+      "pd_op.dist_concat",
+      "pd_op.all_gather",
+      "pd_op.broadcast",
+      "pd_op.p_recv",
+      "pd_op.p_send",
+      "pd_op.reduce_scatter",
+      "pd_op.all_reduce",
+      "pd_op.reduce",
+      "pd_op.c_softmax_with_cross_entropy_grad",
+      "pd_op.c_allgather_grad",
+      "pd_op.c_allreduce_max_grad",
+      "pd_op.c_allreduce_min_grad",
+      "pd_op.c_allreduce_sum_grad",
+      "pd_op.c_allreduce_prod_grad",
+      "pd_op.c_reduce_max_grad",
+      "pd_op.c_reduce_min_grad",
+      "pd_op.c_reduce_prod_grad",
+      "pd_op.c_reducescatter_grad",
+      "pd_op.c_broadcast_grad",
+      "pd_op.c_scatter_grad",
+      "pd_op.partial_send_grad",
+      "pd_op.partial_recv_grad",
+      "pd_op.partial_allgather_grad",
+      "pd_op.recv_v2_grad",
+      "pd_op.send_v2_grad",
+      "pd_op.mp_allreduce_sum_grad",
+      "pd_op.barrier_grad",
+      "pd_op.alltoall_grad",
+      "pd_op.global_gather_grad",
+      "pd_op.distributed_fused_lamb_grad",
+      "pd_op.margin_cross_entropy_grad",
+      "pd_op.margin_cross_entropy_grad_"
+      "pd_op.sync_batch_norm_grad",
+      "pd_op.data_norm_grad",
+      "pd_op.class_center_sample_grad",
+      "pd_op.all_to_all_grad",
+      "pd_op.dist_concat_grad",
+      "pd_op.all_gather_grad",
+      "pd_op.broadcast_grad",
+      "pd_op.p_recv_grad",
+      "pd_op.p_send_grad",
+      "pd_op.reduce_scatter_grad",
+      "pd_op.all_reduce_grad",
+      "pd_op.reduce_grad"};
   int64_t nccl_op_num = 0;
   for (auto& ins : vec_instruction_base_) {
     if (nccl_op_set.count(ins->Name())) {
@@ -512,7 +511,7 @@ void NewIRInterpreter::BuildInstruction() {
     } else if (op->dialect()->name() == "pd_kernel") {
       auto op_name = op->attributes()
                          .at("op_name")
-                         .dyn_cast<::ir::StrAttribute>()
+                         .dyn_cast<::pir::StrAttribute>()
                          .AsString();
       if (interpreter::GetSpecialOpNames().count(op_name)) {
         VLOG(6) << "skip process " << op_name;
@@ -542,7 +541,7 @@ void NewIRInterpreter::BuildInstruction() {
                                                    variable_2_var_name_));
       }
 #ifdef PADDLE_WITH_CINN
-    } else if (op->dialect()->name() == "cinn") {
+    } else if (op->dialect()->name() == "cinn_runtime") {
       vec_instruction_base_.emplace_back(
           std::make_unique<CinnJitInstruction>(op_idx++, place_, op, scope_));
 #endif
@@ -634,7 +633,7 @@ void NewIRInterpreter::BuildInstructionDependences() {
 
 void NewIRInterpreter::RecordMemcpyD2H(InstructionBase* instr_node) {
   // NOTE(zhiqiu): hot fix for jit input var
-  if (instr_node->Name() == "pd.memcpy_d2h") {
+  if (instr_node->Name() == "pd_op.memcpy_d2h") {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto* default_dev_ctx = pool.Get(place_);
     for (auto& event : instr_node->EventsToWait()) {
@@ -781,14 +780,14 @@ void NewIRInterpreter::CalculateLastLiveOps() {
     InstructionBase* instr = vec_instruction_base_[op_idx].get();
     std::set<size_t> gc_check_vars;
 
-    const std::unordered_map<::ir::Value, std::vector<int>>& ins =
+    const std::unordered_map<::pir::Value, std::vector<int>>& ins =
         instr->Inputs();
-    const std::unordered_map<::ir::Value, std::vector<int>>& outs =
+    const std::unordered_map<::pir::Value, std::vector<int>>& outs =
         instr->Outputs();
-    std::unordered_multimap<::ir::Value, std::vector<int>> ins_and_outs{
+    std::unordered_multimap<::pir::Value, std::vector<int>> ins_and_outs{
         ins.begin(), ins.end()};
 
-    if (instr->Name() != "pd.fetch") {
+    if (instr->Name() != "pd_op.fetch") {
       ins_and_outs.insert(outs.begin(), outs.end());
     }
 
@@ -879,7 +878,8 @@ void NewIRInterpreter::ConstructEventForJitInput() {
   for (size_t i = 0; i < dependecy_count_->size(); ++i) {
     if ((*dependecy_count_)[i] == 0) {
       InstructionBase* inst = vec_instruction_base_[i].get();
-      if (inst->Name() == "pd.memcpy_d2h" && platform::is_gpu_place(place_)) {
+      if (inst->Name() == "pd_op.memcpy_d2h" &&
+          platform::is_gpu_place(place_)) {
         for (auto& item : inst->Inputs()) {
           for (auto var_id : item.second) {
             auto name = GetNameById(var_id);
@@ -919,13 +919,13 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
     // Build
     std::stringstream ss;
     ss << this;
-    ::ir::BuildScope(*ir_program_->block(),
-                     InnerScope(),
-                     ss.str(),
-                     &value_2_var_name_,
-                     &variable_2_var_name_,
-                     &var_name_2_id_,
-                     &variable_list_);
+    ::pir::BuildScope(*ir_program_->block(),
+                      InnerScope(),
+                      ss.str(),
+                      &value_2_var_name_,
+                      &variable_2_var_name_,
+                      &var_name_2_id_,
+                      &variable_list_);
 
     interpreter::BuildId2VarName(var_name_2_id_, &id_2_var_name_);
 
@@ -1283,7 +1283,7 @@ void NewIRInterpreter::PreAnalysis() {
   VLOG(4) << "Done UpdateNcclOpNum";
 }
 
-::ir::Value NewIRInterpreter::GetValueByName(const std::string& var_name) {
+::pir::Value NewIRInterpreter::GetValueByName(const std::string& var_name) {
   for (auto kv : value_2_var_name_) {
     if (kv.second == var_name) {
       return kv.first;
@@ -1295,16 +1295,16 @@ void NewIRInterpreter::PreAnalysis() {
 void NewIRInterpreter::SolvePersisableVarNames() {
   VLOG(6) << "SolvePersisableVarNames";
   for (auto kv : value_2_var_name_) {
-    ::ir::Value value = kv.first;
+    ::pir::Value value = kv.first;
     const std::string& var_name = kv.second;
-    ::ir::OpResult result = value.dyn_cast<::ir::OpResult>();
+    ::pir::OpResult result = value.dyn_cast<::pir::OpResult>();
     auto* defining_op = value.GetDefiningOp();
     if (defining_op->HasAttribute(kAttrIsPersisable)) {
       auto is_persisables = defining_op->attribute(kAttrIsPersisable)
-                                .dyn_cast<::ir::ArrayAttribute>()
+                                .dyn_cast<::pir::ArrayAttribute>()
                                 .AsVector();
       if (is_persisables[result.GetResultIndex()]
-              .dyn_cast<::ir::BoolAttribute>()
+              .dyn_cast<::pir::BoolAttribute>()
               .data()) {
         VLOG(6) << "parameter_var_names_ include: " << var_name;
         parameter_var_names_.insert(var_name);
