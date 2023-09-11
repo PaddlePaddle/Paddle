@@ -400,6 +400,17 @@ class OpInfoParser:
             return self.op_yaml_item['view']
         return None
 
+    def is_mutable_attribute(self, attr_dict):
+        if (
+            'support_tensor' in attr_dict
+            and attr_dict['support_tensor'] == 'true'
+        ):
+            return True
+        elif 'tensor_name' in attr_dict or 'tensors_name' in attr_dict:
+            return True
+        else:
+            return False
+
     def parse_mutable_attribute(self):
         """
         {'axis': 'paddle::dialect::ScalarAttribute', 'rotl': 'paddle::dialect::IntArrayAttribute'}
@@ -411,11 +422,8 @@ class OpInfoParser:
             'scalar' in self.op_compat_item
         ):
             for scalar_attr in self.op_compat_item['scalar'].keys():
-                if (
-                    'support_tensor'
-                    not in self.op_compat_item['scalar'][scalar_attr]
-                    and 'tensor_name'
-                    not in self.op_compat_item['scalar'][scalar_attr]
+                if not self.is_mutable_attribute(
+                    self.op_compat_item['scalar'][scalar_attr]
                 ):
                     continue
                 if 'data_type' in self.op_compat_item['scalar'][scalar_attr]:
@@ -456,13 +464,8 @@ class OpInfoParser:
             'int_array' in self.op_compat_item
         ):
             for int_array_attr in self.op_compat_item['int_array']:
-                if (
-                    'support_tensor'
-                    not in self.op_compat_item['int_array'][int_array_attr]
-                    and 'tensor_name'
-                    not in self.op_compat_item['int_array'][int_array_attr]
-                    and 'tensors_name'
-                    not in self.op_compat_item['int_array'][int_array_attr]
+                if not self.is_mutable_attribute(
+                    self.op_compat_item['int_array'][int_array_attr]
                 ):
                     continue
                 mutable_attribute_name_list.append(int_array_attr)
