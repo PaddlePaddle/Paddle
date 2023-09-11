@@ -48,7 +48,7 @@ LegacyKernelInstruction::LegacyKernelInstruction(
       op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
   pir::OpInfo op_info =
       pir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
-
+  op_ = op;
   legacy_op_name_ = op_name;
   VLOG(6) << "construct phi kernel instruction for: " << legacy_op_name_;
 
@@ -187,14 +187,5 @@ void LegacyKernelInstruction::Run() {
   (*(phi_kernel_))((kernel_context_));
   VLOG(6) << "Run op " << legacy_op_name_ << " kernel.";
 }
-
-OperatorBase* LegacyKernelInstruction::OpBase() const {
-  auto op_base = operator_base_;
-  PADDLE_ENFORCE_NOT_NULL(
-      op_base,
-      platform::errors::PreconditionNotMet("op_base shall not be nullptr."));
-  return op_base.get();
-}
-
 }  // namespace framework
 }  // namespace paddle

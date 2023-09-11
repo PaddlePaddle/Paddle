@@ -52,11 +52,11 @@ class PhiKernelInstruction : public InstructionBase {
     return infer_meta_interface_;
   }
 
+  ::pir::Operation* Operation() const override { return op_; }
+
   void Run() override;
 
   const std::string& Name() const override { return phi_op_name_; }
-
-  OperatorBase* OpBase() const override;
 
  private:
   paddle::dialect::InferMetaInterface::Concept* infer_meta_interface_{
@@ -71,6 +71,8 @@ class PhiKernelInstruction : public InstructionBase {
   std::string phi_op_name_;
 
   std::shared_ptr<paddle::framework::OperatorBase> operator_base_;
+
+  ::pir::Operation* op_{nullptr};  // not owned
 };
 
 }  // namespace framework

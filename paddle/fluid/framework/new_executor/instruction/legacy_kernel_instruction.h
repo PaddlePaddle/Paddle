@@ -53,7 +53,7 @@ class LegacyKernelInstruction : public InstructionBase {
 
   const std::string& Name() const override { return legacy_op_name_; }
 
-  OperatorBase* OpBase() const override;
+  ::pir::Operation* Operation() const override { return op_; }
 
  private:
   std::string legacy_op_name_;
@@ -68,6 +68,8 @@ class LegacyKernelInstruction : public InstructionBase {
   std::shared_ptr<paddle::framework::OperatorBase> operator_base_;
 
   phi::Kernel* phi_kernel_{nullptr};  // not owned
+
+  ::pir::Operation* op_{nullptr};  // not owned
 };
 
 }  // namespace framework

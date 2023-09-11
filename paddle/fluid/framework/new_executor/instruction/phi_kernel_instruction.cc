@@ -52,7 +52,7 @@ PhiKernelInstruction::PhiKernelInstruction(
       op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
   pir::OpInfo op_info =
       pir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
-
+  op_ = op;
   phi_op_name_ = op_name;
   VLOG(6) << "construct phi kernel instruction for: " << phi_op_name_;
 
@@ -155,10 +155,6 @@ PhiKernelInstruction::PhiKernelInstruction(
   VLOG(6) << "finish process device context";
 
   Scope* inner_scope = local_scope == nullptr ? scope : local_scope;
-
-  operator_base_ = ir::BuildOperatorBase(
-      op, value_2_var_name, yaml_info_parser, variable_2_var_name, inner_scope);
-
   InitInputsOutputsIds(
       op, inner_scope, value_2_var_name, var_name_2_id, variable_2_var_name);
   VLOG(6) << "finish process inputs outputs index";
@@ -185,14 +181,6 @@ void PhiKernelInstruction::Run() {
   VLOG(6) << "Run op " << phi_op_name_ << " infer meta.";
   (*(phi_kernel_))(&(kernel_context_));
   VLOG(6) << "Run op " << phi_op_name_ << " kernel.";
-}
-
-OperatorBase* PhiKernelInstruction::OpBase() const {
-  auto op_base = operator_base_;
-  PADDLE_ENFORCE_NOT_NULL(
-      op_base,
-      platform::errors::PreconditionNotMet("op_base shall not be nullptr."));
-  return op_base.get();
 }
 
 }  // namespace framework

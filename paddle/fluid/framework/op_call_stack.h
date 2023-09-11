@@ -18,13 +18,19 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/pir/core/operation_utils.h"
+#include "paddle/pir/core/builtin_attribute.h"
 
 namespace paddle {
 namespace framework {
 
 // insert python call stack & append error op for exception message
 void InsertCallStackInfo(const std::string &type,
-                         const AttributeMap &attrs,
+                         const paddle::framework::AttributeMap &attrs,
+                         platform::EnforceNotMet *exception);
+
+void InsertCallStackInfo(const std::string &type,
+                         const pir::AttributeMap &attrs,
                          platform::EnforceNotMet *exception);
 
 // only append error op for exception message

@@ -38,12 +38,13 @@ class CinnJitInstruction : public InstructionBase {
 
   const std::string& Name() const override;
 
-  OperatorBase* OpBase() const override;
+  ::pir::Operation* Operation() const override { return op_; }
  private:
   class Impl;
   std::shared_ptr<Impl> impl_{nullptr};
   std::shared_ptr<paddle::framework::OperatorBase> operator_base_{nullptr};
 
+  ::pir::Operation* op_{nullptr};  // not owned
 };
 
 }  // namespace framework

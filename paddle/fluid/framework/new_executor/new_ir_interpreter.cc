@@ -1240,8 +1240,8 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     VLOG(5) << "after run kernel";
     instr_node->RecordEvent(place_);
   } catch (platform::EnforceNotMet& ex) {
-    auto* op = instr_node->OpBase();
-    framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
+    auto* op = instr_node->Operation();
+    framework::InsertCallStackInfo(op->name(), op->attributes(), &ex);
     LOG(WARNING) << instr_node->Name() << " raises an EnforceNotMet exception "
                  << platform::demangle(typeid(ex).name()) << ", " << ex.what();
     exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));

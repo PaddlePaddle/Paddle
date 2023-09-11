@@ -101,6 +101,7 @@ CinnJitInstruction::CinnJitInstruction(size_t id,
   // responsible to construct hlir::framework::Instruction.
   auto jit_kernel_op = op->dyn_cast<cinn::dialect::JitKernelOp>();
   impl_ = std::make_shared<Impl>(jit_kernel_op.instruction());
+  op_ = op;
 }
 
 void CinnJitInstruction::Run() {
@@ -112,14 +113,6 @@ const std::string& CinnJitInstruction::Name() const {
   // TODO(Aurelius84): Consider the case for instrucitons constaning
   // multipule function ptrs and function names.
   return impl_->pointer()->function_name();
-}
-
-OperatorBase* CinnJitInstruction::OpBase() const {
-  auto op_base = operator_base_;
-  PADDLE_ENFORCE_NOT_NULL(
-      op_base,
-      platform::errors::PreconditionNotMet("op_base shall not be nullptr."));
-  return op_base.get();
 }
 
 }  // namespace framework
