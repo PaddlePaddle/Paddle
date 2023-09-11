@@ -86,6 +86,10 @@ class TestArgumentMappingContext : public phi::ArgumentMappingContext {
     return false;
   }
 
+  bool IsDenseTensorVectorOutput(const std::string& name) const override {
+    return false;
+  }
+
   bool IsSparseCooTensorInput(const std::string& name) const override {
     return false;
   }
