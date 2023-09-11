@@ -1454,10 +1454,24 @@ class TestDygrapInplaceT(TestDygraphInplaceWithContinuous):
         self.dtype = "float32"
 
     def inplace_api_processing(self, var):
-        return paddle.tran_(var)
+        return paddle.t_(var)
 
     def non_inplace_api_processing(self, var):
         return paddle.t(var)
+
+    def test_forward_version(self):
+        with paddle.base.dygraph.guard():
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            self.assertEqual(var.inplace_version, 0)
+
+            inplace_var = self.inplace_api_processing(var)
+            self.assertEqual(var.inplace_version, 1)
+
+            inplace_var[0] = 2
+            self.assertEqual(var.inplace_version, 1)
+
+            inplace_var = self.inplace_api_processing(inplace_var)
+            self.assertEqual(var.inplace_version, 2)
 
 
 class TestDygrapInplaceTranspose(TestDygraphInplaceWithContinuous):
@@ -1466,6 +1480,42 @@ class TestDygrapInplaceTranspose(TestDygraphInplaceWithContinuous):
 
     def non_inplace_api_processing(self, var):
         return paddle.transpose(var, [1, 0, 2])
+
+    def test_forward_version(self):
+        with paddle.base.dygraph.guard():
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            self.assertEqual(var.inplace_version, 0)
+
+            inplace_var = self.inplace_api_processing(var)
+            self.assertEqual(var.inplace_version, 1)
+
+            inplace_var[0] = 2
+            self.assertEqual(var.inplace_version, 1)
+
+            inplace_var = self.inplace_api_processing(inplace_var)
+            self.assertEqual(var.inplace_version, 2)
+
+
+class TestDygrapInplaceCauchy(unittest.TestCase):
+    def setUp(self):
+        self.init_data()
+
+    def init_data(self):
+        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
+        self.dtype = "float32"
+
+    def inplace_api_processing(self, var):
+        return paddle.cauchy_(var)
+
+    def test_creation(self):
+        var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+        var_c = self.inplace_api_processing(var)
+        self.assertEqual(var.shape, var_c.shape)
+
+
+class TestDygrapInplaceGeometric(TestDygrapInplaceCauchy):
+    def inplace_api_processing(self, var):
+        return paddle.geometric_(var, 0.3)
 
 
 if __name__ == '__main__':

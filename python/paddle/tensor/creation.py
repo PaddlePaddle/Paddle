@@ -2689,7 +2689,7 @@ def cauchy_(x, loc=0, scale=1):
 
 
 def geometric_(x, probs):
-    """Fills the tensor with numbers drawn from the geometric distribution.
+    """Fills the tensor with numbers drawn from the Geometric distribution.
 
     Args:
         x (Tensor): The input tensor.
@@ -2697,7 +2697,7 @@ def geometric_(x, probs):
             The value of probs must be positive. When the parameter is a tensor, probs is probability of success for each trial.
 
     Returns:
-        Tensor: input tensor with numbers drawn from the geometric distribution.
+        Tensor: input tensor with numbers drawn from the Geometric distribution.
 
     Examples:
         .. code-block:: python
