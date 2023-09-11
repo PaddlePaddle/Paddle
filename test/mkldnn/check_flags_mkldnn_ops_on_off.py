@@ -17,9 +17,9 @@ import os
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid.framework import _global_flags
-from paddle.fluid.layer_helper import LayerHelper
+from paddle import base
+from paddle.base.framework import _global_flags
+from paddle.base.layer_helper import LayerHelper
 
 
 def check():
@@ -28,8 +28,8 @@ def check():
         _global_flags()["FLAGS_use_mkldnn"],
     )
     print(
-        "check: fluid.get_flags('FLAGS_use_mkldnn')=",
-        fluid.get_flags(['FLAGS_use_mkldnn']),
+        "check: base.get_flags('FLAGS_use_mkldnn')=",
+        base.get_flags(['FLAGS_use_mkldnn']),
     )
     print("check: DNNL_VERBOSE=", os.environ['DNNL_VERBOSE'])
     print(
@@ -42,11 +42,11 @@ def check():
     )
     a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.float32)
     b_np = np.random.uniform(-5, 5, (10, 20, 30)).astype(np.float32)
-    helper = LayerHelper(fluid.unique_name.generate("test"), act="relu")
+    helper = LayerHelper(base.unique_name.generate("test"), act="relu")
     func = helper.append_activation
-    with fluid.dygraph.guard(fluid.core.CPUPlace()):
-        a = fluid.dygraph.to_variable(a_np)
-        b = fluid.dygraph.to_variable(b_np)
+    with base.dygraph.guard(base.core.CPUPlace()):
+        a = base.dygraph.to_variable(a_np)
+        b = base.dygraph.to_variable(b_np)
         y = paddle.add(x=a, y=b)
         y = paddle.matmul(x=y, y=b, transpose_y=True)
         res1 = func(y)

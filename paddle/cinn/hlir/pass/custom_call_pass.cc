@@ -17,7 +17,7 @@
 #include "paddle/cinn/hlir/op/external_api_registry.h"
 #include "paddle/cinn/utils/string.h"
 
-DECLARE_string(cinn_custom_call_deny_ops);
+PD_DECLARE_string(cinn_custom_call_deny_ops);
 
 namespace cinn {
 namespace hlir {

@@ -68,7 +68,7 @@ class TestFlattenOpSixDims(TestFlattenOp):
 
 class TestFlattenOpFP16(unittest.TestCase):
     def test_fp16_with_gpu(self):
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             with paddle_static_guard():
                 place = paddle.CUDAPlace(0)
                 with paddle.static.program_guard(

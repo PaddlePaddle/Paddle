@@ -21,7 +21,7 @@ from test_attribute_var import UnittestBase
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import Program, core, program_guard
+from paddle.base import Program, core, program_guard
 
 
 def _unpool_output_size(x, kernel_size, stride, padding, output_size):
@@ -281,14 +281,14 @@ class TestUnpoolOpAPI_dy(unittest.TestCase):
 
         import paddle
         import paddle.nn.functional as F
-        from paddle import fluid
-        from paddle.fluid import core
+        from paddle import base
+        from paddle.base import core
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_data = np.array(
                 [
                     [
@@ -322,14 +322,14 @@ class TestUnpoolOpAPI_dy2(unittest.TestCase):
 
         import paddle
         import paddle.nn.functional as F
-        from paddle import fluid
-        from paddle.fluid import core
+        from paddle import base
+        from paddle.base import core
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_data = np.array(
                 [
                     [
@@ -362,14 +362,14 @@ class TestUnpoolOpAPI_dy3(unittest.TestCase):
         import numpy as np
 
         import paddle
-        from paddle import fluid
-        from paddle.fluid import core
+        from paddle import base
+        from paddle.base import core
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_data = np.array(
                 [
                     [
@@ -402,8 +402,8 @@ class TestUnpoolOpAPI_st(unittest.TestCase):
     def test_case(self):
         import paddle
         import paddle.nn.functional as F
-        from paddle import fluid
-        from paddle.fluid import core
+        from paddle import base
+        from paddle.base import core
 
         paddle.enable_static()
 
@@ -422,11 +422,11 @@ class TestUnpoolOpAPI_st(unittest.TestCase):
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
 
         results = exe.run(
-            paddle.fluid.default_main_program(),
+            paddle.base.default_main_program(),
             feed={"x": input_data},
             fetch_list=[unpool_out],
             return_numpy=True,

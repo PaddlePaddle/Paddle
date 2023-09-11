@@ -1392,6 +1392,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
     argument_->SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
     argument_->SetTRTMarkOutput(config_.trt_mark_output_);
+    argument_->SetTRTMarkOutputWithId(config_.trt_mark_output_with_id_);
     argument_->SetTRTOutputTensorNames(config_.trt_output_tensor_names_);
     argument_->SetTensorRtDisabledOPs(config_.trt_disabled_ops_);
     argument_->SetTensorRtUseDLA(config_.trt_use_dla_);
@@ -2892,6 +2893,7 @@ USE_TRT_CONVERTER(sign);
 #endif
 USE_TRT_CONVERTER(rsqrt);
 USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm)
+USE_TRT_CONVERTER(prompt_tuning_emb_eltwise_layernorm);
 USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
 USE_TRT_CONVERTER(preln_skip_layernorm)
 USE_TRT_CONVERTER(fused_bias_dropout_residual_layer_norm)

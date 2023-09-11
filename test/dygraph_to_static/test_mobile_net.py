@@ -23,8 +23,8 @@ from dygraph_to_static_util import test_with_new_ir
 from predictor_utils import PredictorTools
 
 import paddle
-from paddle import fluid
-from paddle.fluid.param_attr import ParamAttr
+from paddle import base
+from paddle.base.param_attr import ParamAttr
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm, Linear
@@ -32,8 +32,8 @@ from paddle.nn import BatchNorm, Linear
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
 #        some algorithm results are non-deterministic, like convolution algorithms.
-if fluid.is_compiled_with_cuda():
-    fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+if base.is_compiled_with_cuda():
+    base.set_flags({'FLAGS_cudnn_deterministic': True})
 
 SEED = 2020
 
@@ -496,9 +496,7 @@ class Args:
     print_step = 1
     train_step = 10
     place = (
-        fluid.CUDAPlace(0)
-        if fluid.is_compiled_with_cuda()
-        else fluid.CPUPlace()
+        base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
     )
     model_save_dir = None
     model_save_prefix = None
@@ -509,7 +507,7 @@ class Args:
 
 def train_mobilenet(args, to_static):
     paddle.jit.enable_to_static(to_static)
-    with fluid.dygraph.guard(args.place):
+    with base.dygraph.guard(args.place):
         np.random.seed(SEED)
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
@@ -601,7 +599,7 @@ def train_mobilenet(args, to_static):
 
 def predict_static(args, data):
     paddle.enable_static()
-    exe = fluid.Executor(args.place)
+    exe = base.Executor(args.place)
     # load inference model
 
     [
@@ -625,7 +623,7 @@ def predict_static(args, data):
 
 def predict_dygraph(args, data):
     paddle.jit.enable_to_static(False)
-    with fluid.dygraph.guard(args.place):
+    with base.dygraph.guard(args.place):
         if args.model == "MobileNetV1":
             model = MobileNetV1(class_dim=args.class_dim, scale=1.0)
         elif args.model == "MobileNetV2":
@@ -635,13 +633,13 @@ def predict_dygraph(args, data):
         model.set_dict(model_dict)
         model.eval()
 
-        pred_res = model(fluid.dygraph.to_variable(data))
+        pred_res = model(base.dygraph.to_variable(data))
 
         return pred_res.numpy()
 
 
 def predict_dygraph_jit(args, data):
-    with fluid.dygraph.guard(args.place):
+    with base.dygraph.guard(args.place):
         model = paddle.jit.load(args.model_save_prefix)
         model.eval()
 

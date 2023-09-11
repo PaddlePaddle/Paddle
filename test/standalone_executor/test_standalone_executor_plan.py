@@ -15,7 +15,7 @@
 import unittest
 
 from paddle import static
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestStandaloneExecutorPlan(unittest.TestCase):
