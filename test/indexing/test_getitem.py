@@ -384,6 +384,17 @@ class TestGetitemBasicIndexOutputView(unittest.TestCase):
 
         np.testing.assert_allclose(x.numpy(), np_data)
 
+    def test_index_is_ellipsis(self):
+        np_data = np.ones((5, 5, 5), dtype='float32')
+        np_tmp = np_data[...]
+        np_tmp[2] = 20
+
+        x = paddle.ones((5, 5, 5), dtype='float32')
+        x_tmp = x[...]
+        x_tmp[2] = 20
+
+        np.testing.assert_allclose(x.numpy(), np_data)
+
 
 class TestGetItemErrorCase(unittest.TestCase):
     def setUp(self):
