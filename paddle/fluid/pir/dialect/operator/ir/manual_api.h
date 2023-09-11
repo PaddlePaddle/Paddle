@@ -27,5 +27,12 @@ pir::OpResult split_grad(std::vector<pir::OpResult> out_grads,
                          pir::OpResult axis);
 
 pir::OpResult split_grad(std::vector<pir::OpResult> out_grads, int axis);
+
+pir::OpResult embedding_grad(ir::OpResult x,
+                             ir::OpResult weight,
+                             ir::OpResult out_grad,
+                             int64_t padding_idx = -1,
+                             bool sparse = false);
+
 }  // namespace dialect
 }  // namespace paddle

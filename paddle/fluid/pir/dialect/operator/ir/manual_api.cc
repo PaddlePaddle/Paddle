@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_api.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_op.h"
@@ -39,5 +41,30 @@ pir::OpResult split_grad(std::vector<pir::OpResult> out_grads, int axis) {
 
   return split_grad_op.x_grad();
 }
+
+pir::OpResult embedding_grad(pir::OpResult x,
+                             pir::OpResult weight,
+                             pir::OpResult out_grad,
+                             int64_t padding_idx,
+                             bool sparse) {
+  if (weight.type().isa<paddle::dialect::DenseTensorType>()) {
+    if (sparse) {
+      return paddle::dialect::embedding_grad_sparse(
+          x, weight, out_grad, padding_idx, sparse);
+    } else {
+      return paddle::dialect::embedding_grad_dense(
+          x, weight, out_grad, padding_idx, sparse);
+    }
+  } else {
+    if (sparse) {
+      return paddle::dialect::sparse_weight_embedding_grad_sparse(
+          x, weight, out_grad, padding_idx, sparse);
+    } else {
+      return paddle::dialect::sparse_weight_embedding_grad_dense(
+          x, weight, out_grad, padding_idx, sparse);
+    }
+  }
+}
+
 }  // namespace dialect
 }  // namespace paddle
