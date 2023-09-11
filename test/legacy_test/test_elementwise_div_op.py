@@ -97,9 +97,9 @@ class ElementwiseDivOp(OpTest):
 
     def test_check_output(self):
         if self.place is None:
-            self.check_output()
+            self.check_output(check_new_ir=True)
         else:
-            self.check_output_with_place(self.place)
+            self.check_output_with_place(self.place, check_new_ir=True)
 
     def test_check_gradient(self):
         check_list = []
@@ -126,10 +126,12 @@ class ElementwiseDivOp(OpTest):
                 'check_prim': self.check_prim,
             }
             if self.place is None:
-                self.check_grad(*check_args, **check_kwargs)
+                self.check_grad(*check_args, **check_kwargs, check_new_ir=True)
             else:
                 check_args.insert(0, self.place)
-                self.check_grad_with_place(*check_args, **check_kwargs)
+                self.check_grad_with_place(
+                    *check_args, **check_kwargs, check_new_ir=True
+                )
 
 
 class TestElementwiseDivPrimOpFp32(ElementwiseDivOp):
@@ -174,11 +176,11 @@ class TestElementwiseDivOp_ZeroDim3(ElementwiseDivOp):
         return -1 * grad_out * out / y
 
 
-# @unittest.skipIf(
-#     not core.is_compiled_with_cuda()
-#     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-#     "core is not compiled with CUDA or not support the bfloat16",
-# )
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
 class TestElementwiseDivOpBF16(ElementwiseDivOp):
     def init_args(self):
         # In due to output data type inconsistence of bfloat16 paddle op, we disable the dygraph check.
@@ -215,10 +217,12 @@ class TestElementwiseDivOpBF16(ElementwiseDivOp):
                 'check_dygraph': self.check_dygraph,
             }
             if self.place is None:
-                self.check_grad(*check_args, **check_kwargs)
+                self.check_grad(*check_args, **check_kwargs, check_new_ir=True)
             else:
                 check_args.insert(0, self.place)
-                self.check_grad_with_place(*check_args, **check_kwargs)
+                self.check_grad_with_place(
+                    *check_args, **check_kwargs, check_new_ir=True
+                )
 
     def if_check_prim(self):
         self.check_prim = True
@@ -270,10 +274,12 @@ class TestElementwiseDivOpNoPrim(ElementwiseDivOp):
                 'check_dygraph': self.check_dygraph,
             }
             if self.place is None:
-                self.check_grad(*check_args, **check_kwargs)
+                self.check_grad(*check_args, **check_kwargs, check_new_ir=True)
             else:
                 check_args.insert(0, self.place)
-                self.check_grad_with_place(*check_args, **check_kwargs)
+                self.check_grad_with_place(
+                    *check_args, **check_kwargs, check_new_ir=True
+                )
 
 
 class TestElementwiseDivOpBroadcast0(TestElementwiseDivOpNoPrim):
@@ -443,10 +449,14 @@ def create_test_fp16_class(parent, max_relative_error=2e-3):
                     'max_relative_error': max_relative_error,
                 }
                 if self.place is None:
-                    self.check_grad(*check_args, **check_kwargs)
+                    self.check_grad(
+                        *check_args, **check_kwargs, check_new_ir=True
+                    )
                 else:
                     check_args.insert(0, self.place)
-                    self.check_grad_with_place(*check_args, **check_kwargs)
+                    self.check_grad_with_place(
+                        *check_args, **check_kwargs, check_new_ir=True
+                    )
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestElementwiseDivFP16Op.__name__ = cls_name
@@ -472,6 +482,7 @@ create_test_fp16_class(TestElementwiseDivOpXsizeLessThanYsize)
 
 class TestElementwiseDivBroadcast(unittest.TestCase):
     def test_shape_with_batch_sizes(self):
+        paddle.enable_static()
         with base.program_guard(base.Program()):
             x_var = paddle.static.data(
                 name='x', dtype='float32', shape=[None, 3, None, None]
@@ -482,16 +493,19 @@ class TestElementwiseDivBroadcast(unittest.TestCase):
             x = np.random.uniform(0.1, 0.6, (1, 3, 32, 32)).astype("float32")
             (out_result,) = exe.run(feed={'x': x}, fetch_list=[out])
             self.assertEqual((out_result == (2 / x)).all(), True)
+        paddle.disable_static()
 
 
 class TestDivideOp(unittest.TestCase):
     def test_name(self):
+        paddle.enable_static()
         with base.program_guard(base.Program()):
             x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
             y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
 
             y_1 = paddle.divide(x, y, name='div_res')
             self.assertEqual(('div_res' in y_1.name), True)
+        paddle.disable_static()
 
     def test_dygraph(self):
         with base.dygraph.guard():

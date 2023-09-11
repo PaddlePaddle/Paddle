@@ -3485,18 +3485,14 @@ class OpTest(unittest.TestCase):
                         ][i]
             fetch_list = getattr(self, "fetch_list", [])
 
+            # cast outputs
             if self.dtype == np.uint16:
-                if len(outputs) == 1:
-                    for output in outputs:
-                        # if not isinstance(output, list):
-                        outputs[output][0] = paddle.cast(
-                            outputs[output][0],
-                            paddle.fluid.core.DataType.FLOAT32,
-                        )
-                    # else:
-                    #     raise TypeError(
-                    #         "Unsupported test data type %s." % type(output)
-                    #     )
+                for output in outputs:
+                    outputs[output][0] = paddle.cast(
+                        outputs[output][0],
+                        paddle.base.core.DataType.FLOAT32,
+                    )
+
             outputs_valid = outputs
             loss_inputs = []
             for input_name in inputs_to_check:
@@ -3527,7 +3523,6 @@ class OpTest(unittest.TestCase):
                     inputs=paddle.utils.flatten(static_inputs),
                     grad_outputs=grad_outputs,
                 )
-            print(outputs, "dddddd:", grad_inputs)
             fetch_list = list(grad_inputs)
 
             # executor run
