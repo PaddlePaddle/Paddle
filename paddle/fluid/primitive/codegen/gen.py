@@ -31,7 +31,7 @@ from parse_utils import to_named_dict
 
 # import from paddle/fluid/pir/dialect/op_generator/api_gen.py
 sys.path.append(
-    str(pathlib.Path(__file__).resolve().parents[2] / 'ir/dialect/op_generator')
+    str(pathlib.Path(__file__).resolve().parents[2] / 'pir/dialect/op_generator')
 )
 
 # fmt: on
