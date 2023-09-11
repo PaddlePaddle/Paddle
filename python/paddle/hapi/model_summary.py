@@ -240,7 +240,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
             input_size = []
             for key in input.keys():
                 input_size.append(tuple(input[key].shape))
-        elif isinstance(input, paddle.fluid.framework.Variable):
+        elif isinstance(input, paddle.base.framework.Variable):
             input_size = tuple(input.shape)
         else:
             raise ValueError(
@@ -353,9 +353,7 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
     depth = len(list(model.sublayers()))
 
     def _get_shape_from_tensor(x):
-        if isinstance(
-            x, (paddle.fluid.Variable, paddle.fluid.core.eager.Tensor)
-        ):
+        if isinstance(x, (paddle.base.Variable, paddle.base.core.eager.Tensor)):
             return list(x.shape)
         elif isinstance(x, (list, tuple)):
             return [_get_shape_from_tensor(xx) for xx in x]

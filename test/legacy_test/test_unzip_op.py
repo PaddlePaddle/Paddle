@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestUnzipOp(unittest.TestCase):
@@ -28,7 +28,7 @@ class TestUnzipOp(unittest.TestCase):
         """
         paddle.enable_static()
         if core.is_compiled_with_cuda():
-            place = fluid.CUDAPlace(0)
+            place = base.CUDAPlace(0)
             x = paddle.static.data(name='X', shape=[3, 4], dtype='float64')
             lod = paddle.static.data(name='lod', shape=[11], dtype='int64')
             output = paddle.incubate.operators.unzip(x, lod)
@@ -45,8 +45,8 @@ class TestUnzipOp(unittest.TestCase):
                 'lod': np.array(lod).astype("int64"),
             }
 
-            exe = fluid.Executor(place=place)
-            exe.run(fluid.default_startup_program())
+            exe = base.Executor(place=place)
+            exe.run(base.default_startup_program())
             res = exe.run(feed=feed, fetch_list=[output])
             out = [
                 [1.0, 2.0, 3.0, 4.0],

@@ -32,6 +32,7 @@
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/p_to_r_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/r_to_p_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/r_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/s_to_r_reshard_function.h"
@@ -160,6 +161,10 @@ void BindAutoParallel(py::module *m) {
 
   py::class_<phi::distributed::RToPReshardFunction>(
       *m, "RToPReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::PToRReshardFunction>(
+      *m, "PToRReshardFunction", ReshardFunction)
       .def(py::init<>());
 
   py::class_<ProcessMesh>(*m, "ProcessMesh")
@@ -340,7 +345,8 @@ void BindAutoParallel(py::module *m) {
           },
           py::arg("memo"))
       .def("__str__", &TensorDistAttr::to_string)
-      .def("_is_partial", &TensorDistAttr::is_partial)
+      .def(
+          "_is_partial", &TensorDistAttr::is_partial, py::arg("mesh_axis") = -1)
       .def("_partial_dims", &TensorDistAttr::partial_dims)
       .def("_clean_partial_dims", &TensorDistAttr::clean_partial_dims)
       .def("_set_partial_dims",

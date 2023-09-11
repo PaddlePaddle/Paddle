@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestAucOp(OpTest):
@@ -139,7 +139,7 @@ class TestAucAPI(unittest.TestCase):
 
 class TestAucOpError(unittest.TestCase):
     def test_errors(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
 
             def test_type1():
                 data1 = paddle.static.data(

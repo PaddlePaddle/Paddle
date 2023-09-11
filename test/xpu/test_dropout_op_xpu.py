@@ -18,8 +18,8 @@ import numpy as np
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import _legacy_C_ops, fluid
-from paddle.fluid import Program, program_guard
+from paddle import _legacy_C_ops, base
+from paddle.base import Program, program_guard
 
 paddle.enable_static()
 
@@ -125,10 +125,10 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
 
                 def test_Variable():
                     # the input of dropout must be Variable.
-                    x1 = fluid.create_lod_tensor(
+                    x1 = base.create_lod_tensor(
                         np.array([-1, 3, 5, 5]),
                         [[1, 1, 1, 1]],
-                        fluid.CPUPlace(),
+                        base.CPUPlace(),
                     )
                     paddle.nn.functional.dropout(x1, p=0.5)
 
@@ -147,15 +147,15 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
     class TestDropoutCAPI(unittest.TestCase):
         def setUp(self):
             np.random.seed(123)
-            self.places = [fluid.CPUPlace()]
-            self.places.append(fluid.XPUPlace(0))
+            self.places = [base.CPUPlace()]
+            self.places.append(base.XPUPlace(0))
 
         def test_dygraph(self):
             for place in self.places:
-                with fluid.dygraph.guard(place):
+                with base.dygraph.guard(place):
                     input_np = np.random.random([40, 40]).astype(self.in_type)
                     result_np = input_np
-                    input = fluid.dygraph.to_variable(input_np)
+                    input = base.dygraph.to_variable(input_np)
                     m = paddle.nn.Dropout(p=0.0)
                     m.eval()
                     result = m(input)
@@ -164,8 +164,8 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
     class TestDropoutBackward(unittest.TestCase):
         def setUp(self):
             np.random.seed(123)
-            self.places = [fluid.CPUPlace()]
-            self.places.append(fluid.XPUPlace(0))
+            self.places = [base.CPUPlace()]
+            self.places.append(base.XPUPlace(0))
 
         def cal_grad_upscale_train(self, mask, prob):
             return mask.astype(self.in_type) / (1 - prob)
@@ -175,7 +175,7 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
 
         def test_backward_downscale_in_infer(self):
             for place in self.places:
-                with fluid.dygraph.guard(place):
+                with base.dygraph.guard(place):
                     input = paddle.uniform([40, 40], dtype=self.in_type)
                     input.stop_gradient = False
                     out, mask = _legacy_C_ops.dropout(
@@ -190,7 +190,7 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
 
         def test_backward_upscale_train(self):
             for place in self.places:
-                with fluid.dygraph.guard(place):
+                with base.dygraph.guard(place):
                     prob = 0.5
                     input = paddle.uniform([40, 40], dtype=self.in_type)
                     input.stop_gradient = False
@@ -210,7 +210,7 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
 
         def test_backward_upscale_train_2(self):
             for place in self.places:
-                with fluid.dygraph.guard(place):
+                with base.dygraph.guard(place):
                     prob = 0.3
                     input = paddle.uniform([40, 40], dtype=self.in_type)
                     input.stop_gradient = False

@@ -15,7 +15,7 @@
 __all__ = []
 
 from paddle import _C_ops
-from paddle.fluid.framework import dygraph_only
+from paddle.base.framework import dygraph_only
 
 
 @dygraph_only

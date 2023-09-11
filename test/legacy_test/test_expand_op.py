@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 from eager_op_test import OpTest
 
-from paddle import fluid
+from paddle import base
 
 
 # Situation 1: expand_times is a list(without tensor)
@@ -26,7 +26,7 @@ class TestExpandOpRank1(OpTest):
         self.op_type = "expand"
         self.init_data()
         self.dtype = (
-            "float32" if fluid.core.is_compiled_with_rocm() else "float64"
+            "float32" if base.core.is_compiled_with_rocm() else "float64"
         )
 
         self.inputs = {'X': np.random.random(self.ori_shape).astype(self.dtype)}
@@ -81,7 +81,7 @@ class TestExpandOpRank1_tensor_attr(OpTest):
         self.op_type = "expand"
         self.init_data()
         self.dtype = (
-            "float32" if fluid.core.is_compiled_with_rocm() else "float64"
+            "float32" if base.core.is_compiled_with_rocm() else "float64"
         )
 
         expand_times_tensor = []
@@ -130,7 +130,7 @@ class TestExpandOpRank1_tensor(OpTest):
         self.op_type = "expand"
         self.init_data()
         self.dtype = (
-            "float32" if fluid.core.is_compiled_with_rocm() else "float64"
+            "float32" if base.core.is_compiled_with_rocm() else "float64"
         )
 
         self.inputs = {

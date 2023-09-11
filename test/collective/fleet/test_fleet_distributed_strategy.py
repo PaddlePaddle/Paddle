@@ -453,7 +453,7 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.dgc = True
         localsgd_configs = {"k_steps": 5, "begin_step": 1}
         strategy.localsgd_configs = localsgd_configs
-        build_strategy = paddle.fluid.BuildStrategy()
+        build_strategy = paddle.base.BuildStrategy()
         build_strategy.enable_sequential_execution = True
         build_strategy.nccl_comm_num = 10
         build_strategy.use_hierarchical_allreduce = True
@@ -470,7 +470,7 @@ class TestStrategyConfig(unittest.TestCase):
         build_strategy.enable_backward_optimizer_op_deps = True
         build_strategy.trainers_endpoints = ["1", "2"]
         strategy.build_strategy = build_strategy
-        exe_strategy = paddle.fluid.ExecutionStrategy()
+        exe_strategy = paddle.base.ExecutionStrategy()
         exe_strategy.num_threads = 10
         exe_strategy.num_iteration_per_drop_scope = 10
         exe_strategy.num_iteration_per_run = 10
@@ -481,7 +481,7 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.dgc, strategy2.dgc)
 
     def test_build_strategy(self):
-        build_strategy = paddle.fluid.BuildStrategy()
+        build_strategy = paddle.base.BuildStrategy()
         build_strategy.enable_sequential_execution = True
         build_strategy.nccl_comm_num = 10
         build_strategy.use_hierarchical_allreduce = True
@@ -502,7 +502,7 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.build_strategy = build_strategy
 
     def test_execution_strategy(self):
-        exe_strategy = paddle.fluid.ExecutionStrategy()
+        exe_strategy = paddle.base.ExecutionStrategy()
         exe_strategy.num_threads = 10
         exe_strategy.num_iteration_per_drop_scope = 10
         exe_strategy.num_iteration_per_run = 10

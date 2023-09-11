@@ -15,9 +15,9 @@
 #pragma once
 
 #include "paddle/fluid/primitive/primitive/primitive.h"
-#include "paddle/ir/core/value.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/int_array.h"
+#include "paddle/pir/core/value.h"
 
 namespace paddle {
 namespace primitive {

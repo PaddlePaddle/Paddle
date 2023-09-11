@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.incubate.layers.nn import tdm_sampler
 
 
@@ -290,10 +290,10 @@ class TestTDMSamplerShape(unittest.TestCase):
                 neg_samples_num_list,
                 layer_node_num_list,
                 leaf_node_num,
-                tree_travel_attr=fluid.ParamAttr(
+                tree_travel_attr=base.ParamAttr(
                     initializer=paddle.nn.initializer.Assign(travel_array)
                 ),
-                tree_layer_attr=fluid.ParamAttr(
+                tree_layer_attr=base.ParamAttr(
                     initializer=paddle.nn.initializer.Assign(layer_array)
                 ),
                 output_positive=True,
@@ -303,9 +303,9 @@ class TestTDMSamplerShape(unittest.TestCase):
                 dtype='int32',
             )
 
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place=place)
-            exe.run(fluid.default_startup_program())
+            place = base.CPUPlace()
+            exe = base.Executor(place=place)
+            exe.run(base.default_startup_program())
 
             feed = {
                 'x': np.array(
