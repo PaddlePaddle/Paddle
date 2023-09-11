@@ -38,7 +38,7 @@ class TestCustomVjpTrait(unittest.TestCase):
     def test_gelu_op_custom_vjp_trait(self):
         newir_program = get_gelu_program_new_ir()
         op = newir_program.block().ops[-1]
-        self.assertEqual(op.name(), "pd.gelu")
+        self.assertEqual(op.name(), "pd_op.gelu")
         self.assertEqual(has_custom_vjp(op), True)
 
 
