@@ -18,6 +18,8 @@
 #include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/hlir/framework/node.h"
 
+#include "glog/logging.h"
+
 namespace cinn::adt::adapter {
 
 struct Tensor final {

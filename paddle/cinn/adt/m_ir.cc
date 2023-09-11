@@ -14,13 +14,14 @@
 
 #include <iterator>
 #include <unordered_map>
+#include "paddle/cinn/adt/adt.h"
 
 #include "paddle/cinn/adt/m_ir.h"
 
 namespace cinn::adt::m_ir {
 
 template <typename DoEachT>
-void m_ir::MapIR::VisitEachTensor(const DoEachT& DoEach) const {
+void MapIR::VisitEachTensor(const DoEachT& DoEach) const {
   ForEachTensor([&](const auto& tensor, const auto& as_output) {
     DoEach(tensor, as_output);
     return tBreak{false};
@@ -133,7 +134,7 @@ bool MapIR::HasReadWriteDependence(const MapIR& that) const {
 }
 
 void MapIR::MergeThisToThat(const MapIR& that) {
-  CHECK_GE(that.sd_iters().size(), this->sd_iters().size());
+  CHECK_GE(that.sd_iters()->size(), this->sd_iters()->size());
   that.op_stmts_.splice(that.op_stmts_.begin(), std::move(this->op_stmts_));
 }
 

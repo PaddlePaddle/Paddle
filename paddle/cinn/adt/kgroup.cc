@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/cinn/adt/kgroup.h"
+#include "paddle/cinn/adt/igroup.h"
+#include "paddle/cinn/adt/schedule_policy.h"
+#include "paddle/cinn/hlir/framework/graph.h"
 
 namespace cinn::adt {
 
@@ -28,8 +31,7 @@ ScheduleDescriptor KGroup::GetDefaultScheduleDescriptor(
   const m_expr::Tensor& tensor = igroup->anchor_tensor();
 
   CHECK_EQ(GetTensorNumel(tensor) % 64, 0);
-  return {{cinn::adt::m_expr::S0x{}, GetTensorNumel(tensor) / 64},
-          {cinn::adt::m_expr::S1x{}, 64}};
+  return {{S0x{}, GetTensorNumel(tensor) / 64}, {S1x{}, 64}};
 }
 
 }  // namespace cinn::adt

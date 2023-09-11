@@ -22,8 +22,6 @@
 
 namespace cinn::adt::equation::value {
 
-class IndexExprInferContext;
-
 void SolveEquations(
     const EquationGraphTopoWalker<const Variable, const Function*>& walker,
     const std::vector<Variable>& starts,
@@ -32,6 +30,6 @@ void SolveEquations(
 bool IsEquationsSolvable(
     const EquationGraphTopoWalker<const Variable, const Function*>& walker,
     const Variable& start,
-    equation::IndexExprInferContext* ctx);
+    IndexExprInferContext* ctx);
 
 }  // namespace cinn::adt::equation::value

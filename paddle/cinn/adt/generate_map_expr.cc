@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/cinn/adt/generate_map_expr.h"
+#include "paddle/cinn/adt/anchor_sd_equation_context.h"
 #include "paddle/cinn/adt/equation.h"
+#include "paddle/cinn/adt/igroup.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
 #include "paddle/cinn/adt/partition_op_stmts.h"
 #include "paddle/cinn/adt/schedule_policy.h"
@@ -42,7 +44,7 @@ std::vector<std::uint64_t> MakeTensorRanks(const List<m_expr::Arg>& arg_lists) {
 void GenerateOpEquations(const m_expr::OpStmt& op_stmt,
                          equation::config::NativeOpEquationContext* ctx) {
   const auto& [op, inputs, outputs] = op_stmt;
-  CHECK(op->Has<const hlir::framework::Node*>());
+  CHECK(op.Has<const hlir::framework::Node*>());
   const hlir::framework::Node* op_node = op.Get<const hlir::framework::Node*>();
 
   using GenerateEquationFunc =
@@ -126,7 +128,7 @@ List<m_expr::Arg> MakeOpStmtOutputList(const hlir::framework::Node* op,
 }
 
 template <typename DoEachT>
-void VisitEachOpStmt(const cinn::hlir::framework::Graph::Group& group,
+void VisitEachOpStmt(const hlir::framework::Graph::Group& group,
                      const DoEachT& DoEach) {
   for (const auto* op : group.nodes) {
     // Tuple<Op, In<List<Arg>>, Out<List<Arg>>>
@@ -136,8 +138,7 @@ void VisitEachOpStmt(const cinn::hlir::framework::Graph::Group& group,
   }
 }
 
-List<m_expr::OpStmt> MakeOpStmts(
-    const cinn::hlir::framework::Graph::Group& group) {
+List<m_expr::OpStmt> MakeOpStmts(const hlir::framework::Graph::Group& group) {
   List<m_expr::OpStmt> ret{};
 
   VisitEachOpStmt(group,
@@ -165,7 +166,7 @@ std::shared_ptr<IGroup> MakeIGroup(const partition::IGroupSpec& igroup_spec) {
 }
 
 std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
-    const cinn::hlir::framework::Graph::Group& group) {
+    const hlir::framework::Graph::Group& group) {
   std::vector<std::shared_ptr<IGroup>> ret{};
 
   List<m_expr::OpStmt> op_stmts = MakeOpStmts(group);
@@ -178,11 +179,11 @@ std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
 }
 
 std::shared_ptr<KGroup> GenerateKGroups(
-    const cinn::hlir::framework::Graph::Group& group,
+    const hlir::framework::Graph::Group& group,
     const std::vector<std::shared_ptr<IGroup>>& igroups) {
   CHECK_EQ(igroups.size(), 1);
   const auto& cinn_group =
-      std::make_shared<cinn::hlir::framework::Graph::Group>(group);
+      std::make_shared<hlir::framework::Graph::Group>(group);
   return std::make_shared<KGroup>(cinn_group, igroups);
 }
 
@@ -240,7 +241,7 @@ MakeGetterTensorIndexExpr(const std::shared_ptr<IGroup>& igroup,
     // All indexes of same tensor share the same TensorIndexExpr.
     const auto index = igroup->GetIndexes(tensor).at(0);
     return ctx->GetValue(index);
-  }
+  };
 }
 
 SchedulePolicy4IterVarT MakeGetterSchedulePolicy4IterVar(
@@ -352,7 +353,7 @@ List<SchedulePolicy> MakeOutterScheduleDescriptor(
     const m_ir::MapIRList& map_irs,
     const SchedulePolicy4IterVarT& SchedulePolicy4IterVar) {
   std::optional<std::size_t> opt_min_size = GetSdItersMinSize(map_irs);
-  CHECK(op_min_size.has_value());
+  CHECK(opt_min_size.has_value());
   List<SchedulePolicy> ret;
   for (std::size_t i = 0; i < opt_min_size.value(); ++i) {
     ret->push_back(SchedulePolicy4IterVar(map_irs.begin()->sd_iters()->at(i)));
@@ -379,7 +380,7 @@ m_expr::Tensor GetAnchorTensor(const std::shared_ptr<IGroup>& igroup) {
 }
 
 template <typename DoEachT>
-void VisitInputTensor(const cinn::hlir::framework::Graph::Group& group,
+void VisitInputTensor(const hlir::framework::Graph::Group& group,
                       const DoEachT& DoEach) {
   for (const auto* node_data : group->GetInputNodeDatas()) {
     DoEach(node_data, group->graph_);
@@ -387,7 +388,7 @@ void VisitInputTensor(const cinn::hlir::framework::Graph::Group& group,
 }
 
 template <typename DoEachT>
-void VisitOutputTensor(const cinn::hlir::framework::Graph::Group& group,
+void VisitOutputTensor(const hlir::framework::Graph::Group& group,
                        const DoEachT& DoEach) {
   for (const auto& node_data : group->GetOutputNodeDatas()) {
     DoEach(node_data, group->graph_);
@@ -467,8 +468,7 @@ m_expr::MapExpr GenerateMapExpr(const std::shared_ptr<KGroup>& kgroup) {
 
 }  // namespace
 
-m_expr::MapExpr GenerateMapExpr(
-    const cinn::hlir::framework::Graph::Group& group) {
+m_expr::MapExpr GenerateMapExpr(const hlir::framework::Graph::Group& group) {
   const auto& igroups = GenerateIGroups(group);
 
   const auto& kgroup = GenerateKGroups(group, igroups);

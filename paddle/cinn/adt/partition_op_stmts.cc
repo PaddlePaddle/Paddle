@@ -11,14 +11,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#include "paddle/cinn/adt/partition_op_stmts.h"
-
 #include <algorithm>
+
+#include "paddle/cinn/adt/equation.h"
+#include "paddle/cinn/adt/equation_solver.h"
+#include "paddle/cinn/adt/equation_util.h"
+#include "paddle/cinn/adt/index_expr_infer_context.h"
+#include "paddle/cinn/adt/partition_op_stmts.h"
 
 namespace cinn::adt::partition {
 
-using TensorIndex = cinn::adt::equation::Variable;
+using TensorIndex = equation::Variable;
 
 AnchorIndex PickThenEraseAnchorIndex(
     std::unordered_set<AnchorIndex>* candidate_anchor_indexes) {
@@ -145,8 +148,8 @@ void MakeGetters4Indexes(
   };
 
   *OutMsgBoxIndex4InMsgBoxIndex =
-      [index2owner_op_stmt, EquationCtx4OpStmt](
-          const equation::Index& index) -> cinn::adt::equation::Index {
+      [index2owner_op_stmt,
+       EquationCtx4OpStmt](const equation::Index& index) -> equation::Index {
     const auto& op_stmt = index2owner_op_stmt->at(index);
     const std::shared_ptr<equation::config::NativeOpEquationContext> ctx =
         EquationCtx4OpStmt(op_stmt);
@@ -231,8 +234,7 @@ void VisitProducerConsumerTensorIndexPair(
 void CollectIdentity(const equation::Index& in_tensor_index,
                      const equation::Index& out_tensor_index,
                      equation::Equations* equations) {
-  cinn::adt::equation::util::IdentityConnect(
-      out_tensor_index, in_tensor_index, equations);
+  equation::util::IdentityConnect(out_tensor_index, in_tensor_index, equations);
 }
 
 equation::GraphView MakeParametersGraphViewForPartition(
@@ -340,7 +342,7 @@ std::unordered_map<AnchorIndex, IGroupSpec> PartitionOpStmtsIntoIGroupSpecs(
 
 std::unordered_map<const equation::Variable, equation::Value>
 MakeAnchorIndex2Ok(const partition::IGroupSpec& igroup_spec) {
-  return {{igroup_spec.anchor_index, cinn::adt::Ok{}}};
+  return {{igroup_spec.anchor_index, Ok{}}};
 }
 
 bool IsEquationSolvable(const partition::IGroupSpec& igroup_spec) {

@@ -14,12 +14,8 @@
 
 #pragma once
 
-#include "paddle/cinn/adt/anchor_sd_equation_context.h"
-#include "paddle/cinn/adt/equation.h"
-#include "paddle/cinn/adt/igroup.h"
 #include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/adt/m_ir.h"
-#include "paddle/cinn/adt/schedule_policy.h"
 #include "paddle/cinn/hlir/framework/graph.h"
 
 namespace cinn::adt {

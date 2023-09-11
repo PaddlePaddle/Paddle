@@ -19,13 +19,14 @@
 #include <vector>
 
 #include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/adt/m_expr.h"
+#include "paddle/cinn/adt/partition_op_stmts.h"
+
 #include "paddle/cinn/adt/anchor_sd_equation_context.h"
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/equation_graph.h"
-#include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/adt/m_ir.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
-#include "paddle/cinn/adt/partition_op_stmts.h"
 
 namespace cinn::adt {
 
@@ -87,7 +88,7 @@ class IGroup final {
   }
 
  private:
-  void static GenerateIndex2Tensor(
+  static void GenerateIndex2Tensor(
       const List<m_expr::OpStmt>& op_stmts,
       const EquationCtx4OpStmtT& EquationCtx4OpStmt,
       std::unordered_map<equation::Index, m_expr::Tensor>* index2tensor,
@@ -112,8 +113,8 @@ class IGroup final {
     }
   }
 
-  AnchorIndex anchor_index_;
   List<m_expr::OpStmt> op_stmts_;
+  AnchorIndex anchor_index_;
   EquationCtx4OpStmtT EquationCtx4OpStmt_;
   std::unordered_map<equation::Index, m_expr::Tensor> index2tensor_;
   std::unordered_map<m_expr::Tensor, std::vector<equation::Index>>

@@ -199,7 +199,7 @@ class NativeOpEquationContext final : public OpEquationContext {
 
   Index Dot(const IteratorTuple& iterator_tuple,
             const StrideTuple& stride_tuple) {
-    CHECK(iterator_tuple.size() == stride_tuple.size());
+    CHECK(iterator_tuple->size() == stride_tuple->size());
     Index index{UniqueId::New()};
     equations_->emplace_back(
         equation::Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>(

@@ -16,7 +16,6 @@
 
 #include <list>
 
-#include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/m_expr.h"
 
 namespace cinn::adt {
