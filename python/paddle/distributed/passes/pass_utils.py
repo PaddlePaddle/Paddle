@@ -421,11 +421,33 @@ def _insert_sync_for_fthenb_1f1b(program):
         block._sync_with_cpp()
 
 
+def _overlap_send_recv(program):
+    for block in program.blocks:
+        for op in block.ops:
+            if op.type == 'send_v2':
+                op._set_attr("dynamic_shape", False)
+                ring_id = op.attr("ring_id")
+                op.desc.dist_attr.execution_stream = "send_stream_" + str(
+                    ring_id
+                )
+                op.desc.dist_attr.stream_priority = 0
+            elif op.type == 'recv_v2':
+                op._set_attr("dynamic_shape", False)
+                ring_id = op.attr("ring_id")
+                op.desc.dist_attr.execution_stream = "recv_stream_" + str(
+                    ring_id
+                )
+                op.desc.dist_attr.stream_priority = 0
+            else:
+                pass
+
+
 def _program_for_fthenb_and_1f1b(program):
     """
     This implementation is for fthenb and 1f1b programs and is called in partial_programs function.
     """
-    _insert_sync_for_fthenb_1f1b(program)
+    # _insert_sync_for_fthenb_1f1b(program)
+    _overlap_send_recv(program)
 
     lr_prog = Program()
     fwd_prog = Program()
