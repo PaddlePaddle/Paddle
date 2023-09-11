@@ -528,6 +528,10 @@ class TensorRTEngine {
 
   bool LowPrecisionIOEnabled() const { return params_.enable_low_precision_io; }
 
+  bool use_explicit_quantization() const {
+    return params_.use_explicit_quantization;
+  }
+
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
   // ensure that the thread is associated with the correct device by calling
