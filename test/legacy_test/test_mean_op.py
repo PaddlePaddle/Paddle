@@ -52,10 +52,10 @@ class TestMeanOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_checkout_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_new_ir=True)
 
 
 class TestMeanOp_ZeroDim(OpTest):
@@ -67,14 +67,15 @@ class TestMeanOp_ZeroDim(OpTest):
         self.outputs = {'Out': np.mean(self.inputs["X"])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_checkout_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_new_ir=True)
 
 
 class TestMeanOpError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input type of mean_op must be Variable.
             input1 = 12
@@ -88,6 +89,7 @@ class TestMeanOpError(unittest.TestCase):
                 name='input3', shape=[-1, 4], dtype="float16"
             )
             paddle.nn.functional.softmax(input3)
+        paddle.disable_static()
 
 
 @unittest.skipIf(
@@ -101,7 +103,7 @@ class TestFP16MeanOp(TestMeanOp):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place)
+            self.check_output_with_place(place, check_new_ir=True)
 
     def test_checkout_grad(self):
         place = core.CUDAPlace(0)
@@ -125,11 +127,11 @@ class TestBF16MeanOp(TestMeanOp):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output_with_place(core.CPUPlace())
+        self.check_output_with_place(core.CPUPlace(), check_new_ir=True)
 
     def test_checkout_grad(self):
         place = core.CPUPlace()
-        self.check_grad_with_place(place, ['X'], 'Out')
+        self.check_grad_with_place(place, ['X'], 'Out', check_new_ir=True)
 
 
 def ref_reduce_mean(x, axis=None, keepdim=False, reduce_all=False):
@@ -186,18 +188,25 @@ class TestReduceMeanOp(OpTest):
 
     def test_check_output(self):
         if self.dtype != 'float16':
-            self.check_output(check_prim=True)
+            self.check_output(check_prim=True, check_new_ir=True)
         else:
             place = paddle.CUDAPlace(0)
-            self.check_output_with_place(place=place, check_prim=True)
+            self.check_output_with_place(
+                place=place, check_prim=True, check_new_ir=True
+            )
 
     def test_check_grad(self):
         if self.dtype != 'float16':
-            self.check_grad(['X'], ['Out'], check_prim=True)
+            self.check_grad(['X'], ['Out'], check_prim=True, check_new_ir=True)
         else:
             place = paddle.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X'], ['Out'], numeric_grad_delta=0.5, check_prim=True
+                place,
+                ['X'],
+                ['Out'],
+                numeric_grad_delta=0.5,
+                check_prim=True,
+                check_new_ir=True,
             )
 
 
@@ -252,7 +261,11 @@ class TestReduceMeanBF16Op(OpTest):
     def test_check_grad(self):
         place = paddle.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], ['Out'], numeric_grad_delta=0.05, check_prim=True
+            place,
+            ['X'],
+            ['Out'],
+            numeric_grad_delta=0.05,
+            check_prim=True,
         )
 
 

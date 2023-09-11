@@ -18,7 +18,7 @@ from .primitives import *  # noqa: F403
 from .register import register_decomp
 
 
-@register_decomp('pd.mean')
+@register_decomp('pd_op.mean')
 def mean(x, axis, keepdim):
     """define composite rule of op mean"""
     x_shape = x.shape
@@ -38,7 +38,7 @@ def mean(x, axis, keepdim):
     return res
 
 
-@register_decomp('pd.gelu')
+@register_decomp('pd_op.gelu')
 def gelu_composite(x, approximate):
     """define composite rule of op gelu"""
     M_SQRT1_2 = (
