@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_op.h"
 
@@ -39,5 +40,16 @@ pir::OpResult split_grad(std::vector<pir::OpResult> out_grads, int axis) {
 
   return split_grad_op.x_grad();
 }
+
+pir::OpResult zeros_like(pir::OpResult x,
+                         phi::DataType dtype,
+                         const Place& place) {
+  return paddle::dialect::full_like(x, 0, dtype, place);
+}
+
+pir::OpResult exponential__grad(pir::OpResult out_grad) {
+  return paddle::dialect::zeros_like(out_grad);
+}
+
 }  // namespace dialect
 }  // namespace paddle
