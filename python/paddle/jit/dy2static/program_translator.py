@@ -24,7 +24,7 @@ import paddle.ir.core as ir_static
 from paddle.base import core, framework
 from paddle.base.data_feeder import check_type
 from paddle.base.dygraph.base import (
-    _switch_declarative_mode_guard_,
+    _to_static_mode_guard_,
     param_guard,
     switch_to_static_graph,
 )
@@ -1202,7 +1202,7 @@ class ConcreteProgram:
         # framework.default_startup_program().random_seed
         # ) }}}
         with ir_static.program_guard(main_program, startup_program):
-            with _switch_declarative_mode_guard_(is_declarative=True):
+            with _to_static_mode_guard_(is_declarative=True):
                 # 1. Adds `paddle.static.data` layers for input if needed
                 static_inputs = func_spec.newir_to_static_inputs_with_spec(
                     input_spec, main_program
@@ -1302,9 +1302,9 @@ class ConcreteProgram:
         new_name_generator = UniqueNameGenerator()
 
         with framework.program_guard(main_program, startup_program):
-            with _switch_declarative_mode_guard_(
-                is_declarative=True
-            ), UniqueNameGuard(new_name_generator):
+            with _to_static_mode_guard_(is_to_static=True), UniqueNameGuard(
+                new_name_generator
+            ):
                 # 1. Adds `paddle.static.data` layers for input if needed
                 static_inputs = func_spec.to_static_inputs_with_spec(
                     input_spec, main_program
