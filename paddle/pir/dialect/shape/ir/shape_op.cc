@@ -230,8 +230,8 @@ pir::Block *FuncOp::block() {
 }  // namespace dialect
 }  // namespace pir
 
-IR_DEFINE_EXPLICIT_TYPE_ID(ir::dialect::SymbolicDim)
-IR_DEFINE_EXPLICIT_TYPE_ID(ir::dialect::DimOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(ir::dialect::TieProductEqualOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(ir::dialect::TieShapeOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(ir::dialect::FuncOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::SymbolicDim)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::DimOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::TieProductEqualOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::TieShapeOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::FuncOp)
