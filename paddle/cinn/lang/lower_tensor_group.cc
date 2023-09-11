@@ -201,7 +201,7 @@ ir::Expr LowerTensorGroup::GenerateFunctionBody(
       tensor_group->GetGenFuncTopoOrder(tensor_args_);
   std::vector<ir::Expr> bodies;
   for (const ir::Tensor& tensor : ordered_tensors) {
-    bodies.emplace_back(ast_gen_ius::AstGen::Build(tensor));
+    bodies.emplace_back(ast_gen_ius::AstGen::Build(tensor, tensor_group));
   }
   if (bodies.size() == 1) {
     return bodies[0];

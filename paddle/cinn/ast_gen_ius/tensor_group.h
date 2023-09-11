@@ -48,6 +48,7 @@ class TensorGroup {
 
   std::string GetShareMemRootName(const std::string& tensor_name);
 
+  // TODO(zhhsplendid): Maybe MarkShareMemBuffer is better name?
   void ShareMemoryBuffer(const ir::Tensor& tensor, const ir::Tensor& to_share);
 
   absl::flat_hash_map<std::string, ir::Tensor> AllocateBuffers();
