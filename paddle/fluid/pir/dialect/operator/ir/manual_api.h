@@ -32,9 +32,9 @@ pir::OpResult get_parameter(const std::string& name,
                             const std::vector<int64_t>& shape);
 void set_parameter(pir::OpResult parameter, const std::string& name);
 
-pir::OpResult embedding_grad(ir::OpResult x,
-                             ir::OpResult weight,
-                             ir::OpResult out_grad,
+pir::OpResult embedding_grad(pir::OpResult x,
+                             pir::OpResult weight,
+                             pir::OpResult out_grad,
                              int64_t padding_idx = -1,
                              bool sparse = false);
 
