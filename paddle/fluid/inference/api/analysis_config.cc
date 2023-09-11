@@ -857,12 +857,13 @@ void AnalysisConfig::Exp_DisableTensorRtOPs(
 void AnalysisConfig::EnableVarseqlen() { trt_use_varseqlen_ = true; }
 
 void AnalysisConfig::SetTRTOptimizationLevel(int level) {
-  auto error_msg = platform::errors::InvalidArgument(
-      "SetTRTOptimizationLevel accepts levels in range [0, 5]. The default "
-      "optimization level is 3. Setting a higher optimization level allows the "
-      "optimizer to spend more time searching for optimization opportunities.");
-  PADDLE_ENFORCE_GE(level, 0, error_msg);
-  PADDLE_ENFORCE_LE(level, 5, error_msg);
+  PADDLE_ENFORCE(
+      level >= 0 && level <= 5,
+      platform::errors::InvalidArgument(
+          "The input level in SetTRTOptimizationLevel is invalid. The "
+          "level must be in range [0, 5], but received level = %d (default "
+          "level is 3).",
+          level));
   trt_optimization_level_ = level;
 }
 
