@@ -20,28 +20,28 @@
 #include <sstream>
 #include <vector>
 
-#include "paddle/ir/core/builder.h"
-#include "paddle/ir/core/builtin_attribute.h"
-#include "paddle/ir/core/builtin_dialect.h"
-#include "paddle/ir/core/builtin_op.h"
-#include "paddle/ir/core/cast_utils.h"
-#include "paddle/ir/core/dialect.h"
-#include "paddle/ir/core/enforce.h"
-#include "paddle/ir/core/ir_context.h"
-#include "paddle/ir/core/op_info.h"
-#include "paddle/ir/core/parameter.h"
-#include "paddle/ir/core/program.h"
-#include "paddle/ir/core/value.h"
-#include "paddle/ir/dialect/shape/transforms/shape_optimization_pass.h"
-#include "paddle/ir/pass/pass.h"
-#include "paddle/ir/pass/pass_manager.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/pir/core/builder.h"
+#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/builtin_dialect.h"
+#include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/core/cast_utils.h"
+#include "paddle/pir/core/dialect.h"
+#include "paddle/pir/core/enforce.h"
+#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/core/op_info.h"
+#include "paddle/pir/core/parameter.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
+#include "paddle/pir/dialect/shape/transforms/shape_optimization_pass.h"
+#include "paddle/pir/pass/pass.h"
+#include "paddle/pir/pass/pass_manager.h"
 
 TEST(pattern_rewrite, Patterns) {
-  ir::IrContext *ctx = ir::IrContext::Instance();
-  ir::Program program(ctx);
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  pir::Program program(ctx);
 
-  ir::PassManager pm(ctx);
-  pm.AddPass(ir::CreateShapeOptimizationPass());
+  pir::PassManager pm(ctx);
+  pm.AddPass(pir::CreateShapeOptimizationPass());
   CHECK_EQ(pm.Run(&program), true);
 }

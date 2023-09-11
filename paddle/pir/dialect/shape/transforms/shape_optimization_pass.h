@@ -15,12 +15,12 @@
 #pragma once
 
 #include <memory>
-#include "paddle/ir/core/dll_decl.h"
+#include "paddle/pir/core/dll_decl.h"
 
-namespace ir {
+namespace pir {
 
 class Pass;
 
 IR_API std::unique_ptr<Pass> CreateShapeOptimizationPass();
 
-}  // namespace ir
+}  // namespace pir

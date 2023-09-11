@@ -12,37 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/dialect/shape/transforms/shape_optimization_pass.h"
+#include "paddle/pir/dialect/shape/transforms/shape_optimization_pass.h"
 
-#include "paddle/ir/core/builtin_op.h"
-#include "paddle/ir/core/program.h"
-#include "paddle/ir/pass/pass.h"
-#include "paddle/ir/pass/pass_registry.h"
+#include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/pass/pass.h"
+#include "paddle/pir/pass/pass_registry.h"
 
 namespace {
 
-class ShapeOptimizationPass : public ir::Pass {
+class ShapeOptimizationPass : public pir::Pass {
  public:
-  ShapeOptimizationPass() : ir::Pass("shape_optimization", 0) {}
+  ShapeOptimizationPass() : pir::Pass("shape_optimization", 0) {}
 
-  void Run(ir::Operation *op) override {
-    auto module_op = op->dyn_cast<ir::ModuleOp>();
+  void Run(pir::Operation *op) override {
+    auto module_op = op->dyn_cast<pir::ModuleOp>();
     IR_ENFORCE(module_op, "ShapeOptimizationPass should run on module op.");
   }
 
-  bool CanApplyOn(ir::Operation *op) const override {
+  bool CanApplyOn(pir::Operation *op) const override {
     return op->name() == "builtin.module" && op->num_regions() > 0;
   }
 };
 
 }  // namespace
 
-namespace ir {
+namespace pir {
 
 std::unique_ptr<Pass> CreateShapeOptimizationPass() {
   return std::make_unique<ShapeOptimizationPass>();
 }
 
-}  // namespace ir
+}  // namespace pir
 
 REGISTER_IR_PASS(shape_optimization, ShapeOptimizationPass);
