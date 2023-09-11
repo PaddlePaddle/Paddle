@@ -551,13 +551,13 @@ void HandleOperatorBase(
       // Note(sonder): skip fake init for conditional_block when there is no
       // op with kernel after it.
       is_skip_fake_init = true;
-      for (size_t i = o; j < following_ops.size(); ++j) {
+      for (size_t i = 0; i < following_ops.size(); ++i) {
         if (dynamic_cast<framework::OperatorWithKernel*>(
                 following_ops[i].get()) != nullptr) {
           VLOG(4) << "Find op with kernel after conditional_block : "
                   << following_ops[i]->Type();
           is_skip_fake_init = false;
-          auto input_vars_info = following_ops[i]->InputVarsInfo(local_scope);
+          auto input_vars_info = following_ops[i]->InputVarsInfo(scope);
           for (auto& input_var_info : input_vars_info) {
             following_input_vars.insert(input_var_info.name_);
           }
@@ -718,7 +718,6 @@ void BuildOpFuncList(const platform::Place& place,
                            &op_func_node,
                            local_scope,
                            static_build,
-                           is_skip_fake_init,
                            following_ops);
         vec_func_list->emplace_back(op_func_node);
       } else {

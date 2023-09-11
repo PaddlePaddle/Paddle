@@ -128,7 +128,8 @@ class ConditionalBlockOp : public ConditionalOp {
   void RunPreStaticBuild(const framework::Scope &scope,
                          const platform::Place &dev_place) const override {
     SetSubBlockCore(scope, dev_place);
-    core_->Build({});
+    std::vector<paddle::framework::OpFuncNode> op_func_nodes;
+    core_->Build({}, &op_func_nodes);
   }
 
  private:

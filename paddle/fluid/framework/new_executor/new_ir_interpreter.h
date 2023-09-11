@@ -98,7 +98,9 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   void CheckCUDAGraphBeforeRun(const std::vector<std::string>& feed_names);
   void PrepareForCUDAGraphCapture();
 
-  void Build(const std::vector<std::string>& feed_names) override;
+  void Build(
+      const std::vector<std::string>& feed_names,
+      std::vector<paddle::framework::OpFuncNode>* op_func_nodes) override;
 
   bool IsStaticBuild() const override { return static_build_; }
 

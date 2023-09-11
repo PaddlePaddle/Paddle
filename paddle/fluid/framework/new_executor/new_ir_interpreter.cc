@@ -1281,9 +1281,11 @@ void NewIRInterpreter::PreAnalysis() {
   VLOG(4) << "Done UpdateNcclOpNum";
 }
 
-void NewIRInterpreter::Build(const std::vector<std::string>& feed_names) {
+void NewIRInterpreter::Build(
+    const std::vector<std::string>& feed_names,
+    std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
   PADDLE_THROW(platform::errors::Unimplemented(
-      "PreBuild is not implemented in NewIRInterpreter."));
+      "Build is not implemented in NewIRInterpreter."));
 }
 
 ::pir::Value NewIRInterpreter::GetValueByName(const std::string& var_name) {

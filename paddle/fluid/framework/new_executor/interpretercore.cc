@@ -121,8 +121,10 @@ void InterpreterCore::SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
   impl_->SetOutputHooks(hookfuncs);
 }
 
-void InterpreterCore::Build(const std::vector<std::string>& feed_names) {
-  impl_->Build(feed_names);
+void InterpreterCore::Build(
+    const std::vector<std::string>& feed_names,
+    std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
+  impl_->Build(feed_names, op_func_nodes);
 }
 
 bool InterpreterCore::IsStaticBuild() const { return impl_->IsStaticBuild(); }

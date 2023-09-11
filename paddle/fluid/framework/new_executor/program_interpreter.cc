@@ -125,7 +125,8 @@ void ProgramInterpreter::RunImpl() {
 
 FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
                                   bool need_fetch) {
-  Build(feed_names);
+  std::vector<paddle::framework::OpFuncNode> op_func_nodes;
+  Build(feed_names, &op_func_nodes);
 
   if (!is_build_) {
     SetFeedVarsInplaceSkip(feed_names);
@@ -166,7 +167,9 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
   }
 }
 
-void ProgramInterpreter::Build(const std::vector<std::string>& feed_names) {
+void ProgramInterpreter::Build(
+    const std::vector<std::string>& feed_names,
+    std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
@@ -179,12 +182,11 @@ void ProgramInterpreter::Build(const std::vector<std::string>& feed_names) {
     paddle::framework::interpreter::BuildVariableScope(
         block_, execution_config_, &var_scope_);
 
-    std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     paddle::framework::interpreter::BuildOpFuncList(
         place_,
         block_,
         execution_config_.skip_gc_vars,
-        &op_func_nodes,
+        op_func_nodes,
         &var_scope_,
         execution_config_,
         HasLocalScope(),

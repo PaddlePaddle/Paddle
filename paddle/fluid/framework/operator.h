@@ -278,9 +278,6 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   const std::vector<Variable*>& OutputVars(const std::string& name) const;
 
-  std::vector<VarInfo> GetVarsInfo(const Scope* scope,
-                                   VariableNameMap var_map) const;
-
   const OperatorBase& op_;
   const RuntimeContext& ctx_;
   bool can_skip_lod_{false};
@@ -316,6 +313,8 @@ class OperatorBase {
   std::string DebugString() const { return DebugStringEx(nullptr); }
   std::vector<VarInfo> InputVarsInfo(const Scope* scope) const;
   std::vector<VarInfo> OutputVarsInfo(const Scope* scope) const;
+  std::vector<VarInfo> GetVarsInfo(const Scope* scope,
+                                   VariableNameMap var_map) const;
 
   virtual bool SupportGPU() const { return false; }
   virtual bool SupportXPU() const { return false; }
