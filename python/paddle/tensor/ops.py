@@ -469,7 +469,17 @@ def ceil(x, name=None):
         return _C_ops.ceil(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'ceil'
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+            ],
+            'ceil',
         )
         helper = LayerHelper('ceil', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
