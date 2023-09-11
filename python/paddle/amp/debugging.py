@@ -83,7 +83,7 @@ def check_layer_numerics(func):
             ...         # return 1/x * self._w + self._b   open it you will see the error log
             ...         return x * self._w + self._b
             >>> dtype = 'float32'
-            >>> x = paddle.rand([10, 2, 2], dtype=dtype)
+            >>> x = paddle.rand([10, 2, 3], dtype=dtype)
             >>> model = MyLayer(dtype)
             >>> x[0] = float(0)
             >>> loss = model(x)
