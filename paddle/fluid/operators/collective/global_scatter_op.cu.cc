@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/global_scatter_op.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -106,7 +107,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
                             "has ring_id attr."));
 
       stream = comm_ctx->GetStream();
-      nranks = comm_ctx->GetRank();
+      nranks = comm_ctx->GetSize();
       VLOG(3) << "new comm_context_manager has ring_id " << ring_id;
     } else {  // old comm_context
       comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
