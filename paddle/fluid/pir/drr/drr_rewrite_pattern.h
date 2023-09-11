@@ -393,6 +393,12 @@ class DrrRewritePattern : public pir::RewritePattern {
                   topo_order_ops.end(),
                   [&forward_deleted_ops,
                    &forward_visited_tensor_set](const OpCall* op_call) {
+                    if (op_call->inputs().empty()) {
+                      forward_deleted_ops.insert(op_call);
+                      for (const auto* output : op_call->outputs()) {
+                        forward_visited_tensor_set.insert(output->name());
+                      }
+                    }
                     for (const auto* input : op_call->inputs()) {
                       if (forward_visited_tensor_set.count(input->name())) {
                         forward_deleted_ops.insert(op_call);
@@ -423,6 +429,8 @@ class DrrRewritePattern : public pir::RewritePattern {
                   all_comsumer_deleted = false;
                 }
               }
+            } else if (output->consumers().empty()) {
+              continue;
             } else {
               all_comsumer_deleted = false;
             }
