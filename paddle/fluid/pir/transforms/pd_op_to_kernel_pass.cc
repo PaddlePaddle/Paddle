@@ -21,6 +21,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
@@ -62,8 +63,11 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     "builtin.get_parameter",
     "pd_op.shadow_output"};
 
-const std::unordered_set<std::string> SpecialLowerOps = {
-    "builtin.combine", "builtin.slice", "builtin.split", "pd.if", "cf.yield"};
+const std::unordered_set<std::string> SpecialLowerOps = {"builtin.combine",
+                                                         "builtin.slice",
+                                                         "builtin.split",
+                                                         "pd_op.if",
+                                                         "cf.yield"};
 
 bool NeedFallBackCpu(const pir::Operation* op,
                      const std::string& kernel_fn_name,
@@ -218,13 +222,13 @@ std::vector<std::shared_ptr<phi::TensorBase>> GetFakeTensorList(
   return vec_res;
 }
 
-ir::OpResult AddPlaceTransferOp(ir::OpResult in,
-                                ir::Type out_type,
-                                const phi::Place& src_place,
-                                const phi::Place& dst_place,
-                                const phi::KernelKey& kernel_key,
-                                ir::Block* block) {
-  ir::IrContext* ctx = ir::IrContext::Instance();
+pir::OpResult AddPlaceTransferOp(pir::OpResult in,
+                                 pir::Type out_type,
+                                 const phi::Place& src_place,
+                                 const phi::Place& dst_place,
+                                 const phi::KernelKey& kernel_key,
+                                 pir::Block* block) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
   std::string op_name = paddle::dialect::PhiKernelOp::name();
 
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
@@ -580,7 +584,7 @@ phi::KernelKey GetKernelKey(
         auto combine_op = op->operand_source(i).GetDefiningOp();
         for (size_t j = 0; j < combine_op->num_operands(); ++j) {
           if (combine_op->operand_source(j).GetDefiningOp()->name() ==
-              "pd.data") {
+              "pd_op.data") {
             auto data_op = combine_op->operand_source(j).GetDefiningOp();
             auto data_place = data_op->attributes()
                                   .at("place")
@@ -638,11 +642,11 @@ phi::KernelKey GetKernelKey(
 
 void HandleForIfOp(
     const phi::Place& place,
-    ir::Operation* op_item,
-    ir::Block* block,
-    ir::IrContext* ctx,
-    std::unordered_map<ir::Operation*, ir::Operation*>* map_op_pair,
-    std::unordered_map<ir::Value, ir::OpResult>* map_value_pair) {
+    pir::Operation* op_item,
+    pir::Block* block,
+    pir::IrContext* ctx,
+    std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
+    std::unordered_map<pir::Value, pir::OpResult>* map_value_pair) {
   auto cur_in = op_item->operand_source(0);
 
   PADDLE_ENFORCE_EQ(
@@ -652,15 +656,15 @@ void HandleForIfOp(
           "[%d]'s input of [%s] op MUST in map pair", 0, op_item->name()));
   auto new_in = map_value_pair->at(cur_in);
 
-  ir::Builder builder(ctx, block);
+  pir::Builder builder(ctx, block);
 
   auto base_if_op = op_item->dyn_cast<paddle::dialect::IfOp>();
 
   auto new_if_op = builder.Build<paddle::dialect::IfOp>(
-      new_in, std::vector<ir::Type>{builder.bool_type()});
+      new_in, std::vector<pir::Type>{builder.bool_type()});
 
   // process true block
-  ir::Block* true_block = new_if_op.true_block();
+  pir::Block* true_block = new_if_op.true_block();
   ProcessBlock(place,
                base_if_op.true_block(),
                true_block,
@@ -669,7 +673,7 @@ void HandleForIfOp(
                map_value_pair);
 
   // process false block
-  ir::Block* false_block = new_if_op.false_block();
+  pir::Block* false_block = new_if_op.false_block();
   ProcessBlock(place,
                base_if_op.false_block(),
                false_block,
@@ -694,17 +698,17 @@ pir::OpResult GetNewInput(
 
 void HandleForSpecialOp(
     const phi::Place& place,
-    ir::Operation* op_item,
-    ir::Block* block,
-    ir::IrContext* ctx,
-    std::unordered_map<ir::Operation*, ir::Operation*>* map_op_pair,
-    std::unordered_map<ir::Value, ir::OpResult>* map_value_pair) {
-  if (op_item->name() == "pd.if") {
+    pir::Operation* op_item,
+    pir::Block* block,
+    pir::IrContext* ctx,
+    std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
+    std::unordered_map<pir::Value, pir::OpResult>* map_value_pair) {
+  if (op_item->name() == "pd_op.if") {
     HandleForIfOp(place, op_item, block, ctx, map_op_pair, map_value_pair);
     return;
   }
-  std::vector<ir::OpResult> vec_inputs;
-  std::vector<ir::Type> op_output_types;
+  std::vector<pir::OpResult> vec_inputs;
+  std::vector<pir::Type> op_output_types;
   if (op_item->name() == "builtin.combine") {
     // Copy op inputs
     std::vector<pir::Type> vec_inner_types;
@@ -899,7 +903,7 @@ std::vector<pir::OpResult> BuildOpInputList(
     pir::IrContext* ctx,
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
     std::unordered_map<pir::Value, pir::OpResult>* map_value_pair,
-    ir::Block* block) {
+    pir::Block* block) {
   if (op_item->num_operands() == 0) {
     return {};
   }
@@ -1068,7 +1072,7 @@ void AddShadowFeed(
     const phi::Place& place,
     pir::Operation* op_item,
     pir::Operation* kernel_op,
-    ir::Block* block,
+    pir::Block* block,
     pir::IrContext* ctx,
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
     std::unordered_map<pir::Value, pir::OpResult>* map_value_pair) {
@@ -1149,7 +1153,7 @@ pir::Operation* BuildPhiKernelOp(
     const std::vector<pir::OpResult>& vec_inputs,
     const std::vector<pir::Type>& op_output_types,
     pir::Operation* op_item,
-    pir::Block* program,
+    pir::Block* block,
     pir::IrContext* ctx,
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
     std::unordered_map<pir::Value, pir::OpResult>* map_value_pair) {
@@ -1196,11 +1200,11 @@ pir::Operation* BuildPhiKernelOp(
 
 void ProcessBlock(
     const phi::Place& place,
-    ir::Block* block,
-    ir::Block* new_block,
-    ir::IrContext* ctx,
-    std::unordered_map<ir::Operation*, ir::Operation*>* map_op_pair,
-    std::unordered_map<ir::Value, ir::OpResult>* map_value_pair) {
+    pir::Block* block,
+    pir::Block* new_block,
+    pir::IrContext* ctx,
+    std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
+    std::unordered_map<pir::Value, pir::OpResult>* map_value_pair) {
   auto skip_feed_names = GetSkipFeedNames(block);
 
   for (auto op_item : *block) {
@@ -1243,33 +1247,33 @@ void ProcessBlock(
                                        new_block);
 
     // build op
-    ir::Operation* op = BuildPhiKernelOp(kernel_fn_str,
-                                         kernel_key,
-                                         vec_inputs,
-                                         op_output_types,
-                                         op_item,
-                                         new_block,
-                                         ctx,
-                                         map_op_pair,
-                                         map_value_pair);
+    pir::Operation* op = BuildPhiKernelOp(kernel_fn_str,
+                                          kernel_key,
+                                          vec_inputs,
+                                          op_output_types,
+                                          op_item,
+                                          new_block,
+                                          ctx,
+                                          map_op_pair,
+                                          map_value_pair);
 
     AddShadowFeed(
         place, op_item, op, new_block, ctx, map_op_pair, map_value_pair);
   }
 }
 
-std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
-                                                   phi::Place place) {
-  auto program = std::make_unique<ir::Program>(ir::IrContext::Instance());
+std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
+                                                    phi::Place place) {
+  auto program = std::make_unique<pir::Program>(pir::IrContext::Instance());
 
   auto block = prog->block();
 
-  ir::IrContext* ctx = ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleKernelDialect>();
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::KernelDialect>();
 
-  std::unordered_map<ir::Operation*, ir::Operation*> map_op_pair;
-  std::unordered_map<ir::Value, ir::OpResult> map_value_pair;
+  std::unordered_map<pir::Operation*, pir::Operation*> map_op_pair;
+  std::unordered_map<pir::Value, pir::OpResult> map_value_pair;
 
   ProcessBlock(
       place, block, program->block(), ctx, &map_op_pair, &map_value_pair);

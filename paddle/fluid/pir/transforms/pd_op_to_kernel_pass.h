@@ -24,10 +24,10 @@ std::unique_ptr<pir::Program> PdOpLowerToKernelPass(
 
 void ProcessBlock(
     const phi::Place& place,
-    ir::Block* block,
-    ir::Block* new_block,
-    ir::IrContext* ctx,
-    std::unordered_map<ir::Operation*, ir::Operation*>* map_op_pair,
-    std::unordered_map<ir::Value, ir::OpResult>* map_value_pair);
+    pir::Block* block,
+    pir::Block* new_block,
+    pir::IrContext* ctx,
+    std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
+    std::unordered_map<pir::Value, pir::OpResult>* map_value_pair);
 }  // namespace dialect
 }  // namespace paddle

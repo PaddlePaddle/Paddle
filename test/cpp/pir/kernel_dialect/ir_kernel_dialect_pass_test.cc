@@ -44,8 +44,8 @@
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/utils.h"
 
-#include "paddle/ir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/ir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(full_int_array, CPU, ALL_LAYOUT);
@@ -182,9 +182,9 @@ bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
 TEST(kernel_dialect, legacy_op_test) {
   // (1) Init environment.
   std::cout << "start_test_end!" << std::endl;
-  pir::IrContext* ctx = ir::IrContext::Instance();
+  pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-  ctx->GetOrRegisterDialect<ir::ControlFlowDialect>();
+  ctx->GetOrRegisterDialect<pir::ControlFlowDialect>();
 
   pir::Program program(ctx);
   pir::Block* block = program.block();
@@ -194,23 +194,23 @@ TEST(kernel_dialect, legacy_op_test) {
       std::vector<int64_t>{1}, true, phi::DataType::BOOL);
 
   auto if_op = builder.Build<paddle::dialect::IfOp>(
-      full_op.out(), std::vector<ir::Type>{builder.bool_type()});
+      full_op.out(), std::vector<pir::Type>{builder.bool_type()});
 
-  ir::Block* true_block = if_op.true_block();
+  pir::Block* true_block = if_op.true_block();
 
   builder.SetInsertionPointToStart(true_block);
 
   auto full_op_1 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2}, true, phi::DataType::BOOL);
-  builder.Build<ir::YieldOp>(std::vector<ir::OpResult>{full_op_1.out()});
+  builder.Build<pir::YieldOp>(std::vector<pir::OpResult>{full_op_1.out()});
 
-  ir::Block* false_block = if_op.false_block();
+  pir::Block* false_block = if_op.false_block();
 
   builder.SetInsertionPointToStart(false_block);
 
   auto full_op_2 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{3}, true, phi::DataType::BOOL);
-  builder.Build<ir::YieldOp>(std::vector<ir::OpResult>{full_op_2.out()});
+  builder.Build<pir::YieldOp>(std::vector<pir::OpResult>{full_op_2.out()});
 
   program.Print(std::cout);
 

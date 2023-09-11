@@ -34,7 +34,7 @@
 #include "paddle/pir/core/value.h"
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_manual_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 namespace paddle {
 namespace framework {
 

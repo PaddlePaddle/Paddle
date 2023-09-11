@@ -211,7 +211,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   std::unordered_map<int, std::string> id_2_var_name_;
 
   std::vector<Variable*> variable_list_;
-  std::map<ir::Block*, paddle::framework::Scope*> sub_blocks_;
+  std::map<pir::Block*, paddle::framework::Scope*> sub_blocks_;
 
   std::vector<int> var_ref_count_;
 

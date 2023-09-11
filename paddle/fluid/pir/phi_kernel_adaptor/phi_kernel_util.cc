@@ -43,6 +43,7 @@
 #include "glog/logging.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 
 namespace pir {
 
@@ -249,7 +250,7 @@ void HandleForSpecialOp(
         variable_2_var_name,
     std::map<std::string, int>* var_name_2_id,
     std::vector<paddle::framework::Variable*>* variable_list,
-    std::map<ir::Block*, paddle::framework::Scope*>* sub_blocks) {
+    std::map<pir::Block*, paddle::framework::Scope*>* sub_blocks) {
   std::string op_name = op->name();
   if (op->attributes().count("op_name")) {
     op_name =
