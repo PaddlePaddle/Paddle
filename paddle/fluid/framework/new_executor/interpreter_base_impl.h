@@ -98,7 +98,7 @@ class InterpreterBaseImpl {
 
   virtual bool IsSharedResultsBuild() const = 0;
 
-  virtual void PreStaticBuild() = 0;
+  virtual void Build(const std::vector<std::string>& feed_names) = 0;
 
   virtual bool IsStaticBuild() const = 0;
 };

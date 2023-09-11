@@ -121,7 +121,9 @@ void InterpreterCore::SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
   impl_->SetOutputHooks(hookfuncs);
 }
 
-void InterpreterCore::PreStaticBuild() { impl_->PreStaticBuild(); }
+void InterpreterCore::Build(const std::vector<std::string>& feed_names) {
+  impl_->Build(feed_names);
+}
 
 bool InterpreterCore::IsStaticBuild() const { return impl_->IsStaticBuild(); }
 

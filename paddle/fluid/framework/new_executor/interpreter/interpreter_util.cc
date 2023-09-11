@@ -532,8 +532,7 @@ void HandleOperatorBase(
     OpFuncNode* op_func_node,
     Scope* scope,
     bool static_build,
-    bool is_skip_fake_init,
-    const std::unordered_set<std::string> following_input_vars) {
+    std::vector<std::shared_ptr<OperatorBase>> following_ops) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
   // input, output is prepared. set the other attributes.
@@ -544,6 +543,28 @@ void HandleOperatorBase(
     if (OperatorBasesMustRunInStaticBuild.count(op->Type())) {
       op->Run(*scope, place);
     }
+
+    bool is_skip_fake_init = false;
+    std::unordered_set<std::string> following_input_vars;
+
+    if (op->Type() == "conditional_block") {
+      // Note(sonder): skip fake init for conditional_block when there is no
+      // op with kernel after it.
+      is_skip_fake_init = true;
+      for (size_t i = o; j < following_ops.size(); ++j) {
+        if (dynamic_cast<framework::OperatorWithKernel*>(
+                following_ops[i].get()) != nullptr) {
+          VLOG(4) << "Find op with kernel after conditional_block : "
+                  << following_ops[i]->Type();
+          is_skip_fake_init = false;
+          auto input_vars_info = following_ops[i]->InputVarsInfo(local_scope);
+          for (auto& input_var_info : input_vars_info) {
+            following_input_vars.insert(input_var_info.name_);
+          }
+        }
+      }
+    }
+
     FakeInitializeOutputsForOperatorBase(
         *op, place, scope, is_skip_fake_init, following_input_vars);
   } else {
@@ -689,33 +710,16 @@ void BuildOpFuncList(const platform::Place& place,
       if (dynamic_cast<framework::OperatorWithKernel*>(op) == nullptr) {
         VLOG(4) << "HandleOperatorBase";
         // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
-        bool is_skip_fake_init = false;
-        std::unordered_set<std::string> following_input_vars;
 
-        if (static_build && op->Type() == "conditional_block") {
-          // Note(sonder): skip fake init for conditional_block when there is no
-          // op with kernel after it.
-          is_skip_fake_init = true;
-          for (size_t j = i + 1; j < ops.size(); ++j) {
-            if (dynamic_cast<framework::OperatorWithKernel*>(ops[j].get()) !=
-                nullptr) {
-              VLOG(4) << "Find op with kernel after conditional_block : "
-                      << ops[j]->Type();
-              is_skip_fake_init = false;
-              auto input_vars_info = ops[j]->InputVarsInfo(local_scope);
-              for (auto& input_var_info : input_vars_info) {
-                following_input_vars.insert(input_var_info.name_);
-              }
-            }
-          }
-        }
+        std::vector<std::shared_ptr<OperatorBase>> following_ops(
+            ops.begin() + i + 1, ops.end());
         HandleOperatorBase(place,
                            ops[i],
                            &op_func_node,
                            local_scope,
                            static_build,
                            is_skip_fake_init,
-                           following_input_vars);
+                           following_ops);
         vec_func_list->emplace_back(op_func_node);
       } else {
         VLOG(4) << "OP is not null";

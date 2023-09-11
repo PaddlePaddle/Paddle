@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 
@@ -55,10 +56,10 @@ namespace framework {
 namespace interpreter {
 
 bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
-  // in_black_list = (kernelCode >> 7) & 1
-  // is_operator_base = (kernelCode >> 6) & 1
-  // is_custom_op = (kernelCode >> 5) & 1
-  // use_mkldnn = (kernelCode >> 4) & 1
+  // in_black_list = (kernelCode >> 6) & 1
+  // is_operator_base = (kernelCode >> 5) & 1
+  // is_custom_op = (kernelCode >> 4) & 1
+  // use_mkldnn = (kernelCode >> 3) & 1
   using KernelCode = int8_t;
   std::set<std::pair<std::string, KernelCode>> invalid_ops;
   for (auto& op : block.AllOps()) {
@@ -81,14 +82,22 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     bool has_structured_kernel =
         phi::KernelFactory::Instance().HasStructuredKernel(op_type);
 
+    bool is_sub_block_static_build = true;
+    if (op->HasAttr("sub_block")) {
+      auto* sub_block =
+          PADDLE_GET_CONST(framework::BlockDesc*, op->GetAttr("sub_block"));
+      is_sub_block_static_build = BlockCanBeStaticBuilt(*sub_block);
+    }
+
     KernelCode kernel_code = static_cast<KernelCode>(
-        (in_black_list << 7) + (is_operator_base << 6) + (is_custom_op << 5) +
-        (use_mkldnn << 4) + (has_structured_kernel << 2));
+        (in_black_list << 6) + (is_operator_base << 5) + (is_custom_op << 4) +
+        (use_mkldnn << 3) + (has_structured_kernel << 2) +
+        (is_sub_block_static_build << 1));
     if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
       if (in_black_list ||
           (is_operator_base &&
            !OperatorBasesHandledInStaticBuild.count(op_type)) ||
-          is_custom_op || use_mkldnn) {
+          is_custom_op || use_mkldnn || !is_sub_block_static_build) {
         invalid_ops.insert(std::make_pair(op_type, kernel_code));
       }
     }
@@ -333,7 +342,36 @@ void FakeInitializeOutputsForOperatorBase(
   phi::DeviceContext* dev_ctx =
       platform::DeviceContextPool::Instance().Get(place);
 
-  if (op_type == "read") {
+  if (op_type == "conditional_block") {
+    const std::vector<VarInfo> out_var_info_before_build =
+        op.OutputVarsInfo(scope);
+    op.RunPreStaticBuild(*scope, place);
+    const std::vector<VarInfo> out_var_info_after_build =
+        op.OutputVarsInfo(scope);
+
+    // Note(sonder): static_build is not supported if the output of
+    // conditional_block is changed after static build.
+    for (size_t i = 0; i < out_var_info_before_build.size(); ++i) {
+      // static build is supported in case of the output's dtype/place
+      // is changed but the following op is not use this output
+      if (out_var_info_before_build[i] != out_var_info_after_build[i]) {
+        auto var_name = out_var_info_before_build[i].name_;
+        if (following_input_vars.count(var_name)) {
+          PADDLE_THROW(phi::errors::PreconditionNotMet(
+              "The outputs' dtype/place of conditional_block is "
+              "changed after static build. Befer static build, the "
+              "output %s's dtype is %s, place is %s. After static "
+              "build, the output %s's dtype is %s, place is %s.",
+              var_name,
+              out_var_info_before_build[i].dtype_,
+              out_var_info_before_build[i].place_,
+              var_name,
+              out_var_info_after_build[i].dtype_,
+              out_var_info_after_build[i].place_));
+        }
+      }
+    }
+  } else if (op_type == "read") {
     const std::string& reader_name = op.Input("Reader");
     framework::ReaderHolder* reader =
         GET_DATA_SAFELY(scope->FindVar(reader_name), "Input", "Reader", "Read")
@@ -363,37 +401,6 @@ void FakeInitializeOutputsForOperatorBase(
         phi::DataType dtype = phi::TransToPhiDataType(var_types[i]);
         FakeInitializeTensorBase(
             *dev_ctx, target_place, dtype, out_tensor->layout(), out_tensor);
-      }
-    }
-  } else if (op_type == "conditional_block") {
-    const std::vector<VarInfo> out_var_info_before_build =
-        op.OutputVarsInfo(scope);
-    op.RunPreStaticBuild(*scope, place);
-    const std::vector<VarInfo> out_var_info_after_build =
-        op.OutputVarsInfo(scope);
-
-    // Note(sonder): static_build is not supported if the output of
-    // conditional_block is changed after static build.
-    if (out_var_info_before_build.size() != out_var_info_after_build.size()) {
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
-          "The output of conditional_block is "
-          "changed after static build. Static build "
-          "is not supported in this case."));
-    } else {
-      for (size_t i = 0; i < out_var_info_before_build.size(); ++i) {
-        // static build is supported in case of the output's dtype/place
-        // is changed but the following op is not use this output
-        if (out_var_info_before_build[i] != out_var_info_after_build[i]) {
-          auto var_name = out_var_info_before_build[i].name_;
-          if (following_input_vars.count(var_name)) {
-            PADDLE_THROW(phi::errors::PreconditionNotMet(
-                "The output of conditional_block is "
-                "changed after static build. The changed variable %s is used "
-                "by the following op. "
-                "Static build is not supported in this case. ",
-                var_name));
-          }
-        }
       }
     }
   } else {

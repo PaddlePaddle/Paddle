@@ -74,7 +74,7 @@ class InterpreterCore {
 
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs);
 
-  void PreStaticBuild();
+  void Build(const std::vector<std::string>& feed_names);
 
   bool IsStaticBuild() const;
 

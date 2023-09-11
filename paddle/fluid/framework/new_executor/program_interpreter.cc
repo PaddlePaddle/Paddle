@@ -69,17 +69,6 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
                   !FLAGS_new_executor_use_cuda_graph &&
                   interpreter::BlockCanBeStaticBuilt(block);
 
-  for (auto& op : block.AllOps()) {
-    if (op->HasAttr("sub_block")) {
-      auto* sub_block =
-          PADDLE_GET_CONST(framework::BlockDesc*, op->GetAttr("sub_block"));
-      bool is_sub_block_static_build =
-          interpreter::BlockCanBeStaticBuilt(*sub_block);
-      static_build_ = static_build_ && is_sub_block_static_build;
-      VLOG(4) << "SubBlock " << sub_block->ID()
-              << " can be static build: " << is_sub_block_static_build;
-    }
-  }
   instruction_scheduling_priority_less = [this](size_t lhs, size_t rhs) {
     SchedulingPriority lhs_scheduling_priority =
         vec_instruction_[lhs].GetSchedulingPriority();
@@ -136,28 +125,9 @@ void ProgramInterpreter::RunImpl() {
 
 FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
                                   bool need_fetch) {
-  SetDeviceId(place_);
-  CheckCUDAGraphBeforeRun(feed_names);
-
-#ifdef PADDLE_WITH_DNNL
-  platform::AttachPointerHashToMKLDNNKey(this, place_);
-#endif
+  Build(feed_names);
 
   if (!is_build_) {
-    LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
-    paddle::framework::interpreter::BuildVariableScope(
-        block_, execution_config_, &var_scope_);
-
-    std::vector<paddle::framework::OpFuncNode> op_func_nodes;
-    paddle::framework::interpreter::BuildOpFuncList(
-        place_,
-        block_,
-        execution_config_.skip_gc_vars,
-        &op_func_nodes,
-        &var_scope_,
-        execution_config_,
-        HasLocalScope(),
-        static_build_);
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
@@ -196,18 +166,16 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
   }
 }
 
-void ProgramInterpreter::PreStaticBuild() {
+void ProgramInterpreter::Build(const std::vector<std::string>& feed_names) {
   SetDeviceId(place_);
+  CheckCUDAGraphBeforeRun(feed_names);
+
 #ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
-  if (!is_build_) {
-    if (!static_build_) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "ProgramInterpreter::PreStaticBuild should be called only when "
-          "static_build_ is true"));
-    }
 
+  if (!is_build_) {
+    LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
     paddle::framework::interpreter::BuildVariableScope(
         block_, execution_config_, &var_scope_);
 

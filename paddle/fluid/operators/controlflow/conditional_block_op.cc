@@ -128,7 +128,7 @@ class ConditionalBlockOp : public ConditionalOp {
   void RunPreStaticBuild(const framework::Scope &scope,
                          const platform::Place &dev_place) const override {
     SetSubBlockCore(scope, dev_place);
-    core_->PreStaticBuild();
+    core_->Build({});
   }
 
  private:
