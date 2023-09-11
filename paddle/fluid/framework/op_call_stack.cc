@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <string>
 #include "paddle/fluid/framework/op_call_stack.h"
+#include <string>
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
@@ -93,8 +93,8 @@ void InsertCallStackInfo(const std::string &type,
     std::vector<pir::Attribute> vec_attr = array_attribute.AsVector();
     std::vector<std::string> vec_str;
     for (auto value : vec_attr) {
-        PADDLE_ENFORCE(value.isa<pir::StrAttribute>(),
-                       paddle::platform::errors::InvalidArgument(
+      PADDLE_ENFORCE(value.isa<pir::StrAttribute>(),
+                     paddle::platform::errors::InvalidArgument(
                          "%s: %s is not StrAttribute type", type));
       vec_str.emplace_back(value.dyn_cast<pir::StrAttribute>().AsString());
     }
