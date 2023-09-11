@@ -42,18 +42,18 @@ enum class CompilationStage {
 
 // An enum class used to represent the compilation status.
 enum class CompilationStatus {
-  // Compile successfully.
-  SUCCESS = 0,
   // An unknown error occurred during compilation.
-  UNKNOWN_FAIL = 1,
+  UNKNOWN_FAIL = 0,
   // An error occurred during lowering.
-  LOWERING_FAIL = 2,
+  LOWERING_FAIL = 1,
   // An error occurred during codegen and jit.
-  CODEGEN_JIT_FAIL = 3,
+  CODEGEN_JIT_FAIL = 2,
   // An error occurred during build instruction.
-  INSTUCTION_FAIL = 4,
+  INSTUCTION_FAIL = 3,
   // An error occurred during build runtime program.
-  PROGRAM_FAIL = 5,
+  PROGRAM_FAIL = 4,
+  // Compile successfully.
+  SUCCESS = 5,
 };
 
 struct CompilationContext {
@@ -99,16 +99,49 @@ struct CompilationContext {
   void ApplyTuningResult(const auto_schedule::TuningResult& tuning_result);
 };
 
-struct CompilationResult {
-  CompilationStatus status;
-  std::string message;
-  std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
-  std::vector<std::string> source_codes;
-  std::vector<std::string> source_ptxs;
-  std::vector<std::unique_ptr<Instruction>> instructions;
-  std::unique_ptr<Program> runtime_program;
+class GraphCompiler;
 
+class CompilationResult {
+  friend class GraphCompiler;
+
+ public:
   void InitCompilationResult(int group_size);
+
+  // Setters
+  void SetStatus(uint idx, const CompilationStatus& status);
+  void SetMessage(uint idx, const std::string& message);
+  void SetLoweredFuncs(uint idx, const std::vector<ir::LoweredFunc>& funcs);
+  void SetSourceCode(uint idx, const std::string& source_code);
+  void SetSourcePtx(uint idx, const std::string& source_ptx);
+  void SetInstruction(uint idx, std::unique_ptr<Instruction> instruction);
+  void SetRuntimeProgram(std::unique_ptr<Program> runtime_program);
+
+  // Getters
+  bool IsSuccess() const;
+  uint Size() const { return size_; }
+  CompilationStatus Status() const;
+  CompilationStatus Status(uint idx) const;
+  std::string Message() const;
+  std::string Message(uint idx) const;
+  std::vector<std::vector<ir::LoweredFunc>> LoweredFuncs() const;
+  std::vector<ir::LoweredFunc> LoweredFuncs(uint idx) const;
+  std::vector<std::string> SourceCodes() const;
+  std::string SourceCode(uint idx) const;
+  std::vector<std::string> SourcePtxs() const;
+  std::string SourcePtx(uint idx) const;
+  const std::vector<std::unique_ptr<Instruction>>& RuntimeInstructions() const;
+  const std::unique_ptr<Instruction>& RuntimeInstruction(uint idx) const;
+  std::unique_ptr<Program> RuntimeProgram();
+
+ private:
+  std::vector<CompilationStatus> status_;
+  std::vector<std::string> messages_;
+  std::vector<std::optional<std::vector<ir::LoweredFunc>>> lowered_funcs_;
+  std::vector<std::optional<std::string>> source_codes_;
+  std::vector<std::optional<std::string>> source_ptxs_;
+  std::vector<std::unique_ptr<Instruction>> instructions_;
+  std::unique_ptr<Program> runtime_program_;
+  uint size_;
 };
 
 }  // namespace framework
