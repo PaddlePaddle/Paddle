@@ -21,16 +21,6 @@ from paddle.base.libpaddle.ir import Program, set_global_program
 
 from ..base.wrapped_decorator import signature_safe_contextmanager
 
-vartype_int_to_datatype_int = {
-    0: 1,  # bool
-    1: 5,  # int16
-    2: 7,  # int32
-    3: 9,  # int64
-    4: 15,  # float16
-    5: 10,  # float32
-    6: 11,  # float64
-    22: 16,  # bf16
-}
 vartype_to_datatype = {
     VarDesc.VarType.FP32: DataType.FLOAT32,
     VarDesc.VarType.FP64: DataType.FLOAT64,

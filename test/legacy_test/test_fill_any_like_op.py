@@ -28,11 +28,9 @@ def fill_any_like_wrapper(x, value, out_dtype=None, name=None):
         if not in_new_ir_mode():
             tmp_dtype = dtypes.dtype(out_dtype)
         else:
-            from paddle.fluid.libpaddle import DataType
+            from paddle.base.libpaddle import DataType
 
-            tmp_dtype = DataType(
-                paddle.ir.core.vartype_int_to_datatype_int[out_dtype]
-            )
+            tmp_dtype = DataType(paddle.ir.core.vartype_to_datatype[out_dtype])
     else:
         tmp_dtype = out_dtype
         if in_new_ir_mode() and isinstance(
