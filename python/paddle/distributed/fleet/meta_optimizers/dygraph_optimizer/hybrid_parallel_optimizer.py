@@ -31,7 +31,7 @@ from paddle.nn import ClipGradByGlobalNorm, clip
 
 from ...base.topology import ParallelMode
 from ...utils.hybrid_parallel_util import (
-    fused_allreduce_gradients_with_group,
+    fused_allreduce_gradients,
     unwrap_optimizer,
 )
 from ...utils.log_util import logger
@@ -430,17 +430,7 @@ class HybridParallelOptimizer:
     def _fused_allreduce_gradients(self, parameter_list):
         if (not self._dp_enable) and (not self._sep_enabled):
             return
-        group = None
-        # sep all reduce is not scaled
-        scale = 1.0
-        if self._dp_enable:
-            group = self._hcg.get_data_parallel_group()
-            scale = group.nranks
-        if self._sep_enabled:
-            sep_group = self._hcg.get_sep_parallel_group()
-            dp_sep_group = self._hcg.get_dp_sep_parallel_group()
-            group = sep_group if group is None else dp_sep_group
-        fused_allreduce_gradients_with_group(parameter_list, group, scale=scale)
+        fused_allreduce_gradients(self, parameter_list, self._hcg)
 
     @no_grad()
     @framework.dygraph_only
