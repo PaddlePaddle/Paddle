@@ -108,18 +108,6 @@ if [ "$inference_approve" != "" ]; then
     check_approval 1 qingqing01 heavengate
 fi
 
-filter_fluid=`git diff --name-only upstream/develop |  grep "py$" | grep "^test/"`
-filter_fluid+=" `git diff --name-only upstream/develop | grep "py$" | grep -v "^python/paddle/fluid"| grep "^python/paddle"`"
-has_fluid=`git diff -U0 upstream/$BRANCH -- $filter_fluid | grep '^\+' | grep -v '^++' | grep -E "(fluid\.)|(paddle\.fluid)"`
-if [ "${has_fluid}" != "" ]; then
-    for fluid in "${has_fluid}";
-    do
-        echo "${fluid}"
-    done
-    echo_line="You must have one RD (zoooo0820(Recommend), or jeff41404) approval for using fluid API, because fluid API is going to be removed.\n"
-    check_approval 1 zoooo0820 jeff41404
-fi
-
 
 DEV_OP_USE_DEFAULT_GRAD_MAKER_SPEC=${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_DEV.spec
 PR_OP_USE_DEFAULT_GRAD_MAKER_SPEC=${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_PR.spec
