@@ -1993,7 +1993,7 @@ def split(x, num_or_sections, axis=0, name=None):
             return _C_ops.split_with_num(input, num_or_sections, dim)
         else:
             return _C_ops.split(input, num_or_sections, dim)
-
+    else:
         check_variable_and_dtype(
             input,
             'input',

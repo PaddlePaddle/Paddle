@@ -17,13 +17,14 @@ from paddle.base import core
 __all__ = []
 
 UNIFIED_APIS = [
+    'add_n',
+    'concat',
+    'full_like',
     'mean',
+    'scale',
     'sum',
     'split',
     'split_with_num',
-    'concat',
-    'add_n',
-    'scale',
 ]
 
 for name in dir(core.eager.ops):
