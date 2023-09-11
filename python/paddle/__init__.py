@@ -55,6 +55,7 @@ from .framework.dtype import float16  # noqa: F401
 from .framework.dtype import float32  # noqa: F401
 from .framework.dtype import float64  # noqa: F401
 from .framework.dtype import bfloat16  # noqa: F401
+from .framework.dtype import float8  # noqa: F401
 from .framework.dtype import bool  # noqa: F401
 from .framework.dtype import complex64  # noqa: F401
 from .framework.dtype import complex128  # noqa: F401
@@ -497,6 +498,7 @@ __all__ = [  # noqa
     'float32',
     'float64',
     'bfloat16',
+    'float8',
     'bool',
     'complex64',
     'complex128',

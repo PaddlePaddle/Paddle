@@ -30,6 +30,7 @@ float32 = VarDesc.VarType.FP32
 float64 = VarDesc.VarType.FP64
 float16 = VarDesc.VarType.FP16
 bfloat16 = VarDesc.VarType.BF16
+float8 = VarDesc.VarType.FP8
 
 complex64 = VarDesc.VarType.COMPLEX64
 complex128 = VarDesc.VarType.COMPLEX128

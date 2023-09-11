@@ -284,7 +284,10 @@ def to_string(var, prefix='Tensor'):
 
 
 def _format_dense_tensor(tensor, indent):
-    if tensor.dtype == core.VarDesc.VarType.BF16:
+    if (
+        tensor.dtype == core.VarDesc.VarType.BF16
+        or tensor.dtype == core.VarDesc.VarType.FP8
+    ):
         tensor = tensor.astype('float32')
 
     # TODO(zhouwei): will remove 0-D Tensor.numpy() hack

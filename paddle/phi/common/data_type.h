@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/float8_e4m3.h"
 
 namespace phi {
 namespace dtype {
@@ -31,6 +32,7 @@ using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 using float16 = ::phi::dtype::float16;
 using bfloat16 = ::phi::dtype::bfloat16;
+using float8 = ::phi::dtype::float8_e4m3;
 using pstring = ::phi::dtype::pstring;
 
 // The enum value are consistent with jit/property.proto
@@ -69,6 +71,8 @@ enum class DataType {
   // This format has 1 sign bit, 8 exponent bits, and 7 mantissa bits.
   BFLOAT16,
 
+  FLOAT8,
+
   NUM_DATA_TYPES,
   // See Note [ Why we need ALL in basic kernel key member? ]
   ALL_DTYPE = UNDEFINED,
@@ -79,6 +83,7 @@ inline size_t SizeOf(DataType data_type) {
     case DataType::BOOL:
     case DataType::UINT8:
     case DataType::INT8:
+    case DataType::FLOAT8:
       return 1;
     case DataType::BFLOAT16:
     case DataType::FLOAT16:
@@ -119,6 +124,7 @@ inline size_t SizeOf(DataType data_type) {
   _(int64_t, DataType::INT64)         \
   _(uint64_t, DataType::UINT64)       \
   _(bfloat16, DataType::BFLOAT16)     \
+  _(float8, DataType::FLOAT8)     \
   _(float16, DataType::FLOAT16)       \
   _(float, DataType::FLOAT32)         \
   _(double, DataType::FLOAT64)        \
@@ -187,6 +193,9 @@ inline std::ostream& operator<<(std::ostream& os, DataType dtype) {
     case DataType::BFLOAT16:
       os << "bfloat16";
       break;
+    case DataType::FLOAT8:
+      os << "float8";
+      break;
     case DataType::FLOAT16:
       os << "float16";
       break;
@@ -235,6 +244,8 @@ inline std::string DataTypeToString(const DataType& dtype) {
       return "uint64";
     case DataType::BFLOAT16:
       return "bfloat16";
+    case DataType::FLOAT8:
+      return "float8";
     case DataType::FLOAT16:
       return "float16";
     case DataType::FLOAT32:
@@ -258,6 +269,7 @@ namespace paddle {
 // In order to be compatible with the original custom operator Tensor interface
 using DataType = phi::DataType;
 using bfloat16 = phi::bfloat16;
+using float8 = phi::float8;
 using complex64 = phi::complex64;
 using complex128 = phi::complex128;
 using float16 = phi::float16;

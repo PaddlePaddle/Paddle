@@ -1083,6 +1083,8 @@ def convert_np_dtype_to_dtype_(np_dtype):
     # Convert the data type string to numpy data type.
     if isinstance(np_dtype, str) and np_dtype == "bfloat16":
         dtype = np.uint16
+    elif isinstance(np_dtype, str) and np_dtype == "float8":
+        dtype = 'float8'
     else:
         dtype = np.dtype(np_dtype)
 
@@ -1112,6 +1114,8 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.COMPLEX64
     elif dtype == np.complex128:
         return core.VarDesc.VarType.COMPLEX128
+    elif dtype == 'float8':
+        return core.VarDesc.VarType.FP8
     else:
         raise ValueError("Not supported numpy dtype %s" % dtype)
 

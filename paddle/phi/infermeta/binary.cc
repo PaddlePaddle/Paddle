@@ -2169,7 +2169,12 @@ void MatmulInferMeta(const MetaTensor& x,
   auto ddim_out = phi::make_ddim(new_dims);
 
   out->set_dims(ddim_out);
-  out->set_dtype(x.dtype());
+  if (x.dtype() == phi::DataType::FLOAT8) {
+    out->set_dtype(phi::DataType::BFLOAT16);
+  } else {
+    out->set_dtype(x.dtype());
+  }
+
   out->set_layout(x.layout());
 }
 
