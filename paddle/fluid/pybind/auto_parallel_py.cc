@@ -65,6 +65,8 @@ using phi::distributed::auto_parallel::LinkCapability;
 using phi::distributed::auto_parallel::Machine;
 
 PyTypeObject *g_tensor_dist_attr_pytype = nullptr;
+PyTypeObject *g_dist_tensor_spec_pytype = nullptr;
+constexpr char *infer_spmd_string = "infer_spmd";
 
 static inline const ProcessMesh *get_tensor_process_mesh(
     const TensorDistAttr &self) {
@@ -119,6 +121,109 @@ static inline void reset_operator_dist_attr(OperatorDistAttr *dist_attr) {
   dist_attr->set_impl_type(kDefault);
   dist_attr->set_impl_idx(0);
   dist_attr->clear_annotated();
+}
+
+// phi::distributed::InferSpmdContext ctx;
+// paddle::small_vector<phi::distributed::DistMetaTensor,
+//                      phi::kInputSmallVectorSize>
+//     ins;
+// for (auto &range : input_ranges) {
+//   if (range.second - range.first == 0) {
+//     auto &in = input_specs.at(range.first);
+//     ctx.EmplaceBackInput(phi::distributed::DistMetaTensor(
+//         phi::make_ddim(in.shape()), in.dist_attr()));
+//   } else {
+//     int start = range.first;
+//     int end = range.second;
+//     ins.reserve(end - start);
+//     for (int i = start; i < end; ++i) {
+//       auto &in = input_specs.at(i);
+//       ins.emplace_back(phi::distributed::DistMetaTensor(
+//           phi::make_ddim(in.shape()), in.dist_attr()));
+//     }
+//     ctx.EmplaceBackInputs(ins);
+//     ins.clear();
+//   }
+// }
+// for (auto &attr : attrs) {
+//   ctx.EmplaceBackAttr(attr);
+// }
+// return self.InferBackward(ctx);
+// }  // namespace pybind
+// );
+
+static void parse_single_object(PyObject *obj,
+                                phi::distributed::InferSpmdContext *ctx,
+                                const ssize_t arg_pos) {
+  if (PyList_Check(obj)) {  // list inputs, spmd not allow tuple inputs
+    PyObject *item = PyList_GetItem(obj, 0);
+    if (PyObject_TypeCheck(item, g_dist_tensor_spec_pytype)) {
+      Py_ssize_t len = PyList_Size(obj);
+      paddle::small_vector<phi::distributed::DistMetaTensor,
+                           phi::kInputSmallVectorSize>
+          ins;
+      ins.reserve(static_cast<size_t>(len));
+      for (Py_ssize_t i = 0; i < len; i++) {
+        DistTensorSpec *in =
+            reinterpret_cast<DistTensorSpec *>(PyList_GetItem(obj, i));
+        ins.emplace_back(phi::distributed::DistMetaTensor(
+            phi::make_ddim(in->shape()), in->dist_attr()));
+      }
+      ctx->EmplaceBackInputs(ins);
+    } else {
+      if (PyBool_Check(item)) {
+        auto vec = CastPyArg2Booleans(item, infer_spmd_string, arg_pos);
+      } else if (PyInt_Check(item)) {
+        auto vec = CastPyArg2AttrInts(item, infer_spmd_string, arg_pos);
+      } else if (PyLong_Check(item)) {
+        auto vec = CastPyArg2Longs(item, infer_spmd_string, arg_pos);
+      } else if (PyFloat_Check(item)) {
+        auto vec = CastPyArg2Floats(item, infer_spmd_string, arg_pos);
+        // TODO(ljz) support other types
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s(): argument (position %d) must be "
+            "int, float, bool or Tensor, but got %s",
+            infer_spmd_string,
+            arg_pos,
+            ((PyTypeObject *)item->ob_type)->tp_name));  // NOLINT
+      }
+      ctx->EmplaceBackAttr(vec);
+    }
+  } else {
+  }
+}
+
+static PyObject *gerenral_spmd_rule_api(PyObject *self,
+                                        PyObject *args,
+                                        PyObject *kwargs) {
+  PyThreadState *tstate = nullptr;
+  try {
+    phi::distributed::InferSpmdContext ctx;
+    paddle::small_vector<phi::distributed::DistMetaTensor,
+                         phi::kInputSmallVectorSize>
+        ins;
+    size_t inputs_size = PyTuple_GET_SIZE(args);
+
+    for (size_t i = 0; i < inputs_size; ++i) {
+      PyObject *obj = PyTuple_GET_ITEM(args, i);
+      parse_single_object(obj, ctx, i);
+    }
+    // auto& X = GetTensorFromArgs("matmul_v2", "X", args, 0, false);
+    // auto& Y = GetTensorFromArgs("matmul_v2", "Y", args, 1, false);
+    // framework::AttributeMap attrs;
+    // ConstructAttrMapFromPyArgs("matmul_v2", args, 2, PyTuple_GET_SIZE(args)
+    // , attrs); tstate = PyEval_SaveThread(); auto out =
+    // matmul_v2_dygraph_function(X, Y, attrs); PyEval_RestoreThread(tstate);
+    // tstate = nullptr;
+    // return ToPyObject(out);
+  } catch (...) {
+    if (tstate) {
+      PyEval_RestoreThread(tstate);
+    }
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
 }
 
 void BindAutoParallel(py::module *m) {
@@ -382,9 +487,10 @@ void BindAutoParallel(py::module *m) {
               const std::vector<DistTensorSpec> &input_specs,
               const std::vector<phi::Attribute> &attrs) {
              /*
-             to distingish between single tensor argument and vector argument of
-             one tensor: start - end == 0: single tensor start - end == 1:
-             vector containing one tensor input_ranges: [(0, 0), (1, 3), (3, 4)]
+             to distingish between single tensor argument and vector argument
+             of one tensor: start - end == 0: single tensor start - end == 1:
+             vector containing one tensor input_ranges: [(0, 0), (1, 3), (3,
+             4)]
              + input_specs: [t0, t1, t2, t3]  --> t0, [t1, t2], [t3]
              */
              phi::distributed::InferSpmdContext ctx;
@@ -439,9 +545,10 @@ void BindAutoParallel(py::module *m) {
               const std::vector<DistTensorSpec> &input_specs,
               const std::vector<phi::Attribute> &attrs) {
              /*
-             to distingish between single tensor argument and vector argument of
-             one tensor: start - end == 0: single tensor start - end == 1:
-             vector containing one tensor input_ranges: [(0, 0), (1, 3), (3, 4)]
+             to distingish between single tensor argument and vector argument
+             of one tensor: start - end == 0: single tensor start - end == 1:
+             vector containing one tensor input_ranges: [(0, 0), (1, 3), (3,
+             4)]
              + input_specs: [t0, t1, t2, t3]  --> t0, [t1, t2], [t3]
              */
              phi::distributed::InferSpmdContext ctx;
@@ -472,8 +579,11 @@ void BindAutoParallel(py::module *m) {
              return self.InferBackward(ctx);
            });
 
-  py::class_<DistTensorSpec>(*m, "DistTensorSpec")
-      .def(py::init<>())
+  py::class_<DistTensorSpec> py_dist_tensor_spec(
+      *m, "DistTensorSpec");  // TODO(ljz) remove and unify to DistTensor
+  g_dist_tensor_spec_pytype =
+      reinterpret_cast<PyTypeObject *>(py_dist_tensor_spec.ptr());
+  py_dist_tensor_spec.def(py::init<>())
       .def(py::init<const DistTensorSpec &>())
       .def(py::init<const std::vector<int64_t> &, const TensorDistAttr &>())
       .def("dims_mapping", &DistTensorSpec::dims_mapping)
