@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 def accuracy_wrapper(infer, indices, label):
@@ -111,8 +111,8 @@ class TestAccuracyOpError(unittest.TestCase):
         with paddle_static_guard():
             with program_guard(Program(), Program()):
                 # The input type of accuracy_op must be Variable.
-                x1 = fluid.create_lod_tensor(
-                    np.array([[-1]]), [[1]], fluid.CPUPlace()
+                x1 = base.create_lod_tensor(
+                    np.array([[-1]]), [[1]], base.CPUPlace()
                 )
                 label = paddle.static.data(
                     name='label', shape=[-1, 1], dtype="int32"
@@ -175,7 +175,7 @@ class TestAccuracyAPI1(unittest.TestCase):
 
 class TestAccuracyAPI2(unittest.TestCase):
     def test_api(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             predictions = paddle.to_tensor(
                 [[0.2, 0.1, 0.4, 0.1, 0.1], [0.2, 0.3, 0.1, 0.15, 0.25]],
                 dtype='float32',
@@ -188,7 +188,7 @@ class TestAccuracyAPI2(unittest.TestCase):
 
 class TestAccuracyAPI(unittest.TestCase):
     def test_api(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             predictions = paddle.to_tensor(
                 [[0.2, 0.1, 0.4, 0.1, 0.1], [0.2, 0.3, 0.1, 0.15, 0.25]],
                 dtype='float32',

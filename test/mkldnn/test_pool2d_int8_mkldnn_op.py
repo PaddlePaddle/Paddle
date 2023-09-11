@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 from test_pool2d_op import TestPool2D_Op, max_pool2D_forward_naive
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestPool2DMKLDNNInt8_Op(TestPool2D_Op):
@@ -48,7 +48,7 @@ class TestPool2DMKLDNNInt8_Op(TestPool2D_Op):
                 self.dtype,
             )
         ).astype(self.dtype)
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(input)}
         self.outputs = {'Out': output}
 
     def test_check_output(self):

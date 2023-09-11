@@ -117,7 +117,7 @@ class TestNanInf(TestNanInfBase):
         self.run_check_nan_inf(cmd, self.dygraph_expected_op_count)
 
         # Test on GPU.
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             cmd = f"{self._python_interp} {filepath} --use_cuda --check_nan_inf_level {self.check_nan_inf_level}"
             self.run_check_nan_inf(cmd, self.dygraph_expected_op_count)
 
@@ -233,7 +233,7 @@ class TestNanInfCheckResult(TestNanInfBase):
             {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 0}
         )
         _check_num_nan_inf(use_cuda=False)
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             _check_num_nan_inf(use_cuda=True)
 
     def run_check_nan_inf_level(self, use_cuda, dtype, level):
@@ -257,7 +257,7 @@ class TestNanInfCheckResult(TestNanInfBase):
         self.run_check_nan_inf_level(
             use_cuda=False, dtype="float32", level=level
         )
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             self.run_check_nan_inf_level(
                 use_cuda=True, dtype="float32", level=level
             )
@@ -267,7 +267,7 @@ class TestNanInfCheckResult(TestNanInfBase):
         self.run_check_nan_inf_level(
             use_cuda=False, dtype="float32", level=level
         )
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             self.run_check_nan_inf_level(
                 use_cuda=True, dtype="float16", level=level
             )
@@ -279,7 +279,7 @@ class TestCheckNumericsAPI(TestNanInfBase):
         x_np, y_np = self.generate_inputs(shape, "float32")
 
         device_list = ["cpu"]
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             device_list.append("gpu:0")
 
         for device in device_list:

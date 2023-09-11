@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_uint16_to_float
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def output_hist(out):
@@ -46,7 +46,7 @@ class TestUniformRandomInplaceOpDtype(unittest.TestCase):
             self.assertEqual(tensor_fp64.dtype, paddle.float64)
 
         places = ['cpu']
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             places.append('gpu')
         for place in places:
             paddle.set_device(place)
@@ -219,7 +219,7 @@ class TestUniformRandomInplaceOpError(unittest.TestCase):
 class TestUniformRandomInplaceOpEmptyTensor(unittest.TestCase):
     def test_uniform_random_inplace_op_empty_tensor(self):
         places = ['cpu']
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             places.append('gpu')
         test_shapes = [(200, 0), (0, 200)]
         for place in places:
@@ -249,7 +249,7 @@ class TestUniformRandomInplaceGrad(unittest.TestCase):
             self.assertTrue((uniform_grad == 0).all())
 
         places = ['cpu']
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             places.append('gpu')
         for place in places:
             paddle.set_device(place)

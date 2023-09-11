@@ -16,9 +16,9 @@ import copy
 import warnings
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.framework import _dygraph_tracer, dygraph_only
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.base import core
+from paddle.base.framework import _dygraph_tracer, dygraph_only
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 from .amp_lists import black_list, white_list
 

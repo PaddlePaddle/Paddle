@@ -68,5 +68,5 @@ if(NOT WIN32)
   cc_test(
     test_vjp_new_ir
     SRCS test_vjp.cc
-    DEPS phi_kernel_adaptor pd_dialect ir)
+    DEPS phi_kernel_adaptor pd_op_dialect pir)
 endif()

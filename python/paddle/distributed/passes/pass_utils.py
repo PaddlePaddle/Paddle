@@ -15,6 +15,8 @@
 from collections import OrderedDict
 from typing import List
 
+from paddle.base import core
+from paddle.base.framework import Parameter, Program
 from paddle.distributed.auto_parallel.static.utils import (
     is_backward_op,
     is_forward_op,
@@ -22,8 +24,6 @@ from paddle.distributed.auto_parallel.static.utils import (
     is_optimize_op,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.fluid import core
-from paddle.fluid.framework import Parameter, Program
 
 __not_shape_var_type__ = [
     core.VarDesc.VarType.READER,
@@ -332,7 +332,7 @@ def _create_program(src_block, dst_block, src_op, force_create=False):
 
 def _insert_sync_for_fthenb_1f1b(program):
     """
-    This implementation refers to lots of Paddle/python/paddle/fluid/optimizer.py.
+    This implementation refers to lots of Paddle/python/paddle/base/optimizer.py.
     The difference between this function with 'PipelineOptimizer' is that
     'send_v2' op and 'recv_v2' op have been inserted in program by 'reshard'.
     """

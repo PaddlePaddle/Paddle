@@ -284,7 +284,7 @@ const std::unordered_set<std::string> no_need_buffer_ins(Instruction* instr) {
   return std::unordered_set<std::string>();
 }
 
-const std::unordered_set<ir::Value> no_need_buffer_ins(
+const std::unordered_set<pir::Value> no_need_buffer_ins(
     const paddle::framework::InstructionBase* instr) {
   return instr->NoNeedBuffer();
 }
@@ -498,9 +498,9 @@ void analyse_event_info_for_two_instructions<
   // fused_var share the same tensor. However, as the dependency is implicit, we
   // can only add event for it with the help of depend_op.
 
-  if (has_data_dependency<paddle::framework::InstructionBase, ir::Value>(
+  if (has_data_dependency<paddle::framework::InstructionBase, pir::Value>(
           instructions[cur_instr_id], instructions[next_instr_id]) ||
-      instructions[next_instr_id]->Name() == "pd.depend") {
+      instructions[next_instr_id]->Name() == "pd_op.depend") {
     waiter_instr_ids->insert(next_instr_id);
     return;
   }
