@@ -51,7 +51,7 @@ void BuildScope(const pir::Block& block,
                                    std::string>* variable_2_var_name,
                 std::map<std::string, int>* var_name_2_id,
                 std::vector<paddle::framework::Variable*>* variable_list,
-                std::map<ir::Block*, paddle::framework::Scope*>* sub_blocks);
+                std::map<pir::Block*, paddle::framework::Scope*>* sub_blocks);
 
 void BuildRuntimeContext(
     pir::Operation* op,
