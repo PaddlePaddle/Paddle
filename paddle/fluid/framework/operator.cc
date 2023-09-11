@@ -953,7 +953,8 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
   return ss.str();
 }
 
-std::vector<VarInfo> GetVarsInfo(const Scope* scope, VariableNameMap var_map) {
+std::vector<VarInfo> OperatorBase::GetVarsInfo(const Scope* scope,
+                                               VariableNameMap var_map) const {
   std::vector<VarInfo> var_info;
 
   const std::unordered_set<std::string>* no_need_buffer_vars = nullptr;
@@ -968,7 +969,7 @@ std::vector<VarInfo> GetVarsInfo(const Scope* scope, VariableNameMap var_map) {
         (no_need_buffer_vars && no_need_buffer_vars->count(var.first) > 0);
     std::string var_name, var_dtype, var_place;
     var_info.reserve(var_info.size() + var.second.size());
-    for (size_t i = 0; i < input.second.size(); ++i) {
+    for (size_t i = 0; i < var.second.size(); ++i) {
       auto var_name = var.second[i];
       var_dtype.clear();
       var_place.clear();
