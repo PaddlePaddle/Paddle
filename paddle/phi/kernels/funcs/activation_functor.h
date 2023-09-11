@@ -2485,15 +2485,6 @@ struct CeilFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct CeilFunctor<ComplexType<T>>
-    : public BaseActivationFunctor<ComplexType<T>> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.ceil();
-  }
-};
-
-template <typename T>
 struct NegativeFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
@@ -2503,6 +2494,24 @@ struct NegativeFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct ZeroGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(
+      Device d, X x UNUSED, Out out, dOut dout UNUSED, dX dx) const {
+    dx.device(d) = static_cast<T>(0) * out;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kNoDeps;
+  }
+};
+
+template <typename T>
+struct ZeroGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
   template <typename Device,
             typename X,
             typename Out,
@@ -4254,18 +4263,6 @@ struct CudaHardSwishGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct CudaCeilFunctor : public BaseActivationFunctor<T> {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-
-  // ceil(x) = ceil(x)
-  __device__ __forceinline__ T operator()(const T arg_x) const {
-    MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(ceil(x));
-  }
-};
-
-template <typename T>
-struct CudaCeilFunctor<ComplexType<T>>
-    : public BaseActivationFunctor<ComplexType<T>> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   // ceil(x) = ceil(x)
