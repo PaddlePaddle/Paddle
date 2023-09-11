@@ -133,8 +133,8 @@ void VisitEachOpStmt(const hlir::framework::Graph::Group& group,
   for (const auto* op : group.nodes) {
     // Tuple<Op, In<List<Arg>>, Out<List<Arg>>>
     DoEach(m_expr::OpStmt{MakeOp(op),
-                           MakeOpStmtInputList(op, group.graph_),
-                           MakeOpStmtOutputList(op, group.graph_)});
+                          MakeOpStmtInputList(op, group.graph_),
+                          MakeOpStmtOutputList(op, group.graph_)});
   }
 }
 
