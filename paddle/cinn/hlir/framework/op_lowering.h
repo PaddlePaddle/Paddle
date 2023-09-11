@@ -83,6 +83,13 @@ class OpLowerer {
   std::vector<ir::LoweredFunc> LowerCustomCall(const GroupPtr& group);
 
   /**
+   * @brief Lower a group composed of Cutlass Op.
+   * @param group The group to be lowered.
+   * @return The lowered funcs.
+   */
+  std::vector<ir::LoweredFunc> LowerCutlassCall(const GroupPtr& group);
+
+  /**
    * @brief Post processing, including preparing function args and temporary
    * variables, applying low-level optimization passes, etc.
    * @param group The group to be lowered.

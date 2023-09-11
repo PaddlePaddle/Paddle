@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from .common import EPILOGUE_MAP
 from .library import (
     DataType,
     DataTypeNames,
@@ -33,6 +32,21 @@ from .library import (
     TensorDescription,
     substitute_template,
 )
+
+MATMUL_EPILOGUE_MAP = {
+    "cutlass.matmul": (EpilogueFunctor.LinearCombination, False),
+    "cutlass.matmul_bias": (EpilogueFunctor.LinearCombinationBias, True),
+    "cutlass.matmul_bias_relu": (EpilogueFunctor.LinearCombinationRelu, True),
+    "cutlass.matmul_bias_gelu_fp16": (
+        EpilogueFunctor.LinearCombinationGelu,
+        False,
+    ),
+    "cutlass.matmul_bias_gelu_fp32": (
+        EpilogueFunctor.LinearCombinationGelu,
+        False,
+    ),
+    "cutlass.batch_matmul": (EpilogueFunctor.LinearCombination, False),
+}
 
 
 class GemmProfilerEmitter:
@@ -577,7 +591,7 @@ def create_gemm_operator_with_epilogue(
     if batched:
         swizzling_functor = SwizzlingFunctor.Batched
 
-    epilogue, no_beta_scaling = EPILOGUE_MAP[op_type]
+    epilogue, no_beta_scaling = MATMUL_EPILOGUE_MAP[op_type]
 
     op = GemmOperation(
         tile_description.minimum_compute_capability,

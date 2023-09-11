@@ -17,12 +17,12 @@ import os
 import subprocess
 import tempfile
 
-from ..ir import IntImm
+from cinn.ir import IntImm
+
 from .gemm_ops import instantiate_gemm_template
 from .library import (
     DataType,
     DataTypeTag,
-    EpilogueFunctor,
     MathInstruction,
     MathOperation,
     OpcodeClass,
@@ -66,21 +66,6 @@ DEFAULT_KERNELS = {
             "cutlass_tensorop_s1688gemm_64x64_16x3_tn_align1",
         ),
     },
-}
-
-EPILOGUE_MAP = {
-    "cutlass.matmul": (EpilogueFunctor.LinearCombination, False),
-    "cutlass.matmul_bias": (EpilogueFunctor.LinearCombinationBias, True),
-    "cutlass.matmul_bias_relu": (EpilogueFunctor.LinearCombinationRelu, True),
-    "cutlass.matmul_bias_gelu_fp16": (
-        EpilogueFunctor.LinearCombinationGelu,
-        False,
-    ),
-    "cutlass.matmul_bias_gelu_fp32": (
-        EpilogueFunctor.LinearCombinationGelu,
-        False,
-    ),
-    "cutlass.batch_matmul": (EpilogueFunctor.LinearCombination, False),
 }
 
 

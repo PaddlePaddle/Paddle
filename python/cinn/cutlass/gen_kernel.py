@@ -147,12 +147,12 @@ def handle_matmul(
 
 def gen_gemm_kernel(
     sm,
-    use_3xtf32=True,
-    split_k_slices=[1],
-    profile_all_alignments=False,
-    find_first_valid=False,
-    use_multiprocessing=False,
-    tmp_dir="./tmp",
+    # use_3xtf32=True,
+    # split_k_slices=[1],
+    # profile_all_alignments=False,
+    # find_first_valid=True,
+    # use_multiprocessing=False,
+    # tmp_dir="./tmp",
 ):
     """(TODO)Given a module partitioned for CUTLASS offloading, profile each workload to select which
     kernels to emit.
@@ -194,6 +194,12 @@ def gen_gemm_kernel(
         The updated module annotated with cutlass profiling information.
     """
     # Profiler for dense operators. May cache results between tuned functions.
+    use_3xtf32 = True
+    split_k_slices = ([1],)
+    profile_all_alignments = False
+    find_first_valid = True
+    use_multiprocessing = False
+    tmp_dir = "./tmp"
     gemm_profiler = GemmProfiler(sm, get_cutlass_path(), tmp_dir)
     out_shape = [128, 128]
     out_dtype = 'float16'
