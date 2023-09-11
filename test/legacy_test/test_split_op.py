@@ -57,7 +57,7 @@ class TestSplitOp(OpTest):
         self.op_type = "split"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], ['out0', 'out1', 'out2'], check_prim=True)
@@ -111,7 +111,7 @@ class TestSplitWithNumOp(OpTest):
         self.op_type = "split"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], ['out0', 'out1', 'out2'], check_prim=True)
@@ -148,7 +148,7 @@ class TestSplitOp_AxisTensor(OpTest):
         self.op_type = "split"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], ['out0', 'out1', 'out2'])
@@ -196,7 +196,7 @@ class TestSplitOp_SectionsTensor(OpTest):
         self.op_type = "split"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], ['out0', 'out1', 'out2'])
@@ -235,7 +235,7 @@ class TestSplitOp_unk_section(OpTest):
         self.op_type = "split"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], ['out0', 'out1', 'out2'], check_prim=True)

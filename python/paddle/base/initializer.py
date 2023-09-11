@@ -76,27 +76,27 @@ def set_global_initializer(weight_init, bias_init=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-            nn.initializer.set_global_initializer(nn.initializer.Uniform(), nn.initializer.Constant())
-            x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
+            >>> nn.initializer.set_global_initializer(nn.initializer.Uniform(), nn.initializer.Constant())
+            >>> x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
 
-            # The weight of conv1 is initialized by Uniform
-            # The bias of conv1 is initialized by Constant
-            conv1 = nn.Conv2D(4, 6, (3, 3))
-            y_var1 = conv1(x_var)
+            >>> # The weight of conv1 is initialized by Uniform
+            >>> # The bias of conv1 is initialized by Constant
+            >>> conv1 = nn.Conv2D(4, 6, (3, 3))
+            >>> y_var1 = conv1(x_var)
 
-            # If set param_attr/bias_attr too, global initializer will not take effect
-            # The weight of conv2 is initialized by Xavier
-            # The bias of conv2 is initialized by Normal
-            conv2 = nn.Conv2D(4, 6, (3, 3),
-                weight_attr=nn.initializer.XavierUniform(),
-                bias_attr=nn.initializer.Normal())
-            y_var2 = conv2(x_var)
+            >>> # If set param_attr/bias_attr too, global initializer will not take effect
+            >>> # The weight of conv2 is initialized by Xavier
+            >>> # The bias of conv2 is initialized by Normal
+            >>> conv2 = nn.Conv2D(4, 6, (3, 3),
+            ...     weight_attr=nn.initializer.XavierUniform(),
+            ...     bias_attr=nn.initializer.Normal())
+            >>> y_var2 = conv2(x_var)
 
-            # Cancel the global initializer in framework, it will takes effect in subsequent code
-            nn.initializer.set_global_initializer(None)
+            >>> # Cancel the global initializer in framework, it will takes effect in subsequent code
+            >>> nn.initializer.set_global_initializer(None)
     """
 
     check_type(
