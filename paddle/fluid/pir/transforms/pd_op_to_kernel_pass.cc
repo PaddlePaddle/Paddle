@@ -33,7 +33,6 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
-
 namespace paddle {
 namespace dialect {
 
