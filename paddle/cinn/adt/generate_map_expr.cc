@@ -132,7 +132,7 @@ void VisitEachOpStmt(const hlir::framework::Graph::Group& group,
                      const DoEachT& DoEach) {
   for (const auto* op : group.nodes) {
     // Tuple<Op, In<List<Arg>>, Out<List<Arg>>>
-    DoEachT(m_expr::OpStmt{MakeOp(op),
+    DoEach(m_expr::OpStmt{MakeOp(op),
                            MakeOpStmtInputList(op, group.graph_),
                            MakeOpStmtOutputList(op, group.graph_)});
   }
@@ -236,6 +236,7 @@ MakeGetterTensorIndexExpr(const std::shared_ptr<IGroup>& igroup,
 
   const std::vector<equation::Variable> starts{igroup->sd_iterators()->begin(),
                                                igroup->sd_iterators()->end()};
+
   equation::value::SolveEquations(merged_view, starts, ctx.get());
   return [ctx, igroup](const m_expr::Tensor& tensor) {
     // All indexes of same tensor share the same TensorIndexExpr.
