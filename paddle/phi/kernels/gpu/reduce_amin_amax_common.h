@@ -14,7 +14,6 @@
 #pragma once
 
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/compare_kernel.h"
 #include "paddle/phi/kernels/elementwise_divide_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
@@ -81,8 +80,8 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
   // 1. equal_out = Equal(x, y)
   std::vector<const phi::DenseTensor*> equal_inputs = {&new_y, new_in_tensor};
   std::vector<phi::DenseTensor*> equal_outputs = {&equal_out_tensor};
-  phi::EqualKernel<T, Context>(
-      dev_ctx, new_y, *new_in_tensor, &equal_out_tensor);
+  funcs::BroadcastKernel<T>(
+      dev_ctx, equal_inputs, &equal_outputs, funcs::EqualFunctor<T>(), 0);
   // 2. equal_count = reduceSum(equal_out)
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   phi::funcs::
