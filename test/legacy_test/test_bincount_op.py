@@ -221,6 +221,14 @@ class TestCase5(TestBincountOp):
         self.Out = np.bincount(self.np_input, minlength=self.minlength)
 
 
+class TestCase6(TestBincountOp):
+    # with bigger input size
+    def init_test_case(self):
+        self.minlength = 0
+        self.np_input = np.random.randint(low=0, high=10, size=1024)
+        self.Out = np.bincount(self.np_input, minlength=self.minlength)
+
+
 class TestTensorMinlength(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
