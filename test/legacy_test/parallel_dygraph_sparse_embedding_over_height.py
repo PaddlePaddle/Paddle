@@ -24,7 +24,6 @@ from legacy_test.parallel_dygraph_sparse_embedding import (
 from legacy_test.test_dist_base import runtime_main
 
 import paddle
-from paddle import fluid
 
 # global configs
 # using small `vocab_size` to test rows number over height
@@ -50,8 +49,8 @@ class TestSparseEmbeddingOverHeight(TestSparseEmbedding):
             fake_sample_reader(), batch_size=batch_size, drop_last=True
         )
 
-        optimizer = fluid.optimizer.SGD(
-            learning_rate=0.001, parameter_list=model.parameters()
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=0.001, parameters=model.parameters()
         )
 
         return model, train_reader, optimizer

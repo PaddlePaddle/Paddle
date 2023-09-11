@@ -18,7 +18,7 @@ import sys
 import unittest
 
 import paddle
-from paddle.fluid.framework import IrGraph
+from paddle.base.framework import IrGraph
 from paddle.framework import core
 
 paddle.enable_static()
@@ -56,7 +56,9 @@ def generate_dot_for_model(model_path, save_graph_dir, save_graph_name):
                 inference_program,
                 feed_target_names,
                 fetch_targets,
-            ] = paddle.fluid.io.load_inference_model(model_path, exe)
+            ] = paddle.static.io.load_inference_model(
+                model_path, exe, model_filename='__model__'
+            )
         else:
             [
                 inference_program,

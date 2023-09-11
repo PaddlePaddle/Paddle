@@ -74,12 +74,12 @@ class PartialConcatOp : public framework::OperatorWithKernel {
       }
     }
 
-    int start_index = ComputeStartIndex(
+    int start_index = static_cast<int>(ComputeStartIndex(
         static_cast<int64_t>(ctx->Attrs().Get<int>("start_index")),
-        inputs_dims[0][1]);
+        inputs_dims[0][1]));
     int partial_len = ctx->Attrs().Get<int>("length");
     if (partial_len < 0) {
-      partial_len = inputs_dims[0][1] - start_index;
+      partial_len = static_cast<int>(inputs_dims[0][1] - start_index);
     }
 
     ctx->SetOutputDim(
@@ -93,11 +93,11 @@ class PartialConcatOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
     auto input_data_type = framework::proto::VarType::Type(0);
-    bool flag = 0;
+    bool flag = false;
     for (auto *input : inputs) {
       if (input->IsInitialized()) {
         input_data_type = framework::TransToProtoVarType(input->dtype());
-        flag = 1;
+        flag = true;
         break;
       }
     }

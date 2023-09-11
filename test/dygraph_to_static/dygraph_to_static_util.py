@@ -19,7 +19,7 @@ from functools import wraps
 import numpy as np
 
 from paddle import set_flags, static
-from paddle.fluid import core
+from paddle.base import core
 
 
 @contextlib.contextmanager
@@ -35,7 +35,7 @@ def enable_fallback_guard(enable):
 
 def to_ast(func):
     """
-    convet run fall_back to ast
+    convert run fall_back to ast
     """
 
     def impl(*args, **kwargs):
@@ -47,7 +47,7 @@ def to_ast(func):
 
 def to_sot(func):
     """
-    convet run fall_back to ast
+    convert run fall_back to ast
     """
     enable_sot = os.environ.get("ENABLE_SOT", "False") == "True"
 
@@ -65,11 +65,12 @@ def dy2static_unittest(cls):
     """
     dy2static unittest must be decorated to each Dy2static Unittests.
     run both in Fallback and Ast mode.
-    Usage like:
 
-    @dy2static_unittest
-    class TestA (unittest.TestCase):
-        ...
+    Examples:
+
+        >>> @dy2static_unittest
+        ... class TestA(unittest.TestCase):
+        ...     ...
     """
     for key in dir(cls):
         if key.startswith("test"):
@@ -84,16 +85,18 @@ def dy2static_unittest(cls):
 def ast_only_test(func):
     """
     run this test function in ast only mode.
-    Usage:
 
-    class TestA (unittest.TestCase):
-        @ast_only_test
-        def test_ast_only(self):
-            pass
+    Examples:
+
+        >>> @dy2static_unittest
+        ... class TestA(unittest.TestCase):
+        ...     @ast_only_test
+        ...     def test_ast_only(self):
+        ...         pass
     """
 
     def impl(*args, **kwargs):
-        if os.environ.get("ENABLE_FALL_BACK", "True") == "False":
+        if os.environ.get("ENABLE_FALL_BACK", "False") == "False":
             func(*args, **kwargs)
 
     return impl
@@ -102,16 +105,18 @@ def ast_only_test(func):
 def sot_only_test(func):
     """
     run this test function in ast only mode.
-    Usage:
 
-    class TestA (unittest.TestCase):
-        @ast_only_test
-        def test_ast_only(self):
-            pass
+    Examples:
+
+        >>> @dy2static_unittest
+        ... class TestA(unittest.TestCase):
+        ...     @sot_only_test
+        ...     def test_sot_only(self):
+        ...         pass
     """
 
     def impl(*args, **kwargs):
-        if os.environ.get("ENABLE_FALL_BACK", "True") == "True":
+        if os.environ.get("ENABLE_FALL_BACK", "False") == "True":
             func(*args, **kwargs)
 
     return impl
@@ -145,25 +150,21 @@ def test_and_compare_with_new_ir(need_check_output: bool = True):
             outs = func(*args, **kwargs)
             if core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled():
                 return outs
-            # only run in CI-Coverage
-            if os.environ.get('FLAGS_NEW_IR_DY2ST_TEST', None) is None:
-                return outs
             ir_outs = test_with_new_ir(func)(*args, **kwargs)
             if not need_check_output:
                 return outs
-            for i in range(len(outs)):
-                np.testing.assert_array_equal(
-                    outs[i],
-                    ir_outs[i],
-                    err_msg='Dy2St Unittest Check ('
-                    + func.__name__
-                    + ') has diff '
-                    + '\nExpect '
-                    + str(outs[i])
-                    + '\n'
-                    + 'But Got'
-                    + str(ir_outs[i]),
-                )
+            np.testing.assert_array_equal(
+                outs,
+                ir_outs,
+                err_msg='Dy2St Unittest Check ('
+                + func.__name__
+                + ') has diff '
+                + '\nExpect '
+                + str(outs)
+                + '\n'
+                + 'But Got'
+                + str(ir_outs),
+            )
             return outs
 
         return impl

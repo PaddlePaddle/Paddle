@@ -19,7 +19,7 @@ import numpy as np
 from simple_nets import simple_fc_net
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 batch_size = 32
 
@@ -39,38 +39,36 @@ class InplaceTestBase(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
         self.initParameter()
-        if self.use_cuda and fluid.core.is_compiled_with_cuda():
-            self.device_count = fluid.core.get_cuda_device_count()
+        if self.use_cuda and base.core.is_compiled_with_cuda():
+            self.device_count = base.core.get_cuda_device_count()
         else:
             self.device_count = 4
         assert batch_size % self.device_count == 0
 
     def build_program_and_scope(self):
-        self.place = fluid.CUDAPlace(0) if self.use_cuda else fluid.CPUPlace()
+        self.place = base.CUDAPlace(0) if self.use_cuda else base.CPUPlace()
         paddle.seed(1)
         paddle.framework.random._manual_program_seed(1)
-        startup_program = fluid.Program()
-        main_program = fluid.Program()
+        startup_program = base.Program()
+        main_program = base.Program()
 
-        scope = fluid.Scope()
-        with fluid.program_guard(main_program, startup_program):
-            with fluid.unique_name.guard():
+        scope = base.Scope()
+        with base.program_guard(main_program, startup_program):
+            with base.unique_name.guard():
                 loss = simple_fc_net()
-                adam = fluid.optimizer.Adam(learning_rate=1e-3)
+                adam = paddle.optimizer.Adam(learning_rate=1e-3)
                 adam.minimize(loss)
 
-                with fluid.scope_guard(scope):
-                    exe = fluid.Executor(
-                        fluid.CUDAPlace(0)
-                        if self.use_cuda
-                        else fluid.CPUPlace()
+                with base.scope_guard(scope):
+                    exe = base.Executor(
+                        base.CUDAPlace(0) if self.use_cuda else base.CPUPlace()
                     )
                     exe.run(startup_program)
 
         return main_program, scope, exe, loss
 
     def is_invalid_test(self):
-        return self.use_cuda and not fluid.core.is_compiled_with_cuda()
+        return self.use_cuda and not base.core.is_compiled_with_cuda()
 
     def get_all_vars(self, program):
         all_vars = program.global_block().vars
@@ -92,13 +90,13 @@ class InplaceTestBase(unittest.TestCase):
             for enable_inplace in [False, True]:
                 prog, scope, _, loss = self.build_program_and_scope()
                 scopes.append(scope)
-                build_strategy = fluid.BuildStrategy()
+                build_strategy = base.BuildStrategy()
                 build_strategy.memory_optimize = memory_optimize
                 build_strategy.enable_inplace = enable_inplace
                 build_strategy.fuse_all_optimizer_ops = (
                     self.fuse_all_optimizer_ops
                 )
-                compiled_prog = fluid.CompiledProgram(
+                compiled_prog = base.CompiledProgram(
                     prog, build_strategy=build_strategy
                 )
                 compiled_programs.append(compiled_prog)
@@ -109,13 +107,13 @@ class InplaceTestBase(unittest.TestCase):
 
         for fetch_var in repeated_var_names[:4]:
             for _ in range(2):
-                with fluid.scope_guard(scope1):
+                with base.scope_guard(scope1):
                     (fetch_val1,) = exe.run(
                         prog1, feed=feed_dict, fetch_list=[fetch_var]
                     )
 
                 for scope, compiled_prog in zip(scopes, compiled_programs):
-                    with fluid.scope_guard(scope):
+                    with base.scope_guard(scope):
                         (fetch_val2,) = exe.run(
                             compiled_prog,
                             feed=feed_dict,

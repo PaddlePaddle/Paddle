@@ -15,9 +15,9 @@
 from paddle import _C_ops
 from paddle.utils import unique_name
 
-from ...fluid import framework
-from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid.dygraph import no_grad
+from ...base import framework
+from ...base.data_feeder import check_variable_and_dtype
+from ...base.dygraph import no_grad
 from .initializer import Initializer
 
 __all__ = []
@@ -56,14 +56,13 @@ class Orthogonal(Initializer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            weight_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Orthogonal())
-            linear = paddle.nn.Linear(10, 15, weight_attr=weight_attr)
-            # linear.weight: X * X' = I
-
-            linear = paddle.nn.Linear(15, 10, weight_attr=weight_attr)
-            # linear.weight: X' * X = I
+            >>> weight_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Orthogonal())
+            >>> linear = paddle.nn.Linear(10, 15, weight_attr=weight_attr)
+            >>> # linear.weight: X * X' = I
+            >>> linear = paddle.nn.Linear(15, 10, weight_attr=weight_attr)
+            >>> # linear.weight: X' * X = I
     """
 
     def __init__(self, gain=1.0, name=None):

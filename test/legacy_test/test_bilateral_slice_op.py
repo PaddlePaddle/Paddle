@@ -143,7 +143,7 @@ def naive_bilateral_slice(x, guide, grid, has_offset):
 
 
 @unittest.skipIf(
-    not paddle.fluid.is_compiled_with_cuda(), 'CPU testing is not supported'
+    not paddle.base.is_compiled_with_cuda(), 'CPU testing is not supported'
 )
 class TestBilateralSliceOp(OpTest):
     def setUp(self):
@@ -169,11 +169,11 @@ class TestBilateralSliceOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        place = paddle.fluid.CUDAPlace(0)
+        place = paddle.base.CUDAPlace(0)
         self.check_output_with_place(place, atol=1e-5)
 
     def test_check_grad(self):
-        place = paddle.fluid.CUDAPlace(0)
+        place = paddle.base.CUDAPlace(0)
         self.check_grad_with_place(place, ['X'], 'Out')
 
     def initTestCase(self):
@@ -182,7 +182,7 @@ class TestBilateralSliceOp(OpTest):
 
 
 @unittest.skipIf(
-    not paddle.fluid.is_compiled_with_cuda(), 'CPU testing is not supported'
+    not paddle.base.is_compiled_with_cuda(), 'CPU testing is not supported'
 )
 class TestBilateralSliceOp1(TestBilateralSliceOp):
     def initTestCase(self):
@@ -204,10 +204,10 @@ class TestBilateralSliceApi(unittest.TestCase):
             )
             bilateral_slice(x, guide, grid, False)
 
-            if not paddle.fluid.is_compiled_with_cuda():
+            if not paddle.base.is_compiled_with_cuda():
                 return
 
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x1 = paddle.rand([3, 1, 50, 30])
                 guide1 = paddle.rand([3, 50, 30])
                 grid1 = paddle.rand([3, 2, 2, 5, 3])

@@ -208,7 +208,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
                                        tensor_name,
                                        target);
             } else {
-#ifdef CINN_WITH_MKLDNN
+#ifdef CINN_WITH_DNNL
               out = pe::Conv2d_NCHW_MKLDNN(A.as_tensor_ref(),
                                            B.as_tensor_ref(),
                                            padding[0],
@@ -1897,7 +1897,7 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
         std::string tensor_name =
             pack_args[pack_args.size() - 1].operator std::string();
 
-#ifdef CINN_WITH_MKLDNN
+#ifdef CINN_WITH_DNNL
         if (use_mkldnn) {
           out = pe::SoftmaxMKLDNN(A, new_axis, tensor_name);
         } else {

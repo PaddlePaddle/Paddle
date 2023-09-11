@@ -206,6 +206,9 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   // _PyFrame_GetFrameObject(frame) # this function should be the right answer,
   // but nm libpython.so | grep _PyFrame_MakeAndSetFrameObject is a `t' symbol,
   // which means it's local to library. we will get a link error if we use it.
+  if (frame->owner == FRAME_OWNED_BY_GENERATOR) {
+    return eval_frame_default(tstate, frame, throw_flag);
+  }
   if (PyFrame_FastToLocalsWithError(Paddle_PyFrame_GetFrameObject(frame)) < 0) {
 #else
   if (PyFrame_FastToLocalsWithError(frame) < 0) {

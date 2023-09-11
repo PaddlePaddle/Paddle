@@ -23,21 +23,22 @@
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
-#include "paddle/fluid/ir/dialect/pd_dialect.h"
-#include "paddle/fluid/ir/interface/op_yaml_info.h"
-#include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
-#include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
+#include "paddle/fluid/operators/controlflow/pylayer_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
+#include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
+#include "paddle/fluid/pir/phi_kernel_adaptor/phi_kernel_util.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -72,7 +73,7 @@ class SingleStreamGuard {
     }
   }
 
-  ~SingleStreamGuard() {
+  ~SingleStreamGuard() {  // NOLINT
     if (!is_changed) {
       return;
     }
@@ -191,7 +192,7 @@ bool IsMemcpyH2D(Instruction* instr) {
 }
 
 bool IsMemcpyH2D(paddle::framework::InstructionBase* instr) {
-  return instr->Name() == "pd.memcpy_h2d";
+  return instr->Name() == "pd_op.memcpy_h2d";
 }
 
 bool IsMemcpyOp(const Instruction& instr) {
@@ -346,7 +347,7 @@ void CreateAllOps(const framework::BlockDesc& block,
         info.Creator()(op_type, inputs_names, outputs_names, op_attr_map);
     op_base->SetRuntimeAttributeMap(op_runtime_attr_map);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (FLAGS_use_mkldnn) {
       if (op->HasAttr("use_mkldnn")) {
         VLOG(4) << "Set use_mkldnn=True for " << op_base->Type();
@@ -476,6 +477,56 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
   }
 }
 
+platform::DeviceContext* ConstructDeviceContext(const OperatorBase* op,
+                                                const platform::Place& place) {
+  auto& pool = platform::DeviceContextPool::Instance();
+  auto* default_dev_ctx = pool.Get(place);
+
+  // Replace the default_dev_ctx according to dst_place_type for memcpy op if
+  // needed.
+
+  // NOTE(liudongxue01):
+  //  Please apply the following logic in other Executor/Interpreter modules
+  //  likewise.
+  //
+
+  // NOTE(liudongxue01):
+  // The following code aims to fixup the memcpy kernel which does not handle
+  // some rare case. The case is:
+  //  1. The default place in the current execution context is not CUDAPlace,
+  //  such as CPUPlace,
+  //  2. The dst_place_type is 1 which means CUDAPlace,
+  //  3. The expected result place is CUDAPlace but the actual result is
+  //  CPUPlace.
+  // When the default place is CPUPlace, we call the tensor.cuda() would
+  // simply hit such case.
+  //
+  // Q: Why we do not add such logic in the memcpy kernel?
+  // A: (1) To fixup the memcpy kernel, we need to construct a CUDAPlace() and
+  //    corresponding DeviceContext instance which used by the phi::Copy(...)
+  //    api to perform the real memcpy action. (2) We should not access the
+  //    singleton of the DeviceContextPool object in the PHI framework which
+  //    is designed as a standalone module and all context data should passed
+  //    into the kernel API through arguments. (3) So we have no way to
+  //    construct a CUDAPlace() in the memcpy kernel and then pass it
+  //     to the phi::Copy(...) api.
+  if (!platform::is_gpu_place(place)) {
+    const auto& op_type = op->Type();
+    if (op_type == "memcpy") {
+      int dst_place_type = op->Attr<int>("dst_place_type");
+      if (dst_place_type == 1) {  // 1 : CUDAPlace
+        auto dev_ctx = pool.Get(paddle::DefaultGPUPlace());
+        VLOG(4) << "Change the device context for memcpy OP: ("
+                << default_dev_ctx->type_info().name() << ") -> ("
+                << dev_ctx->type_info().name() << ")";
+        return dev_ctx;
+      }
+    }
+  }
+
+  return default_dev_ctx;
+}
+
 void HandleOperatorBase(const platform::Place& place,
                         std::shared_ptr<OperatorBase> op,
                         OpFuncNode* op_func_node,
@@ -521,13 +572,15 @@ void BuildOpFuncList(const platform::Place& place,
     const ProgramDesc& main_program = *block.Program();
     operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
         main_program, block.ID(), ops_unique);
+    operators::PrepareSafeEagerDeletionOnPyLayerOpAndPyLayerGradOp(
+        main_program, block.ID(), ops_unique);
     operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
         main_program, block.ID(), ops_unique);
     operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
         main_program, block.ID(), ops_unique);
   }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   platform::RegisterModelLayout(ops_unique, place);
 #endif
   // its elements will be moved to vec_func_list
@@ -536,6 +589,8 @@ void BuildOpFuncList(const platform::Place& place,
     ops.emplace_back(std::move(op_unique));
   }
   auto unused_var_map = GetUnusedVars(block, ops);
+
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
 
   bool flag_log_is_printed = false;
   for (size_t i = 0; i < ops.size(); ++i) {
@@ -559,6 +614,8 @@ void BuildOpFuncList(const platform::Place& place,
     const std::set<std::string> ops_with_var_not_in_scope = {
         "conditional_block",
         "conditional_block_grad",
+        "pylayer",
+        "pylayer_grad"
         "recurrent_grad",
         "rnn_memory_helper",
         "rnn_memory_helper_grad",
@@ -596,7 +653,8 @@ void BuildOpFuncList(const platform::Place& place,
     op_func_node.input_index = ins_name2id;
     op_func_node.output_index = outs_name2id;
 
-    const OperatorDistAttr* dist_attr = block.Op(i)->DistAttr();
+    const OperatorDistAttr* dist_attr =
+        block.Op(static_cast<int>(i))->DistAttr();
     if (dist_attr) {
       if (dist_attr->execution_stream() !=
           distributed::auto_parallel::kDefault) {
@@ -604,6 +662,10 @@ void BuildOpFuncList(const platform::Place& place,
       }
       op_func_node.stream_priority_ = dist_attr->stream_priority();
       op_func_node.scheduling_priority_ = dist_attr->scheduling_priority();
+      // set mannual event information
+      op_func_node.force_record_event_ = dist_attr->force_record_event();
+      op_func_node.events_to_wait_ = dist_attr->events_to_wait();
+      op_func_node.event_to_record_ = dist_attr->event_to_record();
     } else {
       if (interpreter::IsCommunicationOp(op)) {
         // NOTE(Ruibiao): Dispatching computation before communication improves
@@ -655,8 +717,9 @@ void BuildOpFuncList(const platform::Place& place,
           runtime_scope = local_scope;
         }
 
-        auto& pool = platform::DeviceContextPool::Instance();
-        auto* dev_ctx = pool.Get(place);
+        // construct the device context
+        auto* dev_ctx = ConstructDeviceContext(op, place);
+
         SetDeviceCommContext(op, dev_ctx);
         auto exec_ctx = ExecutionContext(
             *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
@@ -958,23 +1021,23 @@ void BuildOpFuncList(const platform::Place& place,
 
 void BuildOpFuncList(
     const platform::Place& place,
-    ::ir::Block* block,
+    pir::Block* block,
     std::vector<OpFuncNode>* vec_func_list,
     framework::Scope* scope,
     framework::Scope* local_scope,
-    const std::unordered_map<::ir::Value, std::string>& value_2_name_map,
+    const std::unordered_map<pir::Value, std::string>& value_2_name_map,
     const ExecutionConfig& execution_config) {
   vec_func_list->reserve(block->size());
-  ::ir::IrContext* ctx = ir::IrContext::Instance();
+  pir::IrContext* ctx = pir::IrContext::Instance();
 
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
   for (auto op : *block) {
     OpFuncNode op_func_node;
     auto attr_map = op->attributes();
 
     auto op_name =
-        attr_map.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
+        attr_map.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
     op_func_node.phi_op_name_ = op_name;
 
     if (GetSpecialOpNames().count(op_name)) {
@@ -982,7 +1045,7 @@ void BuildOpFuncList(
       continue;
     }
 
-    ::ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
+    pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
 
     auto impl =
         op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
@@ -993,7 +1056,7 @@ void BuildOpFuncList(
     VLOG(6) << "op name" << op_func_node.phi_op_name_;
     dialect::OpYamlInfoParser op_yaml_info_parser(impl->get_op_info_());
     if (op_func_node.infer_meta_interface_) {
-      ::ir::BuildPhiContext<
+      pir::BuildPhiContext<
           phi::InferMetaContext,
           phi::MetaTensor,
           phi::MetaTensor,
@@ -1008,7 +1071,7 @@ void BuildOpFuncList(
     }
 
     auto kernel_name =
-        attr_map.at("kernel_name").dyn_cast<ir::StrAttribute>().AsString();
+        attr_map.at("kernel_name").dyn_cast<pir::StrAttribute>().AsString();
     auto kernel_key = attr_map.at("kernel_key")
                           .dyn_cast<paddle::dialect::KernelAttribute>()
                           .data();
@@ -1023,36 +1086,17 @@ void BuildOpFuncList(
                       "not found kernel for [%s]",
                       kernel_name);
 
-    if (kernel_name == "fused_softmax_mask_upper_triangle" ||
-        kernel_name == "fused_softmax_mask_upper_triangle_grad") {
-      // builder operator
-      op_func_node.operator_base_ =
-          ir::BuildOperatorBase(op, value_2_name_map, op_yaml_info_parser);
-      paddle::framework::VariableValueMap in_map;
-      paddle::framework::VariableValueMap out_map;
-      op_func_node.runtime_ctx_ =
-          std::make_shared<paddle::framework::RuntimeContext>(
-              paddle::framework::RuntimeContext(in_map, out_map));
-      ir::BuildRuntimeContext(op,
-                              value_2_name_map,
-                              scope,
-                              local_scope,
-                              op_yaml_info_parser,
-                              op_func_node.runtime_ctx_.get());
-      op_func_node.fluid_op = true;
-    } else {
-      ::ir::BuildPhiContext<phi::KernelContext,
-                            const phi::TensorBase*,
-                            phi::TensorBase*,
-                            paddle::small_vector<const phi::TensorBase*>,
-                            paddle::small_vector<phi::TensorBase*>,
-                            true>(op,
-                                  value_2_name_map,
-                                  scope,
-                                  local_scope,
-                                  op_yaml_info_parser,
-                                  &(op_func_node.kernel_context_));
-    }
+    pir::BuildPhiContext<phi::KernelContext,
+                         const phi::TensorBase*,
+                         phi::TensorBase*,
+                         paddle::small_vector<const phi::TensorBase*>,
+                         paddle::small_vector<phi::TensorBase*>,
+                         true>(op,
+                               value_2_name_map,
+                               scope,
+                               local_scope,
+                               op_yaml_info_parser,
+                               &(op_func_node.kernel_context_));
 
     VLOG(6) << "finish process kernel context";
     op_func_node.kernel_context_.SetDeviceContext(
@@ -1145,12 +1189,12 @@ void SetDeviceCommContext(framework::OperatorBase* operator_base,
   }
 }
 
-void SetDeviceCommContext(::ir::Operation* op,
+void SetDeviceCommContext(pir::Operation* op,
                           platform::DeviceContext* dev_ctx) {
   auto op_attributes = op->attributes();
   if (op_attributes.count("ring_id") != 0) {
     int ring_id =
-        op_attributes.at("ring_id").dyn_cast<::ir::Int32Attribute>().data();
+        op_attributes.at("ring_id").dyn_cast<pir::Int32Attribute>().data();
     const auto& comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
     if (comm_context_manager.Has(std::to_string(ring_id))) {
@@ -1161,7 +1205,7 @@ void SetDeviceCommContext(::ir::Operation* op,
     } else {
       VLOG(3) << "op: "
               << op_attributes.at("op_name")
-                     .dyn_cast<::ir::StrAttribute>()
+                     .dyn_cast<pir::StrAttribute>()
                      .AsString()
               << ", ring_id: " << ring_id << ", get comm_context failed!";
     }
@@ -1172,12 +1216,22 @@ std::unordered_set<std::string> GetSpecialOpNames() {
   return {
       "builtin.combine",
       "builtin.slice",
-      "pd.feed",
+      "pd_op.feed",
       "builtin.set_parameter",
       "builtin.get_parameter",
-      "pd.data",
-      "pd.shadow_output",
+      "pd_op.data",
+      "pd_op.shadow_output",
   };
+}
+
+void BuildId2VarName(const std::map<std::string, int>& var_name_2_id,
+                     std::unordered_map<int, std::string>* id_2_var_name) {
+  PADDLE_ENFORCE_NOT_NULL(
+      id_2_var_name,
+      phi::errors::InvalidArgument("id2_var_name can not be null"));
+  for (auto [var_name, id] : var_name_2_id) {
+    id_2_var_name->insert({id, var_name});
+  }
 }
 
 }  // namespace interpreter

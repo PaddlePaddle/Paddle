@@ -19,13 +19,13 @@
 #include "paddle/fluid/eager/tensor_wrapper.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/operators/run_program_op.h"
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/ir/core/program.h"
-#include "paddle/ir/core/value.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
 
@@ -130,6 +130,32 @@ static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
                                   paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto name = tensors[i].name();
+    if (name == paddle::framework::kFakeVarName ||
+        name == paddle::framework::kEmptyVarName) {
+      continue;
+    }
+    auto *var = scope->Var(name);
+    CheckInputVarStatus(tensors[i]);
+    // share tensor
+    auto tensor_base = tensors[i].impl();
+    if (phi::DenseTensor::classof(tensor_base.get())) {
+      auto *dst_tensor = var->GetMutable<phi::DenseTensor>();
+      auto t = std::dynamic_pointer_cast<phi::DenseTensor>(tensor_base);
+      *dst_tensor = *t;
+    } else if (phi::SelectedRows::classof(tensor_base.get())) {
+      auto *dst_tensor = var->GetMutable<phi::SelectedRows>();
+      auto t = std::dynamic_pointer_cast<phi::SelectedRows>(tensor_base);
+      *dst_tensor = *t;
+    }
+  }
+}
+
+static void ShareTensorsIntoScopeWithName(
+    const std::vector<Tensor> &tensors,
+    const std::vector<std::string> &tensor_names,
+    paddle::framework::Scope *scope) {
+  for (size_t i = 0; i < tensors.size(); ++i) {
+    auto name = tensor_names[i];
     if (name == paddle::framework::kFakeVarName) {
       continue;
     }
@@ -319,7 +345,8 @@ inline void RunProgramAPI(
 
   VLOG(4) << "global_inner_scope:" << global_inner_scope;
 
-  auto input_names = details::GetTensorsName(x);
+  auto input_names =
+      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("x_names"));
   auto output_names = details::GetTensorsName(out);
   auto param_names = details::GetTensorsName(params);
   auto dout_names = details::GetTensorsName(dout);
@@ -370,7 +397,7 @@ inline void RunProgramAPI(
                "for program: "
             << program_id;
     // Step 1. share input_vars & parameters into scope
-    details::ShareTensorsIntoScope(x, global_inner_scope);
+    details::ShareTensorsIntoScopeWithName(x, input_names, global_inner_scope);
     details::ShareTensorsIntoScope(params, global_inner_scope);
     // Step 2. create new interpretercore
 
@@ -432,7 +459,7 @@ inline void RunProgramAPI(
         program_id, global_inner_scope, /*is_grad=*/false);
     interpreter_core = cached_value.core_;
     // Step 2. update scope for cache interpretercore
-    details::ShareTensorsIntoScope(x, global_inner_scope);
+    details::ShareTensorsIntoScopeWithName(x, input_names, global_inner_scope);
     details::ShareTensorsIntoScope(params, global_inner_scope);
     if (interpreter_core->GetVariableScope()->GetMutableScope() !=
         global_inner_scope) {
@@ -476,7 +503,7 @@ inline void RunProgramAPI(
     }
   }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (FLAGS_use_mkldnn) paddle::platform::DontClearMKLDNNCache(place);
 #endif
 }

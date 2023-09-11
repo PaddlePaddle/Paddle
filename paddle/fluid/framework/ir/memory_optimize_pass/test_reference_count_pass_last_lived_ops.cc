@@ -98,14 +98,14 @@ class ReferenceCountPassTestHelper {
     details::ExecutionStrategy exec_strategy;
     exec_strategy.use_device_ = use_cuda ? p::kCUDA : p::kCPU;
 
-    executor_.reset(new ParallelExecutor(CreatePlaces(1, use_cuda),
-                                         {},
-                                         "",
-                                         &scope_,
-                                         {},
-                                         exec_strategy,
-                                         build_strategy,
-                                         &graph_));
+    executor_ = std::make_unique<ParallelExecutor>(CreatePlaces(1, use_cuda),
+                                                   std::vector<std::string>(),
+                                                   "",
+                                                   &scope_,
+                                                   std::vector<Scope *>(),
+                                                   exec_strategy,
+                                                   build_strategy,
+                                                   &graph_);
 
     auto ref_cnt_pass =
         ir::PassRegistry::Instance().Get("reference_count_pass");

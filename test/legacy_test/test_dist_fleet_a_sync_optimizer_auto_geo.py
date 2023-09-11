@@ -38,11 +38,11 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         os.environ["TRAINING_ROLE"] = "TRAINER"
         from paddle.distributed import fleet
 
-        main_program = paddle.fluid.Program()
-        startup_program = paddle.fluid.Program()
+        main_program = paddle.base.Program()
+        startup_program = paddle.base.Program()
 
-        paddle.fluid.framework.switch_main_program(main_program)
-        paddle.fluid.framework.switch_startup_program(startup_program)
+        paddle.base.framework.switch_main_program(main_program)
+        paddle.base.framework.switch_startup_program(startup_program)
 
         fleet.init(role_maker.PaddleCloudRoleMaker())
 
@@ -63,7 +63,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         os.environ["FLAGS_LAUNCH_BARRIER"] = "0"
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.auto = True
-        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+        optimizer = paddle.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 

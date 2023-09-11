@@ -35,8 +35,8 @@ import numpy as np
 from paddle import _C_ops, in_dynamic_mode
 from paddle.device import get_all_custom_device_type
 
-from ...fluid import dygraph_utils
-from ...fluid.data_feeder import check_variable_and_dtype
+from ...base import dygraph_utils
+from ...base.data_feeder import check_variable_and_dtype
 from ...framework import ParamAttr, _global_flags, get_default_dtype, no_grad
 from .. import functional as F
 from ..functional import batch_norm, instance_norm, layer_norm
@@ -894,8 +894,8 @@ class BatchNorm(Layer):
     - :math:`x` : mini-batch data
     - :math:`m` : the size of the mini-batch data
 
-    When use_global_stats = True, the :math:`\\mu_{\\beta}`
-    and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
+    When use_global_stats = True, the :math:`\mu_{\beta}`
+    and :math:`\sigma_{\beta}^{2}` are not the statistics of one mini-batch.
     They are global or running statistics (moving_mean and moving_variance). It usually got from the
     pre-trained model. Calculated as follows:
 
@@ -955,14 +955,14 @@ class BatchNorm(Layer):
     Examples:
         .. code-block:: python
 
-            >>> import paddle.fluid as fluid
+            >>> import paddle.base as base
             >>> import paddle.nn as nn
-            >>> from paddle.fluid.dygraph.base import to_variable
+            >>> from paddle.base.dygraph.base import to_variable
             >>> import numpy as np
 
 
             >>> x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
-            >>> with fluid.dygraph.guard():
+            >>> with base.dygraph.guard():
             ...     x = to_variable(x)
             ...     batch_norm = nn.layer.norm.BatchNorm(10)
             ...     hidden1 = batch_norm(x)
@@ -1180,6 +1180,9 @@ class BatchNorm1D(_BatchNormBase):
         \ mini-batch\ mean \\
         \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i - \
         \mu_{\beta})^2 \qquad &//\ mini-batch\ variance \\
+
+    - :math:`x` : mini-batch data
+    - :math:`m` : the size of the mini-batch data
 
     When use_global_stats = True, the :math:`\mu_{\beta}`
     and :math:`\sigma_{\beta}^{2}` are not the statistics of one mini-batch.

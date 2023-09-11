@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.libpaddle.ir import (
+from paddle.base.libpaddle.ir import (
     Program,
     Block,
     Operation,
@@ -21,23 +21,17 @@ from paddle.fluid.libpaddle.ir import (
     OpResult,
     Type,
 )  # noqa: F401
-from paddle.fluid.libpaddle.ir import (
+from paddle.base.libpaddle.ir import (
     translate_to_new_ir,
     set_global_program,
     set_insertion_point,
     reset_insertion_point_to_start,
     reset_insertion_point_to_end,
+    check_unregistered_ops,
+    register_paddle_dialect,
+    PassManager,
 )  # noqa: F401
 
 from . import core
 
-__all__ = [  # noqa
-    'Program',
-    'Block',
-    'Operation',
-    'Value',
-    'OpOperand',
-    'OpResult',
-    'Type',
-    'translate_to_new_ir',
-]
+__all__ = []

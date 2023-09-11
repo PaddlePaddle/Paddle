@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/memcpy_kernel.h"
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #endif
 namespace phi {
@@ -118,7 +118,7 @@ void TransferLayoutGeneral(const Context& dev_ctx,
                      }));
 }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 template <typename Context>
 void TransferLayoutMKLDNN(const Context& dev_ctx,
                           const DenseTensor& x,
@@ -203,7 +203,7 @@ void TransferLayoutKernel(const Context& dev_ctx,
     return;
   }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   TransferLayoutMKLDNN<Context>(dev_ctx,
                                 x,
                                 static_cast<DataLayout>(src_layout),

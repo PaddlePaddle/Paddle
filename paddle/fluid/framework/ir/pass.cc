@@ -28,7 +28,7 @@ class Graph;
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -158,7 +158,7 @@ Graph *Pass::Apply(Graph *graph) const {
     }
   }
   applied_ = true;
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // Clear mkl-dnn cache,
   // Passes can change params, tensors, so caching need to be discarded
   platform::ClearMKLDNNCache(paddle::platform::CPUPlace());

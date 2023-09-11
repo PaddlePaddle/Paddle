@@ -22,12 +22,10 @@ from seq2seq_dygraph_model import AttentionModel, BaseModel
 from seq2seq_utils import Seq2SeqModelHyperParams, get_data_iter
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.nn import ClipGradByGlobalNorm
 
-place = (
-    fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
-)
+place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 STEP_NUM = 10
 PRINT_STEP = 2
 
@@ -45,9 +43,9 @@ def prepare_input(batch):
 
 
 def train(args, attn_model=False):
-    with fluid.dygraph.guard(place):
-        fluid.default_startup_program().random_seed = 2020
-        fluid.default_main_program().random_seed = 2020
+    with base.dygraph.guard(place):
+        base.default_startup_program().random_seed = 2020
+        base.default_main_program().random_seed = 2020
 
         if attn_model:
             model = AttentionModel(
@@ -70,11 +68,11 @@ def train(args, attn_model=False):
                 dropout=args.dropout,
             )
 
-        global_norm_clip = ClipGradByGlobalNorm(args.max_grad_norm)
-        optimizer = fluid.optimizer.SGD(
+        gloabl_norm_clip = ClipGradByGlobalNorm(args.max_grad_norm)
+        optimizer = paddle.optimizer.SGD(
             args.learning_rate,
-            parameter_list=model.parameters(),
-            grad_clip=global_norm_clip,
+            parameters=model.parameters(),
+            grad_clip=gloabl_norm_clip,
         )
 
         model.train()
@@ -87,7 +85,7 @@ def train(args, attn_model=False):
             batch_start_time = time.time()
             input_data_feed, word_num = prepare_input(batch)
             input_data_feed = [
-                fluid.dygraph.to_variable(np_inp) for np_inp in input_data_feed
+                base.dygraph.to_variable(np_inp) for np_inp in input_data_feed
             ]
             word_count += word_num
             loss = model(input_data_feed)
@@ -132,7 +130,7 @@ def train(args, attn_model=False):
 
 
 def infer(args, attn_model=False):
-    with fluid.dygraph.guard(place):
+    with base.dygraph.guard(place):
         if attn_model:
             model = AttentionModel(
                 args.hidden_size,
@@ -168,7 +166,7 @@ def infer(args, attn_model=False):
         for batch_id, batch in enumerate(train_data_iter):
             input_data_feed, word_num = prepare_input(batch)
             input_data_feed = [
-                fluid.dygraph.to_variable(np_inp) for np_inp in input_data_feed
+                base.dygraph.to_variable(np_inp) for np_inp in input_data_feed
             ]
             outputs = model.beam_search(input_data_feed)
             break

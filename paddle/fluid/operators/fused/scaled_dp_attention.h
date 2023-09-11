@@ -25,7 +25,7 @@
 #include <new>
 #include <string>
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "dnnl.hpp"  //NOLINT
 #endif
 
@@ -153,7 +153,7 @@ void sgemm(const float* A,
            int k,
            bool transa,
            bool transb) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   int lda = (transa ? m : k);
   int ldb = (transb ? k : n);
   int ldc = n;

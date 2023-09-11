@@ -70,12 +70,12 @@ const std::vector<std::pair<std::string, std::string>> PdmodelFilePaths(
   std::string format_path = path;
   ReplaceAll(&format_path, R"(\\)", "/");
   ReplaceAll(&format_path, R"(\)", "/");
-  if (format_path.find("/") == std::string::npos) {
+  if (format_path.find('/') == std::string::npos) {
     format_path = "./" + format_path;
   }
 
   std::string layer_name =
-      format_path.substr(format_path.find_last_of("/") + 1);
+      format_path.substr(format_path.find_last_of('/') + 1);
   std::string dir_path =
       format_path.substr(0, format_path.length() - layer_name.length());
   DIR* dir = opendir(dir_path.c_str());

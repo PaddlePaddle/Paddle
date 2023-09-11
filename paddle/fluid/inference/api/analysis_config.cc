@@ -448,6 +448,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   // Mixed precision related.
   CP_MEMBER(mixed_black_list_);
+  CP_MEMBER(mixed_white_list_);
   CP_MEMBER(enable_gpu_mixed_);
   CP_MEMBER(mixed_precision_mode_);
   CP_MEMBER(enable_low_precision_io_);
@@ -459,6 +460,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_max_batchsize_);
   CP_MEMBER(tensorrt_min_subgraph_size_);
   CP_MEMBER(tensorrt_precision_mode_);
+  CP_MEMBER(trt_mark_output_);
+  CP_MEMBER(trt_mark_output_with_id_);
+  CP_MEMBER(trt_output_tensor_names_);
   CP_MEMBER(trt_disabled_ops_);
   CP_MEMBER(trt_use_dla_);
   CP_MEMBER(trt_dla_core_);
@@ -474,6 +478,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(collect_shape_range_info_);
   CP_MEMBER(shape_range_info_path_);
   CP_MEMBER(trt_use_inspector_);
+  CP_MEMBER(trt_use_explicit_quantization_);
   CP_MEMBER(trt_engine_memory_sharing_);
   CP_MEMBER(trt_engine_memory_sharing_identifier_);
   // Dlnne related
@@ -639,7 +644,7 @@ void AnalysisConfig::EnableCUDNN() {
 }
 
 void AnalysisConfig::EnableMKLDNN() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   use_mkldnn_ = true;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
@@ -650,7 +655,7 @@ void AnalysisConfig::EnableMKLDNN() {
 }
 
 void AnalysisConfig::SetMkldnnCacheCapacity(int capacity) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   mkldnn_cache_capacity_ = capacity;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to set MKLDNN Thread Id";
@@ -659,7 +664,7 @@ void AnalysisConfig::SetMkldnnCacheCapacity(int capacity) {
 }
 
 void AnalysisConfig::EnableMkldnnQuantizer() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (!mkldnn_quantizer_config_)
     mkldnn_quantizer_config_ = std::make_unique<MkldnnQuantizerConfig>();
   use_mkldnn_quantizer_ = true;
@@ -672,7 +677,7 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
 }
 
 void AnalysisConfig::EnableMkldnnBfloat16() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core)) {
     use_mkldnn_bfloat16_ = true;
     LOG(INFO) << "Hardware support for BFLOAT16"
@@ -693,7 +698,7 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
 }
 
 void AnalysisConfig::DisableMkldnnFcPasses() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   disable_mkldnn_fc_passes_ = true;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use DisableMkldnnFcPasses";
@@ -704,7 +709,7 @@ void AnalysisConfig::DisableMkldnnFcPasses() {
 
 void AnalysisConfig::EnableMkldnnInt8(
     const std::unordered_set<std::string> &op_list) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   use_mkldnn_int8_ = true;
   use_fc_padding_ = false;
   if (!op_list.empty())
@@ -755,6 +760,14 @@ void AnalysisConfig::EnableTensorRtEngine(int64_t workspace_size,
   PADDLE_THROW(platform::errors::PreconditionNotMet(
       "To use Paddle-TensorRT, please compile with TENSORRT first."));
 #endif
+}
+
+void AnalysisConfig::MarkTrtEngineOutputs(
+    const std::vector<std::string> &output_tensor_names,
+    const bool mark_output_with_id) {
+  trt_mark_output_ = true;
+  trt_mark_output_with_id_ = mark_output_with_id;
+  trt_output_tensor_names_ = output_tensor_names;
 }
 
 void AnalysisConfig::EnableTensorRTMemoryOptim(bool engine_memory_sharing,
@@ -829,6 +842,11 @@ void AnalysisConfig::EnableTensorRtDLA(int dla_core) {
 }
 
 void AnalysisConfig::EnableTensorRtInspector() { trt_use_inspector_ = true; }
+
+void AnalysisConfig::EnableTensorRtExplicitQuantization() {
+  trt_use_explicit_quantization_ = true;
+  Update();
+}
 
 void AnalysisConfig::Exp_DisableTensorRtOPs(
     const std::vector<std::string> &ops) {
@@ -906,6 +924,13 @@ void AnalysisConfig::Update() {
           (pass == "conv_bn_fuse_pass")) {
         continue;
       }
+      // The following two IR pass will remove QDQ nodes. For explicit
+      // quantization, they are unnecessary.
+      if (trt_use_explicit_quantization_ &&
+          (pass == "trt_delete_weight_dequant_linear_op_pass" ||
+           pass == "delete_quant_dequant_linear_op_pass")) {
+        continue;
+      }
       pass_builder()->AppendPass(pass);
     }
   }
@@ -936,7 +961,7 @@ void AnalysisConfig::Update() {
   }
 
   if (use_mkldnn_) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (!enable_ir_optim_) {
       LOG(ERROR)
           << "EnableMKLDNN() only works when IR optimization is enabled.";
@@ -952,19 +977,19 @@ void AnalysisConfig::Update() {
       LOG(ERROR) << "EnableMkldnnQuantizer() only works when IR optimization "
                     "is enabled.";
     }
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     pass_builder()->EnableMkldnnQuantizer();
 #endif
   }
 
   if (use_mkldnn_bfloat16_) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     pass_builder()->EnableMkldnnBfloat16();
 #endif
   }
 
   if (use_mkldnn_int8_) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (!enable_ir_optim_) {
       LOG(ERROR) << "EnableMkldnnInt8() only works when IR optimization "
                     "is enabled.";
@@ -978,7 +1003,7 @@ void AnalysisConfig::Update() {
   }
 
   if (disable_mkldnn_fc_passes_) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     pass_builder()->DisableMkldnnFcPasses();
 #endif
   }
@@ -1050,6 +1075,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << tensorrt_workspace_size_;
   ss << tensorrt_max_batchsize_;
   ss << tensorrt_min_subgraph_size_;
+  ss << trt_mark_output_;
 
   ss << use_dlnne_;
   ss << dlnne_min_subgraph_size_;
@@ -1132,6 +1158,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
     for (auto attr : pattern) ss << attr;
   ss << ";";
   for (auto &op : mixed_black_list_) ss << op.c_str();
+  for (auto &op : mixed_white_list_) ss << op.c_str();
   return ss.str();
 }
 
@@ -1331,6 +1358,7 @@ std::string AnalysisConfig::Summary() {
       }
       os.InsertRow({"trt_engine_memory_sharing",
                     trt_engine_memory_sharing_ ? "true" : "false"});
+      os.InsertRow({"trt_mark_output", trt_mark_output_ ? "true" : "false"});
 #endif
     }
   }
@@ -1510,6 +1538,11 @@ bool AnalysisConfig::trt_allow_build_at_runtime() const {
 void AnalysisConfig::Exp_DisableMixedPrecisionOps(
     const std::unordered_set<std::string> &black_list) {
   mixed_black_list_ = black_list;
+}
+
+void AnalysisConfig::Exp_EnableMixedPrecisionOps(
+    const std::unordered_set<std::string> &white_list) {
+  mixed_white_list_ = white_list;
 }
 
 void AnalysisConfig::Exp_EnableCINNCompiler() {

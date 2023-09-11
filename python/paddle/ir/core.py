@@ -13,10 +13,53 @@
 # limitations under the License.
 
 
-import paddle
-from paddle.fluid.libpaddle.ir import Program, set_global_program
+import numpy as np
 
-from ..fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.base.libpaddle import DataType
+from paddle.base.libpaddle.ir import Program, set_global_program
+
+from ..base.wrapped_decorator import signature_safe_contextmanager
+
+np_type_to_paddle_type = {
+    np.dtype("float32"): DataType.FLOAT32,
+    np.dtype("float64"): DataType.FLOAT64,
+    np.dtype("float16"): DataType.FLOAT16,
+    np.dtype("int32"): DataType.INT32,
+    np.dtype("int16"): DataType.INT16,
+    np.dtype("int64"): DataType.INT64,
+    np.dtype("bool_"): DataType.BOOL,
+    np.dtype("uint16"): DataType.BFLOAT16,
+    np.dtype("uint8"): DataType.UINT8,
+    np.dtype("int8"): DataType.INT8,
+    np.dtype("complex64"): DataType.COMPLEX64,
+    np.dtype("complex128"): DataType.COMPLEX128,
+}
+
+
+def convert_np_dtype_to_dtype_(np_dtype):
+    """
+    Convert the data type in numpy to the data type in Paddle.
+
+    Args:
+        np_dtype (np.dtype|str): The data type in numpy or valid data type
+            string.
+
+    Returns:
+        core.DataType : The data type in Paddle.
+
+    """
+    # Convert the data type string to numpy data type.
+    if isinstance(np_dtype, str) and np_dtype == "bfloat16":
+        # since there is still no support for bfloat16 in NumPy,
+        # uint16 is used for casting bfloat16
+        dtype = np.dtype("uint16")
+    else:
+        dtype = np.dtype(np_dtype)
+
+    if dtype in np_type_to_paddle_type.keys():
+        return np_type_to_paddle_type[dtype]
+    else:
+        raise ValueError("Not supported numpy dtype %s" % dtype)
 
 
 def _use_new_ir_api():
@@ -27,6 +70,9 @@ def _use_new_ir_api():
         bool: Whether paddle use new ir api.
 
     """
+    # TODO(YuanRisheng): need move import to the top of this file after break import circle
+    import paddle
+
     if paddle.framework.get_flags("FLAGS_enable_new_ir_api")[
         'FLAGS_enable_new_ir_api'
     ]:
@@ -97,7 +143,7 @@ def default_main_program():
             paddle.enable_static()
             # Sample Network:
             x = paddle.static.data(name='x', shape=[100, 100], dtype='float32')
-            y = paddle.static.data(name='x', shape=[100, 100], dtype='float32')
+            y = paddle.static.data(name='y', shape=[100, 100], dtype='float32')
             out = paddle.add(x, y)
 
             #print the number of blocks in the program, 1 in this case
@@ -185,7 +231,7 @@ def program_guard(main_program, startup_program=None):
                 data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
 
     """
-    from ..fluid.data_feeder import check_type
+    from ..base.data_feeder import check_type
 
     check_type(
         main_program, 'main_program', Program, 'paddle.static.program_guard'

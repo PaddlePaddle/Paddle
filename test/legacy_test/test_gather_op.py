@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle import base
+from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.framework import core
 
 
@@ -419,14 +419,14 @@ class TestGatherOp4FP16(TestGatherOp4):
 
 class API_TestGather(unittest.TestCase):
     def test_out1(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             data1 = paddle.static.data('data1', shape=[-1, 2], dtype='float64')
             data1.desc.set_need_check_feed(False)
             index = paddle.static.data('index', shape=[-1, 1], dtype='int32')
             index.desc.set_need_check_feed(False)
             out = paddle.gather(data1, index)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            exe = base.Executor(place)
             input = np.array([[1, 2], [3, 4], [5, 6]])
             index_1 = np.array([1, 2])
             (result,) = exe.run(
@@ -500,7 +500,7 @@ class API_TestDygraphGather(unittest.TestCase):
         index = np.random.randint(0, 22682, size=(8859027))
 
         def test_dygraph():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 gpu_out = paddle.gather(
                     paddle.to_tensor(x), paddle.to_tensor(index)
                 )
@@ -560,7 +560,7 @@ class TestGathertError(unittest.TestCase):
             self.assertRaises(TypeError, test_axis_dtype1)
 
     def test_error2(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             shape = [8, 9, 6]
             x = paddle.static.data(shape=shape, dtype='int8', name='x')
             index = paddle.static.data(shape=shape, dtype='int32', name='mask')

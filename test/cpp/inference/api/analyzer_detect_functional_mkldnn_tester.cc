@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "test/cpp/inference/api/tester_helper.h"
 
-DEFINE_string(infer_shape, "", "data shape file");
-DEFINE_int32(sample, 20, "number of sample");
+PD_DEFINE_string(infer_shape, "", "data shape file");
+PD_DEFINE_int32(sample, 20, "number of sample");
 
 namespace paddle {
 namespace inference {
@@ -74,7 +74,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
   (*inputs).emplace_back(input_slots);
 }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 int GetNumCachedObjects() {
   auto &pool = platform::DeviceContextPool::Instance();
   phi::CPUPlace place;

@@ -84,7 +84,7 @@ class AutoPallelPassTestBase(DistPassTestBase):
             paddle.static.Program(), paddle.static.Program()
         ):
             with paddle.static.scope_guard(scope):
-                with paddle.fluid.unique_name.guard():
+                with paddle.base.unique_name.guard():
                     (
                         main_prog,
                         startup_prog,
@@ -109,7 +109,7 @@ class AutoPallelPassTestBase(DistPassTestBase):
                         print(f'batch {batch_id}, outputs {output_dict}')
                     all_fetch_values.append(fetch_values)
                     batch_id += 1
-                except paddle.fluid.core.EOFException:
+                except paddle.base.core.EOFException:
                     data_loader.reset()
                     break
         with open(dump_file, "wb") as f:
@@ -178,7 +178,7 @@ class AutoPallelPassTestBase(DistPassTestBase):
         )
         data_holder = [tokens, position_ids, attention_mask, labels, loss_mask]
 
-        data_loader = paddle.fluid.io.DataLoader.from_generator(
+        data_loader = paddle.base.io.DataLoader.from_generator(
             feed_list=data_holder, capacity=70, iterable=False
         )
         data_loader.set_batch_generator(gen_data, paddle.static.cuda_places())
@@ -222,7 +222,7 @@ class AutoPallelPassTestBase(DistPassTestBase):
 
         clip = paddle.nn.ClipGradByNorm(clip_norm=1.0)
         if kwargs.get('optimizer', None) == "LarsMomentum":
-            optimizer = paddle.fluid.optimizer.LarsMomentumOptimizer(
+            optimizer = paddle.incubate.optimizer.LarsMomentumOptimizer(
                 learning_rate=0.001, momentum=0.9
             )
         else:

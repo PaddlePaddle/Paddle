@@ -17,8 +17,8 @@ import time
 import numpy as np
 
 import paddle
-from paddle import fluid, static
-from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
+from paddle import static
+from paddle.base.core import AnalysisConfig, create_paddle_predictor
 
 
 def set_config(op_name, input_shapes, enable_gpu=False):
@@ -84,7 +84,7 @@ def create_model(input_names, input_shapes, input_dtypes, fn, attrs=None):
         model_name += "_" + str(input_shapes[0][i])
     print("save model:", model_name)
 
-    fluid.io.save_inference_model(model_name, input_args_names, [res], exe)
+    paddle.static.io.save_inference_model(model_name, input_args, [res], exe)
     print('output name is: ', res.name)
 
 

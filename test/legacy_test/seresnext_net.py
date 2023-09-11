@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import fluid
+from paddle import base
 
-fluid.core._set_eager_deletion_mode(-1, -1, False)
+base.core._set_eager_deletion_mode(-1, -1, False)
 
 import os
 
@@ -22,7 +22,6 @@ from seresnext_test_base import DeviceType
 from simple_nets import init_data
 
 import paddle
-from paddle.fluid.layers.learning_rate_scheduler import cosine_decay
 
 os.environ['CPU_NUM'] = str(4)
 os.environ['FLAGS_cudnn_deterministic'] = str(1)
@@ -46,7 +45,7 @@ remove_bn = True
 
 
 def squeeze_excitation(input, num_channels, reduction_ratio):
-    # pool = fluid.layers.pool2d(
+    # pool = base.layers.pool2d(
     #    input=input, pool_size=0, pool_type='avg', global_pooling=True)
     conv = input
     shape = conv.shape
@@ -172,19 +171,19 @@ def SE_ResNeXt50Small(use_feed):
     # Classifier layer:
     prediction = paddle.static.nn.fc(x=dropout, size=1000, activation='softmax')
     loss = paddle.nn.functional.cross_entropy(
-        input=prediction, label=label, reduction='none', use_softmax=False
+        input=prediction, label=label, reduction='none', use_softmax=True
     )
     loss = paddle.mean(loss)
     return loss
 
 
 def optimizer(learning_rate=0.01):
-    optimizer = fluid.optimizer.Momentum(
-        learning_rate=cosine_decay(
-            learning_rate=learning_rate, step_each_epoch=2, epochs=1
+    optimizer = paddle.optimizer.Momentum(
+        learning_rate=paddle.optimizer.lr.CosineAnnealingDecay(
+            learning_rate=learning_rate, T_max=1
         ),
         momentum=0.9,
-        regularization=paddle.regularizer.L2Decay(1e-4),
+        weight_decay=paddle.regularizer.L2Decay(1e-4),
     )
     return optimizer
 

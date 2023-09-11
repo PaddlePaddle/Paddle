@@ -17,18 +17,18 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import _legacy_C_ops, fluid
+from paddle import _legacy_C_ops, base
 from paddle.tensor import random
 
-if fluid.is_compiled_with_cuda():
-    fluid.core.globals()['FLAGS_cudnn_deterministic'] = True
+if base.is_compiled_with_cuda():
+    base.core.globals()['FLAGS_cudnn_deterministic'] = True
 
 
 class Config:
     def __init__(self, place, sort_sum_gradient=True):
         self.place = place
 
-        if isinstance(place, fluid.CPUPlace):
+        if isinstance(place, base.CPUPlace):
             # CPU cases are extremely slow
             self.g_base_dims = 1
             self.d_base_dims = 1
@@ -114,7 +114,7 @@ class InstanceNorm(paddle.nn.Layer):
         self.bias = self.create_parameter(shape=[num_channels], is_bias=True)
 
     def forward(self, input):
-        if fluid.in_dygraph_mode():
+        if base.in_dygraph_mode():
             out, _, _ = _legacy_C_ops.instance_norm(
                 input, self.scale, self.bias, 'epsilon', self.epsilon
             )
@@ -123,8 +123,8 @@ class InstanceNorm(paddle.nn.Layer):
             return paddle.static.nn.instance_norm(
                 input,
                 epsilon=self.epsilon,
-                param_attr=fluid.ParamAttr(self.scale.name),
-                bias_attr=fluid.ParamAttr(self.bias.name),
+                param_attr=base.ParamAttr(self.scale.name),
+                bias_attr=base.ParamAttr(self.bias.name),
             )
 
 
@@ -387,15 +387,15 @@ def loss_cls(cls, label, cfg):
 
 
 def calc_gradients(outputs, inputs, no_grad_set):
-    if fluid.in_dygraph_mode():
-        return fluid.dygraph.grad(
+    if base.in_dygraph_mode():
+        return base.dygraph.grad(
             outputs=outputs,
             inputs=inputs,
             no_grad_vars=no_grad_set,
             create_graph=True,
         )
     else:
-        return fluid.gradients(
+        return base.gradients(
             targets=outputs, inputs=inputs, no_grad_set=no_grad_set
         )
 
@@ -481,15 +481,15 @@ def build_optimizer(layer, cfg, loss=None):
     learning_rate = 1e-3
     beta1 = 0.5
     beta2 = 0.999
-    if fluid.in_dygraph_mode():
-        return fluid.optimizer.Adam(
+    if base.in_dygraph_mode():
+        return paddle.optimizer.Adam(
             learning_rate=learning_rate,
             beta1=beta1,
             beta2=beta2,
-            parameter_list=layer.parameters(),
+            parameters=layer.parameters(),
         )
     else:
-        optimizer = fluid.optimizer.Adam(
+        optimizer = paddle.optimizer.Adam(
             learning_rate=learning_rate, beta1=beta1, beta2=beta2
         )
 
@@ -510,7 +510,7 @@ class DyGraphTrainModel:
 
         self.cfg = cfg
 
-        fluid.set_flags({'FLAGS_sort_sum_gradient': cfg.sort_sum_gradient})
+        base.set_flags({'FLAGS_sort_sum_gradient': cfg.sort_sum_gradient})
 
     def clear_gradients(self):
         if self.g_optimizer:
@@ -520,9 +520,9 @@ class DyGraphTrainModel:
             self.d_optimizer.clear_gradients()
 
     def run(self, image_real, label_org, label_trg):
-        image_real = fluid.dygraph.to_variable(image_real)
-        label_org = fluid.dygraph.to_variable(label_org)
-        label_trg = fluid.dygraph.to_variable(label_trg)
+        image_real = base.dygraph.to_variable(image_real)
+        label_org = base.dygraph.to_variable(label_org)
+        label_trg = base.dygraph.to_variable(label_trg)
 
         g_loss = get_generator_loss(
             image_real,
@@ -575,11 +575,11 @@ class StaticGraphTrainModel:
 
         paddle.seed(cfg.seed)
         paddle.framework.random._manual_program_seed(cfg.seed)
-        self.gen_program = fluid.Program()
-        gen_startup_program = fluid.Program()
+        self.gen_program = base.Program()
+        gen_startup_program = base.Program()
 
-        with fluid.program_guard(self.gen_program, gen_startup_program):
-            with fluid.unique_name.guard():
+        with base.program_guard(self.gen_program, gen_startup_program):
+            with base.unique_name.guard():
                 image_real, label_org, label_trg = create_data_layer()
                 generator = Generator(cfg)
                 discriminator = Discriminator(cfg)
@@ -593,10 +593,10 @@ class StaticGraphTrainModel:
                 )
                 build_optimizer(generator, cfg, loss=g_loss)
 
-        self.dis_program = fluid.Program()
-        dis_startup_program = fluid.Program()
-        with fluid.program_guard(self.dis_program, dis_startup_program):
-            with fluid.unique_name.guard():
+        self.dis_program = base.Program()
+        dis_startup_program = base.Program()
+        with base.program_guard(self.dis_program, dis_startup_program):
+            with base.unique_name.guard():
                 image_real, label_org, label_trg = create_data_layer()
                 generator = Generator(cfg)
                 discriminator = Discriminator(cfg)
@@ -610,10 +610,10 @@ class StaticGraphTrainModel:
                 )
                 build_optimizer(discriminator, cfg, loss=d_loss)
 
-        self.executor = fluid.Executor(cfg.place)
-        self.scope = fluid.Scope()
+        self.executor = base.Executor(cfg.place)
+        self.scope = base.Scope()
 
-        with fluid.scope_guard(self.scope):
+        with base.scope_guard(self.scope):
             self.executor.run(gen_startup_program)
             self.executor.run(dis_startup_program)
 
@@ -626,7 +626,7 @@ class StaticGraphTrainModel:
             'label_org': label_org,
             'label_trg': label_trg,
         }
-        with fluid.scope_guard(self.scope):
+        with base.scope_guard(self.scope):
             g_loss_val = self.executor.run(
                 self.gen_program, feed=feed, fetch_list=[self.g_loss]
             )[0]
@@ -638,10 +638,10 @@ class StaticGraphTrainModel:
 
 class TestStarGANWithGradientPenalty(unittest.TestCase):
     def func_main(self):
-        self.place_test(fluid.CPUPlace())
+        self.place_test(base.CPUPlace())
 
-        if fluid.is_compiled_with_cuda():
-            self.place_test(fluid.CUDAPlace(0))
+        if base.is_compiled_with_cuda():
+            self.place_test(base.CUDAPlace(0))
 
     def place_test(self, place):
         cfg = Config(place, False)
@@ -649,17 +649,17 @@ class TestStarGANWithGradientPenalty(unittest.TestCase):
         dataset = create_mnist_dataset(cfg)
         dataset = paddle.reader.cache(dataset)
 
-        fluid_dygraph_loss = []
-        with fluid.dygraph.guard(cfg.place):
-            fluid_dygraph_model = DyGraphTrainModel(cfg)
+        base_dygraph_loss = []
+        with base.dygraph.guard(cfg.place):
+            base_dygraph_model = DyGraphTrainModel(cfg)
             for batch_id, (image_real, label_org, label_trg) in enumerate(
                 dataset()
             ):
-                loss = fluid_dygraph_model.run(image_real, label_org, label_trg)
-                fluid_dygraph_loss.append(loss)
+                loss = base_dygraph_model.run(image_real, label_org, label_trg)
+                base_dygraph_loss.append(loss)
 
         eager_dygraph_loss = []
-        with fluid.dygraph.guard(cfg.place):
+        with base.dygraph.guard(cfg.place):
             eager_dygraph_model = DyGraphTrainModel(cfg)
             for batch_id, (image_real, label_org, label_trg) in enumerate(
                 dataset()

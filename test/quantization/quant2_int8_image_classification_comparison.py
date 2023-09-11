@@ -23,7 +23,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import IrGraph
+from paddle.base.framework import IrGraph
 from paddle.framework import core
 from paddle.static.quantization import Quant2Int8MkldnnPass
 
@@ -195,7 +195,9 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
                     inference_program,
                     feed_target_names,
                     fetch_targets,
-                ] = paddle.fluid.io.load_inference_model(model_path, exe)
+                ] = paddle.static.io.load_inference_model(
+                    model_path, exe, model_filename=None, params_filename=None
+                )
             else:
                 [
                     inference_program,

@@ -151,7 +151,7 @@ class SliceOp : public framework::OperatorWithKernel {
                               ctx.GetPlace());
       }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
       auto input_data_type =
           framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
       auto vec_dims = phi::vectorize(in_tensor.dims());
@@ -332,7 +332,7 @@ class SliceOpGrad : public framework::OperatorWithKernel {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       // OneDNN uses blocking format, which cannot be always supported with
       // reorders, because if blocked dimension is not divisible by 8 or

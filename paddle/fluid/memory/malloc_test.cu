@@ -116,7 +116,7 @@ TEST(Malloc, GPUContextMultiStream) {
   main_stream_alloc_ptr.reset();
 
   for (int i = 0; i < NUM_STREAMS; ++i) {
-    auto ctx = std::unique_ptr<phi::GPUContext>(new phi::GPUContext(place));
+    auto ctx = std::make_unique<phi::GPUContext>(place);
     ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                           .GetAllocator(place, ctx->stream())
                           .get());
@@ -171,7 +171,7 @@ TEST(Malloc, GPUContextMultiThreadMultiStream) {
   main_stream_alloc_ptr.reset();
 
   for (int i = 0; i < NUM_STREAMS; ++i) {
-    auto ctx = std::unique_ptr<phi::GPUContext>(new phi::GPUContext(place));
+    auto ctx = std::make_unique<phi::GPUContext>(place);
     ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                           .GetAllocator(place, ctx->stream())
                           .get());

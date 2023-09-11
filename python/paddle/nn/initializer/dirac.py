@@ -15,11 +15,11 @@
 from paddle import _C_ops, in_dynamic_mode
 from paddle.utils import unique_name
 
-from ... import fluid
-from ...fluid import framework
-from ...fluid.core import VarDesc
-from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid.framework import _current_expected_place
+from ... import base
+from ...base import framework
+from ...base.core import VarDesc
+from ...base.data_feeder import check_variable_and_dtype
+from ...base.framework import _current_expected_place
 from .initializer import Initializer
 
 __all__ = []
@@ -52,40 +52,39 @@ class Dirac(Initializer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            #1. For kernel_size is uneven number:
+            >>> # 1. For kernel_size is uneven number:
+            >>> attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Dirac())
+            >>> conv = paddle.nn.Conv1D(3, 2, 3, weight_attr=attr)
+            >>> print(conv.weight)
+            Parameter containing:
+            Tensor(shape=[2, 3, 3], dtype=float32, place=CPUPlace, stop_gradient=False,
+            [[[0., 1., 0.],
+              [0., 0., 0.],
+              [0., 0., 0.]],
+             [[0., 0., 0.],
+              [0., 1., 0.],
+              [0., 0., 0.]]])
+            >>> input = paddle.rand([8, 3, 10])
+            >>> output = conv(input)
+            >>> output == input[:, 0:2, 1:9]
+            >>> print(output.shape)
+            [8, 2, 8]
+            >>> # It means output is almost the same with input, 2 channels are reserved
 
-            attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Dirac())
-            conv = paddle.nn.Conv1D(3, 2, 3, weight_attr=attr)
-            conv.weight
-            # Tensor(shape=[2, 3, 3], dtype=float32, place=CPUPlace, stop_gradient=False,
-            #       [[[0., 1., 0.],
-            #         [0., 0., 0.],
-            #         [0., 0., 0.]],
-            #
-            #        [[0., 0., 0.],
-            #         [0., 1., 0.],
-            #         [0., 0., 0.]]])
-
-            input = paddle.rand([8, 3, 10])
-            output = conv(input)
-            output == input[:, 0:2, 1:9]
-            # output.shape is [8, 2, 8], It means output is almost the same with input, 2 channels are reserved
-
-
-            #2. For kernel_size is even number:
-            attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Dirac())
-            conv = paddle.nn.Conv1D(3, 2, 4, weight_attr=attr)
-            conv.weight
-            # Tensor(shape=[2, 3, 4], dtype=float32, place=CPUPlace, stop_gradient=False,
-            #       [[[0., 0., 1., 0.],
-            #         [0., 0., 0., 0.],
-            #         [0., 0., 0., 0.]],
-            #
-            #        [[0., 0., 0., 0.],
-            #         [0., 0., 1., 0.],
-            #         [0., 0., 0., 0.]]])
+            >>> # 2. For kernel_size is even number:
+            >>> attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Dirac())
+            >>> conv = paddle.nn.Conv1D(3, 2, 4, weight_attr=attr)
+            >>> print(conv.weight)
+            Parameter containing:
+            Tensor(shape=[2, 3, 4], dtype=float32, place=CPUPlace, stop_gradient=False,
+            [[[0., 0., 1., 0.],
+              [0., 0., 0., 0.],
+              [0., 0., 0., 0.]],
+             [[0., 0., 0., 0.],
+              [0., 0., 1., 0.],
+              [0., 0., 0., 0.]]])
     """
 
     def __init__(self, groups=1, name=None):
@@ -134,7 +133,7 @@ class Dirac(Initializer):
             out_var = var
         op = None
         if framework.in_dygraph_mode():
-            with fluid.dygraph.no_grad():
+            with base.dygraph.no_grad():
                 place = _current_expected_place()
                 _C_ops.full_(
                     out_var, out_var.shape, str(float(0)), out_var.dtype, place
@@ -177,7 +176,7 @@ class Dirac(Initializer):
                         offset += origin_shape[k] // 2 * stride
                 idx_list.append(offset)
         if framework.in_dygraph_mode():
-            with fluid.dygraph.no_grad():
+            with base.dygraph.no_grad():
                 tmp_out = _C_ops.reshape(out_var, [-1])
                 tmp_out._share_underline_tensor_to(out_var)
         else:
@@ -204,7 +203,7 @@ class Dirac(Initializer):
         )
 
         if framework.in_dygraph_mode():
-            with fluid.dygraph.no_grad():
+            with base.dygraph.no_grad():
                 tmp_tensor = framework._create_tensor()
                 _C_ops.assign_value_(
                     tmp_tensor,
@@ -233,7 +232,7 @@ class Dirac(Initializer):
         )
 
         if framework.in_dygraph_mode():
-            with fluid.dygraph.no_grad():
+            with base.dygraph.no_grad():
                 tmp_tensor = framework._create_tensor()
                 _C_ops.assign_value_(
                     tmp_tensor,
@@ -257,7 +256,7 @@ class Dirac(Initializer):
             )
 
         if framework.in_dygraph_mode():
-            with fluid.dygraph.no_grad():
+            with base.dygraph.no_grad():
                 tmp_out = _C_ops.scatter(
                     out_var, index_tensor, value_tensor, True
                 )

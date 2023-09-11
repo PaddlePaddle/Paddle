@@ -19,6 +19,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_rope_utils.h"
+
 namespace phi {
 namespace fusion {
 
@@ -26,16 +27,17 @@ template <typename T, typename Context>
 void FusedRopeGradKernel(const Context& dev_ctx,
                          const paddle::optional<DenseTensor>& sin,
                          const paddle::optional<DenseTensor>& cos,
+                         const paddle::optional<DenseTensor>& position_ids,
                          const DenseTensor& dout_q,
                          const paddle::optional<DenseTensor>& dout_k,
                          const paddle::optional<DenseTensor>& dout_v,
+                         bool use_neox_rotary_style,
                          DenseTensor* dq,
                          DenseTensor* dk,
                          DenseTensor* dv) {
-  int numel = dout_q.numel();
+  int64_t numel = dout_q.numel();
   if (numel <= 0) return;
   dev_ctx.template Alloc<T>(dq);
-  dq->Resize(dout_q.dims());
   // small size for broadcast
   auto batch_size = dout_q.dims()[0];
   auto num_heads = dout_q.dims()[2];
@@ -51,13 +53,14 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
 
-  int grid = config.block_per_grid.x;
-  int block = config.thread_per_block.x;
+  int64_t grid = config.block_per_grid.x;
+  int64_t block = config.thread_per_block.x;
   auto stream = dev_ctx.stream();
 
   phi::Array<T*, 3> outs_data;
   phi::Array<const T*, 3> ins_data;
   phi::Array<const T*, 2> sin_cos_data;
+  const int64_t* position_ids_data = NULL;
 
   ins_data[0] = dout_q.data<T>();
   outs_data[0] = dq->data<T>();
@@ -65,7 +68,6 @@ void FusedRopeGradKernel(const Context& dev_ctx,
 
   if (dout_k.get_ptr()) {
     dev_ctx.template Alloc<T>(dk);
-    dk->Resize(dout_q.dims());
     outs_data[1] = dk->data<T>();
     ins_data[1] = dout_k->data<T>();
     num_inputs++;
@@ -73,7 +75,6 @@ void FusedRopeGradKernel(const Context& dev_ctx,
 
   if (dout_v.get_ptr()) {
     dev_ctx.template Alloc<T>(dv);
-    dv->Resize(dout_q.dims());
     outs_data[2] = dv->data<T>();
     ins_data[2] = dout_v->data<T>();
     num_inputs++;
@@ -88,21 +89,42 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     sin_cos_data[1] = cos->data<T>();
 
     flag_sin_cos = true;
+
+    if (position_ids.get_ptr()) {
+      position_ids_data = position_ids->data<int64_t>();
+    }
   }
 
   int sign = -1;
-  VectorizedFusedRopeKernel<T, MPType, vec_size>
-      <<<grid, block, 0, stream>>>(ins_data,
-                                   sin_cos_data,
-                                   flag_sin_cos,
-                                   sign,
-                                   batch_size,
-                                   seq_len,
-                                   num_heads,
-                                   head_dim,
-                                   outs_data,
-                                   num_inputs,
-                                   div_c);
+  if (use_neox_rotary_style) {
+    VectorizedFusedRopeWithRotateEveryTwoKernel<T, MPType, vec_size>
+        <<<grid, block, 0, stream>>>(ins_data,
+                                     sin_cos_data,
+                                     position_ids_data,
+                                     flag_sin_cos,
+                                     sign,
+                                     batch_size,
+                                     seq_len,
+                                     num_heads,
+                                     head_dim,
+                                     outs_data,
+                                     num_inputs,
+                                     div_c);
+  } else {
+    VectorizedFusedRopeWithRotateHalfKernel<T, MPType, vec_size>
+        <<<grid, block, 0, stream>>>(ins_data,
+                                     sin_cos_data,
+                                     position_ids_data,
+                                     flag_sin_cos,
+                                     sign,
+                                     batch_size,
+                                     seq_len,
+                                     num_heads,
+                                     head_dim,
+                                     outs_data,
+                                     num_inputs,
+                                     div_c);
+  }
 }
 
 }  // namespace fusion

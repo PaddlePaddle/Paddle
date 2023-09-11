@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 from eager_op_test import OpTest
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 def trilinear_interp_np(

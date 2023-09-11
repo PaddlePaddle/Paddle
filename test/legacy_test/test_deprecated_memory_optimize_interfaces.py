@@ -16,7 +16,8 @@ import unittest
 
 from simple_nets import simple_fc_net
 
-from paddle import fluid
+import paddle
+from paddle import base
 from paddle.distributed import transpiler
 
 
@@ -25,12 +26,12 @@ class DeprecatedMemoryOptimizationInterfaceTest(unittest.TestCase):
         self.method = transpiler.memory_optimize
 
     def build_network(self, call_interface):
-        startup_prog = fluid.Program()
-        main_prog = fluid.Program()
-        with fluid.program_guard(main_prog, startup_prog):
-            with fluid.unique_name.guard():
+        startup_prog = base.Program()
+        main_prog = base.Program()
+        with base.program_guard(main_prog, startup_prog):
+            with base.unique_name.guard():
                 loss = simple_fc_net()
-                opt = fluid.optimizer.Adam(learning_rate=1e-3)
+                opt = paddle.optimizer.Adam(learning_rate=1e-3)
                 opt.minimize(loss)
 
                 if call_interface:

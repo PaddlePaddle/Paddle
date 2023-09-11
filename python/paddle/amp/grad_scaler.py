@@ -19,10 +19,10 @@ from enum import Enum
 import numpy as np
 
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid import core
-from paddle.fluid.data_feeder import check_type
-from paddle.fluid.dygraph import to_variable
-from paddle.fluid.framework import _dygraph_tracer, dygraph_only
+from paddle.base import core
+from paddle.base.data_feeder import check_type
+from paddle.base.dygraph import to_variable
+from paddle.base.framework import _dygraph_tracer, dygraph_only
 from paddle.framework import in_dynamic_mode
 
 from .auto_cast import amp_global_state
@@ -75,8 +75,8 @@ class AmpScaler:
 
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
         model = paddle.nn.Conv2D(3, 2, 3)
-        optimizer = paddle.optimizer.SGDOptimizer(
-                learning_rate=0.01, parameter_list=model.parameters())
+        optimizer = paddle.optimizer.SGD(
+                learning_rate=0.01, parameters=model.parameters())
         scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
         data = paddle.to_tensor(data)
         with paddle.amp.amp_guard():
@@ -168,8 +168,8 @@ class AmpScaler:
 
                 data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
                 model = paddle.nn.Conv2D(3, 2, 3)
-                optimizer = paddle.optimizer.SGDOptimizer(
-                        learning_rate=0.01, parameter_list=model.parameters())
+                optimizer = paddle.optimizer.SGD(
+                        learning_rate=0.01, parameters=model.parameters())
                 scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
                 data = paddle.to_tensor(data)
                 with paddle.amp.amp_guard():
@@ -221,8 +221,8 @@ class AmpScaler:
 
                 data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
                 model = paddle.nn.Conv2D(3, 2, 3)
-                optimizer = paddle.optimizer.SGDOptimizer(
-                        learning_rate=0.01, parameter_list=model.parameters())
+                optimizer = paddle.optimizer.SGD(
+                        learning_rate=0.01, parameters=model.parameters())
                 scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
                 data = paddle.to_tensor(data)
                 with paddle.amp.amp_guard():
@@ -1180,17 +1180,17 @@ class GradScaler(AmpScaler):
 
             .. code-block:: python
 
-                # required: gpu,xpu
-                import paddle
+                >>> # doctest: +REQUIRES(env:GPU, env:XPU)
+                >>> import paddle
 
-                scaler = paddle.amp.GradScaler(enable=True,
-                                               init_loss_scaling=1024,
-                                               incr_ratio=2.0,
-                                               decr_ratio=0.5,
-                                               incr_every_n_steps=1000,
-                                               decr_every_n_nan_or_inf=2,
-                                               use_dynamic_loss_scaling=True)
-                scaler_state = scaler.state_dict()
-                scaler.load_state_dict(scaler_state)
+                >>> scaler = paddle.amp.GradScaler(enable=True,
+                ...                               init_loss_scaling=1024,
+                ...                               incr_ratio=2.0,
+                ...                               decr_ratio=0.5,
+                ...                               incr_every_n_steps=1000,
+                ...                               decr_every_n_nan_or_inf=2,
+                ...                               use_dynamic_loss_scaling=True)
+                >>> scaler_state = scaler.state_dict()
+                >>> scaler.load_state_dict(scaler_state)
         """
         super().load_state_dict(state_dict)

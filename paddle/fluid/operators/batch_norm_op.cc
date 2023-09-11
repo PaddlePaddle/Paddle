@@ -19,7 +19,7 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "paddle/fluid/framework/data_layout.h"
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -213,7 +213,7 @@ phi::KernelKey BatchNormOp::GetKernelTypeForVar(
     const std::string &var_name,
     const phi::DenseTensor &tensor,
     const phi::KernelKey &expected_kernel_type) const {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if ((var_name == "X") &&
@@ -361,10 +361,10 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
   const DataLayout data_layout =
       phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
-  const int C =
+  const int C = static_cast<int>(
       ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
            ? x_dims[1]
-           : x_dims[x_dims.size() - 1]);
+           : x_dims[x_dims.size() - 1]));
 
   // has_scale_grad == has_bias_grad, judge has_scale_grad is enough
   if (has_scale_grad) {
@@ -402,7 +402,7 @@ phi::KernelKey BatchNormGradOp::GetKernelTypeForVar(
     const std::string &var_name,
     const phi::DenseTensor &tensor,
     const phi::KernelKey &expected_kernel_type) const {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if (((var_name == "X") || (var_name == framework::GradVarName("Y"))) &&
@@ -443,6 +443,9 @@ void BatchNormGradMaker<T>::Apply(GradOpPtr<T> op) const {
     op->SetInput("Mean", this->Output("MeanOut"));
     op->SetInput("Variance", this->Output("VarianceOut"));
   }
+
+  op->SetInput("MeanOut", this->Output("MeanOut"));
+  op->SetInput("VarianceOut", this->Output("VarianceOut"));
 
   op->SetAttrMap(this->Attrs());
 
@@ -501,10 +504,10 @@ void BatchNormDoubleGradOp::InferShape(
   const auto x_dims = ctx->GetInputDim("X");
   const DataLayout data_layout =
       phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
-  const int C =
+  const int C = static_cast<int>(
       ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
            ? x_dims[1]
-           : x_dims[x_dims.size() - 1]);
+           : x_dims[x_dims.size() - 1]));
 
   if (ctx->HasOutput("DX")) {
     ctx->SetOutputDim("DX", x_dims);

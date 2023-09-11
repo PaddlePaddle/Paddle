@@ -385,9 +385,11 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         self.trt_param.workspace_size = 2013265920
         yield self.create_inference_config(), (1, 3), (1e-5, 1e-5)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
+        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), (1, 3), (1e-2, 1e-2)
 
     def test(self):
@@ -983,16 +985,19 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.workspace_size = 2013265920
         self.trt_param.precision = paddle_infer.PrecisionType.Int8
+        program_config.set_input_type(np.int8)
         yield self.create_inference_config(), generate_trt_nodes_num(), (
             1e-3,
             1e-3,
         )
         self.trt_param.precision = paddle_infer.PrecisionType.Half
+        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(), (
             1e-3,
             2e-2,
         )
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(), (
             1e-5,
             1e-5,
@@ -1364,9 +1369,11 @@ class TrtConvertMultiHeadMatmulTest_biasqk_seqseq(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         self.trt_param.workspace_size = 2013265920
         yield self.create_inference_config(), (1, 3), (1e-5, 1e-5)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
+        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), (1, 3), (1e-2, 1e-2)
 
     def test(self):

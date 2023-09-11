@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/common/place.h"
 namespace paddle {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 using phi::OneDNNContext;
 #endif
 namespace platform {

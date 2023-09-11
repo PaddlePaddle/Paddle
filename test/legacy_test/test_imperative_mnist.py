@@ -19,9 +19,8 @@ from test_imperative_base import new_program_scope
 from utils import DyGraphProgramDescTracerTestHelper
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.optimizer import SGDOptimizer
+from paddle import base
+from paddle.base import core
 from paddle.nn import Linear
 
 
@@ -120,23 +119,23 @@ class TestImperativeMnist(unittest.TestCase):
 
         traced_layer = None
 
-        with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+        with base.dygraph.guard():
+            base.default_startup_program().random_seed = seed
+            base.default_main_program().random_seed = seed
 
             mnist = MNIST()
-            sgd = SGDOptimizer(
-                learning_rate=1e-3, parameter_list=mnist.parameters()
+            sgd = paddle.optimizer.SGD(
+                learning_rate=1e-3, parameters=mnist.parameters()
             )
 
-            batch_py_reader = fluid.io.PyReader(capacity=1)
+            batch_py_reader = base.io.PyReader(capacity=1)
             batch_py_reader.decorate_sample_list_generator(
                 paddle.batch(
                     self.reader_decorator(paddle.dataset.mnist.train()),
                     batch_size=batch_size,
                     drop_last=True,
                 ),
-                places=fluid.CPUPlace(),
+                places=base.CPUPlace(),
             )
 
             mnist.train()
@@ -178,17 +177,17 @@ class TestImperativeMnist(unittest.TestCase):
                         dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            base.default_startup_program().random_seed = seed
+            base.default_main_program().random_seed = seed
 
-            exe = fluid.Executor(
-                fluid.CPUPlace()
+            exe = base.Executor(
+                base.CPUPlace()
                 if not core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                else base.CUDAPlace(0)
             )
 
             mnist = MNIST()
-            sgd = SGDOptimizer(learning_rate=1e-3)
+            sgd = paddle.optimizer.SGD(learning_rate=1e-3)
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(),
                 batch_size=batch_size,
@@ -215,7 +214,7 @@ class TestImperativeMnist(unittest.TestCase):
                 static_param_name_list.append(param.name)
 
             out = exe.run(
-                fluid.default_startup_program(),
+                base.default_startup_program(),
                 fetch_list=static_param_name_list,
             )
 
@@ -242,7 +241,7 @@ class TestImperativeMnist(unittest.TestCase):
                         traced_layer([static_x_data])
 
                     out = exe.run(
-                        fluid.default_main_program(),
+                        base.default_main_program(),
                         feed={"pixel": static_x_data, "label": y_data},
                         fetch_list=fetch_list,
                     )

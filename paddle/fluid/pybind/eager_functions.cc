@@ -106,7 +106,7 @@ class EagerNumpyAllocation : public phi::Allocation {
             "The underlying PyObject pointer of numpy array cannot be None"));
     Py_INCREF(arr_);
   }
-  ~EagerNumpyAllocation() override {
+  ~EagerNumpyAllocation() override {  // NOLINT
     py::gil_scoped_acquire gil;
     Py_DECREF(arr_);
   }
@@ -513,8 +513,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
   EAGER_TRY
   FLAGS_tensor_operants_mode = "phi";
   if (paddle::OperantsManager::Instance().phi_operants.get() == nullptr) {
-    paddle::OperantsManager::Instance().phi_operants.reset(
-        new paddle::operants::PhiTensorOperants());
+    paddle::OperantsManager::Instance().phi_operants =
+        std::make_unique<paddle::operants::PhiTensorOperants>();
     VLOG(4) << "Initialize phi tensor operants successfully";
   }
 
@@ -1187,8 +1187,8 @@ static PyObject* eager_api_to_uva_tensor(PyObject* self,
                                          PyObject* kwargs) {
   EAGER_TRY
   VLOG(4) << "Running in eager_api_to_uva_tensor.";
-  auto new_tensor = std::shared_ptr<paddle::Tensor>(
-      new paddle::Tensor(egr::Controller::Instance().GenerateUniqueName()));
+  auto new_tensor = std::make_shared<paddle::Tensor>(
+      egr::Controller::Instance().GenerateUniqueName());
   PyObject* obj = PyTuple_GET_ITEM(args, 0);
   auto array = py::cast<py::array>(py::handle(obj));
 
@@ -1273,7 +1273,7 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyMethodDef variable_functions[] = {
+PyMethodDef variable_functions[] = {  // NOLINT
     // TODO(jiabin): Remove scale when we have final state tests
     {"scale",
      (PyCFunction)(void (*)())eager_api_scale,

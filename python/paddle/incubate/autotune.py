@@ -16,7 +16,7 @@ import json
 import warnings
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 __all__ = ['set_config']
 
@@ -56,29 +56,29 @@ def set_config(config=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import json
+            >>> import paddle
+            >>> import json
 
-            # config is a dict.
-            config = {
-                "kernel": {
-                    "enable": True,
-                    "tuning_range": [1, 5],
-                },
-                "layout": {
-                    "enable": True,
-                },
-                "dataloader": {
-                    "enable": True,
-                }
-            }
-            paddle.incubate.autotune.set_config(config)
+            >>> # config is a dict.
+            >>> config = {
+            ...     "kernel": {
+            ...         "enable": True,
+            ...         "tuning_range": [1, 5],
+            ...     },
+            ...     "layout": {
+            ...         "enable": True,
+            ...     },
+            ...     "dataloader": {
+            ...         "enable": True,
+            ...     }
+            >>> }
+            >>> paddle.incubate.autotune.set_config(config)
 
-            # config is the path of json file.
-            config_json = json.dumps(config)
-            with open('config.json', 'w') as json_file:
-                json_file.write(config_json)
-            paddle.incubate.autotune.set_config('config.json')
+            >>> # config is the path of json file.
+            >>> config_json = json.dumps(config)
+            >>> with open('config.json', 'w') as json_file:
+            ...     json_file.write(config_json)
+            >>> paddle.incubate.autotune.set_config('config.json')
 
     """
     if config is None:

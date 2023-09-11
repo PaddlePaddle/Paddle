@@ -22,7 +22,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/denormal.h"
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 #ifdef PADDLE_WITH_TENSORRT
@@ -52,7 +52,7 @@ void NaiveExecutor::Prepare(Scope *scope,
 }
 
 void NaiveExecutor::Run() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToMKLDNNKey(this, place_);
   platform::RegisterModelLayout(ops_, place_);
 #endif
@@ -215,7 +215,7 @@ void NaiveExecutor::MakeReusePlan(
         const auto &reuse_name = reuse_table.at(name);
         auto it =
             std::find(cluster_names.begin(), cluster_names.end(), reuse_name);
-        int idx = it - cluster_names.begin();
+        int idx = static_cast<int>(it - cluster_names.begin());
         auto *var = scope_->FindVar(name);
         auto *reuse_var = scope_->FindVar(reuse_name);
         if (var && reuse_var && var->IsType<phi::DenseTensor>() &&
@@ -236,7 +236,7 @@ void NaiveExecutor::MakeReusePlan(
 }
 
 NaiveExecutor::~NaiveExecutor() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
   platform::ClearMKLDNNCache(place_, this);

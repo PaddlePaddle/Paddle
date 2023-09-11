@@ -126,9 +126,10 @@ void BasicEngine::Init(
                                     [init_grad_var];
     if (!accumulator) {
       if (FLAGS_sort_sum_gradient) {
-        accumulator.reset(new SortedGradientAccumulator(init_grad_var));
+        accumulator =
+            std::make_unique<SortedGradientAccumulator>(init_grad_var);
       } else {
-        accumulator.reset(new EagerGradientAccumulator(init_grad_var));
+        accumulator = std::make_unique<EagerGradientAccumulator>(init_grad_var);
       }
     }
     accumulator->IncreaseRefCnt();
@@ -225,9 +226,11 @@ void BasicEngine::PrepareGradAccumulators(
 
             if (!accumulator) {
               if (FLAGS_sort_sum_gradient) {
-                accumulator.reset(new SortedGradientAccumulator(var.get()));
+                accumulator =
+                    std::make_unique<SortedGradientAccumulator>(var.get());
               } else {
-                accumulator.reset(new EagerGradientAccumulator(var.get()));
+                accumulator =
+                    std::make_unique<EagerGradientAccumulator>(var.get());
               }
             }
 
@@ -255,9 +258,10 @@ void BasicEngine::PrepareGradAccumulators(
         auto& accumulator = accumulators_[var.get()];
         if (!accumulator) {
           if (FLAGS_sort_sum_gradient) {
-            accumulator.reset(new SortedGradientAccumulator(var.get()));
+            accumulator =
+                std::make_unique<SortedGradientAccumulator>(var.get());
           } else {
-            accumulator.reset(new EagerGradientAccumulator(var.get()));
+            accumulator = std::make_unique<EagerGradientAccumulator>(var.get());
           }
         }
 
