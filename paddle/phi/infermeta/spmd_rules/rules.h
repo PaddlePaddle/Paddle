@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 
 #include "paddle/phi/infermeta/spmd_rules/default_data_parallel.h"
+#include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 #include "paddle/phi/infermeta/spmd_rules/matmul.h"
 #include "paddle/phi/infermeta/spmd_rules/replicated.h"
 
@@ -29,12 +30,12 @@ limitations under the License. */
  * 2. Since the infer functions of Spmd forward and backward are closely related
  * and need to be registered together, we manage them together in one file.
  *
- * 3. SPMD rules are less than infermeta function, and we manage files by
- * operator.
+ * 3. SPMD rules are much smaller than infermeta function, and we manage files
+ * in operator units.
  *
  * 4. The previous registration used some compile-time regular matching methods,
  * which was less flexible, and the registration of SPMD rules here is declare
- * directly in the header file.
+ * directly in the header file
  */
 
 namespace phi {
@@ -56,6 +57,15 @@ PD_REGISTER_SPMD_RULE(
     replicated,
     PD_INFER_SPMD(phi::distributed::ReplicatedInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReplicatedInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    elementwise_unary,
+    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    elementwise_binary,
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
 
 }  // namespace distributed
 }  // namespace phi
