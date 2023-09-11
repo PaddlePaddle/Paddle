@@ -96,8 +96,8 @@ class ShapedTypeInterface : public ir::TypeInterfaceBase<ShapedTypeInterface> {
   };
 
   /// Constructor
-  explicit ShapedTypeInterface(Concept *impl)
-      : ir::TypeInterfaceBase<ShapedTypeInterface>(), impl_(impl) {}
+  ShapedTypeInterface(ir::Type type, Concept *impl)
+      : ir::TypeInterfaceBase<ShapedTypeInterface>(type), impl_(impl) {}
 
   /// Get the element type.
   DataType getElementType() const { return impl_->get_element_type_(*this); }
@@ -120,8 +120,8 @@ class ShapedTypeInterface : public ir::TypeInterfaceBase<ShapedTypeInterface> {
   static constexpr bool isDynamic(int64_t dValue) { return dValue == kDynamic; }
 
   /// Check whether the given shape has any size indicating a dynamic dimension.
-  static bool isDynamicShape(std::vector<int64_t> dSizes) {
-    return ::details::any_of(dSizes,
+  static bool isDynamicShape(DDim dSizes) {
+    return ::details::any_of(vectorize(dSizes),
                              [](int64_t dSize) { return isDynamic(dSize); });
   }
 

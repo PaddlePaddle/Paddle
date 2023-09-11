@@ -24,6 +24,7 @@ class TypeStorage;
 class AbstractType;
 class IrContext;
 class Dialect;
+class ShapedTypeInterface;
 ///
 /// \brief Unified interface of the Type class. Derivation of all Type classes
 /// only derives interfaces, not members. For example, DenseTensorType,
@@ -111,7 +112,7 @@ class IR_API Type {
   }
 
   template <typename U>
-  U dyn_cast_() const {
+  U dyn_cast_interface() const {
     return CastInfo<U>::call(*this);
   }
 
@@ -125,7 +126,6 @@ class IR_API Type {
   template <typename U>
   U cast() const {
     return ir::cast<U>(*this);
-    // return CastUtil<U>::call(*this);
   }
 
  protected:
@@ -155,14 +155,14 @@ IR_API std::ostream &operator<<(std::ostream &os, Type type);
 template <typename ConcreteInterface>
 class TypeInterfaceBase : public ir::Type {
  public:
-  TypeInterfaceBase() : Type() {}
+  explicit TypeInterfaceBase(Type type) : Type(type) {}
 
   // Accessor for the ID of this interface.
   static TypeId GetInterfaceId() { return TypeId::get<ConcreteInterface>(); }
 
   static ConcreteInterface dyn_cast(Type type) {
     return ConcreteInterface(
-        type.abstract_type().GetInterfaceImpl<ConcreteInterface>());
+        type, type.abstract_type().GetInterfaceImpl<ConcreteInterface>());
   }
 };
 
@@ -171,7 +171,7 @@ struct cast_impl<
     To,
     From,
     typename std::enable_if<std::is_base_of<ir::Type, From>::value>::type> {
-  static inline To call(ir::Type type) { return To(type.storage()); }
+  static inline To call(const ir::Type type) { return To(type.storage()); }
 };
 
 }  // namespace ir

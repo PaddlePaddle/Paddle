@@ -13,15 +13,22 @@
 // limitations under the License.
 
 #include "paddle/ir/core/type_base.h"
+#include "glog/logging.h"
 #include "paddle/ir/core/ir_context.h"
 
 namespace ir {
 
 void *AbstractType::GetInterfaceImpl(TypeId interface_id) const {
   if (interface_map_.empty()) {
+    VLOG(6) << "Interface map is empty!";
     return nullptr;
   } else {
-    return interface_map_[0].model();
+    for (size_t i = 0; i < interface_map_.size(); ++i) {
+      if (interface_map_[i].type_id() == interface_id)
+        return interface_map_[i].model();
+    }
+    VLOG(6) << "Find no interface!";
+    return nullptr;
   }
   // TODO(zhangbo63): Add LookUp method like:
   // return ir::details::LookUp<AbstractType>(

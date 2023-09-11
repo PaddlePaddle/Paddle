@@ -42,22 +42,18 @@ TEST(shapedtype_test, shapedtype_test) {
   EXPECT_EQ(shaped_type.dims(), dims);
   EXPECT_EQ(shaped_type.data_layout(), data_layout);
   EXPECT_EQ(shaped_type.lod(), lod);
-  printf("000000000000000000000000000000000000000000000\n");
   EXPECT_EQ(shaped_type.offset(), offset);
 
-  printf("111111111111111111111111111111111111111111111\n");
-
   ir::ShapedTypeInterface interface =
-      shaped_type.dyn_cast_<ir::ShapedTypeInterface>();
+      shaped_type.dyn_cast_interface<ir::ShapedTypeInterface>();
 
   EXPECT_EQ(interface.getElementType().isa<ir::Float32Type>(), true);
-
-  printf("222222222222222222222222222222222222222222222\n");
-  intptr_t a = reinterpret_cast<intptr_t>(&interface);
-  EXPECT_EQ(a, true);
-  // EXPECT_EQ(interface.getShape(), dims);
-  // EXPECT_EQ(interface.kDynamic, std::numeric_limits<int64_t>::min());
-  // EXPECT_EQ(interface.hasRank(), true);
-
-  // EXPECT_EQ(interface.getNumDynamicDims(shaped_type), true);
+  EXPECT_EQ(interface.getShape(), dims);
+  EXPECT_EQ(interface.kDynamic, std::numeric_limits<int64_t>::min());
+  EXPECT_EQ(interface.getRank(), 2);
+  EXPECT_EQ(interface.isDynamic(2), false);
+  EXPECT_EQ(interface.isDynamicShape(dims), false);
+  EXPECT_EQ(interface.isDynamicDim(1), false);
+  EXPECT_EQ(interface.getNumDynamicDims(), 0);
+  EXPECT_EQ(interface.getDimSize(0), 2);
 }
