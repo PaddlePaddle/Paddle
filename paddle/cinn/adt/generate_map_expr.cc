@@ -126,7 +126,7 @@ void VisitEachOpStmt(const cinn::hlir::framework::Graph::Group& group,
                      const DoEachT& DoEach) {
   for (const auto* op : group.nodes) {
     // Tuple<Op, In<List<Arg>>, Out<List<Arg>>>
-    DoEachT(m_expr::OpStmt{MakeOp(op),
+    DoEach(m_expr::OpStmt{MakeOp(op),
                            MakeOpStmtInputList(op, group.graph_),
                            MakeOpStmtOutputList(op, group.graph_)});
   }
