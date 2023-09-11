@@ -40,8 +40,8 @@ from ..framework import (
     convert_np_dtype_to_dtype_,
     core,
     in_dynamic_mode,
-    in_new_ir_mode,
     in_dynamic_or_new_ir_mode,
+    in_new_ir_mode,
 )
 
 __all__ = []
