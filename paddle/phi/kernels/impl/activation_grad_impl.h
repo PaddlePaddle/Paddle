@@ -424,6 +424,7 @@ void PowTripleGradKernel(const Context& dev_ctx,
     }
     // D_DOut = D_DX * DDX * b * (b-1) * X^(b-2)
     if (out_d_dout) {
+      DenseTensor out_d_x_tmp = phi::Multiply<T, Context>(dev_ctx, d_dx, ddx);
       DenseTensor out_d_dout_tmp =
           phi::Scale<T, Context>(dev_ctx,
                                  phi::Pow<T, Context>(dev_ctx, x, exponent - 2),
@@ -432,15 +433,20 @@ void PowTripleGradKernel(const Context& dev_ctx,
                                  true);
 
       *out_d_dout =
-          phi::Multiply<T, Context>(dev_ctx, out_d_x_tmp1, out_d_dout_tmp);
+          phi::Multiply<T, Context>(dev_ctx, out_d_x_tmp, out_d_dout_tmp);
     }
     // D_DDX = D_DX * DOut * b * (b-1) * X^(b-2) + D_DDOut * b * X^(b-1)
     if (out_d_ddx) {
       DenseTensor out_d_ddx_tmp1 =
           phi::Multiply<T, Context>(dev_ctx, d_dx, dout);
+      DenseTensor out_d_dout_tmp =
+          phi::Scale<T, Context>(dev_ctx,
+                                 phi::Pow<T, Context>(dev_ctx, x, exponent - 2),
+                                 exponent * (exponent - 1),
+                                 0.0,
+                                 true);
       DenseTensor out_d_ddx_part1 =
           phi::Multiply<T, Context>(dev_ctx, out_d_ddx_tmp1, out_d_dout_tmp);
-
       DenseTensor out_d_ddx_tmp2 =
           phi::Scale<T, Context>(dev_ctx,
                                  phi::Pow<T, Context>(dev_ctx, x, exponent - 1),
@@ -486,6 +492,12 @@ void PowTripleGradKernel(const Context& dev_ctx,
     if (out_d_ddx) {
       DenseTensor out_d_ddx_tmp1 =
           phi::Multiply<T, Context>(dev_ctx, d_dx, dout);
+      DenseTensor out_d_dout_tmp2 =
+          phi::Scale<T, Context>(dev_ctx,
+                                 phi::Pow<T, Context>(dev_ctx, x, exponent - 2),
+                                 exponent * (exponent - 1),
+                                 0.0,
+                                 true);
       DenseTensor out_d_ddx_part1 =
           phi::Multiply<T, Context>(dev_ctx, out_d_ddx_tmp1, out_d_dout_tmp2);
 
