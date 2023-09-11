@@ -13,12 +13,19 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/executor_cache.h"
+
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/op_info.h"
-#include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
-#include "paddle/ir/core/program.h"
-#include "paddle/ir/core/value.h"
+#include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
+#include "paddle/phi/core/flags.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
+#include "paddle/pir/pass/pass.h"
+#include "paddle/pir/pass/pass_manager.h"
+
+PHI_DECLARE_bool(new_ir_apply_inplace_pass);
 
 namespace paddle {
 namespace framework {
@@ -318,7 +325,7 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
 }
 
 std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
-    std::unique_ptr<::ir::Program> ir_program,
+    std::unique_ptr<::pir::Program> ir_program,
     const platform::Place &place,
     bool is_grad,
     int64_t program_id,
@@ -346,14 +353,14 @@ std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
   return core;
 }
 
-std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
+std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     const paddle::framework::BlockDesc *forward_global_block,
     const paddle::framework::BlockDesc *backward_global_block,
     const std::vector<std::string> output_names,
     const std::vector<paddle::Tensor> &x,
     const std::vector<paddle::Tensor> &params) {
-  auto ir_ctx = ::ir::IrContext::Instance();
-  auto program = std::make_unique<::ir::Program>(ir_ctx);
+  auto ir_ctx = ::pir::IrContext::Instance();
+  auto program = std::make_unique<::pir::Program>(ir_ctx);
 
   std::set<std::string> set_output_names;
   auto local_program =
@@ -441,17 +448,23 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
 
   auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program.get());
 
+  if (FLAGS_new_ir_apply_inplace_pass) {
+    ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
+    pm.AddPass(::pir::CreateInplacePass());
+    pm.Run(ir_res.get());
+  }
+
   return ir_res;
 }
 
-std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
+std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
     const paddle::framework::BlockDesc *backward_global_block,
     const std::vector<paddle::Tensor> &out_grad,
     const std::vector<paddle::Tensor *> &x_grad,
     const std::vector<paddle::Tensor *> &params_grad,
     const paddle::framework::Scope *scope) {
-  auto ir_ctx = ::ir::IrContext::Instance();
-  auto program = std::make_unique<::ir::Program>(ir_ctx);
+  auto ir_ctx = ::pir::IrContext::Instance();
+  auto program = std::make_unique<::pir::Program>(ir_ctx);
 
   auto local_program =
       paddle::framework::ProgramDesc(*(backward_global_block->Program()));
@@ -513,6 +526,12 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
   program_translator.Translate();
 
   auto res = paddle::dialect::PdOpLowerToKernelPass(program.get());
+
+  if (FLAGS_new_ir_apply_inplace_pass) {
+    ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
+    pm.AddPass(::pir::CreateInplacePass());
+    pm.Run(res.get());
+  }
 
   return res;
 }

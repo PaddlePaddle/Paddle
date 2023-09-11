@@ -15,10 +15,10 @@
 
 import numpy as np
 
-from paddle.fluid.libpaddle import DataType
-from paddle.fluid.libpaddle.ir import Program, set_global_program
+from paddle.base.libpaddle import DataType
+from paddle.base.libpaddle.ir import Program, set_global_program
 
-from ..fluid.wrapped_decorator import signature_safe_contextmanager
+from ..base.wrapped_decorator import signature_safe_contextmanager
 
 np_type_to_paddle_type = {
     np.dtype("float32"): DataType.FLOAT32,
@@ -28,7 +28,7 @@ np_type_to_paddle_type = {
     np.dtype("int16"): DataType.INT16,
     np.dtype("int64"): DataType.INT64,
     np.dtype("bool_"): DataType.BOOL,
-    np.dtype("uint16"): DataType.UINT16,
+    np.dtype("uint16"): DataType.BFLOAT16,
     np.dtype("uint8"): DataType.UINT8,
     np.dtype("int8"): DataType.INT8,
     np.dtype("complex64"): DataType.COMPLEX64,
@@ -50,7 +50,9 @@ def convert_np_dtype_to_dtype_(np_dtype):
     """
     # Convert the data type string to numpy data type.
     if isinstance(np_dtype, str) and np_dtype == "bfloat16":
-        dtype = np.uint16
+        # since there is still no support for bfloat16 in NumPy,
+        # uint16 is used for casting bfloat16
+        dtype = np.dtype("uint16")
     else:
         dtype = np.dtype(np_dtype)
 
@@ -229,7 +231,7 @@ def program_guard(main_program, startup_program=None):
                 data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
 
     """
-    from ..fluid.data_feeder import check_type
+    from ..base.data_feeder import check_type
 
     check_type(
         main_program, 'main_program', Program, 'paddle.static.program_guard'

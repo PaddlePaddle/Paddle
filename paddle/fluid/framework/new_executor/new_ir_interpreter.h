@@ -16,7 +16,7 @@
 #include <memory>
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
-#include "paddle/ir/core/value.h"
+#include "paddle/pir/core/value.h"
 
 namespace ir {
 class Block;
@@ -36,7 +36,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
  public:
   NewIRInterpreter(const platform::Place& place,
                    const std::vector<std::string>& fetch_var_names,
-                   const ::ir::Block* ir_block,
+                   const ::pir::Block* ir_block,
                    Scope* scope,
                    const ExecutionConfig& execution_config = ExecutionConfig());
 
@@ -184,7 +184,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   void RecordMemcpyD2H(InstructionBase* instr_node);
 
-  ::ir::Value GetValueByName(const std::string& var_name);
+  ::pir::Value GetValueByName(const std::string& var_name);
 
   void CheckGC(InstructionBase* instr);
 
@@ -198,16 +198,17 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   InstructionSchedulingPriorityLess ir_instruction_scheduling_priority_less;
 
-  const ::ir::Block* ir_block_{nullptr};
+  const ::pir::Block* ir_block_{nullptr};
 
   std::vector<std::unique_ptr<InstructionBase>> vec_instruction_base_;
 
-  std::unordered_map<::ir::Value, std::string> value_2_var_name_;
+  std::unordered_map<::pir::Value, std::string> value_2_var_name_;
 
   std::unordered_map<const paddle::framework::Variable*, std::string>
       variable_2_var_name_;
 
   std::map<std::string, int> var_name_2_id_;
+  std::unordered_map<int, std::string> id_2_var_name_;
 
   std::vector<Variable*> variable_list_;
   std::map<ir::Block*, paddle::framework::Scope*> sub_blocks_;

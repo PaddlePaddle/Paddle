@@ -19,8 +19,8 @@ import numpy as np
 import paddle
 
 from . import _C_ops
-from .fluid.data_feeder import check_variable_and_dtype
-from .fluid.layer_helper import LayerHelper
+from .base.data_feeder import check_variable_and_dtype
+from .base.layer_helper import LayerHelper
 from .framework import in_dynamic_mode
 from .tensor.attribute import is_floating_point, is_integer
 from .tensor.creation import _complex_to_real_dtype, _real_to_complex_dtype

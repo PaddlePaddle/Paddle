@@ -25,8 +25,8 @@ from eager_op_test import (
 from op import Operator
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.static import amp
 
 
@@ -236,7 +236,7 @@ class TestSGDOpBF16API(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         np.random.seed(12345)
-        fluid.set_flags({'FLAGS_use_mkldnn': True})
+        base.set_flags({'FLAGS_use_mkldnn': True})
 
     def setUp(self):
         self.sample_count = 20
@@ -331,9 +331,9 @@ class TestSGDOpBF16API(unittest.TestCase):
             yield data, label
 
     def test_sgd(self):
-        place = fluid.CPUPlace()
-        main = fluid.Program()
-        with fluid.program_guard(main):
+        place = base.CPUPlace()
+        main = base.Program()
+        with base.program_guard(main):
             ids_shape = list(self.ids_shape)
             x = paddle.static.data(
                 name='X', shape=[-1] + ids_shape, dtype='int64'
@@ -345,7 +345,7 @@ class TestSGDOpBF16API(unittest.TestCase):
             emb = paddle.static.nn.embedding(
                 input=x,
                 size=self.w_shape,
-                param_attr=fluid.ParamAttr(
+                param_attr=base.ParamAttr(
                     name="emb_weight", initializer=self.initializer
                 ),
                 is_sparse=False,
@@ -368,12 +368,12 @@ class TestSGDOpBF16API(unittest.TestCase):
                 use_pure_bf16=True,
             )
             sgd_optimizer.minimize(
-                avg_cost, startup_program=fluid.default_startup_program()
+                avg_cost, startup_program=base.default_startup_program()
             )
 
             train_reader = paddle.batch(self._data_reader, batch_size=1)
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
             test_prog = main.clone(for_test=True)
             sgd_optimizer.amp_init(
                 place, test_program=test_prog, use_bf16_test=True

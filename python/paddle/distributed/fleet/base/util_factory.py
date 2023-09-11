@@ -26,8 +26,8 @@ from google.protobuf import text_format
 
 import paddle
 from paddle import framework
-from paddle.fluid import core
-from paddle.fluid.proto import framework_pb2
+from paddle.base import core
+from paddle.base.proto import framework_pb2
 from paddle.static import Program
 
 from ..utils.fs import FS
@@ -644,7 +644,7 @@ class UtilBase:
                             dtype=feed_config.feeded_vars_types[i],
                         )
                         feed_tensors.append(
-                            paddle.fluid.create_lod_tensor(
+                            paddle.base.create_lod_tensor(
                                 t, [[1] * config.batch_size], place
                             )
                         )
@@ -673,7 +673,7 @@ class UtilBase:
                     )
                     for i in range(len(feed_config.feeded_vars_names))
                 ]
-                feeder = paddle.fluid.DataFeeder(
+                feeder = paddle.base.DataFeeder(
                     feed_list=feed_vars, place=place
                 )
                 batch_feed = feed_gen(

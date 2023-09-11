@@ -13,14 +13,14 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/ir/core/program.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/pir/core/program.h"
 
 namespace paddle {
 namespace dialect {
 
-std::unique_ptr<ir::Program> PdOpLowerToKernelPass(
-    ir::Program* prog, phi::Place place = phi::CPUPlace());
+std::unique_ptr<pir::Program> PdOpLowerToKernelPass(
+    pir::Program* prog, phi::Place place = phi::CPUPlace());
 
 void ProcessBlock(
     const phi::Place& place,

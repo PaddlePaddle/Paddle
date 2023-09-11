@@ -26,6 +26,9 @@ from functools import reduce
 import numpy as np
 
 import paddle
+from paddle.base import program_guard
+from paddle.base.backward import append_backward
+from paddle.base.framework import Parameter, unique_name
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.static.cluster_v2 import DeviceMesh
 from paddle.distributed.auto_parallel.static.completion import Completer
@@ -48,9 +51,6 @@ from paddle.distributed.auto_parallel.static.utils import (
     print_program_with_dist_attr,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.fluid import program_guard
-from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import Parameter, unique_name
 
 from ....utils.log_utils import get_logger
 from ..graph import Graph

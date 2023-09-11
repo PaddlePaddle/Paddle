@@ -16,8 +16,8 @@
 
 #include "paddle/fluid/framework/new_executor/new_ir_interpreter.h"
 #include "paddle/fluid/framework/new_executor/program_interpreter.h"
-#include "paddle/ir/core/program.h"
-#include "paddle/ir/core/value.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_serial_run,
@@ -50,7 +50,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
 InterpreterCore::InterpreterCore(
     const platform::Place& place,
     const std::vector<std::string>& fetch_var_names,
-    const ::ir::Block* ir_block,
+    const ::pir::Block* ir_block,
     framework::Scope* scope,
     const ExecutionConfig& execution_config) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place;
