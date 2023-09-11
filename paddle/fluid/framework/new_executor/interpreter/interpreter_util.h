@@ -106,11 +106,11 @@ void BuildOpFuncList(const platform::Place& place,
 
 void BuildOpFuncList(
     const platform::Place& place,
-    ::ir::Block* block,
+    ::pir::Block* block,
     std::vector<OpFuncNode>* vec_func_list,
     framework::Scope* scope,
     framework::Scope* local_scope,
-    const std::unordered_map<::ir::Value, std::string>& value_2_name_map,
+    const std::unordered_map<::pir::Value, std::string>& value_2_name_map,
     const ExecutionConfig& execution_config);
 
 void BuildVariableScope(const framework::BlockDesc& block,
@@ -124,7 +124,7 @@ void LogDeviceMemoryStats(const platform::Place& place);
 void SetDeviceCommContext(framework::OperatorBase* operator_base,
                           platform::DeviceContext* dev_ctx);
 
-void SetDeviceCommContext(::ir::Operation* op,
+void SetDeviceCommContext(::pir::Operation* op,
                           platform::DeviceContext* dev_ctx);
 
 std::unordered_set<std::string> GetSpecialOpNames();

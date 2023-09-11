@@ -40,7 +40,7 @@ namespace dialect {
 class AddNOp : public ir::Op<AddNOp, OpYamlInfoInterface, InferMetaInterface> {
  public:
   using Op::Op;
-  static const char *name() { return "pd.add_n"; }
+  static const char *name() { return "pd_op.add_n"; }
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
   static OpInfoTuple GetOpInfo();
@@ -60,7 +60,7 @@ class AddN_Op : public ir::Op<AddN_Op,
                               paddle::dialect::InplaceTrait> {
  public:
   using Op::Op;
-  static const char *name() { return "pd.add_n_"; }
+  static const char *name() { return "pd_op.add_n_"; }
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
   static OpInfoTuple GetOpInfo();
@@ -80,7 +80,7 @@ class AddNWithKernelOp : public ir::Op<AddNWithKernelOp,
                                        paddle::dialect::InferMetaInterface> {
  public:
   using Op::Op;
-  static const char *name() { return "pd.add_n_with_kernel"; }
+  static const char *name() { return "pd_op.add_n_with_kernel"; }
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
   static OpInfoTuple GetOpInfo();
@@ -98,7 +98,7 @@ class AddNWithKernelOp : public ir::Op<AddNWithKernelOp,
 class SplitGradOp : public ir::Op<SplitGradOp, OpYamlInfoInterface> {
  public:
   using Op::Op;
-  static const char *name() { return "pd.split_grad"; }
+  static const char *name() { return "pd_op.split_grad"; }
   static const char *attributes_name[1];
   static constexpr uint32_t attributes_num = 1;
   static OpInfoTuple GetOpInfo();
@@ -121,7 +121,7 @@ class SplitGradOp : public ir::Op<SplitGradOp, OpYamlInfoInterface> {
 class IfOp : public ir::Op<IfOp> {
  public:
   using Op::Op;
-  static const char *name() { return "pd.if"; }
+  static const char *name() { return "pd_op.if"; }
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
   static void Build(ir::Builder &builder,             // NOLINT
