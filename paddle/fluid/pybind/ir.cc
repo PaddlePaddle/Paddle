@@ -334,7 +334,7 @@ void BindValue(py::module *m) {
       .def("__eq__", &Value::operator==)
       .def("__eq__",
            [](Value &self, OpResult &other) {
-             return self.impl() == other.value_impl();
+             return self.impl() == other.Value::impl();
            })
       .def("__hash__",
            [](const Value &self) { return std::hash<pir::Value>{}(self); });
@@ -405,7 +405,7 @@ void BindOpResult(py::module *m) {
   op_result.def("__eq__", &OpResult::operator==)
       .def("__eq__",
            [](OpResult &self, Value &other) {
-             return self.value_impl() == other.impl();
+             return self.Value::impl() == other.impl();
            })
       .def("__hash__",
            [](OpResult &self) {
