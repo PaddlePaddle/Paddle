@@ -38,7 +38,7 @@ DataType ExtendedTensor::dtype() const {
 
 DataLayout ExtendedTensor::layout() const {
   PADDLE_THROW(phi::errors::Unavailable(
-      "ExtendedTensor does not support `dtype` method."));
+      "ExtendedTensor does not support `layout` method."));
 }
 
 bool ExtendedTensor::valid() const {

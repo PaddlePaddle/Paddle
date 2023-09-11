@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle import base
+from paddle.base import Program, program_guard
 
 paddle.enable_static()
 
@@ -26,8 +26,8 @@ paddle.enable_static()
 class TestBroadcastToError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            x1 = base.create_lod_tensor(
+                np.array([[-1]]), [[1]], base.CPUPlace()
             )
             shape = [2, 2]
             self.assertRaises(TypeError, paddle.tensor.broadcast_to, x1, shape)
@@ -55,11 +55,11 @@ class TestBroadcastToAPI(unittest.TestCase):
         out_2 = paddle.broadcast_to(x, shape=[positive_2, 14])
         out_3 = paddle.broadcast_to(x, shape=expand_shape)
 
-        g0 = fluid.backward.calc_gradient(out_2, x)
+        g0 = base.backward.calc_gradient(out_2, x)
 
-        exe = fluid.Executor(place=fluid.CPUPlace())
+        exe = base.Executor(place=base.CPUPlace())
         res_1, res_2, res_3 = exe.run(
-            fluid.default_main_program(),
+            base.default_main_program(),
             feed={
                 "x": input,
                 "expand_shape": np.array([12, 14]).astype("int32"),
@@ -71,7 +71,7 @@ class TestBroadcastToAPI(unittest.TestCase):
         np.testing.assert_array_equal(res_3, np.tile(input, (1, 1)))
 
     def test_api_fp16_gpu(self):
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()

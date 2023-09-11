@@ -23,7 +23,6 @@ gather_srcs(
   compute_inline_expand.cc
   buffer_assign.cc
   replace_const_param_to_integer.cc
-  cast_simplify.cc
   lower_intrin.cc
   cast_bool_to_int8.cc
   collect_undefined_vars.cc

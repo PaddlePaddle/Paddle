@@ -21,12 +21,12 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
+from paddle.base.framework import dygraph_only
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import (
     GroupShardedStage3,
 )
 from paddle.distributed.fleet.utils.log_util import logger
-from paddle.fluid.framework import dygraph_only
 
 __all__ = ["save_for_auto_inference"]
 

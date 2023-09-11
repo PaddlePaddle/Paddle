@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/utils/optional.h"
 
 
 namespace paddle {
@@ -20,7 +21,11 @@ using DataType = phi::DataType;
 
 {% for api in apis %}
   {%- if api.name in backend_white_list -%}
-{{common.sig(api.name, api.inputs, api.outputs, api.attrs, True)}};
+  {% if api.attrs is exist_mutable_attribute %}
+{{common.sig(api.name, api.inputs, api.outputs|trip_intermediate , api.attrs, True, True)}};
+
+  {% endif %}
+{{common.sig(api.name, api.inputs, api.outputs|trip_intermediate , api.attrs, False, True)}};
 
   {% endif %}
 {% endfor %}

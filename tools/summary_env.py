@@ -42,7 +42,7 @@ def get_paddle_info():
         import paddle
 
         envs['paddle_version'] = paddle.__version__
-        envs['paddle_with_cuda'] = paddle.fluid.core.is_compiled_with_cuda()
+        envs['paddle_with_cuda'] = paddle.base.core.is_compiled_with_cuda()
     except:
         envs['paddle_version'] = 'N/A'
         envs['paddle_with_cuda'] = 'N/A'

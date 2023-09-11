@@ -25,7 +25,7 @@ from op import Operator
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import Program, core, program_guard
+from paddle.base import Program, core, program_guard
 
 
 class TestLookupTableOp(OpTest):

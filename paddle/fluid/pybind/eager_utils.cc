@@ -11,7 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/pybind/eager_utils.h"
 #include <Python.h>
-#include "paddle/ir/core/value.h"
+#include "paddle/pir/core/value.h"
 // Avoid a problem with copysign defined in pyconfig.h on Windows.
 #ifdef copysign
 #undef copysign
@@ -664,7 +664,7 @@ paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s: argument (position %d) must be "
-        "one of core.VarDesc.VarType, "
+        "one of paddle::DataType, "
         "but got %s",
         op_type,
         arg_pos + 1,
@@ -888,13 +888,13 @@ PyObject* ToPyObject(const phi::DenseTensor* value) {
   return obj.ptr();
 }
 
-PyObject* ToPyObject(const ir::OpResult& value) {
+PyObject* ToPyObject(const pir::OpResult& value) {
   auto obj = ::pybind11::cast(value);
   obj.inc_ref();
   return obj.ptr();
 }
 
-PyObject* ToPyObject(const std::vector<ir::OpResult>& value) {
+PyObject* ToPyObject(const std::vector<pir::OpResult>& value) {
   PyObject* result = PyList_New((Py_ssize_t)value.size());
 
   for (size_t i = 0; i < value.size(); i++) {
@@ -1485,11 +1485,13 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
   }
 }
 
-ir::OpResult CastPyArg2OpResult(PyObject* obj,
-                                const std::string& op_type,
-                                size_t arg_pos) {
+pir::OpResult CastPyArg2OpResult(PyObject* obj,
+                                 const std::string& op_type,
+                                 size_t arg_pos) {
   if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
-    return ::pybind11::handle(obj).cast<ir::OpResult>();
+    return ::pybind11::handle(obj).cast<pir::OpResult>();
+  } else if (obj == nullptr || obj == Py_None) {
+    return pir::OpResult();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
@@ -1500,17 +1502,17 @@ ir::OpResult CastPyArg2OpResult(PyObject* obj,
   }
 }
 
-std::vector<ir::OpResult> CastPyArg2VectorOfOpResult(PyObject* obj,
-                                                     const std::string& op_type,
-                                                     size_t arg_pos) {
-  std::vector<ir::OpResult> result_list;
+std::vector<pir::OpResult> CastPyArg2VectorOfOpResult(
+    PyObject* obj, const std::string& op_type, size_t arg_pos) {
+  std::vector<pir::OpResult> result_list;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
       if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
-        result_list.emplace_back(::pybind11::handle(item).cast<ir::OpResult>());
+        result_list.emplace_back(
+            ::pybind11::handle(item).cast<pir::OpResult>());
       } else if (item == Py_None) {
         continue;
       } else {
@@ -1529,7 +1531,8 @@ std::vector<ir::OpResult> CastPyArg2VectorOfOpResult(PyObject* obj,
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
       if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
-        result_list.emplace_back(::pybind11::handle(item).cast<ir::OpResult>());
+        result_list.emplace_back(
+            ::pybind11::handle(item).cast<pir::OpResult>());
       } else if (item == Py_None) {
         continue;
       } else {
@@ -1543,7 +1546,7 @@ std::vector<ir::OpResult> CastPyArg2VectorOfOpResult(PyObject* obj,
       }
     }
   } else if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
-    return {::pybind11::handle(obj).cast<ir::OpResult>()};
+    return {::pybind11::handle(obj).cast<pir::OpResult>()};
   } else if (obj == Py_None) {
     return {};
   } else {

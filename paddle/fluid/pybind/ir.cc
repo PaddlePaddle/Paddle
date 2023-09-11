@@ -25,40 +25,42 @@
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/api_builder.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
-#include "paddle/ir/core/block.h"
-#include "paddle/ir/core/builtin_attribute.h"
-#include "paddle/ir/core/program.h"
-#include "paddle/ir/core/type.h"
-#include "paddle/ir/core/value.h"
-#include "paddle/ir/pass/pass.h"
-#include "paddle/ir/pass/pass_manager.h"
-#include "paddle/ir/pass/pass_registry.h"
-#include "paddle/ir/transforms/dead_code_elimination_pass.h"
+#include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
+#include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/pir/core/block.h"
+#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/type.h"
+#include "paddle/pir/core/value.h"
+#include "paddle/pir/pass/pass.h"
+#include "paddle/pir/pass/pass_manager.h"
+#include "paddle/pir/pass/pass_registry.h"
+#include "paddle/pir/transforms/dead_code_elimination_pass.h"
 #include "pybind11/stl.h"
 
 namespace py = pybind11;
-using ir::Block;
-using ir::Operation;
-using ir::OpOperand;
-using ir::OpResult;
-using ir::Pass;
-using ir::PassManager;
-using ir::Program;
-using ir::Type;
-using ir::Value;
 using paddle::dialect::APIBuilder;
 using paddle::dialect::DenseTensorType;
+using pir::Block;
+using pir::Operation;
+using pir::OpOperand;
+using pir::OpResult;
+using pir::Pass;
+using pir::PassManager;
+using pir::Program;
+using pir::Type;
+using pir::Value;
 using pybind11::return_value_policy;
 
 USE_PASS(dead_code_elimination);
+USE_PASS(inplace);
 
 namespace paddle {
 namespace pybind {
@@ -109,9 +111,10 @@ void BindProgram(py::module *m) {
             print("start up program is: {}".format(startup_program))
   )DOC");
   program
-      .def(
-          "__init__",
-          [](Program &self) { new (&self) Program(ir::IrContext::Instance()); })
+      .def("__init__",
+           [](Program &self) {
+             new (&self) Program(pir::IrContext::Instance());
+           })
       .def("__str__",
            [](const std::shared_ptr<Program> &self) {
              std::ostringstream print_stream;
@@ -245,6 +248,17 @@ void BindOperation(py::module *m) {
              }
              return op_list;
            })
+      .def("get_input_grad_semantics",
+           [](Operation &self) -> py::list {
+             py::list op_list;
+             paddle::dialect::OpYamlInfoInterface yaml_interface =
+                 self.dyn_cast<paddle::dialect::OpYamlInfoInterface>();
+             auto inputs_grad_info = std::get<0>(yaml_interface.GetOpInfo());
+             for (auto &input_grad_info : inputs_grad_info) {
+               op_list.append(input_grad_info.with_grad_semantic);
+             }
+             return op_list;
+           })
       .def("replace_all_uses_with",
            [](Operation &self, const std::vector<OpResult> &op_results) {
              self.ReplaceAllUsesWith(op_results);
@@ -274,7 +288,7 @@ void BindValue(py::module *m) {
              return self.impl() == other.value_impl();
            })
       .def("__hash__",
-           [](const Value &self) { return std::hash<ir::Value>{}(self); });
+           [](const Value &self) { return std::hash<pir::Value>{}(self); });
 }
 
 void BindOpOperand(py::module *m) {
@@ -302,10 +316,10 @@ bool GetStopGradient(const OpResult &self) {
   auto *defining_op = self.owner();
   if (defining_op->HasAttribute(kAttrStopGradients)) {
     auto stop_gradients = defining_op->attribute(kAttrStopGradients)
-                              .dyn_cast<ir::ArrayAttribute>()
+                              .dyn_cast<pir::ArrayAttribute>()
                               .AsVector();
     return stop_gradients[self.GetResultIndex()]
-        .dyn_cast<ir::BoolAttribute>()
+        .dyn_cast<pir::BoolAttribute>()
         .data();
   } else {
     return false;
@@ -314,21 +328,21 @@ bool GetStopGradient(const OpResult &self) {
 
 void SetStopGradient(const OpResult &self, bool stop_gradient) {
   auto *defining_op = self.owner();
-  std::vector<ir::Attribute> stop_gradients;
+  std::vector<pir::Attribute> stop_gradients;
   if (defining_op->HasAttribute(kAttrStopGradients)) {
     stop_gradients = defining_op->attribute(kAttrStopGradients)
-                         .dyn_cast<ir::ArrayAttribute>()
+                         .dyn_cast<pir::ArrayAttribute>()
                          .AsVector();
   } else {
-    stop_gradients = std::vector<ir::Attribute>(
+    stop_gradients = std::vector<pir::Attribute>(
         defining_op->num_results(),
-        ir::BoolAttribute::get(ir::IrContext::Instance(), false));
+        pir::BoolAttribute::get(pir::IrContext::Instance(), false));
   }
   stop_gradients[self.GetResultIndex()] =
-      ir::BoolAttribute::get(ir::IrContext::Instance(), stop_gradient);
+      pir::BoolAttribute::get(pir::IrContext::Instance(), stop_gradient);
   defining_op->set_attribute(
       kAttrStopGradients,
-      ir::ArrayAttribute::get(ir::IrContext::Instance(), stop_gradients));
+      pir::ArrayAttribute::get(pir::IrContext::Instance(), stop_gradients));
 }
 
 void BindOpResult(py::module *m) {
@@ -347,7 +361,7 @@ void BindOpResult(py::module *m) {
            })
       .def("__hash__",
            [](OpResult &self) {
-             return std::hash<ir::Value>{}(self.dyn_cast<ir::Value>());
+             return std::hash<pir::Value>{}(self.dyn_cast<pir::Value>());
            })
       .def("get_defining_op",
            &OpResult::GetDefiningOp,
@@ -414,8 +428,8 @@ void BindUtils(pybind11::module *m) {
   m->def("reset_insertion_point_to_end",
          []() { APIBuilder::Instance().ResetInsertionPointToEnd(); });
   m->def("register_paddle_dialect", []() {
-    ir::IrContext::Instance()
-        ->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+    pir::IrContext::Instance()
+        ->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   });
   m->def(
       "translate_to_new_ir",
@@ -463,7 +477,7 @@ void BindUtils(pybind11::module *m) {
   m->def(
       "check_unregistered_ops",
       [](const framework::ProgramDesc &legacy_program) {
-        ir::IrContext *ctx = ir::IrContext::Instance();
+        pir::IrContext *ctx = pir::IrContext::Instance();
         return paddle::translator::CheckUnregisteredOperation(ctx,
                                                               legacy_program);
       },
@@ -503,13 +517,13 @@ void BindPassManager(pybind11::module *m) {
       .def(
           "__init__",
           [](PassManager &self, uint8_t opt_level) {
-            new (&self) PassManager(ir::IrContext::Instance(), opt_level);
+            new (&self) PassManager(pir::IrContext::Instance(), opt_level);
           },
           py::arg("opt_level") = 2)
       .def("add_pass",
-           [](PassManager &self, std::string pass_name) {
+           [](PassManager &self, const std::string &pass_name) {
              self.AddPass(
-                 std::move(ir::PassRegistry::Instance().Get(pass_name)));
+                 std::move(pir::PassRegistry::Instance().Get(pass_name)));
            })
       .def("passes",
            [](PassManager &self) {

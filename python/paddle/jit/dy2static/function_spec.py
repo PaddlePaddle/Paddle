@@ -18,8 +18,8 @@ import inspect
 import numpy as np
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.base import core
+from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.jit.translated_layer import TranslatedLayer
 from paddle.nn.layer import layers
 
@@ -299,7 +299,7 @@ def _replace_value_with_input_spec(args):
             stop_gradient = input_var.stop_gradient
             input_var = paddle.static.InputSpec.from_tensor(input_var)
             input_var.stop_gradient = stop_gradient
-        elif isinstance(input_var, paddle.fluid.framework.Variable):
+        elif isinstance(input_var, paddle.base.framework.Variable):
             stop_gradient = input_var.stop_gradient
             input_var = paddle.static.InputSpec(
                 input_var.shape, input_var.dtype, input_var.name
@@ -325,7 +325,7 @@ def _replace_to_input_spec_with_new_name(args, arg_names):
                 stop_gradient = origin_input.stop_gradient
                 input_var = paddle.static.InputSpec.from_tensor(origin_input)
                 input_var.stop_gradient = stop_gradient
-            elif isinstance(origin_input, paddle.fluid.framework.Variable):
+            elif isinstance(origin_input, paddle.base.framework.Variable):
                 stop_gradient = origin_input.stop_gradient
                 input_var = paddle.static.InputSpec(
                     origin_input.shape, origin_input.dtype, origin_input.name
@@ -339,7 +339,7 @@ def _replace_to_input_spec_with_new_name(args, arg_names):
                 (
                     np.ndarray,
                     core.eager.Tensor,
-                    paddle.fluid.framework.Variable,
+                    paddle.base.framework.Variable,
                 ),
             ):
                 input_var.name = f"_jst.{str(order).zfill(order_digit)}.{name_prefix}.{str(index)}"

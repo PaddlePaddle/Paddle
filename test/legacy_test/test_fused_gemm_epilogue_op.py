@@ -19,7 +19,7 @@ import numpy as np
 from eager_op_test import OpTest, skip_check_grad_ci, skip_check_inplace_ci
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 from paddle.incubate.nn.functional import fused_linear_activation
 
 
