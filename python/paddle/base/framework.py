@@ -1007,13 +1007,13 @@ def name_scope(prefix=None):
             ...     a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
             ...     b = a + paddle.to_tensor(1)
             ...     with paddle.static.name_scope("s2"):
-            ...         c = b * 1
+            ...         c = b * paddle.to_tensor(1)
             ...     with paddle.static.name_scope("s3"):
-            ...         d = c / 1
+            ...         d = c / paddle.to_tensor(1)
             >>> with paddle.static.name_scope("s1"):
             ...     f = paddle.tensor.pow(d, 2.0)
             >>> with paddle.static.name_scope("s4"):
-            ...     g = f - 1
+            ...     g = f - paddle.to_tensor(1)
 
             >>> # Op are created in the default main program.
             >>> for op in paddle.static.default_main_program().block(0).ops:
@@ -7537,9 +7537,10 @@ def default_main_program():
             >>> y = paddle.static.data(name='y', shape=[100, 100], dtype='float32')
             >>> out = paddle.add(x, y)
 
-            >>> #print the number of blocks in the program, 1 in this case
-            >>> print(paddle.static.default_main_program().num_blocks) # 1
-            >>> #print the default_main_program
+            >>> # print the number of blocks in the program, 1 in this case
+            >>> print(paddle.static.default_main_program().num_blocks)
+            1
+            >>> # print the default_main_program
             >>> print(paddle.static.default_main_program())
     """
     return _main_program_
