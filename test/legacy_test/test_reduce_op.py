@@ -191,7 +191,7 @@ def create_test_fp16_class(parent):
 
 
 create_test_fp16_class(TestSumOp)
-# create_test_fp16_class(TestSumOp_ZeroDim)
+create_test_fp16_class(TestSumOp_ZeroDim)
 create_test_fp16_class(TestSumOp5D)
 create_test_fp16_class(TestSumOp6D)
 create_test_fp16_class(TestSumOp8D)
@@ -235,7 +235,7 @@ def create_test_bf16_class(parent):
 
 
 create_test_bf16_class(TestSumOp)
-# create_test_bf16_class(TestSumOp_ZeroDim)
+create_test_bf16_class(TestSumOp_ZeroDim)
 create_test_bf16_class(TestSumOp5D)
 create_test_bf16_class(TestSumOp6D)
 create_test_bf16_class(TestSumOp8D)
