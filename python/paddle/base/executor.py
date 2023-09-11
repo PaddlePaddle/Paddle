@@ -409,7 +409,7 @@ def has_fetch_operators(
 
 
 def has_fetch_operations(
-    block, fetch_targets, fetch_holder_name, fetch_op='pd.fetch'
+    block, fetch_targets, fetch_holder_name, fetch_op='pd_op.fetch'
 ):
     """Check whether the block already has fetch operation.
 
@@ -514,7 +514,7 @@ def _add_new_ir_fetch_ops(program, fetch_list, fetch_var_name):
     import paddle
 
     global_block = program.block()
-    fetch_op = "pd.fetch"
+    fetch_op = "pd_op.fetch"
     if not has_fetch_operations(
         global_block, fetch_list, fetch_var_name, fetch_op
     ):
@@ -1249,7 +1249,7 @@ class Executor:
         # feed var to framework
         global_block = program.block()
         for op in global_block.ops:
-            if op.name() == 'pd.data':
+            if op.name() == 'pd_op.data':
                 feed_target_name = op.attrs()["name"]
                 var_type = paddle_type_to_proto_type[op.attrs()["dtype"]]
                 var_shape = op.attrs()["shape"]
@@ -1721,13 +1721,7 @@ class Executor:
                     "Please ensure you create model correctly or you can pass "
                     "the Program or the CompiledProgram manually."
                 )
-            else:
-                error_info = (
-                    "There are no operators in the program to be executed. "
-                    "If you pass Program manually, please use base.program_guard "
-                    "to ensure the current Program is being used."
-                )
-            warnings.warn(error_info)
+                warnings.warn(error_info)
 
         if scope is None:
             scope = global_scope()
