@@ -28,181 +28,36 @@ class OpEquationContext {
  public:
   OpEquationContext(const OpEquationContext&) = delete;
   OpEquationContext(OpEquationContext&&) = delete;
+  virtual ~OpEquationContext() {}
 
-  explicit OpEquationContext(
-      const std::vector<std::uint64_t>& in_tensors_ranks,
-      const std::vector<std::uint64_t>& out_tensors_ranks)
-      : in_tensors_ranks_(in_tensors_ranks),
-        out_tensors_ranks_(out_tensors_ranks),
-        equations_{} {
-    Init(&in_iterator_tuples_, in_tensors_ranks);
-    Init(&out_iterator_tuples_, out_tensors_ranks);
-    Init(&in_stride_tuples_, in_tensors_ranks);
-    Init(&out_stride_tuples_, out_tensors_ranks);
-    Init(&in_dim_tuples_, in_tensors_ranks);
-    Init(&out_dim_tuples_, out_tensors_ranks);
+  virtual const std::vector<std::uint64_t>& GetInTensorsRanks() const = 0;
 
-    GenerateDots();
-    fake_op_placeholder_ = GenerateFakeOpPlaceholder();
-  }
+  virtual const std::vector<std::uint64_t>& GetOutTensorsRanks() const = 0;
 
-  const std::vector<std::uint64_t>& GetInTensorsRanks() const {
-    return in_tensors_ranks_;
-  }
+  virtual void Equal(const Iterator& lhs, const Iterator& rhs) = 0;
 
-  const std::vector<std::uint64_t>& GetOutTensorsRanks() const {
-    return out_tensors_ranks_;
-  }
+  virtual void Equal(const Index& lhs, const Index& rhs) = 0;
 
-  void Equal(const Iterator& lhs, const Iterator& rhs) {
-    this->Equal<Iterator>(lhs, rhs);
-  }
+  virtual void Equal(const IteratorTuple& lhs, const IteratorTuple& rhs) = 0;
 
-  void Equal(const Index& lhs, const Index& rhs) {
-    this->Equal<Index>(lhs, rhs);
-  }
+  virtual const IteratorTuple& GetInIteratorTuple(std::size_t input_idx) const  = 0;
 
-  void Equal(const IteratorTuple& lhs, const IteratorTuple& rhs) {
-    CHECK(lhs.size() == rhs.size());
-    for (std::size_t i = 0; i < lhs.size(); ++i) {
-      this->Equal(lhs.at(i), rhs.at(i));
-    }
-  }
+  virtual const IteratorTuple& GetOutIteratorTuple(std::size_t output_idx) const = 0;
 
-  const IteratorTuple& GetInIteratorTuple(std::size_t input_idx) const {
-    return in_iterator_tuples_.at(input_idx);
-  }
+  virtual const Index& GetInIndex(std::size_t input_idx) const = 0;
 
-  const IteratorTuple& GetOutIteratorTuple(std::size_t output_idx) const {
-    return out_iterator_tuples_.at(output_idx);
-  }
+  virtual const Index& GetOutIndex(std::size_t output_idx) const = 0;
 
-  const Index& GetInIndex(std::size_t input_idx) const {
-    return in_indexes_.at(input_idx);
-  }
+  virtual const StrideTuple& GetInStrideTuple(std::size_t input_idx) const = 0;
 
-  const Index& GetOutIndex(std::size_t output_idx) const {
-    return out_indexes_.at(output_idx);
-  }
+  virtual const StrideTuple& GetOutStrideTuple(std::size_t output_idx) const = 0;
 
-  const StrideTuple& GetInStrideTuple(std::size_t input_idx) const {
-    return in_stride_tuples_.at(input_idx);
-  }
+  virtual const DimTuple& GetInDimTuple(std::size_t input_idx) const = 0;
 
-  const StrideTuple& GetOutStrideTuple(std::size_t output_idx) const {
-    return out_stride_tuples_.at(output_idx);
-  }
+  virtual const DimTuple& GetOutDimTuple(std::size_t output_idx) const = 0;
 
-  const DimTuple& GetInDimTuple(std::size_t input_idx) const {
-    return in_dim_tuples_.at(input_idx);
-  }
-
-  const DimTuple& GetOutDimTuple(std::size_t output_idx) const {
-    return out_dim_tuples_.at(output_idx);
-  }
-
-  const FakeOpPlaceHolder& fake_op_placeholder() const {
-    return fake_op_placeholder_;
-  }
-
-  template <typename DoEachT>
-  void VisitEachTensorIndex(const DoEachT& DoEach) const {
-    VisitEachInputTensorIndex(DoEach);
-    VisitEachOutputTensorIndex(DoEach);
-  }
-
-  template <typename DoEachT>
-  void VisitEachInputTensorIndex(const DoEachT& DoEach) const {
-    for (const auto& in_index : in_indexes_) {
-      DoEach(in_index);
-    }
-  }
-
-  template <typename DoEachT>
-  void VisitEachOutputTensorIndex(const DoEachT& DoEach) const {
-    for (const auto& out_index : out_indexes_) {
-      DoEach(out_index);
-    }
-  }
-
-  template <typename DoEachT>
-  void VisitEachEquation(const DoEachT& DoEach) const {
-    for (const auto& equation : *equations_) {
-      DoEach(equation);
-    }
-  }
-
- private:
-  template <typename ContainerT>
-  void Init(std::vector<ContainerT>* vec,
-            const std::vector<std::uint64_t>& tensors_ranks) {
-    for (std::size_t i = 0; i < tensors_ranks.size(); ++i) {
-      vec->push_back(ContainerT{});
-      for (std::size_t j = 0; j < tensors_ranks.at(i); ++j) {
-        vec->at(i).push_back(ContainerT::value_type{UniqueId::New()});
-      }
-    }
-  }
-
-  Index Dot(const IteratorTuple& iterator_tuple,
-            const StrideTuple& stride_tuple) {
-    CHECK(iterator_tuple.size() == stride_tuple.size());
-    Index index{UniqueId::New()};
-    equations_->emplace_back(
-        equation::Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>(
-            stride_tuple, index, iterator_tuple));
-    equations_->emplace_back(
-        equation::UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>(
-            stride_tuple, iterator_tuple, index));
-    return index;
-  }
-
-  void GenerateDots() {
-    for (std::size_t i = 0; i < in_tensors_ranks_.size(); ++i) {
-      Index index{UniqueId::New()};
-      in_indexes_.emplace_back(index);
-      Equal(index, Dot(GetInIteratorTuple(i), GetInStrideTuple(i)));
-    }
-    for (std::size_t i = 0; i < out_tensors_ranks_.size(); ++i) {
-      Index index{UniqueId::New()};
-      out_indexes_.emplace_back(index);
-      Equal(index, Dot(GetOutIteratorTuple(i), GetOutStrideTuple(i)));
-    }
-  }
-
-  template <typename T>
-  void Equal(const T& lhs, const T& rhs) {
-    equations_->emplace_back(Identity<tOut<T>, tIn<T>>(lhs, rhs));
-    equations_->emplace_back(Identity<tOut<T>, tIn<T>>(rhs, lhs));
-  }
-
-  FakeOpPlaceHolder GenerateFakeOpPlaceholder() const {
-    FakeOpPlaceHolder fake_op_placeholder{UniqueId::New()};
-
-    List<Index> input_output_indexes;
-    VisitEachTensorIndex(
-        [&](const auto& index) { input_output_indexes->emplace_back(index); });
-
-    equations_->emplace_back(
-        ConstructFakeOpPlaceHolder<tOut<FakeOpPlaceHolder>, tIn<List<Index>>>{
-            fake_op_placeholder, input_output_indexes});
-
-    return fake_op_placeholder;
-  }
-
-  std::vector<std::uint64_t> in_tensors_ranks_;
-  std::vector<std::uint64_t> out_tensors_ranks_;
-  std::vector<IteratorTuple> in_iterator_tuples_;
-  std::vector<IteratorTuple> out_iterator_tuples_;
-  std::vector<Index> in_indexes_;
-  std::vector<Index> out_indexes_;
-  std::vector<StrideTuple> in_stride_tuples_;
-  std::vector<StrideTuple> out_stride_tuples_;
-  std::vector<DimTuple> in_dim_tuples_;
-  std::vector<DimTuple> out_dim_tuples_;
-
-  Equations equations_;
-  FakeOpPlaceHolder fake_op_placeholder_;
+ protected:
+  OpEquationContext() = default;
 };
 
 }  // namespace cinn::adt::equation::config

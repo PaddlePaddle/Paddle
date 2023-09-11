@@ -21,13 +21,14 @@
 #include "paddle/cinn/adt/anchor_sd_equation_context.h"
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/equation_graph.h"
+#include "paddle/cinn/adt/naive_op_equation_context.h"
 #include "paddle/cinn/adt/m_ir.h"
 
 namespace cinn::adt {
 
 using AnchorIndex = eqaution::Index;
 using EquationCtx4OpStmtT =
-    std::function<std::shared_ptr<equation::config::OpEquationContext>(
+    std::function<std::shared_ptr<equation::config::NativeOpEquationContext>(
         const m_expr::OpStmt&)>;
 
 class IGroup final {
@@ -40,8 +41,9 @@ class IGroup final {
                   const EquationCtx4OpStmtT& EquationCtx4OpStmt)
       : op_stmts_(op_stmts),
         anchor_index_(anchor_index),
-        EquationCtx4OpStmt_(EquationCtx4OpStmt),
-        index2tensor_(GenerateIndex2Tensor(op_stmts, EquationCtx4OpStmt)) {}
+        EquationCtx4OpStmt_(EquationCtx4OpStmt) {
+          GenerateIndex2Tensor(op_stmts, EquationCtx4OpStmt, &index2tensor_, &tensor2indexes_);
+        }
 
   const List<m_expr::OpStmt>& op_stmts() const { return op_stmts_; }
 
@@ -60,6 +62,10 @@ class IGroup final {
     return index2tensor_->at(index);
   }
 
+  const std::vector<equation::Index>& GetIndexes(const m_expr::Tensor& tensor) const {
+    return tensor2indexes_->at(tensor);
+  }
+
   const std::optional<equation::config::AnchorSdEquationContext>&
   anchor_sd_equation_ctx() const {
     return anchor_sd_equation_ctx_;
@@ -76,33 +82,33 @@ class IGroup final {
   }
 
  private:
-  static std::unordered_map<eqaution::Index, m_expr::Tensor>
-  GenerateIndex2Tensor(const List<m_expr::OpStmt>& op_stmts,
-                       const EquationCtx4OpStmtT& EquationCtx4OpStmt) {
-    std::unordered_map<eqaution::Index, m_expr::Tensor> index2tensor;
-
+  static  void GenerateIndex2Tensor(const List<m_expr::OpStmt>& op_stmts,
+                       const EquationCtx4OpStmtT& EquationCtx4OpStmt,
+                       std::unordered_map<eqaution::Index, m_expr::Tensor>* index2tensor,
+                       std::unordered_map<m_expr::Tensor, std::vector<equation::Index>>* tensor2indexes) {
     for (const auto& op_stmt : *op_stmts) {
       const auto* ctx = EquationCtx4OpStmt(op_stmt);
       const auto& [op, op_inputs, op_outputs] = op_stmt.tuple();
       for (std::size_t idx = 0; idx < op_inputs.value()->size(); ++idx) {
-        CHECK(index2tensor
-                  .emplace(ctx->GetInIndex(idx), op_inputs.value()->at(idx))
-                  .second);
+        const auto& index = ctx->GetInIndex(idx);
+        const auto& tensor = op_inputs.value()->at(idx);
+        CHECK(index2tensor->emplace(index, tensor).second);
+        (*tensor2indexes)[tensor].emplace_back(index);
       }
       for (std::size_t idx = 0; idx < op_outputs.value()->size(); ++idx) {
-        CHECK(index2tensor
-                  .emplace(ctx->GetOutIndex(idx), op_outputs.value()->at(idx))
-                  .second);
+        const auto& index = ctx->GetOutIndex(idx);
+        const auto& tensor = op_outputs.value()->at(idx);
+        CHECK(index2tensor->emplace(index, tensor).second);
+        (*tensor2indexes)[tensor].emplace_back(index);
       }
     }
-
-    return index2tensor;
   }
 
   List<m_expr::OpStmt> op_stmts_;
   AnchorIndex anchor_index_;
   EquationCtx4OpStmtT EquationCtx4OpStmt_;
   std::unordered_map<equation::Index, m_expr::Tensor> index2tensor_;
+  std::unordered_map<m_expr::Tensor, std::vector<equation::Index>> tensor2indexes_;
   std::optional<equation::config::AnchorSdEquationContext>
       anchor_sd_equation_ctx_;
 };

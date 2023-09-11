@@ -31,4 +31,7 @@ DEFINE_ADT_TAG(tIndexVar);
 DEFINE_ADT_TAG(tTensorSize);
 DEFINE_ADT_TAG(tStride);
 
+DEFINE_ADT_TAG(tInMsgBox);
+DEFINE_ADT_TAG(tOutMsgBox);
+
 }  // namespace cinn::adt

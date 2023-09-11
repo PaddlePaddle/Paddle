@@ -130,23 +130,19 @@ struct UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>
   using Tuple<List<Stride>, tOut<List<Iterator>>, tIn<Index>>::Tuple;
 };
 
-template <typename OutT, typename InT>
-struct ConstructFakeOpPlaceHolder;
-
-// ConstructFakeOpPlaceHolder (tOut FakeOpPlaceHolder) (tIn [Index])
-template <>
-struct ConstructFakeOpPlaceHolder<tOut<FakeOpPlaceHolder>, tIn<List<Index>>>
-    : public Tuple<tOut<FakeOpPlaceHolder>, tIn<List<Index>>> {
-  using Tuple<tOut<FakeOpPlaceHolder>, tIn<List<Index>>>::Tuple;
+// OpArgIndexes = (tIn [Index], tOut [Index])
+struct OpArgIndexes final : public Tuple<tIn<List<Index>>, tOut<List<Index>>> {
+ using Tuple<tIn<List<Index>>, tOut<List<Index>>>::Tuple;
 };
 
-template <typename T0, typename T1>
-struct ConstructTensorIndex2Tensor;
+template <typename OutT, typename InT>
+struct InMsgBox2OutMsgBox;
 
+// InMsgBox2OutMsgBox (tOut (tOutMsgBox OpArgIndexes)) (tIn (tInMsgBox OpArgIndexes))
 template <>
-struct ConstructTensorIndex2Tensor<cinn::hlir::framework::NodeData*, tIn<Index>>
-    : public Tuple<cinn::hlir::framework::NodeData*, tIn<Index>> {
-  using Tuple<cinn::hlir::framework::NodeData*, tIn<Index>>::Tuple;
+struct InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>, tIn<tInMsgBox<OpArgIndexes>>>
+    : public Tuple<FakeOpPlaceHolder, tOut<tOutMsgBox<OpArgIndexes>>, tIn<tInMsgBox<OpArgIndexes>>> {
+  using Tuple<FakeOpPlaceHolder, tOut<tOutMsgBox<OpArgIndexes>>, tIn<tInMsgBox<OpArgIndexes>>>::Tuple;
 };
 
 // clang-format off
@@ -155,10 +151,7 @@ DEFINE_ADT_UNION(Equation,
                  Identity<tOut<Index>, tIn<Index>>,
                  Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>,
                  UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>,
-                 ConstructFakeOpPlaceHolder<tOut<FakeOpPlaceHolder>,
-                                            tIn<List<Index>>>,
-                 ConstructTensorIndex2Tensor<cinn::hlir::framework::NodeData*,
-                                             tIn<Index>>);
+                 InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>, tIn<tInMsgBox<OpArgIndexes>>>);
 
 // Variable = Iterator | Index | FakeOpPlaceHolder
 DEFINE_ADT_UNION(Variable,
@@ -225,10 +218,6 @@ struct hash<cinn::adt::equation::Variable> final {
             },
             [](const cinn::adt::equation::Index& index) {
               return std::hash<cinn::adt::equation::Index>()(index);
-            },
-            [](const cinn::adt::equation::FakeOpPlaceHolder& placeholder) {
-              return std::hash<cinn::adt::equation::FakeOpPlaceHolder>()(
-                  placeholder);
             }};
     return cinn::adt::hash_combine(hash_value, variable.variant().index());
   }

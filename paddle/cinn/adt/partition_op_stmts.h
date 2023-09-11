@@ -18,11 +18,12 @@
 #include "paddle/cinn/adt/equation_graph.h"
 #include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/adt/naive_op_equation_context.h"
 
 namespace cinn::adt::partition {
 
 using EquationCtx4OpStmtT =
-    std::function<std::shared_ptr<equation::config::OpEquationContext>(
+    std::function<std::shared_ptr<equation::config::NativeOpEquationContext>(
         const m_expr::OpStmt&)>;
 using TensorIndex = equation::Variable;
 using AnchorIndex = TensorIndex;

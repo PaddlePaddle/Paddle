@@ -43,24 +43,8 @@ class IndexExprInferContext final {
     return map_.count(variable) > 0;
   }
 
-  void AddTensorIndex2Tensor(const Index& index,
-                             const m_expr::Tensor& tensor_ptr) {
-    CHECK(tensor_index2tensor_.emplace(index, tensor_ptr).second);
-    CHECK(tensor2tensor_index_.emplace(tensor_ptr, index).second);
-  }
-
-  const m_expr::Tensor& GetTensor(const Index& index) const {
-    return tensor_index2tensor_.at(index);
-  }
-
-  const Index GetIndex(const m_expr::Tensor& tensor) const {
-    return tensor2tensor_index_.at(tensor);
-  }
-
  private:
   std::unordered_map<const Variable, Value> map_;
-  std::unordered_map<const Index, const m_expr::Tensor> tensor_index2tensor_;
-  std::unordered_map<const m_expr::Tensor, const Index> tensor2tensor_index_;
 };
 
 }  // namespace cinn::adt::equation

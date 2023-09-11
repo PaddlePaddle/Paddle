@@ -167,13 +167,17 @@ class Graph final : public std::enable_shared_from_this<Graph> {
                               out_iterators.value()->end());
         in_variables.emplace(in_index.value());
       },
-      [&](const ConstructFakeOpPlaceHolder<tOut<FakeOpPlaceHolder>,
-                                           tIn<List<Index>>>& construct_fake) {
-        const auto& [out_fake_op_placeholder, in_indexes] =
-            construct_fake.tuple();
-        out_variables.emplace(out_fake_op_placeholder.value());
-        in_variables.emplace(in_indexes.value()->begin(),
-                             in_indexes.value()->end());
+      [&](const InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>,
+                                   tIn<tInMsgBox<OpArgIndexes>>>& in_msg_box2out_msg_box) {
+        const auto& [_, out_box_indexes, in_box_indexes] = in_msg_box2out_msg_box.tuple();
+        const auto& [out_box_in_indexes, out_box_out_indexes] = out_box_indexes.value().value().tuple();
+        const auto& [in_box_in_indexes, in_box_out_indexes] = in_box_indexes.value().value().tuple();
+        out_variables.emplace(out_box_in_indexes->begin(), out_box_in_indexes->end());
+        out_variables.emplace(out_box_out_indexes->begin(), out_box_out_indexes->end());
+        in_variables.emplace(in_box_in_indexes->begin(),
+                             in_box_in_indexes->end());
+        in_variables.emplace(in_box_out_indexes->begin(),
+                             in_box_out_indexes->end());
       }
     };
     // clang-format on
