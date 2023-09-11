@@ -277,9 +277,8 @@ class DrrRewritePattern : public ir::RewritePattern {
       std::vector<OpCall*> drr_output_sequence_candidate,
       std::vector<ir::Operation*> ir_output_sequence,
       const std::shared_ptr<MatchContextImpl>& source_pattern_match_ctx) const {
-    // assert: equal sequence length
-    IR_ENFORCE(drr_output_sequence_candidate.size() ==
-               ir_output_sequence.size());
+    VLOG(6) << "Assert drr_output and ir_output have equal lengths" IR_ENFORCE(
+        drr_output_sequence_candidate.size() == ir_output_sequence.size());
     // init
     std::unordered_set<const OpCall*> drr_visited;
     std::unordered_set<Operation*> ir_visited;
@@ -310,18 +309,26 @@ class DrrRewritePattern : public ir::RewritePattern {
       auto ir_Operands = ir_node->operands();
       // check input size
       if (drr_input_tensors.size() != ir_Operands.size()) {
+        VLOG(6) << "Match False! drr_node input size:"
+                << drr_input_tensors.size()
+                << "not equal ir_node input size:" << ir_Operands.size();
         matched = false;
         break;
       }
       // check output size
-      if (drr_node->outputs().size() != ir_node->operands().size()) {
+      if (drr_node->outputs().size() != ir_node->num_results()) {
+        VLOG(6) << "Match False! drr_node output size:"
+                << drr_node->outputs().size()
+                << "not equal ir_node output size:" << ir_node->num_results();
         matched = false;
         break;
       }
       // check visited
-      if (!drr_visited.count(drr_node) && !ir_visited.count(ir_node)) {
+      if (drr_visited.count(drr_node) && ir_visited.count(ir_node)) {
         continue;
-      } else if (!(drr_visited.count(drr_node) && ir_visited.count(ir_node))) {
+      } else if (!(!drr_visited.count(drr_node) &&
+                   !ir_visited.count(ir_node))) {
+        VLOG(6) << "binding of ir_node and drr_node is not synchronized";
         matched = false;
         break;
       }
@@ -329,16 +336,19 @@ class DrrRewritePattern : public ir::RewritePattern {
           drr_node, std::make_shared<IrOperation>(ir_node));
       // join the producerOp of input
       for (size_t i = 0; i < drr_input_tensors.size(); ++i) {
-        auto* drr_ancestor_op = drr_input_tensors[i]->producer();
-        auto* ir_ancestor_op = ir_Operands[i];
-        if (drr_ancestor_op->name() != ir_ancestor_op->name()) {
+        auto* drr_producer_op = drr_input_tensors[i]->producer();
+        auto* ir_producer_op = ir_Operands[i];
+        if (drr_producer_op->name() != ir_producer_op->name()) {
+          VLOG(6) << "Match False! drr_producer_op name:"
+                  << drr_node->outputs().size()
+                  << "not equal ir_producer_op node:" << ir_node->num_results();
           matched = false;
           break;
         } else {
-          drr_q.push(drr_ancestor_op);
-          ir_q.push(ir_ancestor_op);
-          drr_visited.insert(drr_ancestor_op);
-          ir_visited.insert(ir_ancestor_op);
+          drr_q.push(drr_producer_op);
+          ir_q.push(ir_producer_op);
+          drr_visited.insert(drr_producer_op);
+          ir_visited.insert(ir_producer_op);
         }
       }
 
