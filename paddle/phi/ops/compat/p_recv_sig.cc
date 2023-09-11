@@ -17,20 +17,26 @@
 namespace phi {
 
 KernelSignature PRecvOpArgumentMapping(const ArgumentMappingContext& ctx) {
-    paddle::small_vector<const char*> inputs {};
-    paddle::small_vector<const char*> attrs;
+  paddle::small_vector<const char*> inputs{};
+  paddle::small_vector<const char*> attrs;
 
-    attrs.emplace_back("peer");
-    attrs.emplace_back("dtype");
-    paddle::small_vector<const char*> outputs {"out"};
+  attrs.emplace_back("peer");
+  attrs.emplace_back("dtype");
+  paddle::small_vector<const char*> outputs{"out"};
 
-    if ( ctx.IsDenseTensorOutput("X"))  {
-        attrs.emplace_back("dynamic_shape");
-        return KernelSignature("p_recv", std::move(inputs), std::move(attrs), std::move(outputs));
-    } else if (ctx.IsDenseTensorVectorOutput("X")) {
-        attrs.emplace_back("out_shape");
-        return KernelSignature("p_recv_array", std::move(inputs), std::move(attrs), std::move(outputs));
-    } else { return KernelSignature("unregistered", {}, {}, {}); }
+  if (ctx.IsDenseTensorOutput("X")) {
+    attrs.emplace_back("dynamic_shape");
+    return KernelSignature(
+        "p_recv", std::move(inputs), std::move(attrs), std::move(outputs));
+  } else if (ctx.IsDenseTensorVectorOutput("X")) {
+    attrs.emplace_back("out_shape");
+    return KernelSignature("p_recv_array",
+                           std::move(inputs),
+                           std::move(attrs),
+                           std::move(outputs));
+  } else {
+    return KernelSignature("unregistered", {}, {}, {});
+  }
 }
 
 }  // namespace phi

@@ -17,13 +17,13 @@
 namespace phi {
 
 KernelSignature PSendOpArgumentMapping(const ArgumentMappingContext& ctx) {
-   if ( ctx.IsDenseTensorInput("X"))  {
-        return KernelSignature("p_send", {"x"}, {"peer", "dynamic_shape"}, {});
-    }
-    else if (ctx.IsDenseTensorVectorInput("X")) {
-        return KernelSignature("p_send_array", {"x"}, {"peer"}, {});
-    }
-    else { return KernelSignature("unregistered", {}, {}, {}); }
+  if (ctx.IsDenseTensorInput("X")) {
+    return KernelSignature("p_send", {"x"}, {"peer", "dynamic_shape"}, {});
+  } else if (ctx.IsDenseTensorVectorInput("X")) {
+    return KernelSignature("p_send_array", {"x"}, {"peer"}, {});
+  } else {
+    return KernelSignature("unregistered", {}, {}, {});
+  }
 }
 
 }  // namespace phi
