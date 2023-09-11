@@ -22,6 +22,7 @@ CPP_FILE_TEMPLATE = """
 
 #include "paddle/fluid/pybind/static_op_function.h"
 #include "paddle/fluid/pybind/eager_op_function.h"
+#include "paddle/fluid/pybind/manual_static_op_function.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 
@@ -39,6 +40,9 @@ static PyMethodDef OpsAPI[] = {{
 
 void BindOpsAPI(pybind11::module *module) {{
   if (PyModule_AddFunctions(module->ptr(), OpsAPI) < 0) {{
+    PADDLE_THROW(phi::errors::Fatal("Add C++ api to core.ops failed!"));
+  }}
+  if (PyModule_AddFunctions(module->ptr(), ManualOpsAPI) < 0) {{
     PADDLE_THROW(phi::errors::Fatal("Add C++ api to core.ops failed!"));
   }}
 }}
