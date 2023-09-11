@@ -296,8 +296,6 @@ class TestProgramPruneBackward(unittest.TestCase):
             )
 
     def test_pylayer(self):
-        paddle.enable_static()
-
         def optimizer():
             optimizer = paddle.optimizer.SGD(learning_rate=0.01)
             return optimizer
