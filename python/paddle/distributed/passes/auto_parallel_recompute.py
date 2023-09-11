@@ -416,10 +416,6 @@ class RecomputePass(PassBase):
         # segments ops should be inserted.
         for i in range(len(ops) - 1, loss_op_idx, -1):
             grad_op = ops[i]
-            # remove some attrs of dropout_grad op's desc
-            if grad_op.type == "dropout_grad":
-                grad_op.desc.set_attr("fix_seed", False)
-                grad_op.desc.set_attr("seed", 0)
 
             input_and_output_names = []
             input_and_output_names.extend(grad_op.input_arg_names)
