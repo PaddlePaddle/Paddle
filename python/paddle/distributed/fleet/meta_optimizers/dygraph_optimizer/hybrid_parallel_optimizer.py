@@ -311,7 +311,13 @@ class HybridParallelOptimizer:
             paddle.distributed.all_reduce(
                 sync_var, group=mp_group, sync_op=True
             )
-            sync_var.multiply_(1.0 / mp_group.nranks)
+            sync_var.multiply_(
+                paddle.full(
+                    shape=[],
+                    dtype=sync_var.dtype,
+                    fill_value=(1.0 / mp_group.nranks),
+                )
+            )
 
     def _filter_fn(self, param, strategy):
         p_name = param.name
