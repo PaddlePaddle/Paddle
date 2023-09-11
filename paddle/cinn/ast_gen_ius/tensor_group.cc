@@ -75,10 +75,12 @@ std::vector<ir::Tensor> TensorGroup::GetGenFuncTopoOrder(
   }
 
   std::vector<ir::Tensor> ret;
-  std::vector<std::string> stack;
+
+  // Using set instead of vector/stack in order to get fix alaphbeta order topo
+  std::set<std::string> node_set;
   for (const auto& name_tensor : name_to_tensor_) {
     if (!in_degree.count(name_tensor.first)) {
-      stack.emplace_back(name_tensor.first);
+      node_set.insert(name_tensor.first);
     }
   }
 
@@ -89,12 +91,17 @@ std::vector<ir::Tensor> TensorGroup::GetGenFuncTopoOrder(
   for (const std::string& name : output_tensor_names_) {
     input_arg_names.erase(name);
   }
+  for (const std::string& name : input_arg_names) {
+    VLOG(6) << "input_arg_name = " << name;
+  }
 
-  while (!stack.empty()) {
-    const std::string& cur = stack.back();
-    stack.pop_back();
+  while (!node_set.empty()) {
+    const std::string cur = *(node_set.begin());
+    node_set.erase(node_set.begin());
 
+    VLOG(6) << "cur = " << cur;
     if (!input_arg_names.count(cur)) {
+      VLOG(6) << "push_back cur = " << cur;
       ret.push_back(name_to_tensor_[cur]);
     }
 
@@ -103,7 +110,7 @@ std::vector<ir::Tensor> TensorGroup::GetGenFuncTopoOrder(
       if (dep_tensor_names.count(cur)) {
         --in_degree[dep_pair.first];
         if (in_degree[dep_pair.first] == 0) {
-          stack.emplace_back(dep_pair.first);
+          node_set.insert(dep_pair.first);
         }
       }
     }
