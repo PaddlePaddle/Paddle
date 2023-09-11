@@ -3199,8 +3199,19 @@ function summary_check_problems() {
         echo "==============================================================================="
         echo "*****Example code error***** Please fix the error listed in the information:"
         echo "==============================================================================="
-        echo "$example_info" | grep "API check -- Example Code" -A $(echo "$example_info" | wc -l)
+        echo "$example_info"
+        echo "==============================================================================="
+        echo "*****Example code FAIL*****"
+        echo "==============================================================================="
         exit $example_code
+    else
+        echo "==============================================================================="
+        echo "*****Example code info*****"
+        echo "==============================================================================="
+        echo "$example_info"
+        echo "==============================================================================="
+        echo "*****Example code PASS*****"
+        echo "==============================================================================="
     fi
     set -x
 }
@@ -3868,10 +3879,10 @@ function main() {
         example_info_gpu=""
         example_code_gpu=0
         if [ "${WITH_GPU}" == "ON" ] ; then
-            example_info_gpu=$(exec_samplecode_test gpu)
+            { example_info_gpu=$(exec_samplecode_test gpu 2>&1 1>&3 3>/dev/null); } 3>&1
             example_code_gpu=$?
         fi
-        example_info=$(exec_samplecode_test cpu)
+        { example_info=$(exec_samplecode_test cpu 2>&1 1>&3 3>/dev/null); } 3>&1
         example_code=$?
         summary_check_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
         assert_api_spec_approvals
@@ -3888,10 +3899,10 @@ function main() {
         example_info_gpu=""
         example_code_gpu=0
         if [ "${WITH_GPU}" == "ON" ] ; then
-            example_info_gpu=$(exec_samplecode_test gpu)
+            { example_info_gpu=$(exec_samplecode_test gpu 2>&1 1>&3 3>/dev/null); } 3>&1
             example_code_gpu=$?
         fi
-        example_info=$(exec_samplecode_test cpu)
+        { example_info=$(exec_samplecode_test cpu 2>&1 1>&3 3>/dev/null); } 3>&1
         example_code=$?
         summary_check_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
         assert_api_spec_approvals
@@ -4101,7 +4112,7 @@ function main() {
         build_document_preview
         ;;
       api_example)
-        example_info=$(exec_samplecode_test cpu)
+        { example_info=$(exec_samplecode_test cpu 2>&1 1>&3 3>/dev/null); } 3>&1
         example_code=$?
         summary_check_problems $example_code "$example_info"
         ;;

@@ -33,9 +33,9 @@ def _inplace_apis_in_dygraph_only_(func):
                     func.__name__, origin_api_name
                 )
             )
-            from ..base.dygraph.base import in_declarative_mode
+            from ..base.dygraph.base import in_to_static_mode
 
-            if in_declarative_mode():
+            if in_to_static_mode():
                 for arg in args:
                     if hasattr(arg, "is_view_var") and arg.is_view_var:
                         raise ValueError(
