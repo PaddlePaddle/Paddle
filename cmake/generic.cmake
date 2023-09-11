@@ -118,6 +118,19 @@ function(find_fluid_modules TARGET_NAME)
   endif()
 endfunction()
 
+# NOTE(Aurelius84): NOT_INFER_MODULES is used to tag
+# and not considered as DEPS for inference libs.
+set_property(GLOBAL PROPERTY NOT_INFER_MODULES "")
+
+function(ignore_infer_modules TARGET_NAME)
+  get_property(not_infer_modules GLOBAL PROPERTY NOT_INFER_MODULES)
+  list(FIND not_infer_modules TARGET_NAME is_found)
+  if(is_found EQUAL -1) # NOT FOUND
+    set(not_infer_modules ${not_infer_modules} ${TARGET_NAME})
+    set_property(GLOBAL PROPERTY NOT_INFER_MODULES "${not_infer_modules}")
+  endif()
+endfunction()
+
 set_property(GLOBAL PROPERTY PHI_MODULES "")
 # find all phi modules is used for paddle static library
 # for building inference libs
@@ -335,7 +348,15 @@ function(check_coverage_opt TARGET_NAME SRCS)
 endfunction()
 
 function(cc_library TARGET_NAME)
-  set(options STATIC static SHARED shared INTERFACE interface)
+  set(options
+      STATIC
+      static
+      SHARED
+      shared
+      INTERFACE
+      interface
+      NOT_FOR_INFER
+      not_for_infer)
   set(oneValueArgs "")
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(cc_library "${options}" "${oneValueArgs}"
@@ -347,6 +368,9 @@ function(cc_library TARGET_NAME)
         CACHE STRING "output library name for target ${TARGET_NAME}")
   endif()
   if(cc_library_SRCS)
+    if(cc_library_NOT_FOR_INFER OR cc_library_not_for_infer)
+      ignore_infer_modules(${TARGET_NAME})
+    endif()
     if(cc_library_SHARED OR cc_library_shared) # build *.so
       add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
     elseif(cc_library_INTERFACE OR cc_library_interface)

@@ -16,34 +16,17 @@
 
 // #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type_storage.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/attribute.h"
 
 namespace paddle {
 namespace dialect {
 
-using VariantType = paddle::variant<bool,
-                                    int,
-                                    int64_t,
-                                    float,
-                                    double,
-                                    std::string,
-                                    std::vector<bool>,
-                                    std::vector<int>,
-                                    std::vector<int64_t>,
-                                    std::vector<float>,
-                                    std::vector<double>,
-                                    std::vector<std::string>,
-                                    phi::Scalar,
-                                    std::vector<phi::Scalar>,
-                                    phi::IntArray,
-                                    phi::DataType,
-                                    phi::DataLayout,
-                                    phi::Place>;
+using VariantType = phi::Attribute;
 
 // TODO(zhangbo): The builtin type needs to cover all data types of
 // phi::DataType.
@@ -142,6 +125,44 @@ static inline ir::Attribute TransToIrAttribute(phi::Scalar scalar,
           "Unsupported phi data type `%s` when casting it into "
           "ir attribute.",
           scalar.dtype()));
+  }
+}
+
+inline DataType VarTypeToDataType(
+    ::paddle::framework::proto::VarType_Type var_type) {
+  switch (var_type) {
+    case paddle::framework::proto::VarType_Type::VarType_Type_BOOL:
+      return DataType::BOOL;
+    case paddle::framework::proto::VarType_Type::VarType_Type_INT16:
+      return DataType::INT16;
+    case paddle::framework::proto::VarType_Type::VarType_Type_INT32:
+      return DataType::INT32;
+    case paddle::framework::proto::VarType_Type::VarType_Type_INT64:
+      return DataType::INT64;
+    case paddle::framework::proto::VarType_Type::VarType_Type_FP16:
+      return DataType::FLOAT16;
+    case paddle::framework::proto::VarType_Type::VarType_Type_FP32:
+      return DataType::FLOAT32;
+    case paddle::framework::proto::VarType_Type::VarType_Type_FP64:
+      return DataType::FLOAT64;
+    case paddle::framework::proto::VarType_Type::VarType_Type_SIZE_T:
+      return DataType::UINT64;
+    case paddle::framework::proto::VarType_Type::VarType_Type_UINT8:
+      return DataType::UINT8;
+    case paddle::framework::proto::VarType_Type::VarType_Type_INT8:
+      return DataType::INT8;
+    case paddle::framework::proto::VarType_Type::VarType_Type_BF16:
+      return DataType::BFLOAT16;
+    case paddle::framework::proto::VarType_Type::VarType_Type_COMPLEX64:
+      return DataType::COMPLEX64;
+    case paddle::framework::proto::VarType_Type::VarType_Type_COMPLEX128:
+      return DataType::COMPLEX128;
+    case paddle::framework::proto::VarType_Type::VarType_Type_PSTRING:
+      return DataType::PSTRING;
+    default:
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupported proto::VarType_Type `%s` when casting it into DataType.",
+          var_type));
   }
 }
 
