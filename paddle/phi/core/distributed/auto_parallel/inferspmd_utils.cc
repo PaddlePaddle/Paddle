@@ -18,8 +18,8 @@ namespace phi {
 namespace distributed {
 
 void InferSpmdContext::EmplaceBackInput(DistMetaTensor input) {
-  inputs_.emplace_back(std::move(input));
   int index = static_cast<int>(inputs_.size());
+  inputs_.emplace_back(std::move(input));
   input_range_.emplace_back(std::pair<int, int>(index, index + 1));
 }
 
