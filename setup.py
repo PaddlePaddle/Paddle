@@ -1650,7 +1650,7 @@ def main():
     sys.path.insert(1, env_dict_path)
     from env_dict import env_dict
 
-    global env_dict  # noqa F811
+    global env_dict  # noqa: F811
     global paddle_binary_dir, paddle_source_dir
 
     paddle_binary_dir = env_dict.get("PADDLE_BINARY_DIR")
