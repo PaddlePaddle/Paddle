@@ -18,8 +18,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/pir/core/operation_utils.h"
 #include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/operation_utils.h"
 
 namespace paddle {
 namespace framework {

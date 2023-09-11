@@ -85,16 +85,17 @@ void InsertCallStackInfo(const std::string &type,
   auto iter = attrs.find(OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
   if (iter != attrs.end()) {
     auto attr = iter->second;
-    PADDLE_ENFORCE(attr.isa<pir::ArrayAttribute>(),
-                   paddle::platform::errors::InvalidArgument(
-                   "%s: attributes of %s is not ArrayAttribute type", type));
+    PADDLE_ENFORCE(
+        attr.isa<pir::ArrayAttribute>(),
+        paddle::platform::errors::InvalidArgument(
+            "%s: attributes of %s is not ArrayAttribute type", type));
     pir::ArrayAttribute array_attribute = attr.dyn_cast<pir::ArrayAttribute>();
     std::vector<pir::Attribute> vec_attr = array_attribute.AsVector();
     std::vector<std::string> vec_str;
-    for (auto value: vec_attr) {
-      PADDLE_ENFORCE(value.isa<pir::StrAttribute>(),
-                     paddle::platform::errors::InvalidArgument(
-                     "%s: %s is not StrAttribute type", type));
+    for (auto value : vec_attr) {
+        PADDLE_ENFORCE(value.isa<pir::StrAttribute>(),
+                       paddle::platform::errors::InvalidArgument(
+                         "%s: %s is not StrAttribute type", type));
       vec_str.emplace_back(value.dyn_cast<pir::StrAttribute>().AsString());
     }
     callstack = &vec_str;
