@@ -111,11 +111,7 @@ ProcessGroupNCCL::ProcessGroupNCCL(
     : ProcessGroupWithStream(rank, size, gid),
       store_(store),
       pg_timeout_(timeout) {
-  // TODO(yuwentao01): for debug
-  char* test_hang = std::getenv("TEST_HANG");
-  if (test_hang != nullptr) {
-    pg_timeout_ = 20 * 1000;
-  }
+  LOG(INFO) << "ProcessGroupNCCL pg_timeout_ " << pg_timeout_;
 }
 
 void ProcessGroupNCCL::GroupStart() {
@@ -251,11 +247,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
                 << ", use_calc_stream: " << use_calc_stream;
 
         int64_t numel = in_tensor.numel();
-        // TODO(yuwentao01) for debug
-        char* test_hang = std::getenv("TEST_HANG");
-        if (test_hang != nullptr && rank_ == 2) {
-          numel += 10;
-        }
         NCCL_CHECK(
             phi::dynload::ncclAllReduce(in_tensor.data(),
                                         out_tensor->data(),
