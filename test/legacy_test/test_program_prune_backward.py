@@ -139,7 +139,6 @@ def optimization_in_cond_net(with_optimize=False):
 def optimization_in_pylayer_net(with_optimize=False):
     x = paddle.static.data(name="x", shape=[-1, 4], dtype='float32')
     label = paddle.static.data('label', shape=[-1, 1], dtype='int64')
-    sgd = paddle.optimizer.SDG(learning_rate=0.1)
 
     def forward_fn(x):
         y = 3 * x
@@ -150,13 +149,14 @@ def optimization_in_pylayer_net(with_optimize=False):
         return grad
 
     y = paddle.static.nn.static_pylayer(forward_fn, [x], backward_fn)
-    hidden = paddle.static.nn.fc(x=[y], size=4, activation="softmax")
-    loss = paddle.nn.functional.cross_entropy(
-        input=hidden, label=label, reduction='none', use_softmax=False
+    hidden = 3 * y
+    loss = paddle.nn.functional.softmax_with_cross_entropy(
+        logits=hidden, label=label
     )
-    loss = paddle.mean(loss, 'mean_softmax_loss')
+    loss = paddle.mean(loss, name='mean_softmax_loss')
+    sgd = paddle.optimizer.SGD(learning_rate=0.1)
     if with_optimize:
-        sgd.minmize(loss)
+        sgd.minimize(loss)
 
     return loss
 

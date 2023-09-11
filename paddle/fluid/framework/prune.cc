@@ -548,9 +548,6 @@ void PruneBackwardImpl(proto::BlockDesc* origin, proto::BlockDesc* pruned) {
           std::vector<int> new_sub_indices(sub_indices.begin(),
                                            sub_indices.end() - 1);
           SetSubBlocksIndices(op, new_sub_indices);
-
-          std::vector<int> after_sub_indices;
-          GetSubBlocksIndices(*op, &after_sub_indices);
         }
       }
     }
@@ -583,9 +580,10 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
   // Copy original ProgramDesc, origin can't be change
   framework::ProgramDesc origin_clone(origin);
 
-  // Step 1. check if the program contains grad loss operator.
-  // If not, the program need no pruning.
+  // Step 1. check if the program contains grad loss operator or pylayer
+  // operator. If not, the program need no pruning.
   bool has_loss_grad_op = false;
+  bool has_pylayer_op = false;
   std::queue<int> block_contains_loss;
   std::queue<int> block_contains_loss_grad;
   for (size_t i = 0; i < origin_clone.Size(); i++) {
@@ -597,13 +595,15 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
                       static_cast<int>(OpRole::kLoss))) {
         op->SetIsTarget(false);
         has_loss_grad_op = true;
-        break;
+      }
+      if (op->Type() == kPyLayer) {
+        has_pylayer_op = true;
       }
     }
   }
 
   std::map<int, int> pruned_progin_block_id_map;
-  if (!has_loss_grad_op) {
+  if (!has_loss_grad_op && !has_pylayer_op) {
     // No pruning, fast return a copy of the origin ProgramDesc with an empty
     // map, means default mapped, i.e.{0:0, 1:1, ..., n:n}.
     return std::make_tuple(framework::ProgramDesc(origin_clone),
