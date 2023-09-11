@@ -143,13 +143,13 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
     if in_dygraph_mode():
         return
 
-    # NOTE: `in_declarative_mode` is used to determined whether this op is called under
+    # NOTE: `in_to_static_mode` is used to determined whether this op is called under
     # @to_static in transformation from dygrah to static layer. We add Tensor in
     # expected_type to skip checking because Tensor may be created and used in unusual way.
-    from .dygraph.base import in_declarative_mode
+    from .dygraph.base import in_to_static_mode
 
     # Need a better design to be fix this.
-    if in_declarative_mode():
+    if in_to_static_mode():
         if not isinstance(expected_type, tuple):
             expected_type = (expected_type,)
         expected_type += (core.eager.Tensor,)
