@@ -46,15 +46,17 @@ class TesBackward_1(unittest.TestCase):
             out2 = paddle.mean(tanh_out)
             input_grad = grad(out, input, out2)
 
-        self.assertEqual(out.get_defining_op().name(), "pd.mean")
-        self.assertEqual(input_grad[0].get_defining_op().name(), "pd.tanh_grad")
+        self.assertEqual(out.get_defining_op().name(), "pd_op.mean")
+        self.assertEqual(
+            input_grad[0].get_defining_op().name(), "pd_op.tanh_grad"
+        )
         self.assertEqual(
             out.get_defining_op()
             .operands()[0]
             .source()
             .get_defining_op()
             .name(),
-            "pd.tanh",
+            "pd_op.tanh",
         )
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
@@ -68,8 +70,10 @@ class TesBackward_1(unittest.TestCase):
             out = paddle.mean(tanh_out)
             input_grad = grad(out, input)
 
-        self.assertEqual(newir_program.block().ops[-3].name(), "pd.full")
-        self.assertEqual(input_grad[0].get_defining_op().name(), "pd.tanh_grad")
+        self.assertEqual(newir_program.block().ops[-3].name(), "pd_op.full")
+        self.assertEqual(
+            input_grad[0].get_defining_op().name(), "pd_op.tanh_grad"
+        )
         self.assertEqual(
             input_grad[0]
             .get_defining_op()
@@ -77,7 +81,7 @@ class TesBackward_1(unittest.TestCase):
             .source()
             .get_defining_op()
             .name(),
-            "pd.mean_grad",
+            "pd_op.mean_grad",
         )
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
@@ -91,7 +95,7 @@ class TesBackward_1(unittest.TestCase):
             out = paddle.mean(tanh_out)
             input_grad = grad(out, input, no_grad_vars=[input])
 
-        self.assertEqual(newir_program.block().ops[-1].name(), "pd.mean")
+        self.assertEqual(newir_program.block().ops[-1].name(), "pd_op.mean")
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
     def test_split(self):
@@ -105,16 +109,16 @@ class TesBackward_1(unittest.TestCase):
             input_grad = grad(out, input)
 
         ops_name = [
-            "pd.data",
-            "pd.tanh",
-            "pd.full_int_array",
-            "pd.full",
-            "pd.split",
+            "pd_op.data",
+            "pd_op.tanh",
+            "pd_op.full_int_array",
+            "pd_op.full",
+            "pd_op.split",
             "builtin.split",
-            "pd.full",
+            "pd_op.full",
             "builtin.combine",
-            "pd.split_grad",
-            "pd.tanh_grad",
+            "pd_op.concat",
+            "pd_op.tanh_grad",
         ]
         for i, op in enumerate(newir_program.block().ops):
             self.assertEqual(op.name(), ops_name[i])
@@ -151,7 +155,7 @@ class TesBackward_2(unittest.TestCase):
             out = paddle.mean(add_out)
             input_grad = grad(out, input_x)
 
-        self.assertEqual(newir_program.block().ops[-1].name(), "pd.add_n")
+        self.assertEqual(newir_program.block().ops[-1].name(), "pd_op.add_n")
         self.assertEqual(
             newir_program.block().ops[-2].name(), "builtin.combine"
         )
@@ -168,25 +172,25 @@ class TesBackward_2(unittest.TestCase):
             input_grad = grad(out, input_x)
 
         ops_name = [
-            "pd.data",
-            "pd.data",
-            "pd.tanh",
-            "pd.tanh",
-            "pd.add",
+            "pd_op.data",
+            "pd_op.data",
+            "pd_op.tanh",
+            "pd_op.tanh",
+            "pd_op.add",
             "builtin.combine",
-            "pd.full",
-            "pd.concat",
-            "pd.full",
+            "pd_op.full",
+            "pd_op.concat",
+            "pd_op.full",
             "builtin.combine",
-            "pd.concat_grad",
+            "pd_op.concat_grad",
             "builtin.split",
             "builtin.combine",
-            "pd.add_n",
-            "pd.add_grad",
-            "pd.tanh_grad",
-            "pd.tanh_grad",
+            "pd_op.add_n",
+            "pd_op.add_grad",
+            "pd_op.tanh_grad",
+            "pd_op.tanh_grad",
             "builtin.combine",
-            "pd.add_n",
+            "pd_op.add_n",
         ]
         for i, op in enumerate(newir_program.block().ops):
             self.assertEqual(op.name(), ops_name[i])
