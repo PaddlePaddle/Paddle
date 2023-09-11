@@ -126,5 +126,6 @@ __all__ = [  # noqa
     "get_backend",
     "ProcessMesh",
     "DistAttr",
-    "shard_tensor" "shard_layer",
+    "shard_tensor",
+    "shard_layer",
 ]

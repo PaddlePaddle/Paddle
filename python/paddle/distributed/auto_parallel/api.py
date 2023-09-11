@@ -176,11 +176,11 @@ def shard_layer(
             ...     def __init__(self, ):
             ...         super.__init__()
             ...         self.fc1 = nn.Linear(8, 8)
-            ...         elf.fc2 = nn.Linear(8, 8)
+            ...         self.fc2 = nn.Linear(8, 8)
             ...     def forward(self, input):
             ...         return self.fc2(self.fc1(input))
             >>> def shard_params_func(model_name, model):
-            ...     dist_attr = dist.TensorDistAttr(shard_spec==['x', 'y'], mesh=mesh)
+            ...     dist_attr = dist.DistAttr(sharding_specs=['x', 'y'], mesh=mesh)
             ...     if model_name == 'fc1':
             ...         model.weight = dist.shard_tensor(model.weight, dist_attr)
             >>> model = MLP()
@@ -197,22 +197,38 @@ def shard_layer(
             "process_mesh parameter must be of type dist.ProcessMesh"
         )
 
+    def replicate_layer_params_buffers(
+        m: nn.Layer, mesh: dist.ProcessMesh
+    ) -> None:
+        dist_attr = dist.DistAttr(mesh=mesh)
+        for key, param in m._parameters.items():
+            if param is not None:
+                m.add_parameter(
+                    key,
+                    nn.ParameterList(
+                        shard_tensor(param.data, dist_attr=dist_attr)
+                    ),  # 尚不确定！！！！！！！！！
+                )
+        for key, buffer in m._buffers.items():
+            if buffer is not None:
+                m._buffers[key] = shard_tensor(buffer, dist_attr=dist_attr)
+
     if shard_fn is None:
         # if shard_fn not specified, by default replicate
         # all model params
-        for name, submod in model.named_parameters():
-            dist_attr = dist.TensorDistAttr(process_mesh=process_mesh)
-            shard_tensor(submod, dist_attr)
+        for name, sublayers in model.named_sublayers():
+            replicate_layer_params_buffers(sublayers, process_mesh)
     else:
-        # apply shard_fn to submodules
-        for name, submod in model.named_parameters():
-            shard_fn(name, submod, process_mesh)
+        # apply shard_fn to sublayers
+        for name, sublayers in model.named_sublayers():
+            shard_fn(name, sublayers, process_mesh)
+            replicate_layer_params_buffers(sublayers, process_mesh)
 
     # register input_fn as model forward pre hook
     if input_fn is not None:
-        model.register_forward_pre_hook(input_fn)
+        model.register_forward_pre_hook(input_fn, process_mesh)
     # register input_fn as model forward hook
     if output_fn is not None:
-        model.register_forward_post_hook(output_fn)
+        model.register_forward_post_hook(output_fn, process_mesh)
 
     return model
