@@ -646,7 +646,7 @@ phi::KernelKey GetKernelKey(
                 op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
   }
 
-  if (op->name() == "pd.seed") {
+  if (op->name() == "pd_op.seed") {
     auto backend = paddle::experimental::ParseBackend(place);
     return {backend,
             phi::DataLayout::ANY,
