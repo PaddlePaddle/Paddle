@@ -14,7 +14,7 @@
 
 #include <iostream>
 
-#include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 
 #include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
