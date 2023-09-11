@@ -13,8 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_api.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
+#include "build/paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -64,7 +63,6 @@ void set_parameter(pir::OpResult parameter, const std::string& name) {
   APIBuilder::Instance().GetBuilder()->Build<pir::SetParameterOp>(parameter,
                                                                   name);
 }
-
 
 pir::OpResult embedding_grad(pir::OpResult x,
                              pir::OpResult weight,
