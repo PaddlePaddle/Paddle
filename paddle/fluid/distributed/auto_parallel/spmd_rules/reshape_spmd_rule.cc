@@ -163,15 +163,8 @@ paddle::distributed::auto_parallel::ReshapeSPMDRule::InferForward(
       tgt_shape[i] = src_shape[i];
     }
   }
-  VLOG(4) << "Reshape: input_shape: [" << str_join(src_shape)
-          << "] output_shape: [" << str_join(tgt_shape) << "]";
 
   std::vector<DimTrans*> trans = MakeReshapeDimTrans(src_shape, tgt_shape);
-  VLOG(4) << "Transformation from input to output:";
-  for (int64_t i = 0, n = trans.size(); i < n; i++) {
-    DimTrans* t = trans[i];
-    VLOG(4) << "\tOutput axis " << i << ": " << t->to_string();
-  }
 
   // step2: infer the dims mapping of input (if reshard is
   // needed) and output from the dimension transformation.
@@ -185,6 +178,13 @@ paddle::distributed::auto_parallel::ReshapeSPMDRule::InferForward(
   TensorDistAttr output_dist_attr(input_specs[0].dist_attr());
   output_dist_attr.set_dims_mapping(dims_mapping_vec[1]);
 
+  VLOG(4) << "Reshape: input_shape: [" << str_join(src_shape)
+          << "] output_shape: [" << str_join(tgt_shape) << "]";
+  VLOG(4) << "Transformation from input to output:";
+  for (int64_t i = 0, n = static_cast<int64_t>(trans.size()); i < n; i++) {
+    DimTrans* t = trans[i];
+    VLOG(4) << "\tOutput axis " << i << ": " << t->to_string();
+  }
   VLOG(4) << "input_dims_mapping: [" << str_join(dims_mapping_vec[0])
           << "] output_dims_mapping: [" << str_join(dims_mapping_vec[1])
           << "]\n\n";

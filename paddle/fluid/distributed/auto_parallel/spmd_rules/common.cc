@@ -42,6 +42,15 @@ SPMDRuleBase::InferBackward(const std::vector<DistTensorSpec>& input_specs,
                                  "derived class of SPMDRuleBase !"));
 }
 
+// deprecated
+std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+SPMDRuleBase::InferBackward(const std::vector<DistTensorSpec>& output_specs,
+                            const paddle::framework::AttributeMap& attrs) {
+  PADDLE_THROW(
+      phi::errors::Unimplemented("InferBackward should be called from a "
+                                 "derived class of SPMDRuleBase !"));
+}
+
 std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
     const std::vector<std::pair<std::string, std::vector<int64_t>>>&
         tensor_axes_to_dim_pairs,
