@@ -13,20 +13,20 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
-#include "paddle/ir/core/builtin_dialect.h"
-#include "paddle/ir/core/builtin_type.h"
-#include "paddle/ir/core/dialect.h"
-#include "paddle/ir/core/type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/pir/core/builtin_dialect.h"
+#include "paddle/pir/core/builtin_type.h"
+#include "paddle/pir/core/dialect.h"
+#include "paddle/pir/core/type.h"
 
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
-#include "test/cpp/ir/tools/test_dialect.h"
-#include "test/cpp/ir/tools/test_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "test/cpp/pir/tools/test_dialect.h"
+#include "test/cpp/pir/tools/test_op.h"
 
 TEST(shapedtype_test, shapedtype_test) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Dialect *test_dialect = ctx->GetOrRegisterDialect<test::TestDialect>();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   EXPECT_EQ(test_dialect != nullptr, true);
 
   pir::Type fp32_dtype = pir::Float32Type::get(ctx);
