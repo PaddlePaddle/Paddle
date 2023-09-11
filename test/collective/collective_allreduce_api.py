@@ -93,6 +93,20 @@ class TestCollectiveAllreduceAPI(TestCollectiveAPIRunnerBase):
             all_reduce_new(tindata, reduce_type)
             return [tindata]
 
+    def get_model_new_comm(
+        self,
+        main_prog,
+        startup_program,
+        rank,
+        dtype='float32',
+    ):
+        with base.program_guard(main_prog, startup_program):
+            tindata = paddle.static.data(
+                name="tindata", shape=[10, 1000], dtype=dtype
+            )
+            paddle.distributed.all_reduce(tindata)
+            return [tindata]
+
 
 if __name__ == "__main__":
     runtime_main(TestCollectiveAllreduceAPI, "allreduce")
