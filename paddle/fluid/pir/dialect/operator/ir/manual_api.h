@@ -34,5 +34,9 @@ pir::OpResult zeros_like(pir::OpResult x,
 
 pir::OpResult exponential__grad(pir::OpResult out_grad);
 
+pir::OpResult get_parameter(const std::string& name,
+                            phi::DataType dtype,
+                            const std::vector<int64_t>& shape);
+void set_parameter(pir::OpResult parameter, const std::string& name);
 }  // namespace dialect
 }  // namespace paddle

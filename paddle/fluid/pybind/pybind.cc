@@ -676,7 +676,7 @@ static void AssertStaticGraphAndDygraphGradMakerNoDiff() {
                         string::join_strings(ops, ',')));
 }
 
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 static int GetNCCLVersion() {
 #if NCCL_VERSION_CODE >= 2304
   int ver;
@@ -872,7 +872,7 @@ PYBIND11_MODULE(libpaddle, m) {
   });
 #endif
 
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   m.def("nccl_version", &GetNCCLVersion);
 #endif
 
