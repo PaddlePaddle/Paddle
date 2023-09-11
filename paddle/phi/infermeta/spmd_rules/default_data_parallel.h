@@ -46,6 +46,13 @@ SpmdInfo DefaultDataParallelSpmdInferBackward(
     const std::vector<const DistMetaTensor*>& outs);
 
 // For phi api
+using SpmdFn = SpmdInfo (*)(const std::vector<const DistMetaTensor*>& ins,
+                            const std::vector<const DistMetaTensor*>& outs);
+namespace detail {
+template <SpmdFn Fn>
+struct PhiSpmdVariadicArgumentParser;
+}  // namespace detail
+
 template <typename... Args>
 SpmdInfo PhiDefaultDataParallelSpmdInferForward(const Args&... args) {
   return detail::PhiSpmdVariadicArgumentParser<
