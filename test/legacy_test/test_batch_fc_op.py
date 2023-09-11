@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 from eager_op_test import OpTest
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 def np_cal_batchfc(input, w, bias):

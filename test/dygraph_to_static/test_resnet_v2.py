@@ -23,7 +23,7 @@ from dygraph_to_static_util import test_with_new_ir
 from predictor_utils import PredictorTools
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 SEED = 2020
 IMAGENET1000 = 1281167
@@ -39,7 +39,7 @@ place = (
 
 
 if paddle.is_compiled_with_cuda():
-    paddle.fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+    paddle.base.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
 def optimizer_setting(parameter_list=None):
@@ -133,7 +133,7 @@ class BottleneckBlock(paddle.nn.Layer):
         y = paddle.add(x=short, y=conv2)
 
         # TODO: uncomment this lines to reproduce the oneDNN segment fault error.
-        # layer_helper = paddle.fluid.layer_helper.LayerHelper(
+        # layer_helper = paddle.base.layer_helper.LayerHelper(
         # self.full_name(), act='relu'
         # )
         # return layer_helper.append_activation(y)
@@ -474,12 +474,12 @@ class TestResnet(unittest.TestCase):
         )
 
     def test_in_static_mode_mkldnn(self):
-        paddle.fluid.set_flags({'FLAGS_use_mkldnn': True})
+        paddle.base.set_flags({'FLAGS_use_mkldnn': True})
         try:
-            if paddle.fluid.core.is_compiled_with_mkldnn():
+            if paddle.base.core.is_compiled_with_mkldnn():
                 self.train(to_static=True)
         finally:
-            paddle.fluid.set_flags({'FLAGS_use_mkldnn': False})
+            paddle.base.set_flags({'FLAGS_use_mkldnn': False})
 
 
 if __name__ == '__main__':

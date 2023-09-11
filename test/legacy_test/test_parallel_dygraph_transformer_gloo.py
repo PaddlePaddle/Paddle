@@ -17,7 +17,7 @@ import unittest
 
 from test_dist_base import TestDistBase
 
-from paddle import fluid
+from paddle import base
 
 flag_name = os.path.splitext(__file__)[0]
 
@@ -46,7 +46,7 @@ class TestParallelDygraphTransformerAccGrad_GLOO(TestDistBase):
         self._find_unused_parameters = False
 
     def test_transformer(self):
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self.check_with_place(
                 "parallel_dygraph_transformer.py",
                 delta=1e-5,

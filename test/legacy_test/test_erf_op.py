@@ -19,8 +19,8 @@ from eager_op_test import OpTest, convert_float_to_uint16
 from scipy.special import erf
 
 import paddle
-import paddle.fluid.dygraph as dg
-from paddle import fluid
+import paddle.base.dygraph as dg
+from paddle import base
 
 
 class TestErfOp(OpTest):
@@ -65,14 +65,14 @@ class TestErfLayer(unittest.TestCase):
         np.testing.assert_allclose(y_ref, y_test, rtol=1e-05)
 
     def test_case(self):
-        with paddle.fluid.framework._static_guard():
-            self._test_case(fluid.CPUPlace())
-            if fluid.is_compiled_with_cuda():
-                self._test_case(fluid.CUDAPlace(0))
+        with paddle.base.framework._static_guard():
+            self._test_case(base.CPUPlace())
+            if base.is_compiled_with_cuda():
+                self._test_case(base.CUDAPlace(0))
 
     def test_name(self):
-        with paddle.fluid.framework._static_guard():
-            with fluid.program_guard(fluid.Program()):
+        with paddle.base.framework._static_guard():
+            with base.program_guard(base.Program()):
                 x = paddle.static.data('x', [3, 4])
                 y = paddle.erf(x, name='erf')
                 self.assertTrue('erf' in y.name)
@@ -99,9 +99,9 @@ class TestErfFP16OP(OpTest):
 
 
 @unittest.skipIf(
-    not paddle.fluid.core.is_compiled_with_cuda()
-    or not paddle.fluid.core.is_bfloat16_supported(
-        paddle.fluid.core.CUDAPlace(0)
+    not paddle.base.core.is_compiled_with_cuda()
+    or not paddle.base.core.is_bfloat16_supported(
+        paddle.base.core.CUDAPlace(0)
     ),
     "core is not complied with CUDA and not support the bfloat16",
 )
@@ -119,11 +119,11 @@ class TestErfBF16OP(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(y_ref)}
 
     def test_check_output(self):
-        place = paddle.fluid.core.CUDAPlace(0)
+        place = paddle.base.core.CUDAPlace(0)
         self.check_output_with_place(place)
 
     def test_check_grad(self):
-        place = paddle.fluid.core.CUDAPlace(0)
+        place = paddle.base.core.CUDAPlace(0)
         self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
 
 

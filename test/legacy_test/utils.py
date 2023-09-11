@@ -14,8 +14,8 @@
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid.framework import _dygraph_guard
+from paddle import base
+from paddle.base.framework import _dygraph_guard
 
 __all__ = ['DyGraphProgramDescTracerTestHelper', 'is_equal_program']
 
@@ -86,7 +86,7 @@ def _is_equal_program(prog1, prog2):
 def load_dygraph_vars_to_scope(model_path, scope, place):
     def load_dict_to_scope(scope, dictionary):
         if scope is None:
-            scope = fluid.global_scope()
+            scope = base.global_scope()
 
         for k, v in dictionary.items():
             dst_t = scope.var(k).get_tensor()

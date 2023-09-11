@@ -18,7 +18,7 @@ from legacy_test.test_collective_api_base import (
 )
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -38,12 +38,26 @@ class TestCollectiveReduceScatterAPI(TestCollectiveAPIRunnerBase):
         dtype='float32',
         reduce_type=None,
     ):
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
                 name="tindata", shape=[10, 1000], dtype=dtype
             )
             tindata.desc.set_need_check_feed(False)
             # toutdata = layers.fill_constant(shape=[5, 1000], dtype=dtype, value=1.0)
+            toutdata = paddle.static.data(
+                name="toutdata", shape=[5, 1000], dtype=dtype
+            )
+            paddle.distributed.reduce_scatter(toutdata, tindata)
+            return [toutdata]
+
+    def get_model_new_comm(
+        self, main_prog, startup_program, rank, dtype="float32"
+    ):
+        with base.program_guard(main_prog, startup_program):
+            tindata = paddle.static.data(
+                name="tindata", shape=[10, 1000], dtype=dtype
+            )
+            tindata.desc.set_need_check_feed(False)
             toutdata = paddle.static.data(
                 name="toutdata", shape=[5, 1000], dtype=dtype
             )
