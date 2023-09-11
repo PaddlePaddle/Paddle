@@ -310,22 +310,6 @@ void CUDAGraph::PrintToDotFiles(const std::string &dirname,
 #endif
 }
 
-template <typename F, typename... Args>
-void CUDAGraphKernelLauncher::KernelLaunch(F func,
-                                           parameterSetter_t parameterSetter,
-                                           unsigned int blockSize,
-                                           unsigned int numBlocks,
-                                           size_t sharedMem,
-                                           cudaStream_t stream,
-                                           Args &...args) {
-  unsigned int id = GenerateIndentifier();
-  auto args_ = std::array<void *, sizeof...(Args) + 1>{(void *)(&id),
-                                                       (void *)(&args)...};
-  const void *func_p = (const void *)(func);
-  parameterSetters[func_p][id] = parameterSetter;
-  InnerLaunch(func_p, blockSize, numBlocks, sharedMem, stream, args_.data());
-}
-
 bool CUDAGraphKernelLauncher::HasParameterSetter(
     const CUDAKernelParams &params) {
   return parameterSetters.find(params.func()) != parameterSetters.end();

@@ -114,7 +114,14 @@ class CUDAGraphKernelLauncher {
                     unsigned int numBlocks,
                     size_t sharedMem,
                     cudaStream_t stream,
-                    Args &...args);
+                    Args &...args) {
+    unsigned int id = GenerateIndentifier();
+    auto args_ = std::array<void *, sizeof...(Args) + 1>{(void *)(&id),
+                                                         (void *)(&args)...};
+    const void *func_p = (const void *)(func);
+    parameterSetters[func_p][id] = parameterSetter;
+    InnerLaunch(func_p, blockSize, numBlocks, sharedMem, stream, args_.data());
+  }
 
   bool HasParameterSetter(const CUDAKernelParams &params);
 
