@@ -827,7 +827,7 @@ def OpGenerator(
     ops_defined_list = []  # all op class defined store in this list
     ops_vjp_defined_list = []  # all op vjp static interface defination
 
-    # (4) support custom_vjp, check whether op has custom vjp rules
+    # (4) parse name of ops which have custom vjp rules
     custom_vjp_op_name_list = []
     for custom_vjp in vjp_gen.CUSTOM_VJP:
         custom_vjp_op_name_list.append(custom_vjp[:-5])  # cut _grad
@@ -887,6 +887,7 @@ def OpGenerator(
             op_interfaces += ["paddle::dialect::VjpInterface"]
         exclusive_interface_str = gen_exclusive_interface_str(op_info)
 
+        # if op has custom vjp rule, then append a CustomVjpTrait to it
         if op_info.op_phi_name[0] in custom_vjp_op_name_list:
             op_traits += ["paddle::dialect::CustomVjpTrait"]
 

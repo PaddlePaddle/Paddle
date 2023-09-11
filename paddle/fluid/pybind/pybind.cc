@@ -755,14 +755,14 @@ void BindVjp(pybind11::module *m) {
 
   m->def(
       "has_custom_vjp",
-      [](ir::Operation &op) -> py::bool_ {
+      [](pir::Operation &op) -> py::bool_ {
         return op.info().HasTrait<paddle::dialect::CustomVjpTrait>();
       },
       R"DOC(
            Return whether an op has custom vjp rules.
 
            Args:
-               op (ir::Operation): op to be checked
+               op (pir::Operation): op to be checked
 
            Returns:
                out (bool): True means that the op has custom vjp rules, False means it does not.
