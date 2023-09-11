@@ -117,7 +117,8 @@ void BuildVariableScope(const framework::BlockDesc& block,
                         const ExecutionConfig& execution_config,
                         VariableScope* var_scope);
 
-void LogDeviceMemoryStats(const platform::Place& place);
+void LogDeviceMemoryStats(const platform::Place& place,
+                          const std::string& op_name);
 
 void SetDeviceCommContext(framework::OperatorBase* operator_base,
                           platform::DeviceContext* dev_ctx);

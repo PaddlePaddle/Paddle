@@ -969,7 +969,7 @@ void BuildOpFuncList(const platform::Place& place,
       // gc---------------------------------------------
       auto iter = unused_var_map.find(op);
       if (iter == unused_var_map.end()) {
-        interpreter::LogDeviceMemoryStats(place);
+        interpreter::LogDeviceMemoryStats(place, op_type);
         continue;
       }
 
@@ -992,7 +992,7 @@ void BuildOpFuncList(const platform::Place& place,
       }
       delete garbages;  // free mem
 
-      interpreter::LogDeviceMemoryStats(place);
+      interpreter::LogDeviceMemoryStats(place, op_type);
     }
   }
 
@@ -1150,14 +1150,16 @@ void BuildVariableScope(const framework::BlockDesc& block,
   }
 }
 
-void LogDeviceMemoryStats(const platform::Place& place) {
+void LogDeviceMemoryStats(const platform::Place& place,
+                          const std::string& op_name) {
   if (FLAGS_new_executor_log_memory_stats && platform::is_gpu_place(place)) {
-    VLOG(0) << "memory_allocated: "
+    VLOG(0) << "op_name: " << op_name << ", "
+            << "memory_allocated: "
             << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
                    "Allocated", place.device)) /
                    1024 / 1024
-            << " MB";
-    VLOG(0) << "max_memory_allocated: "
+            << " MB, "
+            << "max_memory_allocated: "
             << static_cast<double>(memory::DeviceMemoryStatPeakValue(
                    "Allocated", place.device)) /
                    1024 / 1024

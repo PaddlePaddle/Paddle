@@ -21,6 +21,7 @@
 #include "paddle/fluid/jit/serializer.h"
 #include "paddle/phi/core/errors.h"
 
+PHI_DECLARE_bool(new_executor_log_memory_stats);
 namespace paddle {
 namespace distributed {
 
@@ -313,6 +314,20 @@ void ComputeInterceptor::RunOps() {
                                        op,
                                        node_->unused_vars(),
                                        gc_.get());
+      }
+      if (FLAGS_new_executor_log_memory_stats &&
+          platform::is_gpu_place(place_)) {
+        VLOG(0) << "op_name: " << op->Type() << ", "
+                << "memory_allocated: "
+                << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
+                       "Allocated", place_.device)) /
+                       1024 / 1024
+                << " MB, "
+                << "max_memory_allocated: "
+                << static_cast<double>(memory::DeviceMemoryStatPeakValue(
+                       "Allocated", place_.device)) /
+                       1024 / 1024
+                << " MB";
       }
     }
   }
