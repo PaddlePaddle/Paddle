@@ -56,11 +56,9 @@ static ir::Attribute CreateIrAttribute(const std::any& obj) {
   } else if (obj.type() == typeid(float)) {
     return IrAttrbuteCreator<float>()(std::any_cast<float>(obj));
   } else if (obj.type() == typeid(std::string)) {
-    return IrAttrbuteCreator<const std::string&>()(
-        std::any_cast<std::string>(obj));
+    return IrAttrbuteCreator<std::string>()(std::any_cast<std::string>(obj));
   } else if (obj.type() == typeid(const char*)) {
-    return IrAttrbuteCreator<const std::string&>()(
-        std::any_cast<const char*>(obj));
+    return IrAttrbuteCreator<std::string>()(std::any_cast<const char*>(obj));
   } else if (obj.type() == typeid(phi::DataType)) {
     return IrAttrbuteCreator<phi::DataType>()(
         std::any_cast<phi::DataType>(obj));

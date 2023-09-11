@@ -27,7 +27,8 @@ struct CppTypeToIrAttribute;
 
 #define PD_SPECIALIZE_CppTypeToIrAttribute(cpp_type, ir_attr_type) \
   template <>                                                      \
-  struct CppTypeToIrAttribute<cpp_type> {                          \
+  struct CppTypeToIrAttribute<                                     \
+      std::remove_const_t<std::remove_reference_t<cpp_type>>> {    \
     using type = ir_attr_type;                                     \
   };
 
@@ -35,7 +36,6 @@ PD_SPECIALIZE_CppTypeToIrAttribute(bool, BoolAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(int32_t, Int32Attribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(int64_t, Int64Attribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(float, FloatAttribute);
-PD_SPECIALIZE_CppTypeToIrAttribute(const std::string&, StrAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(std::string, StrAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(phi::DataType,
                                    paddle::dialect::DataTypeAttribute);
