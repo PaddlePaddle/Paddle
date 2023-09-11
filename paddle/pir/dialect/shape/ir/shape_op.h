@@ -111,7 +111,7 @@ class IR_API TieShapeOp : public Op<TieShapeOp> {
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const ir::OpResult &input);
+                    const pir::OpResult &input);
   pir::Value getValue();
   void Verify() {}
 };

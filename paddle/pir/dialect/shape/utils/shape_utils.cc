@@ -63,7 +63,7 @@ const std::string SymbolTable::insert(pir::Operation* symbol) {
 }
 
 bool SymbolicDimMgr::load() {
-  auto funcOp = symbolTable_.getOp()->dyn_cast<ir::dialect::FuncOp>();
+  auto funcOp = symbolTable_.getOp()->dyn_cast<pir::dialect::FuncOp>();
   assert(funcOp);
   for (auto op_ : *(funcOp.block())) {
     symbolTable_.insert(op_);
