@@ -97,9 +97,7 @@ class OpsAPIGen(CodeGen):
     def _need_skip(self, op_info, op_name):
         return (
             super()._need_skip(op_info, op_name)
-            or op_name.endswith('_grad')
-            or op_name.endswith('_grad_')
-            or op_name.endswith('xpu')
+            or op_name.endswith(('_grad', '_grad_', 'xpu'))
             or op_name in NO_NEED_GEN_STATIC_ONLY_APIS
         )
 
