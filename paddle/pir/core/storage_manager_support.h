@@ -21,9 +21,6 @@
 #include "paddle/pir/core/type_id.h"
 
 namespace pir {
-class InFlightDiagnostic;
-class Location;
-class MLIRContext;
 template <typename ConcreteInterface>
 class TypeInterfaceBase;
 

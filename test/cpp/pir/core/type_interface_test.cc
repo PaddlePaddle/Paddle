@@ -24,30 +24,30 @@
 #include "test/cpp/ir/tools/test_op.h"
 
 TEST(shapedtype_test, shapedtype_test) {
-  ir::IrContext *ctx = ir::IrContext::Instance();
-  ir::Dialect *test_dialect = ctx->GetOrRegisterDialect<test::TestDialect>();
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  pir::Dialect *test_dialect = ctx->GetOrRegisterDialect<test::TestDialect>();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   EXPECT_EQ(test_dialect != nullptr, true);
 
-  pir::Type fp32_dtype = ir::Float32Type::get(ctx);
+  pir::Type fp32_dtype = pir::Float32Type::get(ctx);
   phi::DDim dims = {2, 2};
   phi::DataLayout data_layout = phi::DataLayout::NCHW;
   phi::LoD lod = {{0, 1, 2}};
   size_t offset = 0;
 
-  ir::DenseTensorType shaped_type =
-      ir::DenseTensorType::get(ctx, fp32_dtype, dims, data_layout, lod, offset);
+  pir::DenseTensorType shaped_type = pir::DenseTensorType::get(
+      ctx, fp32_dtype, dims, data_layout, lod, offset);
 
-  EXPECT_EQ(shaped_type.dtype().isa<ir::Float32Type>(), true);
+  EXPECT_EQ(shaped_type.dtype().isa<pir::Float32Type>(), true);
   EXPECT_EQ(shaped_type.dims(), dims);
   EXPECT_EQ(shaped_type.data_layout(), data_layout);
   EXPECT_EQ(shaped_type.lod(), lod);
   EXPECT_EQ(shaped_type.offset(), offset);
 
-  ir::ShapedTypeInterface interface =
-      shaped_type.dyn_cast_interface<ir::ShapedTypeInterface>();
+  pir::ShapedTypeInterface interface =
+      shaped_type.dyn_cast_interface<pir::ShapedTypeInterface>();
 
-  EXPECT_EQ(interface.getElementType().isa<ir::Float32Type>(), true);
+  EXPECT_EQ(interface.getElementType().isa<pir::Float32Type>(), true);
   EXPECT_EQ(interface.getShape(), dims);
   EXPECT_EQ(interface.kDynamic, std::numeric_limits<int64_t>::min());
   EXPECT_EQ(interface.getRank(), 2);
