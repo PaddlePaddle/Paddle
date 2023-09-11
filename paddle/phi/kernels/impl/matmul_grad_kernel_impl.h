@@ -272,21 +272,11 @@ void MatmulGradKernel(const Context& dev_ctx,
 
     DDim dx_dims;
     if (dx) {
-      dx_dims = dx->dims();
-      if (dx_dims != x_help.dims()) {
-        dx->Resize(x_help.dims());
-      }
-
       y_conj = Conj<T>(dev_ctx, y_help);
     }
 
     DDim dy_dims;
     if (dy) {
-      dy_dims = dy->dims();
-      if (dy_dims != y_help.dims()) {
-        dy->Resize(y_help.dims());
-      }
-
       x_conj = Conj<T>(dev_ctx, x_help);
     }
 
@@ -310,17 +300,6 @@ void MatmulGradKernel(const Context& dev_ctx,
           dev_ctx, out_grad_help, false, false, y_conj, true, false, dx);
       CalcInputGrad<T>(
           dev_ctx, x_conj, true, true, out_grad_help, false, true, dy);
-    }
-
-    if (dx) {
-      if (dx_dims != x_help.dims()) {
-        dx->Resize(dx_dims);
-      }
-    }
-    if (dy) {
-      if (dy_dims != y_help.dims()) {
-        dy->Resize(dy_dims);
-      }
     }
   } else {
     // Case3: broadcast. It need cost much time to reduce sum for the
@@ -456,7 +435,6 @@ void MatmulGradKernel(const Context& dev_ctx,
         ReduceSumForMatmulGrad<Context, T>()(
             dev_ctx, dx_help, dx, dx_reduce_dims);
       }
-      dx->Resize(x.dims());
     }
     if (dy) {
       if (dy_reduce_dims.empty()) {
@@ -465,7 +443,6 @@ void MatmulGradKernel(const Context& dev_ctx,
         ReduceSumForMatmulGrad<Context, T>()(
             dev_ctx, dy_help, dy, dy_reduce_dims);
       }
-      dy->Resize(y.dims());
     }
     // Get the OutputGrad(out)
   }
