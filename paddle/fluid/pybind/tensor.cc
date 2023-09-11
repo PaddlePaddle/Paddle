@@ -393,11 +393,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
         Examples:
             .. code-block:: python
 
-                >>> import paddle.base as base
+                >>> import paddle
                 >>> import numpy as np
 
-                >>> t = base.Tensor()
-                >>> t.set(np.ndarray([5, 30]), base.CPUPlace())
+                >>> t = paddle.framework.core.Tensor()
+                >>> t.set(np.ndarray([5, 30]), paddle.CPUPlace())
           )DOC")
 
       .def(
@@ -413,11 +413,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            Examples:
                 .. code-block:: python
 
-                    >>> import paddle.base as base
+                    >>> import paddle
                     >>> import numpy as np
 
-                    >>> t = base.Tensor()
-                    >>> t.set(np.ndarray([5, 30]), base.CPUPlace())
+                    >>> t = paddle.framework.core.Tensor()
+                    >>> t.set(np.ndarray([5, 30]), paddle.CPUPlace())
                     >>> print(t.shape())
                     [5, 30]
            )DOC")
@@ -518,11 +518,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            Examples:
                 .. code-block:: python
 
-                    >>> import paddle.base as base
+                    >>> import paddle
                     >>> import numpy as np
 
-                    >>> t = base.Tensor()
-                    >>> t.set(np.ndarray([5, 30]), base.CPUPlace())
+                    >>> t = paddle.framework.core.Tensor()
+                    >>> t.set(np.ndarray([5, 30]), paddle.CPUPlace())
                     >>> t.set_lod([[0, 2, 5]])
                     >>> print(t.lod())
                     [[0, 2, 5]]
@@ -568,11 +568,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            Examples:
                 .. code-block:: python
 
-                    >>> import paddle.base as base
+                    >>> import paddle
                     >>> import numpy as np
 
-                    >>> t = base.Tensor()
-                    >>> t.set(np.ndarray([5, 30]), base.CPUPlace())
+                    >>> t = paddle.framework.core.Tensor()
+                    >>> t.set(np.ndarray([5, 30]), paddle.CPUPlace())
                     >>> t.set_recursive_sequence_lengths([[2, 3]])
                     >>> print(t.recursive_sequence_lengths())
                     [[2, 3]]
@@ -598,11 +598,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            Examples:
                 .. code-block:: python
 
-                    >>> import paddle.base as base
+                    >>> import paddle
                     >>> import numpy as np
 
-                    >>> t = base.Tensor()
-                    >>> t.set(np.ndarray([5, 30]), base.CPUPlace())
+                    >>> t = paddle.framework.core.Tensor()
+                    >>> t.set(np.ndarray([5, 30]), paddle.CPUPlace())
                     >>> t.set_lod([[0, 2, 5]])
                     >>> print(t.lod())
                     [[0, 2, 5]]
@@ -628,11 +628,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            Examples:
                 .. code-block:: python
 
-                    >>> import paddle.base as base
+                    >>> import paddle
                     >>> import numpy as np
 
-                    >>> t = base.Tensor()
-                    >>> t.set(np.ndarray([5, 30]), base.CPUPlace())
+                    >>> t = paddle.framework.core.Tensor()
+                    >>> t.set(np.ndarray([5, 30]), paddle.CPUPlace())
                     >>> t.set_recursive_sequence_lengths([[2, 3]])
                     >>> print(t.recursive_sequence_lengths())
                     [[2, 3]]
@@ -653,11 +653,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            Examples:
                 .. code-block:: python
 
-                    >>> import paddle.base as base
+                    >>> import paddle
                     >>> import numpy as np
 
-                    >>> t = base.Tensor()
-                    >>> t.set(np.ndarray([5, 30]), base.CPUPlace())
+                    >>> t = paddle.framework.core.Tensor()
+                    >>> t.set(np.ndarray([5, 30]), paddle.CPUPlace())
                     >>> t.set_recursive_sequence_lengths([[2, 3]])
                     >>> print(t.has_valid_recursive_sequence_lengths())
                     True
