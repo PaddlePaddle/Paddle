@@ -2659,13 +2659,13 @@ def polar(abs, angle, name=None):
     return paddle.complex(abs * paddle.cos(angle), abs * paddle.sin(angle))
 
 
-def cauchy_(x, median=0, sigma=1):
+def cauchy_(x, loc=0, scale=1):
     """Fills the tensor with numbers drawn from the Cauchy distribution.
 
     Args:
         x (Tensor): The input tensor.
-        median (scalar, optional):  Location of the peak of the distribution. The data type is float32 or float64.
-        sigma (scalar, optional): The half-width at half-maximum (HWHM). The data type is float32 or float64. Must be positive values.
+        loc (scalar, optional):  Location of the peak of the distribution. The data type is float32 or float64.
+        scale (scalar, optional): The half-width at half-maximum (HWHM). The data type is float32 or float64. Must be positive values.
 
     Returns:
         Tensor: input tensor with numbers drawn from the Cauchy distribution.
@@ -2683,21 +2683,21 @@ def cauchy_(x, median=0, sigma=1):
                 [-0.67522037, -1.19651091,  2.43438125,  0.46528760],
                 [ 1.23364007, -1.22296286, -1.14138269,  0.17634396]])
     """
-    cy = paddle.distribution.Cauchy(loc=median, scale=sigma)
+    cy = paddle.distribution.Cauchy(loc=loc, scale=scale)
     paddle.assign(x, cy.rsample(x.shape))
     return x
 
 
-def geometric_(x, p):
-    """Fills the tensor with numbers drawn from the Cauchy distribution.
+def geometric_(x, probs):
+    """Fills the tensor with numbers drawn from the geometric distribution.
 
     Args:
         x (Tensor): The input tensor.
-        median (scalar, optional):  Location of the peak of the distribution. The data type is float32 or float64.
-        sigma (scalar, optional): The half-width at half-maximum (HWHM). The data type is float32 or float64. Must be positive values.
+        probs (Real|Tensor): Probability parameter.
+            The value of probs must be positive. When the parameter is a tensor, probs is probability of success for each trial.
 
     Returns:
-        Tensor: input tensor with numbers drawn from the Cauchy distribution.
+        Tensor: input tensor with numbers drawn from the geometric distribution.
 
     Examples:
         .. code-block:: python
@@ -2712,6 +2712,6 @@ def geometric_(x, p):
                 [-0.22266576, -0.74896884, -0.42946699,  0.89165741],
                 [-0.55211657,  1.60769212, -0.17337820, -0.62538552]])
     """
-    geo = paddle.distribution.Geometric(probs=p)
+    geo = paddle.distribution.Geometric(probs=probs)
     paddle.assign(x, geo.rsample(x.shape))
     return x
