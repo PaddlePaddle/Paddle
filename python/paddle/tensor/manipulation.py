@@ -34,7 +34,7 @@ from ..framework import (
     core,
     dygraph_only,
     in_dynamic_mode,
-    in_new_ir_mode,
+    in_pir_mode,
 )
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
@@ -1132,7 +1132,7 @@ def concat(x, axis=0, name=None):
         if not isinstance(input, Variable):
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
-    elif in_new_ir_mode():
+    elif in_pir_mode():
         if not isinstance(input, paddle.ir.Value):
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
