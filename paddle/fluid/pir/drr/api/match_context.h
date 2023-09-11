@@ -14,28 +14,30 @@
 
 #pragma once
 
-#include "paddle/fluid/ir/drr/api/drr_pattern_context.h"
-#include "paddle/fluid/ir/drr/drr_rewrite_pattern.h"
+#include <memory>
+#include <string>
 
-namespace ir {
+#include "paddle/fluid/pir/drr/api/tensor_interface.h"
+#include "paddle/fluid/pir/drr/ir_operation.h"
+
+namespace pir {
 namespace drr {
 
-template <typename DrrPattern>
-class DrrPatternBase {
+class TensorInterface;
+class MatchContextImpl;
+
+class MatchContext final {
  public:
-  virtual ~DrrPatternBase() = default;
+  MatchContext(std::shared_ptr<const MatchContextImpl> impl);
 
-  // Define the Drr Pattern.
-  virtual void operator()(ir::drr::DrrPatternContext* ctx) const = 0;
+  const TensorInterface& Tensor(const std::string& tensor_name) const;
 
-  std::unique_ptr<DrrRewritePattern<DrrPattern>> Build(
-      ir::IrContext* ir_context, ir::PatternBenefit benefit = 1) const {
-    DrrPatternContext drr_context;
-    this->operator()(&drr_context);
-    return std::make_unique<DrrRewritePattern<DrrPattern>>(
-        drr_context, ir_context, benefit);
-  }
+  template <typename T>
+  T Attr(const std::string& attr_name) const;
+
+ private:
+  std::shared_ptr<const MatchContextImpl> impl_;
 };
 
 }  // namespace drr
-}  // namespace ir
+}  // namespace pir

@@ -16,11 +16,11 @@
 
 #include <string>
 
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
-#include "paddle/fluid/ir/drr/api/tensor_interface.h"
-#include "paddle/ir/core/value.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/drr/api/tensor_interface.h"
+#include "paddle/pir/core/value.h"
 
-namespace ir {
+namespace pir {
 namespace drr {
 
 class IrShape {
@@ -39,19 +39,19 @@ class IrShape {
 
 class IrDtype {
  public:
-  explicit IrDtype(const ir::Type* dtype) : dtype_(dtype) {}
+  explicit IrDtype(const pir::Type* dtype) : dtype_(dtype) {}
 
   bool operator==(const IrDtype& other) const {
     return *dtype_ == *other.dtype_;
   }
 
  private:
-  const ir::Type* dtype_;
+  const pir::Type* dtype_;
 };
 
 class IrValue : public TensorInterface {
  public:
-  explicit IrValue(const ir::Value& value)
+  explicit IrValue(const pir::Value& value)
       : value_(value),
         shape_(value ? &value.type()
                             .dyn_cast<paddle::dialect::DenseTensorType>()
@@ -76,4 +76,4 @@ class IrValue : public TensorInterface {
 class IrAttr;
 
 }  // namespace drr
-}  // namespace ir
+}  // namespace pir

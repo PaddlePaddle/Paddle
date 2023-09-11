@@ -19,14 +19,14 @@
 #include <memory>
 #include <vector>
 
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"
-#include "paddle/fluid/ir/drr/api/drr_pattern_base.h"
-#include "paddle/fluid/ir/transforms/constant_folding_pass.h"
-#include "paddle/ir/pass/pass.h"
-#include "paddle/ir/pass/pass_manager.h"
-#include "paddle/ir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/pir/pass/pass.h"
+#include "paddle/pir/pass/pass_manager.h"
+#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
@@ -37,13 +37,13 @@ PD_DECLARE_KERNEL(transpose, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(concat, CPU, ALL_LAYOUT);
 
 class MultiHeadMatmulFusePattern
-    : public ir::drr::DrrPatternBase<MultiHeadMatmulFusePattern> {
+    : public pir::drr::DrrPatternBase<MultiHeadMatmulFusePattern> {
  public:
-  void operator()(ir::drr::DrrPatternContext *ctx) const override {
+  void operator()(pir::drr::DrrPatternContext *ctx) const override {
     //
     // Source Pattern.
     //
-    ir::drr::SourcePattern src = ctx->SourcePattern();
+    pir::drr::SourcePattern src = ctx->SourcePattern();
     // The first path to matmul with scale (q).
     const auto &matmul_1 =
         src.Op("pd.matmul",
@@ -129,7 +129,7 @@ class MultiHeadMatmulFusePattern
     //
     // Constraints.
     //
-    src.RequireNativeCall([](const ir::drr::MatchContext &match_ctx) -> bool {
+    src.RequireNativeCall([](const pir::drr::MatchContext &match_ctx) -> bool {
       const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
       if (softmax_axis != -1 && softmax_axis != 3) return false;
 
@@ -159,7 +159,7 @@ class MultiHeadMatmulFusePattern
     //
     // Result Pattern.
     //
-    ir::drr::ResultPattern res = src.ResultPattern();
+    pir::drr::ResultPattern res = src.ResultPattern();
     // W combine.
     const auto &combine_1 = res.Op("builtin.combine");
     combine_1({&res.Tensor("matmul_1_in_2"),
@@ -167,11 +167,11 @@ class MultiHeadMatmulFusePattern
                &res.Tensor("matmul_3_in_2")},
               {&res.Tensor("combine_1_out")});
     const auto &concat_axis = res.Attr(
-        [](const ir::drr::MatchContext &match_ctx) -> int { return 0; });
+        [](const pir::drr::MatchContext &match_ctx) -> int { return 0; });
     const auto &concat_1 = res.Op("pd.concat", {{"axis", concat_axis}});
     res.Tensor("concat_1_out") = concat_1(res.Tensor("combine_1_out"));
     const auto &reshape_5_shape = res.Attr(
-        [](const ir::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
+        [](const pir::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
           auto matmul_1_in_2 = match_ctx.Tensor("matmul_1_in_2").Shape();
           return {-1, 3, matmul_1_in_2.at(1)};
         });
@@ -188,7 +188,7 @@ class MultiHeadMatmulFusePattern
     const auto &concat_2 = res.Op("pd.concat", {{"axis", concat_axis}});
     res.Tensor("concat_2_out") = concat_2(res.Tensor("combine_2_out"));
     const auto &reshape_6_shape = res.Attr(
-        [](const ir::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
+        [](const pir::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
           return {3, -1};
         });
     const auto &reshape_6 = res.Op("pd.reshape", {{"shape", reshape_6_shape}});
@@ -196,13 +196,13 @@ class MultiHeadMatmulFusePattern
               {&res.Tensor("reshape_6_out"), &res.NoneTensor()});
 
     const auto &head_number =
-        res.Attr([](const ir::drr::MatchContext &match_ctx) -> int {
+        res.Attr([](const pir::drr::MatchContext &match_ctx) -> int {
           const auto &full_int_array_1_value =
               match_ctx.Attr<std::vector<int64_t>>("full_int_array_1_value");
           return full_int_array_1_value.at(2);
         });
     const auto &alpha =
-        res.Attr([](const ir::drr::MatchContext &match_ctx) -> float {
+        res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
           return match_ctx.Attr<float>("full_1_value");
         });
     const auto &multihead_matmul =
@@ -216,32 +216,32 @@ class MultiHeadMatmulFusePattern
   }
 };
 
-class AttentionFusePass : public ir::Pass {
+class AttentionFusePass : public pir::Pass {
  public:
-  AttentionFusePass() : ir::Pass("AttentionFusePass", 1) {}
+  AttentionFusePass() : pir::Pass("AttentionFusePass", 1) {}
 
-  bool Initialize(ir::IrContext *context) override {
-    ir::RewritePatternSet ps(context);
+  bool Initialize(pir::IrContext *context) override {
+    pir::RewritePatternSet ps(context);
     ps.Add(MultiHeadMatmulFusePattern().Build(context));
     // Add other attention variant fuse pattern.
 
-    patterns_ = ir::FrozenRewritePatternSet(std::move(ps));
+    patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
   }
 
-  void Run(ir::Operation *op) override {
-    ir::GreedyRewriteConfig cfg;
+  void Run(pir::Operation *op) override {
+    pir::GreedyRewriteConfig cfg;
     cfg.use_top_down_traversal = true;
     cfg.max_iterations = 10;
-    ir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
+    pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
   }
 
-  bool CanApplyOn(ir::Operation *op) const override {
+  bool CanApplyOn(pir::Operation *op) const override {
     return op->name() == "builtin.module" && op->num_regions() > 0;
   }
 
  private:
-  ir::FrozenRewritePatternSet patterns_;
+  pir::FrozenRewritePatternSet patterns_;
 };
 
 namespace ir {
@@ -250,7 +250,7 @@ std::unique_ptr<Pass> CreateAttentionFusePass() {
 }
 }  // namespace ir
 
-void BuildProgram(ir::Builder &builder) {  // NOLINT
+void BuildProgram(pir::Builder &builder) {  // NOLINT
   paddle::dialect::FullOp matmul_1_in_1 =
       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{1, 300, 256},
                                              0.9,
@@ -359,16 +359,16 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
 }
 
 TEST(DrrTest, AttentionFuse) {
-  ir::IrContext *ctx = ir::IrContext::Instance();
+  pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ir::Program program(ctx);
-  ir::Builder builder = ir::Builder(ctx, program.block());
+  pir::Program program(ctx);
+  pir::Builder builder = pir::Builder(ctx, program.block());
   BuildProgram(builder);
   EXPECT_EQ(program.block()->size(), 33u);
 
-  ir::PassManager pm(ctx);
-  pm.AddPass(ir::CreateAttentionFusePass());
-  //   pm.AddPass(ir::CreateConstantFoldingPass());
+  pir::PassManager pm(ctx);
+  pm.AddPass(pir::CreateAttentionFusePass());
+  //   pm.AddPass(pir::CreateConstantFoldingPass());
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);

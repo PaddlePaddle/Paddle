@@ -12,22 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/pir/drr/api/tensor_interface.h"
+#include "paddle/fluid/pir/drr/ir_value.h"
 
-#include "paddle/ir/core/operation.h"
-
-namespace ir {
+namespace pir {
 namespace drr {
 
-class IrOperation {
- public:
-  explicit IrOperation(ir::Operation* op) : op_(op) {}
+bool ShapeInterface::operator==(const ShapeInterface& other) const {
+  return *shape_ == *other.shape_;
+}
 
-  ir::Operation* get() const { return op_; }
+int ShapeInterface::size() const { return shape_->size(); }
 
- private:
-  ir::Operation* op_;
-};
+int64_t ShapeInterface::at(int idx) const { return shape_->at(idx); }
+
+bool DtypeInterface::operator==(const DtypeInterface& other) const {
+  return *dtype_ == *other.dtype_;
+}
 
 }  // namespace drr
-}  // namespace ir
+}  // namespace pir

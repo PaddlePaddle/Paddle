@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/ir/drr/api/drr_pattern_context.h"
+#include "paddle/fluid/pir/drr/api/drr_pattern_context.h"
 
-#include "paddle/fluid/ir/drr/pattern_graph.h"
-#include "paddle/ir/core/enforce.h"
+#include "paddle/fluid/pir/drr/pattern_graph.h"
+#include "paddle/pir/core/enforce.h"
 
-namespace ir {
+namespace pir {
 namespace drr {
 
 DrrPatternContext::DrrPatternContext() {
@@ -151,4 +151,4 @@ void Tensor::operator=(const Tensor& other) const {  // NOLINT
 }
 
 }  // namespace drr
-}  // namespace ir
+}  // namespace pir

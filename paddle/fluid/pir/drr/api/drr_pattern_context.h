@@ -22,9 +22,9 @@
 #include <unordered_set>
 #include <variant>
 
-#include "paddle/fluid/ir/drr/api/match_context.h"
+#include "paddle/fluid/pir/drr/api/match_context.h"
 
-namespace ir {
+namespace pir {
 namespace drr {
 
 class Op;
@@ -331,4 +331,4 @@ class SourcePattern {
 };
 
 }  // namespace drr
-}  // namespace ir
+}  // namespace pir

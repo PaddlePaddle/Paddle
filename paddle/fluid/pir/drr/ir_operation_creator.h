@@ -16,23 +16,23 @@
 
 #include <vector>
 
-#include "paddle/fluid/ir/drr/api/drr_pattern_context.h"
-#include "paddle/fluid/ir/drr/match_context_impl.h"
-#include "paddle/ir/pattern_rewrite/pattern_match.h"
+#include "paddle/fluid/pir/drr/api/drr_pattern_context.h"
+#include "paddle/fluid/pir/drr/match_context_impl.h"
+#include "paddle/pir/pattern_rewrite/pattern_match.h"
 
-namespace ir {
+namespace pir {
 namespace drr {
 
-Operation* CreateOperation(const OpCall& op_call,
-                           const MatchContextImpl& src_match_ctx,
-                           ir::PatternRewriter& rewriter,  // NOLINT
-                           MatchContextImpl* res_match_ctx);
+pir::Operation* CreateOperation(const OpCall& op_call,
+                                const MatchContextImpl& src_match_ctx,
+                                pir::PatternRewriter& rewriter,  // NOLINT
+                                MatchContextImpl* res_match_ctx);
 
 // template <typename Op>
 // class CreateOperation {
 //  public:
-//   Operation* operator()(const OpCall& op_call,
-//                         ir::PatternRewriter& rewriter,  // NOLINT
+//   pir::Operation* operator()(const OpCall& op_call,
+//                         pir::PatternRewriter& rewriter,  // NOLINT
 //                         MatchContextImpl* res_match_ctx) {
 //     IR_THROW("Not implemented");
 //   }
@@ -41,15 +41,15 @@ Operation* CreateOperation(const OpCall& op_call,
 // template <>
 // class CreateOperation<paddle::dialect::ReshapeOp> {
 //  public:
-//   Operation* operator()(const OpCall& op_call,
-//                         ir::PatternRewriter& rewriter,  // NOLINT
+//   pir::Operation* operator()(const OpCall& op_call,
+//                         pir::PatternRewriter& rewriter,  // NOLINT
 //                         MatchContextImpl* res_match_ctx) {
 //     const auto& inputs = op_call.inputs();
 //     std::vector<Value> ir_values =
 //         GetIrValuesByDrrTensors(inputs, *res_match_ctx);
 //     // TODO(zyfncg): support attr in build op.
-//     Operation* reshape_op = rewriter.Build<paddle::dialect::ReshapeOp>(
-//         ir_values[0].dyn_cast<ir::OpResult>(),
+//     pir::Operation* reshape_op = rewriter.Build<paddle::dialect::ReshapeOp>(
+//         ir_values[0].dyn_cast<pir::OpResult>(),
 //         std::vector<int64_t>{16, 3, 4, 16});
 //     auto out = reshape_op->result(0);
 //     res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
@@ -59,4 +59,4 @@ Operation* CreateOperation(const OpCall& op_call,
 // };
 
 }  // namespace drr
-}  // namespace ir
+}  // namespace pir

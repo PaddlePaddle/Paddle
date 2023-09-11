@@ -1122,7 +1122,7 @@ TEST(pattern_rewrite, Patterns) {
 
   pir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<TestPass>());
-  //   pm.AddPass(ir::CreateConstantFoldingPass());
+  //   pm.AddPass(pir::CreateConstantFoldingPass());
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.AddPass(pir::CreateReorderBlockOpsPass());
   pm.EnablePassTiming();

@@ -14,48 +14,20 @@
 
 #pragma once
 
-#include <cstdint>
+#include "paddle/pir/core/operation.h"
 
-namespace ir {
+namespace pir {
 namespace drr {
 
-class IrValue;
-class IrShape;
-class IrDtype;
-
-class ShapeInterface final {
+class IrOperation {
  public:
-  bool operator==(const ShapeInterface& other) const;
+  explicit IrOperation(pir::Operation* op) : op_(op) {}
 
-  int size() const;
-
-  int64_t at(int idx) const;
+  pir::Operation* get() const { return op_; }
 
  private:
-  explicit ShapeInterface(const IrShape* shape) : shape_(shape) {}
-
-  friend class IrValue;
-
-  const IrShape* shape_;
-};
-
-class DtypeInterface final {
- public:
-  bool operator==(const DtypeInterface& other) const;
-
- private:
-  explicit DtypeInterface(const IrDtype* dtype) : dtype_(dtype) {}
-
-  friend class IrValue;
-
-  const IrDtype* dtype_;
-};
-
-class TensorInterface {
- public:
-  virtual ShapeInterface Shape() const = 0;
-  virtual DtypeInterface Dtype() const = 0;
+  pir::Operation* op_;
 };
 
 }  // namespace drr
-}  // namespace ir
+}  // namespace pir

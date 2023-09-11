@@ -14,30 +14,48 @@
 
 #pragma once
 
-#include <memory>
-#include <string>
+#include <cstdint>
 
-#include "paddle/fluid/ir/drr/api/tensor_interface.h"
-#include "paddle/fluid/ir/drr/ir_operation.h"
-
-namespace ir {
+namespace pir {
 namespace drr {
 
-class TensorInterface;
-class MatchContextImpl;
+class IrValue;
+class IrShape;
+class IrDtype;
 
-class MatchContext final {
+class ShapeInterface final {
  public:
-  MatchContext(std::shared_ptr<const MatchContextImpl> impl);
+  bool operator==(const ShapeInterface& other) const;
 
-  const TensorInterface& Tensor(const std::string& tensor_name) const;
+  int size() const;
 
-  template <typename T>
-  T Attr(const std::string& attr_name) const;
+  int64_t at(int idx) const;
 
  private:
-  std::shared_ptr<const MatchContextImpl> impl_;
+  explicit ShapeInterface(const IrShape* shape) : shape_(shape) {}
+
+  friend class IrValue;
+
+  const IrShape* shape_;
+};
+
+class DtypeInterface final {
+ public:
+  bool operator==(const DtypeInterface& other) const;
+
+ private:
+  explicit DtypeInterface(const IrDtype* dtype) : dtype_(dtype) {}
+
+  friend class IrValue;
+
+  const IrDtype* dtype_;
+};
+
+class TensorInterface {
+ public:
+  virtual ShapeInterface Shape() const = 0;
+  virtual DtypeInterface Dtype() const = 0;
 };
 
 }  // namespace drr
-}  // namespace ir
+}  // namespace pir

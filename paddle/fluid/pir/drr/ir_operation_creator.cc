@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/ir/drr/ir_operation_creator.h"
+#include "paddle/fluid/pir/drr/ir_operation_creator.h"
 
 #include <any>
 
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_manual_op.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"
-#include "paddle/fluid/ir/drr/attr_type_uilts.h"
-#include "paddle/ir/core/builtin_op.h"
-#include "paddle/ir/core/enforce.h"
-#include "paddle/ir/core/operation.h"
-#include "paddle/ir/core/value.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/drr/attr_type_uilts.h"
+#include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/core/enforce.h"
+#include "paddle/pir/core/operation.h"
+#include "paddle/pir/core/value.h"
 
-namespace ir {
+namespace pir {
 namespace drr {
 
 Value GetIrValueByDrrTensor(const Tensor& tensor,
@@ -46,7 +46,7 @@ std::vector<Value> GetIrValuesByDrrTensors(
   return ir_values;
 }
 
-static ir::Attribute CreateIrAttribute(const std::any& obj) {
+static pir::Attribute CreateIrAttribute(const std::any& obj) {
   if (obj.type() == typeid(bool)) {
     return IrAttrbuteCreator<bool>()(std::any_cast<bool>(obj));
   } else if (obj.type() == typeid(int32_t)) {
@@ -78,9 +78,9 @@ static ir::Attribute CreateIrAttribute(const std::any& obj) {
   }
 }
 
-ir::AttributeMap CreateAttributeMap(const OpCall& op_call,
-                                    const MatchContextImpl& src_match_ctx) {
-  ir::AttributeMap attr_map;
+pir::AttributeMap CreateAttributeMap(const OpCall& op_call,
+                                     const MatchContextImpl& src_match_ctx) {
+  pir::AttributeMap attr_map;
   for (const auto& kv : op_call.attributes()) {
     std::visit(
         [&](auto&& arg) {
@@ -126,7 +126,7 @@ T GetAttr(const std::string& attr_name,
 }
 
 void BindIrOutputs(const OpCall& op_call,
-                   Operation* op,
+                   pir::Operation* op,
                    MatchContextImpl* match_ctx) {
   for (size_t i = 0; i < op_call.outputs().size(); ++i) {
     std::shared_ptr<IrValue> ir_value = nullptr;
@@ -138,14 +138,14 @@ void BindIrOutputs(const OpCall& op_call,
 }
 
 void AutoSetInsertionPoint(const std::vector<Value>& ir_values,
-                           ir::PatternRewriter& rewriter) {}  // NOLINT
+                           pir::PatternRewriter& rewriter) {}  // NOLINT
 
-Operation* CreateOperation(const OpCall& op_call,
-                           const MatchContextImpl& src_match_ctx,
-                           ir::PatternRewriter& rewriter,  // NOLINT
-                           MatchContextImpl* res_match_ctx) {
+pir::Operation* CreateOperation(const OpCall& op_call,
+                                const MatchContextImpl& src_match_ctx,
+                                pir::PatternRewriter& rewriter,  // NOLINT
+                                MatchContextImpl* res_match_ctx) {
   VLOG(6) << "Drr create [" << op_call.name() << "] op...";
-  ir::Operation* op{nullptr};
+  pir::Operation* op{nullptr};
   if (op_call.name() == "pd.reshape") {
     const auto& inputs = op_call.inputs();
     std::vector<Value> ir_values =
@@ -153,11 +153,11 @@ Operation* CreateOperation(const OpCall& op_call,
     // TODO(zyfncg): support attr in build op.
     if (ir_values.size() > 1) {
       op = rewriter.Build<paddle::dialect::ReshapeOp>(
-          ir_values[0].dyn_cast<ir::OpResult>(),
-          ir_values[1].dyn_cast<ir::OpResult>());
+          ir_values[0].dyn_cast<pir::OpResult>(),
+          ir_values[1].dyn_cast<pir::OpResult>());
     } else {
       op = rewriter.Build<paddle::dialect::ReshapeOp>(
-          ir_values[0].dyn_cast<ir::OpResult>(),
+          ir_values[0].dyn_cast<pir::OpResult>(),
           GetAttr<std::vector<int64_t>>("shape", op_call, src_match_ctx));
     }
     res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
@@ -169,7 +169,7 @@ Operation* CreateOperation(const OpCall& op_call,
     std::vector<Value> ir_values =
         GetIrValuesByDrrTensors(inputs, *res_match_ctx);
     op = rewriter.Build<paddle::dialect::TransposeOp>(
-        ir_values[0].dyn_cast<ir::OpResult>(),
+        ir_values[0].dyn_cast<pir::OpResult>(),
         GetAttr<std::vector<int>>("perm", op_call, src_match_ctx));
     res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
                                std::make_shared<IrValue>(op->result(0)));
@@ -178,7 +178,7 @@ Operation* CreateOperation(const OpCall& op_call,
     std::vector<Value> ir_values =
         GetIrValuesByDrrTensors(inputs, *res_match_ctx);
     op = rewriter.Build<paddle::dialect::CastOp>(
-        ir_values[0].dyn_cast<ir::OpResult>(),
+        ir_values[0].dyn_cast<pir::OpResult>(),
         GetAttr<phi::DataType>("dtype", op_call, src_match_ctx));
     res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
                                std::make_shared<IrValue>(op->result(0)));
@@ -194,10 +194,10 @@ Operation* CreateOperation(const OpCall& op_call,
     const auto& inputs = op_call.inputs();
     std::vector<Value> ir_values =
         GetIrValuesByDrrTensors(inputs, *res_match_ctx);
-    Operation* op = rewriter.Build<paddle::dialect::FusedGemmEpilogueOp>(
-        ir_values[0].dyn_cast<ir::OpResult>(),
-        ir_values[1].dyn_cast<ir::OpResult>(),
-        ir_values[2].dyn_cast<ir::OpResult>(),
+    pir::Operation* op = rewriter.Build<paddle::dialect::FusedGemmEpilogueOp>(
+        ir_values[0].dyn_cast<pir::OpResult>(),
+        ir_values[1].dyn_cast<pir::OpResult>(),
+        ir_values[2].dyn_cast<pir::OpResult>(),
         CreateAttributeMap(op_call, src_match_ctx));
     BindIrOutputs(op_call, op, res_match_ctx);
   } else if (op_call.name() == "pd.fused_gemm_epilogue_grad") {
@@ -205,21 +205,21 @@ Operation* CreateOperation(const OpCall& op_call,
     std::vector<Value> ir_values =
         GetIrValuesByDrrTensors(inputs, *res_match_ctx);
     op = rewriter.Build<paddle::dialect::FusedGemmEpilogueGradOp>(
-        ir_values[0].dyn_cast<ir::OpResult>(),
-        ir_values[1].dyn_cast<ir::OpResult>(),
-        ir_values[2].dyn_cast<ir::OpResult>(),
-        ir_values[3].dyn_cast<ir::OpResult>(),
+        ir_values[0].dyn_cast<pir::OpResult>(),
+        ir_values[1].dyn_cast<pir::OpResult>(),
+        ir_values[2].dyn_cast<pir::OpResult>(),
+        ir_values[3].dyn_cast<pir::OpResult>(),
         CreateAttributeMap(op_call, src_match_ctx));
     BindIrOutputs(op_call, op, res_match_ctx);
   } else if (op_call.name() == "builtin.combine") {
     const auto& inputs = op_call.inputs();
     std::vector<Value> ir_values =
         GetIrValuesByDrrTensors(inputs, *res_match_ctx);
-    std::vector<ir::OpResult> ir_results;
+    std::vector<pir::OpResult> ir_results;
     for (auto value : ir_values) {
-      ir_results.push_back(value.dyn_cast<ir::OpResult>());
+      ir_results.push_back(value.dyn_cast<pir::OpResult>());
     }
-    op = rewriter.Build<ir::CombineOp>(ir_results);
+    op = rewriter.Build<pir::CombineOp>(ir_results);
     res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
                                std::make_shared<IrValue>(op->result(0)));
   } else if (op_call.name() == "pd.concat") {
@@ -227,7 +227,7 @@ Operation* CreateOperation(const OpCall& op_call,
     std::vector<Value> ir_values =
         GetIrValuesByDrrTensors(inputs, *res_match_ctx);
     op = rewriter.Build<paddle::dialect::ConcatOp>(
-        ir_values[0].dyn_cast<ir::OpResult>(),
+        ir_values[0].dyn_cast<pir::OpResult>(),
         GetAttr<int>("axis", op_call, src_match_ctx));
     res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
                                std::make_shared<IrValue>(op->result(0)));
@@ -236,10 +236,10 @@ Operation* CreateOperation(const OpCall& op_call,
     std::vector<Value> ir_values =
         GetIrValuesByDrrTensors(inputs, *res_match_ctx);
     op = rewriter.Build<paddle::dialect::MultiheadMatmulOp>(
-        ir_values[0].dyn_cast<ir::OpResult>(),
-        ir_values[1].dyn_cast<ir::OpResult>(),
-        ir_values[2].dyn_cast<ir::OpResult>(),
-        ir_values[3].dyn_cast<ir::OpResult>(),
+        ir_values[0].dyn_cast<pir::OpResult>(),
+        ir_values[1].dyn_cast<pir::OpResult>(),
+        ir_values[2].dyn_cast<pir::OpResult>(),
+        ir_values[3].dyn_cast<pir::OpResult>(),
         false,
         true,
         false,
@@ -255,4 +255,4 @@ Operation* CreateOperation(const OpCall& op_call,
 }
 
 }  // namespace drr
-}  // namespace ir
+}  // namespace pir

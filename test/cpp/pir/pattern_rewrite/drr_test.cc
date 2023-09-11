@@ -16,20 +16,20 @@
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"
-#include "paddle/fluid/ir/drr/api/drr_pattern_base.h"
-#include "paddle/ir/pass/pass.h"
-#include "paddle/ir/pass/pass_manager.h"
-#include "paddle/ir/pattern_rewrite/pattern_rewrite_driver.h"
-#include "paddle/ir/transforms/dead_code_elimination_pass.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/pir/pass/pass.h"
+#include "paddle/pir/pass/pass_manager.h"
+#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/transforms/dead_code_elimination_pass.h"
 
 class RemoveRedundentReshapePattern
-    : public ir::drr::DrrPatternBase<RemoveRedundentReshapePattern> {
+    : public pir::drr::DrrPatternBase<RemoveRedundentReshapePattern> {
  public:
-  void operator()(ir::drr::DrrPatternContext *ctx) const override {
+  void operator()(pir::drr::DrrPatternContext *ctx) const override {
     // Source patterns：待匹配的子图
-    ir::drr::SourcePattern pat = ctx->SourcePattern();
+    pir::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &reshape1 = pat.Op("pd.reshape");
     const auto &reshape2 = pat.Op("pd.reshape");
 
@@ -39,18 +39,18 @@ class RemoveRedundentReshapePattern
              {&pat.Tensor("ret"), &pat.Tensor("xshape_1")});
 
     // Result patterns：要替换为的子图
-    ir::drr::ResultPattern res = pat.ResultPattern();
+    pir::drr::ResultPattern res = pat.ResultPattern();
     res.Op("pd.reshape")({&res.Tensor("arg0"), &res.Tensor("shape1")},
                          {&res.Tensor("ret"), &res.Tensor("xshape_1")});
   }
 };
 
 class FoldExpandToConstantPattern
-    : public ir::drr::DrrPatternBase<FoldExpandToConstantPattern> {
+    : public pir::drr::DrrPatternBase<FoldExpandToConstantPattern> {
  public:
-  void operator()(ir::drr::DrrPatternContext *ctx) const override {
+  void operator()(pir::drr::DrrPatternContext *ctx) const override {
     // Source Pattern 中可匹配的类型包括 Op 和 Tensor
-    ir::drr::SourcePattern pat = ctx->SourcePattern();
+    pir::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &full1 = pat.Op("pd.full",
                                {{"shape", pat.Attr("shape_1")},
                                 {"value", pat.Attr("value_1")},
@@ -65,7 +65,7 @@ class FoldExpandToConstantPattern
     pat.Tensor("ret") = expand(full1(), full_int_array1());
 
     // Result patterns：要替换为的子图.      Constrains: 本Pass无额外约束规则
-    ir::drr::ResultPattern res = pat.ResultPattern();
+    pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &full2 = res.Op("pd.full",
                                {{"shape", pat.Attr("expand_shape_value")},
                                 {"value", pat.Attr("value_1")},
@@ -76,11 +76,11 @@ class FoldExpandToConstantPattern
 };
 
 class RemoveRedundentTransposePattern
-    : public ir::drr::DrrPatternBase<RemoveRedundentTransposePattern> {
+    : public pir::drr::DrrPatternBase<RemoveRedundentTransposePattern> {
  public:
-  void operator()(ir::drr::DrrPatternContext *ctx) const override {
+  void operator()(pir::drr::DrrPatternContext *ctx) const override {
     // Source pattern: 待匹配的子图
-    ir::drr::SourcePattern pat = ctx->SourcePattern();
+    pir::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &transpose1 =
         pat.Op("pd.transpose", {{"perm", pat.Attr("perm_1")}});
     const auto &transpose2 =
@@ -89,9 +89,9 @@ class RemoveRedundentTransposePattern
     pat.Tensor("ret") = transpose2(transpose1(pat.Tensor("arg_transpose")));
 
     // Result patterns: 要替换的子图
-    ir::drr::ResultPattern res = pat.ResultPattern();
+    pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &new_perm_attr = res.Attr(
-        [](const ir::drr::MatchContext &match_ctx) -> std::vector<int> {
+        [](const pir::drr::MatchContext &match_ctx) -> std::vector<int> {
           const auto &perm1 = match_ctx.Attr<std::vector<int>>("perm_1");
           const auto &perm2 = match_ctx.Attr<std::vector<int>>("perm_2");
           std::vector<int> new_perm;
@@ -108,8 +108,8 @@ class RemoveRedundentTransposePattern
 };
 
 class RemoveRedundentCastPattern
-    : public ir::drr::DrrPatternBase<RemoveRedundentCastPattern> {
-  void operator()(ir::drr::DrrPatternContext *ctx) const override {
+    : public pir::drr::DrrPatternBase<RemoveRedundentCastPattern> {
+  void operator()(pir::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
     pat.Tensor("tmp") =
         pat.Op("pd.cast", {{"dtype", pat.Attr("dtype1")}})(pat.Tensor("arg0"));
@@ -122,9 +122,9 @@ class RemoveRedundentCastPattern
 };
 
 class RemoveUselessCastPattern
-    : public ir::drr::DrrPatternBase<RemoveUselessCastPattern> {
+    : public pir::drr::DrrPatternBase<RemoveUselessCastPattern> {
  public:
-  void operator()(ir::drr::DrrPatternContext *ctx) const override {
+  void operator()(pir::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
     pat.Tensor("ret") = pat.Op("pd.cast")(pat.Tensor("arg0"));
     pat.RequireEqual(pat.Tensor("ret").dtype(), pat.Tensor("arg0").dtype());
@@ -133,7 +133,7 @@ class RemoveUselessCastPattern
   }
 };
 
-void BuildProgram(ir::Builder &builder) {  // NOLINT
+void BuildProgram(pir::Builder &builder) {  // NOLINT
   paddle::dialect::FullOp full_input_op =
       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{4, 3, 16},
                                              1.5,
@@ -181,49 +181,49 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
   builder.Build<paddle::dialect::FetchOp>(relu_op_second.out(), "out", 0);
 }
 
-class DrrPatternRewritePass : public ir::Pass {
+class DrrPatternRewritePass : public pir::Pass {
  public:
-  DrrPatternRewritePass() : ir::Pass("DrrPatternRewritePass", 1) {}
+  DrrPatternRewritePass() : pir::Pass("DrrPatternRewritePass", 1) {}
 
-  bool Initialize(ir::IrContext *context) override {
-    ir::RewritePatternSet ps(context);
+  bool Initialize(pir::IrContext *context) override {
+    pir::RewritePatternSet ps(context);
     ps.Add(RemoveRedundentReshapePattern().Build(context));
     ps.Add(RemoveRedundentTransposePattern().Build(context));
     ps.Add(RemoveRedundentCastPattern().Build(context));
     ps.Add(RemoveUselessCastPattern().Build(context));
     ps.Add(FoldExpandToConstantPattern().Build(context));
 
-    patterns_ = ir::FrozenRewritePatternSet(std::move(ps));
+    patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
   }
 
-  void Run(ir::Operation *op) override {
-    ir::GreedyRewriteConfig cfg;
+  void Run(pir::Operation *op) override {
+    pir::GreedyRewriteConfig cfg;
     cfg.use_top_down_traversal = true;
     cfg.max_iterations = 10;
-    ir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
+    pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
   }
 
-  bool CanApplyOn(ir::Operation *op) const override {
+  bool CanApplyOn(pir::Operation *op) const override {
     return op->name() == "builtin.module" && op->num_regions() > 0;
   }
 
  private:
-  ir::FrozenRewritePatternSet patterns_;
+  pir::FrozenRewritePatternSet patterns_;
 };
 
 TEST(DrrTest, drr_demo) {
-  ir::IrContext *ctx = ir::IrContext::Instance();
+  pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ir::Program program(ctx);
-  ir::Builder builder = ir::Builder(ctx, program.block());
+  pir::Program program(ctx);
+  pir::Builder builder = pir::Builder(ctx, program.block());
   BuildProgram(builder);
 
   EXPECT_EQ(program.block()->size(), 14u);
 
-  ir::PassManager pm(ctx);
+  pir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<DrrPatternRewritePass>());
-  pm.AddPass(ir::CreateDeadCodeEliminationPass());
+  pm.AddPass(pir::CreateDeadCodeEliminationPass());
   // pm.EnablePassTiming();
   pm.EnableIRPrinting();
 

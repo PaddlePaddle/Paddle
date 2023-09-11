@@ -17,15 +17,15 @@
 #include <memory>
 #include <unordered_map>
 
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
-#include "paddle/fluid/ir/drr/api/drr_pattern_context.h"
-#include "paddle/fluid/ir/drr/api/tensor_interface.h"
-#include "paddle/fluid/ir/drr/attr_type_uilts.h"
-#include "paddle/fluid/ir/drr/ir_operation.h"
-#include "paddle/fluid/ir/drr/ir_value.h"
-#include "paddle/ir/core/builtin_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/fluid/pir/drr/api/drr_pattern_context.h"
+#include "paddle/fluid/pir/drr/api/tensor_interface.h"
+#include "paddle/fluid/pir/drr/attr_type_uilts.h"
+#include "paddle/fluid/pir/drr/ir_operation.h"
+#include "paddle/fluid/pir/drr/ir_value.h"
+#include "paddle/pir/core/builtin_attribute.h"
 
-namespace ir {
+namespace pir {
 namespace drr {
 
 class MatchContextImpl final {
@@ -63,7 +63,7 @@ class MatchContextImpl final {
     return *iter->second;
   }
 
-  ir::Attribute GetIrAttr(const std::string& attr_name) const {
+  pir::Attribute GetIrAttr(const std::string& attr_name) const {
     auto iter = attr_map_.find(attr_name);
     PADDLE_ENFORCE_NE(
         iter,
@@ -79,7 +79,7 @@ class MatchContextImpl final {
     return operation_map_;
   }
 
-  const std::unordered_map<std::string, ir::Attribute>& attr_map() const {
+  const std::unordered_map<std::string, pir::Attribute>& attr_map() const {
     return attr_map_;
   }
 
@@ -105,15 +105,15 @@ class MatchContextImpl final {
   }
 
  private:
-  void BindIrAttr(const std::string& attr_name, ir::Attribute attr) {
+  void BindIrAttr(const std::string& attr_name, pir::Attribute attr) {
     attr_map_.emplace(attr_name, attr);
   }
 
   std::unordered_map<std::string, std::shared_ptr<IrValue>> tensor_map_;
   std::unordered_map<const OpCall*, std::shared_ptr<IrOperation>>
       operation_map_;
-  std::unordered_map<std::string, ir::Attribute> attr_map_;
+  std::unordered_map<std::string, pir::Attribute> attr_map_;
 };
 
 }  // namespace drr
-}  // namespace ir
+}  // namespace pir

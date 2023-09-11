@@ -19,27 +19,27 @@
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/fluid/ir/drr/api/drr_pattern_context.h"
-#include "paddle/fluid/ir/drr/api/match_context.h"
-#include "paddle/fluid/ir/drr/ir_operation.h"
-#include "paddle/fluid/ir/drr/ir_operation_creator.h"
-#include "paddle/fluid/ir/drr/match_context_impl.h"
-#include "paddle/fluid/ir/drr/pattern_graph.h"
-#include "paddle/ir/core/enforce.h"
-#include "paddle/ir/core/operation.h"
-#include "paddle/ir/core/type_name.h"
-#include "paddle/ir/pattern_rewrite/pattern_match.h"
+#include "paddle/fluid/pir/drr/api/drr_pattern_context.h"
+#include "paddle/fluid/pir/drr/api/match_context.h"
+#include "paddle/fluid/pir/drr/ir_operation.h"
+#include "paddle/fluid/pir/drr/ir_operation_creator.h"
+#include "paddle/fluid/pir/drr/match_context_impl.h"
+#include "paddle/fluid/pir/drr/pattern_graph.h"
+#include "paddle/pir/core/enforce.h"
+#include "paddle/pir/core/operation.h"
+#include "paddle/pir/core/type_name.h"
+#include "paddle/pir/pattern_rewrite/pattern_match.h"
 
-namespace ir {
+namespace pir {
 namespace drr {
 
 template <typename DrrPattern>
-class DrrRewritePattern : public ir::RewritePattern {
+class DrrRewritePattern : public pir::RewritePattern {
  public:
   explicit DrrRewritePattern(const DrrPatternContext& drr_context,
-                             ir::IrContext* context,
-                             ir::PatternBenefit benefit = 1)
-      : ir::RewritePattern(
+                             pir::IrContext* context,
+                             pir::PatternBenefit benefit = 1)
+      : pir::RewritePattern(
             drr_context.source_pattern_graph()->AnchorNode()->name(),
             benefit,
             context,
@@ -54,12 +54,12 @@ class DrrRewritePattern : public ir::RewritePattern {
     result_pattern_graph_->Print();
   }
 
-  bool MatchAndRewrite(ir::Operation* op,
+  bool MatchAndRewrite(pir::Operation* op,
                        PatternRewriter& rewriter) const override {  // NOLINT
     std::shared_ptr<MatchContextImpl> src_match_ctx =
         std::make_shared<MatchContextImpl>();
     if (PatternGraphMatch(op, src_match_ctx)) {
-      VLOG(4) << "DRR pattern (" << ir::get_type_name<DrrPattern>()
+      VLOG(4) << "DRR pattern (" << pir::get_type_name<DrrPattern>()
               << ") is matched in program.";
       PatternGraphRewrite(*src_match_ctx, rewriter);
       return true;
@@ -69,16 +69,16 @@ class DrrRewritePattern : public ir::RewritePattern {
 
  private:
   bool PatternGraphMatch(
-      ir::Operation* op,
+      pir::Operation* op,
       const std::shared_ptr<MatchContextImpl>& source_pattern_match_ctx) const {
     // Match
     VLOG(6) << "PatternGraphMatch Start: op(" << op->name() << ")";
     const auto* anchor = source_pattern_graph_->AnchorNode();
     IR_ENFORCE(anchor);
     std::unordered_set<const OpCall*> drr_visited;
-    std::unordered_set<Operation*> ir_visited;
+    std::unordered_set<pir::Operation*> ir_visited;
     std::queue<const OpCall*> drr_q;
-    std::queue<ir::Operation*> ir_q;
+    std::queue<pir::Operation*> ir_q;
     drr_q.push(anchor);
     ir_q.push(op);
     drr_visited.insert(anchor);
@@ -146,7 +146,7 @@ class DrrRewritePattern : public ir::RewritePattern {
           if (drr_visited.count(drr_brother_op)) {
             continue;
           }
-          std::pair<bool, ir::Operation*> found{false, nullptr};
+          std::pair<bool, pir::Operation*> found{false, nullptr};
           for (auto it = ir_input_value.use_begin();
                it != ir_input_value.use_end();
                ++it) {
@@ -229,7 +229,7 @@ class DrrRewritePattern : public ir::RewritePattern {
           if (drr_visited.count(drr_child_op)) {
             continue;
           }
-          std::pair<bool, ir::Operation*> found{false, nullptr};
+          std::pair<bool, pir::Operation*> found{false, nullptr};
           for (auto it = ir_output_value.use_begin();
                it != ir_output_value.use_end();
                ++it) {
@@ -286,7 +286,7 @@ class DrrRewritePattern : public ir::RewritePattern {
   }
 
   void PatternGraphRewrite(const MatchContextImpl& source_pattern_match_ctx,
-                           ir::PatternRewriter& rewriter) const {  // NOLINT
+                           pir::PatternRewriter& rewriter) const {  // NOLINT
     VLOG(6) << "Create Operations in result_pattern_graph";
     MatchContextImpl res_match_ctx = CreateOperations(*source_pattern_graph_,
                                                       *result_pattern_graph_,
@@ -309,7 +309,7 @@ class DrrRewritePattern : public ir::RewritePattern {
       const SourcePatternGraph& source_pattern_graph,
       const ResultPatternGraph& result_pattern_graph,
       const MatchContextImpl& src_match_ctx,
-      ir::PatternRewriter& rewriter) const {  // NOLINT
+      pir::PatternRewriter& rewriter) const {  // NOLINT
     MatchContextImpl res_match_ctx;
     // add input tensors info for res_match_ctx
     for (const auto& in_tensor : result_pattern_graph.input_tensors()) {
@@ -359,7 +359,7 @@ class DrrRewritePattern : public ir::RewritePattern {
 
   void ReplaceOutputTensor(const MatchContextImpl& src_match_ctx,
                            const MatchContextImpl& res_match_ctx,
-                           ir::PatternRewriter& rewriter) const {  // NOLINT
+                           pir::PatternRewriter& rewriter) const {  // NOLINT
     for (const auto& output_name : result_pattern_graph_->output_tensors()) {
       if (source_pattern_graph_->output_tensors().count(output_name)) {
         const auto& src_ir_tensor = src_match_ctx.GetIrValue(output_name);
@@ -376,7 +376,7 @@ class DrrRewritePattern : public ir::RewritePattern {
   void DeleteSourcePatternOp(const SourcePatternGraph& source_pattern_graph,
                              const ResultPatternGraph& result_pattern_graph,
                              const MatchContextImpl& src_match_ctx,
-                             ir::PatternRewriter& rewriter) const {  // NOLINT
+                             pir::PatternRewriter& rewriter) const {  // NOLINT
     std::vector<const OpCall*> topo_order_ops;
     GraphTopo graph_topo_visit(&source_pattern_graph);
     graph_topo_visit.WalkGraphNodesTopoOrder(
@@ -454,4 +454,4 @@ class DrrRewritePattern : public ir::RewritePattern {
 };
 
 }  // namespace drr
-}  // namespace ir
+}  // namespace pir

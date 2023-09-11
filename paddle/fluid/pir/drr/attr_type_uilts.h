@@ -16,10 +16,10 @@
 
 #include <vector>
 
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
-#include "paddle/ir/core/builtin_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/pir/core/builtin_attribute.h"
 
-namespace ir {
+namespace pir {
 namespace drr {
 
 template <class T>
@@ -49,20 +49,20 @@ template <typename T>
 struct IrAttrbuteCreator {
   typename CppTypeToIrAttribute<T>::type operator()(T obj) const {
     return CppTypeToIrAttribute<T>::type::template get(
-        ir::IrContext::Instance(), obj);
+        pir::IrContext::Instance(), obj);
   }
 };
 
 template <typename T>
 struct IrAttrTypeCast {
-  static T To(const ir::Attribute& attr) {
+  static T To(const pir::Attribute& attr) {
     return attr.dyn_cast<typename CppTypeToIrAttribute<T>::type>().data();
   }
 };
 
 template <>
 struct IrAttrTypeCast<std::string> {
-  static std::string To(const ir::Attribute& attr) {
+  static std::string To(const pir::Attribute& attr) {
     return attr.dyn_cast<typename CppTypeToIrAttribute<std::string>::type>()
         .AsString();
   }
@@ -70,11 +70,11 @@ struct IrAttrTypeCast<std::string> {
 
 template <>
 struct IrAttrTypeCast<std::vector<int32_t>> {
-  static std::vector<int32_t> To(const ir::Attribute& attr) {
+  static std::vector<int32_t> To(const pir::Attribute& attr) {
     std::vector<int32_t> result;
-    auto array_attr = attr.dyn_cast<ir::ArrayAttribute>();
+    auto array_attr = attr.dyn_cast<pir::ArrayAttribute>();
     for (size_t i = 0; i < array_attr.size(); i++) {
-      result.push_back(array_attr.at(i).dyn_cast<ir::Int32Attribute>().data());
+      result.push_back(array_attr.at(i).dyn_cast<pir::Int32Attribute>().data());
     }
     return result;
   }
@@ -82,13 +82,13 @@ struct IrAttrTypeCast<std::vector<int32_t>> {
 
 template <>
 struct IrAttrTypeCast<std::vector<int64_t>> {
-  static std::vector<int64_t> To(const ir::Attribute& attr) {
+  static std::vector<int64_t> To(const pir::Attribute& attr) {
     std::vector<int64_t> result;
-    if (attr.dyn_cast<ir::ArrayAttribute>()) {
-      auto array_attr = attr.dyn_cast<ir::ArrayAttribute>();
+    if (attr.dyn_cast<pir::ArrayAttribute>()) {
+      auto array_attr = attr.dyn_cast<pir::ArrayAttribute>();
       for (size_t i = 0; i < array_attr.size(); i++) {
         result.push_back(
-            array_attr.at(i).dyn_cast<ir::Int64Attribute>().data());
+            array_attr.at(i).dyn_cast<pir::Int64Attribute>().data());
       }
     } else if (attr.dyn_cast<paddle::dialect::IntArrayAttribute>()) {
       result =
@@ -102,4 +102,4 @@ struct IrAttrTypeCast<std::vector<int64_t>> {
 };
 
 }  // namespace drr
-}  // namespace ir
+}  // namespace pir

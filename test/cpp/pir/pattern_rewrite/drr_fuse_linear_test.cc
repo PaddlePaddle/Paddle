@@ -16,18 +16,18 @@
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"
-#include "paddle/fluid/ir/drr/api/drr_pattern_base.h"
-#include "paddle/ir/pass/pass.h"
-#include "paddle/ir/pass/pass_manager.h"
-#include "paddle/ir/pattern_rewrite/pattern_rewrite_driver.h"
-#include "paddle/ir/transforms/reorder_block_ops_pass.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/pir/pass/pass.h"
+#include "paddle/pir/pass/pass_manager.h"
+#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/transforms/reorder_block_ops_pass.h"
 
-class FusedLinearPattern : public ir::drr::DrrPatternBase<FusedLinearPattern> {
+class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
  public:
-  void operator()(ir::drr::DrrPatternContext *ctx) const override {
-    ir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+    pir::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op("pd.matmul",
                                 {{"transpose_x", pat.Attr("trans_x")},
                                  {"transpose_y", pat.Attr("trans_y")}});
@@ -37,9 +37,9 @@ class FusedLinearPattern : public ir::drr::DrrPatternBase<FusedLinearPattern> {
     pat.Tensor("out") = add(pat.Tensor("tmp"), pat.Tensor("bias"));
 
     // Result patterns：要替换为的子图
-    ir::drr::ResultPattern res = pat.ResultPattern();
+    pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &act_attr =
-        res.Attr([](const ir::drr::MatchContext &match_ctx) -> std::any {
+        res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
           return "none";
         });
     const auto &fused_gemm_epilogue = res.Op("pd.fused_gemm_epilogue",
@@ -53,10 +53,10 @@ class FusedLinearPattern : public ir::drr::DrrPatternBase<FusedLinearPattern> {
 };
 
 // class FusedLinearGradPattern
-//     : public ir::drr::DrrPatternBase<FusedLinearGradPattern> {
+//     : public pir::drr::DrrPatternBase<FusedLinearGradPattern> {
 //  public:
-//   void operator()(ir::drr::DrrPatternContext *ctx) const override {
-//     ir::drr::SourcePattern pat = ctx->SourcePattern();
+//   void operator()(pir::drr::DrrPatternContext *ctx) const override {
+//     pir::drr::SourcePattern pat = ctx->SourcePattern();
 //     const auto &matmul_grad = pat.Op("pd.matmul_grad",
 //                                      {{"transpose_x", pat.Attr("trans_x")},
 //                                       {"transpose_y", pat.Attr("trans_y")}});
@@ -70,9 +70,9 @@ class FusedLinearPattern : public ir::drr::DrrPatternBase<FusedLinearPattern> {
 //                 {&pat.Tensor("x_grad"), &pat.Tensor("w_grad")});
 
 //     // Result patterns：要替换为的子图
-//     ir::drr::ResultPattern res = pat.ResultPattern();
+//     pir::drr::ResultPattern res = pat.ResultPattern();
 //     const auto &act_attr =
-//         res.Attr([](const ir::drr::MatchContext &match_ctx) -> std::any {
+//         res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
 //           return "none";
 //         });
 
@@ -92,10 +92,10 @@ class FusedLinearPattern : public ir::drr::DrrPatternBase<FusedLinearPattern> {
 // };
 
 class FusedLinearGradPattern
-    : public ir::drr::DrrPatternBase<FusedLinearGradPattern> {
+    : public pir::drr::DrrPatternBase<FusedLinearGradPattern> {
  public:
-  void operator()(ir::drr::DrrPatternContext *ctx) const override {
-    ir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+    pir::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op("pd.matmul",
                                 {{"transpose_x", pat.Attr("trans_x")},
                                  {"transpose_y", pat.Attr("trans_y")}});
@@ -112,9 +112,9 @@ class FusedLinearGradPattern
     matmul_grad({&pat.Tensor("x"), &pat.Tensor("w"), &pat.Tensor("tmp_grad")},
                 {&pat.Tensor("x_grad"), &pat.Tensor("w_grad")});
 
-    ir::drr::ResultPattern res = pat.ResultPattern();
+    pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &act_attr =
-        res.Attr([](const ir::drr::MatchContext &match_ctx) -> std::any {
+        res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
           return "none";
         });
     const auto &fused_gemm_epilogue = res.Op("pd.fused_gemm_epilogue",
@@ -140,10 +140,10 @@ class FusedLinearGradPattern
 };
 
 class FusedLinearGeluGradPattern
-    : public ir::drr::DrrPatternBase<FusedLinearPattern> {
+    : public pir::drr::DrrPatternBase<FusedLinearPattern> {
  public:
-  void operator()(ir::drr::DrrPatternContext *ctx) const override {
-    ir::drr::SourcePattern pat = ctx->SourcePattern();
+  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+    pir::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &fused_gemm_epilogue =
         pat.Op("pd.fused_gemm_epilogue",
                {{{"trans_x", pat.Attr("trans_x1")},
@@ -170,15 +170,15 @@ class FusedLinearGeluGradPattern
     pat.Tensor("gelu_dx") =
         pat.Op("pd.gelu_grad")(pat.Tensor("fuse_out"), pat.Tensor("x1_grad"));
 
-    pat.RequireNativeCall([&](const ir::drr::MatchContext &match_ctx) {
+    pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
       return match_ctx.Attr<std::string>("act1") == "none" &&
              match_ctx.Attr<std::string>("act2") == "none";
     });
 
     // Result patterns：要替换为的子图
-    ir::drr::ResultPattern res = pat.ResultPattern();
+    pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &act_attr =
-        res.Attr([](const ir::drr::MatchContext &match_ctx) -> std::any {
+        res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
           return "gelu";
         });
     const auto &fused_gemm_epilogue_new =
@@ -187,7 +187,7 @@ class FusedLinearGeluGradPattern
                  {"trans_y", pat.Attr("trans_y")},
                  {"activation", act_attr}}});
     const auto &act_grad_attr =
-        res.Attr([](const ir::drr::MatchContext &match_ctx) -> std::any {
+        res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
           return "gelu_grad";
         });
     const auto &fused_gemm_epilogue_grad_new =
@@ -208,36 +208,36 @@ class FusedLinearGeluGradPattern
   }
 };
 
-class FusedLinearPass : public ir::Pass {
+class FusedLinearPass : public pir::Pass {
  public:
-  FusedLinearPass() : ir::Pass("FusedLinearPass", 1) {}
+  FusedLinearPass() : pir::Pass("FusedLinearPass", 1) {}
 
-  bool Initialize(ir::IrContext *context) override {
-    ir::RewritePatternSet ps(context);
+  bool Initialize(pir::IrContext *context) override {
+    pir::RewritePatternSet ps(context);
     ps.Add(FusedLinearGradPattern().Build(context));
     ps.Add(FusedLinearPattern().Build(context));
     ps.Add(FusedLinearGeluGradPattern().Build(context));
 
-    patterns_ = ir::FrozenRewritePatternSet(std::move(ps));
+    patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
   }
 
-  void Run(ir::Operation *op) override {
-    ir::GreedyRewriteConfig cfg;
+  void Run(pir::Operation *op) override {
+    pir::GreedyRewriteConfig cfg;
     cfg.use_top_down_traversal = true;
     cfg.max_iterations = 10;
-    ir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
+    pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
   }
 
-  bool CanApplyOn(ir::Operation *op) const override {
+  bool CanApplyOn(pir::Operation *op) const override {
     return op->name() == "builtin.module" && op->num_regions() > 0;
   }
 
  private:
-  ir::FrozenRewritePatternSet patterns_;
+  pir::FrozenRewritePatternSet patterns_;
 };
 
-void BuildProgram(ir::Builder &builder) {  // NOLINT
+void BuildProgram(pir::Builder &builder) {  // NOLINT
   paddle::dialect::FullOp full_input_op1 =
       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{1, 512, 64},
                                              1.5);
@@ -337,18 +337,18 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
 }
 
 TEST(DrrTest, FusedLinear) {
-  ir::IrContext *ctx = ir::IrContext::Instance();
+  pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ir::Program program(ctx);
-  ir::Builder builder = ir::Builder(ctx, program.block());
+  pir::Program program(ctx);
+  pir::Builder builder = pir::Builder(ctx, program.block());
   BuildProgram(builder);
 
   EXPECT_EQ(program.block()->size(), 34u);
 
-  ir::PassManager pm(ctx);
+  pir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<FusedLinearPass>());
-  pm.AddPass(ir::CreateReorderBlockOpsPass());
-  // pm.AddPass(ir::CreateDeadCodeEliminationPass());
+  pm.AddPass(pir::CreateReorderBlockOpsPass());
+  // pm.AddPass(pir::CreateDeadCodeEliminationPass());
   // pm.EnablePassTiming();
   pm.EnableIRPrinting();
 
