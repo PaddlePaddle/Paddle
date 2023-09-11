@@ -29,10 +29,10 @@ class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
     pir::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &matmul = pat.Op("pd.matmul",
+    const auto &matmul = pat.Op("pd_op.matmul",
                                 {{"transpose_x", pat.Attr("trans_x")},
                                  {"transpose_y", pat.Attr("trans_y")}});
-    const auto &add = pat.Op("pd.add");
+    const auto &add = pat.Op("pd_op.add");
 
     pat.Tensor("tmp") = matmul(pat.Tensor("x"), pat.Tensor("w"));
     pat.Tensor("out") = add(pat.Tensor("tmp"), pat.Tensor("bias"));
@@ -43,7 +43,7 @@ class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
           return "none";
         });
-    const auto &fused_gemm_epilogue = res.Op("pd.fused_gemm_epilogue",
+    const auto &fused_gemm_epilogue = res.Op("pd_op.fused_gemm_epilogue",
                                              {{{"trans_x", pat.Attr("trans_x")},
                                                {"trans_y", pat.Attr("trans_y")},
                                                {"activation", act_attr}}});
@@ -58,10 +58,10 @@ class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
 //  public:
 //   void operator()(pir::drr::DrrPatternContext *ctx) const override {
 //     pir::drr::SourcePattern pat = ctx->SourcePattern();
-//     const auto &matmul_grad = pat.Op("pd.matmul_grad",
+//     const auto &matmul_grad = pat.Op("pd_op.matmul_grad",
 //                                      {{"transpose_x", pat.Attr("trans_x")},
 //                                       {"transpose_y", pat.Attr("trans_y")}});
-//     const auto &add_grad = pat.Op("pd.add_grad");
+//     const auto &add_grad = pat.Op("pd_op.add_grad");
 
 //     add_grad({&pat.Tensor("tmp"), &pat.Tensor("bias"),
 //     &pat.Tensor("out_grad")},
@@ -78,7 +78,7 @@ class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
 //         });
 
 //     const auto &fused_gemm_epilogue_grad =
-//         res.Op("pd.fused_gemm_epilogue_grad",
+//         res.Op("pd_op.fused_gemm_epilogue_grad",
 //                {{{"trans_x", pat.Attr("trans_x")},
 //                  {"trans_y", pat.Attr("trans_y")},
 //                  {"activation_grad", act_attr}}});
@@ -97,14 +97,14 @@ class FusedLinearGradPattern
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
     pir::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &matmul = pat.Op("pd.matmul",
+    const auto &matmul = pat.Op("pd_op.matmul",
                                 {{"transpose_x", pat.Attr("trans_x")},
                                  {"transpose_y", pat.Attr("trans_y")}});
-    const auto &matmul_grad = pat.Op("pd.matmul_grad",
+    const auto &matmul_grad = pat.Op("pd_op.matmul_grad",
                                      {{"transpose_x", pat.Attr("trans_x")},
                                       {"transpose_y", pat.Attr("trans_y")}});
-    const auto &add = pat.Op("pd.add");
-    const auto &add_grad = pat.Op("pd.add_grad");
+    const auto &add = pat.Op("pd_op.add");
+    const auto &add_grad = pat.Op("pd_op.add_grad");
 
     pat.Tensor("tmp") = matmul(pat.Tensor("x"), pat.Tensor("w"));
     pat.Tensor("out") = add(pat.Tensor("tmp"), pat.Tensor("bias"));
@@ -118,12 +118,12 @@ class FusedLinearGradPattern
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
           return "none";
         });
-    const auto &fused_gemm_epilogue = res.Op("pd.fused_gemm_epilogue",
+    const auto &fused_gemm_epilogue = res.Op("pd_op.fused_gemm_epilogue",
                                              {{{"trans_x", pat.Attr("trans_x")},
                                                {"trans_y", pat.Attr("trans_y")},
                                                {"activation", act_attr}}});
     const auto &fused_gemm_epilogue_grad =
-        res.Op("pd.fused_gemm_epilogue_grad",
+        res.Op("pd_op.fused_gemm_epilogue_grad",
                {{{"trans_x", pat.Attr("trans_x")},
                  {"trans_y", pat.Attr("trans_y")},
                  {"activation_grad", act_attr}}});
@@ -146,12 +146,12 @@ class FusedLinearGeluGradPattern
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
     pir::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &fused_gemm_epilogue =
-        pat.Op("pd.fused_gemm_epilogue",
+        pat.Op("pd_op.fused_gemm_epilogue",
                {{{"trans_x", pat.Attr("trans_x1")},
                  {"trans_y", pat.Attr("trans_y1")},
                  {"activation", pat.Attr("act1")}}});
     const auto &fused_gemm_epilogue_grad1 =
-        pat.Op("pd.fused_gemm_epilogue_grad",
+        pat.Op("pd_op.fused_gemm_epilogue_grad",
                {{{"trans_x", pat.Attr("trans_x2")},
                  {"trans_y", pat.Attr("trans_y2")},
                  {"activation_grad", pat.Attr("act2")}}});
@@ -159,7 +159,7 @@ class FusedLinearGeluGradPattern
     fused_gemm_epilogue(
         {&pat.Tensor("x"), &pat.Tensor("w"), &pat.Tensor("bias")},
         {&pat.Tensor("fuse_out")});
-    pat.Tensor("out") = pat.Op("pd.gelu")(pat.Tensor("fuse_out"));
+    pat.Tensor("out") = pat.Op("pd_op.gelu")(pat.Tensor("fuse_out"));
 
     fused_gemm_epilogue_grad1({&pat.Tensor("x1"),
                                &pat.Tensor("w1"),
@@ -168,8 +168,8 @@ class FusedLinearGeluGradPattern
                               {&pat.Tensor("x1_grad"),
                                &pat.Tensor("w1_grad"),
                                &pat.Tensor("bias1_grad")});
-    pat.Tensor("gelu_dx") =
-        pat.Op("pd.gelu_grad")(pat.Tensor("fuse_out"), pat.Tensor("x1_grad"));
+    pat.Tensor("gelu_dx") = pat.Op("pd_op.gelu_grad")(pat.Tensor("fuse_out"),
+                                                      pat.Tensor("x1_grad"));
 
     pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
       return match_ctx.Attr<std::string>("act1") == "none" &&
@@ -183,7 +183,7 @@ class FusedLinearGeluGradPattern
           return "gelu";
         });
     const auto &fused_gemm_epilogue_new =
-        res.Op("pd.fused_gemm_epilogue",
+        res.Op("pd_op.fused_gemm_epilogue",
                {{{"trans_x", pat.Attr("trans_x")},
                  {"trans_y", pat.Attr("trans_y")},
                  {"activation", act_attr}}});
@@ -192,7 +192,7 @@ class FusedLinearGeluGradPattern
           return "gelu_grad";
         });
     const auto &fused_gemm_epilogue_grad_new =
-        res.Op("pd.fused_gemm_epilogue_grad",
+        res.Op("pd_op.fused_gemm_epilogue_grad",
                {{{"trans_x", pat.Attr("trans_x")},
                  {"trans_y", pat.Attr("trans_y")},
                  {"activation_grad", act_grad_attr}}});

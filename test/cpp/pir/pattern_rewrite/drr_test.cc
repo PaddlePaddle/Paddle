@@ -31,8 +31,8 @@ class RemoveRedundentReshapePattern
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
     // Source patterns：待匹配的子图
     pir::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &reshape1 = pat.Op("pd.reshape");
-    const auto &reshape2 = pat.Op("pd.reshape");
+    const auto &reshape1 = pat.Op("pd_op.reshape");
+    const auto &reshape2 = pat.Op("pd_op.reshape");
 
     reshape1({&pat.Tensor("arg0"), &pat.Tensor("shape0")},
              {&pat.Tensor("out1"), &pat.Tensor("xshape_0")});
@@ -41,8 +41,8 @@ class RemoveRedundentReshapePattern
 
     // Result patterns：要替换为的子图
     pir::drr::ResultPattern res = pat.ResultPattern();
-    res.Op("pd.reshape")({&res.Tensor("arg0"), &res.Tensor("shape1")},
-                         {&res.Tensor("ret"), &res.Tensor("xshape_1")});
+    res.Op("pd_op.reshape")({&res.Tensor("arg0"), &res.Tensor("shape1")},
+                            {&res.Tensor("ret"), &res.Tensor("xshape_1")});
   }
 };
 
@@ -52,22 +52,22 @@ class FoldExpandToConstantPattern
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
     // Source Pattern 中可匹配的类型包括 Op 和 Tensor
     pir::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &full1 = pat.Op("pd.full",
+    const auto &full1 = pat.Op("pd_op.full",
                                {{"shape", pat.Attr("shape_1")},
                                 {"value", pat.Attr("value_1")},
                                 {"dtype", pat.Attr("dtype_1")},
                                 {"place", pat.Attr("place_1")}});
     const auto &full_int_array1 =
-        pat.Op("pd.full_int_array",
+        pat.Op("pd_op.full_int_array",
                {{"value", pat.Attr("expand_shape_value")},
                 {"dtype", pat.Attr("dtype_2")},
                 {"place", pat.Attr("place_2")}});
-    const auto &expand = pat.Op("pd.expand");
+    const auto &expand = pat.Op("pd_op.expand");
     pat.Tensor("ret") = expand(full1(), full_int_array1());
 
     // Result patterns：要替换为的子图.      Constrains: 本Pass无额外约束规则
     pir::drr::ResultPattern res = pat.ResultPattern();
-    const auto &full2 = res.Op("pd.full",
+    const auto &full2 = res.Op("pd_op.full",
                                {{"shape", pat.Attr("expand_shape_value")},
                                 {"value", pat.Attr("value_1")},
                                 {"dtype", pat.Attr("dtype_1")},
@@ -83,9 +83,9 @@ class RemoveRedundentTransposePattern
     // Source pattern: 待匹配的子图
     pir::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &transpose1 =
-        pat.Op("pd.transpose", {{"perm", pat.Attr("perm_1")}});
+        pat.Op("pd_op.transpose", {{"perm", pat.Attr("perm_1")}});
     const auto &transpose2 =
-        pat.Op("pd.transpose", {{"perm", pat.Attr("perm_2")}});
+        pat.Op("pd_op.transpose", {{"perm", pat.Attr("perm_2")}});
 
     pat.Tensor("ret") = transpose2(transpose1(pat.Tensor("arg_transpose")));
 
@@ -102,7 +102,7 @@ class RemoveRedundentTransposePattern
           return new_perm;
         });
     const auto &tranpose_continuous =
-        res.Op("pd.transpose", {{"perm", new_perm_attr}});
+        res.Op("pd_op.transpose", {{"perm", new_perm_attr}});
 
     res.Tensor("ret") = tranpose_continuous(res.Tensor("arg_transpose"));
   }
@@ -112,13 +112,13 @@ class RemoveRedundentCastPattern
     : public pir::drr::DrrPatternBase<RemoveRedundentCastPattern> {
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
-    pat.Tensor("tmp") =
-        pat.Op("pd.cast", {{"dtype", pat.Attr("dtype1")}})(pat.Tensor("arg0"));
-    pat.Tensor("ret") =
-        pat.Op("pd.cast", {{"dtype", pat.Attr("dtype2")}})(pat.Tensor("tmp"));
+    pat.Tensor("tmp") = pat.Op(
+        "pd_op.cast", {{"dtype", pat.Attr("dtype1")}})(pat.Tensor("arg0"));
+    pat.Tensor("ret") = pat.Op(
+        "pd_op.cast", {{"dtype", pat.Attr("dtype2")}})(pat.Tensor("tmp"));
     auto res = pat.ResultPattern();
-    res.Tensor("ret") =
-        res.Op("pd.cast", {{"dtype", pat.Attr("dtype2")}})(res.Tensor("arg0"));
+    res.Tensor("ret") = res.Op(
+        "pd_op.cast", {{"dtype", pat.Attr("dtype2")}})(res.Tensor("arg0"));
   }
 };
 
@@ -127,7 +127,7 @@ class RemoveUselessCastPattern
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
-    pat.Tensor("ret") = pat.Op("pd.cast")(pat.Tensor("arg0"));
+    pat.Tensor("ret") = pat.Op("pd_op.cast")(pat.Tensor("arg0"));
     pat.RequireEqual(pat.Tensor("ret").dtype(), pat.Tensor("arg0").dtype());
     auto res = pat.ResultPattern();
     res.Tensor("ret").Assign(res.Tensor("arg0"));
