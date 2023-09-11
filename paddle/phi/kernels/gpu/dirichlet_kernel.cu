@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/elementwise_divide_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
@@ -106,8 +107,7 @@ struct DirichletSampler<GPUContext, T> {
         {new_shape.size() - 1},
         true,
         false);
-    funcs::ElementwiseCompute<funcs::DivideFunctor<T>, T>(
-        dev_ctx, gamma_samples, gamma_sum, funcs::DivideFunctor<T>(), out);
+    phi::DivideKernel<T, GPUContext>(dev_ctx, gamma_samples, gamma_sum, out);
   }
 };
 }  // namespace phi

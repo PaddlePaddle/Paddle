@@ -22,6 +22,8 @@
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/p_norm_kernel.h"
+#include "paddle/phi/kernels/reduce_max_kernel.h"
+#include "paddle/phi/kernels/reduce_min_kernel.h"
 
 namespace phi {
 
@@ -149,16 +151,16 @@ void DistKernel(const Context& dev_ctx,
       ReduceMaxWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               x_ptr, y_ptr, i_ptr, n);
-      phi::funcs::ReduceKernel<T, T, kps::MaxFunctor, kps::IdentityFunctor<T>>(
-          dev_ctx, intermediate, out, kps::IdentityFunctor<T>(), reduce_axis);
+      phi::MaxKernel<T, Context>(
+          dev_ctx, intermediate, reduce_axis, false, out);
 
     } else if (p == -INFINITY) {
       ReduceMinWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               x_ptr, y_ptr, i_ptr, n);
 
-      phi::funcs::ReduceKernel<T, T, kps::MinFunctor, kps::IdentityFunctor<T>>(
-          dev_ctx, intermediate, out, kps::IdentityFunctor<T>(), reduce_axis);
+      phi::MinKernel<T, Context>(
+          dev_ctx, intermediate, reduce_axis, false, out);
 
     } else {
       MT p_order = static_cast<MT>(p);
