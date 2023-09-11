@@ -839,6 +839,10 @@ std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
       if (op_item->result(0).type().isa<dialect::SelectedRowsType>()) {
         kernel_fn_str = "add_n_sr";
       }
+    } else if (op_item->name() == "pd.embedding") {
+      if (op_item->operand_source(1).type().isa<dialect::SelectedRowsType>()) {
+        kernel_fn_str = "sparse_weight_embedding";
+      }
     }
 
     auto kernel_key =
