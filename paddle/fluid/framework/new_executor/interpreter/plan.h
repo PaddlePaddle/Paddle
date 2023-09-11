@@ -44,7 +44,7 @@ class Plan final {
   std::shared_ptr<::pir::Program> IrProgram(const std::string& job_type) const;
 
   void UpdateIrProgram(const std::string& job_type,
-                       std::shared_ptr<::ir::Program> ir_prog);
+                       std::shared_ptr<::pir::Program> ir_prog);
 
   int64_t MicroBatchNum() const;
 

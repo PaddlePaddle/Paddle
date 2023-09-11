@@ -75,7 +75,7 @@ std::shared_ptr<::pir::Program> Plan::IrProgram(
 }
 
 void Plan::UpdateIrProgram(const std::string& job_type,
-                           std::shared_ptr<::ir::Program> ir_prog) {
+                           std::shared_ptr<::pir::Program> ir_prog) {
   type_to_ir_program_[job_type] = ir_prog;
 }
 
