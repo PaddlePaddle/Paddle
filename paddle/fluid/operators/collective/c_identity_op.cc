@@ -78,6 +78,9 @@ class CIdentityOpGradMaker : public framework::SingleGradOpMaker<T> {
     retv->SetAttrMap(this->Attrs());
   }
 };
+
+DECLARE_INPLACE_OP_INFERER(IdentityInplaceInferer, {"X", "Out"});
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -92,4 +95,5 @@ REGISTER_OPERATOR(c_identity,
                   ops::CIdentityOpGradMaker<paddle::framework::OpDesc>,
                   ops::CIdentityOpGradMaker<paddle::imperative::OpBase>,
                   ops::CIdentityOpMaker,
+                  ops::IdentityInplaceInferer,
                   CIdentityShapeFunctor);

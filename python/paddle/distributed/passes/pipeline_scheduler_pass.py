@@ -22,6 +22,7 @@ from ..utils.log_utils import get_logger
 from .pass_base import PassContext, new_pass, register_pass
 from .pass_utils import (
     AutoParallelStreamType,
+    _add_event_dependency,
     _program_for_fthenb_and_1f1b,
     split_program,
 )
@@ -240,16 +241,42 @@ class Pipeline1F1BPass(PipelinePassBase):
         return job_list
 
     def _multistreaming_for_overlapping(self, programs):
-        # TODO(Ruibiao): Add cross-program event dependency for multi-stream.
-        for program in programs:
+        num_programs = len(programs)
+        for program_id, program in enumerate(programs):
             last_op = program.global_block().ops[-1]
             if self.is_comm_op_valid_to_overlap(last_op):
                 last_op.dist_attr.execution_stream = (
                     AutoParallelStreamType.MP_STREAM.value
                 )
+                # Add cross-program event dependency
+                prior_op_input_arg_names = last_op.input_arg_names
+                prior_op_output_arg_names = last_op.output_arg_names
+                for i in range(program_id + 1, num_programs):
+                    posterior_ops = programs[i].global_block().ops
+                    num_posterior_ops = len(posterior_ops)
+                    for op_id in range(num_posterior_ops):
+                        posterior_op = posterior_ops[op_id]
+                        posterior_op_input_arg_names = (
+                            posterior_op.input_arg_names
+                        )
+                        posterior_op_output_arg_names = (
+                            posterior_op.output_arg_names
+                        )
+                        if (
+                            set(prior_op_input_arg_names)
+                            & set(posterior_op_output_arg_names)
+                            or set(prior_op_output_arg_names)
+                            & set(posterior_op_input_arg_names)
+                            or set(prior_op_output_arg_names)
+                            & set(posterior_op_output_arg_names)
+                        ):
+                            _add_event_dependency(last_op, posterior_op)
 
     def _op_cost(self, op):
         try:
+            # TODO(Ruibiao): c_identity is redundant in auto parallel, it is temporarily set as inplace-op and do nothing in kernel, remove it later.
+            if op.type == "c_identity":
+                return 0
             return calc_time_by_cost_model(op)
         except:
             logger.info(f"The cost of {op} is unknown.")

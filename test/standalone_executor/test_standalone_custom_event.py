@@ -102,7 +102,7 @@ class TestMannulEvent(unittest.TestCase):
         if apply_mannual_event:
             for waiter, recorders in waiter_recorder_events_map.items():
                 for recorder in recorders:
-                    _add_event_dependency(ops[recorder].desc, ops[waiter].desc)
+                    _add_event_dependency(ops[recorder], ops[waiter])
         main_progs, _, _ = split_program(prog, [11])
         return main_progs
 

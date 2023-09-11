@@ -550,18 +550,18 @@ def _program_for_fthenb_and_1f1b(program):
     return [lr_prog, fwd_prog, bwd_prog, opt_prog]
 
 
-def _add_event_dependency(recorder_op_desc, waiter_op_desc):
+def _add_event_dependency(recorder_op, waiter_op):
     '''
     Add the extra event dependcy of the two operators.
     This function mainly aims for the cross-programs in pipeline parallelism,
     especial for the 'send_v2' 'recv_v2' etc.
     '''
-    if not recorder_op_desc.dist_attr.force_record_event:
-        recorder_op_desc.dist_attr.force_record_event = True
-    # NOTE(lizhiyu): Here is the copy of 'waiter_op_desc.dist_attr.events_to_wait' not the reference,
+    if not recorder_op.dist_attr.force_record_event:
+        recorder_op.dist_attr.force_record_event = True
+    # NOTE(lizhiyu): Here is the copy of 'waiter_op.dist_attr.events_to_wait' not the reference,
     #                because the type of 'events_to_wait' is 'const vector<string>&' while the type of
     #                'waiter_wait_list' is python list.
-    waiter_wait_list = waiter_op_desc.dist_attr.events_to_wait
-    if recorder_op_desc.dist_attr.event_to_record not in waiter_wait_list:
-        waiter_wait_list.append(recorder_op_desc.dist_attr.event_to_record)
-        waiter_op_desc.dist_attr.events_to_wait = waiter_wait_list
+    waiter_wait_list = waiter_op.dist_attr.events_to_wait
+    if recorder_op.dist_attr.event_to_record not in waiter_wait_list:
+        waiter_wait_list.append(recorder_op.dist_attr.event_to_record)
+        waiter_op.dist_attr.events_to_wait = waiter_wait_list
