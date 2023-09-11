@@ -48,6 +48,7 @@ class SymbolTable {
  public:
   explicit SymbolTable(ir::Operation* symbolTableOp)
       : symbolTableOp_(symbolTableOp) {}
+  SymbolTable() = default;
   template <typename T>
   typename std::enable_if<std::is_same<T, SymbolicDim>::value,
                           SymbolicDim>::type

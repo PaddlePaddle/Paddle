@@ -115,6 +115,20 @@ class IR_API TieShapeOp : public Op<TieShapeOp> {
   ir::Value getValue();
   void Verify() {}
 };
+
+class IR_API FuncOp : public Op<FuncOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "shape.func"; }
+
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+
+  static void Build(Builder &builder,              // NOLINT
+                    OperationArgument &argument);  // NOLINT
+  ir::Block *block();
+  void Verify() {}
+};
 }  // namespace dialect
 }  // namespace ir
 
@@ -122,3 +136,4 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::dialect::SymbolicDim);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::dialect::DimOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::dialect::TieProductEqualOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::dialect::TieShapeOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::dialect::FuncOp);

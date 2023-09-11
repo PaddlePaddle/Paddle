@@ -152,38 +152,28 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
   ir::Program program(ctx);
   ctx->GetOrRegisterDialect<ir::dialect::ShapeDialect>();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ir::Builder builder = ir::Builder(ctx, program.block());
 
-  ir::dialect::SymbolicDim symDimS0 = builder.Build<ir::dialect::SymbolicDim>(
-      "S0", -100000, false, false, true, true);
-  ir::dialect::SymbolicDim symDimS1 = builder.Build<ir::dialect::SymbolicDim>(
-      "S1", -100000, false, false, true, true);
-  ir::dialect::SymbolicDim symDimS2 = builder.Build<ir::dialect::SymbolicDim>(
-      "S2", -100000, false, false, true, true);
-  ir::dialect::SymbolicDim symDimS3 = builder.Build<ir::dialect::SymbolicDim>(
-      "S3", -100000, false, false, true, true);
-  ir::dialect::SymbolicDim symDimS4 = builder.Build<ir::dialect::SymbolicDim>(
-      "S4", -100000, false, false, true, true);
-  ir::dialect::SymbolicDim symDimS5 = builder.Build<ir::dialect::SymbolicDim>(
-      "S5", -100000, false, false, true, true);
-  ir::dialect::SymbolicDim symDimS6 = builder.Build<ir::dialect::SymbolicDim>(
-      "S6", -100000, false, false, true, true);
-  ir::dialect::SymbolicDim symDimS7 = builder.Build<ir::dialect::SymbolicDim>(
-      "S7", -100000, false, false, true, true);
-  ir::dialect::SymbolicDim symDimS8 = builder.Build<ir::dialect::SymbolicDim>(
-      "S8", -100000, false, false, true, true);
-  ir::dialect::SymbolicDim symDimS9 = builder.Build<ir::dialect::SymbolicDim>(
-      "S9", -100000, false, false, true, true);
-  ir::dialect::SymbolicDim symDimS10 = builder.Build<ir::dialect::SymbolicDim>(
-      "S10", -100000, false, false, true, true);
-  ir::dialect::SymbolicDim symDimS11 = builder.Build<ir::dialect::SymbolicDim>(
-      "S11", -100000, false, false, true, true);
-  ir::dialect::SymbolicDim symDimS12 = builder.Build<ir::dialect::SymbolicDim>(
-      "S12", -100000, false, false, true, false);
-  ir::dialect::SymbolicDim symDimC10 = builder.Build<ir::dialect::SymbolicDim>(
-      "C10", 10, true, false, true, true);
-  ir::dialect::SymbolicDim symDimC20 = builder.Build<ir::dialect::SymbolicDim>(
-      "C20", 20, true, false, true, true);
+  ir::SymbolicDimMgr symDimMgr(program.module_op());
+  auto funcOp =
+      symDimMgr.symbolTable().getOp()->dyn_cast<ir::dialect::FuncOp>();
+
+  ir::Builder builder = ir::Builder(ctx, funcOp.block());
+
+  ir::dialect::SymbolicDim symDimS0 = symDimMgr.newSymbolicDim("S0");
+  ir::dialect::SymbolicDim symDimS1 = symDimMgr.newSymbolicDim("S1");
+  ir::dialect::SymbolicDim symDimS2 = symDimMgr.newSymbolicDim("S2");
+  ir::dialect::SymbolicDim symDimS3 = symDimMgr.newSymbolicDim("S3");
+  ir::dialect::SymbolicDim symDimS4 = symDimMgr.newSymbolicDim("S4");
+  ir::dialect::SymbolicDim symDimS5 = symDimMgr.newSymbolicDim("S5");
+  ir::dialect::SymbolicDim symDimS6 = symDimMgr.newSymbolicDim("S6");
+  ir::dialect::SymbolicDim symDimS7 = symDimMgr.newSymbolicDim("S7");
+  ir::dialect::SymbolicDim symDimS8 = symDimMgr.newSymbolicDim("S8");
+  ir::dialect::SymbolicDim symDimS9 = symDimMgr.newSymbolicDim("S9");
+  ir::dialect::SymbolicDim symDimS10 = symDimMgr.newSymbolicDim("S10");
+  ir::dialect::SymbolicDim symDimS11 = symDimMgr.newSymbolicDim("S11");
+  ir::dialect::SymbolicDim symDimS12 = symDimMgr.newSymbolicDim("S12");
+  ir::dialect::SymbolicDim symDimC10 = symDimMgr.newConstantSymbolicDim(10);
+  ir::dialect::SymbolicDim symDimC20 = symDimMgr.newConstantSymbolicDim(20);
 
   ir::OpResult dimOpS0 = builder.Build<ir::dialect::DimOp>("S0").out();
   ir::OpResult dimOpS1 = builder.Build<ir::dialect::DimOp>("S1").out();
@@ -254,7 +244,7 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
   ir::Operation *op_ = ir::Operation::Create(
       op_inputs, attr_map, op_output_types_, ir::OpInfo());
   ir::OpResult res_ = op_->result(0);
-
+  builder.SetInsertionPointToEnd(program.block());
   ir::dialect::TieShapeOp tieShapeOp =
       builder.Build<ir::dialect::TieShapeOp>(res);
   ir::dialect::TieShapeOp tieShapeOp_ =
@@ -290,8 +280,7 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
   tieShapeOp_->set_attribute(ir::dialect::SymbolicDim::getSymbolicDimAttrName(),
                              arrayAttr_);
 
-  ir::SymbolicDimMgr symDimMgr(program.module_op());
-  symDimMgr.load();
+  EXPECT_TRUE(symDimMgr.load());
 
   // For check indirect equality: S1 * S4 == S2 * S5
   ir::SymbolicDimProduct symDimProductLhs;
@@ -369,9 +358,10 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
       symDimMgr.isSymbolicDimProductEqual(symDimProductLhs, symDimProductRhs));
   EXPECT_TRUE(symDimMgr.isSymbolicDimProductEqual(symDimProductLhs_,
                                                   symDimProductRhs_));
-  symDimMgr.save();
+  EXPECT_TRUE(symDimMgr.save());
+
   ir::SymbolicDimMgr symDimMgr_(program.module_op());
-  symDimMgr_.load();
+  EXPECT_TRUE(symDimMgr_.load());
   auto attrs = tieShapeOp.attribute<ir::ArrayAttribute>(
       ir::dialect::SymbolicDim::getSymbolicDimAttrName());
   EXPECT_FALSE(symDimMgr_.symbolTable().lookup<ir::dialect::SymbolicDim>("S7"));
@@ -486,13 +476,28 @@ TEST(assist_struct_test, tie_shape) {
       ir::dialect::SymbolicDim::getSymbolicDimAttrName()));
 }
 
+TEST(assist_struct_test, func_op) {
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  ir::Program program(ctx);
+  ctx->GetOrRegisterDialect<ir::dialect::ShapeDialect>();
+  ::ir::Builder builder = ::ir::Builder(ctx, program.block());
+  ir::dialect::FuncOp funcOp = builder.Build<ir::dialect::FuncOp>();
+  auto funcBlock = funcOp.block();
+  builder.SetInsertionPointToStart(funcBlock);
+  builder.Build<ir::ConstantOp>(ir::Int32Attribute::get(ctx, 2),
+                                ir::Int32Type::get(ctx));
+  EXPECT_EQ(funcBlock, funcOp->region(0).front());
+  EXPECT_EQ(funcOp->region(0).size(), static_cast<size_t>(1));
+  EXPECT_EQ(funcBlock->size(), static_cast<size_t>(1));
+}
+
 TEST(assist_struct_test, shape_analysis) {
   ir::IrContext *ctx = ir::IrContext::Instance();
   ir::Program program(ctx);
   ctx->GetOrRegisterDialect<ir::dialect::ShapeDialect>();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-
-  ir::Builder builder = ir::Builder(ctx, program.block());
+  ::ir::Builder builder = ::ir::Builder(ctx, program.block());
+  ir::dialect::FuncOp funcOp = builder.Build<ir::dialect::FuncOp>();
 
   ir::AttributeMap attr_map;
   std::vector<ir::OpResult> op_inputs = {};
@@ -554,6 +559,7 @@ TEST(assist_struct_test, shape_analysis) {
   ir::dialect::TieShapeOp tieShapeOp5 =
       builder.Build<ir::dialect::TieShapeOp>(value5);
 
+  builder.SetInsertionPointToEnd(funcOp.block());
   builder.Build<ir::dialect::SymbolicDim>("C2", 2, true, false, true, true);
   ir::dialect::SymbolicDim symDimS0 = builder.Build<ir::dialect::SymbolicDim>(
       "S0", -100000, false, false, true, true);

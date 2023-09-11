@@ -63,12 +63,14 @@ const std::string SymbolTable::insert(ir::Operation* symbol) {
 }
 
 bool SymbolicDimMgr::load() {
-  for (auto op_ : *(m_.block())) {
+  auto funcOp = symbolTable_.getOp()->dyn_cast<ir::dialect::FuncOp>();
+  assert(funcOp);
+  for (auto op_ : *(funcOp.block())) {
     symbolTable_.insert(op_);
-    SymbolicDim op = op_->dyn_cast<SymbolicDim>();
-    if (!op) continue;
-    symbolDimUnionSet_[op] = op;
-    symbolNameSet_.insert(op.getSymName());
+    if (SymbolicDim op = op_->dyn_cast<SymbolicDim>()) {
+      symbolDimUnionSet_[op] = op;
+      symbolNameSet_.insert(op.getSymName());
+    }
   }
   return loadShapeConstraintGraph();
 }
@@ -98,6 +100,7 @@ bool SymbolicDimMgr::loadShapeConstraintGraph() {
     }
     return true;
   };
+
   for (auto op : constraint_vec) {
     SymbolicDimProduct lhs, rhs;
     if (!build_sym_product(op.getLhs(), lhs) ||
@@ -218,12 +221,26 @@ const std::string SymbolicDimMgr::getNextName() {
   return name;
 }
 
-SymbolicDimMgr::SymbolicDimMgr(ir::ModuleOp m) : m_(m), symbolTable_(m_) {}
+SymbolicDimMgr::SymbolicDimMgr(ir::ModuleOp m) : m_(m) {
+  for (auto op : *(m.block())) {
+    if (op->name() == "shape.func") {
+      symbolTable_ = SymbolTable(op);
+      return;
+    }
+  }
+  ::ir::Builder builder =
+      ::ir::Builder(m_.ir_context(), m_.block(), m_.block()->begin());
+  ir::dialect::FuncOp func = builder.Build<ir::dialect::FuncOp>();
+  symbolTable_ = SymbolTable(func);
+}
 
 SymbolicDim SymbolicDimMgr::newSymbolicDim(const std::string& name) {
-  ::ir::Builder builder = ::ir::Builder(m_.ir_context(), m_.block());
+  auto funcOp = symbolTable_.getOp()->dyn_cast<ir::dialect::FuncOp>();
+  assert(funcOp);
+  ::ir::Builder builder = ::ir::Builder(m_.ir_context(), funcOp.block());
+  // default settting dim != 0
   ir::dialect::SymbolicDim symbol = builder.Build<ir::dialect::SymbolicDim>(
-      name.empty() ? getNextName() : name);
+      name.empty() ? getNextName() : name, -100000, false, false, false, true);
   symbolDimUnionSet_[symbol] = symbol;
   symbolTable_.insert(symbol);
   return symbol;
@@ -237,6 +254,10 @@ SymbolicDim SymbolicDimMgr::newConstantSymbolicDim(int64_t val) {
              .insert(std::make_pair(val, newSymbolicDim(name)))
              .first;
     it->second.updateValue(val);
+    if (val == -1) it->second.updateKnownNegativeOne(true);
+    if (val >= 0) it->second.updateKnownNonNegative(true);
+    if (val != 1) it->second.updateKnownNonSizeOne(true);
+    if (val != 0) it->second.updateKnownNonSizeZero(true);
   }
   return getRootSymbolicDim(it->second);
 }
@@ -484,10 +505,11 @@ bool SymbolicDimMgr::save() {
         SymbolicDim::getSymbolicDimAttrName());
     collectUsedSymbols(attrs);
   }
-
+  auto funcOp = symbolTable_.getOp()->dyn_cast<ir::dialect::FuncOp>();
+  assert(funcOp);
   for (auto& p : symbolDimUnionSet_) {
     if (!usedSymbolicOps.count(p.first)) {
-      m_.block()->erase(*(p.first.operation()));
+      funcOp.block()->erase(*(p.first.operation()));
     }
   }
 
@@ -550,16 +572,18 @@ bool SymbolicDimMgr::save() {
 }
 
 bool SymbolicDimMgr::saveShapeConstraintGraph() {
-  auto op_it = m_.block()->rbegin();
-  while (op_it != m_.block()->rend()) {
+  auto funcOp = symbolTable_.getOp()->dyn_cast<ir::dialect::FuncOp>();
+  assert(funcOp);
+  auto op_it = funcOp.block()->rbegin();
+  while (op_it != funcOp.block()->rend()) {
     if (((*op_it)->name() == "shape.SymbolicDim") ||
         ((*op_it)->name() == "shape.tie_shape"))
       op_it++;
     else
-      op_it = decltype(op_it)(m_.block()->erase(*(*op_it)));
+      op_it = decltype(op_it)(funcOp.block()->erase(*(*op_it)));
   }
 
-  ir::Builder builder = ir::Builder(m_->ir_context(), m_.block());
+  ir::Builder builder = ir::Builder(m_->ir_context(), funcOp.block());
   auto build_operands = [&](const ir::SymbolicDimProduct& prod) {
     std::vector<ir::OpResult> values;
 

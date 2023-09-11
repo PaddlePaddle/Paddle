@@ -23,7 +23,7 @@ ShapeDialect::ShapeDialect(IrContext *context)
 }
 
 void ShapeDialect::initialize() {
-  RegisterOps<SymbolicDim, DimOp, TieProductEqualOp, TieShapeOp>();
+  RegisterOps<SymbolicDim, DimOp, TieProductEqualOp, TieShapeOp, FuncOp>();
 }
 
 }  // namespace dialect

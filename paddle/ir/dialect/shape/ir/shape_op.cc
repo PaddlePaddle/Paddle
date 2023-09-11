@@ -216,6 +216,16 @@ void TieShapeOp::Build(Builder &builder,
 
 ir::Value TieShapeOp::getValue() { return operand_source(0); }
 
+void FuncOp::Build(Builder &builder, OperationArgument &argument) {
+  argument.num_regions = 1;
+}
+
+ir::Block *FuncOp::block() {
+  ir::Region &region = (*this)->region(0);
+  if (region.empty()) region.emplace_back();
+  return region.front();
+}
+
 }  // namespace dialect
 }  // namespace ir
 
@@ -223,3 +233,4 @@ IR_DEFINE_EXPLICIT_TYPE_ID(ir::dialect::SymbolicDim)
 IR_DEFINE_EXPLICIT_TYPE_ID(ir::dialect::DimOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(ir::dialect::TieProductEqualOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(ir::dialect::TieShapeOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::dialect::FuncOp)
