@@ -143,14 +143,9 @@ struct InMsgBox2OutMsgBox;
 // InMsgBox2OutMsgBox (tOut (tOutMsgBox OpArgIndexes)) (tIn (tInMsgBox
 // OpArgIndexes))
 template <>
-struct InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>,
-                          tIn<tInMsgBox<OpArgIndexes>>>
-    : public Tuple<FakeOpPlaceHolder,
-                   tOut<tOutMsgBox<OpArgIndexes>>,
-                   tIn<tInMsgBox<OpArgIndexes>>> {
-  using Tuple<FakeOpPlaceHolder,
-              tOut<tOutMsgBox<OpArgIndexes>>,
-              tIn<tInMsgBox<OpArgIndexes>>>::Tuple;
+struct InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>, tIn<tInMsgBox<OpArgIndexes>>>
+    : public Tuple<FakeOpPlaceHolder, tOut<tOutMsgBox<OpArgIndexes>>, tIn<tInMsgBox<OpArgIndexes>>> {
+  using Tuple<FakeOpPlaceHolder, tOut<tOutMsgBox<OpArgIndexes>>, tIn<tInMsgBox<OpArgIndexes>>>::Tuple;
 };
 
 // clang-format off

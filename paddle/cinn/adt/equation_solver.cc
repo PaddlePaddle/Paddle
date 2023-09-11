@@ -93,7 +93,7 @@ std::unordered_map<Variable, Value> InferValues(
     CHECK(ret.emplace(out_box_in_indexes->at(i), value).second);
   }
   for (std::size_t i = 0; i < out_box_out_indexes->size(); ++i) {
-    const auto& value = ctx->GetValue(in_box_in_indexes->at(i));
+    const auto& value = ctx->GetValue(in_box_out_indexes->at(i));
     CHECK(ret.emplace(out_box_out_indexes->at(i), value).second);
   }
   return ret;
