@@ -60,7 +60,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
         raise ValueError("Not supported numpy dtype %s" % dtype)
 
 
-def _use_new_ir_api():
+def _use_pir_api():
     """
     This API checks whether paddle use new ir api.
 

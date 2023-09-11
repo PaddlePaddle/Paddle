@@ -1621,7 +1621,7 @@ class Executor:
                 'true',
             ]
             self._log_force_set_program_cache(use_program_cache)
-        if ir_core._use_new_ir_api():
+        if ir_core._use_pir_api():
             res = self._run_new_ir_impl(
                 program=program,
                 feed=feed,

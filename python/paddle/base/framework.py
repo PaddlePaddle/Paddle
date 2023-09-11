@@ -232,7 +232,7 @@ def in_new_ir_mode():
             True
 
     """
-    return ir.core._use_new_ir_api() and not in_dygraph_mode()
+    return ir.core._use_pir_api() and not in_dygraph_mode()
 
 
 def in_dynamic_or_new_ir_mode():

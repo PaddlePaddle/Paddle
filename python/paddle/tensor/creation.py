@@ -893,7 +893,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             out.stop_gradient = True
             return out
     else:
-        if paddle.ir.core._use_new_ir_api():
+        if paddle.ir.core._use_pir_api():
             # Below code will be removed after we can generate IR api automatically
             place = _current_expected_place()
             if force_cpu:

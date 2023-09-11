@@ -101,7 +101,7 @@ def data(name, shape, dtype=None, lod_level=0):
 
     if not dtype:
         dtype = paddle.get_default_dtype()
-    if paddle.ir.core._use_new_ir_api():
+    if paddle.ir.core._use_pir_api():
         ir_dtype = paddle.ir.core.convert_np_dtype_to_dtype_(dtype)
         return paddle._ir_ops.data(name, shape, ir_dtype, core.Place())
 
