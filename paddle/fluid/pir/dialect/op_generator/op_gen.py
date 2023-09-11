@@ -403,7 +403,7 @@ class OpInfoParser:
     def is_mutable_attribute(self, attr_dict):
         if (
             'support_tensor' in attr_dict
-            and attr_dict['support_tensor'] == 'true'
+            and attr_dict['support_tensor'] is True
         ):
             return True
         elif 'tensor_name' in attr_dict or 'tensors_name' in attr_dict:
@@ -829,9 +829,14 @@ def OpGenerator(
             op_yaml_items = op_yaml_items + ops
     op_info_items = {}
     for op in op_yaml_items:
-        op_info_items[op['name']] = OpInfoParser(
-            op, op_compat_parser.get_compat(op['name'])
-        )
+        op_compat_item = op_compat_parser.get_compat(op['name'])
+        if (
+            op_compat_item is None
+            and op['name'].endswith(('_grad', '_grad_'))
+            and 'forward' in op
+        ):
+            op_compat_item = op_compat_parser.get_compat(op['forward']['name'])
+        op_info_items[op['name']] = OpInfoParser(op, op_compat_item)
     # (3) CodeGen: Traverse op_info_items and generate
     ops_name_list = []  # all op class name store in this list
     ops_declare_list = []  # all op class declare store in this list
