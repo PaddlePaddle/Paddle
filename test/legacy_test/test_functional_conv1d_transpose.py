@@ -18,7 +18,7 @@ from unittest import TestCase
 import numpy as np
 
 import paddle
-import paddle.fluid.dygraph as dg
+import paddle.base.dygraph as dg
 import paddle.nn.functional as F
 
 

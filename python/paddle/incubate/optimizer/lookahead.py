@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid import framework, unique_name
-from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid.framework import Variable
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base import framework, unique_name
+from paddle.base.dygraph import base as imperative_base
+from paddle.base.framework import Variable
+from paddle.base.layer_helper import LayerHelper
 from paddle.optimizer import Optimizer
 
 __all__ = []
@@ -250,9 +250,9 @@ class LookAhead(Optimizer):
 
         Args:
             loss (Tensor): A ``Tensor`` containing the value to minimize.
-            startup_program (Program, optional): :ref:`api_fluid_Program` for
+            startup_program (Program, optional): :ref:`api_base_Program` for
                 initializing parameters in ``parameters``. The default value
-                is None, at this time :ref:`api_fluid_default_startup_program` will be used.
+                is None, at this time :ref:`api_base_default_startup_program` will be used.
             parameters (list, optional): List of ``Tensor`` or ``Tensor.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.

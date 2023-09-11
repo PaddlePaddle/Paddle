@@ -25,7 +25,7 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -231,8 +231,8 @@ class XPUTestHuberLossOp(XPUOpTestWrapper):
             x = np.random.uniform(0, 1.0, shape).astype(self.dtype)
             y = np.random.uniform(0, 1.0, shape).astype(self.dtype)
             self.inputs = {
-                'X': OpTest.np_dtype_to_fluid_dtype(x),
-                'Y': OpTest.np_dtype_to_fluid_dtype(y),
+                'X': OpTest.np_dtype_to_base_dtype(x),
+                'Y': OpTest.np_dtype_to_base_dtype(y),
             }
 
         def set_attrs(self):

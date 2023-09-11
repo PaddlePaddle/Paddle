@@ -20,7 +20,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/ir/core/builtin_attribute.h"
+#include "paddle/pir/core/builtin_attribute.h"
 
 namespace paddle {
 namespace framework {
@@ -90,28 +90,28 @@ void InstructionBase::AddInplace(Variable* in, Variable* out) {
 void InstructionBase::ClearInplace() { vec_inplace_in_to_out_.clear(); }
 
 void InstructionBase::SetInputs(
-    const std::unordered_map<ir::Value, std::vector<int>>& inputs) {
+    const std::unordered_map<pir::Value, std::vector<int>>& inputs) {
   input_index_ = inputs;
 }
 
 void InstructionBase::SetOutputs(
-    const std::unordered_map<ir::Value, std::vector<int>>& outputs) {
+    const std::unordered_map<pir::Value, std::vector<int>>& outputs) {
   output_index_ = outputs;
 }
 
 void InstructionBase::InitInputsOutputsIds(
-    ::ir::Operation* op,
+    ::pir::Operation* op,
     Scope* inner_scope,
-    const std::unordered_map<::ir::Value, std::string>& value_2_var_name,
+    const std::unordered_map<pir::Value, std::string>& value_2_var_name,
     const std::map<std::string, int>& var_name_2_id,
     const std::unordered_map<const paddle::framework::Variable*, std::string>&
         variable_2_var_name) {
   auto op_attributes = op->attributes();
   auto op_name =
-      op_attributes.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
-  std::unordered_map<ir::Value, std::vector<int>> inputs;
+      op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+  std::unordered_map<pir::Value, std::vector<int>> inputs;
   for (size_t i = 0; i < op->num_operands(); i++) {
-    ir::Value value = op->operand_source(i);
+    pir::Value value = op->operand_source(i);
     if (value) {
       PADDLE_ENFORCE_NE(
           value_2_var_name.find(value),
@@ -130,9 +130,9 @@ void InstructionBase::InitInputsOutputsIds(
   }
   SetInputs(inputs);
   VLOG(8) << "finish process inputs_index";
-  std::unordered_map<ir::Value, std::vector<int>> outputs;
+  std::unordered_map<pir::Value, std::vector<int>> outputs;
   for (size_t i = 0; i < op->num_results(); i++) {
-    ir::Value value = op->result(i);
+    pir::Value value = op->result(i);
     if (value && value.type()) {
       PADDLE_ENFORCE_NE(
           value_2_var_name.find(value),

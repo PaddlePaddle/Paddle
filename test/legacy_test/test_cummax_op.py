@@ -19,8 +19,8 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def cummax_dim2(arr, axis=None):
@@ -152,7 +152,7 @@ class TestCummaxAPI(unittest.TestCase):
         np.testing.assert_array_equal(ind, indices.numpy())
 
     def run_static(self, use_gpu=False):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
             data_np = np.random.random((100, 100)).astype(np.float32)
             x = paddle.static.data('x', [100, 100])
             y1, indices1 = paddle.cummax(x)
@@ -161,9 +161,9 @@ class TestCummaxAPI(unittest.TestCase):
             y4, indices4 = paddle.cummax(x, axis=-2)
             y5, indices5 = paddle.cummax(x, axis=-2, dtype=np.int32)
 
-            place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
             out = exe.run(
                 feed={'x': data_np},
                 fetch_list=[
@@ -201,22 +201,22 @@ class TestCummaxAPI(unittest.TestCase):
             np.testing.assert_allclose(ind, out[9], rtol=1e-05)
 
     def test_cpu(self):
-        paddle.disable_static(paddle.fluid.CPUPlace())
+        paddle.disable_static(paddle.base.CPUPlace())
         self.run_cases()
         paddle.enable_static()
         self.run_static()
 
     def test_gpu(self):
-        if not fluid.core.is_compiled_with_cuda():
+        if not base.core.is_compiled_with_cuda():
             return
-        paddle.disable_static(paddle.fluid.CUDAPlace(0))
+        paddle.disable_static(paddle.base.CUDAPlace(0))
         self.run_cases()
         paddle.enable_static()
         self.run_static(use_gpu=True)
 
     def test_errors(self):
         paddle.enable_static()
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
 
             def test_x_type():
                 data = [1, 2, 3]

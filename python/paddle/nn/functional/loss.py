@@ -16,15 +16,15 @@ import math
 
 # TODO: define loss functions of neural network
 import paddle
-from paddle import _C_ops, fluid, in_dynamic_mode
+from paddle import _C_ops, base, in_dynamic_mode
 from paddle.framework import core
 from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
 
+from ...base.data_feeder import check_variable_and_dtype
+from ...base.framework import _current_expected_place
+from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
-from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid.framework import _current_expected_place
-from ...fluid.layer_helper import LayerHelper
 from ...tensor.manipulation import reshape
 
 __all__ = []
@@ -161,7 +161,7 @@ def log_loss(input, label, epsilon=1e-4, name=None):
     return loss
 
 
-def fluid_softmax_with_cross_entropy(
+def base_softmax_with_cross_entropy(
     logits,
     label,
     soft_label=False,
@@ -380,7 +380,7 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
     similarity_matrix = paddle.matmul(
         anchor, positive, transpose_x=False, transpose_y=True
     )
-    softmax_ce = fluid_softmax_with_cross_entropy(
+    softmax_ce = base_softmax_with_cross_entropy(
         logits=similarity_matrix, label=labels, soft_label=True
     )
     cross_entropy = paddle.sum(labels * softmax_ce, 0)
@@ -1199,7 +1199,7 @@ def margin_ranking_loss(
         out = _C_ops.subtract(other, input)
         out = _C_ops.multiply(out, label)
         if margin != 0.0:
-            margin = fluid.dygraph.base.to_variable([margin], dtype=out.dtype)
+            margin = base.dygraph.base.to_variable([margin], dtype=out.dtype)
             out = _C_ops.add(out, margin)
         out = _C_ops.relu(out)
         if reduction == 'sum':
@@ -1679,13 +1679,13 @@ def kl_div(input, label, reduction='mean', name=None):
     """
     # ugly type promotion
     if (
-        fluid.data_feeder.convert_dtype(input.dtype) == 'float32'
-        and fluid.data_feeder.convert_dtype(label.dtype) == 'float64'
+        base.data_feeder.convert_dtype(input.dtype) == 'float32'
+        and base.data_feeder.convert_dtype(label.dtype) == 'float64'
     ):
         input = paddle.cast(input, 'float64')
     elif (
-        fluid.data_feeder.convert_dtype(input.dtype) == 'float64'
-        and fluid.data_feeder.convert_dtype(label.dtype) == 'float32'
+        base.data_feeder.convert_dtype(input.dtype) == 'float64'
+        and base.data_feeder.convert_dtype(label.dtype) == 'float32'
     ):
         label = paddle.cast(label, 'float64')
 
@@ -1709,7 +1709,7 @@ def kl_div(input, label, reduction='mean', name=None):
         check_variable_and_dtype(
             label, 'label', ['float32', 'float64'], 'kl_div'
         )
-        fluid.data_feeder.check_type(reduction, 'reduction', str, 'kl_div')
+        base.data_feeder.check_type(reduction, 'reduction', str, 'kl_div')
 
         loss = helper.create_variable_for_type_inference(dtype=input.dtype)
         helper.append_op(
@@ -2483,7 +2483,7 @@ def softmax_with_cross_entropy(
                    [1.15328646])
 
     """
-    return fluid_softmax_with_cross_entropy(
+    return base_softmax_with_cross_entropy(
         logits,
         label,
         soft_label,
@@ -2823,13 +2823,13 @@ def cross_entropy(
                 out = _C_ops.multiply(out, weight_gather_reshape)
 
         if reduction == "sum":
-            #   because of fluid_softmax_with_cross_entropy op's inner logic,
+            #   because of base_softmax_with_cross_entropy op's inner logic,
             #   in the out tensor of this op, the loss of sample with class_index==ignore_index is 0
             #   so, reduce_sum all directly is ok
             return _C_ops.sum(out, [], None, False)
         elif reduction == "mean":
             # 1. if weight==none,
-            #     numerator: reduce_sum all loss directly is ok causeof fluid_softmax_with_cross_entropy's inner logic
+            #     numerator: reduce_sum all loss directly is ok causeof base_softmax_with_cross_entropy's inner logic
             #     denominator: count sample num with class_index!=ignore_index
             # 2. else
             #     numerator: loss's weighted sum
@@ -3126,7 +3126,7 @@ def sigmoid_focal_loss(
             ),
         )
 
-        alpha = fluid.dygraph.base.to_variable([alpha], dtype=loss.dtype)
+        alpha = base.dygraph.base.to_variable([alpha], dtype=loss.dtype)
         alpha_t = _C_ops.add(
             _C_ops.multiply(alpha, label),
             _C_ops.multiply(
@@ -3135,7 +3135,7 @@ def sigmoid_focal_loss(
         )
         loss = _C_ops.multiply(alpha_t, loss)
 
-        gamma = fluid.dygraph.base.to_variable([gamma], dtype=loss.dtype)
+        gamma = base.dygraph.base.to_variable([gamma], dtype=loss.dtype)
         gamma_t = _C_ops.pow(_C_ops.subtract(one, p_t), gamma)
         loss = _C_ops.multiply(gamma_t, loss)
 
@@ -3993,10 +3993,10 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
         )
 
     if not in_dynamic_mode():
-        fluid.data_feeder.check_variable_and_dtype(
+        base.data_feeder.check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'soft_margin_loss'
         )
-        fluid.data_feeder.check_variable_and_dtype(
+        base.data_feeder.check_variable_and_dtype(
             label,
             'label',
             ['int32', 'int64', 'float32', 'float64'],

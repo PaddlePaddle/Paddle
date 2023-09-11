@@ -27,7 +27,7 @@ from test_softmax_op import (
     TestSoftmaxOp_ZeroDim1,
 )
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 def stable_softmax(x):
@@ -56,7 +56,7 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
         out = np.apply_along_axis(stable_softmax, self.axis, x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {
             'axis': self.axis,

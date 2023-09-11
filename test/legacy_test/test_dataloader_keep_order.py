@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 def create_reader(shape, batch_number):
@@ -46,7 +46,7 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
         input_data = paddle.static.data(
             shape=self.shape, dtype='float32', name="input"
         )
-        loader = fluid.io.DataLoader.from_generator(
+        loader = base.io.DataLoader.from_generator(
             capacity=16, feed_list=[input_data], iterable=self.iterable
         )
 
@@ -83,12 +83,12 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
                 start_val += 1
 
     def get_places(self):
-        place_list = [fluid.cpu_places(1)]
-        if fluid.is_compiled_with_cuda():
+        place_list = [base.cpu_places(1)]
+        if base.is_compiled_with_cuda():
             if os.name == "nt":
-                place_list.extend([fluid.cuda_places(0)])
+                place_list.extend([base.cuda_places(0)])
             else:
-                place_list.extend([fluid.cuda_places(0)])
+                place_list.extend([base.cuda_places(0)])
         return place_list
 
     def test_main(self):
@@ -96,18 +96,18 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
             self.run_main_with_place(p)
 
     def run_main_with_place(self, places):
-        with fluid.scope_guard(fluid.Scope()):
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.scope_guard(base.Scope()):
+            with base.program_guard(base.Program(), base.Program()):
                 input_data, loss, loader = self.build_network(places)
                 fetch_list = [input_data]
 
-                exe = fluid.Executor(places[0])
-                exe.run(fluid.default_startup_program())
+                exe = base.Executor(places[0])
+                exe.run(base.default_startup_program())
 
                 dev_cnt = len(places)
                 self.assertTrue(dev_cnt == 1)
 
-                main_program = fluid.default_main_program()
+                main_program = base.default_main_program()
 
                 max_batch_num = min(
                     self.break_num, int(self.batch_num / dev_cnt)
@@ -151,7 +151,7 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
                                     batch_id, fetch_val, dev_cnt
                                 )
                                 batch_id += 1
-                        except fluid.core.EOFException:
+                        except base.core.EOFException:
                             loader.reset()
 
                         self.assertEqual(batch_id, max_batch_num)

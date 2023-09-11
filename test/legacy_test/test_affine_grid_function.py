@@ -17,9 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.dygraph as dg
+import paddle.base.dygraph as dg
 import paddle.nn.functional as F
-from paddle import fluid
+from paddle import base
 
 
 class AffineGridTestCase(unittest.TestCase):
@@ -45,12 +45,12 @@ class AffineGridTestCase(unittest.TestCase):
     def setUp(self):
         self.theta = np.random.randn(*(self.theta_shape)).astype(self.dtype)
 
-    def fluid_layer(self, place):
+    def base_layer(self, place):
         paddle.enable_static()
-        main = fluid.Program()
-        start = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, start):
+        main = base.Program()
+        start = base.Program()
+        with base.unique_name.guard():
+            with base.program_guard(main, start):
                 theta_var = paddle.static.data(
                     "input", self.theta_shape, dtype=self.dtype
                 )
@@ -58,17 +58,17 @@ class AffineGridTestCase(unittest.TestCase):
                     theta_var, self.output_shape
                 )
         feed_dict = {"input": self.theta}
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         exe.run(start)
         (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
         return y_np
 
     def functional(self, place):
         paddle.enable_static()
-        main = fluid.Program()
-        start = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, start):
+        main = base.Program()
+        start = base.Program()
+        with base.unique_name.guard():
+            with base.program_guard(main, start):
                 theta_var = paddle.static.data(
                     "input", self.theta_shape, dtype=self.dtype
                 )
@@ -78,7 +78,7 @@ class AffineGridTestCase(unittest.TestCase):
                     align_corners=self.align_corners,
                 )
         feed_dict = {"input": self.theta}
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         exe.run(start)
         (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
         return y_np
@@ -100,8 +100,8 @@ class AffineGridTestCase(unittest.TestCase):
         return y_np
 
     def _test_equivalence(self, place):
-        place = fluid.CPUPlace()
-        result1 = self.fluid_layer(place)
+        place = base.CPUPlace()
+        result1 = self.base_layer(place)
         result2 = self.functional(place)
         result3 = self.paddle_dygraph_layer()
         if self.align_corners:
@@ -109,17 +109,17 @@ class AffineGridTestCase(unittest.TestCase):
         np.testing.assert_array_almost_equal(result2, result3)
 
     def runTest(self):
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         self._test_equivalence(place)
 
-        if fluid.core.is_compiled_with_cuda():
-            place = fluid.CUDAPlace(0)
+        if base.core.is_compiled_with_cuda():
+            place = base.CUDAPlace(0)
             self._test_equivalence(place)
 
 
 class AffineGridErrorTestCase(AffineGridTestCase):
     def runTest(self):
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         with dg.guard(place):
             with self.assertRaises(ValueError):
                 self.paddle_dygraph_layer()
