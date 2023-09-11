@@ -112,6 +112,8 @@ class CCommInitOp : public framework::OperatorBase {
         device_id = Attr<int>("device_id");
       }
       int rank_id = Attr<int>("rank");
+#endif 
+#if defined(PADDLE_WITH_NCCL)
       const char* dynamic_static_unified_comm =
           getenv("FLAGS_dynamic_static_unified_comm");
       if (dynamic_static_unified_comm &&
@@ -122,12 +124,15 @@ class CCommInitOp : public framework::OperatorBase {
         std::string endpoints = Attr<std::string>("endpoints");
         phi::distributed::CommContextManager::CreateNCCLCommContext(
             store, std::to_string(rid), rank_id, nranks, endpoints);
-      } else {
-        VLOG(3) << "#### use old comm lab ####";
-        UniqueId* comm_id = var->GetMutable<UniqueId>();
-        CommContext::Instance().CreateComm(
-            comm_id, nranks, rank_id, device_id, rid);
+        return;
       }
+#endif
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL)
+      VLOG(3) << "#### use old comm lab ####";
+      UniqueId* comm_id = var->GetMutable<UniqueId>();
+      CommContext::Instance().CreateComm(
+              comm_id, nranks, rank_id, device_id, rid);
 #endif
     }
   }
