@@ -29,7 +29,7 @@ namespace cinn {
 namespace lang {
 
 #define TEST_SOUTPUT(x, out)           \
-  std::cout << "\n" << x << std::endl; \
+  LOG(INFO) << "\n" << x << std::endl; \
   EXPECT_EQ(utils::GetStreamCnt(x), utils::Trim(out));
 
 TEST(lower, basic) {
@@ -78,7 +78,7 @@ TEST(lower, more_complex) {
 
   auto lower_funcs = Lower("cal_C", stages, {A, B, C});
 
-  std::cout << "func:\n" << Expr(lower_funcs->self()) << std::endl;
+  LOG(INFO) << "func:\n" << Expr(lower_funcs->self()) << std::endl;
 }
 
 //! To support training, the dynamic shape support is vital. We test the
