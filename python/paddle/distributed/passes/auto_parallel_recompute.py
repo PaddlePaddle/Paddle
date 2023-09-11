@@ -185,8 +185,8 @@ class RecomputeState(ProgramStats):
             # modify dropout op's desc
             self.ops.insert(op_idx, seed_op)
             cur_op.desc.set_input(seed_tensor_name, [var_unique_name])
-            cur_op._remove_attr("fix_seed")
-            cur_op._remove_attr("seed")
+            cur_op.desc.set_attr("fix_seed", False)
+            cur_op.desc.set_attr("seed", 0)
             cur_op_dist_attr.set_input_dist_attr(
                 seed_var.name, seed_var_dist_attr
             )
@@ -418,8 +418,8 @@ class RecomputePass(PassBase):
             grad_op = ops[i]
             # remove some attrs of dropout_grad op's desc
             if grad_op.type == "dropout_grad":
-                grad_op._remove_attr("fix_seed")
-                grad_op._remove_attr("seed")
+                grad_op.desc.set_attr("fix_seed", False)
+                grad_op.desc.set_attr("seed", 0)
 
             input_and_output_names = []
             input_and_output_names.extend(grad_op.input_arg_names)

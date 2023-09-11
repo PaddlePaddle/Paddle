@@ -29,7 +29,12 @@ const std::unordered_set<std::string> LegacyOpList = {
     "pd.send_v2",
     "pd.recv_v2",
     "pd.c_allreduce_sum",
-    "pd.c_allreduce_sum_"};
+    "pd.c_allreduce_sum_",
+    "pd.c_reduce_sum",
+    "pd.c_reduce_sum_",
+    "pd.c_allreduce_max_",
+    "pd.c_allgather",
+    "pd.seed"};
 
 enum class AttrType {
   UNDEFINED = 0,
