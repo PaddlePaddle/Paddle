@@ -19,16 +19,28 @@ namespace distributed {
 
 SpmdInfo ReplicatedSpmdInferForward(
     const std::vector<const DistMetaTensor*>& inputs,
-    const std::vector<const DistMetaTensor*>& outputs,
-    const std::vector<phi::Attribute>& attrs) {
+    const std::vector<const DistMetaTensor*>& outputs) {
   // impl later
   return {{}, {}};
 }
 
 SpmdInfo ReplicatedSpmdInferBackward(
     const std::vector<const DistMetaTensor*>& inputs,
-    const std::vector<const DistMetaTensor*>& outputs,
-    const std::vector<phi::Attribute>& attrs) {
+    const std::vector<const DistMetaTensor*>& outputs) {
+  // impl later
+  return {{}, {}};
+}
+
+SpmdInfo DefaultDataParallelSpmdInferForward(
+    const std::vector<const DistMetaTensor*>& inputs,
+    const std::vector<const DistMetaTensor*>& outputs) {
+  // impl later
+  return {{}, {}};
+}
+
+SpmdInfo DefaultDataParallelSpmdInferBackward(
+    const std::vector<const DistMetaTensor*>& inputs,
+    const std::vector<const DistMetaTensor*>& outputs) {
   // impl later
   return {{}, {}};
 }

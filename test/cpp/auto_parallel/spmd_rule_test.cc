@@ -465,12 +465,12 @@ TEST(ReplicatedSPMDRule, Ctor) {
 
   // Only test function calling now, the result checking need to be added later
   // call in vector arguments format
-  auto infered_dist_attrs_st = phi::distributed::ReplicatedSpmdInferBackward(
-      {&x, &y}, {&out}, {/*trans_x=*/false, /*trans_x=*/false});
+  auto infered_dist_attrs_st =
+      phi::distributed::ReplicatedSpmdInferBackward({&x, &y}, {&out});
 
   // call in variadic arguments format
-  auto infered_dist_attrs_dy = phi::distributed::GeneralSpmdInferBackward(
-      x, y, /*trans_x=*/false, /*trans_x=*/false, &out);
+  auto infered_dist_attrs_dy =
+      phi::distributed::GeneralSpmdInferBackward(x, y, &out);
 }
 
 }  // namespace auto_parallel

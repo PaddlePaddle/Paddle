@@ -27,13 +27,19 @@ namespace distributed {
 
 SpmdInfo ReplicatedSpmdInferForward(
     const std::vector<const DistMetaTensor*>& inputs,
-    const std::vector<const DistMetaTensor*>& outputs,
-    const std::vector<phi::Attribute>& attrs);
+    const std::vector<const DistMetaTensor*>& outputs);
 
 SpmdInfo ReplicatedSpmdInferBackward(
     const std::vector<const DistMetaTensor*>& inputs,
-    const std::vector<const DistMetaTensor*>& outputs,
-    const std::vector<phi::Attribute>& attrs);
+    const std::vector<const DistMetaTensor*>& outputs);
+
+SpmdInfo DefaultDataParallelSpmdInferForward(
+    const std::vector<const DistMetaTensor*>& inputs,
+    const std::vector<const DistMetaTensor*>& outputs);
+
+SpmdInfo DefaultDataParallelSpmdInferBackward(
+    const std::vector<const DistMetaTensor*>& inputs,
+    const std::vector<const DistMetaTensor*>& outputs);
 
 namespace detail {
 
@@ -65,7 +71,6 @@ struct ReplicatedSpmdArgumentParser
     : public ArgsIterator<ReplicatedSpmdArgumentParser> {
   std::vector<const DistMetaTensor*> inputs;
   std::vector<const DistMetaTensor*> outputs;
-  std::vector<phi::Attribute> attrs;
 
   // deal with inputs
   void operator()(const DistMetaTensor& x) { inputs.emplace_back(&x); }
@@ -74,11 +79,6 @@ struct ReplicatedSpmdArgumentParser
     for (auto t : x) {
       inputs.emplace_back(t);
     }
-  }
-
-  template <typename AttrType>
-  void operator()(AttrType x) {
-    attrs.emplace_back(x);
   }
 
   // deal with outputs
@@ -91,11 +91,11 @@ struct ReplicatedSpmdArgumentParser
   }
 
   SpmdInfo InferForward() {
-    return ReplicatedSpmdInferForward(inputs, outputs, attrs);
+    return ReplicatedSpmdInferForward(inputs, outputs);
   }
 
   SpmdInfo InferBackward() {
-    return ReplicatedSpmdInferBackward(inputs, outputs, attrs);
+    return ReplicatedSpmdInferBackward(inputs, outputs);
   }
 };
 
