@@ -14,6 +14,7 @@
 
 #include "paddle/ir/core/value.h"
 
+#include <glog/logging.h>
 #include <cstddef>
 
 #include "paddle/ir/core/enforce.h"
@@ -273,7 +274,11 @@ uint32_t OpResultImpl::GetResultIndex() const {
   return ir::dyn_cast<OpInlineResultImpl>(this)->GetResultIndex();
 }
 
-OpResultImpl::~OpResultImpl() { assert(use_empty()); }
+OpResultImpl::~OpResultImpl() {
+  if (!use_empty()) {
+    LOG(ERROR) << owner()->name() << " operation destroyed but still has uses.";
+  }
+}
 
 ir::Operation *OpResultImpl::owner() const {
   // For inline result, pointer offset index to obtain the address of op.

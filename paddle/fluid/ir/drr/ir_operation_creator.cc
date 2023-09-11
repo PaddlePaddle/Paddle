@@ -56,11 +56,9 @@ static ir::Attribute CreateIrAttribute(const std::any& obj) {
   } else if (obj.type() == typeid(float)) {
     return IrAttrbuteCreator<float>()(std::any_cast<float>(obj));
   } else if (obj.type() == typeid(std::string)) {
-    return IrAttrbuteCreator<const std::string&>()(
-        std::any_cast<std::string>(obj));
+    return IrAttrbuteCreator<std::string>()(std::any_cast<std::string>(obj));
   } else if (obj.type() == typeid(const char*)) {
-    return IrAttrbuteCreator<const std::string&>()(
-        std::any_cast<const char*>(obj));
+    return IrAttrbuteCreator<std::string>()(std::any_cast<const char*>(obj));
   } else if (obj.type() == typeid(phi::DataType)) {
     return IrAttrbuteCreator<phi::DataType>()(
         std::any_cast<phi::DataType>(obj));
@@ -192,27 +190,27 @@ Operation* CreateOperation(const OpCall& op_call,
         CreateAttributeMap(op_call, src_match_ctx));
     res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
                                std::make_shared<IrValue>(op->result(0)));
-    // } else if (op_call.name() == "pd.fused_gemm_epilogue") {
-    //   const auto& inputs = op_call.inputs();
-    //   std::vector<Value> ir_values =
-    //       GetIrValuesByDrrTensors(inputs, *res_match_ctx);
-    //   Operation* op = rewriter.Build<paddle::dialect::FusedGemmEpilogueOp>(
-    //       ir_values[0].dyn_cast<ir::OpResult>(),
-    //       ir_values[1].dyn_cast<ir::OpResult>(),
-    //       ir_values[2].dyn_cast<ir::OpResult>(),
-    //       CreateAttributeMap(op_call, src_match_ctx));
-    //   BindIrOutputs(op_call, op, res_match_ctx);
-    // } else if (op_call.name() == "pd.fused_gemm_epilogue_grad") {
-    //   const auto& inputs = op_call.inputs();
-    //   std::vector<Value> ir_values =
-    //       GetIrValuesByDrrTensors(inputs, *res_match_ctx);
-    //   op = rewriter.Build<paddle::dialect::FusedGemmEpilogueGradOp>(
-    //       ir_values[0].dyn_cast<ir::OpResult>(),
-    //       ir_values[1].dyn_cast<ir::OpResult>(),
-    //       ir_values[2].dyn_cast<ir::OpResult>(),
-    //       ir_values[3].dyn_cast<ir::OpResult>(),
-    //       CreateAttributeMap(op_call, src_match_ctx));
-    //   BindIrOutputs(op_call, op, res_match_ctx);
+  } else if (op_call.name() == "pd.fused_gemm_epilogue") {
+    const auto& inputs = op_call.inputs();
+    std::vector<Value> ir_values =
+        GetIrValuesByDrrTensors(inputs, *res_match_ctx);
+    Operation* op = rewriter.Build<paddle::dialect::FusedGemmEpilogueOp>(
+        ir_values[0].dyn_cast<ir::OpResult>(),
+        ir_values[1].dyn_cast<ir::OpResult>(),
+        ir_values[2].dyn_cast<ir::OpResult>(),
+        CreateAttributeMap(op_call, src_match_ctx));
+    BindIrOutputs(op_call, op, res_match_ctx);
+  } else if (op_call.name() == "pd.fused_gemm_epilogue_grad") {
+    const auto& inputs = op_call.inputs();
+    std::vector<Value> ir_values =
+        GetIrValuesByDrrTensors(inputs, *res_match_ctx);
+    op = rewriter.Build<paddle::dialect::FusedGemmEpilogueGradOp>(
+        ir_values[0].dyn_cast<ir::OpResult>(),
+        ir_values[1].dyn_cast<ir::OpResult>(),
+        ir_values[2].dyn_cast<ir::OpResult>(),
+        ir_values[3].dyn_cast<ir::OpResult>(),
+        CreateAttributeMap(op_call, src_match_ctx));
+    BindIrOutputs(op_call, op, res_match_ctx);
   } else if (op_call.name() == "builtin.combine") {
     const auto& inputs = op_call.inputs();
     std::vector<Value> ir_values =

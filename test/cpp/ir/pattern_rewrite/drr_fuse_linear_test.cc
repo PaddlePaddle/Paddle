@@ -22,6 +22,7 @@
 #include "paddle/ir/pass/pass.h"
 #include "paddle/ir/pass/pass_manager.h"
 #include "paddle/ir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/ir/transforms/reorder_block_ops_pass.h"
 
 class FusedLinearPattern : public ir::drr::DrrPatternBase<FusedLinearPattern> {
  public:
@@ -51,6 +52,45 @@ class FusedLinearPattern : public ir::drr::DrrPatternBase<FusedLinearPattern> {
   }
 };
 
+// class FusedLinearGradPattern
+//     : public ir::drr::DrrPatternBase<FusedLinearGradPattern> {
+//  public:
+//   void operator()(ir::drr::DrrPatternContext *ctx) const override {
+//     ir::drr::SourcePattern pat = ctx->SourcePattern();
+//     const auto &matmul_grad = pat.Op("pd.matmul_grad",
+//                                      {{"transpose_x", pat.Attr("trans_x")},
+//                                       {"transpose_y", pat.Attr("trans_y")}});
+//     const auto &add_grad = pat.Op("pd.add_grad");
+
+//     add_grad({&pat.Tensor("tmp"), &pat.Tensor("bias"),
+//     &pat.Tensor("out_grad")},
+//              {&pat.Tensor("tmp_grad"), &pat.Tensor("bias_grad")});
+//     matmul_grad({&pat.Tensor("x"), &pat.Tensor("w"),
+//     &pat.Tensor("tmp_grad")},
+//                 {&pat.Tensor("x_grad"), &pat.Tensor("w_grad")});
+
+//     // Result patterns：要替换为的子图
+//     ir::drr::ResultPattern res = pat.ResultPattern();
+//     const auto &act_attr =
+//         res.Attr([](const ir::drr::MatchContext &match_ctx) -> std::any {
+//           return "none";
+//         });
+
+//     const auto &fused_gemm_epilogue_grad =
+//         res.Op("pd.fused_gemm_epilogue_grad",
+//                {{{"trans_x", pat.Attr("trans_x")},
+//                  {"trans_y", pat.Attr("trans_y")},
+//                  {"activation_grad", act_attr}}});
+//     fused_gemm_epilogue_grad({&res.Tensor("x"),
+//                               &res.Tensor("w"),
+//                               &res.NoneTensor(),
+//                               &res.Tensor("out_grad")},
+//                              {&res.Tensor("x_grad"),
+//                               &res.Tensor("w_grad"),
+//                               &res.Tensor("bias_grad")});
+//   }
+// };
+
 class FusedLinearGradPattern
     : public ir::drr::DrrPatternBase<FusedLinearGradPattern> {
  public:
@@ -72,7 +112,6 @@ class FusedLinearGradPattern
     matmul_grad({&pat.Tensor("x"), &pat.Tensor("w"), &pat.Tensor("tmp_grad")},
                 {&pat.Tensor("x_grad"), &pat.Tensor("w_grad")});
 
-    // Result patterns：要替换为的子图
     ir::drr::ResultPattern res = pat.ResultPattern();
     const auto &act_attr =
         res.Attr([](const ir::drr::MatchContext &match_ctx) -> std::any {
@@ -100,14 +139,84 @@ class FusedLinearGradPattern
   }
 };
 
+class FusedLinearGeluGradPattern
+    : public ir::drr::DrrPatternBase<FusedLinearPattern> {
+ public:
+  void operator()(ir::drr::DrrPatternContext *ctx) const override {
+    ir::drr::SourcePattern pat = ctx->SourcePattern();
+    const auto &fused_gemm_epilogue =
+        pat.Op("pd.fused_gemm_epilogue",
+               {{{"trans_x", pat.Attr("trans_x1")},
+                 {"trans_y", pat.Attr("trans_y1")},
+                 {"activation", pat.Attr("act1")}}});
+    const auto &fused_gemm_epilogue_grad1 =
+        pat.Op("pd.fused_gemm_epilogue_grad",
+               {{{"trans_x", pat.Attr("trans_x2")},
+                 {"trans_y", pat.Attr("trans_y2")},
+                 {"activation_grad", pat.Attr("act2")}}});
+
+    fused_gemm_epilogue(
+        {&pat.Tensor("x"), &pat.Tensor("w"), &pat.Tensor("bias")},
+        {&pat.Tensor("fuse_out")});
+    pat.Tensor("out") = pat.Op("pd.gelu")(pat.Tensor("fuse_out"));
+
+    fused_gemm_epilogue_grad1({&pat.Tensor("x1"),
+                               &pat.Tensor("w1"),
+                               &pat.Tensor("reserve_space"),
+                               &pat.Tensor("out_grad")},
+                              {&pat.Tensor("x1_grad"),
+                               &pat.Tensor("w1_grad"),
+                               &pat.Tensor("bias1_grad")});
+    pat.Tensor("gelu_dx") =
+        pat.Op("pd.gelu_grad")(pat.Tensor("fuse_out"), pat.Tensor("x1_grad"));
+
+    pat.RequireNativeCall([&](const ir::drr::MatchContext &match_ctx) {
+      return match_ctx.Attr<std::string>("act1") == "none" &&
+             match_ctx.Attr<std::string>("act2") == "none";
+    });
+
+    // Result patterns：要替换为的子图
+    ir::drr::ResultPattern res = pat.ResultPattern();
+    const auto &act_attr =
+        res.Attr([](const ir::drr::MatchContext &match_ctx) -> std::any {
+          return "gelu";
+        });
+    const auto &fused_gemm_epilogue_new =
+        res.Op("pd.fused_gemm_epilogue",
+               {{{"trans_x", pat.Attr("trans_x")},
+                 {"trans_y", pat.Attr("trans_y")},
+                 {"activation", act_attr}}});
+    const auto &act_grad_attr =
+        res.Attr([](const ir::drr::MatchContext &match_ctx) -> std::any {
+          return "gelu_grad";
+        });
+    const auto &fused_gemm_epilogue_grad_new =
+        res.Op("pd.fused_gemm_epilogue_grad",
+               {{{"trans_x", pat.Attr("trans_x")},
+                 {"trans_y", pat.Attr("trans_y")},
+                 {"activation_grad", act_grad_attr}}});
+    fused_gemm_epilogue_new(
+        {&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
+        {&res.Tensor("out"), &res.Tensor("reserve_space")});
+    fused_gemm_epilogue_grad_new({&res.Tensor("x"),
+                                  &res.Tensor("w"),
+                                  &res.Tensor("reserve_space"),
+                                  &res.Tensor("out_grad")},
+                                 {&res.Tensor("x_grad"),
+                                  &res.Tensor("w_grad"),
+                                  &res.Tensor("bias_grad")});
+  }
+};
+
 class FusedLinearPass : public ir::Pass {
  public:
   FusedLinearPass() : ir::Pass("FusedLinearPass", 1) {}
 
   bool Initialize(ir::IrContext *context) override {
     ir::RewritePatternSet ps(context);
-    ps.Add(FusedLinearPattern().Build(context));
     ps.Add(FusedLinearGradPattern().Build(context));
+    ps.Add(FusedLinearPattern().Build(context));
+    ps.Add(FusedLinearGeluGradPattern().Build(context));
 
     patterns_ = ir::FrozenRewritePatternSet(std::move(ps));
     return true;
@@ -238,6 +347,7 @@ TEST(DrrTest, FusedLinear) {
 
   ir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<FusedLinearPass>());
+  pm.AddPass(ir::CreateReorderBlockOpsPass());
   // pm.AddPass(ir::CreateDeadCodeEliminationPass());
   // pm.EnablePassTiming();
   pm.EnableIRPrinting();
