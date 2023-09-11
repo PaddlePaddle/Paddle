@@ -541,7 +541,7 @@ def create_backward_prune_set(inputs, outputs, no_grad_set, state):
 
     no_gradvar_set = set()  # grad_value of value in no_grad_set
     for key in state.value_to_valuegrad:
-        if key in no_grad_set:
+        if key in no_grad_set and state.value_to_valuegrad[key] != []:
             no_gradvar_set.add(state.value_to_valuegrad[key][0][0])
     for key in state.value_to_sumvaluegrad:
         if key in no_grad_set:
@@ -573,7 +573,7 @@ def remove_op(block, op, state):
 
 def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     block = outputs[0].get_defining_op().get_parent_block()
-    state = State(block.get_parent_program())
+    state = State(block.program)
     # check all inputs and outputs in the same block
     check_all_puts(block, inputs, outputs)
     # update no_grad_set if some value stop_gradient=True
