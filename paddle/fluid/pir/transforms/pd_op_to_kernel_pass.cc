@@ -583,7 +583,7 @@ phi::KernelKey GetKernelKey(
         auto combine_op = op->operand_source(i).GetDefiningOp();
         for (size_t j = 0; j < combine_op->num_operands(); ++j) {
           if (combine_op->operand_source(j).GetDefiningOp()->name() ==
-              "pd.data") {
+              "pd_op.data") {
             auto data_op = combine_op->operand_source(j).GetDefiningOp();
             auto data_place = data_op->attributes()
                                   .at("place")
