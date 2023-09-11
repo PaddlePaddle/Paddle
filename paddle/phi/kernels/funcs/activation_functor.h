@@ -2235,6 +2235,21 @@ struct Log2GradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct Log2GradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
+    dx.device(d) = dout * static_cast<T>(1) / (x * static_cast<T>(log(2)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
 struct Log10 {
   HOSTDEVICE T operator()(const T& val) const { return std::log10(val); }
 };
@@ -2280,6 +2295,21 @@ struct Log10GradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct Log10GradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
+    dx.device(d) = dout * static_cast<T>(1) / (x * static_cast<T>(log(10)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
 struct Log1p {
   HOSTDEVICE T operator()(const T& val) const { return std::log1p(val); }
 };
@@ -2311,6 +2341,21 @@ struct Log1pFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct Log1pGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
+    dx.device(d) = dout * (static_cast<T>(1) / (x + static_cast<T>(1)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct Log1pGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
   template <typename Device,
             typename X,
             typename Out,
