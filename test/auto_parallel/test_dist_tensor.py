@@ -55,7 +55,7 @@ class TestDistTensor(unittest.TestCase):
 
 class TestDistTensorFromFn(unittest.TestCase):
     def run_dtensor_from_fn(self):
-        # Create a distributed attribute
+        # Create a dist_attr
         mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
         dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None])
 
