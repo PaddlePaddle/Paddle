@@ -229,6 +229,8 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   struct Events {
     std::vector<std::pair<gpuEvent_t, gpuEvent_t>> events;
     size_t length{0};
+
+    ~Events();
   };
 
   std::vector<Events> events_;

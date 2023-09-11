@@ -99,12 +99,10 @@ ProcessGroupNCCL::ProcessGroupNCCL(
   events_.resize(phi::backends::gpu::GetGPUDeviceCount());
 }
 
-ProcessGroupNCCL::~ProcessGroupNCCL() {
-  for (const auto& e : events_) {
-    for (const auto& p : e.events) {
-      cudaEventDestroy(p.first);
-      cudaEventDestroy(p.second);
-    }
+Events::~Events() {
+  for (const auto& p : events) {
+    cudaEventDestroy(p.first);
+    cudaEventDestroy(p.second);
   }
 }
 
