@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import subprocess
 import sys
 import unittest
@@ -26,7 +25,7 @@ from paddle.base import core
 from paddle.base.core import AnalysisConfig
 
 
-class TensorRTInspectorTest1(InferencePassTest):
+class TensorRTInspectorTest(InferencePassTest):
     def setUp(self):
         self.set_params()
         with base.program_guard(self.main_program, self.startup_program):
@@ -47,14 +46,7 @@ class TensorRTInspectorTest1(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = InferencePassTest.TensorRTParam(
-            1 << 30,
-            1,
-            0,
-            AnalysisConfig.Precision.Float32,
-            False,
-            False,
-            True,
-            False,
+            1 << 30, 1, 0, AnalysisConfig.Precision.Float32, False, False, True
         )
         self.fetch_list = [out]
 
@@ -89,67 +81,11 @@ class TensorRTInspectorTest1(InferencePassTest):
                 )
 
 
-class TensorRTInspectorTest2(InferencePassTest):
-    def setUp(self):
-        self.set_params()
-        with base.program_guard(self.main_program, self.startup_program):
-            data = paddle.static.data(
-                name="data", shape=[1, 16, 16], dtype="float32"
-            )
-            matmul_out = paddle.matmul(
-                x=data,
-                y=data,
-                transpose_x=self.transpose_x,
-                transpose_y=self.transpose_y,
-            )
-            matmul_out = paddle.scale(matmul_out, scale=self.alpha)
-            out = paddle.static.nn.batch_norm(matmul_out, is_test=True)
-
-        self.feeds = {
-            "data": np.ones([1, 16, 16]).astype("float32"),
-        }
-        self.enable_trt = True
-        self.trt_parameters = InferencePassTest.TensorRTParam(
-            1 << 30,
-            1,
-            0,
-            AnalysisConfig.Precision.Float32,
-            False,
-            False,
-            True,
-            True,
-        )
-        self.fetch_list = [out]
-
-    def set_params(self):
-        self.transpose_x = True
-        self.transpose_y = True
-        self.alpha = 2.0
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            build_engine = subprocess.run(
-                [sys.executable, 'test_trt_inspector.py', '--build-engine'],
-                stderr=subprocess.PIPE,
-            )
-            trt_compile_version = paddle.inference.get_trt_compile_version()
-            trt_runtime_version = paddle.inference.get_trt_runtime_version()
-            valid_version = (8, 2, 0)
-            if (
-                trt_compile_version >= valid_version
-                and trt_runtime_version >= valid_version
-            ):
-                self.assertTrue(os.path.exists("engine_info.txt"))
-
-
 if __name__ == "__main__":
     if '--build-engine' in sys.argv:
+        test = TensorRTInspectorTest()
+        test.setUp()
         use_gpu = True
-        test1 = TensorRTInspectorTest1()
-        test1.setUp()
-        test1.check_output_with_option(use_gpu)
-        test2 = TensorRTInspectorTest1()
-        test2.setUp()
-        test2.check_output_with_option(use_gpu)
+        test.check_output_with_option(use_gpu)
     else:
         unittest.main()

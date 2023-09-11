@@ -576,15 +576,6 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   auto workspace_size = Get<int64_t>("workspace_size");
   auto gpu_device_id = Get<int>("gpu_device_id");
 
-  std::string engine_info_path;
-  if (serialize_engine_info) {
-    engine_info_path =
-        Get<std::string>("model_opt_cache_dir") + "engine_info.txt";
-    std::remove(engine_info_path.c_str());
-  } else {
-    engine_info_path = "";
-  }
-
   // Set op's attrs.
   op_desc->SetType("tensorrt_engine");
   op_desc->SetInput(
@@ -602,8 +593,6 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("parameters", parameters);
   op_desc->SetAttr("allow_build_at_runtime", allow_build_at_runtime);
   op_desc->SetAttr("shape_range_info_path", shape_range_info_path);
-  op_desc->SetAttr("use_inspector", use_inspector);
-  op_desc->SetAttr("engine_info_path", engine_info_path);
   op_desc->SetAttr("with_dynamic_shape", with_dynamic_shape);
   op_desc->SetAttr("enable_low_precision_io", enable_low_precision_io);
 
@@ -699,6 +688,17 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("context_memory_sharing", context_memory_sharing);
   std::string trt_engine_serialized_data;
   op_desc->SetAttr("engine_serialized_data", trt_engine_serialized_data);
+
+  // serialization shape info
+  std::string engine_info_path;
+  if (serialize_engine_info) {
+    engine_info_path = Get<std::string>("model_opt_cache_dir") +
+                       "engine_info_" + engine_key + ".json";
+  } else {
+    engine_info_path = "";
+  }
+  op_desc->SetAttr("use_inspector", use_inspector);
+  op_desc->SetAttr("engine_info_path", engine_info_path);
   op_desc->Flush();
 
   std::unique_ptr<tensorrt::TRTInt8Calibrator> calibrator;

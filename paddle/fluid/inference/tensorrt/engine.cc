@@ -877,12 +877,17 @@ void TensorRTEngine::GetEngineInfo(const std::string &engine_info_path) {
     LOG(INFO) << "====== engine info end ======";
   } else {
     std::fstream out_file;
-    out_file.open(engine_info_path, std::ios_base::app);
+    out_file.open(engine_info_path, std::ios_base::out);
+    out_file << "[";
     for (int i = 0; i < infer_engine_->getNbLayers(); ++i) {
       out_file << infer_inspector->getLayerInformation(
                       i, nvinfer1::LayerInformationFormat::kJSON)
-               << "\n,";
+               << "\n";
+      if (i != infer_engine_->getNbLayers() - 1) {
+        out_file << ",";
+      }
     }
+    out_file << "]";
     out_file.close();
   }
 #else
