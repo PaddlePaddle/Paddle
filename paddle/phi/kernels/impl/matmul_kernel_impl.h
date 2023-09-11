@@ -1644,19 +1644,38 @@ DispatchMatmulWithFlattenInt8Kernel(const phi::CPUContext& dev_ctx,
 }
 
 template <typename T, typename Context>
+typename std::enable_if<std::is_same<T, int8_t>::value, void>::type
+DispatchMatmulFlattenKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& y,
+                            int x_num_col_dims,
+                            int y_num_col_dims,
+                            DenseTensor* out) {
+  DispatchMatmulWithFlattenInt8Kernel<Context>(
+      dev_ctx, x, y, x_num_col_dims, y_num_col_dims, out);
+}
+
+template <typename T, typename Context>
+typename std::enable_if<!std::is_same<T, int8_t>::value, void>::type
+DispatchMatmulFlattenKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& y,
+                            int x_num_col_dims,
+                            int y_num_col_dims,
+                            DenseTensor* out) {
+  MatmulWithFlattenKernelImpl<T, Context>(
+      dev_ctx, x, y, x_num_col_dims, y_num_col_dims, out);
+}
+
+template <typename T, typename Context>
 void MatmulWithFlattenKernel(const Context& dev_ctx,
                              const DenseTensor& x,
                              const DenseTensor& y,
                              int x_num_col_dims,
                              int y_num_col_dims,
                              DenseTensor* out) {
-  if (!std::is_integral<T>::value) {
-    MatmulWithFlattenKernelImpl<T, Context>(
-        dev_ctx, x, y, x_num_col_dims, y_num_col_dims, out);
-  } else {
-    DispatchMatmulWithFlattenInt8Kernel<Context>(
-        dev_ctx, x, y, x_num_col_dims, y_num_col_dims, out);
-  }
+  DispatchMatmulFlattenKernel<T, Context>(
+      dev_ctx, x, y, x_num_col_dims, y_num_col_dims, out);
 }
 
 }  // namespace phi
