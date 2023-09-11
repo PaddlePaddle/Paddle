@@ -77,8 +77,6 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
                    int size,
                    int gid);
 
-  ~ProcessGroupNCCL();
-
   std::string GetBackendName() const override { return "NCCL"; }
 
   phi::DeviceContext* GetDeviceContext(const Place& place) const override;
