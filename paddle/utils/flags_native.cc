@@ -297,8 +297,9 @@ void Flag::SetValueFromString(const std::string& value) {
 void FlagRegistry::RegisterFlag(Flag* flag) {
   auto iter = flags_.find(flag->name_);
   if (iter != flags_.end()) {
-    LOG_FLAG_FATAL_ERROR("illegal RegisterFlag, flag \"" + flag->name_ +
-                         "\" has been defined in " + iter->second->file_);
+    LOG_FLAG_FATAL_ERROR("flag multiple definition, flag \"" + flag->name_ +
+                         "\" was defined both in " + iter->second->file_ +
+                         " and " + flag->file_);
   } else {
     std::lock_guard<std::mutex> lock(mutex_);
     flags_[flag->name_] = flag;
