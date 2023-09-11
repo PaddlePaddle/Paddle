@@ -529,7 +529,7 @@ def create_backward_prune_set(inputs, outputs, no_grad_set, state):
 
     no_gradvar_set = set()  # grad_value of value in no_grad_set
     for key in state.value_to_valuegrad:
-        if key in no_grad_set:
+        if key in no_grad_set and state.value_to_valuegrad[key] != []:
             no_gradvar_set.add(state.value_to_valuegrad[key][0][0])
     for key in state.value_to_sumvaluegrad:
         if key in no_grad_set:
@@ -585,7 +585,6 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         block, inverse_effective_forward_ops, no_grad_set, backward_ops, state
     )
     # now value_to_valuegrad should be value <-> value (add sum op for the same values's gradvalue)
-
     outputs_set, inputs_set, no_gradvar_set = create_backward_prune_set(
         inputs, complete_outputs, no_grad_set, state
     )

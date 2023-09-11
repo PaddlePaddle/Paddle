@@ -19,7 +19,7 @@
 
 namespace paddle {
 namespace dialect {
-ir::OpResult builtin_combine(std::vector<pir::OpResult> x) {
+pir::OpResult builtin_combine(std::vector<pir::OpResult> x) {
   auto combine_op =
       APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(x);
   return combine_op.out();

@@ -312,7 +312,7 @@ class PythonCCodeGen(CodeGen):
                     == "paddle::dialect::IntArrayAttribute"
                 ):
                     mutable_cast_str = MUTABLE_ATTR_CAST_TEMPLATE.format(
-                        type='std::vector<ir::OpResult>',
+                        type='std::vector<pir::OpResult>',
                         name_=name + '_tmp',
                         name=name,
                         cast_func='CastPyArg2VectorOfOpResult',
