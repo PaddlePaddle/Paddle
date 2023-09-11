@@ -639,9 +639,9 @@ phi::KernelKey GetKernelKey(
   return res;
 }
 
-ir::OpResult GetNewInput(
-    const ir::Value cur_in,
-    const std::unordered_map<ir::Value, ir::OpResult>& map_value_pair,
+pir::OpResult GetNewInput(
+    const pir::Value cur_in,
+    const std::unordered_map<pir::Value, pir::OpResult>& map_value_pair,
     const int index,
     const std::string op_name) {
   PADDLE_ENFORCE_EQ(
