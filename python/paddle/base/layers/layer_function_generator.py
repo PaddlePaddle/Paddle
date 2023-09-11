@@ -333,10 +333,10 @@ def generate_inplace_fn(inplace_op_type):
                     inplace_op_type, origin_op_type
                 )
             )
-            from ..dygraph.base import in_declarative_mode
+            from ..dygraph.base import in_to_static_mode
 
             if (
-                in_declarative_mode()
+                in_to_static_mode()
                 and hasattr(x, "is_view_var")
                 and x.is_view_var
             ):

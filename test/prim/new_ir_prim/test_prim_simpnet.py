@@ -75,11 +75,12 @@ class TestPrimMode(unittest.TestCase):
                 fetch_list=[res2, gradients[0], gradients[1]],
             )
 
-        whole_ops = [op.name() for op in main_program.block().ops]
+        whole_ops = [op.name() for op in main_program.global_block().ops]
         if flag == "all":
             core._set_prim_all_enabled(False)
             assert (
-                'pd.gelu' not in whole_ops and 'pd.divide_grad' not in whole_ops
+                'pd_op.gelu' not in whole_ops
+                and 'pd_op.divide_grad' not in whole_ops
             )
         return outs
 

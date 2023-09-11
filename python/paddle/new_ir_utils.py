@@ -24,6 +24,9 @@ class IrGuard:
             self.old_Program = paddle.static.Program
             self.old_program_guard = paddle.base.program_guard
             self.old_default_main_program = paddle.static.default_main_program
+            self.old_default_startup_program = (
+                paddle.static.default_startup_program
+            )
         else:
             raise RuntimeError(
                 "IrChange only init when paddle.ir.core._use_new_ir_api() is false, \
@@ -51,8 +54,11 @@ class IrGuard:
             paddle.base.Program = paddle.ir.Program
             paddle.base.program_guard = paddle.ir.core.program_guard
             paddle.static.program_guard = paddle.ir.core.program_guard
-            paddle.framework.default_main_program = (
+            paddle.static.default_main_program = (
                 paddle.ir.core.default_main_program
+            )
+            paddle.static.default_startup_program = (
+                paddle.ir.core.default_startup_program
             )
 
     def _switch_to_old_ir(self):
@@ -64,8 +70,9 @@ class IrGuard:
             paddle.base.Program = self.old_Program
             paddle.base.program_guard = self.old_program_guard
             paddle.static.program_guard = self.old_program_guard
-            paddle.framework.default_main_program = (
-                self.old_default_main_program
+            paddle.static.default_main_program = self.old_default_main_program
+            paddle.static.default_startup_program = (
+                self.old_default_startup_program
             )
         else:
             raise RuntimeError(
