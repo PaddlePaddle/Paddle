@@ -38,6 +38,10 @@ class IterHelper {
     for (auto element : *elements) visit(element);
   }
 
+  virtual void visit(std::vector<ElementType>& elements) {  // NOLINT
+    for (auto element : elements) visit(element);
+  }
+
   template <typename... Args>
   void apply() {}
 
@@ -116,6 +120,15 @@ class SetGradOutputDistAttrIter : public IterHelper<paddle::Tensor*> {
 
   void visit(std::vector<paddle::Tensor*>* elements) override {
     for (auto element : *elements) {
+      visit(element);
+      cur_sub_pos_++;
+    }
+    cur_pos_++;
+    cur_sub_pos_ = 0;
+  }
+
+  void visit(std::vector<paddle::Tensor*>& elements) override {
+    for (auto element : elements) {
       visit(element);
       cur_sub_pos_++;
     }

@@ -2107,6 +2107,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         )
         grad_api_args = ["" for i in range(grad_api_args_len)]
         get_grad_in_args_list = []
+        grad_api_out_args_list = []
 
         # Fill Grad Ins with Zero
         fill_zero_str = ""
@@ -2127,8 +2128,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                         fill_zero_str += f"{indent}egr::EagerUtils::FillZeroForEmptyGradInput(&grads[{fwd_position}][0], input_metas[{fwd_position}][0]);\n"
                     else:
                         fill_zero_str += f"{indent}egr::EagerUtils::FillZeroForEmptyGradInput(&grads[{fwd_position}], input_metas[{fwd_position}]);\n"
-
-        set_out_dist_attr_str = SET_GRAD_OUT_DIST_ATTR_TEMPLATE.format()
 
         inplace_grad_input_str = ""
         inplace_check_str = ""
@@ -2306,6 +2305,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                     out_assign_str += f"{indent}*api_output_{out_index} = std::get<{out_index}>(api_output);\n"
             else:
                 grad_api_args.append(f"api_output_{out_index}")
+                grad_api_out_args_list.append(f"api_output_{out_index}")
             if inplace_grad_input_str in optional_inplace_var_name:
                 optional_inplace_str = "VLOG(6) << \"No Inplace should happend for wrappered input: {inplace_grad_input_str}\";"
             else:
@@ -2350,6 +2350,14 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         grad_api_args_str = ", ".join(grad_api_args)
         composite_grad_api_args_str = ", ".join(grad_api_args)
         composite_template_name = "<paddle::Tensor>"
+
+        # Set DistAttr Func Construct
+        set_out_dist_attr_str = ""
+        if not is_invoke_forward_api:
+            grad_api_out_args_str = ", ".join(grad_api_out_args_list)
+            set_out_dist_attr_str = SET_GRAD_OUT_DIST_ATTR_TEMPLATE.format(
+                grad_api_out_args_str
+            )
 
         if is_invoke_forward_api:
             autograd_api_out = "auto"
