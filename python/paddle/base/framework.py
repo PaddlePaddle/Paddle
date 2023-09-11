@@ -1011,7 +1011,7 @@ def name_scope(prefix=None):
             ...     with paddle.static.name_scope("s3"):
             ...         d = c / paddle.to_tensor(1)
             >>> with paddle.static.name_scope("s1"):
-            ...     f = paddle.tensor.pow(d, 2.0)
+            ...     f = paddle.tensor.pow(d, paddle.to_tensor(2.0))
             >>> with paddle.static.name_scope("s4"):
             ...     g = f - paddle.to_tensor(1)
 
