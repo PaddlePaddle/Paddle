@@ -689,7 +689,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   std::string trt_engine_serialized_data;
   op_desc->SetAttr("engine_serialized_data", trt_engine_serialized_data);
 
-  // serialization shape info
+  // serialization engine info
   std::string engine_info_path;
   if (serialize_engine_info) {
     engine_info_path = Get<std::string>("model_opt_cache_dir") +
