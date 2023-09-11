@@ -163,8 +163,8 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
 
                 # modify dropout op
                 src_op.desc.set_input("Seed", [seed_var.name])
-                src_op.desc.set_attr("fix_seed", False)
-                src_op.desc.set_attr("seed", 0)
+                src_op.desc._set_attr("fix_seed", False)
+                src_op.desc._set_attr("seed", 0)
                 op_dist_attr.set_input_dist_attr(
                     seed_var.name, seed_var_dist_attr
                 )

@@ -185,8 +185,8 @@ class RecomputeState(ProgramStats):
             # modify dropout op's desc
             self.ops.insert(op_idx, seed_op)
             cur_op.desc.set_input(seed_tensor_name, [var_unique_name])
-            cur_op.desc.set_attr("fix_seed", False)
-            cur_op.desc.set_attr("seed", 0)
+            cur_op.desc._set_attr("fix_seed", False)
+            cur_op.desc._set_attr("seed", 0)
             cur_op_dist_attr.set_input_dist_attr(
                 seed_var.name, seed_var_dist_attr
             )
