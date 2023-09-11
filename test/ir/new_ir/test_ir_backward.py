@@ -163,7 +163,7 @@ class TesBackward_2(unittest.TestCase):
             newir_program.global_block().ops[-1].name(), "pd_op.add_n"
         )
         self.assertEqual(
-            newir_program.global_block().ops[-1].name(), "pd.add_n"
+            newir_program.global_block().ops[-1].name(), "pd_op.add_n"
         )
         self.assertEqual(
             newir_program.global_block().ops[-2].name(), "builtin.combine"
