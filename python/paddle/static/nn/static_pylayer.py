@@ -105,7 +105,7 @@ class StaticPyLayerBlock:
         parent_block = self.helper.main_program.block(inside_block.parent_idx)
 
         self._backward_block_id = inside_block.idx
-        # Set OpRole to `backward`. The operators marked as `backward`
+        # Set OpRole to `backward`. The operators marked as `backward` are expected to be pruned in PruneBackward.
         for op in inside_block.ops:
             op_role_attr_name = (
                 core.op_proto_and_checker_maker.kOpRoleAttrName()
