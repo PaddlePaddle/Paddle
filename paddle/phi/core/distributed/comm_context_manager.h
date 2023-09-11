@@ -52,7 +52,8 @@ class CommContextManager {
   static void CreateNCCLCommContext(const std::shared_ptr<Store>& store,
                                     const std::string& unique_comm_key,
                                     int rank,
-                                    int size);
+                                    int size,
+                                    const std::string& hash_key = "");
 #endif
 
 #if defined(PADDLE_WITH_GLOO)
