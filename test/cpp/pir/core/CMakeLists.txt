@@ -122,10 +122,10 @@ cc_test_old(
   SRCS
   type_interface_test.cc
   DEPS
-  ir
+  pir
   test_dialect
   gtest
-  pd_dialect)
+  pd_op_dialect)
 
 cc_test_old(
   block_operand_test

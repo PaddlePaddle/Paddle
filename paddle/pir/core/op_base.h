@@ -129,7 +129,7 @@ class Op : public OpBase {
   }
 
   static std::vector<TypeId> GetTraitSet() {
-    return ir::details::GetTraitSet<ConcreteOp, TraitList>();
+    return pir::details::GetTraitSet<ConcreteOp, TraitList>();
   }
 
   // Checking that the derived class does not define any member by comparing

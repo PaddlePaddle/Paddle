@@ -39,7 +39,7 @@ namespace pir {
 // in IrContextImpl because it is not widely used.
 
 class IR_API VectorType
-    : public ir::Type::TypeBase<VectorType, ir::Type, VectorTypeStorage> {
+    : public pir::Type::TypeBase<VectorType, pir::Type, VectorTypeStorage> {
  public:
   using Base::Base;
 
@@ -70,12 +70,13 @@ class DenseTensorType : public pir::Type::TypeBase<DenseTensorType,
   const size_t &offset() const;
 };
 
-#define DECLARE_BUILTIN_TYPE(__name)                                         \
-  class IR_API __name                                                        \
-      : public ::ir::Type::TypeBase<__name, ::ir::Type, ::ir::TypeStorage> { \
-   public:                                                                   \
-    using Base::Base;                                                        \
-    static __name get(IrContext *context);                                   \
+#define DECLARE_BUILTIN_TYPE(__name)                                       \
+  class IR_API __name : public ::pir::Type::TypeBase<__name,               \
+                                                     ::pir::Type,          \
+                                                     ::pir::TypeStorage> { \
+   public:                                                                 \
+    using Base::Base;                                                      \
+    static __name get(IrContext *context);                                 \
   };
 
 #define FOREACH_BUILTIN_TYPE(__macro) \

@@ -40,7 +40,7 @@ class IR_API Type {
   using TypeBase = detail::StorageHelperBase<ConcreteType,
                                              BaseType,
                                              StorageType,
-                                             ir::TypeManager,
+                                             pir::TypeManager,
                                              TraitOrInterface...>;
 
   using Storage = TypeStorage;
@@ -127,7 +127,7 @@ class IR_API Type {
 
   template <typename U>
   U cast() const {
-    return ir::cast<U>(*this);
+    return pir::cast<U>(*this);
   }
 
  protected:
@@ -144,8 +144,8 @@ class IR_API Type {
   template <typename T>
   struct CastInfo<
       T,
-      typename std::enable_if<std::is_base_of<ir::Type, T>::value>::type> {
-    static inline T call(ir::Type type) { return T::dyn_cast(type); }
+      typename std::enable_if<std::is_base_of<pir::Type, T>::value>::type> {
+    static inline T call(pir::Type type) { return T::dyn_cast(type); }
   };
 };
 
@@ -155,7 +155,7 @@ IR_API std::ostream &operator<<(std::ostream &os, Type type);
 /// \brief This class represents the base of a type interface.
 ///
 template <typename ConcreteInterface>
-class TypeInterfaceBase : public ir::Type {
+class TypeInterfaceBase : public pir::Type {
  public:
   explicit TypeInterfaceBase(Type type) : Type(type) {}
 
@@ -172,8 +172,8 @@ template <typename To, typename From>
 struct cast_impl<
     To,
     From,
-    typename std::enable_if<std::is_base_of<ir::Type, From>::value>::type> {
-  static inline To call(const ir::Type type) { return To(type.storage()); }
+    typename std::enable_if<std::is_base_of<pir::Type, From>::value>::type> {
+  static inline To call(const pir::Type type) { return To(type.storage()); }
 };
 
 }  // namespace pir

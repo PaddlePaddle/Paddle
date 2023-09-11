@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/core/type_base.h"
+#include "paddle/pir/core/type_base.h"
 #include "glog/logging.h"
-#include "paddle/ir/core/ir_context.h"
+#include "paddle/pir/core/ir_context.h"
 
-namespace ir {
+namespace pir {
 
 void *AbstractType::GetInterfaceImpl(TypeId interface_id) const {
   if (interface_map_.empty()) {
@@ -35,4 +35,4 @@ void *AbstractType::GetInterfaceImpl(TypeId interface_id) const {
   //     interface_id, num_interfaces_, num_traits_, this);
 }
 
-}  // namespace ir
+}  // namespace pir

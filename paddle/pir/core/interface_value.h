@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/ir/core/type_id.h"
-#include "paddle/ir/core/utils.h"
+#include "paddle/pir/core/type_id.h"
+#include "paddle/pir/core/utils.h"
 
-namespace ir {
+namespace pir {
 
 namespace details {
 class IR_API InterfaceValue {
@@ -64,4 +64,4 @@ class IR_API InterfaceValue {
 };
 
 }  // namespace details
-}  // namespace ir
+}  // namespace pir

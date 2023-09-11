@@ -14,13 +14,13 @@
 
 #pragma once
 
-#include "paddle/ir/core/interface_support.h"
-#include "paddle/ir/core/ir_context.h"
-#include "paddle/ir/core/type.h"
-#include "paddle/ir/core/type_base.h"
-#include "paddle/ir/core/type_id.h"
+#include "paddle/pir/core/interface_support.h"
+#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/core/type.h"
+#include "paddle/pir/core/type_base.h"
+#include "paddle/pir/core/type_id.h"
 
-namespace ir {
+namespace pir {
 class InFlightDiagnostic;
 class Location;
 class MLIRContext;
@@ -76,7 +76,7 @@ class StorageHelperBase : public BaseT {
   }
 
   /// Get the identifier for the concrete type.
-  static ir::TypeId type_id() { return ir::TypeId::get<ConcreteT>(); }
+  static pir::TypeId type_id() { return pir::TypeId::get<ConcreteT>(); }
 
   /// Provide an implementation of 'classof' that compares the type id of the
   /// provided value with that of the concrete type.
@@ -88,12 +88,12 @@ class StorageHelperBase : public BaseT {
   /// Returns an interface map for the interfaces registered to this storage
   /// user.
   static std::vector<details::InterfaceValue> interface_map() {
-    return ir::details::GetInterfaceMap<ConcreteT, InterfaceList>();
+    return pir::details::GetInterfaceMap<ConcreteT, InterfaceList>();
   }
 
   /// Get or create a new ConcreteT instance within the ctx.
   template <typename... Args>
-  static ConcreteT get(ir::IrContext *ctx, Args... args) {
+  static ConcreteT get(pir::IrContext *ctx, Args... args) {
     return ManagerT::template get<ConcreteT>(ctx, args...);
   }
 
@@ -106,4 +106,4 @@ class StorageHelperBase : public BaseT {
   }
 };
 }  // namespace detail
-}  // namespace ir
+}  // namespace pir

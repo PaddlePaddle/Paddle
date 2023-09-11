@@ -29,7 +29,7 @@ TEST(shapedtype_test, shapedtype_test) {
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   EXPECT_EQ(test_dialect != nullptr, true);
 
-  ir::Type fp32_dtype = ir::Float32Type::get(ctx);
+  pir::Type fp32_dtype = ir::Float32Type::get(ctx);
   phi::DDim dims = {2, 2};
   phi::DataLayout data_layout = phi::DataLayout::NCHW;
   phi::LoD lod = {{0, 1, 2}};

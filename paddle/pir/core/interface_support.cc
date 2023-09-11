@@ -12,7 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/core/builtin_type_interfaces.h"
-#include "paddle/ir/core/type_id.h"
+#include "paddle/pir/core/interface_support.h"
 
-IR_DEFINE_EXPLICIT_TYPE_ID(ir::ShapedTypeInterface)
+namespace pir {
+details::InterfaceValue::~InterfaceValue() {
+  if (model_) free(model_);
+}
+
+details::InterfaceValue::InterfaceValue(InterfaceValue&& val) noexcept {
+  type_id_ = val.type_id_;
+  model_ = val.model_;
+  val.model_ = nullptr;
+}
+
+details::InterfaceValue& details::InterfaceValue::operator=(
+    InterfaceValue&& val) noexcept {
+  swap(std::move(val));
+  return *this;
+}
+}  // namespace pir

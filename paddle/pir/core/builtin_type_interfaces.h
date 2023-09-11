@@ -15,10 +15,10 @@
 #pragma once
 
 #include <vector>
-#include "paddle/ir/core/cast_utils.h"
-#include "paddle/ir/core/enforce.h"
-#include "paddle/ir/core/type.h"
 #include "paddle/phi/core/tensor_base.h"
+#include "paddle/pir/core/cast_utils.h"
+#include "paddle/pir/core/enforce.h"
+#include "paddle/pir/core/type.h"
 
 namespace details {
 
@@ -65,39 +65,37 @@ auto count_if(R &&Range, UnaryPredicate P) {
 }
 
 }  // namespace details
-namespace ir {
-class ShapedTypeInterface : public ir::TypeInterfaceBase<ShapedTypeInterface> {
+namespace pir {
+class ShapedTypeInterface : public pir::TypeInterfaceBase<ShapedTypeInterface> {
  public:
   using DDim = phi::DDim;
-  using DataType = ir::Type;
+  using DataType = pir::Type;
   struct Concept {
     /// Defined these methods with the interface.
-    explicit Concept(DataType (*get_element_type)(ir::Type),
-                     DDim (*get_shape)(ir::Type))
+    explicit Concept(DataType (*get_element_type)(pir::Type),
+                     DDim (*get_shape)(pir::Type))
         : get_element_type_(get_element_type), get_shape_(get_shape) {}
 
-    DataType (*get_element_type_)(ir::Type);
-    DDim (*get_shape_)(ir::Type);
+    DataType (*get_element_type_)(pir::Type);
+    DDim (*get_shape_)(pir::Type);
   };
 
   template <class ConcreteType>
   struct Model : public Concept {
-    static inline DataType getElementType(ir::Type type) {
-      return ir::cast<ConcreteType>(type).dtype();
-      // return (type.cast<ConcreteType>()).dtype();
+    static inline DataType getElementType(pir::Type type) {
+      return pir::cast<ConcreteType>(type).dtype();
     }
 
-    static inline DDim getShape(ir::Type type) {
-      return ir::cast<ConcreteType>(type).dims();
-      // return (type.cast<ConcreteType>()).dims();
+    static inline DDim getShape(pir::Type type) {
+      return pir::cast<ConcreteType>(type).dims();
     }
 
     Model() : Concept(getElementType, getShape) {}
   };
 
   /// Constructor
-  ShapedTypeInterface(ir::Type type, Concept *impl)
-      : ir::TypeInterfaceBase<ShapedTypeInterface>(type), impl_(impl) {}
+  ShapedTypeInterface(pir::Type type, Concept *impl)
+      : pir::TypeInterfaceBase<ShapedTypeInterface>(type), impl_(impl) {}
 
   /// Get the element type.
   DataType getElementType() const { return impl_->get_element_type_(*this); }
@@ -129,14 +127,14 @@ class ShapedTypeInterface : public ir::TypeInterfaceBase<ShapedTypeInterface> {
   /// Aborts for unranked types.
   bool isDynamicDim(unsigned idx) const {
     IR_ENFORCE(idx < getRank(), "Invalid index for shaped type.");
-    return ir::ShapedTypeInterface::isDynamic((*this).getShape()[idx]);
+    return pir::ShapedTypeInterface::isDynamic((*this).getShape()[idx]);
   }
 
   /// Get the number of dimensions with dynamic size for a ranked type.
   /// Aborts for unranked types.
   int64_t getNumDynamicDims() const {
     return ::details::count_if(vectorize((*this).getShape()),
-                               ir::ShapedTypeInterface::isDynamic);
+                               pir::ShapedTypeInterface::isDynamic);
   }
 
   /// Get the size of the specified dimension for a ranked type.
@@ -150,6 +148,6 @@ class ShapedTypeInterface : public ir::TypeInterfaceBase<ShapedTypeInterface> {
   Concept *impl_;
 };
 
-}  // namespace ir
+}  // namespace pir
 
-IR_DECLARE_EXPLICIT_TYPE_ID(ir::ShapedTypeInterface)
+IR_DECLARE_EXPLICIT_TYPE_ID(pir::ShapedTypeInterface)

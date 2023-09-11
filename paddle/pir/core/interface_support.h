@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include "paddle/ir/core/enforce.h"
-#include "paddle/ir/core/interface_value.h"
+#include "paddle/pir/core/enforce.h"
+#include "paddle/pir/core/interface_value.h"
 
-namespace ir {
+namespace pir {
 namespace details {
 template <typename ConcreteT, typename... Args>
 class ConstructInterfacesOrTraits {
@@ -50,7 +50,7 @@ class ConstructInterfacesOrTraits {
 
   /// Placement new trait.
   template <typename T>
-  static void PlacementConstrctTrait(ir::TypeId *&p_trait) {  // NOLINT
+  static void PlacementConstrctTrait(pir::TypeId *&p_trait) {  // NOLINT
     *p_trait = TypeId::get<T>();
     VLOG(6) << "New a trait: id[" << p_trait->AsOpaquePointer() << "].";
     ++p_trait;
@@ -119,4 +119,4 @@ std::vector<TypeId> GetTraitSet() {
 
 }  // namespace details
 
-}  // namespace ir
+}  // namespace pir
