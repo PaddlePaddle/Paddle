@@ -23,7 +23,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import IrGraph
+from paddle.base.framework import IrGraph
 from paddle.framework import core
 from paddle.static.quantization import QuantInt8MkldnnPass
 

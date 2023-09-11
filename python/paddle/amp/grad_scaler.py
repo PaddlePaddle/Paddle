@@ -19,10 +19,10 @@ from enum import Enum
 import numpy as np
 
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid import core
-from paddle.fluid.data_feeder import check_type
-from paddle.fluid.dygraph import to_variable
-from paddle.fluid.framework import _dygraph_tracer, dygraph_only
+from paddle.base import core
+from paddle.base.data_feeder import check_type
+from paddle.base.dygraph import to_variable
+from paddle.base.framework import _dygraph_tracer, dygraph_only
 from paddle.framework import in_dynamic_mode
 
 from .auto_cast import amp_global_state

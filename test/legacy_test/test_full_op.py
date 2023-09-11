@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle import base
+from paddle.base import Program, program_guard
 
 
 # Test python API
@@ -64,9 +64,9 @@ class TestFullAPI(unittest.TestCase):
             shape=shape_tensor_int64, dtype=np.float32, fill_value=val
         )
 
-        exe = fluid.Executor(place=fluid.CPUPlace())
+        exe = base.Executor(place=base.CPUPlace())
         res_1, res_2, res_3, res_4, res_5, res_6, res_7 = exe.run(
-            fluid.default_main_program(),
+            base.default_main_program(),
             feed={
                 "shape_tensor_int32": np.array([1, 2]).astype("int32"),
                 "shape_tensor_int64": np.array([1, 2]).astype("int64"),
@@ -97,7 +97,7 @@ class TestFullAPI(unittest.TestCase):
         )
 
     def test_api_eager(self):
-        with fluid.dygraph.base.guard():
+        with base.dygraph.base.guard():
             positive_2_int32 = paddle.tensor.fill_constant([1], "int32", 2)
             positive_2_int64 = paddle.tensor.fill_constant([1], "int64", 2)
             positive_4_int64 = paddle.tensor.fill_constant(

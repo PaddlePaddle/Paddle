@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 
-fluid.disable_dygraph()
+base.disable_dygraph()
 
 
 def get_dataset(inputs):
-    dataset = fluid.DatasetFactory().create_dataset()
+    dataset = base.DatasetFactory().create_dataset()
     dataset.set_use_var(inputs)
     dataset.set_batch_size(1)
     dataset.set_filelist([])
@@ -40,7 +40,7 @@ def net(batch_size=4, lr=0.01):
     """
     dnn_input_dim, lr_input_dim = int(2), int(2)
 
-    with fluid.device_guard("cpu"):
+    with base.device_guard("cpu"):
         dnn_data = paddle.static.data(
             name="dnn_data",
             shape=[-1, 1],
@@ -68,7 +68,7 @@ def net(batch_size=4, lr=0.01):
             is_distributed=False,
             input=dnn_data,
             size=[dnn_input_dim, dnn_layer_dims[0]],
-            param_attr=fluid.ParamAttr(
+            param_attr=base.ParamAttr(
                 name="deep_embedding",
                 initializer=paddle.nn.initializer.Constant(value=0.01),
             ),
@@ -84,7 +84,7 @@ def net(batch_size=4, lr=0.01):
             is_distributed=False,
             input=lr_data,
             size=[lr_input_dim, 1],
-            param_attr=fluid.ParamAttr(
+            param_attr=base.ParamAttr(
                 name="wide_embedding",
                 initializer=paddle.nn.initializer.Constant(value=0.01),
             ),
@@ -94,13 +94,13 @@ def net(batch_size=4, lr=0.01):
             input=lr_embedding, pool_type="sum"
         )
 
-    with fluid.device_guard("gpu"):
+    with base.device_guard("gpu"):
         for i, dim in enumerate(dnn_layer_dims[1:]):
             fc = paddle.static.nn.fc(
                 x=dnn_out,
                 size=dim,
                 activation="relu",
-                weight_attr=fluid.ParamAttr(
+                weight_attr=base.ParamAttr(
                     initializer=paddle.nn.initializer.Constant(value=0.01)
                 ),
                 name='dnn-fc-%d' % i,
@@ -149,13 +149,13 @@ elif fleet.is_heter_worker():
     fleet.stop_worker()
 elif fleet.is_worker():
     pass
-    # place = fluid.CPUPlace()
-    # exe = fluid.Executor(place)
-    # exe.run(fluid.default_startup_program())
+    # place = base.CPUPlace()
+    # exe = base.Executor(place)
+    # exe.run(base.default_startup_program())
     # fleet.init_worker()
     # step = 1
     # for i in range(step):
     #    exe.train_from_dataset(
-    #        program=fluid.default_main_program(), dataset=dataset, debug=False)
+    #        program=base.default_main_program(), dataset=dataset, debug=False)
     # exe.close()
     # fleet.stop_worker()

@@ -189,13 +189,13 @@ void ReduceOpHandle::RunImpl() {
           out_var_handle->place(), pre_in.dtype());
 
       auto out_p = out_var_handle->place();
-      int root_id = out_p.device;
+      int root_id = out_p.device;  // NOLINT
       std::vector<std::function<void()>> all_reduce_calls;
       for (size_t i = 0; i < var_scopes.size(); ++i) {
         auto &p = in_places[i];
         auto &lod_tensor = *lod_tensors[i];
 
-        int dev_id = p.device;
+        int dev_id = p.device;  // NOLINT
         auto &nccl_ctx = nccl_ctxs_->at(dev_id);
 
         void *buffer = const_cast<void *>(lod_tensor.data());

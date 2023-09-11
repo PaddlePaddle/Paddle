@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.data_feeder import check_variable_and_dtype, convert_dtype
+from paddle.base.data_feeder import check_variable_and_dtype, convert_dtype
 from paddle.utils import deprecated
 
 __all__ = [
@@ -46,7 +46,7 @@ def simple_img_conv_pool(
     r"""
         :api_attr: Static Graph
 
-    The simple_img_conv_pool api is composed of :ref:`api_fluid_layers_conv2d` and :ref:`api_fluid_layers_pool2d` .
+    The simple_img_conv_pool api is composed of :ref:`api_base_layers_conv2d` and :ref:`api_base_layers_pool2d` .
 
     Args:
         input (Variable): 4-D Tensor, shape is [N, C, H, W], data type can be float32 or float64.
@@ -106,11 +106,11 @@ def simple_img_conv_pool(
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle.base as base
             import paddle
             paddle.enable_static()
             img = paddle.static.data(name='img', shape=[100, 1, 28, 28], dtype='float32')
-            conv_pool = fluid.nets.simple_img_conv_pool(input=img,
+            conv_pool = base.nets.simple_img_conv_pool(input=img,
                                                         filter_size=5,
                                                         num_filters=20,
                                                         pool_size=2,
@@ -208,12 +208,12 @@ def img_conv_group(
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle.base as base
             import paddle
             paddle.enable_static()
 
             img = paddle.static.data(name='img', shape=[None, 1, 28, 28], dtype='float32')
-            conv_pool = fluid.nets.img_conv_group(input=img,
+            conv_pool = base.nets.img_conv_group(input=img,
                                                   conv_padding=1,
                                                   conv_num_filter=[3, 3],
                                                   conv_filter_size=3,
@@ -288,10 +288,10 @@ def sequence_conv_pool(
         :api_attr: Static Graph
 
     **This api takes input as an LoDTensor. If input is a Tensor, please use**
-    :ref:`api_fluid_nets_simple_img_conv_pool` **instead**
+    :ref:`api_base_nets_simple_img_conv_pool` **instead**
 
-    The sequence_conv_pool is composed of :ref:`api_fluid_layers_sequence_conv`
-    and :ref:`api_fluid_layers_sequence_pool` .
+    The sequence_conv_pool is composed of :ref:`api_base_layers_sequence_conv`
+    and :ref:`api_base_layers_sequence_pool` .
 
     Args:
         input (Tensor): 2-D LoDTensor, the input of sequence_conv,
@@ -323,7 +323,7 @@ def sequence_conv_pool(
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle.base as base
             import paddle
             paddle.enable_static()
             input_dim = 100 #len(word_dict)
@@ -331,7 +331,7 @@ def sequence_conv_pool(
             hid_dim = 512
             data = paddle.static.data(name="words", shape=[None, 1], dtype="int64", lod_level=1)
             emb = paddle.static.nn.embedding(input=data, size=[input_dim, emb_dim], is_sparse=True)
-            seq_conv = fluid.nets.sequence_conv_pool(input=emb,
+            seq_conv = base.nets.sequence_conv_pool(input=emb,
                                                      num_filters=hid_dim,
                                                      filter_size=3,
                                                      act="tanh",
@@ -359,8 +359,8 @@ def glu(input, dim=-1):
     r"""
         :api_attr: Static Graph
 
-    The Gated Linear Units(GLU) composed by :ref:`api_fluid_layers_split` ,
-    :ref:`api_fluid_layers_sigmoid`  and :ref:`api_fluid_layers_elementwise_mul` .
+    The Gated Linear Units(GLU) composed by :ref:`api_base_layers_split` ,
+    :ref:`api_base_layers_sigmoid`  and :ref:`api_base_layers_elementwise_mul` .
     Specifically, GLU will plit the input into two equal-sized parts,
     :math:`a` and :math:`b`, along the given dimension and then compute as
     following:
@@ -385,14 +385,14 @@ def glu(input, dim=-1):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle.base as base
             import paddle
             paddle.enable_static()
 
             data = paddle.static.data(
                 name="words", shape=[-1, 6, 3, 9], dtype="float32")
             # shape of output: [-1, 3, 3, 9]
-            output = fluid.nets.glu(input=data, dim=1)
+            output = base.nets.glu(input=data, dim=1)
     """
     check_variable_and_dtype(
         input, 'input', ['float16', 'float32', 'float64'], "glu"
@@ -428,7 +428,7 @@ def scaled_dot_product_attention(
 
     Note that the implementation is adapted to batch, and all matrix multiplication
     in :math:`Attention(Q, K, V)` is batched matrix multiplication. Refer to
-    :ref:`api_fluid_layers_matmul` .
+    :ref:`api_base_layers_matmul` .
 
     Args:
         queries (Variable): A 3-D Tensor with shape :math:`[N, L_q, d_k \\times h]` ,
@@ -466,14 +466,14 @@ def scaled_dot_product_attention(
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle.base as base
             import paddle
             paddle.enable_static()
 
             queries = paddle.static.data(name="queries", shape=[3, 5, 9], dtype="float32")
             keys = paddle.static.data(name="keys", shape=[3, 6, 9], dtype="float32")
             values = paddle.static.data(name="values", shape=[3, 6, 10], dtype="float32")
-            contexts = fluid.nets.scaled_dot_product_attention(queries, keys, values)
+            contexts = base.nets.scaled_dot_product_attention(queries, keys, values)
             contexts.shape  # [3, 5, 10]
     """
     check_variable_and_dtype(
