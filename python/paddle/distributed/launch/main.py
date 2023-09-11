@@ -317,9 +317,11 @@ def launch():
 
         logger = logging.getLogger('auto_tuner')
         logger.setLevel(logging.INFO)
-        handler = logging.FileHandler(
-            f'{ctx.args.auto_tuner_json.split(".")[0]}_auto_tuner.log', mode="w"
+        auto_tuner_log_path = os.path.join(
+            os.path.dirname(ctx.args.auto_tuner_json),
+            f'{os.path.basename(ctx.args.auto_tuner_json).split(".")[0]}_auto_tuner.log',
         )
+        handler = logging.FileHandler(auto_tuner_log_path, mode="w")
         handler.setLevel(logging.INFO)
         formatter = logging.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -349,6 +351,10 @@ def launch():
         tuner_cfg["num_gpus"] = gpus_per_node * tuner_cfg["nodes"]
         mode = tuner_cfg.get("mode", None)
 
+        history_file_path = os.path.join(
+            os.path.dirname(ctx.args.auto_tuner_json),
+            f'{os.path.basename(ctx.args.auto_tuner_json).split(".")[0]}_history.csv',
+        )
         if nnodes > 1:
             from .utils.etcd_client import ETCDClient
 
@@ -693,9 +699,7 @@ def launch():
             if not err:
                 ctx.logger.info(f"Current best config: {cur_best_cfgs}")
                 logger.info(f"Current best config: {cur_best_cfgs}")
-                recorder.store_history(
-                    ctx.args.auto_tuner_json.split(".")[0] + "_history.csv"
-                )
+                recorder.store_history(history_file_path)
             else:
                 ctx.logger.info(
                     "Get best config failed. Currently there are no appropriate configs."
@@ -725,7 +729,7 @@ def launch():
                 max_search_time
             ):
                 break
-        recorder.store_history()
+        recorder.store_history(history_file_path)
 
         # get best config to run
         best_cfg = None
