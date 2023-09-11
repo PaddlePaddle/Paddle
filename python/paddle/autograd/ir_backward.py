@@ -561,7 +561,7 @@ def remove_op(block, op, state):
 
 def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     block = outputs[0].get_defining_op().get_parent_block()
-    state = State(block.get_parent_program())
+    state = State(block.program)
     # check all inputs and outputs in the same block
     check_all_puts(block, inputs, outputs)
     # update no_grad_set if some value stop_gradient=True
