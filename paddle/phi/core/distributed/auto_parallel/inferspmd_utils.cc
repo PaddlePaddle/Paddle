@@ -54,7 +54,7 @@ AttrType InferSpmdContext::AttrAt(size_t idx) const {
 }
 
 template <>
-bool InferSpmdContext::AttrAt<bool>(size_t idx) const {
+bool InferSpmdContext::AttrAt(size_t idx) const {
   try {
     auto attr = attrs_.at(idx);
     if (attr.type() == typeid(int)) {
@@ -69,6 +69,28 @@ bool InferSpmdContext::AttrAt<bool>(size_t idx) const {
         attrs_.at(idx).type().name()));
   }
 }
+
+template <>
+std::vector<int> InferSpmdContext::AttrAt(size_t idx) const {
+  try {
+    auto attr = attrs_.at(idx);
+    if (attr.type() == typeid(std::vector<bool>)) {
+      std::vector<bool> val = PADDLE_GET_CONST(std::vector<bool>, attr);
+      return std::vector<int>(val.begin(), val.end());
+    } else {
+      return paddle::get<std::vector<int>>(attr);
+    }
+  } catch (paddle::bad_variant_access const& e) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Attribute cast error in InferSpmd Context, the input attr type is "
+        "`%s`, but the expected attribute type is `bool`.",
+        attrs_.at(idx).type().name()));
+  }
+}
+
+// template const std::vector<int64_t>& InferSpmdContext::AttrAt(size_t idx)
+// const; template const std::vector<int>& InferSpmdContext::AttrAt(size_t idx)
+// const;
 
 const Attribute& InferSpmdContext::AttrAt(size_t idx) const {
   return attrs_.at(idx);
