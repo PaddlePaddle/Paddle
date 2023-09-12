@@ -269,10 +269,10 @@ inline void newir_run_program_ad_func(
     // Set TensorWrappers
     grad_node->SetFwdX(filter_x);
 
-    // Clear unused out vars
-    // clear_unused_out_var_in_backward(out, backward_global_block,
-    // step_scope[0]);
-    grad_node->SetFwdParams(params);
+    auto filter_params =
+        newir_filter_unused_input_var_in_backward(params, "bp", attrs);
+    grad_node->SetFwdParams(filter_params);
+
     grad_node->SetStepScope(step_scope);  // just for set useable.
 
     // Set Grad out rank as same as fwd input and set stop gradient to bwd

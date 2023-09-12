@@ -197,11 +197,14 @@ static auto GetNameFromValue(const ::pir::Block *block,
     }
   }
   std::vector<std::string> names;
-  std::transform(
-      values.begin(),
-      values.end(),
-      std::back_inserter(names),
-      [&value2name](const ::pir::Value &v) { return value2name[v]; });
+  std::transform(values.begin(),
+                 values.end(),
+                 std::back_inserter(names),
+                 [&value2name](const ::pir::Value &v) {
+                   if (!value2name.count(v))
+                     return std::string(paddle::framework::kFakeVarName);
+                   return value2name.at(v);
+                 });
   return names;
 }
 
