@@ -109,13 +109,14 @@ class TestRMSNormOp(unittest.TestCase):
 
     def check_rmsnorm(self, x_np, gamma_np, beta_np, dtype):
         paddle.disable_static()
-        x = paddle.to_tensor(x_np.astype(dtype))
-        gamma = paddle.to_tensor(gamma_np.astype(dtype))
-        beta = paddle.to_tensor(beta_np.astype(dtype))
+        with paddle.new_ir_utils.IrGuard():
+            x = paddle.to_tensor(x_np.astype(dtype))
+            gamma = paddle.to_tensor(gamma_np.astype(dtype))
+            beta = paddle.to_tensor(beta_np.astype(dtype))
 
-        paddle_rmsnorm_out = paddle.incubate.nn.functional.fused_rms_norm(
-            x, gamma, beta, self.epsilon, begin_norm_axis=1
-        )
+            paddle_rmsnorm_out = paddle.incubate.nn.functional.fused_rms_norm(
+                x, gamma, beta, self.epsilon, begin_norm_axis=1
+            )
         paddle_naive_rmsnorm_out = naive_rms_norm(x, gamma, beta, self.epsilon)
         paddle.enable_static()
         return paddle_rmsnorm_out, paddle_naive_rmsnorm_out
