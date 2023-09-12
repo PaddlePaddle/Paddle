@@ -27,9 +27,12 @@ class IR_API YieldOp : public Op<YieldOp> {
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    std::vector<OpResult> &&inputs);
+                    std::vector<OpResult> &&inputs) {
+    argument.AddOperands(inputs.begin(), inputs.end());
+  }
   void Verify() {}
 };
 }  // namespace pir
 
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::YieldOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::YieldOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::YieldOp)

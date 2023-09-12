@@ -15,9 +15,10 @@
 #pragma once
 
 #include "paddle/pir/core/dialect.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 
 namespace pir {
-class ControlFlowDialect : public Dialect {
+class IR_API ControlFlowDialect : public Dialect {
  public:
   explicit ControlFlowDialect(IrContext *context)
       : Dialect(name(), context, TypeId::get<ControlFlowDialect>()) {
@@ -26,8 +27,9 @@ class ControlFlowDialect : public Dialect {
   static const char *name() { return "cf"; }
 
  private:
-  void initialize();
+  void initialize() { RegisterOps<YieldOp>(); }
 };
 
 }  // namespace pir
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::ControlFlowDialect)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ControlFlowDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::ControlFlowDialect)
