@@ -347,15 +347,11 @@ class _ProgramHolder:
         self._suffix_varname_dict = None
         # forward program
         self._infer_program_desc = self._preprocess(program_desc)
-        # forward + backward program
-        self._train_program_desc = self._append_backward_desc(
-            self._infer_program_desc
-        )
 
     # forward:
     @switch_to_static_graph
     def _create_forward_train_program(self):
-        whole_program = _build_program_by_desc(self._train_program_desc)
+        whole_program = _build_program_by_desc(self.train_program)
         end_op_index = self._infer_program_desc.block(0).op_size()
         if end_op_index > 0:
             return add_build_strategy_for(whole_program, 0, end_op_index)
@@ -369,7 +365,7 @@ class _ProgramHolder:
     # backward
     @switch_to_static_graph
     def _create_backward_train_program(self):
-        whole_program = _build_program_by_desc(self._train_program_desc)
+        whole_program = _build_program_by_desc(self.train_program)
         start_op_index = self._infer_program_desc.block(0).op_size() + len(
             self._output_descs
         )
@@ -389,9 +385,9 @@ class _ProgramHolder:
     def infer_program(self):
         return self._infer_program_desc
 
-    @property
+    @LazyInitialized
     def train_program(self):
-        return self._train_program_desc
+        return self._append_backward_desc(self._infer_program_desc)
 
     @property
     def forward_program(self):
