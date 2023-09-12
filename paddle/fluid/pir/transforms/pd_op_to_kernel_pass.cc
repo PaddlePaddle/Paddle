@@ -781,13 +781,6 @@ void HandleForSpecialOp(
               phi::errors::Unimplemented("only support vector type for now"));
         }
       }
-
-      pir::Type t1 = pir::VectorType::get(ctx, vec_inner_types);
-      op_output_types.push_back(t1);
-    } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "Result type only support DenseTensorType, SelectedRowType and "
-          "VectorType"));
     }
   }
 
