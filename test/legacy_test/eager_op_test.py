@@ -1354,7 +1354,7 @@ class OpTest(unittest.TestCase):
             # executor run
             executor = Executor(place)
             outs = executor.run(ir_program, feed=feed, fetch_list=[fetch_list])
-        return outs[0]
+        return outs[0] if len(outs) == 1 else outs
 
     def _check_ir_output(self, place, program, feed_map, fetch_list, outs):
         if os.getenv("FLAGS_NEW_IR_OPTEST") is None:
@@ -2296,7 +2296,6 @@ class OpTest(unittest.TestCase):
             def calculate_output(self):
                 self.is_python_api_test = True
                 new_ir_outs = self.op_test._calc_new_ir_output(place)
-                print(new_ir_outs)
                 if new_ir_outs is None:
                     self.is_python_api_test = False
                     # missing KernelSignature, fall back to eager middle output.
