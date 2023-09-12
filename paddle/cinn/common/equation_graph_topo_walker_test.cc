@@ -54,10 +54,11 @@ TEST(EquationGraphTopoWalker, simple1) {
   };
   cinn::EquationGraphTopoWalker<VT, FT> walker(F4V, InV4F, OutV4F);
   std::vector<FT> outputs;
-  std::function<void(FT)> functionVisitor = [&](FT function) {
+  std::function<void(FT)> FunctionVisitor = [&](FT function) {
     outputs.push_back(function);
   };
-  walker(1, functionVisitor);
+  walker.WalkFunction(1, FunctionVisitor);
+
   std::vector<FT> expected{"1->10"};
   EXPECT_TRUE((outputs == expected));
 }
@@ -103,10 +104,10 @@ TEST(EquationGraphTopoWalker, simple2) {
   };
   cinn::EquationGraphTopoWalker<VT, FT> walker(F4V, InV4F, OutV4F);
   std::vector<VT> outputs;
-  std::function<void(VT)> variableVisitor = [&](VT variable) {
+  std::function<void(VT)> VariableVisitor = [&](VT variable) {
     outputs.push_back(variable);
   };
-  walker(1, variableVisitor);
+  walker.WalkVariable(1, VariableVisitor);
   std::vector<VT> expected{1, 10, 11};
   EXPECT_TRUE((outputs == expected));
 }

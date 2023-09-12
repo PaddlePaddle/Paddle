@@ -18,15 +18,18 @@
 #include <optional>
 #include <vector>
 
+#include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/anchor_sd_equation_context.h"
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/equation_graph.h"
-#include "paddle/cinn/adt/naive_op_equation_context.h"
+#include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/adt/m_ir.h"
+#include "paddle/cinn/adt/naive_op_equation_context.h"
+#include "paddle/cinn/adt/partition_op_stmts.h"
 
 namespace cinn::adt {
 
-using AnchorIndex = eqaution::Index;
+using AnchorIndex = equation::Index;
 using EquationCtx4OpStmtT =
     std::function<std::shared_ptr<equation::config::NativeOpEquationContext>(
         const m_expr::OpStmt&)>;
@@ -42,8 +45,9 @@ class IGroup final {
       : op_stmts_(op_stmts),
         anchor_index_(anchor_index),
         EquationCtx4OpStmt_(EquationCtx4OpStmt) {
-          GenerateIndex2Tensor(op_stmts, EquationCtx4OpStmt, &index2tensor_, &tensor2indexes_);
-        }
+    GenerateIndex2Tensor(
+        op_stmts, EquationCtx4OpStmt, &index2tensor_, &tensor2indexes_);
+  }
 
   const List<m_expr::OpStmt>& op_stmts() const { return op_stmts_; }
 
@@ -53,17 +57,18 @@ class IGroup final {
     return GetTensor(anchor_index());
   }
 
-  GraphView GetDefaultGraphView() const {
+  equation::GraphView GetDefaultGraphView() const {
     return partition::MakeGlobalEquationGraphViewForPartition(
         EquationCtx4OpStmt_, op_stmts_);
   }
 
-  const m_expr::Tensor& GetTensor(const Index& index) const {
-    return index2tensor_->at(index);
+  const m_expr::Tensor& GetTensor(const equation::Index& index) const {
+    return index2tensor_.at(index);
   }
 
-  const std::vector<equation::Index>& GetIndexes(const m_expr::Tensor& tensor) const {
-    return tensor2indexes_->at(tensor);
+  const std::vector<equation::Index>& GetIndexes(
+      const m_expr::Tensor& tensor) const {
+    return tensor2indexes_.at(tensor);
   }
 
   const std::optional<equation::config::AnchorSdEquationContext>&
@@ -76,18 +81,21 @@ class IGroup final {
     anchor_sd_equation_ctx_ = ctx;
   }
 
-  const List<Iterator>& sd_iterators() const {
+  const List<equation::Iterator>& sd_iterators() const {
     CHECK(anchor_sd_equation_ctx_.has_value());
     return anchor_sd_equation_ctx_.value().sd_iterators();
   }
 
  private:
-  static  void GenerateIndex2Tensor(const List<m_expr::OpStmt>& op_stmts,
-                       const EquationCtx4OpStmtT& EquationCtx4OpStmt,
-                       std::unordered_map<eqaution::Index, m_expr::Tensor>* index2tensor,
-                       std::unordered_map<m_expr::Tensor, std::vector<equation::Index>>* tensor2indexes) {
+  static void GenerateIndex2Tensor(
+      const List<m_expr::OpStmt>& op_stmts,
+      const EquationCtx4OpStmtT& EquationCtx4OpStmt,
+      std::unordered_map<equation::Index, m_expr::Tensor>* index2tensor,
+      std::unordered_map<m_expr::Tensor, std::vector<equation::Index>>*
+          tensor2indexes) {
     for (const auto& op_stmt : *op_stmts) {
-      const auto* ctx = EquationCtx4OpStmt(op_stmt);
+      const std::shared_ptr<equation::config::NativeOpEquationContext> ctx =
+          EquationCtx4OpStmt(op_stmt);
       const auto& [op, op_inputs, op_outputs] = op_stmt.tuple();
       for (std::size_t idx = 0; idx < op_inputs.value()->size(); ++idx) {
         const auto& index = ctx->GetInIndex(idx);
@@ -108,7 +116,8 @@ class IGroup final {
   AnchorIndex anchor_index_;
   EquationCtx4OpStmtT EquationCtx4OpStmt_;
   std::unordered_map<equation::Index, m_expr::Tensor> index2tensor_;
-  std::unordered_map<m_expr::Tensor, std::vector<equation::Index>> tensor2indexes_;
+  std::unordered_map<m_expr::Tensor, std::vector<equation::Index>>
+      tensor2indexes_;
   std::optional<equation::config::AnchorSdEquationContext>
       anchor_sd_equation_ctx_;
 };

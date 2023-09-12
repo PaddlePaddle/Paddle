@@ -11,14 +11,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#include "paddle/cinn/adt/partition_op_stmts.h"
-
 #include <algorithm>
+
+#include "paddle/cinn/adt/equation.h"
+#include "paddle/cinn/adt/equation_solver.h"
+#include "paddle/cinn/adt/equation_util.h"
+#include "paddle/cinn/adt/index_expr_infer_context.h"
+#include "paddle/cinn/adt/partition_op_stmts.h"
 
 namespace cinn::adt::partition {
 
-using TensorIndex = Variable;
+using TensorIndex = equation::Variable;
 
 AnchorIndex PickThenEraseAnchorIndex(
     std::unordered_set<AnchorIndex>* candidate_anchor_indexes) {
@@ -30,14 +33,15 @@ AnchorIndex PickThenEraseAnchorIndex(
   return ret;
 }
 
-std::vector<AnchorIndex> InitCandidateAnchorIndex(
+std::unordered_set<AnchorIndex> InitCandidateAnchorIndex(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
     const List<m_expr::OpStmt>& op_stmts) {
-  std::vector<AnchorIndex> ret{};
+  std::unordered_set<AnchorIndex> ret{};
   for (const auto& op_stmt : *op_stmts) {
-    const auto* equation_ctx = EquationCtx4OpStmt(op_stmt);
-    eqaution_ctx->VisitEachTensorIndex(
-        [&](const auto& tensor_index) { ret.push_back(tensor_index); });
+    const std::shared_ptr<equation::config::NativeOpEquationContext>
+        equation_ctx = EquationCtx4OpStmt(op_stmt);
+    equation_ctx->VisitEachTensorIndex(
+        [&](const auto& tensor_index) { ret.emplace(tensor_index); });
   }
   return ret;
 }
@@ -50,8 +54,9 @@ MakeGetterOpStmt4OpPlaceHolder(const EquationCtx4OpStmtT& EquationCtx4OpStmt,
   const auto& fake_op_placeholder2op_stmt =
       std::make_shared<FakeOpPlaceHolder2OpStmt>();
 
-  for (const auto& op_stmt : op_stmts) {
-    const auto* ctx = EquationCtx4OpStmt(op_stmt);
+  for (const auto& op_stmt : *op_stmts) {
+    const std::shared_ptr<equation::config::NativeOpEquationContext> ctx =
+        EquationCtx4OpStmt(op_stmt);
     CHECK(fake_op_placeholder2op_stmt
               ->emplace(ctx->fake_op_placeholder(), op_stmt)
               .second);
@@ -107,10 +112,12 @@ void VisitEachIndexAndAsOutput(const List<m_expr::OpStmt>& op_stmts,
                                const DoEachT& DoEach) {
   for (const auto& op_stmt : op_stmts) {
     const auto* ctx = EquationCtx4OpStmt(op_stmt);
-    ctx->VisitEachInputTensorIndex(
-        [&](const auto& index) { DoEach(op_stmt, index, tAsOutput<bool>{false}); });
-    ctx->VisitEachOutputTensorIndex(
-        [&](const auto& index) { DoEach(op_stmt, index, tAsOutput<bool>{true}); });
+    ctx->VisitEachInputTensorIndex([&](const auto& index) {
+      DoEach(op_stmt, index, tAsOutput<bool>{false});
+    });
+    ctx->VisitEachOutputTensorIndex([&](const auto& index) {
+      DoEach(op_stmt, index, tAsOutput<bool>{true});
+    });
   }
 }
 
@@ -118,20 +125,21 @@ void MakeGetters4Indexes(
     const List<m_expr::OpStmt>& op_stmts,
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
     std::function<tAsOutput<bool>(const equation::Index&)>* AsOutput4Index,
-    std::function<equation::Index(const equation::Index&)>* OutMsgBoxIndex4InMsgBoxIndex) {
+    std::function<equation::Index(const equation::Index&)>*
+        OutMsgBoxIndex4InMsgBoxIndex) {
   using Index2AsOutput =
       std::unordered_map<const equation::Index, tAsOutput<bool>>;
   const auto& index2as_output = std::make_shared<Index2AsOutput>();
 
-  using Index2OwnerOpStmt = 
+  using Index2OwnerOpStmt =
       std::unordered_map<const equation::Index, m_expr::OpStmt>;
   const auto& index2owner_op_stmt = std::make_shared<Index2OwnerOpStmt>();
 
-
-  const auto& UpdateCaches = [&](const auto& op_stmt, const auto& index, const auto& as_output) {
-    CHECK(index2as_output->emplace(index, as_output).second);
-    CHECK(index2owner_op_stmt->emplace(index, op_stmt).second);
-  };
+  const auto& UpdateCaches =
+      [&](const auto& op_stmt, const auto& index, const auto& as_output) {
+        CHECK(index2as_output->emplace(index, as_output).second);
+        CHECK(index2owner_op_stmt->emplace(index, op_stmt).second);
+      };
 
   VisitEachIndexAndAsOutput(op_stmts, EquationCtx4OpStmt, UpdateCaches);
 
@@ -139,23 +147,27 @@ void MakeGetters4Indexes(
     return index2as_output->at(index);
   };
 
-  *OutMsgBoxIndex4InMsgBoxIndex = [index2owner_op_stmt](const equation::Index& index) {
+  *OutMsgBoxIndex4InMsgBoxIndex =
+      [index2owner_op_stmt,
+       EquationCtx4OpStmt](const equation::Index& index) -> equation::Index {
     const auto& op_stmt = index2owner_op_stmt->at(index);
-    const auto* ctx = EquationCtx4OpStmt(op_stmt);
+    const std::shared_ptr<equation::config::NativeOpEquationContext> ctx =
+        EquationCtx4OpStmt(op_stmt);
     const auto& out_msg_box_index = ctx->OutMsgBoxIndex4InMsgBoxIndex(index);
     CHECK(out_msg_box_index.has_value());
     return out_msg_box_index.value();
   };
 }
 
-std::unordered_map<m_expr::Tensor, std::vector<eqaution::Index>>
+std::unordered_map<m_expr::Tensor, std::vector<equation::Index>>
 GenerateSameTensor2Indexes(const List<m_expr::OpStmt>& op_stmts,
                            const EquationCtx4OpStmtT& EquationCtx4OpStmt) {
-  std::unordered_map<m_expr::Tensor, std::vector<eqaution::Index>>
+  std::unordered_map<m_expr::Tensor, std::vector<equation::Index>>
       tensor2indexes;
 
   for (const auto& op_stmt : *op_stmts) {
-    const auto* ctx = EquationCtx4OpStmt(op_stmt);
+    const std::shared_ptr<equation::config::NativeOpEquationContext> ctx =
+        EquationCtx4OpStmt(op_stmt);
     const auto& [op, op_inputs, op_outputs] = op_stmt.tuple();
     for (std::size_t idx = 0; idx < op_inputs.value()->size(); ++idx) {
       tensor2indexes[op_inputs.value()->at(idx)].emplace_back(
@@ -182,7 +194,8 @@ void VisitIndexesOfSameTensor(const List<m_expr::OpStmt>& op_stmts,
   }
 }
 
-// DoEachT is like void(*)(equation::Index producer_index, equation::Index consumer_index)
+// DoEachT is like void(*)(equation::Index producer_index, equation::Index
+// consumer_index)
 template <typename AsOutput4IndexT, typename DoEachT>
 void VisitProducerConsumerPair(
     const std::vector<equation::Index>& tensor_indexes,
@@ -204,12 +217,14 @@ void VisitProducerConsumerPair(
   }
 }
 
-// DoEachT is like void(*)(equation::Index producer_index, equation::Index consumer_index)
+// DoEachT is like void(*)(equation::Index producer_index, equation::Index
+// consumer_index)
 template <typename AsOutput4IndexT, typename DoEachT>
-void VisitProducerConsumerTensorIndexPair(const List<m_expr::OpStmt>& op_stmts,
-                          const EquationCtx4OpStmtT& EquationCtx4OpStmt,
-                          const AsOutput4IndexT& AsOutput4Index,
-                          const DoEachT& DoEach) {
+void VisitProducerConsumerTensorIndexPair(
+    const List<m_expr::OpStmt>& op_stmts,
+    const EquationCtx4OpStmtT& EquationCtx4OpStmt,
+    const AsOutput4IndexT& AsOutput4Index,
+    const DoEachT& DoEach) {
   VisitIndexesOfSameTensor(
       op_stmts, EquationCtx4OpStmt, [&](const auto& indexes) {
         VisitProducerConsumerPair(indexes, AsOutput4Index, DoEach);
@@ -228,15 +243,24 @@ equation::GraphView MakeParametersGraphViewForPartition(
   equation::Equations equations{};
 
   std::function<tAsOutput<bool>(const equation::Index&)> AsOutput4Index{};
-  std::function<equation::Index(const equation::Index&)> OutMsgBoxIndex4InMsgBoxIndex{};
-  MakeGetters4Indexes(op_stmts, EquationCtx4OpStmt, &AsOutput4Index, &OutMsgBoxIndex4InMsgBoxIndex);
+  std::function<equation::Index(const equation::Index&)>
+      OutMsgBoxIndex4InMsgBoxIndex{};
+  MakeGetters4Indexes(op_stmts,
+                      EquationCtx4OpStmt,
+                      &AsOutput4Index,
+                      &OutMsgBoxIndex4InMsgBoxIndex);
 
   const auto& CollectEquation = [&](const auto& producer_index,
                                     const auto& consumer_index) {
-    CollectIdentity(OutMsgBoxIndex4InMsgBoxIndex(producer_index), consumer_index, &equations);
-    CollectIdentity(OutMsgBoxIndex4InMsgBoxIndex(consumer_index), producer_index, &equations);
+    CollectIdentity(OutMsgBoxIndex4InMsgBoxIndex(producer_index),
+                    consumer_index,
+                    &equations);
+    CollectIdentity(OutMsgBoxIndex4InMsgBoxIndex(consumer_index),
+                    producer_index,
+                    &equations);
   };
-  VisitProducerConsumerTensorIndexPair(op_stmts, EquationCtx4OpStmt, AsOutput4Index, CollectEquation);
+  VisitProducerConsumerTensorIndexPair(
+      op_stmts, EquationCtx4OpStmt, AsOutput4Index, CollectEquation);
 
   return std::make_shared<equation::Graph>(equations)->GetGraphView();
 }
@@ -316,14 +340,14 @@ std::unordered_map<AnchorIndex, IGroupSpec> PartitionOpStmtsIntoIGroupSpecs(
   return anchor_index2igroup_spec;
 }
 
-std::unordered_map<const Variable, Value> MakeAnchorIndex2Ok(
-    const partition::IGroupSpec& igroup_spec) {
-  return {{igroup_spec.anchor_index, equation::Ok{}}};
+std::unordered_map<const equation::Variable, equation::Value>
+MakeAnchorIndex2Ok(const partition::IGroupSpec& igroup_spec) {
+  return {{igroup_spec.anchor_index, Ok{}}};
 }
 
 bool IsEquationSolvable(const partition::IGroupSpec& igroup_spec) {
   const auto& equation_graph_view = MakeGlobalEquationGraphViewForPartition(
-      igroup_spec.EquationCtx4OpStmt, igroup_spec.op_stmts);
+      igroup_spec.EquationCtx4OpStmt, igroup_spec.igroup_op_stmts);
 
   const auto& init_var2value = MakeAnchorIndex2Ok(igroup_spec);
   auto ctx = std::make_shared<equation::IndexExprInferContext>(init_var2value);

@@ -18,35 +18,35 @@
 #include <vector>
 
 #include "paddle/cinn/adt/m_expr.h"
-#include "paddle/cinn/hlir/framework/graph.h"
 
 namespace cinn::adt {
 
 class IGroup;
-using m_expr::ScheduleDescriptor;
+using cinn::adt::ScheduleDescriptor;
 
 class KGroup final {
  public:
   explicit KGroup(
-      const std::shared_ptr<cinn::hlir::framework::Graph::Group>& cinn_group,
+      const std::shared_ptr<hlir::framework::Graph::Group>& cinn_group,
       const std::vector<std::shared_ptr<IGroup>>& igroups)
       : cinn_group_(cinn_group), igroups_(igroups) {}
 
-  const std::shared_ptr<cinn::hlir::framework::Graph::Group>& cinn_group()
-      const {
+  const std::shared_ptr<hlir::framework::Graph::Group>& cinn_group() const {
     return cinn_group_;
   }
 
   const std::shared_ptr<IGroup>& GetSoleIGroup() const {
     return igroups_.at(0);
   }
-  const std::vector<std::shared_ptr<IGroup>>& igroups() const { return  igroups_; }
+  const std::vector<std::shared_ptr<IGroup>>& igroups() const {
+    return igroups_;
+  }
 
   ScheduleDescriptor GetDefaultScheduleDescriptor(
       const std::shared_ptr<IGroup>& igroup) const;
 
  private:
-  std::shared_ptr<cinn::hlir::framework::Graph::Group> cinn_group_;
+  std::shared_ptr<hlir::framework::Graph::Group> cinn_group_;
   // NOTE: Use single igroup temporarily. Actually KGroup contains
   // multiple IGroups
   std::vector<std::shared_ptr<IGroup>> igroups_;

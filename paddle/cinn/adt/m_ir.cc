@@ -15,9 +15,10 @@
 #include <iterator>
 #include <unordered_map>
 
+#include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/m_ir.h"
 
-namespace cinn::adt::op_cluster {
+namespace cinn::adt::m_ir {
 
 template <typename DoEachT>
 void MapIR::VisitEachTensor(const DoEachT& DoEach) const {
@@ -82,7 +83,7 @@ bool MapIR::IsMergableTo(
     const std::function<const ScheduleIterators&(const m_expr::Tensor&)>&
         SdIterators4Tensor) const {
   // TODO(Hongyu Jia): Refact to support complicated cases
-  if (that.sd_iters().size() < this->sd_iters().size()) {
+  if (that.sd_iters()->size() < this->sd_iters()->size()) {
     return false;
   }
 
@@ -133,8 +134,8 @@ bool MapIR::HasReadWriteDependence(const MapIR& that) const {
 }
 
 void MapIR::MergeThisToThat(const MapIR& that) {
-  CHECK_GE(that.sd_iters().size(), this->sd_iters().size());
-  that.ops_.splice(that.ops_.begin(), std::move(this->ops_));
+  CHECK_GE(that.sd_iters()->size(), this->sd_iters()->size());
+  that.op_stmts_.splice(that.op_stmts_.begin(), std::move(this->op_stmts_));
 }
 
 template <typename DoEachT>
@@ -146,7 +147,7 @@ void VisitEachOpStmt(const List<m_expr::OpStmt>& op_stmts,
 }
 
 template <typename DoEachT>
-void VisitEachTensor(const OpStmt& op, const DoEachT& DoEach) {
+void VisitEachTensor(const m_expr::OpStmt& op, const DoEachT& DoEach) {
   const auto& [op, inputs, outputs] = op.tuple();
   for (const auto& input : inputs.value()) {
     DoEach(input);
@@ -156,71 +157,80 @@ void VisitEachTensor(const OpStmt& op, const DoEachT& DoEach) {
   }
 }
 
-void CollectTensorIndexIterators(const TensorIndexExpr& tensor_index_expr,
-                                 std::unordered_set<equation::IterVar>* ret);
+void CollectTensorIndexIterators(
+    const m_expr::TensorIndexExpr& tensor_index_expr,
+    std::unordered_set<equation::IterVar>* ret);
 
 void CollectTensorIndexIterators(const Undefined& tensor_index_expr,
                                  std::unordered_set<equation::IterVar>* ret) {
   LOG(FATAL) << "Not Implemented";
 }
 
-void CollectTensorIndexIterators(const IterVar& tensor_index_expr,
+void CollectTensorIndexIterators(const equation::IterVar& tensor_index_expr,
                                  std::unordered_set<equation::IterVar>* ret) {
   ret->insert(tensor_index_expr);
 }
 
-void CollectTensorIndexIterators(const List<Value>& tensor_index_expr,
+void CollectTensorIndexIterators(const List<equation::Value>& tensor_index_expr,
                                  std::unordered_set<equation::IterVar>* ret) {
   for (const auto& value : *tensor_index_expr) {
     CollectTensorIndexIterators(value, ret);
   }
 }
 
-void CollectTensorIndexIterators(const IndexDot<Value>& tensor_index_expr,
-                                 std::unordered_set<equation::IterVar>* ret) {
+void CollectTensorIndexIterators(
+    const equation::IndexDot<equation::Value>& tensor_index_expr,
+    std::unordered_set<equation::IterVar>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetIterators(), ret);
 }
 
-void CollectTensorIndexIterators(const IndexUnDot<Value>& tensor_index_expr,
-                                 std::unordered_set<equation::IterVar>* ret) {
+void CollectTensorIndexIterators(
+    const equation::IndexUnDot<equation::Value>& tensor_index_expr,
+    std::unordered_set<equation::IterVar>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetIterators(), ret);
 }
 
-void CollectTensorIndexIterators(const ConstantAdd<Value>& tensor_index_expr,
-                                 std::unordered_set<equation::IterVar>* ret) {
-  CollectTensorIndexIterators(tensor_index_expr.GetArg0(), ret);
-}
-
-void CollectTensorIndexIterators(const ConstantDiv<Value>& tensor_index_expr,
-                                 std::unordered_set<equation::IterVar>* ret) {
-  CollectTensorIndexIterators(tensor_index_expr.GetArg0(), ret);
-}
-
-void CollectTensorIndexIterators(const ConstantMod<Value>& tensor_index_expr,
-                                 std::unordered_set<equation::IterVar>* ret) {
+void CollectTensorIndexIterators(
+    const equation::ConstantAdd<equation::Value>& tensor_index_expr,
+    std::unordered_set<equation::IterVar>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetArg0(), ret);
 }
 
 void CollectTensorIndexIterators(
-    const ListGetItem<Value, Constant>& tensor_index_expr,
+    const equation::ConstantDiv<equation::Value>& tensor_index_expr,
+    std::unordered_set<equation::IterVar>* ret) {
+  CollectTensorIndexIterators(tensor_index_expr.GetArg0(), ret);
+}
+
+void CollectTensorIndexIterators(
+    const equation::ConstantMod<equation::Value>& tensor_index_expr,
+    std::unordered_set<equation::IterVar>* ret) {
+  CollectTensorIndexIterators(tensor_index_expr.GetArg0(), ret);
+}
+
+void CollectTensorIndexIterators(
+    const equation::ListGetItem<equation::Value, equation::Constant>&
+        tensor_index_expr,
     std::unordered_set<equation::IterVar>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetList(), ret);
 }
 
-void CollectTensorIndexIterators(const PtrGetItem<Value>& tensor_index_expr,
-                                 std::unordered_set<equation::IterVar>* ret) {
+void CollectTensorIndexIterators(
+    const equation::PtrGetItem<equation::Value>& tensor_index_expr,
+    std::unordered_set<equation::IterVar>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetArg1(), ret);
 }
 
-void CollectTensorIndexIterators(const TensorIndexExpr& tensor_index_expr,
-                                 std::unordered_set<equation::IterVar>* ret) {
+void CollectTensorIndexIterators(
+    const m_expr::TensorIndexExpr& tensor_index_expr,
+    std::unordered_set<equation::IterVar>* ret) {
   std::visit(
       [&](auto&& impl) { CollectTensorIndexIterators(std::move(impl), ret); },
       tensor_index_expr.variant());
 }
 
 std::unordered_set<equation::IterVar> GetTensorIndexIterators(
-    const TensorIndexExpr& tensor_index_expr) {
+    const m_expr::TensorIndexExpr& tensor_index_expr) {
   std::unordered_set<equation::IterVar> ret;
 
   CollectTensorIndexIterators(tensor_index_expr, &ret);
@@ -231,8 +241,8 @@ std::unordered_set<equation::IterVar> GetTensorIndexIterators(
 ScheduleIterators GetLeftAlignedSdIterators(
     const std::unordered_set<equation::IterVar>& tensor_index_sd_iters,
     const ScheduleIterators& sd_iters,
-    const std::function<const m_expr::SchedulePolicy&(
-        const equation::IterVar&)>& GetSchedulePolicy) {
+    const std::function<const SchedulePolicy&(const equation::IterVar&)>&
+        GetSchedulePolicy) {
   const auto& Used = [&](const equation::IterVar& iter_var) {
     return tensor_index_sd_iters.count(iter_var) != 0;
   };
@@ -255,9 +265,9 @@ ScheduleIterators GetLeftAlignedSdIterators(
 ScheduleIterators GetTensorScheduleIterators(
     const m_expr::Tensor& tensor,
     const ScheduleIterators& sd_iters,
-    const std::function<const m_expr::SchedulePolicy&(
-        const equation::IterVar&)>& GetSchedulePolicy,
-    const std::function<const TensorIndexExpr&(const m_expr::Tensor&)>&
+    const std::function<const SchedulePolicy&(const equation::IterVar&)>&
+        GetSchedulePolicy,
+    const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
         GetTensorIndexes) {
   const auto& tensor_index_sd_iters =
       GetTensorIndexIterators(GetTensorIndexes(tensor));
@@ -276,11 +286,11 @@ ScheduleIterators MergeScheduleIterators(
 }
 
 ScheduleIterators GenerateScheduleIterators(
-    const OpStmt& op,
+    const m_expr::OpStmt& op,
     const ScheduleIterators& sd_iters,
-    const std::function<const m_expr::SchedulePolicy&(
-        const equation::IterVar&)>& GetSchedulePolicy,
-    const std::function<const TensorIndexExpr&(const m_expr::Tensor&)>&
+    const std::function<const SchedulePolicy&(const equation::IterVar&)>&
+        GetSchedulePolicy,
+    const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
         GetTensorIndexes,
     std::unordered_map<m_expr::Tensor, ScheduleIterators>* tensor2sd_iters) {
   ScheduleIterators op_schedule_iterators;
@@ -302,9 +312,9 @@ std::pair<std::function<const ScheduleIterators&(const m_expr::OpStmt&)>,
 MakeGetterSdIters(
     const List<m_expr::OpStmt>& op_stmts,
     const ScheduleIterators& sd_iters,
-    const std::function<const m_expr::SchedulePolicy&(
-        const equation::IterVar&)>& GetSchedulePolicy,
-    const std::function<const TensorIndexExpr&(const m_expr::Tensor&)>&
+    const std::function<const SchedulePolicy&(const equation::IterVar&)>&
+        GetSchedulePolicy,
+    const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
         GetTensorIndexes) {
   using Op2ItersCache =
       std::unordered_map<const m_expr::OpStmt, ScheduleIterators>;
@@ -313,7 +323,7 @@ MakeGetterSdIters(
       std::unordered_map<m_expr::Tensor, ScheduleIterators>;
   const auto& tensor2sd_iters = std::make_shared<Tensor2ItersCache>();
 
-  VisitEachOpStmt(op_stmts, [&](const OpStmt& op) {
+  VisitEachOpStmt(op_stmts, [&](const m_expr::OpStmt& op) {
     const auto& value = GenerateScheduleIterators(op,
                                                   sd_iters,
                                                   GetSchedulePolicy,
@@ -333,8 +343,8 @@ MapIRList GenerateOpClusters(
     const List<m_expr::OpStmt>& op_stmts,
     const std::function<const ScheduleIterators&(const m_expr::OpStmt&)>&
         SdIters4Op,
-    const std::function<const m_expr::SchedulePolicy&(
-        const equation::IterVar&)>& GetSchedulePolicy) {
+    const std::function<const SchedulePolicy&(const equation::IterVar&)>&
+        GetSchedulePolicy) {
   MapIRList map_irs{};
 
   VisitEachOpStmt(op_stmts, [&](const auto& op_stmt_node) {
@@ -458,8 +468,8 @@ MapIRList ReorderAndMergeOpCluster4LoopFuse(
         SdIters4Op,
     const std::function<const ScheduleIterators&(const m_expr::Tensor&)>&
         SdIters4Tensor,
-    const std::function<const m_expr::SchedulePolicy&(
-        const equation::IterVar&)>& GetSchedulePolicy) {
+    const std::function<const SchedulePolicy&(const equation::IterVar&)>&
+        GetSchedulePolicy) {
   MapIRList map_irs =
       GenerateOpClusters(op_stmts, SdIters4Op, GetSchedulePolicy);
 
@@ -476,9 +486,9 @@ MapIRList ReorderAndMergeOpCluster4LoopFuse(
 MapIRList GenerateClusterOpsForLoopFuse(
     const List<m_expr::OpStmt>& op_stmts,
     const ScheduleIterators& sd_iters,
-    const std::function<const m_expr::SchedulePolicy&(
-        const equation::IterVar&)>& GetSchedulePolicy,
-    const std::function<const TensorIndexExpr&(const m_expr::Tensor&)>&
+    const std::function<const SchedulePolicy&(const equation::IterVar&)>&
+        GetSchedulePolicy,
+    const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
         GetTensorIndexes) {
   const auto& [SdIters4Op, SdIters4Tensor] = MakeGetterSdIters(
       op_stmts, sd_iters, GetSchedulePolicy, GetTensorIndexes);
@@ -487,4 +497,4 @@ MapIRList GenerateClusterOpsForLoopFuse(
       op_stmts, SdIters4Op, SdIters4Tensor, GetSchedulePolicy);
 }
 
-}  // namespace cinn::adt::op_cluster
+}  // namespace cinn::adt::m_ir

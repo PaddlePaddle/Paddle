@@ -13,18 +13,23 @@
 // limitations under the License.
 
 #include "paddle/cinn/adt/generate_map_expr.h"
+#include "paddle/cinn/adt/anchor_sd_equation_context.h"
 #include "paddle/cinn/adt/equation.h"
-#include "paddle/cinn/adt/partition_op_stmts.h"
+#include "paddle/cinn/adt/igroup.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
+#include "paddle/cinn/adt/partition_op_stmts.h"
+#include "paddle/cinn/adt/schedule_policy.h"
+
+#include "glog/logging.h"
 
 namespace cinn::adt {
 
 namespace {
 
 using SchedulePolicy4IterVarT =
-    std::function<const m_expr::SchedulePolicy&(const equation::IterVar&)>
+    std::function<const SchedulePolicy&(const equation::IterVar&)>;
 
-    using AnchorTensor = eqaution::Variable;
+using AnchorTensor = equation::Variable;
 using FakeOpPlaceHolders = List<equation::FakeOpPlaceHolder>;
 
 std::vector<std::uint64_t> MakeTensorRanks(const List<m_expr::Arg>& arg_lists) {
@@ -46,7 +51,8 @@ void GenerateOpEquations(const m_expr::OpStmt& op_stmt,
       std::function<void(equation::config::NativeOpEquationContext * ctx)>;
 
   const auto& generate_equations =
-      Operator::GetAttrs<GenerateEquationFunc>("generate_equations");
+      hlir::framework::Operator::GetAttrs<GenerateEquationFunc>(
+          "generate_equations");
   const auto& iter = generate_equations.find(op_node->op());
   CHECK(iter != generate_equations.end());
   iter->second(ctx);
@@ -63,15 +69,15 @@ MakeContextAndGenerateEquations(const m_expr::OpStmt& op_stmt) {
   return ctx;
 }
 
-std::function<
-    std::shared_ptr<equation::config::NativeOpEquationContext>(const m_expr::OpStmt&)>
+std::function<std::shared_ptr<equation::config::NativeOpEquationContext>(
+    const m_expr::OpStmt&)>
 GenerateContext4LocalOpStmt(const List<m_expr::OpStmt>& op_stmts) {
-  using OpStmt2EquationContext =
-      std::unordered_map<m_expr::OpStmt,
-                         std::shared_ptr<equation::config::NativeOpEquationContext>>;
+  using OpStmt2EquationContext = std::unordered_map<
+      m_expr::OpStmt,
+      std::shared_ptr<equation::config::NativeOpEquationContext>>;
   const auto& op_stmt2equation_ctx = std::make_shared<OpStmt2EquationContext>();
 
-  for (const auto& op_stmt : op_stmts) {
+  for (const auto& op_stmt : *op_stmts) {
     const auto& ctx = MakeContextAndGenerateEquations(op_stmt);
     CHECK(op_stmt2equation_ctx->emplace(op_stmt, ctx).second);
   }
@@ -122,18 +128,17 @@ List<m_expr::Arg> MakeOpStmtOutputList(const hlir::framework::Node* op,
 }
 
 template <typename DoEachT>
-void VisitEachOpStmt(const cinn::hlir::framework::Graph::Group& group,
+void VisitEachOpStmt(const hlir::framework::Graph::Group& group,
                      const DoEachT& DoEach) {
   for (const auto* op : group.nodes) {
     // Tuple<Op, In<List<Arg>>, Out<List<Arg>>>
     DoEach(m_expr::OpStmt{MakeOp(op),
-                           MakeOpStmtInputList(op, group.graph_),
-                           MakeOpStmtOutputList(op, group.graph_)});
+                          MakeOpStmtInputList(op, group.graph_),
+                          MakeOpStmtOutputList(op, group.graph_)});
   }
 }
 
-List<m_expr::OpStmt> MakeOpStmts(
-    const cinn::hlir::framework::Graph::Group& group) {
+List<m_expr::OpStmt> MakeOpStmts(const hlir::framework::Graph::Group& group) {
   List<m_expr::OpStmt> ret{};
 
   VisitEachOpStmt(group,
@@ -161,7 +166,7 @@ std::shared_ptr<IGroup> MakeIGroup(const partition::IGroupSpec& igroup_spec) {
 }
 
 std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
-    const cinn::hlir::framework::Graph::Group& group) {
+    const hlir::framework::Graph::Group& group) {
   std::vector<std::shared_ptr<IGroup>> ret{};
 
   List<m_expr::OpStmt> op_stmts = MakeOpStmts(group);
@@ -174,16 +179,16 @@ std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
 }
 
 std::shared_ptr<KGroup> GenerateKGroups(
-    const cinn::hlir::framework::Graph::Group& group,
+    const hlir::framework::Graph::Group& group,
     const std::vector<std::shared_ptr<IGroup>>& igroups) {
-  CHECK_EQ(igroup.size(), 1);
+  CHECK_EQ(igroups.size(), 1);
   const auto& cinn_group =
-      std::make_shared<cinn::hlir::framework::Graph::Group>(group);
+      std::make_shared<hlir::framework::Graph::Group>(group);
   return std::make_shared<KGroup>(cinn_group, igroups);
 }
 
 equation::Equations MakeSdEquations(const std::shared_ptr<IGroup>& igroup,
-                                    const m_expr::ScheduleDescriptor& sd) {
+                                    const ScheduleDescriptor& sd) {
   equation::config::AnchorSdEquationContext ctx{sd->size()};
   ctx.GenerateSdEquation(igroup->anchor_index());
   igroup->set_anchor_sd_equation_ctx(ctx);
@@ -192,25 +197,23 @@ equation::Equations MakeSdEquations(const std::shared_ptr<IGroup>& igroup,
 }
 
 equation::GraphView GenerateSdEquationGraphView(
-    const std::shared_ptr<IGroup>& igroup,
-    const m_expr::ScheduleDescriptor& sd) {
+    const std::shared_ptr<IGroup>& igroup, const ScheduleDescriptor& sd) {
   equation::Equations equations = MakeSdEquations(igroup, sd);
 
   return equation::Graph(equations).GetGraphView();
 }
 
-equation::GraphView MakeEquationGraphView(
-    const std::shared_ptr<IGroup>& igroup,
-    const m_expr::ScheduleDescriptor& sd) {
+equation::GraphView MakeEquationGraphView(const std::shared_ptr<IGroup>& igroup,
+                                          const ScheduleDescriptor& sd) {
   return GenerateSdEquationGraphView(igroup, sd);
 }
 
-using TensorIndex = Variable;
-using TensorIndexExpr = Value;
+using TensorIndex = equation::Variable;
+using TensorIndexExpr = equation::Value;
 
 std::unordered_map<const equation::Variable, const equation::Value>
 MakeSdIterator2SchedulePolicy(const IGroup& igroup,
-                              const m_expr::ScheduleDescriptor& sd) {
+                              const ScheduleDescriptor& sd) {
   std::unordered_map<const equation::Variable, const equation::Value> ret{};
   CHECK_EQ(igroup->sd_iterators()->size(), sd->size());
 
@@ -221,10 +224,10 @@ MakeSdIterator2SchedulePolicy(const IGroup& igroup,
   return ret;
 }
 
-std::functoin<const TensorIndexExpr&(const m_expr::Tensor&)>
+std::function<const TensorIndexExpr&(const m_expr::Tensor&)>
 MakeGetterTensorIndexExpr(const std::shared_ptr<IGroup>& igroup,
-                          const eqaution::GraphView& sd_equation_graph_view,
-                          const m_expr::ScheduleDescriptor& sd) {
+                          const equation::GraphView& sd_equation_graph_view,
+                          const ScheduleDescriptor& sd) {
   equation::GraphView igroup_view = igroup->GetDefaultGraphView();
   equation::GraphView merged_view = igroup_view.Merge(sd_equation_graph_view);
 
@@ -233,19 +236,18 @@ MakeGetterTensorIndexExpr(const std::shared_ptr<IGroup>& igroup,
 
   const std::vector<equation::Variable> starts{igroup->sd_iterators()->begin(),
                                                igroup->sd_iterators()->end()};
-  eqaution::value::SolveEquations(merged_view, starts, ctx.get());
-  return [ctx](const m_expr::Tensor& tensor) {
-     // All indexes of same tensor have the same Value.
+  equation::value::SolveEquations(merged_view, starts, ctx.get());
+  return [ctx, igroup](const m_expr::Tensor& tensor) {
+    // All indexes of same tensor have the same Value.
     const auto index = igroup->GetIndexes(tensor).at(0);
     return ctx->GetValue(index);
-  }
+  };
 }
 
 SchedulePolicy4IterVarT MakeGetterSchedulePolicy4IterVar(
-    const m_expr::ScheduleIterators& sd_iters,
-    const m_expr::ScheduleDescriptor& sd) {
+    const ScheduleIterators& sd_iters, const ScheduleDescriptor& sd) {
   CHECK_EQ(sd_iters->size(), sd->size());
-  using Cache = std::unordered_map<equation::IterVar, m_expr::SchedulePolicy>;
+  using Cache = std::unordered_map<equation::IterVar, SchedulePolicy>;
   const auto& sd_iter2sd = std::make_shared<Cache>();
   for (std::size_t i = 0; i < sd_iters->size(); ++i) {
     CHECK(sd_iter2sd->emplace(sd_iters->at(i), sd->at(i)).second);
@@ -265,12 +267,12 @@ m_expr::OpStmt MakeOpStmt(const m_ir::MapIR& map_ir) {
   return *map_ir.op_stmts().begin();
 }
 
-m_expr::ScheduleDescriptor MakeInnerScheduleDescriptor(
+ScheduleDescriptor MakeInnerScheduleDescriptor(
     const m_ir::MapIR& map_ir,
     std::size_t outter_layer_sd_size,
     const SchedulePolicy4IterVarT& SchedulePolicy4IterVar) {
   CHECK_LT(outter_layer_sd_size, map_ir.sd_iters()->size());
-  m_expr::ScheduleDescriptor ret{};
+  ScheduleDescriptor ret{};
   for (std::size_t i = outter_layer_sd_size; i < map_ir.sd_iters()->size();
        ++i) {
     ret->push_back(SchedulePolicy4IterVar(map_ir.sd_iters()->at(i)));
@@ -337,24 +339,24 @@ List<m_expr::Stmt> MakeOutterLayerStmts(
 }
 
 std::optional<std::size_t> GetSdItersMinSize(const m_ir::MapIRList& map_irs) {
-  if (map_irs->empty()) {
+  if (map_irs.empty()) {
     return std::nullopt;
   }
   std::size_t min_size = INT_MAX;
-  for (const auto& map_ir : *map_irs) {
+  for (const auto& map_ir : map_irs) {
     min_size = std::min(min_size, map_ir.sd_iters()->size());
   }
-  return nin_size;
+  return min_size;
 }
 
-List<m_expr::SchedulePolicy> MakeOutterScheduleDescriptor(
+List<SchedulePolicy> MakeOutterScheduleDescriptor(
     const m_ir::MapIRList& map_irs,
     const SchedulePolicy4IterVarT& SchedulePolicy4IterVar) {
   std::optional<std::size_t> opt_min_size = GetSdItersMinSize(map_irs);
-  CHECK(op_min_size.has_value());
-  List<m_expr::SchedulePolicy> ret;
+  CHECK(opt_min_size.has_value());
+  List<SchedulePolicy> ret;
   for (std::size_t i = 0; i < opt_min_size.value(); ++i) {
-    ret->push_back(SchedulePolicy4IterVar(map_irs->begin()->sd_iters()->at(i)));
+    ret->push_back(SchedulePolicy4IterVar(map_irs.begin()->sd_iters()->at(i)));
   }
   return ret;
 }
@@ -374,11 +376,11 @@ m_expr::MapStmt<m_expr::Stmt> MakeMapStmt(
 }
 
 m_expr::Tensor GetAnchorTensor(const std::shared_ptr<IGroup>& igroup) {
-  return igroup.anchor_tensor();
+  return igroup->anchor_tensor();
 }
 
 template <typename DoEachT>
-void VisitInputTensor(const cinn::hlir::framework::Graph::Group& group,
+void VisitInputTensor(const hlir::framework::Graph::Group& group,
                       const DoEachT& DoEach) {
   for (const auto* node_data : group->GetInputNodeDatas()) {
     DoEach(node_data, group->graph_);
@@ -386,7 +388,7 @@ void VisitInputTensor(const cinn::hlir::framework::Graph::Group& group,
 }
 
 template <typename DoEachT>
-void VisitOutputTensor(const cinn::hlir::framework::Graph::Group& group,
+void VisitOutputTensor(const hlir::framework::Graph::Group& group,
                        const DoEachT& DoEach) {
   for (const auto& node_data : group->GetOutputNodeDatas()) {
     DoEach(node_data, group->graph_);
@@ -413,8 +415,8 @@ List<m_expr::Tensor> MakeOutputTensors(const std::shared_ptr<KGroup>& kgroup) {
 
 m_expr::AnchoredMapStmt GenerateAnchoredMapStmt(
     const std::shared_ptr<IGroup>& igroup,
-    const m_expr::ScheduleIterators& sd_iters,
-    const m_expr::ScheduleDescriptor& sd,
+    const ScheduleIterators& sd_iters,
+    const ScheduleDescriptor& sd,
     const m_expr::TensorIndexExpr4TensorT& TensorIndexExpr4Tensor) {
   const auto& SchedulePolicy4IterVar =
       MakeGetterSchedulePolicy4IterVar(sd_iters, sd);
@@ -432,8 +434,7 @@ m_expr::AnchoredMapStmt GenerateAnchoredMapStmt(
 }
 
 m_expr::AnchoredMapStmt GenerateAnchoredMapStmt(
-    const std::shared_ptr<IGroup>& igroup,
-    const m_expr::ScheduleDescriptor& sd) {
+    const std::shared_ptr<IGroup>& igroup, const ScheduleDescriptor& sd) {
   const auto& sd_equation_graph_view = MakeEquationGraphView(igroup, sd);
 
   const auto& TensorIndexExpr4Tensor =
@@ -450,7 +451,7 @@ m_expr::AnchoredMapStmt GenerateAnchoredMapStmt(
 List<m_expr::AnchoredMapStmt> MakeAnchoredMapStmts(
     const std::shared_ptr<KGroup>& kgroup) {
   List<m_expr::AnchoredMapStmt> ret{};
-  for (const auto& igroup : kgroup.igroups()) {
+  for (const auto& igroup : kgroup->igroups()) {
     const auto& sd = kgroup.GetDefaultScheduleDescriptor(igroup);
     ret->emplace_back(GenerateAnchoredMapStmt(igroup, sd));
   }
@@ -460,15 +461,14 @@ List<m_expr::AnchoredMapStmt> MakeAnchoredMapStmts(
 m_expr::MapExpr GenerateMapExpr(const std::shared_ptr<KGroup>& kgroup) {
   // MapExpr = Kernel;
   // Kernel = ([AnchoredMapStmt], In [Tensor], Out [Tensor])
-  return {MakeAnchoredMapStmts(kgroup, DoEach),
+  return {MakeAnchoredMapStmts(kgroup),
           MakeOutputTensors(kgroup),
           MakeOutputTensors(kgroup)};
 }
 
 }  // namespace
 
-m_expr::MapExpr GenerateMapExpr(
-    const cinn::hlir::framework::Graph::Group& group) {
+m_expr::MapExpr GenerateMapExpr(const hlir::framework::Graph::Group& group) {
   const auto& igroups = GenerateIGroups(group);
 
   const auto& kgroup = GenerateKGroups(group, igroups);

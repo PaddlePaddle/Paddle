@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <function>
+#include <functional>
 
 #include "paddle/cinn/adt/adapter.h"
 #include "paddle/cinn/adt/adt.h"
@@ -106,11 +106,11 @@ DEFINE_ADT_UNION(Op,
 using Arg = Tensor;
 
 // OpStmt = (Op, In [Arg], Out [Arg])
-class OpStmt final : public Tuple<Op, In<List<Arg>>, Out<List<Arg>>> {
+class OpStmt final : public Tuple<Op, tIn<List<Arg>>, tOut<List<Arg>>> {
  public:
-  using Tuple<Op, In<List<Arg>>, Out<List<Arg>>>::Tuple;
+  using Tuple<Op, tIn<List<Arg>>, tOut<List<Arg>>>::Tuple;
 
-  bool operator==(const Opstmt& other) const {
+  bool operator==(const OpStmt& other) const {
     return &this->tuple() == &other.tuple();
   }
 };
@@ -141,10 +141,11 @@ class AnchoredMapStmt final
 };
 
 // Kernel = ([AnchoredMapStmt], In [Tensor], Out [Tensor])
-class Kernel final
-    : public Tuple<List<AnchoredMapStmt>, In<List<Tensor>>, Out<List<Tensor>>> {
+class Kernel final : public Tuple<List<AnchoredMapStmt>,
+                                  tIn<List<Tensor>>,
+                                  tOut<List<Tensor>>> {
  public:
-  using Tuple<List<AnchoredMapStmt>, In<List<Tensor>>, Out<List<Tensor>>>::
+  using Tuple<List<AnchoredMapStmt>, tIn<List<Tensor>>, tOut<List<Tensor>>>::
       Tuple;
 };
 

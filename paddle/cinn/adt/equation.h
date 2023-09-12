@@ -21,6 +21,7 @@
 
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/tags.h"
+#include "paddle/cinn/common/equation_graph_topo_walker.h"
 
 namespace cinn::adt::equation {
 
@@ -75,6 +76,7 @@ DEFINE_ADT_TAG(tIndex);
 DEFINE_ADT_TAG(tDim);
 DEFINE_ADT_TAG(tStride);
 DEFINE_ADT_TAG(tOp);
+DEFINE_ADT_TAG(tOpPlaceHolder);
 
 // Iterator = tIterator UniqueId
 using Iterator = tIterator<UniqueId>;
@@ -132,17 +134,23 @@ struct UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>
 
 // OpArgIndexes = (tIn [Index], tOut [Index])
 struct OpArgIndexes final : public Tuple<tIn<List<Index>>, tOut<List<Index>>> {
- using Tuple<tIn<List<Index>>, tOut<List<Index>>>::Tuple;
+  using Tuple<tIn<List<Index>>, tOut<List<Index>>>::Tuple;
 };
 
 template <typename OutT, typename InT>
 struct InMsgBox2OutMsgBox;
 
-// InMsgBox2OutMsgBox (tOut (tOutMsgBox OpArgIndexes)) (tIn (tInMsgBox OpArgIndexes))
+// InMsgBox2OutMsgBox (tOut (tOutMsgBox OpArgIndexes)) (tIn (tInMsgBox
+// OpArgIndexes))
 template <>
-struct InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>, tIn<tInMsgBox<OpArgIndexes>>>
-    : public Tuple<FakeOpPlaceHolder, tOut<tOutMsgBox<OpArgIndexes>>, tIn<tInMsgBox<OpArgIndexes>>> {
-  using Tuple<FakeOpPlaceHolder, tOut<tOutMsgBox<OpArgIndexes>>, tIn<tInMsgBox<OpArgIndexes>>>::Tuple;
+struct InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>,
+                          tIn<tInMsgBox<OpArgIndexes>>>
+    : public Tuple<FakeOpPlaceHolder,
+                   tOut<tOutMsgBox<OpArgIndexes>>,
+                   tIn<tInMsgBox<OpArgIndexes>>> {
+  using Tuple<FakeOpPlaceHolder,
+              tOut<tOutMsgBox<OpArgIndexes>>,
+              tIn<tInMsgBox<OpArgIndexes>>>::Tuple;
 };
 
 // clang-format off
@@ -151,7 +159,8 @@ DEFINE_ADT_UNION(Equation,
                  Identity<tOut<Index>, tIn<Index>>,
                  Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>,
                  UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>,
-                 InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>, tIn<tInMsgBox<OpArgIndexes>>>);
+                 InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>,
+                                    tIn<tInMsgBox<OpArgIndexes>>>);
 
 // Variable = Iterator | Index | FakeOpPlaceHolder
 DEFINE_ADT_UNION(Variable,

@@ -16,16 +16,14 @@
 #include <variant>
 
 #include "glog/logging.h"
-
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/equation_solver.h"
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/simplify_value.h"
 #include "paddle/cinn/adt/tags.h"
+#include "paddle/cinn/common/equation_graph_topo_walker.h"
 
-namespace cinn::adt::equation {
-
-class IndexExprInferContext;
+namespace cinn::adt::equation::value {
 
 std::unordered_map<Variable, Value> InferValues(
     const Identity<tOut<Iterator>, tIn<Iterator>>& id,
@@ -74,22 +72,28 @@ std::unordered_map<Variable, Value> InferValues(
 }
 
 std::unordered_map<Variable, Value> InferValues(
-    const InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>, tIn<tInMsgBox<OpArgIndexes>>>&
+    const InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>,
+                             tIn<tInMsgBox<OpArgIndexes>>>&
         in_msg_box2out_msg_box,
     IndexExprInferContext* ctx) {
-  const auto& [op_placeholder, out_box_indexes, in_box_indexes] = in_msg_box2out_msg_box.tuple();
-  const auto& [out_box_in_indexes, out_box_out_indexes] = out_box_indexes.value().value().tuple();
-  const auto& [in_box_in_indexes, in_box_out_indexes] = in_box_indexes.value().value().tuple();
-  std::unordered_map<Variable, Value> ret{{op_placeholder, equation::Ok{}}};
-  CHECK_EQ(out_box_in_indexes->size(), in_box_in_indexes->size()); 
-  CHECK_EQ(out_box_out_indexes->size(), in_box_out_indexes->size()); 
-  for (std::size_t i = 0; i < out_box_in_indexes->size(); ++i) {
-    const auto& value = ctx->GetValue(in_box_in_indexes->at(i));
-    CHECK(ret.emplace(out_box_in_indexes->at(i), value).second);
+  const auto& [op_placeholder, out_box_indexes, in_box_indexes] =
+      in_msg_box2out_msg_box.tuple();
+  const auto& [out_box_in_indexes, out_box_out_indexes] =
+      out_box_indexes.value().value().tuple();
+  const auto& [in_box_in_indexes, in_box_out_indexes] =
+      in_box_indexes.value().value().tuple();
+  std::unordered_map<Variable, Value> ret{{op_placeholder, Ok{}}};
+  CHECK_EQ(out_box_in_indexes.value()->size(),
+           in_box_in_indexes.value()->size());
+  CHECK_EQ(out_box_out_indexes.value()->size(),
+           in_box_out_indexes.value()->size());
+  for (std::size_t i = 0; i < out_box_in_indexes.value()->size(); ++i) {
+    const auto& value = ctx->GetValue(in_box_in_indexes.value()->at(i));
+    CHECK(ret.emplace(out_box_in_indexes.value()->at(i), value).second);
   }
-  for (std::size_t i = 0; i < out_box_out_indexes->size(); ++i) {
-    const auto& value = ctx->GetValue(in_box_out_indexes->at(i));
-    CHECK(ret.emplace(out_box_out_indexes->at(i), value).second);
+  for (std::size_t i = 0; i < out_box_out_indexes.value()->size(); ++i) {
+    const auto& value = ctx->GetValue(in_box_out_indexes.value()->at(i));
+    CHECK(ret.emplace(out_box_out_indexes.value()->at(i), value).second);
   }
   return ret;
 }
@@ -151,4 +155,4 @@ bool IsEquationsSolvable(
   return is_solvable;
 }
 
-}  // namespace cinn::adt::equation
+}  // namespace cinn::adt::equation::value
