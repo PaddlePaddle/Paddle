@@ -19,10 +19,7 @@ import collective.test_communication_api_base as test_base
 
 class TestSemiAutoParallelMatmul(test_base.CommunicationTestDistBase):
     def setUp(self):
-        super().setUp(
-            num_of_devices=2,
-            timeout=120,
-        )
+        super().setUp(num_of_devices=2, timeout=120)
         self._default_envs = {
             "dtype": "float32",
             "seeds": str(self._seeds),

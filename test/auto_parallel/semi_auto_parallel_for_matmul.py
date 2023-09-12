@@ -118,9 +118,7 @@ class TestMatmulApiForSemiAutoParallel:
         else:
             raise ValueError("Only support cpu or gpu backend.")
 
-        # backward need P2R
         self.test_case1()
-        # forward need P2R
         self.test_case2()
 
 

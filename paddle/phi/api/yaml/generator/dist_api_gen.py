@@ -274,7 +274,6 @@ class DistForwardAPI(ForwardAPI):
         self.inplace_flag = False
         self.dist_output_args = []
         self.dense_output_args = []
-        # self.input_args_code = ""
 
     # override BaseAPI's method
     def parse_infer_meta(self, infer_meta_config):
@@ -536,8 +535,6 @@ class DistForwardAPI(ForwardAPI):
                     )
         output_args_code = output_args_code[:-2]
 
-        # if self.input_args_code != "":
-        #     input_args_code = self.input_args_code
         return (
             output_decl_code
             + input_meta_code
