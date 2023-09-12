@@ -76,11 +76,6 @@ std::vector<int> InferSpmdContext::AttrAt(size_t idx) const {
     auto attr = attrs_.at(idx);
     if (attr.type() == typeid(std::vector<bool>)) {
       std::vector<bool> val = PADDLE_GET_CONST(std::vector<bool>, attr);
-      std::cout << "*****vector<bool>*****" << std::endl;
-      for (int i = 0, n = val.size(); i < n; ++i) {
-        std::cout << val[i] << " ";
-      }
-      std::cout << "*****vector<bool>*****" << std::endl;
       return std::vector<int>(val.begin(), val.end());
     } else {
       return paddle::get<std::vector<int>>(attr);
