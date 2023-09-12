@@ -26,6 +26,10 @@ limitations under the License. */
 #include "dnnl.hpp"  // NOLINT
 #endif
 
+#ifdef CUB_WRAPPED_NAMESPACE
+namespace cub = CUB_COMPATIBLE::cub;
+#endif
+
 namespace phi {
 
 class DenseTensorUtils;

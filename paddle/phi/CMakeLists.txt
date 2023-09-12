@@ -143,6 +143,12 @@ if(WIN32)
   target_link_libraries(phi shlwapi.lib)
 endif()
 
+if(${CMAKE_CUDA_COMPILER_VERSION} GREATER 11.2)
+  # The reduce result of cub is wrong in cuda12, we workaround it by wrapping CUB/Thrust namespaces in each library:
+  # refer:https://github.com/NVIDIA/cub/issues/719
+  target_compile_definitions(phi PRIVATE CUB_WRAPPED_NAMESPACE=CUB_COMPATIBLE)
+endif()
+
 if(WIN32)
   if(WITH_SHARED_PHI)
     set_property(TARGET phi PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)

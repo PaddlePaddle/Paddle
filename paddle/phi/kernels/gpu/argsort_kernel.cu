@@ -57,7 +57,11 @@ struct float_bit_mask<phi::dtype::bfloat16>
 }  // namespace rocprim
 #else
 // set cub base traits in order to handle float16
+#ifdef CUB_WRAPPED_NAMESPACE
+namespace CUB_COMPATIBLE::cub {
+#else
 namespace cub {
+#endif
 template <>
 struct NumericTraits<phi::dtype::float16>
     : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::dtype::float16> {};
@@ -66,7 +70,7 @@ template <>
 struct NumericTraits<phi::dtype::bfloat16>
     : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::dtype::bfloat16> {
 };
-}  // namespace cub
+}  // namespace CUB_COMPATIBLE::cub
 
 #endif
 
