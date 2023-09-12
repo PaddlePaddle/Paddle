@@ -41,7 +41,7 @@ void MultiplyRawKernel(const Context& dev_ctx,
   auto z = out->mutable_value();
   z->Resize(x.value().dims());
   dev_ctx.Alloc(z, x.value().dtype());
-  MultiplyRawKernel<T, Context>(dev_ctx, x.value(), y, axis, z);
+  phi::MultiplyRawKernel<T, Context>(dev_ctx, x.value(), y, axis, z);
 }
 
 template <typename T, typename Context>

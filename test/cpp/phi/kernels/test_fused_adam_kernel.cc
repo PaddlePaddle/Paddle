@@ -34,7 +34,7 @@
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/fused_adam_kernel.h"
 #include "paddle/phi/kernels/gaussian_kernel.h"
-#include "paddle/phi/kernels/legacy/reduce_max_kernel.h"
+#include "paddle/phi/kernels/reduce_max_kernel.h"
 
 namespace phi {
 
@@ -366,8 +366,8 @@ auto MaxDiff(const Context &ctx,
 
   diff_reduced.Resize({1});
   ctx.template Alloc<MT>(&diff_reduced);
-  MaxRawKernel<MT, Context>(
-      ctx, diff, vectorize<int64_t>(x.dims()), false, true, &diff_reduced);
+  MaxKernel<MT, Context>(
+      ctx, diff, vectorize<int64_t>(x.dims()), false, &diff_reduced);
 
   diff_reduced_cpu.Resize(diff_reduced.dims());
   ctx.template HostAlloc<MT>(&diff_reduced_cpu);

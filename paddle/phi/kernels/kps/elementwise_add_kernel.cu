@@ -12,53 +12,46 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/elementwise_add_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #ifndef PADDLE_WITH_XPU_KP
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #endif
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/elementwise_add_kernel.h"
-#include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void AddCudaFunctor(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    int axis,
-                    DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  inputs.reserve(2);
-  std::vector<DenseTensor*> outputs;
-  outputs.reserve(1);
-  inputs.emplace_back(&x);
-  inputs.emplace_back(&y);
-  outputs.emplace_back(out);
+void AddKernelImpl(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   int axis,
+                   DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs = {&x, &y};
+  std::vector<DenseTensor*> outputs = {out};
   dev_ctx.template Alloc<T>(out);
   funcs::BroadcastKernel<T>(
       dev_ctx, inputs, &outputs, funcs::AddFunctor<T>(), axis);
 }
 
 template <typename T, typename Context>
-void Float32Bfloat16OrFloat16AddCudaFunctor(const Context& dev_ctx,
-                                            const DenseTensor& x,
-                                            const DenseTensor& y,
-                                            DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  inputs.reserve(2);
-  std::vector<DenseTensor*> outputs;
-  outputs.reserve(1);
-  inputs.emplace_back(&x);
-  inputs.emplace_back(&y);
-  outputs.emplace_back(out);
+void MultiPrecisionAddKernelImpl(const Context& dev_ctx,
+                                 const DenseTensor& x,
+                                 const DenseTensor& y,
+                                 DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs = {&x, &y};
+  std::vector<DenseTensor*> outputs = {out};
+  dev_ctx.template Alloc<T>(out);
   if (y.dtype() == phi::DataType::BFLOAT16) {
     funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, funcs::Float32Bfloat16AddFunctor<T>());
+        dev_ctx, inputs, &outputs, funcs::AddFunctor<T, phi::bfloat16>());
   } else if (y.dtype() == phi::DataType::FLOAT16) {
     funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, funcs::Float32Float16AddFunctor<T>());
+        dev_ctx, inputs, &outputs, funcs::AddFunctor<T, phi::float16>());
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Unsupport x dtype:%s, y dtype:%s for add(x, y) operation",
@@ -76,11 +69,10 @@ void AddKernel(const Context& dev_ctx,
   if (x.dtype() == phi::DataType::FLOAT32 &&
       (y.dtype() == phi::DataType::BFLOAT16 ||
        y.dtype() == phi::DataType::FLOAT16)) {
-    using Type = DataTypeToCppType<phi::DataType::FLOAT32>::type;
-    Float32Bfloat16OrFloat16AddCudaFunctor<Type, Context>(dev_ctx, x, y, out);
+    MultiPrecisionAddKernelImpl<float, Context>(dev_ctx, x, y, out);
   } else {
 #endif
-    AddCudaFunctor<T, Context>(dev_ctx, x, y, -1, out);
+    AddKernelImpl<T, Context>(dev_ctx, x, y, -1, out);
 #ifdef PADDLE_WITH_CUDA
   }
 #endif
@@ -91,7 +83,7 @@ void GradAddKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
                    DenseTensor* out) {
-  AddCudaFunctor<T>(dev_ctx, x, y, -1, out);
+  AddKernelImpl<T>(dev_ctx, x, y, -1, out);
 }
 
 }  // namespace phi
