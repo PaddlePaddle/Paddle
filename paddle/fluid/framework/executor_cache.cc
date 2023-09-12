@@ -355,7 +355,7 @@ std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
 std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     const paddle::framework::BlockDesc *forward_global_block,
     const paddle::framework::BlockDesc *backward_global_block,
-    const std::vector<std::string> output_names,
+    const std::vector<std::string> &output_names,
     const std::vector<paddle::Tensor> &x,
     const std::vector<paddle::Tensor> &params) {
   auto ir_ctx = ::pir::IrContext::Instance();
@@ -410,36 +410,37 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     input_param_names.insert(name);
   }
 
-  std::set<std::string> set_parameter_names;
-  for (auto op_desc : backward_global_block->Program()->Block(0).AllOps()) {
-    for (const auto &n : op_desc->Inputs()) {
-      const auto &input_var_names = n.second;
-      for (const auto &var_name : input_var_names) {
-        set_parameter_names.insert(var_name);
+  if (backward_global_block != nullptr) {
+    std::set<std::string> set_parameter_names;
+    for (auto op_desc : backward_global_block->Program()->Block(0).AllOps()) {
+      for (const auto &n : op_desc->Inputs()) {
+        const auto &input_var_names = n.second;
+        for (const auto &var_name : input_var_names) {
+          set_parameter_names.insert(var_name);
+        }
       }
     }
-  }
 
-  for (auto &t : output_names) {
-    set_parameter_names.insert(t);
-  }
-
-  for (auto &name : set_parameter_names) {
-    if (!set_output_names.count(name)) {
-      continue;
+    for (auto &t : output_names) {
+      set_parameter_names.insert(t);
     }
 
-    if (input_param_names.count(name)) {
-      continue;
+    for (auto &name : set_parameter_names) {
+      if (!set_output_names.count(name)) {
+        continue;
+      }
+
+      if (input_param_names.count(name)) {
+        continue;
+      }
+
+      auto op_desc = local_program.MutableBlock(0)->AppendOp();
+      op_desc->SetType("shadow_output");
+      op_desc->SetAttr("name", name);
+      op_desc->SetInput("x", {name});
+      op_desc->SetOutput("out", {"@EMPTY@"});
     }
-
-    auto op_desc = local_program.MutableBlock(0)->AppendOp();
-    op_desc->SetType("shadow_output");
-    op_desc->SetAttr("name", name);
-    op_desc->SetInput("x", {name});
-    op_desc->SetOutput("out", {"@EMPTY@"});
   }
-
   paddle::translator::ProgramTranslator program_translator(&local_program,
                                                            program.get());
 

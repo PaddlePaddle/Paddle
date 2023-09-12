@@ -219,14 +219,14 @@ static void ShareTensorsFromScope(
 static void ShareTensorsFromScopeWithPartialBlock(
     const std::vector<Tensor *> &tensors,
     const paddle::framework::BlockDesc &forward_global_block,
-    const paddle::framework::BlockDesc &backward_global_block,
+    const paddle::framework::BlockDesc *backward_global_block,
     paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &name = tensors[i]->name();
     if (name == paddle::framework::kEmptyVarName ||
         name == paddle::framework::kFakeVarName ||
-        (!forward_global_block.HasVar(name) &&
-         !backward_global_block.HasVar(name))) {
+        (!forward_global_block.HasVar(name) && backward_global_block &&
+         !backward_global_block->HasVar(name))) {
       VLOG(2) << "find tensor name is " << name << ", skip it!";
       continue;
     }
@@ -378,10 +378,16 @@ inline void RunProgramAPI(
 
   auto *forward_global_block = PADDLE_GET_CONST(
       paddle::framework::BlockDesc *, attrs.at("forward_global_block"));
-  auto *backward_global_block = PADDLE_GET_CONST(
-      paddle::framework::BlockDesc *, attrs.at("backward_global_block"));
   auto *forward_program = forward_global_block->Program();
-  auto *backward_program = backward_global_block->Program();
+
+  paddle::framework::BlockDesc *backward_global_block = nullptr;
+  paddle::framework::ProgramDesc *backward_program = nullptr;
+
+  if (!is_test) {
+    backward_global_block = PADDLE_GET_CONST(paddle::framework::BlockDesc *,
+                                             attrs.at("backward_global_block"));
+    backward_program = backward_global_block->Program();
+  }
 
   auto &interpretercore_info_cache =
       paddle::framework::InterpreterCoreInfoCache::Instance();
@@ -422,9 +428,12 @@ inline void RunProgramAPI(
               global_inner_scope);
     }
     // Step 3. get all eager gc vars
-    std::set<std::string> skip_eager_delete_vars =
-        paddle::framework::details::ParseSafeEagerDeletionSkipVarsSet(
-            *backward_program);
+    std::set<std::string> skip_eager_delete_vars;
+    if (!is_test) {
+      skip_eager_delete_vars =
+          paddle::framework::details::ParseSafeEagerDeletionSkipVarsSet(
+              *backward_program);
+    }
 
     // all out_vars are skip_eager_var
     skip_eager_delete_vars.insert(output_names.begin(), output_names.end());
@@ -483,11 +492,9 @@ inline void RunProgramAPI(
         "fetch_and_gc", paddle::platform::TracerEventType::UserDefined, 1);
     // Get Output
     details::ShareTensorsFromScopeWithPartialBlock(
-        out, *forward_global_block, *backward_global_block, global_inner_scope);
-    details::ShareTensorsFromScopeWithPartialBlock(dout,
-                                                   *forward_global_block,
-                                                   *backward_global_block,
-                                                   global_inner_scope);
+        out, *forward_global_block, backward_global_block, global_inner_scope);
+    details::ShareTensorsFromScopeWithPartialBlock(
+        dout, *forward_global_block, backward_global_block, global_inner_scope);
 
     VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
@@ -648,11 +655,11 @@ inline void RunProgramGradAPI(
     // Step 4. get outputs
     details::ShareTensorsFromScopeWithPartialBlock(x_grad,
                                                    *forward_global_block,
-                                                   *backward_global_block,
+                                                   backward_global_block,
                                                    global_inner_scope);
     details::ShareTensorsFromScopeWithPartialBlock(params_grad,
                                                    *forward_global_block,
-                                                   *backward_global_block,
+                                                   backward_global_block,
                                                    global_inner_scope);
     VLOG(4) << "after backward gc all vars";
     global_inner_scope->SetCanReused(true);
