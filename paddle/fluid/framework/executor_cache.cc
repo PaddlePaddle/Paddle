@@ -357,7 +357,8 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     const paddle::framework::BlockDesc *backward_global_block,
     const std::vector<std::string> output_names,
     const std::vector<paddle::Tensor> &x,
-    const std::vector<paddle::Tensor> &params) {
+    const std::vector<paddle::Tensor> &params,
+    const phi::Place &place) {
   auto ir_ctx = ::pir::IrContext::Instance();
   auto program = std::make_unique<::pir::Program>(ir_ctx);
 
@@ -381,14 +382,14 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     if (block->FindVarRecursive(name) == nullptr) {
       continue;
     }
-    auto place = in_t.place().GetType();
+    auto p = in_t.place().GetType();
 
     auto op_desc = block->PrependOp();
     op_desc->SetType("data");
     op_desc->SetAttr("shape", std::vector<int64_t>());
     // TODO(phlrain) : using tensor dtype
     op_desc->SetAttr("dtype", 0);
-    op_desc->SetAttr("place", static_cast<int>(place));
+    op_desc->SetAttr("place", static_cast<int>(p));
     op_desc->SetAttr("name", name);
     op_desc->SetOutput("out", {name});
   }
@@ -396,14 +397,14 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
   std::set<std::string> input_param_names;
   for (auto &param : params) {
     auto &name = param.name();
-    auto place = param.place().GetType();
+    auto p = param.place().GetType();
 
     auto op_desc = local_program.MutableBlock(0)->PrependOp();
     op_desc->SetType("data");
     op_desc->SetAttr("shape", std::vector<int64_t>());
     // TODO(phlrain) : using tensor dtype
     op_desc->SetAttr("dtype", 0);
-    op_desc->SetAttr("place", static_cast<int>(place));
+    op_desc->SetAttr("place", static_cast<int>(p));
     op_desc->SetAttr("name", name);
     op_desc->SetOutput("out", {name});
 
@@ -445,7 +446,7 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
 
   program_translator.Translate();
 
-  auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program.get());
+  auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
   if (FLAGS_new_ir_apply_inplace_pass) {
     ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
