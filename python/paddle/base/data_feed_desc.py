@@ -19,7 +19,7 @@ __all__ = ['DataFeedDesc']
 
 
 class DataFeedDesc:
-    """
+    r"""
     :api_attr: Static Graph
 
     Datafeed descriptor, describing input training data format. This class is
@@ -91,7 +91,7 @@ class DataFeedDesc:
             }
 
     def set_batch_size(self, batch_size):
-        """
+        r"""
         Set :attr:`batch_size` in :ref:`api_base_DataFeedDesc` . :attr:`batch_size` can be changed during training.
 
         Examples:
@@ -128,7 +128,7 @@ class DataFeedDesc:
         self.proto_desc.batch_size = batch_size
 
     def set_dense_slots(self, dense_slots_name):
-        """
+        r"""
         Set slots in :attr:`dense_slots_name` as dense slots. **Note: In default, all slots are sparse slots.**
 
         Features for a dense slot will be fed into a Tensor, while those for a
@@ -175,7 +175,7 @@ class DataFeedDesc:
             ].is_dense = True
 
     def set_use_slots(self, use_slots_name):
-        """
+        r"""
         Set if a specific slot will be used for training. A dataset shall
         contain a lot of features, through this function one can select which
         ones will be used for a specific model.
@@ -220,7 +220,7 @@ class DataFeedDesc:
             ].is_used = True
 
     def desc(self):
-        """
+        r"""
         Returns a protobuf message for this DataFeedDesc
 
         Examples:
