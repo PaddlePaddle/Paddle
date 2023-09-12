@@ -556,13 +556,12 @@ class DistForwardAPI(ForwardAPI):
         if self.infer_meta['spmd_rule'] is not None:
             input_names = self.inputs['names']
 
-            infer_meta = self.infer_meta
-            infer_meta_params = (
-                infer_meta['param']
-                if infer_meta['param'] is not None
+            kernel_params = (
+                self.kernel['param']
+                if self.kernel['param'] is not None
                 else input_names
             )
-            for i, param in enumerate(infer_meta_params):
+            for i, param in enumerate(kernel_params):
                 if param in input_names:
                     if self.inputs['input_info'][param] == "const Tensor&":
                         input_reshard_code += (

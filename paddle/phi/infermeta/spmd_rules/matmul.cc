@@ -297,6 +297,24 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
                                  y.dist_attr()));
   };
 
+  // TODO(chenweihang): Now for the case where the forward input generates
+  // an intermediate value through Reshard, because the intermediate value
+  // is destroyed after the forward calculation is completed, the x and y
+  // of the backward input cannot be directly do matmul operation, which
+  // violates some of the original assumptions of the matmul grad operator,
+  // so it cannot be handled correctly in the backward for the time being
+  // For this case, we uniformly transition the input to the Replicated state.
+  auto fwd_spmd_info = MatmulInferSpmd(x, y, trans_x, trans_y);
+  if (x.dist_attr() != fwd_spmd_info.first[0] ||
+      y.dist_attr() != fwd_spmd_info.first[1]) {
+    auto x_r_dist_attr = GetReplicatedDistAttr(x.dist_attr());
+    auto y_r_dist_attr = GetReplicatedDistAttr(y.dist_attr());
+    return {{x_r_dist_attr,
+             y_r_dist_attr,
+             GetReplicatedDistAttr(out_grad.dist_attr())},
+            {x_r_dist_attr, y_r_dist_attr}};
+  }
+
   SpmdInfo dx_spmd_info;
   SpmdInfo dy_spmd_info;
   if (trans_x) {
@@ -355,7 +373,8 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
 
   // Here we assume that the input dist attr is unchanged after inference,
   // and only return the gradient dist attr
-  return {{}, {dx_spmd_info.second[0], dy_spmd_info.second[0]}};
+  return {{x.dist_attr(), y.dist_attr(), out_grad.dist_attr()},
+          {dx_spmd_info.second[0], dy_spmd_info.second[0]}};
 }
 
 }  // namespace distributed

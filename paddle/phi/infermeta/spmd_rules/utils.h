@@ -61,5 +61,9 @@ std::vector<int64_t> ResoluteOutputPartialDimension(
     const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
     const std::string& tensor_axes);
 
+// Construct a DistAttr from the incoming DistAttr corresponding to the
+// Repliacated state
+TensorDistAttr GetReplicatedDistAttr(const TensorDistAttr& dist_attr);
+
 }  // namespace distributed
 }  // namespace phi

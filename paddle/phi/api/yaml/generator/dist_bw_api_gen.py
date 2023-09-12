@@ -16,7 +16,7 @@ import argparse
 
 import yaml
 from backward_api_gen import BackwardAPI
-from dist_api_gen import SINGLE_PREPARE_DATA_TEMPLATE_NO_RESHARD, DistForwardAPI
+from dist_api_gen import DistForwardAPI
 
 ######################
 # Code Gen Templates #
@@ -26,14 +26,15 @@ MAIN_DIST_BRANCH_TEMPLATE = """
   // Auto Parallel condition
   if ({}) {{
     // 1. InferSpmd (Infer DistAttr of Inputs&Outputs){}
-    // 2. Create API Output & Prepare Dist and Dense Output{}
+    // 2. Create Temporary Output & Prepare Dist and Dense Output{}
     // 3. Infer DistTensor's Global Shape{}
     // 4. Select Kernel{}
-    // 5. PrepareData (DataTransform & Prepare Dense Input){}
-    // 6. Infer Local DenseTensor Meta{}
-    // 7. DenseTensor Kernel Call{}
-    // 8. Reshard Output{}\n
-    // 9. Return
+    // 5. Reshard Input{}\n
+    // 6. PrepareData (DataTransform & Prepare Dense Input){}
+    // 7. Infer Local DenseTensor Meta{}
+    // 8. DenseTensor Kernel Call{}
+    // 9. Reshard Output{}\n
+    // 10. Return
     {}
   }}
 """
@@ -70,7 +71,7 @@ MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
     phi::DenseTensor* dense_out_{idx} = dist_out_{idx}->unsafe_mutable_value();
 """
 
-# 8. Reshard Output
+# 9. Reshard Output
 RESHARD_SINGLE_OUTPUT_TEMPLATE = """
     ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, {});"""
 RESHARD_MULTI_SINGLE_OUTPUT_TEMPLATE = """
@@ -142,27 +143,6 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
     # override BaseAPI's method
     def get_api_func_name(self):
         return self.api
-
-    # override DistForwardAPI's method
-    def generate_single_dense_input(
-        self,
-        input_name,
-    ):
-        input_tensor_code = ""
-        trans_flag = self.gene_trans_flag(input_name)
-        input_names = self.inputs['names']
-        attr_names = self.attrs['names']
-        kernel_param = self.kernel['param']
-        if kernel_param is None:
-            kernel_param = input_names + attr_names
-
-        input_tensor_code += SINGLE_PREPARE_DATA_TEMPLATE_NO_RESHARD.format(
-            arg=input_name,
-            idx=kernel_param.index(input_name),
-            flag=trans_flag,
-        )
-
-        return input_tensor_code
 
     # override BaseAPI's method
     # The method lookup order are: (DistBackwardAPI.__mro__)
@@ -245,6 +225,7 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
             self.generate_output_creation_code(),
             self.generate_infer_global_shape_code(),
             self.generate_kernel_selection_code(),
+            self.generate_reshard_input_code(),
             self.generate_prepare_data_code(),
             self.generate_infer_meta_code(),
             self.generate_kernel_call_code(),
