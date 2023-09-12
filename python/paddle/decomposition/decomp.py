@@ -16,7 +16,7 @@ import logging
 import typing
 
 from paddle import ir
-from paddle.fluid.libpaddle.ir import Block, Program
+from paddle.base.libpaddle.ir import Block, Program
 from paddle.framework import core
 
 from . import register
@@ -129,7 +129,7 @@ def decompose(
         return src_vars
     if not isinstance(program, Program):
         raise TypeError(f"Expect type Program, but got type {type(program)}.")
-    block = program.block()
+    block = program.global_block()
 
     if not isinstance(blacklist, (set, frozenset)):
         raise TypeError(
@@ -169,11 +169,14 @@ def decompose(
             dst_vars,
             op_filter,
         )
-    for item in dst_vars:
+    for idx, item in enumerate(dst_vars):
         if not isinstance(item, ir.OpResult):
-            raise TypeError(
-                f"Each var in dst_vars should map corresponding var in src_vars, but got type {type(item)} in {dst_vars}."
-            )
+            if item is None:
+                dst_vars[idx] = src_vars[idx]
+            else:
+                raise TypeError(
+                    f"Each var in dst_vars should map corresponding var in src_vars, but got type {type(item)} in {dst_vars}."
+                )
     logging.debug(
         "Decompose composite forward ops finish: {}".format(
             core.prim_config["composite_ops_record"]

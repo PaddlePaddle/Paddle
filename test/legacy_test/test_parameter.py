@@ -18,10 +18,10 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.dygraph import guard
-from paddle.fluid.executor import Executor
-from paddle.fluid.framework import Variable, default_main_program
+from paddle.base import core
+from paddle.base.dygraph import guard
+from paddle.base.executor import Executor
+from paddle.base.framework import Variable, default_main_program
 
 paddle.enable_static()
 main_program = default_main_program()

@@ -19,8 +19,8 @@ import numpy as np
 from decorator_helper import prog_scope
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestConvTransposeDoubleGradCheck(unittest.TestCase):
@@ -40,7 +40,7 @@ class TestConvTransposeDoubleGradCheck(unittest.TestCase):
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -70,7 +70,7 @@ class TestConvTransposeDoubleGradCheck(unittest.TestCase):
         places = []
 
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -101,7 +101,7 @@ class TestConvTranspose2DoubleGradCheck_AsyPadding(
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -154,7 +154,7 @@ class TestConvTranspose2DoubleGradCheck_PaddingSAME(
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -207,7 +207,7 @@ class TestConvTranspose2DoubleGradCheck_PaddingVALID(
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -262,7 +262,7 @@ class TestConvTranspose2DoubleGradCheck_ChannelLast(
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))

@@ -13,10 +13,10 @@
 # limitations under the License.
 
 from paddle import _C_ops
-from paddle.fluid.executor import global_scope
+from paddle.base.executor import global_scope
 
-from ..fluid import core, framework
-from ..fluid.framework import Variable
+from ..base import core, framework
+from ..base.framework import Variable
 from .optimizer import Optimizer
 
 __all__ = []
@@ -68,9 +68,9 @@ class Lamb(Optimizer):
             The default value is None in static graph mode, at this time all parameters will be updated.
         grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three clipping strategies
-            ( :ref:`api_paddle_fluid_clip_ClipGradByGlobalNorm` , :ref:`api_paddle_fluid_clip_ClipGradByNorm` ,
-            :ref:`api_paddle_fluid_clip_ClipGradByValue` ). If you want better convergence, it is recommended
-            to use :ref:`api_paddle_fluid_clip_ClipGradByGlobalNorm` . Default None, meaning there is no gradient clipping.
+            ( :ref:`api_paddle_base_clip_ClipGradByGlobalNorm` , :ref:`api_paddle_base_clip_ClipGradByNorm` ,
+            :ref:`api_paddle_base_clip_ClipGradByValue` ). If you want better convergence, it is recommended
+            to use :ref:`api_paddle_base_clip_ClipGradByGlobalNorm` . Default None, meaning there is no gradient clipping.
         exclude_from_weight_decay_fn (function, optional): whether to skip weight decay for a parameter when this function returns True while take the parameter as input.
         always_adapt (bool, optional): whether to use Layer-wise LR adaptation. By default, skip adaptation on parameters that are
             excluded from weight decay, unless always_adapt == True, then always enable LR adaptation.

@@ -14,8 +14,8 @@
 
 import numpy as np
 
-from paddle.fluid import core
-from paddle.fluid.proto import framework_pb2
+from paddle.base import core
+from paddle.base.proto import framework_pb2
 
 
 # NOTE: this is added to support creating a Scalar message

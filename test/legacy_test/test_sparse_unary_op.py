@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle.base.framework import convert_np_dtype_to_dtype_
 
 
 class TestSparseUnary(unittest.TestCase):

@@ -24,15 +24,15 @@ import paddle
 from paddle import _C_ops
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..fluid.data_feeder import (
+from ..base.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
     convert_dtype,
     convert_float_to_uint16,
 )
-from ..fluid.framework import Variable, device_guard
-from ..fluid.param_attr import ParamAttr
+from ..base.framework import Variable, device_guard
+from ..base.param_attr import ParamAttr
 from ..framework import (
     LayerHelper,
     _current_expected_place,
@@ -40,6 +40,7 @@ from ..framework import (
     convert_np_dtype_to_dtype_,
     core,
     in_dynamic_mode,
+    in_new_ir_mode,
 )
 
 __all__ = []
@@ -680,8 +681,6 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
                             d, dtype, stop_gradient
                         )
                     data = paddle.stack(to_stack_list)
-                    data = paddle.squeeze(data, -1)
-
             else:
                 raise RuntimeError(
                     f"Do not support transform type `{type(data)}` to tensor"
@@ -822,13 +821,18 @@ def full_like(x, fill_value, dtype=None, name=None):
             [[2. 2. 2.]
              [2. 2. 2.]]
     """
+
     if dtype is None:
         dtype = x.dtype
     else:
-        if not isinstance(dtype, core.VarDesc.VarType):
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
+
     if in_dynamic_mode():
         return _C_ops.full_like(x, fill_value, dtype, x.place)
+    elif in_new_ir_mode():
+        place = _current_expected_place()
+        return _C_ops.full_like(x, fill_value, dtype, place)
     else:
         helper = LayerHelper("full_like", **locals())
         check_variable_and_dtype(
@@ -1065,7 +1069,7 @@ def zeros(shape, dtype=None, name=None):
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype(np.dtype|str, optional): Data type of output Tensor, it supports
-            bool, float16, float32, float64, int32 and int64. Default: if None, the date type is float32.
+            bool, float16, float32, float64, int32 and int64. Default: if None, the data type is float32.
         name(str, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
