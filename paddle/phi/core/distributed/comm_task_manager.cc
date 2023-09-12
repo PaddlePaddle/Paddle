@@ -142,8 +142,8 @@ void CommTaskManager::CommTaskLoop() {
       }
     }
     if (comm_task_list_.empty()) {
-        done = true;
-		check_timeout_count = 0;
+      done = true;
+      check_timeout_count = 0;
     }
   }
 }
