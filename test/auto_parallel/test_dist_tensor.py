@@ -251,21 +251,6 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
 
     # input: std::vector<phi::Tensor>, phi::Tensor
     # output: inplace std::vector<phi::Tensor>, inplace phi::Tensor
-    def test_adamgrad_for_dist_tensor(self):
-        x = np.random.random((1024, 1024)).astype("float32")
-        x[128][128] = np.inf
-        scale = np.random.random(1).astype("float32")
-        found_inf = np.array([0]).astype(np.bool_)
-
-        local_x, dist_x = self.create_local_and_dist_tensor_pair(x)
-        local_scale, dist_scale = self.create_local_and_dist_tensor_pair(scale)
-        (
-            local_found_inf,
-            dist_found_inf,
-        ) = self.create_local_and_dist_tensor_pair(found_inf)
-
-    # input: std::vector<phi::Tensor>, phi::Tensor
-    # output: inplace std::vector<phi::Tensor>, inplace phi::Tensor
     def test_check_finite_and_unscale_for_dist_tensor(self):
         x = np.random.random((1024, 1024)).astype("float32")
         x[128][128] = np.inf
