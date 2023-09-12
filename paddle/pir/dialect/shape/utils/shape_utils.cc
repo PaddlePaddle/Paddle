@@ -46,15 +46,15 @@ bool compareSymbolicDimProduct(const SymbolicDimProduct& lhs,
   return false;
 }
 
-const std::string SymbolTable::insert(pir::Operation* symbol) {
+const std::string SymbolTable::insert(Operation* symbol) {
   std::string name;
-  if (symbol->name() == "shape.SymbolicDim") {
+  if (symbol->isa<dialect::SymbolicDim>()) {
     name = symbol->dyn_cast<SymbolicDim>().getSymName();
     symbolTableMap_.insert({name, symbol});
   }
 
   // TODO(liujinnan): add more constraint_func name branch.
-  if (symbol->name() == "shape.tie_product_equal") {
+  if (symbol->isa<dialect::TieProductEqualOp>()) {
     name = "tie_product_equal";
     symbolFuncMap_[name].emplace_back(symbol);
   }
@@ -63,7 +63,7 @@ const std::string SymbolTable::insert(pir::Operation* symbol) {
 }
 
 bool SymbolicDimMgr::load() {
-  auto funcOp = symbolTable_.getOp()->dyn_cast<pir::dialect::FuncOp>();
+  auto funcOp = symbolTable_.getOp()->dyn_cast<dialect::FuncOp>();
   assert(funcOp);
   for (auto op_ : *(funcOp.block())) {
     symbolTable_.insert(op_);
@@ -79,19 +79,18 @@ bool SymbolicDimMgr::loadShapeConstraintGraph() {
   // TODO(liujinnan): add more constraint function. currently, only support
   // tie_product_equal.
   auto constraint_vec =
-      symbolTable_.lookup<pir::dialect::TieProductEqualOp>("tie_product_equal");
+      symbolTable_.lookup<dialect::TieProductEqualOp>("tie_product_equal");
 
   if (!constraint_vec.size()) return true;
 
-  auto build_sym_product = [&](std::vector<pir::Value> range,
+  auto build_sym_product = [&](std::vector<Value> range,
                                SymbolicDimProduct& product) {
     for (Value v : range) {
       auto definingOp = v.GetDefiningOp();
-      if (auto constOp = definingOp->dyn_cast<pir::ConstantOp>()) {
-        product.factor *=
-            constOp.value().dyn_cast<pir::Int32Attribute>().data();
+      if (auto constOp = definingOp->dyn_cast<ConstantOp>()) {
+        product.factor *= constOp.value().dyn_cast<Int32Attribute>().data();
         continue;
-      } else if (auto dimOp = definingOp->dyn_cast<pir::dialect::DimOp>()) {
+      } else if (auto dimOp = definingOp->dyn_cast<dialect::DimOp>()) {
         auto sym = symbolTable_.lookup<SymbolicDim>(dimOp.getName());
         if (!sym) return false;
         product.symbols.push_back(sym);
@@ -222,25 +221,24 @@ const std::string SymbolicDimMgr::getNextName() {
   return name;
 }
 
-SymbolicDimMgr::SymbolicDimMgr(pir::ModuleOp m) : m_(m) {
+SymbolicDimMgr::SymbolicDimMgr(ModuleOp m) : m_(m) {
   for (auto op : *(m.block())) {
-    if (op->name() == "shape.func") {
+    if (op->isa<dialect::FuncOp>()) {
       symbolTable_ = SymbolTable(op);
       return;
     }
   }
-  ::pir::Builder builder =
-      ::pir::Builder(m_.ir_context(), m_.block(), m_.block()->begin());
-  pir::dialect::FuncOp func = builder.Build<pir::dialect::FuncOp>();
+  Builder builder = Builder(m_.ir_context(), m_.block(), m_.block()->begin());
+  dialect::FuncOp func = builder.Build<dialect::FuncOp>();
   symbolTable_ = SymbolTable(func);
 }
 
 SymbolicDim SymbolicDimMgr::newSymbolicDim(const std::string& name) {
-  auto funcOp = symbolTable_.getOp()->dyn_cast<pir::dialect::FuncOp>();
+  auto funcOp = symbolTable_.getOp()->dyn_cast<dialect::FuncOp>();
   assert(funcOp);
-  ::pir::Builder builder = ::pir::Builder(m_.ir_context(), funcOp.block());
+  Builder builder = Builder(m_.ir_context(), funcOp.block());
   // default settting dim != 0
-  pir::dialect::SymbolicDim symbol = builder.Build<pir::dialect::SymbolicDim>(
+  dialect::SymbolicDim symbol = builder.Build<dialect::SymbolicDim>(
       name.empty() ? getNextName() : name, -100000, false, false, false, true);
   symbolDimUnionSet_[symbol] = symbol;
   symbolTable_.insert(symbol);
@@ -264,7 +262,7 @@ SymbolicDim SymbolicDimMgr::newConstantSymbolicDim(int64_t val) {
 }
 
 std::vector<SymbolicDim> SymbolicDimMgr::createSymbolicDimsForRankedValue(
-    pir::Value value) {
+    Value value) {
   std::vector<SymbolicDim> symbols;
   auto dims = value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
   for (int idx = 0; idx < dims.size(); ++idx) {
@@ -462,24 +460,24 @@ bool SymbolicDimMgr::isSymbolicDimProductEqual(const SymbolicDimProduct& lhs,
 
 bool SymbolicDimMgr::save() {
   using Name2SymbolFn = std::function<SymbolicDim(const std::string&)>;
-  auto updateAttrs = [&](pir::ArrayAttribute attrs, Name2SymbolFn fn) {
-    std::vector<pir::Attribute> newAttrs;
-    for (pir::Attribute attr : attrs.AsVector()) {
-      auto sym = fn(attr.dyn_cast<pir::StrAttribute>().AsString());
+  auto updateAttrs = [&](ArrayAttribute attrs, Name2SymbolFn fn) {
+    std::vector<Attribute> newAttrs;
+    for (Attribute attr : attrs.AsVector()) {
+      auto sym = fn(attr.dyn_cast<StrAttribute>().AsString());
       assert(sym);
       SymbolicDim root = getRootSymbolicDim(sym);
-      pir::Attribute rootSymbol =
-          pir::StrAttribute::get(m_->ir_context(), root.getSymName());
+      Attribute rootSymbol =
+          StrAttribute::get(m_->ir_context(), root.getSymName());
       newAttrs.push_back(rootSymbol);
     }
-    return pir::ArrayAttribute::get(m_->ir_context(), newAttrs);
+    return ArrayAttribute::get(m_->ir_context(), newAttrs);
   };
 
   // TODO(liujinnan): update attributes attached in DenseTensorType
   for (auto op : *(m_.block())) {
     if (!op->HasAttribute(SymbolicDim::getSymbolicDimAttrName())) continue;
-    auto attrs = op->attribute<pir::ArrayAttribute>(
-        SymbolicDim::getSymbolicDimAttrName());
+    auto attrs =
+        op->attribute<ArrayAttribute>(SymbolicDim::getSymbolicDimAttrName());
     auto symbolicShapeAttr = updateAttrs(attrs, [&](const std::string& name) {
       return symbolTable_.lookup<SymbolicDim>(name);
     });
@@ -491,10 +489,10 @@ bool SymbolicDimMgr::save() {
   std::unordered_set<SymbolicDim, SymDimHasher> usedSymbolicOps;
   std::vector<std::string> usedSymbolNames;
   // TODO(liujinnan): collect uses in value.
-  auto collectUsedSymbols = [&](pir::ArrayAttribute attrs) {
-    for (pir::Attribute attr : attrs.AsVector()) {
+  auto collectUsedSymbols = [&](ArrayAttribute attrs) {
+    for (Attribute attr : attrs.AsVector()) {
       auto sym = symbolTable_.lookup<SymbolicDim>(
-          attr.dyn_cast<pir::StrAttribute>().AsString());
+          attr.dyn_cast<StrAttribute>().AsString());
       assert(sym);
       if (usedSymbolicOps.insert(sym).second)
         usedSymbolNames.push_back(sym.getSymName());
@@ -502,11 +500,11 @@ bool SymbolicDimMgr::save() {
   };
   for (auto op : *(m_.block())) {
     if (!op->HasAttribute(SymbolicDim::getSymbolicDimAttrName())) continue;
-    auto attrs = op->attribute<pir::ArrayAttribute>(
-        SymbolicDim::getSymbolicDimAttrName());
+    auto attrs =
+        op->attribute<ArrayAttribute>(SymbolicDim::getSymbolicDimAttrName());
     collectUsedSymbols(attrs);
   }
-  auto funcOp = symbolTable_.getOp()->dyn_cast<pir::dialect::FuncOp>();
+  auto funcOp = symbolTable_.getOp()->dyn_cast<dialect::FuncOp>();
   assert(funcOp);
   for (auto& p : symbolDimUnionSet_) {
     if (!usedSymbolicOps.count(p.first)) {
@@ -560,8 +558,8 @@ bool SymbolicDimMgr::save() {
 
   for (auto op : *(m_.block())) {
     if (!op->HasAttribute(SymbolicDim::getSymbolicDimAttrName())) continue;
-    auto attrs = op->attribute<pir::ArrayAttribute>(
-        SymbolicDim::getSymbolicDimAttrName());
+    auto attrs =
+        op->attribute<ArrayAttribute>(SymbolicDim::getSymbolicDimAttrName());
     auto symbolicShapeAttr = updateAttrs(
         attrs, [&](const std::string& name) { return name2Symbol[name]; });
     op->set_attribute(SymbolicDim::getSymbolicDimAttrName(), symbolicShapeAttr);
@@ -573,32 +571,31 @@ bool SymbolicDimMgr::save() {
 }
 
 bool SymbolicDimMgr::saveShapeConstraintGraph() {
-  auto funcOp = symbolTable_.getOp()->dyn_cast<pir::dialect::FuncOp>();
+  auto funcOp = symbolTable_.getOp()->dyn_cast<dialect::FuncOp>();
   assert(funcOp);
   auto op_it = funcOp.block()->rbegin();
   while (op_it != funcOp.block()->rend()) {
-    if (((*op_it)->name() == "shape.SymbolicDim") ||
-        ((*op_it)->name() == "shape.tie_shape"))
+    if (((*op_it)->isa<dialect::SymbolicDim>()) ||
+        ((*op_it)->isa<dialect::TieShapeOp>()))
       op_it++;
     else
       op_it = decltype(op_it)(funcOp.block()->erase(*(*op_it)));
   }
 
-  pir::Builder builder = pir::Builder(m_->ir_context(), funcOp.block());
-  auto build_operands = [&](const pir::SymbolicDimProduct& prod) {
-    std::vector<pir::OpResult> values;
+  Builder builder = Builder(m_->ir_context(), funcOp.block());
+  auto build_operands = [&](const SymbolicDimProduct& prod) {
+    std::vector<OpResult> values;
 
     if (prod.factor != 1) {
       values.push_back(
           builder
-              .Build<pir::ConstantOp>(
-                  pir::Int32Attribute::get(m_->ir_context(), prod.factor),
-                  pir::Int32Type::get(m_->ir_context()))
+              .Build<ConstantOp>(
+                  Int32Attribute::get(m_->ir_context(), prod.factor),
+                  Int32Type::get(m_->ir_context()))
               ->result(0));
     }
     for (SymbolicDim sym : prod.symbols) {
-      values.push_back(
-          builder.Build<pir::dialect::DimOp>(sym.getSymName()).out());
+      values.push_back(builder.Build<dialect::DimOp>(sym.getSymName()).out());
     }
     return values;
   };
@@ -613,14 +610,14 @@ bool SymbolicDimMgr::saveShapeConstraintGraph() {
       if (!productEqualityMap_[x][y]) continue;
       auto lhsOperands = build_operands(x);
       auto rhsOperands = build_operands(y);
-      builder.Build<pir::dialect::TieProductEqualOp>(lhsOperands, rhsOperands);
+      builder.Build<dialect::TieProductEqualOp>(lhsOperands, rhsOperands);
     }
   }
   return true;
 }
 
 // TODO(liujinnan): Acceess ShapedType.
-bool ShapeAnalysis::isSameNumElements(pir::Value lhs, pir::Value rhs) {
+bool ShapeAnalysis::isSameNumElements(Value lhs, Value rhs) {
   if (lhs == rhs) return true;
 
   auto lhsTy = lhs.type().dyn_cast<paddle::dialect::DenseTensorType>();
@@ -643,28 +640,23 @@ bool ShapeAnalysis::isProductEqual(
   return isProductEqual(lhs, lhsDimIdxs, rhs, rhsDimIdxs);
 }
 
-SymbolicDimShapeAnalysis::SymbolicDimShapeAnalysis(pir::Operation* op)
-    : op_(op), mgr_(op->dyn_cast<pir::ModuleOp>()) {
+SymbolicDimShapeAnalysis::SymbolicDimShapeAnalysis(ModuleOp m)
+    : m_(m), mgr_(m) {
   mgr_.load();
-  for (uint32_t r_idx = 0; r_idx < op->num_regions(); r_idx++) {
-    for (auto b_it = op->region(r_idx).begin(); b_it != op->region(r_idx).end();
-         b_it++) {
-      for (auto op_it = (*b_it)->begin(); op_it != (*b_it)->end(); op_it++) {
-        auto tieShapeOp = (*op_it)->dyn_cast<pir::dialect::TieShapeOp>();
-        if (!tieShapeOp) continue;
-        pir::Value result = tieShapeOp.getValue();
-        auto& symbols = value2SymDims_[result];
-        auto attrs = tieShapeOp
-                         .attribute<pir::ArrayAttribute>(
-                             SymbolicDim::getSymbolicDimAttrName())
-                         .AsVector();
-        for (const auto& attr : attrs) {
-          auto symOp = mgr_.symbolTable().lookup<SymbolicDim>(
-              attr.dyn_cast<pir::StrAttribute>().AsString());
-          if (!symOp) continue;
-          symbols.push_back(symOp);
-        }
-      }
+  for (auto op : *(m_.block())) {
+    auto tieShapeOp = op->dyn_cast<dialect::TieShapeOp>();
+    if (!tieShapeOp) continue;
+    Value result = tieShapeOp.getValue();
+    auto& symbols = value2SymDims_[result];
+    auto attrs =
+        tieShapeOp
+            .attribute<ArrayAttribute>(SymbolicDim::getSymbolicDimAttrName())
+            .AsVector();
+    for (const auto& attr : attrs) {
+      auto symOp = mgr_.symbolTable().lookup<SymbolicDim>(
+          attr.dyn_cast<StrAttribute>().AsString());
+      if (!symOp) continue;
+      symbols.push_back(symOp);
     }
   }
 }
@@ -672,7 +664,7 @@ SymbolicDimShapeAnalysis::SymbolicDimShapeAnalysis(pir::Operation* op)
 SymbolicDimShapeAnalysis::~SymbolicDimShapeAnalysis() { mgr_.save(); }
 
 // TODO(liujinnan): Acceess ShapedType.
-bool SymbolicDimShapeAnalysis::isShapeEqual(pir::Value lhs, pir::Value rhs) {
+bool SymbolicDimShapeAnalysis::isShapeEqual(Value lhs, Value rhs) {
   if (lhs == rhs) return true;
 
   auto lhsTy = lhs.type().dyn_cast<paddle::dialect::DenseTensorType>();

@@ -27,7 +27,7 @@
 
 namespace pir {
 
-using pir::dialect::SymbolicDim;
+using dialect::SymbolicDim;
 
 struct SymbolicDimProduct {
   std::vector<SymbolicDim> symbols;
@@ -46,7 +46,7 @@ struct SymbolicDimProduct {
 
 class SymbolTable {
  public:
-  explicit SymbolTable(pir::Operation* symbolTableOp)
+  explicit SymbolTable(Operation* symbolTableOp)
       : symbolTableOp_(symbolTableOp) {}
   SymbolTable() = default;
   template <typename T>
@@ -72,22 +72,22 @@ class SymbolTable {
   }
 
   const std::string insert(Operation* symbol);
-  pir::Operation* getOp() const { return symbolTableOp_; }
+  Operation* getOp() const { return symbolTableOp_; }
 
  private:
-  pir::Operation* symbolTableOp_;
-  std::unordered_map<std::string, pir::Operation*> symbolTableMap_;
-  std::unordered_map<std::string, std::vector<pir::Operation*>> symbolFuncMap_;
+  Operation* symbolTableOp_;
+  std::unordered_map<std::string, Operation*> symbolTableMap_;
+  std::unordered_map<std::string, std::vector<Operation*>> symbolFuncMap_;
 };
 
 struct SymDimHasher {
-  size_t operator()(const pir::dialect::SymbolicDim& symbol) const noexcept {
-    return std::hash<pir::Operation*>{}(symbol.operation());
+  size_t operator()(const dialect::SymbolicDim& symbol) const noexcept {
+    return std::hash<Operation*>{}(symbol.operation());
   }
 };
 
 struct SymProductHasher {
-  size_t operator()(const pir::SymbolicDimProduct& symProd) const noexcept {
+  size_t operator()(const SymbolicDimProduct& symProd) const noexcept {
     size_t hash = std::hash<size_t>{}(symProd.symbols.size());
     for (auto& symbol : symProd.symbols) {
       hash = hash_combine(hash, SymDimHasher{}(symbol));  // NOLINT
@@ -99,7 +99,7 @@ struct SymProductHasher {
 
 class SymbolicDimMgr {
  public:
-  explicit SymbolicDimMgr(pir::ModuleOp m);
+  explicit SymbolicDimMgr(ModuleOp m);
   bool load();
   SymbolicDim newSymbolicDim(const std::string& name = {});
   SymbolicDim newConstantSymbolicDim(int64_t val);
@@ -131,7 +131,7 @@ class SymbolicDimMgr {
   bool loadShapeConstraintGraph();
 
  private:
-  pir::ModuleOp m_;
+  ModuleOp m_;
 
   SymbolTable symbolTable_;
 
@@ -156,38 +156,34 @@ class ShapeAnalysis {
  public:
   virtual ~ShapeAnalysis() = default;
 
-  virtual bool isShapeEqual(pir::Value lhs, pir::Value rhs) = 0;
+  virtual bool isShapeEqual(Value lhs, Value rhs) = 0;
 
-  virtual bool isProductEqual(pir::Value lhs,
+  virtual bool isProductEqual(Value lhs,
                               std::vector<int> lhsDimIdxs,
-                              pir::Value rhs,
+                              Value rhs,
                               std::vector<int> rhsDimIdxs) = 0;
-  virtual bool isProductEqual(pir::Value lhs,
-                              int lhsFrom,
-                              int lhsTo,
-                              pir::Value rhs,
-                              int rhsFrom,
-                              int rhsTo);
-  virtual bool isSameNumElements(pir::Value lhs, pir::Value rhs);
+  virtual bool isProductEqual(
+      Value lhs, int lhsFrom, int lhsTo, Value rhs, int rhsFrom, int rhsTo);
+  virtual bool isSameNumElements(Value lhs, Value rhs);
 };
 
 class SymbolicDimShapeAnalysis : public ShapeAnalysis {
  public:
-  explicit SymbolicDimShapeAnalysis(pir::Operation* op);
+  explicit SymbolicDimShapeAnalysis(ModuleOp m);
   ~SymbolicDimShapeAnalysis();
 
   SymbolicDimMgr& symbolicDimMgr() { return mgr_; }
   const SymbolicDimMgr& symbolicDimMgr() const { return mgr_; }
-  bool isShapeEqual(pir::Value lhs, pir::Value rhs) override;
+  bool isShapeEqual(Value lhs, Value rhs) override;
 
-  bool isProductEqual(pir::Value lhs,
+  bool isProductEqual(Value lhs,
                       std::vector<int> lhsDimIdxs,
-                      pir::Value rhs,
+                      Value rhs,
                       std::vector<int> rhsDimIdxs) override;
 
  private:
-  pir::Operation* op_;
+  ModuleOp m_;
   SymbolicDimMgr mgr_;
-  std::unordered_map<pir::Value, std::vector<SymbolicDim>> value2SymDims_;
+  std::unordered_map<Value, std::vector<SymbolicDim>> value2SymDims_;
 };
 }  // namespace pir

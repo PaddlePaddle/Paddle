@@ -26,6 +26,40 @@
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
 
+pir::AttributeMap CreateAttributeMap(
+    const std::vector<std::string> &attribute_names,
+    const std::vector<std::string> &attributes) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  pir::AttributeMap attr_map;
+  for (size_t i = 0; i < attribute_names.size(); i++) {
+    pir::Attribute attr_value = pir::StrAttribute::get(ctx, attributes[i]);
+    attr_map.insert(
+        std::pair<std::string, pir::Attribute>(attribute_names[i], attr_value));
+  }
+  return attr_map;
+}
+
+pir::Operation *CreateDenseTensorOp(
+    pir::IrContext *ctx,
+    const phi::DDim &dims,
+    const std::vector<std::string> &attribute_names,
+    const std::vector<std::string> &attributes) {
+  std::vector<pir::OpResult> op_inputs = {};
+  pir::Type fp32_dtype = pir::Float32Type::get(ctx);
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+  std::vector<pir::Type> op_output_types = {
+      paddle::dialect::DenseTensorType::get(
+          ctx, fp32_dtype, dims, data_layout, lod, offset)};
+  pir::Operation *op =
+      pir::Operation::Create(op_inputs,
+                             CreateAttributeMap(attribute_names, attributes),
+                             op_output_types,
+                             pir::OpInfo());
+  return op;
+}
+
 TEST(assist_struct_test, symbolic_dim) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Program program(ctx);
@@ -108,21 +142,7 @@ TEST(assist_struct_test, symbolic_dim_mgr_simple) {
   pir::dialect::SymbolicDim symDimC10 = symDimMgr.newConstantSymbolicDim(10);
   symDimMgr.mapSymbolicDimEqual(symDimS0, symDimS1);
 
-  pir::Attribute attr_value = pir::StrAttribute::get(ctx, "op_attr");
-  pir::AttributeMap attr_map;
-  attr_map.insert(std::pair<std::string, pir::Attribute>("op", attr_value));
-  std::vector<pir::OpResult> op_inputs = {};
-
-  pir::Type fp32_dtype = pir::Float32Type::get(ctx);
-  phi::DDim dims = {-100000, 2};
-  phi::DataLayout data_layout = phi::DataLayout::NCHW;
-  phi::LoD lod = {{0, 1, 2}};
-  size_t offset = 0;
-  std::vector<pir::Type> op_output_types = {
-      paddle::dialect::DenseTensorType::get(
-          ctx, fp32_dtype, dims, data_layout, lod, offset)};
-  pir::Operation *op = pir::Operation::Create(
-      op_inputs, attr_map, op_output_types, pir::OpInfo());
+  auto op = CreateDenseTensorOp(ctx, {-100000, 2}, {"op_attr"}, {"op_name"});
   pir::Value res = op->result(0);
 
   std::vector<pir::dialect::SymbolicDim> symDimVec =
@@ -221,29 +241,19 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
   builder.Build<pir::dialect::TieProductEqualOp>(
       2, 2, std::vector<pir::OpResult>{dimOpS8, dimOpS9, dimOpS10, dimOpS11});
 
-  pir::AttributeMap attr_map;
-  std::vector<pir::OpResult> op_inputs = {};
-
-  pir::Type fp32_dtype = pir::Float32Type::get(ctx);
-  phi::DDim dims = {-100000, -100000, -100000, -100000, -100000, -100000};
-  phi::DDim dims_ = {-100000, -100000, -100000, -100000, -100000, 10, 20};
-  phi::DataLayout data_layout = phi::DataLayout::NCHW;
-  phi::LoD lod = {{0, 1, 2}};
-  size_t offset = 0;
-
-  std::vector<pir::Type> op_output_types = {
-      paddle::dialect::DenseTensorType::get(
-          ctx, fp32_dtype, dims, data_layout, lod, offset)};
-  std::vector<pir::Type> op_output_types_ = {
-      paddle::dialect::DenseTensorType::get(
-          ctx, fp32_dtype, dims_, data_layout, lod, offset)};
-  pir::Operation *op = pir::Operation::Create(
-      op_inputs, attr_map, op_output_types, pir::OpInfo());
+  auto op = CreateDenseTensorOp(
+      ctx,
+      {-100000, -100000, -100000, -100000, -100000, -100000},
+      {"op0_attr"},
+      {"op0_name"});
+  auto op_ =
+      CreateDenseTensorOp(ctx,
+                          {-100000, -100000, -100000, -100000, -100000, 10, 20},
+                          {"op1_attr"},
+                          {"op1_name"});
   pir::OpResult res = op->result(0);
-
-  pir::Operation *op_ = pir::Operation::Create(
-      op_inputs, attr_map, op_output_types_, pir::OpInfo());
   pir::OpResult res_ = op_->result(0);
+
   builder.SetInsertionPointToEnd(program.block());
   pir::dialect::TieShapeOp tieShapeOp =
       builder.Build<pir::dialect::TieShapeOp>(res);
@@ -374,7 +384,7 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
   EXPECT_EQ(attrs.AsVector(), arrayAttrRef.AsVector());
 }
 
-TEST(assist_struct_test, dim) {
+TEST(shape_op, dim) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Program program(ctx);
   ctx->GetOrRegisterDialect<pir::dialect::ShapeDialect>();
@@ -389,7 +399,7 @@ TEST(assist_struct_test, dim) {
   EXPECT_EQ(res.type(), pir::IndexType::get(ctx));
 }
 
-TEST(assist_struct_test, tie_product_equal) {
+TEST(shape_op, tie_product_equal) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Program program(ctx);
   ctx->GetOrRegisterDialect<pir::dialect::ShapeDialect>();
@@ -426,7 +436,7 @@ TEST(assist_struct_test, tie_product_equal) {
   EXPECT_EQ(rhs, rhs_ref);
 }
 
-TEST(assist_struct_test, tie_shape) {
+TEST(shape_op, tie_shape) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Program program(ctx);
   ctx->GetOrRegisterDialect<pir::dialect::ShapeDialect>();
@@ -434,20 +444,7 @@ TEST(assist_struct_test, tie_shape) {
 
   pir::Builder builder = pir::Builder(ctx, program.block());
 
-  pir::AttributeMap attr_map;
-  std::vector<pir::OpResult> op_inputs = {};
-
-  pir::Type fp32_dtype = pir::Float32Type::get(ctx);
-  phi::DDim dims = {-100000, 2};
-  phi::DataLayout data_layout = phi::DataLayout::NCHW;
-  phi::LoD lod = {{0, 1, 2}};
-  size_t offset = 0;
-
-  std::vector<pir::Type> op_output_types = {
-      paddle::dialect::DenseTensorType::get(
-          ctx, fp32_dtype, dims, data_layout, lod, offset)};
-  pir::Operation *op = pir::Operation::Create(
-      op_inputs, attr_map, op_output_types, pir::OpInfo());
+  auto op = CreateDenseTensorOp(ctx, {-100000, 2}, {"op_attr"}, {"op_name"});
   pir::OpResult res = op->result(0);
 
   pir::dialect::TieShapeOp tieShapeOp =
@@ -477,7 +474,7 @@ TEST(assist_struct_test, tie_shape) {
       pir::dialect::SymbolicDim::getSymbolicDimAttrName()));
 }
 
-TEST(assist_struct_test, func_op) {
+TEST(shape_op, func_op) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Program program(ctx);
   ctx->GetOrRegisterDialect<pir::dialect::ShapeDialect>();
@@ -500,53 +497,24 @@ TEST(assist_struct_test, shape_analysis) {
   ::pir::Builder builder = ::pir::Builder(ctx, program.block());
   pir::dialect::FuncOp funcOp = builder.Build<pir::dialect::FuncOp>();
 
-  pir::AttributeMap attr_map;
-  std::vector<pir::OpResult> op_inputs = {};
-
-  pir::Type fp32_dtype = pir::Float32Type::get(ctx);
   phi::DDim dims_D_2 = {-100000, 2};
   phi::DDim dims_2_2 = {2, 2};
   phi::DDim dims_D = {-100000};
-  phi::DataLayout data_layout = phi::DataLayout::NCHW;
-  phi::LoD lod = {{0, 1, 2}};
-  size_t offset = 0;
 
   // same shape with dynamic: value1 == value2
-  std::vector<pir::Type> op1_output_types = {
-      paddle::dialect::DenseTensorType::get(
-          ctx, fp32_dtype, dims_D_2, data_layout, lod, offset)};
-  pir::Operation *op1 = pir::Operation::Create(
-      op_inputs, attr_map, op1_output_types, pir::OpInfo());
+  auto op1 = CreateDenseTensorOp(ctx, dims_D_2, {"op1_attr"}, {"op1_name"});
+  auto op2 = CreateDenseTensorOp(ctx, dims_D_2, {"op2_attr"}, {"op2_name"});
   pir::OpResult value1 = op1->result(0);
-
-  std::vector<pir::Type> op2_output_types = {
-      paddle::dialect::DenseTensorType::get(
-          ctx, fp32_dtype, dims_D_2, data_layout, lod, offset)};
-  pir::Operation *op2 = pir::Operation::Create(
-      op_inputs, attr_map, op2_output_types, pir::OpInfo());
   pir::OpResult value2 = op2->result(0);
 
   // same shape with static: value3 == value4
-  std::vector<pir::Type> op3_output_types = {
-      paddle::dialect::DenseTensorType::get(
-          ctx, fp32_dtype, dims_2_2, data_layout, lod, offset)};
-  pir::Operation *op3 = pir::Operation::Create(
-      op_inputs, attr_map, op3_output_types, pir::OpInfo());
+  auto op3 = CreateDenseTensorOp(ctx, dims_2_2, {"op3_attr"}, {"op3_name"});
+  auto op4 = CreateDenseTensorOp(ctx, dims_2_2, {"op4_attr"}, {"op4_name"});
   pir::OpResult value3 = op3->result(0);
-
-  std::vector<pir::Type> op4_output_types = {
-      paddle::dialect::DenseTensorType::get(
-          ctx, fp32_dtype, dims_2_2, data_layout, lod, offset)};
-  pir::Operation *op4 = pir::Operation::Create(
-      op_inputs, attr_map, op4_output_types, pir::OpInfo());
   pir::OpResult value4 = op4->result(0);
 
   // one dimension with dynamic: value5 != value1 != value3
-  std::vector<pir::Type> op5_output_types = {
-      paddle::dialect::DenseTensorType::get(
-          ctx, fp32_dtype, dims_D, data_layout, lod, offset)};
-  pir::Operation *op5 = pir::Operation::Create(
-      op_inputs, attr_map, op5_output_types, pir::OpInfo());
+  auto op5 = CreateDenseTensorOp(ctx, dims_D, {"op5_attr"}, {"op5_name"});
   pir::OpResult value5 = op5->result(0);
 
   pir::dialect::TieShapeOp tieShapeOp1 =
