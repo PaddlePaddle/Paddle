@@ -380,6 +380,7 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/fluid/prim/api/all.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/phi/core/flags.h"
+#include "paddle/phi/api/lib/data_transform.h"
 PHI_DECLARE_bool(check_nan_inf);
 {}
 """
@@ -505,6 +506,12 @@ CHECK_BACKWARD_INPLACE_TEMPLATE = """
   if ({}.initialized()) {{
     VLOG(10) << {}.name() << "({}) use_count: " << {}.impl().use_count();
     if ({}.impl().use_count() == 1 || ({}.impl().use_count() == 2 && {}.impl().get() == {}.impl().get())) {{
+      if ({}.is_dense_tensor() && !std::dynamic_pointer_cast<phi::DenseTensor>({}.impl())->meta().is_contiguous()) {{
+        auto tmp = paddle::experimental::Trans2Contiguous(*(std::dynamic_pointer_cast<phi::DenseTensor>({}.impl())));
+        auto holder = tmp.MoveMemoryHolder();
+        std::dynamic_pointer_cast<phi::DenseTensor>({}.impl())->ResetHolder(holder);
+        std::dynamic_pointer_cast<phi::DenseTensor>({}.impl())->set_meta(tmp.meta());
+      }}
       can_be_inplaced = true;
     }}
   }}"""
@@ -2160,6 +2167,11 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                     transformed_tensor_name,
                     transformed_tensor_name,
                     tensor_wrapper_intermidiate_tensor_str,
+                    transformed_tensor_name,
+                    transformed_tensor_name,
+                    transformed_tensor_name,
+                    transformed_tensor_name,
+                    transformed_tensor_name,
                 )
                 inplace_grad_input_str = transformed_tensor_name
             if is_optional:
@@ -2229,6 +2241,11 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                         transformed_tensor_name,
                         transformed_tensor_name,
                         grads_tensor_str,
+                        transformed_tensor_name,
+                        transformed_tensor_name,
+                        transformed_tensor_name,
+                        transformed_tensor_name,
+                        transformed_tensor_name,
                     )
                     inplace_grad_input_str = transformed_tensor_name
 
