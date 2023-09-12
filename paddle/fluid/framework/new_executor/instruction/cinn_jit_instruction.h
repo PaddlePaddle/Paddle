@@ -43,7 +43,6 @@ class CinnJitInstruction : public InstructionBase {
  private:
   class Impl;
   std::shared_ptr<Impl> impl_{nullptr};
-  std::shared_ptr<paddle::framework::OperatorBase> operator_base_{nullptr};
 
   ::pir::Operation* op_{nullptr};  // not owned
 };
