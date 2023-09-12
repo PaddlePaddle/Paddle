@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.core import DistModelDataType, DistModelTensor
+from paddle.base.core import DistModelDataType, DistModelTensor
 
 paddle.enable_static()
 

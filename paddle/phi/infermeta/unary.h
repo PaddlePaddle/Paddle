@@ -102,6 +102,12 @@ void ClassCenterSampleInferMeta(const MetaTensor& label,
 
 void ClipByNormInferMeta(const MetaTensor& x, float max_norm, MetaTensor* out);
 
+void CIdentityInferMeta(const MetaTensor& x,
+                        int ring_id,
+                        bool use_calc_stream,
+                        bool use_model_parallel,
+                        MetaTensor* out);
+
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
 void CropInferMeta(const MetaTensor& x,
@@ -285,6 +291,8 @@ void KthvalueInferMeta(const MetaTensor& x,
                        MetaTensor* indices,
                        MetaConfig = MetaConfig());
 
+void LogicalNotInfermeta(const MetaTensor& x, MetaTensor* out);
+
 void LogsumexpInferMeta(const MetaTensor& input,
                         const std::vector<int64_t>& axis,
                         bool keepdim,
@@ -433,10 +441,17 @@ void PSendInferMeta(const MetaTensor& x, int peer);
 
 void PSendArrayInferMeta(const MetaTensor& x, int peer);
 
+void SendV2InferMeta(const int peer, const int ring_id);
+
 void QrInferMeta(const MetaTensor& x,
                  const std::string& mode,
                  MetaTensor* q,
                  MetaTensor* r);
+
+void WeightQuantizeInferMeta(const MetaTensor& x,
+                             const std::string& algo,
+                             MetaTensor* out,
+                             MetaTensor* scale);
 
 void RealAndImagInferMeta(const MetaTensor& x, MetaTensor* out);
 
@@ -729,12 +744,6 @@ void UnStackInferMeta(const MetaTensor& x,
                       int axis,
                       int num,
                       std::vector<MetaTensor*> outs);
-
-void QuantForCompressInferMeta(const MetaTensor& x,
-                               int bits,
-                               const std::string& layout,
-                               MetaTensor* out,
-                               MetaTensor* scale);
 
 void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out);
 

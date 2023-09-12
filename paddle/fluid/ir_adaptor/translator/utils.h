@@ -15,24 +15,29 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
-#include "paddle/ir/core/ir_context.h"
-#include "paddle/ir/core/operation.h"
-#include "paddle/ir/core/program.h"
+#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/core/operation.h"
+#include "paddle/pir/core/program.h"
 
 namespace paddle {
 namespace translator {
 
-ir::Operation* InsertSliceOperationForTarget(
-    ir::IrContext* ctx,
+pir::Operation* InsertSliceOperationForTarget(
+    pir::IrContext* ctx,
     TranslationContext* param_map,
-    ir::Program* program,
+    pir::Program* program,
     const VariableDefiningInfo& defining_info,
     const std::string& arg_name);
 
 std::ostream& operator<<(std::ostream& os,
                          const std::vector<std::string>& vec_str);
+
+std::vector<std::string> CheckUnregisteredOperation(
+    pir::IrContext* ctx, const framework::ProgramDesc& legacy_program);
 
 }  // namespace translator
 }  // namespace paddle

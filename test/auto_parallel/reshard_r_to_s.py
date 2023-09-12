@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestReshardRToS:
@@ -61,6 +61,7 @@ class TestReshardRToS:
 
         if out_shape[self._shard] % 2 == 0:
             out_shape[self._shard] = out_shape[self._shard] // 2
+            np.testing.assert_equal(out.numpy(), input_tensor.numpy())
         else:
             out_shape[self._shard] = (
                 out_shape[self._shard] // 2
@@ -68,7 +69,8 @@ class TestReshardRToS:
                 else out_shape[self._shard] // 2 + 1
             )
 
-        assert np.equal(out.shape, out_shape).all()
+        assert np.equal(out.shape, input_tensor.shape).all()
+        assert np.equal(out._local_shape, out_shape).all()
 
 
 if __name__ == '__main__':

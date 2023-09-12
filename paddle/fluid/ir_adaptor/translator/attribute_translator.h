@@ -17,9 +17,9 @@
 
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/type_defs.h"
-#include "paddle/ir/core/attribute.h"
-#include "paddle/ir/core/builtin_attribute.h"
-#include "paddle/ir/core/ir_context.h"
+#include "paddle/pir/core/attribute.h"
+#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/ir_context.h"
 
 #pragma once
 
@@ -45,9 +45,9 @@ class AttributeTranslator {
     return attribute_translator;
   }
 
-  ir::Attribute operator()(const framework::Attribute& attr);
-  ir::Attribute operator()(const std::string& target_type,
-                           const framework::Attribute& attr);
+  pir::Attribute operator()(const framework::Attribute& attr);
+  pir::Attribute operator()(const std::string& target_type,
+                            const framework::Attribute& attr);
 };
 
 }  // namespace translator

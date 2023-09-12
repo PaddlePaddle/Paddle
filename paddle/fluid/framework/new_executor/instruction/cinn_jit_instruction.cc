@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
 
-#include "paddle/cinn/hlir/dialect/jit_kernel_op.h"
-#include "paddle/cinn/hlir/dialect/runtime_dialect.h"
+#include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
+#include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/fluid/framework/paddle2cinn/transform_type.h"
 
@@ -93,7 +93,7 @@ class CinnJitInstruction::Impl {
 
 CinnJitInstruction::CinnJitInstruction(size_t id,
                                        const platform::Place& place,
-                                       ::ir::Operation* op,
+                                       ::pir::Operation* op,
                                        Scope* scope)
     : InstructionBase(id, place) {
   // TODO(Aurelius84): We shall simplify members of JitKernelOp to make it

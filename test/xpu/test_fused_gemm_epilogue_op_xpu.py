@@ -25,7 +25,7 @@ from op_test_xpu import XPUOpTest
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.fluid import core
+from paddle.base import core
 
 
 def gelu(x):

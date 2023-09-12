@@ -24,9 +24,14 @@
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
 
-DECLARE_bool(cudnn_deterministic);
+PD_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
+
+int get_num_split() {
+  // 0 for an internal heuristic, which is optimal
+  return FLAGS_cudnn_deterministic ? 1 : 0;
+}
 
 template <typename T, typename Context>
 void FlashAttnUnpaddedGradImpl(const Context& ctx,
@@ -236,11 +241,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
     const int64_t total_k = k.dims()[0];
     const int64_t num_heads_k = k.dims()[1];
 
-    // TODO(umiswing): add deterministic in fa2.
-    // int num_splits = 0;  // 0 for an internal heuristic, which is optimal
-    // if (FLAGS_cudnn_deterministic) {
-    //   num_splits = 1;
-    // }
+    int num_splits = get_num_split();
 
     // TODO(umiswing): add shape check
     PADDLE_ENFORCE_EQ(
@@ -294,6 +295,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                                             params.scale,
                                             params.causal,
                                             params.is_bf16,
+                                            num_splits,
                                             stream,
                                             params.seed,
                                             params.offset);
@@ -406,10 +408,7 @@ void FlashAttnGradKernel(const Context& ctx,
   const DenseTensor* attn_mask_tensor = attn_mask.get_ptr();
   std::vector<int64_t> mask_dims = GetAttnMaskDims(attn_mask_tensor);
 
-  int64_t q_size = batch_size * seqlen_q * num_heads * head_size;
-  DenseTensor scaled_q =
-      Empty<T>(ctx, {batch_size, seqlen_q, num_heads, head_size});
-  ComputeScaleQ(ctx, q_size, scale, q.data<T>(), scaled_q.data<T>());
+  int num_splits = get_num_split();
 
   bool succ = phi::dynload::flash_attn_bwd(
       dout.data(),
@@ -434,10 +433,10 @@ void FlashAttnGradKernel(const Context& ctx,
       params.head_size,
       params.head_size_rounded,
       params.dropout,
-      // attn_mask_tensor ? 1.0f : params.scale,
       params.scale,
       params.causal,
       params.is_bf16,
+      num_splits,
       stream,
       params.seed,
       params.offset,
