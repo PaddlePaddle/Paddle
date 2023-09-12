@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/reduction_spmd_rule.h"
+#include "paddle/phi/infermeta/spmd_rules/reduction.h"
 #include <algorithm>
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
@@ -60,7 +60,7 @@ std::string ReductionSPMDRule::GetOutputNotation(
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
 ReductionSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
                                 const paddle::framework::AttributeMap& attrs) {
-  // step0: Verify Input Args Based on Elementwise Logic
+  // step0: Verify input args based on reduction logic
   int64_t ninputs = input_specs.size();
   PADDLE_ENFORCE_EQ(
       ninputs,
@@ -133,7 +133,7 @@ ReductionSPMDRule::InferBackward(
     const std::vector<DistTensorSpec>& input_specs,
     const std::vector<DistTensorSpec>& output_specs,
     const paddle::framework::AttributeMap& attrs) {
-  // step0: Verify Input Args Based on Elementwise Logic
+  // step0: Verify input args based on reduction logic
   int64_t ninputs = input_specs.size();
   int64_t noutputs = output_specs.size();
   PADDLE_ENFORCE_EQ(
