@@ -859,7 +859,7 @@ class LSTMCell(RNNCellBase):
     where :math:`\sigma` is the sigmoid fucntion, and * is the elemetwise
     multiplication operator.
 
-    Please refer to `An Emirical Exploration of Recurrent Network Architectures
+    Please refer to `An Empirical Exploration of Recurrent Network Architectures
     <http://proceedings.mlr.press/v37/jozefowicz15.pdf>`_ for more details.
 
     Parameters:
@@ -1020,7 +1020,7 @@ class GRUCell(RNNCellBase):
     where :math:`\sigma` is the sigmoid fucntion, and * is the elemetwise
     multiplication operator.
 
-    Please refer to `An Emirical Exploration of Recurrent Network Architectures
+    Please refer to `An Empirical Exploration of Recurrent Network Architectures
     <http://proceedings.mlr.press/v37/jozefowicz15.pdf>`_ for more details.
 
     Parameters:

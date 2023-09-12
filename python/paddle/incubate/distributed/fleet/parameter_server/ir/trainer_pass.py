@@ -22,7 +22,7 @@ import paddle
 from paddle import framework
 from paddle.distributed.transpiler.details.program_utils import delete_ops
 from paddle.framework import core
-from paddle.incubate.distributed.fleet.parameter_server.pir.public import (
+from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
     _get_lr_ops,
     _get_optimize_ops,
     get_sparse_tablenames,

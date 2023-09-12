@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.incubate.passes import pir
+from paddle.incubate.passes import ir
 
 
 def set_resnet_unit_attrs(resnet_unit, has_shortcut):
@@ -48,27 +48,27 @@ def set_resnet_unit_outputs(resnet_unit, meanX, varX, meanZ=None, varZ=None):
     )
 
 
-@pir.RegisterPass
+@ir.RegisterPass
 def fuse_resnet_unit():
     def pattern_conv_bn(x, filter, scale, bias, mean, var):
         filter.Attr("shape")[0].Mod(32).EQ(0)
         filter.Attr("shape")[1].Mod(8).EQ(0)
         filter.Attr("shape")[2].EQ(1)
         filter.Attr("shape")[3].EQ(1)
-        conv2d = pir.PassDesc.OP.conv2d(Input=x, Filter=filter)
+        conv2d = ir.PassDesc.OP.conv2d(Input=x, Filter=filter)
         conv2d.SetAttr("data_format", 'NHWC')
-        bn = pir.PassDesc.OP.batch_norm(
+        bn = ir.PassDesc.OP.batch_norm(
             X=conv2d, Bias=bias, Mean=mean, Scale=scale, Variance=var
         )
         return bn
 
     def pattern_one_input(x, filter, scale, bias, mean, var):
         bn = pattern_conv_bn(x, filter, scale, bias, mean, var)
-        relu = pir.PassDesc.OP.relu(X=bn.Output("Y"))
+        relu = ir.PassDesc.OP.relu(X=bn.Output("Y"))
         return relu
 
     def replace_one_input(x, filter, scale, bias, mean, var):
-        resnet_unit = pir.PassDesc.OP.resnet_unit(
+        resnet_unit = ir.PassDesc.OP.resnet_unit(
             X=x, FilterX=filter, ScaleX=scale, BiasX=bias, MeanX=mean, VarX=var
         )
         set_resnet_unit_attrs(resnet_unit, False)
@@ -91,10 +91,10 @@ def fuse_resnet_unit():
     ):
         bnX = pattern_conv_bn(x, filterX, scaleX, biasX, meanX, varX)
         bnZ = pattern_conv_bn(z, filterZ, scaleZ, biasZ, meanZ, varZ)
-        ewadd = pir.PassDesc.OP.elementwise_add(
+        ewadd = ir.PassDesc.OP.elementwise_add(
             X=bnX.Output("Y"), Y=bnZ.Output("Y")
         )
-        relu = pir.PassDesc.OP.relu(X=ewadd)
+        relu = ir.PassDesc.OP.relu(X=ewadd)
         return relu
 
     def replace_two_input(
@@ -111,7 +111,7 @@ def fuse_resnet_unit():
         meanZ,
         varZ,
     ):
-        resnet_unit = pir.PassDesc.OP.resnet_unit(
+        resnet_unit = ir.PassDesc.OP.resnet_unit(
             X=x,
             FilterX=filterX,
             ScaleX=scaleX,
