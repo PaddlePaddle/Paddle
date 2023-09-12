@@ -409,7 +409,15 @@ def append_backward_ops(
 
     def make_input_stopgradient(op):
         input_grad_stopgradients = []
-        for input in op.operands_source():
+        if op.name() == "builtin.combine":
+            grad_semantic_info = [True for _ in range(op.num_operands())]
+        else:
+            grad_semantic_info = op.get_input_grad_semantics()
+        for input, grad_semantic in zip(
+            op.operands_source(), grad_semantic_info
+        ):
+            if not grad_semantic:
+                continue
             if input.get_defining_op().name() == "builtin.combine":
                 stop_gradient = make_input_stopgradient(input.get_defining_op())
                 input_grad_stopgradients.append(
@@ -423,7 +431,16 @@ def append_backward_ops(
         return input_grad_stopgradients
 
     def update_input_grad_map(op, input_grads):
-        for i, input in enumerate(op.operands_source()):
+        i = 0
+        if op.name() == "builtin.combine":
+            grad_semantic_info = [True for _ in range(op.num_operands())]
+        else:
+            grad_semantic_info = op.get_input_grad_semantics()
+        for input, grad_semantic in zip(
+            op.operands_source(), grad_semantic_info
+        ):
+            if not grad_semantic:
+                continue
             if input.get_defining_op().name() == "builtin.combine":
                 update_input_grad_map(input.get_defining_op(), input_grads[i])
             else:
@@ -432,6 +449,7 @@ def append_backward_ops(
                     state.value_to_valuegrad[input].append(input_grad)
                 else:
                     state.value_to_valuegrad[input].append([input_grad])
+            i += 1
 
     # there are four patterns:
     # [builtin.combine , op1] (op1's one input is vectorType, outputs are not vectorType)

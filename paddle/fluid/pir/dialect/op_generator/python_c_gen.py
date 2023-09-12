@@ -15,13 +15,7 @@
 import argparse
 import re
 
-from api_gen import (
-    NAMESPACE_TEMPLATE,
-    OP_RESULT,
-    PD_MANUAL_OP_LIST,
-    VECTOR_TYPE,
-    CodeGen,
-)
+from api_gen import NAMESPACE_TEMPLATE, OP_RESULT, VECTOR_TYPE, CodeGen
 
 H_FILE_TEMPLATE = """
 
@@ -226,10 +220,7 @@ class PythonCCodeGen(CodeGen):
             for op_name in op_info.op_phi_name:
                 # NOTE:When infer_meta_func is None, the Build() function generated in pd_op
                 # is wrong, so temporarily skip the automatic generation of these APIs
-                if (
-                    op_info.infer_meta_func is None
-                    and op_name not in PD_MANUAL_OP_LIST
-                ):
+                if self._need_skip(op_info, op_name):
                     continue
                 declare_str += self._gen_one_declare(op_name)
 
@@ -423,10 +414,7 @@ class PythonCCodeGen(CodeGen):
             for op_name in op_info.op_phi_name:
                 # NOTE:When infer_meta_func is None, the Build() function generated in pd_op
                 # is wrong, so temporarily skip the automatic generation of these APIs
-                if (
-                    op_info.infer_meta_func is None
-                    and op_name not in PD_MANUAL_OP_LIST
-                ):
+                if self._need_skip(op_info, op_name):
                     continue
                 impl_str += self._gen_one_impl(op_info, op_name)
         body = impl_str
