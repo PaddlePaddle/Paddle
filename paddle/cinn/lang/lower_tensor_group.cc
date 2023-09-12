@@ -26,6 +26,7 @@
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
@@ -145,8 +146,7 @@ std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
 std::vector<ir::Argument> LowerTensorGroup::GenerateFunctionArgumentList(
     Expr fn_body) {
   std::vector<ir::Argument> args;
-  optim::TensorWriteTeller teller;
-  teller.Collect(&fn_body);
+  auto teller = ir::CollectTensorNeedsWrite(&fn_body);
 
   std::set<std::string> arg_names;
 
@@ -161,7 +161,7 @@ std::vector<ir::Argument> LowerTensorGroup::GenerateFunctionArgumentList(
 
   for (auto& tensor : tensor_args_) {
     auto* tensor_node = tensor.As<ir::_Tensor_>();
-    bool is_output = teller.IsWrite(tensor->name);
+    bool is_output = teller.count(tensor->name);
     VLOG(6) << "tensor argument " << tensor->name << ", buffer "
             << tensor->buffer->name << ", is output: " << is_output;
 
