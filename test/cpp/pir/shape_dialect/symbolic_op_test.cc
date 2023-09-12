@@ -26,6 +26,40 @@
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
 
+pir::AttributeMap CreateAttributeMap(
+    const std::vector<std::string> &attribute_names,
+    const std::vector<std::string> &attributes) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  pir::AttributeMap attr_map;
+  for (size_t i = 0; i < attribute_names.size(); i++) {
+    pir::Attribute attr_value = pir::StrAttribute::get(ctx, attributes[i]);
+    attr_map.insert(
+        std::pair<std::string, pir::Attribute>(attribute_names[i], attr_value));
+  }
+  return attr_map;
+}
+
+pir::Operation *CreateDenseTensorOp(
+    pir::IrContext *ctx,
+    const phi::DDim &dims,
+    const std::vector<std::string> &attribute_names,
+    const std::vector<std::string> &attributes) {
+  std::vector<pir::OpResult> op_inputs = {};
+  pir::Type fp32_dtype = pir::Float32Type::get(ctx);
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+  std::vector<pir::Type> op_output_types = {
+      paddle::dialect::DenseTensorType::get(
+          ctx, fp32_dtype, dims, data_layout, lod, offset)};
+  pir::Operation *op =
+      pir::Operation::Create(op_inputs,
+                             CreateAttributeMap(attribute_names, attributes),
+                             op_output_types,
+                             pir::OpInfo());
+  return op;
+}
+
 TEST(assist_struct_test, symbolic_dim) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Program program(ctx);
@@ -318,7 +352,7 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
                                                   symDimProductRhs_));
 }
 
-TEST(assist_struct_test, dim) {
+TEST(shape_op, dim) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Program program(ctx);
   ctx->GetOrRegisterDialect<pir::dialect::ShapeDialect>();
@@ -333,7 +367,7 @@ TEST(assist_struct_test, dim) {
   EXPECT_EQ(res.type(), pir::IndexType::get(ctx));
 }
 
-TEST(assist_struct_test, tie_product_equal) {
+TEST(shape_op, tie_product_equal) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Program program(ctx);
   ctx->GetOrRegisterDialect<pir::dialect::ShapeDialect>();
@@ -368,4 +402,35 @@ TEST(assist_struct_test, tie_product_equal) {
             tie_product_equal);
   EXPECT_EQ(lhs, lhs_ref);
   EXPECT_EQ(rhs, rhs_ref);
+}
+
+TEST(shape_op, tensor_dim) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  pir::Program program(ctx);
+  ctx->GetOrRegisterDialect<pir::dialect::ShapeDialect>();
+  pir::Builder builder = pir::Builder(ctx, program.block());
+
+  pir::Operation *op =
+      CreateDenseTensorOp(ctx, {-100000, 2}, {"op_attr"}, {"op_name"});
+  pir::OpResult resDenseTensorValue = op->result(0);
+
+  pir::dialect::TensorDimOp tensorDimOp0 =
+      builder.Build<pir::dialect::TensorDimOp>(resDenseTensorValue, 0);
+  pir::OpResult res0 = tensorDimOp0.out();
+
+  pir::OpResult indexValue =
+      builder
+          .Build<pir::ConstantOp>(
+              pir::Int64Attribute::get(pir::IrContext::Instance(), 1),
+              pir::IndexType::get(pir::IrContext::Instance()))
+          ->result(0);
+  pir::dialect::TensorDimOp tensorDimOp1 =
+      builder.Build<pir::dialect::TensorDimOp>(resDenseTensorValue, indexValue);
+  pir::OpResult res1 = tensorDimOp1.out();
+
+  EXPECT_EQ(res0.type(), pir::IndexType::get(ctx));
+  EXPECT_EQ(res1.type(), pir::IndexType::get(ctx));
+  EXPECT_EQ(tensorDimOp0.getSource(), resDenseTensorValue);
+  EXPECT_EQ(tensorDimOp1.getSource(), resDenseTensorValue);
+  EXPECT_EQ(tensorDimOp1.getIndex(), indexValue);
 }

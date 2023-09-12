@@ -14,6 +14,7 @@
 
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
 #include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type.h"
 
 namespace pir {
@@ -191,9 +192,77 @@ std::vector<pir::Value> TieProductEqualOp::getRhs() {
   return res;
 }
 
+const char *TieShapeOp::attributes_name[attributes_num] = {
+    SymbolicDim::getSymbolicDimAttrName().c_str()};  // NOLINT
+
+void TieShapeOp::Build(Builder &builder,
+                       OperationArgument &argument,
+                       const pir::OpResult &input) {
+  argument.inputs = {input};
+}
+void TieShapeOp::Build(Builder &builder,             // NOLINT
+                       OperationArgument &argument,  // NOLINT
+                       const pir::OpResult &input,
+                       const std::vector<pir::OpResult> &dims) {
+  argument.inputs = {input};
+  for (auto &dim : dims) {
+    argument.inputs.push_back(dim);
+  }
+}
+
+pir::Value TieShapeOp::getValue() { return operand_source(0); }
+
+std::vector<pir::Value> TieShapeOp::getShapeDimIndexes() {
+  std::vector<pir::Value> res;
+  for (uint32_t i = 1; i < num_operands(); i++) {
+    res.push_back(operand_source(i));
+  }
+  return res;
+}
+
+void FuncOp::Build(Builder &builder, OperationArgument &argument) {
+  argument.num_regions = 1;
+}
+
+pir::Block *FuncOp::block() {
+  pir::Region &region = (*this)->region(0);
+  if (region.empty()) region.emplace_back();
+  return region.front();
+}
+
+void TensorDimOp::Build(Builder &builder,
+                        OperationArgument &argument,
+                        const pir::OpResult &source,
+                        const pir::OpResult &index) {
+  argument.inputs = {source, index};
+  argument.output_types.emplace_back(
+      pir::IndexType::get(pir::IrContext::Instance()));
+}
+
+void TensorDimOp::Build(Builder &builder,
+                        OperationArgument &argument,
+                        const pir::OpResult &source,
+                        int64_t index) {
+  pir::OpResult indexValue =
+      builder
+          .Build<pir::ConstantOp>(
+              pir::Int64Attribute::get(pir::IrContext::Instance(), 2),
+              pir::IndexType::get(pir::IrContext::Instance()))
+          ->result(0);
+  argument.inputs = {source, indexValue};
+  argument.output_types.emplace_back(
+      pir::IndexType::get(pir::IrContext::Instance()));
+}
+
+pir::Value TensorDimOp::getSource() { return operand_source(0); }
+
+pir::Value TensorDimOp::getIndex() { return operand_source(1); }
 }  // namespace dialect
 }  // namespace pir
 
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::SymbolicDim)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::DimOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::TieProductEqualOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::TieShapeOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::FuncOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::TensorDimOp)

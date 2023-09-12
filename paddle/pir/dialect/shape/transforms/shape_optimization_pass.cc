@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/pir/dialect/shape/transforms/shape_optimization_pass.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/pir/dialect/shape/ir/shape_op.h"
 
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/program.h"
@@ -21,16 +23,76 @@
 
 namespace {
 
+bool insertTieShapeOnValue(pir::OpResult value,
+                           pir::Builder& builder) {  // NOLINT
+  // Only insert tie_shape ops for non-zero ranked tensor type
+  auto ty = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+
+  if (!ty || ty.dims().size() == 0) return true;
+  std::vector<pir::OpResult> dimSizes;
+  for (int64_t dim = 0, rank = ty.dims().size(); dim < rank; ++dim) {
+    auto dimOp = builder.Build<pir::dialect::TensorDimOp>(value, dim);
+    dimSizes.push_back(dimOp.out());
+  }
+  builder.Build<pir::dialect::TieShapeOp>(value, dimSizes);
+  return true;
+}
+
+bool insertTieShapeOnRegion(pir::Region* region);
+
+bool insertTieShapeOnOperation(pir::Operation* op,
+                               pir::Builder& builder) {  // NOLINT
+  if (op->isa<pir::dialect::TieShapeOp>()) return true;
+  // TODO(liujinnan): skip the specialized Ops.
+
+  for (size_t i = 0; i < op->num_regions(); ++i) {
+    if (!insertTieShapeOnRegion(&(op->region(i)))) return false;
+  }
+  builder.SetInsertionPointAfter(op);
+  for (pir::OpResult v : op->results()) {
+    if (!insertTieShapeOnValue(v, builder)) return false;
+  }
+
+  return true;
+}
+
+bool insertTieShapeOnBlock(pir::Block* block) {
+  pir::Builder builder =
+      pir::Builder(pir::IrContext::Instance(), block, block->begin());
+  // TODO(liujinnan): mapping block arguments
+
+  std::vector<pir::Operation*> op_list;
+  for (pir::Operation* op : *block) op_list.push_back(op);
+  for (pir::Operation* op : op_list) {
+    if (!insertTieShapeOnOperation(op, builder)) return false;
+  }
+  return true;
+}
+
+bool insertTieShapeOnRegion(pir::Region* region) {
+  for (pir::Block* block : *region) {
+    if (!insertTieShapeOnBlock(block)) return false;
+  }
+  return true;
+}
+
+bool materializeShapeComputation(pir::ModuleOp m) {
+  if (!insertTieShapeOnRegion(&(m->region(0)))) return false;
+  // TODO(liujinnan): add rewitter pattern for reifyInferShape.
+  return true;
+}
+
 class ShapeOptimizationPass : public pir::Pass {
  public:
   ShapeOptimizationPass() : pir::Pass("shape_optimization", 0) {}
 
-  void Run(pir::Operation *op) override {
+  void Run(pir::Operation* op) override {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     IR_ENFORCE(module_op, "ShapeOptimizationPass should run on module op.");
+    materializeShapeComputation(module_op);
   }
 
-  bool CanApplyOn(pir::Operation *op) const override {
+  bool CanApplyOn(pir::Operation* op) const override {
     return op->name() == "builtin.module" && op->num_regions() > 0;
   }
 };
