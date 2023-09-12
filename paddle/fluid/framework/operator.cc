@@ -953,49 +953,6 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
   return ss.str();
 }
 
-std::vector<VarInfo> OperatorBase::GetVarsInfo(const Scope* scope,
-                                               VariableNameMap var_map) const {
-  std::vector<VarInfo> var_info;
-
-  const std::unordered_set<std::string>* no_need_buffer_vars = nullptr;
-  if (info_ && info_->NoNeedBufferVarsInferer()) {
-    no_need_buffer_vars =
-        &(Info().NoNeedBufferVarsInferer()(Inputs(), Outputs(), Attrs()));
-    if (no_need_buffer_vars->empty()) no_need_buffer_vars = nullptr;
-  }
-  for (auto it = var_map.begin(); it != var_map.end();) {
-    auto& var = *it;
-    bool is_no_need_buffer_var =
-        (no_need_buffer_vars && no_need_buffer_vars->count(var.first) > 0);
-    std::string var_name, var_dtype, var_place;
-    var_info.reserve(var_info.size() + var.second.size());
-    for (size_t i = 0; i < var.second.size(); ++i) {
-      auto var_name = var.second[i];
-      var_dtype.clear();
-      var_place.clear();
-      if (scope) {
-        if (VarInited(*scope, var_name)) {
-          var_dtype = is_no_need_buffer_var ? "unknown_dtype"
-                                            : GetDtype(*scope, var_name);
-          var_place = is_no_need_buffer_var ? "unknown_place"
-                                            : GetPlace(*scope, var_name);
-        }
-      }
-      var_info.emplace_back(var_name, var_dtype, var_place);
-    }
-    ++it;
-  }
-  return var_info;
-}
-
-std::vector<VarInfo> OperatorBase::InputVarsInfo(const Scope* scope) const {
-  return GetVarsInfo(scope, inputs_);
-}
-
-std::vector<VarInfo> OperatorBase::OutputVarsInfo(const Scope* scope) const {
-  return GetVarsInfo(scope, outputs_);
-}
-
 OperatorBase::OperatorBase(const std::string& type,
                            const VariableNameMap& inputs,
                            const VariableNameMap& outputs,

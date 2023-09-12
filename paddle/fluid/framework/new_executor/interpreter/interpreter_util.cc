@@ -557,7 +557,8 @@ void HandleOperatorBase(
           VLOG(4) << "Find op with kernel after conditional_block : "
                   << following_ops[i]->Type();
           is_skip_fake_init = false;
-          auto input_vars_info = following_ops[i]->InputVarsInfo(scope);
+          auto input_vars_info = GetVarsInfo(
+              scope, following_ops[i]->Inputs(), *following_ops[i].get());
           for (auto& input_var_info : input_vars_info) {
             following_input_vars.insert(input_var_info.name_);
           }

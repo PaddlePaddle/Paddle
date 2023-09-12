@@ -104,27 +104,6 @@ constexpr char kEnableCacheRuntimeContext[] = "@ENABLE_CACHE_RUNTIME_CONTEXT@";
 constexpr char kAllKernelsMustComputeRuntimeShape[] =
     "@ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE@";
 
-struct VarInfo {
-  std::string name_;
-  std::string dtype_;
-  std::string place_;
-
-  VarInfo(const std::string& name,
-          const std::string& dtype,
-          const std::string& place)
-      : name_(name), dtype_(dtype), place_(place) {}
-
-  bool operator==(const VarInfo& other) const {
-    return name_ == other.name_ && dtype_ == other.dtype_ &&
-           place_ == other.place_;
-  }
-
-  bool operator!=(const VarInfo& other) const {
-    return name_ != other.name_ || dtype_ != other.dtype_ ||
-           place_ != other.place_;
-  }
-};
-
 // define some kernel priority
 /* Define multiple kernel type fallback order*/
 extern std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
@@ -302,19 +281,12 @@ class OperatorBase {
   //  The implementation should be written at RunImpl
   void Run(const Scope& scope, const platform::Place& place);
 
-  virtual void RunPreStaticBuild(const Scope& scope,
-                                 const platform::Place& place) const {}
-
   // FIXME(typhoonzero): this is only used for recv_op to stop event_loop.
   virtual void Stop() {}
 
   /// if scope is not null, also show dimensions of arguments
   virtual std::string DebugStringEx(const Scope* scope) const;
   std::string DebugString() const { return DebugStringEx(nullptr); }
-  std::vector<VarInfo> InputVarsInfo(const Scope* scope) const;
-  std::vector<VarInfo> OutputVarsInfo(const Scope* scope) const;
-  std::vector<VarInfo> GetVarsInfo(const Scope* scope,
-                                   VariableNameMap var_map) const;
 
   virtual bool SupportGPU() const { return false; }
   virtual bool SupportXPU() const { return false; }
@@ -366,6 +338,8 @@ class OperatorBase {
                                    type_));
     return *info_;
   }
+
+  bool HasInfo() const { return info_ != nullptr; }
 
   bool HasInputs(const std::string& name) const;
   //! Get a input with argument's name described in `op_proto`

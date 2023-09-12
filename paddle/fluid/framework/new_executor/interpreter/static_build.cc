@@ -16,8 +16,13 @@
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+#include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/operators/reader/buffered_reader.h"
+
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 // These Ops is OperatorBase, but we have been handle them in static build
 std::set<std::string> OperatorBasesHandledInStaticBuild = {"read",
@@ -54,6 +59,62 @@ std::set<std::string> StaticBuildBlackList = {
 namespace paddle {
 namespace framework {
 namespace interpreter {
+
+using InterpreterCore = framework::InterpreterCore;
+
+static VarMetaInfo GetVarMetaInfo(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  phi::DataType dtype = phi::DataType::UNDEFINED;
+  phi::Place place = phi::Place();
+  if (var == nullptr) {
+    return VarMetaInfo(name, dtype, place);
+  }
+
+  if (var->IsType<phi::DenseTensor>()) {
+    const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
+    if (!UNLIKELY(!tensor.IsInitialized())) {
+      dtype = tensor.dtype();
+      place = tensor.place();
+    }
+  } else if (var->IsType<phi::SelectedRows>()) {
+    auto tensor = var->Get<phi::SelectedRows>().value();
+    if (!UNLIKELY(!tensor.IsInitialized())) {
+      dtype = tensor.dtype();
+      place = tensor.place();
+    }
+  }
+  return VarMetaInfo(name, dtype, place);
+}
+
+std::vector<VarMetaInfo> GetVarsInfo(const Scope* scope,
+                                     VariableNameMap var_map,
+                                     const OperatorBase& op) {
+  std::vector<VarMetaInfo> var_info;
+
+  const std::unordered_set<std::string>* no_need_buffer_vars = nullptr;
+  if (op.HasInfo() && op.Info().NoNeedBufferVarsInferer()) {
+    no_need_buffer_vars = &(op.Info().NoNeedBufferVarsInferer()(
+        op.Inputs(), op.Outputs(), op.Attrs()));
+    if (no_need_buffer_vars->empty()) no_need_buffer_vars = nullptr;
+  }
+  for (auto it = var_map.begin(); it != var_map.end();) {
+    auto& var = *it;
+    bool is_no_need_buffer_var =
+        (no_need_buffer_vars && no_need_buffer_vars->count(var.first) > 0);
+    std::string var_name;
+    var_info.reserve(var_info.size() + var.second.size());
+    for (size_t i = 0; i < var.second.size(); ++i) {
+      auto var_name = var.second[i];
+      if (scope && is_no_need_buffer_var) {
+        var_info.emplace_back(GetVarMetaInfo(*scope, var_name));
+      } else {
+        var_info.emplace_back(var_name);
+      }
+    }
+    ++it;
+  }
+  return var_info;
+}
 
 bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
   // in_black_list = (kernelCode >> 6) & 1
@@ -328,6 +389,54 @@ void FakeInitializeTensorBase(const platform::DeviceContext& dev_ctx,
   }
 }
 
+void RunPreStaticBuild(const framework::Scope& scope,
+                       const platform::Place& dev_place,
+                       const OperatorBase& op) {
+  auto* scope_var = scope.FindVar(op.Output("Scope"));
+  PADDLE_ENFORCE_NOT_NULL(
+      scope_var,
+      platform::errors::PreconditionNotMet(
+          "Expect Scope variable to be set in conditional_block_op, but "
+          "got a null Scope variable. Please set the Scope variable."));
+
+  auto* scopes = scope_var->GetMutable<std::vector<framework::Scope*>>();
+  scopes->resize(1);
+  scopes->front() = &scope.NewScope();
+
+  auto& cur_scope = *scopes->front();
+#ifdef PADDLE_WITH_DNNL
+  // Executor on being destroyed clears oneDNN cache and resets
+  // registered model data layout. This is unwanted for nested
+  // Executors (executors declared inside control ops)
+  platform::DontClearMKLDNNCache(dev_place);
+#endif
+  auto* block = op.Attr<framework::BlockDesc*>("sub_block");
+  VLOG(3) << "Conditional block.idx = " << block->ID()
+          << ", scope = " << &cur_scope;
+
+  auto& skip_vars =
+      op.Attr<std::vector<std::string>>("skip_eager_deletion_vars");
+
+  std::unique_ptr<InterpreterCore> core;
+  LOG_FIRST_N(INFO, 1)
+      << "[ControlFlow][ConditionalBlock] New Executor is Running.";
+
+  VLOG(10) << "[interpreterCore cache]" << core.get();
+  VLOG_IF(10, core) << platform::is_same_place(core->GetPlace(), dev_place);
+
+  framework::interpreter::ExecutionConfig execution_config;
+  execution_config.create_local_scope = false;
+  execution_config.used_for_control_flow_op = true;
+  execution_config.skip_gc_vars =
+      std::set<std::string>(skip_vars.begin(), skip_vars.end());
+
+  core.reset(
+      new InterpreterCore(dev_place, *block, &cur_scope, execution_config));
+
+  std::vector<paddle::framework::OpFuncNode> op_func_nodes;
+  core->Build({}, &op_func_nodes);
+}
+
 void FakeInitializeOutputsForOperatorBase(
     const OperatorBase& op,
     const phi::Place& place,
@@ -343,11 +452,12 @@ void FakeInitializeOutputsForOperatorBase(
       platform::DeviceContextPool::Instance().Get(place);
 
   if (op_type == "conditional_block") {
-    const std::vector<VarInfo> out_var_info_before_build =
-        op.OutputVarsInfo(scope);
-    op.RunPreStaticBuild(*scope, place);
-    const std::vector<VarInfo> out_var_info_after_build =
-        op.OutputVarsInfo(scope);
+    const std::vector<VarMetaInfo> out_var_info_before_build =
+        GetVarsInfo(scope, op.Outputs(), op);
+
+    RunPreStaticBuild(*scope, place, op);
+    const std::vector<VarMetaInfo> out_var_info_after_build =
+        GetVarsInfo(scope, op.Outputs(), op);
 
     // Note(sonder): static_build is not supported if the output of
     // conditional_block is changed after static build.
