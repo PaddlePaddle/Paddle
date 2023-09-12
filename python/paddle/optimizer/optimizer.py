@@ -27,8 +27,8 @@ from paddle.base.framework import (
     default_main_program,
     device_guard,
     in_dygraph_mode,
-    in_dynamic_or_new_ir_mode,
-    in_new_ir_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
     name_scope,
 )
 from paddle.regularizer import L2Decay
@@ -469,8 +469,8 @@ class Optimizer:
             elif isinstance(self._learning_rate, float):
                 # only create global lr_var once
                 lr = self._global_learning_rate()
-                if in_new_ir_mode():
-                    if isinstance(lr, paddle.pir.OpResult):
+                if in_pir_mode():
+                    if isinstance(lr, paddle.ir.OpResult):
                         return
                     else:
                         place = _current_expected_place()
@@ -1315,7 +1315,7 @@ class Optimizer:
             )
             parameter_list = parameters if parameters else self._parameter_list
             with paddle.static.program_guard(program, startup_program):
-                if in_new_ir_mode():
+                if in_pir_mode():
                     params_grads = []
                     grads = paddle.autograd.ir_backward.grad(
                         loss, parameter_list, no_grad_vars=act_no_grad_set
@@ -1394,7 +1394,7 @@ class Optimizer:
         Returns:
             list: A list of operators appended to the current program.
         """
-        if in_dynamic_or_new_ir_mode():
+        if in_dynamic_or_pir_mode():
             with paddle.static.program_guard(
                 paddle.static.default_main_program(),
                 paddle.static.default_startup_program(),
@@ -1415,7 +1415,7 @@ class Optimizer:
                     params_grads['params'] = self.append_regularization_ops(
                         params_grads['params'], self.regularization
                     )
-                if in_new_ir_mode():
+                if in_pir_mode():
                     optimize_ops = self._new_ir_create_optimization_pass(
                         params_grads, param_group_idx=param_group_idx
                     )
@@ -1517,7 +1517,7 @@ class Optimizer:
             Exception: Unknown regularization type
         """
         params_and_grads = []
-        if framework.in_dygraph_mode() or in_new_ir_mode():
+        if framework.in_dygraph_mode() or in_pir_mode():
             for param, grad in parameters_and_grads:
                 new_grad = self._create_regularization_of_grad(
                     param, grad, regularization

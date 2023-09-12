@@ -21,7 +21,7 @@ from ...base.data_feeder import check_variable_and_dtype
 from ...base.framework import (
     _current_expected_place,
     in_dygraph_mode,
-    in_new_ir_mode,
+    in_pir_mode,
 )
 from .initializer import Initializer
 
@@ -149,7 +149,7 @@ class XavierInitializer(Initializer):
             else:
                 out_var._share_underline_tensor_to(var)
             return None
-        elif in_new_ir_mode():
+        elif in_pir_mode():
             if self._uniform:
                 limit = math.sqrt(6.0 / float(fan_in + fan_out))
                 return paddle._ir_ops.uniform(

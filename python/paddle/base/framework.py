@@ -55,8 +55,8 @@ __all__ = [
     'xpu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
-    'in_new_ir_mode',
-    'in_dynamic_or_new_ir_mode',
+    'in_pir_mode',
+    'in_dynamic_or_pir_mode',
     'is_compiled_with_cinn',
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
@@ -214,7 +214,7 @@ def in_dygraph_mode():
     return global_var._dygraph_tracer_ is not None
 
 
-def in_new_ir_mode():
+def in_pir_mode():
     """
 
     This API checks whether paddle runs in static graph mode and use new pir api.
@@ -227,19 +227,19 @@ def in_new_ir_mode():
 
             >>> import paddle
 
-            >>> print(paddle.framework.in_new_ir_mode())
+            >>> print(paddle.framework.in_pir_mode())
             False
 
             >>> paddle.enable_static()
             >>> paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-            >>> print(paddle.framework.in_new_ir_mode())
+            >>> print(paddle.framework.in_pir_mode())
             True
 
     """
     return pir.core._use_new_ir_api() and not in_dygraph_mode()
 
 
-def in_dynamic_or_new_ir_mode():
+def in_dynamic_or_pir_mode():
     """
 
     This API checks whether paddle runs in dynamic graph or new pir mode.
@@ -252,19 +252,19 @@ def in_dynamic_or_new_ir_mode():
 
             >>> import paddle
 
-            >>> print(paddle.framework.in_dynamic_or_new_ir_mode())
+            >>> print(paddle.framework.in_dynamic_or_pir_mode())
             True
 
             >>> paddle.enable_static()
-            >>> print(paddle.framework.in_dynamic_or_new_ir_mode())
+            >>> print(paddle.framework.in_dynamic_or_pir_mode())
             False
 
             >>> paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-            >>> print(paddle.framework.in_dynamic_or_new_ir_mode())
+            >>> print(paddle.framework.in_dynamic_or_pir_mode())
             True
 
     """
-    return in_dygraph_mode() or in_new_ir_mode()
+    return in_dygraph_mode() or in_pir_mode()
 
 
 global_ipu_index = -1
@@ -1084,8 +1084,8 @@ def convert_np_dtype_to_dtype_(np_dtype):
         core.VarDesc.VarType / core.DataType : The data type in Paddle.
 
     """
-    if in_new_ir_mode():
-        return pir.core.convert_np_dtype_to_dtype_(np_dtype)
+    if in_pir_mode():
+        return ir.core.convert_np_dtype_to_dtype_(np_dtype)
 
     # Convert the data type string to numpy data type.
     if isinstance(np_dtype, str) and np_dtype == "bfloat16":
@@ -3672,9 +3672,9 @@ def _stride_in_no_check_dy2st_diff():
 
 
 def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
-    if (
-        op_type == "while"
-    ):  # dont' need check while, while is only a wrapper of inner ops, we will stuck in inner op.
+    if op_type in {"while", "conditional_block"}:
+        # Dont' need check while and conditional_block, it is only a wrapper of inner ops
+        # we will stuck in inner op.
         return
     if outputs is not None:
         for k, v in outputs.items():
