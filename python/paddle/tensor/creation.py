@@ -890,13 +890,15 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
         if out is None:
-            out = _C_ops.full(shape, float(value), dtype, place)
+            value = float(value) if in_dynamic_mode() else value
+            out = _C_ops.full(shape, value, dtype, place)
             out.stop_gradient = True
             return out
 
         if out is not None:
+            value = float(value) if in_dynamic_mode() else value
             # final state mode is support out is not None.
-            _C_ops.full_(out, shape, float(value), dtype, place)
+            _C_ops.full_(out, shape, value, dtype, place)
             out.stop_gradient = True
             return out
     else:
