@@ -262,6 +262,7 @@ class TestTripletMarginWithDistanceLossnew(unittest.TestCase):
                     dy_functional, expected, rtol=1e-5, atol=1e-8
                 )
 
+
 class TestTripletMarginWithDistanceLossError(unittest.TestCase):
     def test_TripletMarginDistanceLoss_error(self):
         paddle.disable_static()
@@ -282,6 +283,7 @@ class TestTripletMarginWithDistanceLossError(unittest.TestCase):
             reduction="unsupport reduction",
         )
         paddle.enable_static()
+
 
 class TestTripletMarginWithDistanceLossDF(unittest.TestCase):
     def test_TripletMarginDistanceLoss_distance_function(self):
@@ -343,6 +345,7 @@ class TestTripletMarginWithDistanceLossDF(unittest.TestCase):
                 static_functional, dy_functional, rtol=1e-5, atol=1e-8
             )
 
+
 class TestTripletMarginWithDistanceLossDFE(unittest.TestCase):
     def test_TripletMarginWithDistanceLoss_distance_funtion_error(self):
         paddle.disable_static()
@@ -366,6 +369,7 @@ class TestTripletMarginWithDistanceLossDFE(unittest.TestCase):
             distance_function=func,
         )
         paddle.enable_static()
+
 
 class TestTripletMarginWithDistanceLossDim(unittest.TestCase):
     def test_TripletMarginDistanceLoss_dimension(self):
@@ -392,6 +396,7 @@ class TestTripletMarginWithDistanceLossDim(unittest.TestCase):
             negative=negative,
         )
         paddle.enable_static()
+
 
 class TestTripletMarginWithDistanceLossSwap(unittest.TestCase):
     def test_TripletMarginWithDistanceLoss_swap(self):
@@ -461,6 +466,7 @@ class TestTripletMarginWithDistanceLossSwap(unittest.TestCase):
         np.testing.assert_allclose(
             dy_functional, expected, rtol=1e-5, atol=1e-8
         )
+
 
 class TestTripletMarginWithDistanceLossMargin(unittest.TestCase):
     def test_TripletMarginWithDistanceLoss_margin(self):
