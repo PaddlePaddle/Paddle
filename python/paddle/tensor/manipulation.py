@@ -34,6 +34,7 @@ from ..framework import (
     core,
     dygraph_only,
     in_dynamic_mode,
+    in_dynamic_or_new_ir_mode,
     in_new_ir_mode,
 )
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
@@ -1968,35 +1969,31 @@ def split(x, num_or_sections, axis=0, name=None):
     """
     input = x
     dim = axis
-    if in_dynamic_mode():
-        if isinstance(dim, Variable):
-            dim = dim.item(0)
-        assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
-        dim = (len(input.shape) + dim) if dim < 0 else dim
+    if in_dynamic_or_new_ir_mode():
+        if in_dynamic_mode():
+            if isinstance(dim, Variable):
+                dim = dim.item(0)
+            assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
+            dim = (len(input.shape) + dim) if dim < 0 else dim
 
-        if isinstance(num_or_sections, (list, tuple)):
-            if paddle.utils._contain_var(num_or_sections):
-                for index, item in enumerate(num_or_sections):
-                    if isinstance(item, Variable):
-                        num_or_sections[index] = num_or_sections[index].item()
-        elif not isinstance(num_or_sections, int):
-            raise TypeError(
-                "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
-                "received %s." % (type(num_or_sections))
-            )
+            if isinstance(num_or_sections, (list, tuple)):
+                if paddle.utils._contain_var(num_or_sections):
+                    for index, item in enumerate(num_or_sections):
+                        if isinstance(item, Variable):
+                            num_or_sections[index] = num_or_sections[
+                                index
+                            ].item()
+            elif not isinstance(num_or_sections, int):
+                raise TypeError(
+                    "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
+                    "received %s." % (type(num_or_sections))
+                )
+
         if isinstance(num_or_sections, int):
             return _C_ops.split_with_num(input, num_or_sections, dim)
         else:
             return _C_ops.split(input, num_or_sections, dim)
     else:
-        if paddle.ir.core._use_new_ir_api():
-            if not isinstance(num_or_sections, int):
-                return paddle._ir_ops.split(input, num_or_sections, dim)
-            else:
-                raise NotImplementedError(
-                    "_ir_ops.split_with_num is not implemented, please change sections as list"
-                )
-
         check_variable_and_dtype(
             input,
             'input',

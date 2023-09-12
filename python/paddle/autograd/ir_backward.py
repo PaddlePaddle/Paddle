@@ -88,8 +88,8 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
         # fwd : op1 -> op2 -> op3 -> output
         # bwd : op1G <- op2G <- op3G <- outputG <- fillop/feedop
         if grad is None:
-            output_grad = paddle.full(
-                output.shape,
+            output_grad = paddle.full_like(
+                output,
                 1.0,
                 dtype=output.dtype,
             )
@@ -104,13 +104,13 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
         else:
             if output.shape != grad.shape:
                 raise ValueError(
-                    "The shape of grad_output[%d] should be the same as the shape of output[%d]"
-                    % (i, i)
+                    "The shape of grad_output[%d] %s should be the same as the shape of output[%d] %s"
+                    % (i, str(output.shape), i, str(grad.shape))
                 )
             if output.dtype != grad.dtype:
                 raise ValueError(
-                    "The dtype of grad_output[%d] should be the same as the dtype of output[%d]"
-                    % (i, i)
+                    "The dtype of grad_output[%d] %s should be the same as the dtype of output[%d] %s"
+                    % (i, str(output.dtype), i, str(grad.dtype))
                 )
             feedop = grad.get_defining_op()
             update_bwdop_structure(
@@ -133,8 +133,8 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                 visited_output.add(opresult)
                 continue
             else:
-                grad_value = paddle.full(
-                    opresult.shape,
+                grad_value = paddle.full_like(
+                    opresult,
                     0.0,
                     opresult.dtype,
                 )
@@ -369,8 +369,8 @@ def append_backward_ops(
                     # second case:
                     # last bwd_op return None because input in no_grad_set,
                     # but this bwd_op need a input.
-                    grad_value = paddle.full(
-                        value.shape,
+                    grad_value = paddle.full_like(
+                        value,
                         0.0,
                         dtype=value.dtype,
                     )
@@ -585,7 +585,6 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         block, inverse_effective_forward_ops, no_grad_set, backward_ops, state
     )
     # now value_to_valuegrad should be value <-> value (add sum op for the same values's gradvalue)
-
     outputs_set, inputs_set, no_gradvar_set = create_backward_prune_set(
         inputs, complete_outputs, no_grad_set, state
     )

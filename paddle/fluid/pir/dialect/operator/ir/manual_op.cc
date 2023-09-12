@@ -22,6 +22,7 @@
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/fusion.h"
 #include "paddle/phi/infermeta/multiary.h"
+#include "paddle/phi/infermeta/unary.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type.h"
