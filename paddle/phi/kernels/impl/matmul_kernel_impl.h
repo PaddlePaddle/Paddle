@@ -1291,7 +1291,7 @@ bool inline MatMulInt8Function(const phi::GPUContext& ctx,
       return false;
     }
   } else if (!trans_x && !trans_y) {
-    if (!(N % 4 == 0 || N == 1) || !(K % 4 == 0)) {
+    if (!(N % 4 == 0 || N == 1) || !(K % 4 == 0) || (M == 1 && N == 1)) {
       return false;
     }
   } else if (!trans_x && trans_y) {
