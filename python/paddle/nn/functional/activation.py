@@ -1060,6 +1060,7 @@ def silu(x, name=None):
             x,
             'x',
             [
+                'float16',
                 'uint16',
                 'float32',
                 'float64',
