@@ -1353,9 +1353,7 @@ class OpTest(unittest.TestCase):
 
             # executor run
             executor = Executor(place)
-            (outs,) = executor.run(
-                ir_program, feed=feed, fetch_list=[fetch_list]
-            )
+            outs = executor.run(ir_program, feed=feed, fetch_list=[fetch_list])
         return outs
 
     def _check_ir_output(self, place, program, feed_map, fetch_list, outs):
