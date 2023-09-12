@@ -613,20 +613,5 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistInplaceOptionalOutput(
   return results;
 }
 
-/*
-std::vector<phi::DenseTensor*> SetInplaceOptionalVectorKernelOutput(
-    size_t out_size, const paddle::optional<std::vector<Tensor>>& out) {
-  std::vector<phi::DenseTensor*> results;
-  if (out) {
-    results = std::vector<phi::DenseTensor*>(out->size(), nullptr);
-    for (size_t i = 0; i < out->size(); ++i) {
-      results[i] = static_cast<phi::DenseTensor*>(out->at(i).impl().get());
-    }
-  }
-  return results;
-}
-
-*/
-
 }  // namespace experimental
 }  // namespace paddle

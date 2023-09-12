@@ -281,23 +281,35 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
 
     # input: phi::Tensor
     # output: inplace paddle::optional<phi::Tensor>
-    def test_adagrad_for_dist_tensor(self):
+    def test_adamax_for_dist_tensor(self):
         dtype = np.float16
         mp_dtype = np.float32
         shape = [123, 321]
 
+        beta1 = 0.78
+        beta2 = 0.899
+        epsilon = 1e-5
         param = np.random.random(shape).astype(dtype)
         grad = np.random.random(shape).astype(dtype)
         moment = np.random.random(shape).astype(dtype)
+        inf_norm = np.random.random(shape).astype(dtype)
         master_param = param.astype(mp_dtype)
 
-        lr = 0.01
-        epsilon = 1e-8
+        lr = np.array([0.002]).astype("float32")
+        beta1_pow = np.array([beta1**10]).astype("float32")
 
         local_param, dist_param = self.create_local_and_dist_tensor_pair(param)
         local_grad, dist_grad = self.create_local_and_dist_tensor_pair(grad)
+        local_lr, dist_lr = self.create_local_and_dist_tensor_pair(lr)
+        (
+            local_beta1_pow,
+            dist_beta1_pow,
+        ) = self.create_local_and_dist_tensor_pair(beta1_pow)
         local_moment, dist_moment = self.create_local_and_dist_tensor_pair(
             moment
+        )
+        local_inf_norm, dist_inf_norm = self.create_local_and_dist_tensor_pair(
+            inf_norm
         )
         (
             local_master_param,
@@ -307,13 +319,18 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
         (
             local_param_out,
             local_moment_out,
+            local_inf_norm_out,
             local_master_param_out,
-        ) = paddle._C_ops.adagrad_(
+        ) = paddle._C_ops.adamax_(
             local_param,
             local_grad,
+            local_lr,
             local_moment,
-            lr,
+            local_inf_norm,
+            local_beta1_pow,
             local_master_param,
+            beta1,
+            beta2,
             epsilon,
             True,
         )
@@ -321,19 +338,25 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
         (
             dist_param_out,
             dist_moment_out,
+            dist_inf_norm_out,
             dist_master_param_out,
-        ) = paddle._C_ops.adagrad_(
+        ) = paddle._C_ops.adamax_(
             dist_param,
             dist_grad,
+            dist_lr,
             dist_moment,
-            lr,
+            dist_inf_norm,
+            dist_beta1_pow,
             dist_master_param,
+            beta1,
+            beta2,
             epsilon,
             True,
         )
 
         self.check_tensor_eq(local_param_out, dist_param_out)
         self.check_tensor_eq(local_moment_out, dist_moment_out)
+        self.check_tensor_eq(local_inf_norm_out, dist_inf_norm_out)
         self.check_tensor_eq(local_master_param_out, dist_master_param_out)
 
     # input: std::vector<phi::Tensor>, phi::Tensor
