@@ -93,19 +93,23 @@ MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
 VECTOR_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput({}, &api_output);
     std::vector<phi::DenseTensor*> dense_out(dist_out.size());
-    for (size_t i = 0; i < dist_out.size(); i++) {{
+    for (size_t i = 0; i < dist_out.size(); ++i) {{
         dense_out[i] = const_cast<phi::DenseTensor*>(&dist_out[i]->value());
     }}
 """
 MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
     auto dist_out_{out_name} = SetKernelDistOutput({size}, {in_name});
     std::vector<phi::DenseTensor*> dense_out_{out_name}(dist_out_{out_name}.size());
-    for (size_t i = 0; i < dist_out_{out_name}.size(); i++) {{
+    for (size_t i = 0; i < dist_out_{out_name}.size(); ++i) {{
         dense_out_{out_name}[i] = const_cast<phi::DenseTensor*>(&dist_out_{out_name}[i]->value());
     }}
 """
-# TODO(GhostScreaming): support tuple output later
-TUPLE_OUT_CREATION_TEMPLATE = """
+MULTI_VECTOR_INPLACE_AND_OPTIONAL_OUT_CREATION_TEMPLATE = """
+    auto dist_out_{out_name} = {out_func}({size}, {in_name});
+    std::vector<phi::DenseTensor*> dense_out_{out_name}(dist_out_{out_name}.size());
+    for (size_t i = 0; i < dist_out_{out_name}.size(); ++i) {{
+        dense_out_{out_name}[i] = dist_out_{out_name}[i] ? const_cast<phi::DenseTensor*>(&dist_out_{out_name}[i]->value()) : nullptr;
+    }}
 """
 
 # 3. Infer Global Shape
@@ -119,12 +123,10 @@ VECTOR_GLOBAL_META_IN_DECL_TEMPLATE = """
       {name}_meta_vec.emplace_back(MakeMetaTensor(*tmp.impl()));
     }}
     std::vector<const phi::MetaTensor*> {name}_meta_ptr_vec({name}_meta_vec.size());
-    for (size_t i=0; i<{name}_meta_ptr_vec.size(); i++) {{
+    for (size_t i=0; i < {name}_meta_ptr_vec.size(); ++i) {{
       {name}_meta_ptr_vec[i] = &{name}_meta_vec[i];
     }}
 """
-
-# TODO(GhostScreaming): support optional args later
 OPTIONAL_GLOBAL_SINGLE_META_IN_TEMPLATE = """meta_dist_{}, """
 OPTIONAL_GLOBAL_SINGLE_META_IN_DECL_TEMPLATE = """
     phi::MetaTensor meta_dist_{name} = {name} ? MakeMetaTensor(*(*{name}).impl()) : phi::MetaTensor();
@@ -138,7 +140,7 @@ OPTIONAL_GLOBAL_VECTOR_META_IN_DECL_TEMPLATE = """
       }}
     }}
     std::vector<const phi::MetaTensor*> {name}_meta_ptr_vec_tmp({name}_meta_vec_tmp.size());
-    for (size_t i=0; i<{name}_meta_ptr_vec_tmp.size(); i++) {{
+    for (size_t i = 0; i < {name}_meta_ptr_vec_tmp.size(); ++i) {{
       {name}_meta_ptr_vec_tmp[i] = &{name}_meta_vec_tmp[i];
     }}
     paddle::optional<std::vector<const phi::MetaTensor*>> {name}_meta_ptr_vec =
@@ -152,7 +154,7 @@ VECTOR_GLOBAL_META_OUT_DECL_TEMPLATE = """
       {name}_meta_vec.emplace_back(phi::MetaTensor(tmp));
     }}
     std::vector<phi::MetaTensor*> {name}_meta_ptr_vec({name}.size());
-    for (size_t i=0; i<{name}_meta_vec.size(); i++) {{
+    for (size_t i = 0; i < {name}_meta_vec.size(); ++i) {{
       {name}_meta_ptr_vec[i] = &{name}_meta_vec[i];
     }}
 """
@@ -191,7 +193,7 @@ VECTOR_PREPARE_DATA_TEMPLATE = """
     }}
     std::vector<phi::MetaTensor> dense_input_{name}_meta_vec = MakeMetaTensor(dense_input_{name}_vec);
     std::vector<const phi::MetaTensor*> dense_input_{name}_meta_ptr_vec(dense_input_{name}_meta_vec.size());
-    for (size_t i = 0; i < dense_input_{name}_meta_ptr_vec.size(); i++) {{
+    for (size_t i = 0; i < dense_input_{name}_meta_ptr_vec.size(); ++i) {{
       dense_input_{name}_meta_ptr_vec[i] = &dense_input_{name}_meta_vec[i];
     }}
 """
@@ -210,7 +212,7 @@ OPTIONAL_VECTOR_PREPARE_DATA_TEMPLATE = """
     paddle::optional<std::vector<const phi::DenseTensor*>> input_{name}(dense_input_{name}_vec);
     std::vector<phi::MetaTensor> dense_input_{name}_meta_vec = MakeMetaTensor(dense_input_{name}_vec);
     std::vector<const phi::MetaTensor*> dense_input_{name}_meta_ptr_vec_tmp(dense_input_{name}_meta_vec.size());
-    for (size_t i = 0; i < dense_input_{name}_meta_ptr_vec_tmp.size(); i++) {{
+    for (size_t i = 0; i < dense_input_{name}_meta_ptr_vec_tmp.size(); ++i) {{
       dense_input_{name}_meta_ptr_vec_tmp[i] = &dense_input_{name}_meta_vec[i];
     }}
     paddle::optional<std::vector<const phi::MetaTensor*>> dense_input_{name}_meta_ptr_vec =
@@ -238,7 +240,7 @@ SINGLE_META_OUT_DECL_TEMPLATE = """
 VECTOR_META_OUT_DECL_TEMPLATE = """
     std::vector<phi::MetaTensor> {name}_meta_vec = MakeMetaTensor({name});
     std::vector<phi::MetaTensor*> {name}_meta_ptr_vec({name}_meta_vec.size());
-    for (size_t i=0; i<{name}_meta_vec.size(); i++) {{
+    for (size_t i = 0; i < {name}_meta_vec.size(); ++i) {{
       {name}_meta_ptr_vec[i] = &{name}_meta_vec[i];
     }}
 """
@@ -270,7 +272,7 @@ MULTI_SINGLE_SET_DIST_OUT_DIMS = """
     dist_out_{}->unsafe_set_dims(dense_out_{}->dims());
 """
 VECTOR_SET_DIST_OUT_DIMS = """
-    for (size_t i = 0; i < dist_out.size(); i++) {{
+    for (size_t i = 0; i < dist_out.size(); ++i) {{
         dist_out[i]->unsafe_set_dims(dense_out[i]->dims());
     }}
 """
@@ -290,22 +292,15 @@ SUFFIX_VECTOR_TENSOR_NAME = "_vec"
 #     types : [], list of output types
 #     out_size_expr : [], expression for getting size of vector<Tensor>
 
-# TODO(GhostScreaming): Support std::tuple<...> type of input and output later.
-skip_op_lists = [
-    "check_finite_and_unscale",
-    "coalesce_tensor",
-    "update_loss_scaling",
-    "einsum",
-    "einsum_grad",
-    "merged_adam",
-    "merged_momentum",
-    "fused_adam",
-]
 
 # TODO(GhostScreaming): Black list for operators which infer shape in runtime.
 ops_infer_shape_in_runtime = [
     "bincount",
+    "bicubic_interp",
+    "bilinear_interp",
     "linear_interp",
+    "nearest_interp",
+    "trilinear_interp",
 ]
 
 
@@ -489,25 +484,28 @@ class DistForwardAPI(ForwardAPI):
                 get_out_code = f"&std::get<{i}>(api_output)"
                 if self.is_inplace_and_optional_output(i):
                     get_out_code = f"std::get<{i}>(api_output).get_ptr()"
-
                 if out_type == 'std::vector<Tensor>':
                     self.vector_output_size_assertion_check()
                     # Special case for inplace vector and inplace optional<vector>
-                    # TODO(chenweihang): support this branch later
                     if self.is_inplace_output(i):
-                        set_out_func = "SetInplaceVectorKernelOutput"
+                        set_out_func = "SetKernelDistInplaceOutput"
                         if self.is_inplace_and_optional_output(i):
-                            set_out_func = (
-                                "SetInplaceOptionalVectorKernelOutput"
-                            )
+                            set_out_func = "SetKernelDistInplaceOptionalOutput"
                             get_out_code = f"std::get<{i}>(api_output)"
-                    output_creation_code += (
-                        MULTI_VECTOR_OUT_CREATION_TEMPLATE.format(
+                        output_creation_code += MULTI_VECTOR_INPLACE_AND_OPTIONAL_OUT_CREATION_TEMPLATE.format(
+                            out_func=set_out_func,
                             out_name=i,
                             size=self.outputs['out_size_expr'][i],
                             in_name=get_out_code,
                         )
-                    )
+                    else:
+                        output_creation_code += (
+                            MULTI_VECTOR_OUT_CREATION_TEMPLATE.format(
+                                out_name=i,
+                                size=self.outputs['out_size_expr'][i],
+                                in_name=get_out_code,
+                            )
+                        )
                 else:
                     if self.infer_meta['spmd_rule'] is not None:
                         output_creation_code += (
@@ -991,7 +989,6 @@ class DistForwardAPI(ForwardAPI):
         )
 
     def check_argument_whether_support_auto_parallel(self):
-        global skip_op_lists
         for name in self.inputs['names']:
             if self.inputs['input_info'][name] not in [
                 "const Tensor&",
@@ -1003,9 +1000,6 @@ class DistForwardAPI(ForwardAPI):
         for out_type in self.outputs['types']:
             if out_type not in ["Tensor", "std::vector<Tensor>"]:
                 return False
-
-        if self.kernel['func'][0] in skip_op_lists:
-            return False
         return True
 
     # override BaseAPI's method

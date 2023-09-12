@@ -590,5 +590,43 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
   return results;
 }
 
+std::vector<phi::distributed::DistTensor*> SetKernelDistInplaceOutput(
+    size_t out_size, std::vector<Tensor>* out) {
+  std::vector<phi::distributed::DistTensor*> results(out->size(), nullptr);
+  for (size_t i = 0; i < out->size(); ++i) {
+    results[i] =
+        static_cast<phi::distributed::DistTensor*>(out->at(i).impl().get());
+  }
+  return results;
+}
+
+std::vector<phi::distributed::DistTensor*> SetKernelDistInplaceOptionalOutput(
+    size_t out_size, paddle::optional<std::vector<Tensor>> out) {
+  std::vector<phi::distributed::DistTensor*> results;
+  if (out) {
+    results = std::vector<phi::distributed::DistTensor*>(out->size(), nullptr);
+    for (size_t i = 0; i < out->size(); ++i) {
+      results[i] =
+          static_cast<phi::distributed::DistTensor*>(out->at(i).impl().get());
+    }
+  }
+  return results;
+}
+
+/*
+std::vector<phi::DenseTensor*> SetInplaceOptionalVectorKernelOutput(
+    size_t out_size, const paddle::optional<std::vector<Tensor>>& out) {
+  std::vector<phi::DenseTensor*> results;
+  if (out) {
+    results = std::vector<phi::DenseTensor*>(out->size(), nullptr);
+    for (size_t i = 0; i < out->size(); ++i) {
+      results[i] = static_cast<phi::DenseTensor*>(out->at(i).impl().get());
+    }
+  }
+  return results;
+}
+
+*/
+
 }  // namespace experimental
 }  // namespace paddle
