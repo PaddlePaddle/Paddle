@@ -734,42 +734,42 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
         PADDLE_THROW("Type[%s] in attribute map not support yet", ss.str());
       }
     }
-
-    auto& output_name_list = op_yaml_info.OutputNames();
-    for (size_t i = 0; i < output_name_list.size(); ++i) {
-      auto name = output_name_list[i];
-      pir::Value ptr = op->result(i);
-
-      auto out_var_name = name_map.at(ptr);
-
-      auto type = ptr.type();
-      auto legacy_arg_name =
-          op_normalizer.GetLegacyArgName(fluid_op_name, name);
-      if (type.isa<paddle::dialect::AllocatedDenseTensorType>() ||
-          type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
-        out_name_map[legacy_arg_name].push_back(out_var_name);
-      } else if (type.isa<pir::VectorType>()) {
-        auto var = scope->FindVar(out_var_name);
-        auto var_ref = var->Get<paddle::framework::VariableRefArray>();
-        for (size_t k = 0; k < var_ref.size(); ++k) {
-          PADDLE_ENFORCE(variable_2_var_name.count(var_ref[k]),
-                         "Variable MUST in variable_2_var_name map");
-          out_name_map[legacy_arg_name].push_back(
-              variable_2_var_name.at(var_ref[k]));
-        }
-      } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
-            "only support AllocatedDenseTensor, AllocatedSelectedRowsType  and "
-            "pir::vector type"));
-      }
-    }
-
-    auto& op_info = paddle::framework::OpInfoMap::Instance().Get(fluid_op_name);
-    auto ptr =
-        op_info.Creator()(fluid_op_name, in_name_map, out_name_map, attr_map);
-
-    std::shared_ptr<paddle::framework::OperatorBase> res(ptr);
-    return res;
   }
+
+  auto& output_name_list = op_yaml_info.OutputNames();
+  for (size_t i = 0; i < output_name_list.size(); ++i) {
+    auto name = output_name_list[i];
+    pir::Value ptr = op->result(i);
+
+    auto out_var_name = name_map.at(ptr);
+
+    auto type = ptr.type();
+    auto legacy_arg_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
+    if (type.isa<paddle::dialect::AllocatedDenseTensorType>() ||
+        type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+      out_name_map[legacy_arg_name].push_back(out_var_name);
+    } else if (type.isa<pir::VectorType>()) {
+      auto var = scope->FindVar(out_var_name);
+      auto var_ref = var->Get<paddle::framework::VariableRefArray>();
+      for (size_t k = 0; k < var_ref.size(); ++k) {
+        PADDLE_ENFORCE(variable_2_var_name.count(var_ref[k]),
+                       "Variable MUST in variable_2_var_name map");
+        out_name_map[legacy_arg_name].push_back(
+            variable_2_var_name.at(var_ref[k]));
+      }
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "only support AllocatedDenseTensor, AllocatedSelectedRowsType  and "
+          "pir::vector type"));
+    }
+  }
+
+  auto& op_info = paddle::framework::OpInfoMap::Instance().Get(fluid_op_name);
+  auto ptr =
+      op_info.Creator()(fluid_op_name, in_name_map, out_name_map, attr_map);
+
+  std::shared_ptr<paddle::framework::OperatorBase> res(ptr);
+  return res;
 }
+
 }  // namespace pir
