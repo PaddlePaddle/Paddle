@@ -76,15 +76,15 @@ class LayerHelperBase:
 
         Examples:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import numpy as np
-            import paddle.base as base
+                >>> import numpy as np
+                >>> import paddle.base as base
 
-            with base.dygraph.guard():
-                x = np.ones([2, 2], np.float32)
-                y = base.dygraph.to_variable(x)
-
+                >>> with base.dygraph.guard():
+                ...     x = np.ones([2, 2], np.float32)
+                ...     y = base.dygraph.to_variable(x)
+                ...
         """
         if isinstance(value, np.ndarray):
             return core.eager.Tensor(
@@ -431,6 +431,12 @@ class LayerHelperBase:
                 **attr._to_kwargs(with_initializer=True)
             )
         else:
+            if paddle.ir.core._use_new_ir_api():
+                return paddle.ir.core.create_parameter(
+                    dtype=dtype,
+                    shape=shape,
+                    **attr._to_kwargs(with_initializer=True)
+                )
             self.startup_program.global_block().create_parameter(
                 dtype=dtype,
                 shape=shape,

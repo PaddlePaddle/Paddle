@@ -31,7 +31,6 @@ sys.path.append("..")
 from white_list import (
     check_shape_white_list,
     compile_vs_runtime_white_list,
-    new_ir_python_api_grad_white_list,
     no_check_set_white_list,
     no_grad_set_white_list,
     op_accuracy_white_list,
@@ -1935,7 +1934,7 @@ class OpTest(unittest.TestCase):
         only_check_prim=False,
         inplace_atol=None,
         check_cinn=False,
-        check_new_ir=True,
+        check_new_ir=False,
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
@@ -2461,11 +2460,7 @@ class OpTest(unittest.TestCase):
             dygraph_checker.check()
             dygraph_dygraph_outs = dygraph_checker.outputs
 
-        if (
-            self.op_type
-            in new_ir_python_api_grad_white_list.new_ir_python_api_grad_white_list
-            and check_new_ir
-        ):
+        if check_new_ir:
             if (
                 type(place) is paddle.base.libpaddle.CPUPlace
                 or type(place) is paddle.base.libpaddle.CUDAPlace
@@ -2586,7 +2581,7 @@ class OpTest(unittest.TestCase):
         inplace_atol=None,
         check_cinn=False,
         only_check_prim=False,
-        check_new_ir=True,
+        check_new_ir=False,
     ):
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
@@ -2778,7 +2773,7 @@ class OpTest(unittest.TestCase):
         only_check_prim=False,
         atol=1e-5,
         check_cinn=False,
-        check_new_ir=True,
+        check_new_ir=False,
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -2821,7 +2816,7 @@ class OpTest(unittest.TestCase):
         numeric_place=None,
         atol=1e-5,
         check_cinn=False,
-        check_new_ir=True,
+        check_new_ir=False,
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -3019,11 +3014,7 @@ class OpTest(unittest.TestCase):
                 )
 
         # get new ir gradient
-        if (
-            self.op_type
-            in new_ir_python_api_grad_white_list.new_ir_python_api_grad_white_list
-            and check_new_ir
-        ):
+        if check_new_ir:
             if (
                 type(place) is paddle.base.libpaddle.CPUPlace
                 or type(place) is paddle.base.libpaddle.CUDAPlace
@@ -3038,6 +3029,23 @@ class OpTest(unittest.TestCase):
                         no_grad_set,
                     )
                 print("New IR gradient ends...........")
+                fp32_analytic_grads = []
+                for grad in new_ir_grad:
+                    if grad.dtype == np.uint16:
+                        grad = convert_uint16_to_float(grad)
+                        max_relative_error = (
+                            0.01
+                            if max_relative_error < 0.01
+                            else max_relative_error
+                        )
+                    fp32_analytic_grads.append(grad)
+                new_ir_grad = fp32_analytic_grads
+                if self.is_float16_op():
+                    max_relative_error = (
+                        0.01
+                        if max_relative_error < 0.01
+                        else max_relative_error
+                    )
                 self._assert_is_close(
                     numeric_grads,
                     new_ir_grad,
@@ -3476,6 +3484,14 @@ class OpTest(unittest.TestCase):
                             key
                         ][i]
             fetch_list = getattr(self, "fetch_list", [])
+
+            # cast outputs
+            if self.dtype == np.uint16:
+                for output in outputs:
+                    outputs[output][0] = paddle.cast(
+                        outputs[output][0],
+                        paddle.base.core.DataType.FLOAT32,
+                    )
 
             outputs_valid = outputs
             loss_inputs = []

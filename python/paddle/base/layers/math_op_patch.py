@@ -18,7 +18,7 @@ import inspect
 from .. import core
 from ..framework import Variable, unique_name, static_only
 from .layer_function_generator import OpProtoHolder
-from paddle.base.dygraph.base import in_declarative_mode
+from paddle.base.dygraph.base import in_to_static_mode
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.BOOL,
@@ -147,11 +147,11 @@ def monkey_patch_variable():
 
             .. code-block:: python
 
-                import paddle
-                paddle.enable_static()
+                >>> import paddle
+                >>> paddle.enable_static()
 
-                x = paddle.static.data(name="x", shape=[2,2], dtype='float32')
-                y = x.cpu()
+                >>> x = paddle.static.data(name="x", shape=[2,2], dtype='float32')
+                >>> y = x.cpu()
         """
         block = current_block(self)
         tmp_name = unique_tmp_name()
@@ -194,12 +194,12 @@ def monkey_patch_variable():
 
             .. code-block:: python
 
-                import paddle
-                paddle.enable_static()
+                >>> import paddle
+                >>> paddle.enable_static()
 
-                x = paddle.static.data(name="x", shape=[2,2], dtype='float32')
-                y = x.cpu()
-                z = y.cuda()
+                >>> x = paddle.static.data(name="x", shape=[2,2], dtype='float32')
+                >>> y = x.cpu()
+                >>> z = y.cuda()
         """
         if device_id is not None:
             warnings.warn("device_id is not supported, and it will be ignored.")
@@ -258,30 +258,35 @@ def monkey_patch_variable():
             In Static Graph Mode:
 
             .. code-block:: python
-                import paddle
-                import paddle.base as base
-                paddle.enable_static()
-                startup_prog = base.Program()
-                main_prog = base.Program()
-                with base.program_guard(startup_prog, main_prog):
-                    original_variable = paddle.static.data(name = "new_variable", shape=[2,2], dtype='float32')
-                    new_variable = original_variable.astype('int64')
-                    print("new var's dtype is: {}".format(new_variable.dtype))
+
+                >>> import paddle
+                >>> import paddle.base as base
+                >>> paddle.enable_static()
+                >>> startup_prog = paddle.static.Program()
+                >>> main_prog = paddle.static.Program()
+                >>> with base.program_guard(startup_prog, main_prog):
+                ...     original_variable = paddle.static.data(name = "new_variable", shape=[2,2], dtype='float32')
+                ...     new_variable = original_variable.astype('int64')
+                ...     print("new var's dtype is: {}".format(new_variable.dtype))
+                ...
+                new var's dtype is: paddle.int64
 
             In Dygraph Mode:
 
             .. code-block:: python
 
-                import paddle.base as base
-                import numpy as np
+                >>> import paddle.base as base
+                >>> import numpy as np
 
-                x = np.ones([2, 2], np.float32)
-                with base.dygraph.guard():
-                    original_variable = base.dygraph.to_variable(x)
-                    print("original var's dtype is: {}, numpy dtype is {}".format(original_variable.dtype, original_variable.numpy().dtype))
-                    new_variable = original_variable.astype('int64')
-                    print("new var's dtype is: {}, numpy dtype is {}".format(new_variable.dtype, new_variable.numpy().dtype))
-
+                >>> x = np.ones([2, 2], np.float32)
+                >>> with base.dygraph.guard():
+                ...     original_variable = base.dygraph.to_variable(x)
+                ...     print("original var's dtype is: {}, numpy dtype is {}".format(original_variable.dtype, original_variable.numpy().dtype))
+                ...     new_variable = original_variable.astype('int64')
+                ...     print("new var's dtype is: {}, numpy dtype is {}".format(new_variable.dtype, new_variable.numpy().dtype))
+                ...
+                original var's dtype is: paddle.float32, numpy dtype is float32
+                new var's dtype is: paddle.int64, numpy dtype is int64
         """
         block = current_block(self)
         out = create_new_tmp_var(block, dtype)
@@ -302,7 +307,7 @@ def monkey_patch_variable():
 
         """
         if not isinstance(var, Variable):
-            if in_declarative_mode():
+            if in_to_static_mode():
                 """in dy2static mode, x may be tensorable values such as int, float, np.array"""
                 from paddle.tensor.creation import to_tensor
 
@@ -387,14 +392,15 @@ def monkey_patch_variable():
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                paddle.enable_static()
+                >>> paddle.enable_static()
 
-                # create a static Variable
-                x = paddle.static.data(name='x', shape=[3, 2, 1])
-                # print the dimension of the Variable
-                print(x.ndim)
+                >>> # create a static Variable
+                >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
+                >>> # print the dimension of the Variable
+                >>> print(x.ndim())
+                3
         """
         return len(self.shape)
 
@@ -408,14 +414,15 @@ def monkey_patch_variable():
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                paddle.enable_static()
+                >>> paddle.enable_static()
 
-                # create a static Variable
-                x = paddle.static.data(name='x', shape=[3, 2, 1])
-                # print the dimension of the Variable
-                print(x.ndimension)
+                >>> # create a static Variable
+                >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
+                >>> # print the dimension of the Variable
+                >>> print(x.ndimension())
+                3
         """
         return len(self.shape)
 
@@ -429,14 +436,15 @@ def monkey_patch_variable():
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                paddle.enable_static()
+                >>> paddle.enable_static()
 
-                # create a static Variable
-                x = paddle.static.data(name='x', shape=[3, 2, 1])
-                # print the dimension of the Variable
-                print(x.dim)
+                >>> # create a static Variable
+                >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
+                >>> # print the dimension of the Variable
+                >>> print(x.dim())
+                3
         """
         return len(self.shape)
 
