@@ -431,6 +431,12 @@ class LayerHelperBase:
                 **attr._to_kwargs(with_initializer=True)
             )
         else:
+            if paddle.ir.core._use_new_ir_api():
+                return paddle.ir.core.create_parameter(
+                    dtype=dtype,
+                    shape=shape,
+                    **attr._to_kwargs(with_initializer=True)
+                )
             self.startup_program.global_block().create_parameter(
                 dtype=dtype,
                 shape=shape,
