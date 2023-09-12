@@ -159,7 +159,8 @@ DEFINE_ADT_UNION(Equation,
                  Identity<tOut<Index>, tIn<Index>>,
                  Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>,
                  UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>,
-                 InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>, tIn<tInMsgBox<OpArgIndexes>>>);
+                 InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>,
+                                    tIn<tInMsgBox<OpArgIndexes>>>);
 
 // Variable = Iterator | Index | FakeOpPlaceHolder
 DEFINE_ADT_UNION(Variable,
