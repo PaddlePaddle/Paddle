@@ -26,10 +26,10 @@
 namespace phi {
 
 template <typename T, typename Context, typename Functor>
-void LogicalKnernelImpl(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        const DenseTensor& y,
-                        DenseTensor* out) {
+void LogicalKernelImpl(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       DenseTensor* out) {
   dev_ctx.template Alloc<bool>(out);
   Functor binary_func;
   std::vector<const DenseTensor*> ins = {&x, &y};
@@ -38,10 +38,10 @@ void LogicalKnernelImpl(const Context& dev_ctx,
 }
 
 template <typename T, typename Context, typename Functor>
-void InplaceLogicalKnernelImpl(const Context& dev_ctx,
-                               const DenseTensor& x,
-                               const DenseTensor& y,
-                               DenseTensor* out) {
+void InplaceLogicalKernelImpl(const Context& dev_ctx,
+                              const DenseTensor& x,
+                              const DenseTensor& y,
+                              DenseTensor* out) {
   auto x_origin = x;
   dev_ctx.template Alloc<bool>(out);
   out->set_type(phi::DataType::BOOL);
@@ -51,19 +51,19 @@ void InplaceLogicalKnernelImpl(const Context& dev_ctx,
   funcs::BroadcastKernel<bool>(dev_ctx, ins, &outs, binary_func);
 }
 
-#define DEFINE_LOGICAL_BINARY_KERNEL(type)                                     \
-  template <typename T, typename Context>                                      \
-  void Logical##type##Kernel(const Context& dev_ctx,                           \
-                             const DenseTensor& x,                             \
-                             const DenseTensor& y,                             \
-                             DenseTensor* out) {                               \
-    if (out->IsSharedWith(x)) {                                                \
-      InplaceLogicalKnernelImpl<T, Context, funcs::Logical##type##Functor<T>>( \
-          dev_ctx, x, y, out);                                                 \
-    } else {                                                                   \
-      LogicalKnernelImpl<T, Context, funcs::Logical##type##Functor<T>>(        \
-          dev_ctx, x, y, out);                                                 \
-    }                                                                          \
+#define DEFINE_LOGICAL_BINARY_KERNEL(type)                                    \
+  template <typename T, typename Context>                                     \
+  void Logical##type##Kernel(const Context& dev_ctx,                          \
+                             const DenseTensor& x,                            \
+                             const DenseTensor& y,                            \
+                             DenseTensor* out) {                              \
+    if (out->IsSharedWith(x)) {                                               \
+      InplaceLogicalKernelImpl<T, Context, funcs::Logical##type##Functor<T>>( \
+          dev_ctx, x, y, out);                                                \
+    } else {                                                                  \
+      LogicalKernelImpl<T, Context, funcs::Logical##type##Functor<T>>(        \
+          dev_ctx, x, y, out);                                                \
+    }                                                                         \
   }
 
 DEFINE_LOGICAL_BINARY_KERNEL(And)
