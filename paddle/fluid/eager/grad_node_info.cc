@@ -104,9 +104,11 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
     meta.SetStopGradient(fwd_out_meta->StopGradient());
   }
 
-  if (!fwd_out.initialized()) {
-    VLOG(7)
-        << "Skip Configuring GradSlotMeta for uninitialized GradInput Tensor";
+  if (!fwd_out.defined() ||
+      (fwd_out.defined() && fwd_out.is_dense_tensor() &&
+       !fwd_out.has_allocation()) ||
+      (!fwd_out.is_dense_tensor() && !fwd_out.initialized())) {
+    VLOG(7) << "Skip Configuring GradSlotMeta for defined GradInput Tensor";
     return;
   }
 
@@ -182,9 +184,11 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
       meta.SetStopGradient(fwd_out_meta->StopGradient());
     }
 
-    if (!fwd_out_tensor.initialized()) {
-      VLOG(7)
-          << "Skip Configuring GradSlotMeta for uninitialized GradInput Tensor";
+    if (!fwd_out_tensor.defined() ||
+        (fwd_out_tensor.defined() && fwd_out_tensor.is_dense_tensor() &&
+         !fwd_out_tensor.has_allocation()) ||
+        (!fwd_out_tensor.is_dense_tensor() && !fwd_out_tensor.initialized())) {
+      VLOG(7) << "Skip Configuring GradSlotMeta for defined GradInput Tensor";
       return;
     }
 
