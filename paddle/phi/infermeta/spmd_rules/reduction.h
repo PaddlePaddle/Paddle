@@ -4,7 +4,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,33 +14,22 @@ limitations under the License. */
 
 #pragma once
 
-#include <iterator>
-#include <map>
-#include <string>
 #include <vector>
 
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
+#include "paddle/phi/core/distributed/type_defs.h"
 
-namespace paddle {
+namespace phi {
 namespace distributed {
-namespace auto_parallel {
 
-class ReductionSPMDRule : public SPMDRuleBase {
- public:
-  std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
-  InferForward(const std::vector<DistTensorSpec>& input_specs,
-               const paddle::framework::AttributeMap& attrs) override;
+SpmdInfo ReductionInferSpmd(const DistMetaTensor& x,
+                            const std::vector<int>& axis,
+                            bool keep_dim);
 
-  std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
-  InferBackward(const std::vector<DistTensorSpec>& input_specs,
-                const std::vector<DistTensorSpec>& output_specs,
-                const paddle::framework::AttributeMap& attrs) override;
+SpmdInfo ReductionInferSpmdReverse(const DistMetaTensor& x,
+                                   const DistMetaTensor& out,
+                                   const std::vector<int>& axis,
+                                   bool keep_dim);
 
- private:
-  std::string GetOutputNotation(int64_t input_ndim,
-                                const std::string& input_axes,
-                                const paddle::framework::AttributeMap& attrs);
-};
-}  // namespace auto_parallel
 }  // namespace distributed
-}  // namespace paddle
+}  // namespace phi

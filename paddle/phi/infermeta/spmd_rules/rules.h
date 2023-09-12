@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 #include "paddle/phi/infermeta/spmd_rules/matmul.h"
 #include "paddle/phi/infermeta/spmd_rules/replicated.h"
+#include "paddle/phi/infermeta/spmd_rules/reduction.h"
 
 /**
  * Design Notes:
@@ -67,6 +68,51 @@ PD_REGISTER_SPMD_RULE(
     replicated,
     PD_INFER_SPMD(phi::distributed::ReplicatedSpmdInferForward),
     PD_INFER_SPMD(phi::distributed::ReplicatedSpmdInferBackward));
+
+PD_REGISTER_SPMD_RULE(
+    all,
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    amax,
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    amin,
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    any,
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    frobenius_norm,
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    max,
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    min,
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    prod,
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    sum,
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
 
 }  // namespace distributed
 }  // namespace phi
