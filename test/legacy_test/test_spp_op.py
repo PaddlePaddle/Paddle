@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import unittest
-from test.legacy_test.op_test import OpTest
 
 import numpy as np
+from op_test import OpTest
 from test_pool2d_op import avg_pool2D_forward_naive, max_pool2D_forward_naive
 
 

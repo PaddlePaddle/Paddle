@@ -16,9 +16,9 @@ import math
 import sys
 import unittest
 from decimal import ROUND_HALF_UP, Decimal
-from test.legacy_test.op_test import OpTest
 
 import numpy as np
+from op_test import OpTest
 
 import paddle
 

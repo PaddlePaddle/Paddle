@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import unittest
-from test.legacy_test.op_test import _set_use_system_allocator
 
 import numpy as np
+from op_test import _set_use_system_allocator
 from test_batch_norm_op_prim_nchw import TestBatchNormOp
 
 import paddle

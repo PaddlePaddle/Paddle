@@ -15,13 +15,9 @@
 import unittest
 from functools import reduce
 from operator import mul
-from test.legacy_test.op_test import (
-    OpTest,
-    _set_use_system_allocator,
-    convert_float_to_uint16,
-)
 
 import numpy as np
+from op_test import OpTest, _set_use_system_allocator, convert_float_to_uint16
 
 import paddle
 import paddle.nn.functional as F

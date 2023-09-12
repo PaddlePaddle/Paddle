@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import unittest
-from test.legacy_test.op_test import OpTest, OpTestTool, convert_float_to_uint16
 
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
+from op_test import OpTest, OpTestTool, convert_float_to_uint16
 from test_sum_op import TestReduceOPTensorAxisBase
 
 import paddle

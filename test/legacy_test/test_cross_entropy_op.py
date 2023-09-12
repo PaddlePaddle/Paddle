@@ -13,13 +13,9 @@
 # limitations under the License.
 
 import unittest
-from test.legacy_test.op_test import (
-    OpTest,
-    paddle_static_guard,
-    randomize_probability,
-)
 
 import numpy as np
+from op_test import OpTest, paddle_static_guard, randomize_probability
 
 import paddle
 from paddle import base

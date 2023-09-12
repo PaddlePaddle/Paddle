@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import unittest
-from test.legacy_test.op_test import OpTest
 
 import numpy as np
 from numpy.lib.stride_tricks import as_strided
+from op_test import OpTest
 
 import paddle
 

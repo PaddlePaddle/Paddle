@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import unittest
-from test.legacy_test.op_test import OpTest, paddle_static_guard
 
 import numpy as np
+from op_test import OpTest, paddle_static_guard
 
 import paddle
 from paddle import base

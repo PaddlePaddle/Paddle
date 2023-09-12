@@ -14,10 +14,10 @@
 """This is unit test of Test data_norm Op."""
 
 import unittest
-from test.legacy_test.op_test import OpTest
 
 import numpy as np
 from op import Operator
+from op_test import OpTest
 
 import paddle
 from paddle import base

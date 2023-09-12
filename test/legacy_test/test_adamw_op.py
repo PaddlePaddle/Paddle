@@ -15,9 +15,9 @@
 import random
 import unittest
 from functools import partial
-from test.legacy_test.op_test import OpTest
 
 import numpy as np
+from op_test import OpTest
 
 import paddle
 from paddle import base

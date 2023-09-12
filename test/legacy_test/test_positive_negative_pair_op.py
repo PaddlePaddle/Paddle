@@ -14,9 +14,9 @@
 
 import itertools
 import unittest
-from test.legacy_test.op_test import OpTest
 
 import numpy as np
+from op_test import OpTest
 
 
 def py_pnpair_op(score, label, query, column=-1, weight=None):

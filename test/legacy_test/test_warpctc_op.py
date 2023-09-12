@@ -14,9 +14,9 @@
 
 import sys
 import unittest
-from test.legacy_test.op_test import OpTest
 
 import numpy as np
+from op_test import OpTest
 from test_softmax_op import stable_softmax
 
 import paddle

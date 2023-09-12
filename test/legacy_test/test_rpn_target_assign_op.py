@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import unittest
-from test.legacy_test.op_test import OpTest
 
 import numpy as np
+from op_test import OpTest
 from test_anchor_generator_op import anchor_generator_in_python
 from test_generate_proposal_labels_op import (
     _bbox_overlaps,

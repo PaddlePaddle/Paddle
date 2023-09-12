@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import time
-from test.legacy_test.op_test import OpTest
 
 import numpy as np
 from op import Operator
+from op_test import OpTest
 
 
 class BenchmarkSuite(OpTest):

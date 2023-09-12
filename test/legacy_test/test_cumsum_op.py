@@ -15,9 +15,9 @@
 import os
 import tempfile
 import unittest
-from test.legacy_test.op_test import OpTest, convert_float_to_uint16
 
 import numpy as np
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.inference as paddle_infer

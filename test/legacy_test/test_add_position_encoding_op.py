@@ -13,9 +13,9 @@
 # limitations under the License.
 import math
 import unittest
-from test.legacy_test.op_test import OpTest
 
 import numpy as np
+from op_test import OpTest
 
 
 def add_position_encoding(input, alpha=1.0, beta=1.0):

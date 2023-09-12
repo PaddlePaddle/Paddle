@@ -14,10 +14,10 @@
 
 import os
 import unittest
-from test.legacy_test.op_test import OpTest, convert_uint16_to_float
 
 import numpy as np
 from op import Operator
+from op_test import OpTest, convert_uint16_to_float
 from test_attribute_var import UnittestBase
 
 import paddle

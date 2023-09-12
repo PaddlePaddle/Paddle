@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import unittest
-from test.legacy_test.op_test import OpTest, skip_check_grad_ci
 
 import numpy as np
 from decorator_helper import prog_scope
 from gradient_checker import grad_check
+from op_test import OpTest, skip_check_grad_ci
 
 import paddle
 from paddle import base

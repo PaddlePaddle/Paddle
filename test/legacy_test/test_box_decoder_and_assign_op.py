@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import unittest
-from test.legacy_test.op_test import OpTest
 
 import numpy as np
+from op_test import OpTest
 
 
 def box_decoder_and_assign(deltas, weights, boxes, box_score, box_clip):

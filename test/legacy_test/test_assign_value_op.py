@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import unittest
-from test.legacy_test import op_test
 
 import numpy as np
+import op_test
 
 import paddle
 from paddle import base

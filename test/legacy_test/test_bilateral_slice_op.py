@@ -14,9 +14,9 @@
 
 import math
 import unittest
-from test.legacy_test.op_test import OpTest, paddle_static_guard
 
 import numpy as np
+from op_test import OpTest, paddle_static_guard
 
 import paddle
 from paddle.incubate.layers.nn import bilateral_slice

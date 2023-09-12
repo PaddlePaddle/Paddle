@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import unittest
-from test.legacy_test.op_test import convert_float_to_uint16
 
 import numpy as np
+from op_test import convert_float_to_uint16
 from scipy.special import erf, expit
 
 import paddle

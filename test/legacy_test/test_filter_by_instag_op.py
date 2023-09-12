@@ -14,9 +14,9 @@
 """This is unit test of Test filter_instag Op."""
 
 import unittest
-from test.legacy_test.op_test import OpTest
 
 import numpy as np
+from op_test import OpTest
 
 """This is Test Case 1"""
 

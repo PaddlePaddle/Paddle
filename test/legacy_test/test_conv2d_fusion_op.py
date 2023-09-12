@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import unittest
-from test.legacy_test.op_test import OpTest
 
 import numpy as np
+from op_test import OpTest
 from test_conv2d_op import conv2d_forward_naive
 
 from paddle.base import core

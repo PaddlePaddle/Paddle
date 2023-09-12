@@ -14,9 +14,9 @@
 
 import math
 import unittest
-from test.legacy_test.op_test import OpTest, convert_float_to_uint16
 
 import numpy as np
+from op_test import OpTest, convert_float_to_uint16
 from scipy import special
 
 import paddle

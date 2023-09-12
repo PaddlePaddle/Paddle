@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import unittest
-from test.legacy_test.op_test import OpTest
 
 import numpy
 import numpy as np
 from op import Operator
+from op_test import OpTest
 
 import paddle
 from paddle import base

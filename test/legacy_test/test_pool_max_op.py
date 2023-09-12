@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import unittest
-from test.legacy_test.op_test import (
+
+import numpy as np
+from op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
     get_numeric_gradient,
 )
-
-import numpy as np
 from testsuite import create_op
 
 import paddle

@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import unittest
-from test.legacy_test.op_test import OpTest, paddle_static_guard
 
 import numpy as np
+from op_test import OpTest, paddle_static_guard
 from test_softmax_op import stable_softmax
 
 import paddle

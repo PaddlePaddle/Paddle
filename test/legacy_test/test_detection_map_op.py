@@ -15,9 +15,9 @@
 import collections
 import math
 import unittest
-from test.legacy_test.op_test import OpTest
 
 import numpy as np
+from op_test import OpTest
 
 
 class TestDetectionMAPOp(OpTest):

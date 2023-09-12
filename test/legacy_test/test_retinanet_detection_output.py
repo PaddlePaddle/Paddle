@@ -14,9 +14,9 @@
 
 import math
 import unittest
-from test.legacy_test.op_test import OpTest
 
 import numpy as np
+from op_test import OpTest
 from test_anchor_generator_op import anchor_generator_in_python
 from test_multiclass_nms_op import nms
 

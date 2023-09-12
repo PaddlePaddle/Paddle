@@ -14,9 +14,9 @@
 
 import os
 import unittest
-from test.legacy_test.op_test import OpTest
 
 import numpy as np
+from op_test import OpTest
 from test_attribute_var import UnittestBase
 
 import paddle

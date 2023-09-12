@@ -14,9 +14,9 @@
 
 import math
 import unittest
-from test.legacy_test.op_test import OpTest, skip_check_grad_ci
 
 import numpy as np
+from op_test import OpTest, skip_check_grad_ci
 
 import paddle
 import paddle.nn.functional as F

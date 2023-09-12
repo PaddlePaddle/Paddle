@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import unittest
-from test.legacy_test.op_test import OpTest
 
 import numpy as np
 import parameterized as param
+from op_test import OpTest
 
 import paddle
 from paddle import base, nn

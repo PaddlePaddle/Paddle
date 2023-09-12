@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import unittest
-from test.legacy_test.op_test import OpTest, convert_float_to_uint16
 
 import numpy as np
 from numpy.lib.stride_tricks import as_strided
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core

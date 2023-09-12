@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import unittest
-from test.legacy_test.op_test import (
+
+import numpy as np
+from op import Operator
+from op_test import (
     OpTest,
     check_out_dtype,
     paddle_static_guard,
     skip_check_grad_ci,
 )
-
-import numpy as np
-from op import Operator
 
 import paddle
 import paddle.nn.functional as F

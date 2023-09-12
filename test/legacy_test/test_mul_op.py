@@ -20,7 +20,7 @@ import numpy as np
 from paddle.base import core
 
 sys.path.append("..")
-from test.legacy_test.op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 
 class TestMulOp(OpTest):

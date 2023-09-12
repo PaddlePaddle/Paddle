@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import unittest
-from test.legacy_test.op_test import convert_uint16_to_float
 
 import numpy as np
+from op_test import convert_uint16_to_float
 from test_lookup_table_bf16_op import (
     TestLookupTableBF16Op,
     TestLookupTableBF16OpIds4D,
