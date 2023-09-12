@@ -720,19 +720,22 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
         for (auto attribute : array_list) {
           vec_double.push_back(
               attribute.dyn_cast<pir::DoubleAttribute>().data());  // NOLINT
-          std::stringstream ss;
-          VLOG(1) << "type not support " << ss.str() << std::endl;
-          PADDLE_THROW("Type[%s] in attribute map not support yet", ss.str());
         }
-      } else if (val.isa<paddle::dialect::DataTypeAttribute>()) {
-        attr_map[name] = paddle::framework::TransToProtoVarType(
-            val.dyn_cast<paddle::dialect::DataTypeAttribute>().data());
+        attr_map[name] = vec_double;
       } else {
         std::stringstream ss;
         val.Print(ss);
         VLOG(1) << "type not support " << ss.str() << std::endl;
         PADDLE_THROW("Type[%s] in attribute map not support yet", ss.str());
       }
+    } else if (val.isa<paddle::dialect::DataTypeAttribute>()) {
+      attr_map[name] = paddle::framework::TransToProtoVarType(
+          val.dyn_cast<paddle::dialect::DataTypeAttribute>().data());
+    } else {
+      std::stringstream ss;
+      val.Print(ss);
+      VLOG(1) << "type not support " << ss.str() << std::endl;
+      PADDLE_THROW("Type[%s] in attribute map not support yet", ss.str());
     }
   }
 
