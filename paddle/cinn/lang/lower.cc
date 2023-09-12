@@ -301,11 +301,6 @@ ir::LoweredFunc LowerToAst(const std::string& name,
                            const std::vector<Tensor>& tensor_args,
                            ast_gen_ius::TensorGroup* tensor_group,
                            const Target& target) {
-  // Init the reduce tensors first before any process.
-  // VLOG(6) << "Init Reduce Tensor";
-  // for (auto& t : tensor_args) {
-  //  InitReduceTensor(tensor_group, t, target);
-  //}
   VLOG(6) << "Merge ctrl deps";
   // Merge the ctrl_deps with the given temp_tensors ang get a new temp_tensors
   std::set<ir::Tensor> ctrl_deps =

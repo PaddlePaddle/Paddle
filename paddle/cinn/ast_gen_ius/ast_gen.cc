@@ -60,7 +60,7 @@ ir::Expr ConvertReduceBody(ir::Expr body,
 }
 
 ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
-  VLOG(6) << "Huihuang in AstGen::Build";
+  VLOG(6) << "Huihuang in AstGen::Build on " << tensor;
   const std::vector<ir::Var>& axis = tensor->axis();
   const std::vector<ir::Expr>& shape = tensor->shape;
   size_t axis_len = axis.size();
@@ -118,6 +118,7 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     VLOG(6) << "Huihuang debug reduce = \n" << body;
     return body;
   } else {
+    VLOG(6) << "Huihuang is non-reduce tensor \n";
     ir::Expr body = ir::Store::Make(tensor, tensor->body(), axis_exprs);
     for (int i = static_cast<int>(axis_len) - 1; i >= 0; --i) {
       ir::Var loop_var = axis[i];
