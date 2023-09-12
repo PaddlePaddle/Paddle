@@ -15,7 +15,10 @@
 #include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/adt/anchor_sd_equation_context.h"
 #include "paddle/cinn/adt/equation.h"
+#include "paddle/cinn/adt/equation_solver.h"
 #include "paddle/cinn/adt/igroup.h"
+#include "paddle/cinn/adt/index_expr_infer_context.h"
+#include "paddle/cinn/adt/kgroup.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
 #include "paddle/cinn/adt/partition_op_stmts.h"
 #include "paddle/cinn/adt/schedule_policy.h"
@@ -43,7 +46,7 @@ std::vector<std::uint64_t> MakeTensorRanks(const List<m_expr::Arg>& arg_lists) {
 
 void GenerateOpEquations(const m_expr::OpStmt& op_stmt,
                          equation::config::NativeOpEquationContext* ctx) {
-  const auto& [op, inputs, outputs] = op_stmt;
+  const auto& [op, inputs, outputs] = op_stmt.tuple();
   CHECK(op.Has<const hlir::framework::Node*>());
   const hlir::framework::Node* op_node = op.Get<const hlir::framework::Node*>();
 
@@ -60,7 +63,7 @@ void GenerateOpEquations(const m_expr::OpStmt& op_stmt,
 
 std::shared_ptr<equation::config::NativeOpEquationContext>
 MakeContextAndGenerateEquations(const m_expr::OpStmt& op_stmt) {
-  const auto& [op, inputs, outputs] = op_stmt;
+  const auto& [op, inputs, outputs] = op_stmt.tuple();
   const auto& ctx = std::make_shared<equation::config::NativeOpEquationContext>(
       MakeTensorRanks(inputs.value()), MakeTensorRanks(outputs.value()));
 
@@ -214,11 +217,12 @@ using TensorIndexExpr = equation::Value;
 std::unordered_map<const equation::Variable, const equation::Value>
 MakeSdIterator2SchedulePolicy(const IGroup& igroup,
                               const ScheduleDescriptor& sd) {
-  std::unordered_map<const equation::Variable, const equation::Value> ret{};
-  CHECK_EQ(igroup->sd_iterators()->size(), sd->size());
+  std::unordered_map<const equation::Variable, const equation::Value> ret;
+
+  CHECK_EQ(igroup.sd_iterators()->size(), sd->size());
 
   for (std::size_t i = 0; i < sd->size(); ++i) {
-    CHECK(ret.emplace(igroup->sd_iterators()->at(i), sd->at(i)).second);
+    CHECK(ret.emplace(igroup.sd_iterators()->at(i), sd->at(i)).second);
   }
 
   return ret;
@@ -305,7 +309,8 @@ m_expr::MapStmt<m_expr::Stmt> MakeInnerLayerMapStmt(
   const auto& inner_schedule_descriptor = MakeInnerScheduleDescriptor(
       map_ir, outter_layer_sd_size, SchedulePolicy4IterVar);
 
-  return {inner_schedule_descriptor, MakeInnerLayerStmts(igroup, map_ir)};
+  return m_expr::MapStmt<m_expr::Stmt>{inner_schedule_descriptor,
+                                       MakeInnerLayerStmts(igroup, map_ir)};
 }
 
 m_expr::Stmt MakeOutterLayerStmt(
@@ -368,11 +373,12 @@ m_expr::MapStmt<m_expr::Stmt> MakeMapStmt(
   const auto& outter_schedule_descriptor =
       MakeOutterScheduleDescriptor(map_irs, SchedulePolicy4IterVar);
 
-  return {outter_schedule_descriptor,
-          MakeOutterLayerStmts(igroup,
-                               map_irs,
-                               outter_schedule_descriptor->size(),
-                               SchedulePolicy4IterVar)};
+  return m_expr::MapStmt<m_expr::Stmt>{
+      outter_schedule_descriptor,
+      MakeOutterLayerStmts(igroup,
+                           map_irs,
+                           outter_schedule_descriptor->size(),
+                           SchedulePolicy4IterVar)};
 }
 
 m_expr::Tensor GetAnchorTensor(const std::shared_ptr<IGroup>& igroup) {
@@ -428,9 +434,10 @@ m_expr::AnchoredMapStmt GenerateAnchoredMapStmt(
                                           TensorIndexExpr4Tensor);
 
   // AnchoredMapStmt = (MapStmt Stmt, tAnchor Tensor, TensorIndexExpr4TensorT)
-  return {MakeMapStmt(igroup, map_irs, SchedulePolicy4IterVar),
-          GetAnchorTensor(igroup),
-          TensorIndexExpr4Tensor};
+  return m_expr::AnchoredMapStmt{
+      MakeMapStmt(igroup, map_irs, SchedulePolicy4IterVar),
+      GetAnchorTensor(igroup),
+      TensorIndexExpr4Tensor};
 }
 
 m_expr::AnchoredMapStmt GenerateAnchoredMapStmt(
@@ -452,7 +459,7 @@ List<m_expr::AnchoredMapStmt> MakeAnchoredMapStmts(
     const std::shared_ptr<KGroup>& kgroup) {
   List<m_expr::AnchoredMapStmt> ret{};
   for (const auto& igroup : kgroup->igroups()) {
-    const auto& sd = kgroup.GetDefaultScheduleDescriptor(igroup);
+    const auto& sd = kgroup->GetDefaultScheduleDescriptor(igroup);
     ret->emplace_back(GenerateAnchoredMapStmt(igroup, sd));
   }
   return ret;
@@ -461,9 +468,9 @@ List<m_expr::AnchoredMapStmt> MakeAnchoredMapStmts(
 m_expr::MapExpr GenerateMapExpr(const std::shared_ptr<KGroup>& kgroup) {
   // MapExpr = Kernel;
   // Kernel = ([AnchoredMapStmt], In [Tensor], Out [Tensor])
-  return {MakeAnchoredMapStmts(kgroup),
-          MakeOutputTensors(kgroup),
-          MakeOutputTensors(kgroup)};
+  return m_expr::MapExpr{MakeAnchoredMapStmts(kgroup),
+                         MakeOutputTensors(kgroup),
+                         MakeOutputTensors(kgroup)};
 }
 
 }  // namespace

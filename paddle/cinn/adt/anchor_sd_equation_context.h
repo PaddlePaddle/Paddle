@@ -23,6 +23,8 @@ class AnchorSdEquationContext final {
  public:
   AnchorSdEquationContext(const AnchorSdEquationContext&) = default;
   AnchorSdEquationContext(AnchorSdEquationContext&&) = default;
+  AnchorSdEquationContext& operator=(const AnchorSdEquationContext&) = default;
+  AnchorSdEquationContext& operator=(AnchorSdEquationContext&&) = default;
 
   AnchorSdEquationContext(std::size_t num_strides)
       : strides_(util::MakeStrides(num_strides)),

@@ -19,7 +19,6 @@
 #include <vector>
 
 #include "paddle/cinn/adt/equation.h"
-#include "paddle/cinn/adt/equation_context.h"
 #include "paddle/cinn/common/equation_graph_topo_walker.h"
 
 namespace cinn::adt::equation {
@@ -172,12 +171,12 @@ class Graph final : public std::enable_shared_from_this<Graph> {
         const auto& [_, out_box_indexes, in_box_indexes] = in_msg_box2out_msg_box.tuple();
         const auto& [out_box_in_indexes, out_box_out_indexes] = out_box_indexes.value().value().tuple();
         const auto& [in_box_in_indexes, in_box_out_indexes] = in_box_indexes.value().value().tuple();
-        out_variables.emplace(out_box_in_indexes->begin(), out_box_in_indexes->end());
-        out_variables.emplace(out_box_out_indexes->begin(), out_box_out_indexes->end());
-        in_variables.emplace(in_box_in_indexes->begin(),
-                             in_box_in_indexes->end());
-        in_variables.emplace(in_box_out_indexes->begin(),
-                             in_box_out_indexes->end());
+        out_variables.emplace(out_box_in_indexes.value()->begin(), out_box_in_indexes.value()->end());
+        out_variables.emplace(out_box_out_indexes.value()->begin(), out_box_out_indexes.value()->end());
+        in_variables.emplace(in_box_in_indexes.value()->begin(),
+                             in_box_in_indexes.value()->end());
+        in_variables.emplace(in_box_out_indexes.value()->begin(),
+                             in_box_out_indexes.value()->end());
       }
     };
     // clang-format on

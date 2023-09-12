@@ -212,7 +212,7 @@ template <>
 struct hash<cinn::adt::equation::FakeOpPlaceHolder> final {
   std::size_t operator()(
       const cinn::adt::equation::FakeOpPlaceHolder& placeholder) const {
-    return std::hash<std::string>()(placeholder.value());
+    return placeholder.value().unique_id();
   }
 };
 
@@ -227,6 +227,11 @@ struct hash<cinn::adt::equation::Variable> final {
             },
             [](const cinn::adt::equation::Index& index) {
               return std::hash<cinn::adt::equation::Index>()(index);
+            },
+            [](const cinn::adt::equation::FakeOpPlaceHolder&
+                   fake_op_placeholder) {
+              return std::hash<cinn::adt::equation::FakeOpPlaceHolder>()(
+                  fake_op_placeholder);
             }};
     return cinn::adt::hash_combine(hash_value, variable.variant().index());
   }
