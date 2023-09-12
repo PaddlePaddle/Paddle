@@ -50,6 +50,9 @@ class TypeId {
 
   TypeId &operator=(const TypeId &other) = default;
 
+  ///
+  /// \brief Support PointerLikeTypeTraits.
+  ///
   void *AsOpaquePointer() const { return storage_; }
   static TypeId RecoverFromOpaquePointer(void *pointer) {
     return TypeId(static_cast<Storage *>(pointer));

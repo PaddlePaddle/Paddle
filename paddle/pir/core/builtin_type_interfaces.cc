@@ -12,20 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/primitive/rule/vjp/vjp.h"
-#include "paddle/fluid/primitive/type/lazy_tensor.h"
-#include "paddle/phi/common/int_array.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/op_base.h"
+#include "paddle/pir/core/builtin_type_interfaces.h"
+#include "paddle/pir/core/type_id.h"
 
-// TODO(wanghao107)
-// this file will be generated in pd_op.cc
-
-namespace paddle {
-namespace dialect {
-using IntArray = paddle::experimental::IntArray;
-
-}  // namespace dialect
-}  // namespace paddle
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::ShapedTypeInterface)

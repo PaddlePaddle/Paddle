@@ -118,6 +118,16 @@ cc_test_old(
   pir)
 
 cc_test_old(
+  type_interface_test
+  SRCS
+  type_interface_test.cc
+  DEPS
+  pir
+  test_dialect
+  gtest
+  pd_op_dialect)
+
+cc_test_old(
   block_operand_test
   SRCS
   block_operand_test.cc

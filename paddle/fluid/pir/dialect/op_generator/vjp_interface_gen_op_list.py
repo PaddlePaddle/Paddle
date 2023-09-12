@@ -46,6 +46,7 @@ vjp_interface_implementation_gen_op_list = [
     "tanh",
     "mean",
     "divide",
+    "sum",
     "add",
     "concat",
     "split",
