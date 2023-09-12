@@ -22,8 +22,8 @@ import numpy as np
 from . import set_flags, get_flags
 from .framework import Program, default_main_program
 
-from ..ir import core as ir_core
-from ..ir import OpResult
+from ..pir import core as ir_core
+from ..pir import OpResult
 from .wrapped_decorator import signature_safe_contextmanager
 from .data_feeder import convert_dtype
 from .framework import Variable, Operator
@@ -1259,7 +1259,7 @@ class Executor:
                 new_ir_check_feed_shape_type(
                     cur_feed, feed_target_name, var_shape, var_type
                 )
-                # the last arg of set_feed_variable has no effect in new ir, we pass 0 by default.
+                # the last arg of set_feed_variable has no effect in new pir, we pass 0 by default.
                 core.set_feed_variable(scope, cur_feed, feed_target_name, 0)
             else:
                 break
@@ -1886,8 +1886,8 @@ class Executor:
     ):
         import paddle
 
-        Program = paddle.ir.Program
-        default_main_program = paddle.ir.core.default_main_program
+        Program = paddle.pir.Program
+        default_main_program = paddle.pir.core.default_main_program
 
         if self._closed:
             raise RuntimeError("Attempted to use a closed Executor")

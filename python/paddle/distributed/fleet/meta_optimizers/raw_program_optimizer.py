@@ -15,7 +15,7 @@ import os
 
 from paddle import static
 from paddle.base import core
-from paddle.framework.ir import apply_build_strategy
+from paddle.framework.pir import apply_build_strategy
 from paddle.utils import unique_name
 
 from .common import (

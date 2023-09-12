@@ -87,7 +87,7 @@ class XavierInitializer(Initializer):
         import paddle
 
         block = self._check_block(block)
-        assert isinstance(block, (framework.Block, paddle.ir.Block))
+        assert isinstance(block, (framework.Block, paddle.pir.Block))
         check_variable_and_dtype(
             var,
             "Out",

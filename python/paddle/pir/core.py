@@ -17,7 +17,7 @@ import numpy as np
 
 from paddle.base.core import VarDesc
 from paddle.base.libpaddle import DataType
-from paddle.base.libpaddle.ir import Program, set_global_program
+from paddle.base.libpaddle.pir import Program, set_global_program
 
 from .._ir_ops import get_parameter, set_parameter
 from ..base import unique_name
@@ -82,10 +82,10 @@ def convert_np_dtype_to_dtype_(np_dtype):
 
 def _use_new_ir_api():
     """
-    This API checks whether paddle use new ir api.
+    This API checks whether paddle use new pir api.
 
     Returns:
-        bool: Whether paddle use new ir api.
+        bool: Whether paddle use new pir api.
 
     """
     # TODO(YuanRisheng): need move import to the top of this file after break import circle

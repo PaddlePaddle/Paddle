@@ -470,7 +470,7 @@ def RegisterPass(function=None, input_specs={}):
         .. code-block:: python
 
             >>> import paddle
-            >>> from paddle.base.ir import RegisterPass
+            >>> from paddle.base.pir import RegisterPass
 
             >>> @RegisterPass
             >>> def multi_add_to_addn():

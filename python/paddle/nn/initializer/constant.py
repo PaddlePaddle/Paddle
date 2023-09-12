@@ -58,9 +58,9 @@ class ConstantInitializer(Initializer):
 
         assert isinstance(
             var,
-            (framework.Variable, framework.EagerParamBase, paddle.ir.OpResult),
+            (framework.Variable, framework.EagerParamBase, paddle.pir.OpResult),
         )
-        assert isinstance(block, (framework.Block, paddle.ir.Block))
+        assert isinstance(block, (framework.Block, paddle.pir.Block))
 
         if in_dynamic_or_new_ir_mode():
             place = _current_expected_place()

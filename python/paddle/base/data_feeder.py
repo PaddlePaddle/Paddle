@@ -148,9 +148,9 @@ def check_variable_and_dtype(
 ):
     import paddle
 
-    if paddle.ir.core._use_new_ir_api():
+    if paddle.pir.core._use_new_ir_api():
         check_type(
-            input, input_name, paddle.ir.OpResult, op_name, extra_message
+            input, input_name, paddle.pir.OpResult, op_name, extra_message
         )
     else:
         check_type(input, input_name, Variable, op_name, extra_message)

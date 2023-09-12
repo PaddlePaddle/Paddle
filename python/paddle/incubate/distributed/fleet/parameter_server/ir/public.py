@@ -20,8 +20,8 @@ from functools import reduce
 
 import paddle
 from paddle.framework import core
-from paddle.incubate.distributed.fleet.parameter_server.ir import vars_metatools
-from paddle.incubate.distributed.fleet.parameter_server.ir.ps_dispatcher import (
+from paddle.incubate.distributed.fleet.parameter_server.pir import vars_metatools
+from paddle.incubate.distributed.fleet.parameter_server.pir.ps_dispatcher import (
     RoundRobin,
 )
 from paddle.incubate.distributed.fleet.parameter_server.mode import (

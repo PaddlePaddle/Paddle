@@ -55,7 +55,7 @@ class HashName(PSDispatcher):
     Examples:
         .. code-block:: python
 
-            >>> from paddle.incubate.distributed.fleet.parameter_server.ir.ps_dispatcher import RoundRobin
+            >>> from paddle.incubate.distributed.fleet.parameter_server.pir.ps_dispatcher import RoundRobin
 
             >>> pserver_endpoints = ["127.0.0.1:6007", "127.0.0.1:6008"]
             >>> vars = ["var1","var2","var3","var4","var5"]
@@ -97,7 +97,7 @@ class RoundRobin(PSDispatcher):
     Examples:
         .. code-block:: python
 
-            >>> from paddle.incubate.distributed.fleet.parameter_server.ir.ps_dispatcher import RoundRobin
+            >>> from paddle.incubate.distributed.fleet.parameter_server.pir.ps_dispatcher import RoundRobin
 
             >>> pserver_endpoints = ["127.0.0.1:6007", "127.0.0.1:6008"]
             >>> vars = ["var1","var2","var3","var4","var5"]

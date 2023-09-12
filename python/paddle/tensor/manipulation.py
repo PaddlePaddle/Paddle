@@ -1133,7 +1133,7 @@ def concat(x, axis=0, name=None):
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
     elif in_new_ir_mode():
-        if not isinstance(input, paddle.ir.Value):
+        if not isinstance(input, paddle.pir.Value):
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
     else:
@@ -1989,7 +1989,7 @@ def split(x, num_or_sections, axis=0, name=None):
         else:
             return _C_ops.split(input, num_or_sections, dim)
     else:
-        if paddle.ir.core._use_new_ir_api():
+        if paddle.pir.core._use_new_ir_api():
             if not isinstance(num_or_sections, int):
                 return paddle._ir_ops.split(input, num_or_sections, dim)
             else:

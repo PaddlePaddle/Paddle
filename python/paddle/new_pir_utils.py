@@ -20,7 +20,7 @@ class IrGuard:
     def __init__(self):
         old_flag = paddle.base.framework.get_flags("FLAGS_enable_new_ir_api")
         paddle.base.framework.set_flags({"FLAGS_enable_new_ir_api": False})
-        if not paddle.ir.core._use_new_ir_api():
+        if not paddle.pir.core._use_new_ir_api():
             self.old_Program = paddle.static.Program
             self.old_program_guard = paddle.base.program_guard
             self.old_default_main_program = paddle.static.default_main_program
@@ -29,7 +29,7 @@ class IrGuard:
             )
         else:
             raise RuntimeError(
-                "IrChange only init when paddle.ir.core._use_new_ir_api() is false, \
+                "IrChange only init when paddle.pir.core._use_new_ir_api() is false, \
                 please set FLAGS_enable_new_ir_api = false"
             )
         paddle.base.framework.set_flags(old_flag)
@@ -45,24 +45,24 @@ class IrGuard:
         paddle.disable_static()
 
     def _switch_to_new_ir(self):
-        if paddle.ir.core._use_new_ir_api():
+        if paddle.pir.core._use_new_ir_api():
             paddle.framework.set_flags(
                 {"FLAGS_enable_new_ir_in_executor": True}
             )
-            paddle.ir.register_paddle_dialect()
-            paddle.static.Program = paddle.ir.Program
-            paddle.base.Program = paddle.ir.Program
-            paddle.base.program_guard = paddle.ir.core.program_guard
-            paddle.static.program_guard = paddle.ir.core.program_guard
+            paddle.pir.register_paddle_dialect()
+            paddle.static.Program = paddle.pir.Program
+            paddle.base.Program = paddle.pir.Program
+            paddle.base.program_guard = paddle.pir.core.program_guard
+            paddle.static.program_guard = paddle.pir.core.program_guard
             paddle.static.default_main_program = (
-                paddle.ir.core.default_main_program
+                paddle.pir.core.default_main_program
             )
             paddle.static.default_startup_program = (
-                paddle.ir.core.default_startup_program
+                paddle.pir.core.default_startup_program
             )
 
     def _switch_to_old_ir(self):
-        if not paddle.ir.core._use_new_ir_api():
+        if not paddle.pir.core._use_new_ir_api():
             paddle.framework.set_flags(
                 {"FLAGS_enable_new_ir_in_executor": False}
             )
@@ -76,6 +76,6 @@ class IrGuard:
             )
         else:
             raise RuntimeError(
-                "IrChange._switch_to_old_ir only work when paddle.ir.core._use_new_ir_api() is false, \
+                "IrChange._switch_to_old_ir only work when paddle.pir.core._use_new_ir_api() is false, \
                 please set FLAGS_enable_new_ir_api = false"
             )

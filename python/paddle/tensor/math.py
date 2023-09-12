@@ -270,7 +270,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     elif in_new_ir_mode():
         if act is None:
             return _C_ops.scale(x, scale, float(bias), bias_after_scale)
-        raise ValueError("act is not implement in new ir of scale api.")
+        raise ValueError("act is not implement in new pir of scale api.")
     else:
         check_variable_and_dtype(
             x,
@@ -886,7 +886,7 @@ def divide(x, y, name=None):
     if in_dynamic_mode():
         return _C_ops.divide(x, y)
     else:
-        if paddle.ir.core._use_new_ir_api():
+        if paddle.pir.core._use_new_ir_api():
             return paddle._ir_ops.divide(x, y)
         return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 

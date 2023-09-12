@@ -1,4 +1,4 @@
-#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,26 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.base.libpaddle.ir import (
-    Program,
-    Block,
-    Operation,
-    Value,
-    OpOperand,
-    OpResult,
-    Type,
-)  # noqa: F401
-from paddle.base.libpaddle.ir import (
-    translate_to_new_ir,
-    set_global_program,
-    set_insertion_point,
-    reset_insertion_point_to_start,
-    reset_insertion_point_to_end,
-    check_unregistered_ops,
-    register_paddle_dialect,
-    PassManager,
-)  # noqa: F401
-
-from . import core
+from paddle.base import core
 
 __all__ = []
+
+for name in dir(core.pir.ops):
+    globals()[name] = getattr(core.pir.ops, name)
+    __all__.append(name)

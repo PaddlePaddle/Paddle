@@ -1007,7 +1007,7 @@ class GRUCell(RNNCellBase):
 
     ..  math::
 
-        r_{t} & = \sigma(W_{ir}x_{t} + b_{ir} + W_{hr}h_{t-1} + b_{hr})
+        r_{t} & = \sigma(W_{pir}x_{t} + b_{pir} + W_{hr}h_{t-1} + b_{hr})
 
         z_{t} & = \sigma(W_{iz}x_{t} + b_{iz} + W_{hz}h_{t-1} + b_{hz})
 
@@ -1038,9 +1038,9 @@ class GRUCell(RNNCellBase):
             None). For more information, please refer to :ref:`api_guide_Name`.
 
     Variables:
-        - **weight_ih** (Parameter): shape (3 * hidden_size, input_size), input to hidden weight, which corresponds to the concatenation of :math:`W_{ir}, W_{iz}, W_{ic}` in the formula.
+        - **weight_ih** (Parameter): shape (3 * hidden_size, input_size), input to hidden weight, which corresponds to the concatenation of :math:`W_{pir}, W_{iz}, W_{ic}` in the formula.
         - **weight_hh** (Parameter): shape (3 * hidden_size, hidden_size), hidden to hidden weight, which corresponds to the concatenation of :math:`W_{hr}, W_{hz}, W_{hc}` in the formula.
-        - **bias_ih** (Parameter): shape (3 * hidden_size, ), input to hidden bias, which corresponds to the concatenation of :math:`b_{ir}, b_{iz}, b_{ic}` in the formula.
+        - **bias_ih** (Parameter): shape (3 * hidden_size, ), input to hidden bias, which corresponds to the concatenation of :math:`b_{pir}, b_{iz}, b_{ic}` in the formula.
         - **bias_hh** (Parameter): shape (3 * hidden_size, ), hidden to hidden bias, swhich corresponds to the concatenation of :math:`b_{hr}, b_{hz}, b_{hc}` in the formula.
 
     Inputs:
@@ -1893,7 +1893,7 @@ class GRU(RNNBase):
 
     .. math::
 
-        r_{t} & = \sigma(W_{ir}x_{t} + b_{ir} + W_{hr}h_{t-1} + b_{hr})
+        r_{t} & = \sigma(W_{pir}x_{t} + b_{pir} + W_{hr}h_{t-1} + b_{hr})
 
         z_{t} & = \sigma(W_{iz}x_{t} + b_{iz} + W_{hz}h_{t-1} + b_{hz})
 

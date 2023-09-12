@@ -35,7 +35,7 @@ from paddle.distributed.transpiler.details import (
     wait_server_ready,
 )
 from paddle.framework import Program, core
-from paddle.incubate.distributed.fleet.parameter_server.ir.ps_dispatcher import (
+from paddle.incubate.distributed.fleet.parameter_server.pir.ps_dispatcher import (
     PSDispatcher,
     RoundRobin,
 )
