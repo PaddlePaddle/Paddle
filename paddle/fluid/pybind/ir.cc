@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pybind/ir.h"
+#include "paddle/fluid/pybind/pir.h"
 
 #include <Python.h>
 #include <algorithm>
@@ -554,7 +554,7 @@ void BindUtils(pybind11::module *m) {
             .. code-block:: python
 
                 import paddle
-                from paddle import ir
+                from paddle import pir
                 paddle.enable_static()
 
                 x = paddle.randn([4, 4])
@@ -568,7 +568,7 @@ void BindUtils(pybind11::module *m) {
                     y_s = paddle.matmul(x_s, x_s)
                     z_s = paddle.add(y_s, y_s)
                     k_s = paddle.tanh(z_s)
-                newir_program = ir.translate_to_new_ir(main_program.desc)
+                newir_program = pir.translate_to_new_ir(main_program.desc)
 
                 print(newir_program)
 
@@ -637,7 +637,7 @@ void BindPassManager(pybind11::module *m) {
 }
 
 void BindNewIR(pybind11::module *module) {
-  auto ir_module = module->def_submodule("ir");
+  auto ir_module = module->def_submodule("pir");
   BindProgram(&ir_module);
   BindBlock(&ir_module);
   BindOperation(&ir_module);
