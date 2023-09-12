@@ -12,20 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/core/op_base.h"
+#include "paddle/pir/core/type_base.h"
+#include "glog/logging.h"
+#include "paddle/pir/core/ir_context.h"
+
 namespace pir {
-InterfaceValue::~InterfaceValue() {
-  if (model_) free(model_);
+
+void *AbstractType::GetInterfaceImpl(TypeId interface_id) const {
+  if (interface_map_.empty()) {
+    VLOG(6) << "Interface map is empty!";
+    return nullptr;
+  } else {
+    for (size_t i = 0; i < interface_map_.size(); ++i) {
+      if (interface_map_[i].type_id() == interface_id)
+        return interface_map_[i].model();
+    }
+    VLOG(6) << "Find no interface!";
+    return nullptr;
+  }
+  // TODO(zhangbo63): Add LookUp method like:
+  // return ir::details::LookUp<AbstractType>(
+  //     interface_id, num_interfaces_, num_traits_, this);
 }
 
-InterfaceValue::InterfaceValue(InterfaceValue&& val) noexcept {
-  type_id_ = val.type_id_;
-  model_ = val.model_;
-  val.model_ = nullptr;
-}
-
-InterfaceValue& InterfaceValue::operator=(InterfaceValue&& val) noexcept {
-  swap(std::move(val));
-  return *this;
-}
 }  // namespace pir
