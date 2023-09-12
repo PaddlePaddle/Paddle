@@ -106,8 +106,8 @@ void SymbolicDim::updateKnownNonSizeZero(bool attrValue) {
 }
 
 bool SymbolicDim::isDynamic() {
-  return getValue() == -100000;
-}  // TODO(zhangbo): getValue() == ShapedType::kDynamic;
+  return getValue() == ShapedTypeInterface::kDynamic;
+}
 
 bool SymbolicDim::merge(SymbolicDim other) {
   if (!isDynamic() && !other.isDynamic() && getValue() != other.getValue())

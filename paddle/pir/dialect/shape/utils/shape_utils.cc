@@ -238,8 +238,13 @@ SymbolicDim SymbolicDimMgr::newSymbolicDim(const std::string& name) {
   assert(funcOp);
   Builder builder = Builder(m_.ir_context(), funcOp.block());
   // default settting dim != 0
-  dialect::SymbolicDim symbol = builder.Build<dialect::SymbolicDim>(
-      name.empty() ? getNextName() : name, -100000, false, false, false, true);
+  dialect::SymbolicDim symbol =
+      builder.Build<dialect::SymbolicDim>(name.empty() ? getNextName() : name,
+                                          ShapedTypeInterface::kDynamic,
+                                          false,
+                                          false,
+                                          false,
+                                          true);
   symbolDimUnionSet_[symbol] = symbol;
   symbolTable_.insert(symbol);
   return symbol;
@@ -266,10 +271,9 @@ std::vector<SymbolicDim> SymbolicDimMgr::createSymbolicDimsForRankedValue(
   std::vector<SymbolicDim> symbols;
   auto dims = value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
   for (int idx = 0; idx < dims.size(); ++idx) {
-    symbols.push_back(
-        dims[idx] == -100000  // TODO(zhangbo): value = ShapedType::kDynamic
-            ? newSymbolicDim()
-            : newConstantSymbolicDim(dims[idx]));
+    symbols.push_back(dims[idx] == ShapedTypeInterface::kDynamic
+                          ? newSymbolicDim()
+                          : newConstantSymbolicDim(dims[idx]));
   }
   return symbols;
 }
@@ -616,17 +620,14 @@ bool SymbolicDimMgr::saveShapeConstraintGraph() {
   return true;
 }
 
-// TODO(liujinnan): Acceess ShapedType.
 bool ShapeAnalysis::isSameNumElements(Value lhs, Value rhs) {
   if (lhs == rhs) return true;
+  auto lhsTy = lhs.type().dyn_cast_interface<ShapedTypeInterface>();
+  auto rhsTy = rhs.type().dyn_cast_interface<ShapedTypeInterface>();
 
-  auto lhsTy = lhs.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  auto rhsTy = rhs.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  if (!lhsTy || !rhsTy || !lhsTy.hasRank() || !rhsTy.hasRank()) return false;
 
-  int lhsRank = lhsTy.dims().size();
-  int rhsRank = rhsTy.dims().size();
-
-  return isProductEqual(lhs, 0, lhsRank, rhs, 0, rhsRank);
+  return isProductEqual(lhs, 0, lhsTy.getRank(), rhs, 0, rhsTy.getRank());
 }
 
 bool ShapeAnalysis::isProductEqual(
@@ -663,16 +664,16 @@ SymbolicDimShapeAnalysis::SymbolicDimShapeAnalysis(ModuleOp m)
 
 SymbolicDimShapeAnalysis::~SymbolicDimShapeAnalysis() { mgr_.save(); }
 
-// TODO(liujinnan): Acceess ShapedType.
 bool SymbolicDimShapeAnalysis::isShapeEqual(Value lhs, Value rhs) {
   if (lhs == rhs) return true;
 
-  auto lhsTy = lhs.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  auto rhsTy = rhs.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  auto lhsTy = lhs.type().dyn_cast_interface<ShapedTypeInterface>();
+  auto rhsTy = rhs.type().dyn_cast_interface<ShapedTypeInterface>();
 
-  if (!phi::contain_unknown_dim(lhsTy.dims()) &&
-      !phi::contain_unknown_dim(rhsTy.dims())) {
-    return lhsTy.dims() == rhsTy.dims();
+  if (!lhsTy || !rhsTy || !lhsTy.hasRank() || !rhsTy.hasRank()) return false;
+
+  if (lhsTy.hasStaticShape() && rhsTy.hasStaticShape()) {
+    return lhsTy.getShape() == rhsTy.getShape();
   }
 
   auto lhsIt = value2SymDims_.find(lhs);
@@ -693,7 +694,6 @@ bool SymbolicDimShapeAnalysis::isShapeEqual(Value lhs, Value rhs) {
   return lhsSyms == rhsSyms;
 }
 
-// TODO(liujinnan): Acceess ShapedType.
 bool SymbolicDimShapeAnalysis::isProductEqual(Value lhs,
                                               std::vector<int> lhsDimIdxs,
                                               Value rhs,
@@ -703,16 +703,17 @@ bool SymbolicDimShapeAnalysis::isProductEqual(Value lhs,
 
   auto buildSymbolicDimProduct =
       [&](SymbolicDimProduct& prod, Value value, std::vector<int> dimIdxs) {
-        auto ty = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+        auto ty = value.type().dyn_cast_interface<ShapedTypeInterface>();
         auto it = value2SymDims_.find(value);
+        if (!ty || !ty.hasRank()) return false;
         for (int idx : dimIdxs) {
-          if (ty.dims()[idx] == -100000) {
+          if (ty.getShape()[idx] == ShapedTypeInterface::kDynamic) {
             if (it == value2SymDims_.end() ||
                 static_cast<int>(it->second.size()) <= idx)
               return false;
             prod.symbols.push_back(it->second[idx]);
           } else {
-            prod.factor *= ty.dims()[idx];
+            prod.factor *= ty.getShape()[idx];
           }
         }
         return true;

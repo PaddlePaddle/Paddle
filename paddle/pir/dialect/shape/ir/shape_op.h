@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/pir/core/builder.h"
+#include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/core/op_base.h"
 
 namespace pir {
@@ -28,15 +29,14 @@ class IR_API SymbolicDim : public Op<SymbolicDim> {
   static constexpr uint32_t attributes_num = 6;
   static const char *attributes_name[attributes_num];
 
-  static void Build(
-      Builder &builder,             // NOLINT
-      OperationArgument &argument,  // NOLINT
-      const std::string &sym_name,
-      int64_t value = -100000,  // TODO(zhangbo): value = ShapedType::kDynamic
-      bool knownNonNegative = false,
-      bool knownNegativeOne = false,
-      bool knownNonSizeOne = false,
-      bool knownNonSizeZero = false);
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    const std::string &sym_name,
+                    int64_t value = ShapedTypeInterface::kDynamic,
+                    bool knownNonNegative = false,
+                    bool knownNegativeOne = false,
+                    bool knownNonSizeOne = false,
+                    bool knownNonSizeZero = false);
   const std::string getSymName();
   int64_t getValue();
   bool getKnownNonNegative();

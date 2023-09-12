@@ -19,6 +19,7 @@
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_type.h"
+#include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/core/dialect.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
@@ -102,7 +103,7 @@ TEST(assist_struct_test, symbolic_dim_product) {
   ctx->GetOrRegisterDialect<pir::dialect::ShapeDialect>();
   pir::Builder builder = pir::Builder(ctx, program.block());
   pir::dialect::SymbolicDim symDim = builder.Build<pir::dialect::SymbolicDim>(
-      "S0", -100000, false, false, false, false);
+      "S0", pir::ShapedTypeInterface::kDynamic, false, false, false, false);
   pir::SymbolicDimProduct symDimProduct;
   pir::SymbolicDimProduct symDimProduct_;
   symDimProduct.symbols.push_back(symDim);
@@ -142,7 +143,8 @@ TEST(assist_struct_test, symbolic_dim_mgr_simple) {
   pir::dialect::SymbolicDim symDimC10 = symDimMgr.newConstantSymbolicDim(10);
   symDimMgr.mapSymbolicDimEqual(symDimS0, symDimS1);
 
-  auto op = CreateDenseTensorOp(ctx, {-100000, 2}, {"op_attr"}, {"op_name"});
+  auto op = CreateDenseTensorOp(
+      ctx, {pir::ShapedTypeInterface::kDynamic, 2}, {"op_attr"}, {"op_name"});
   pir::Value res = op->result(0);
 
   std::vector<pir::dialect::SymbolicDim> symDimVec =
@@ -150,7 +152,7 @@ TEST(assist_struct_test, symbolic_dim_mgr_simple) {
 
   EXPECT_EQ(symDimS0.getSymName(), "S0");
   EXPECT_EQ(symDimS1.getSymName(), "S1");
-  EXPECT_EQ(symDimS1.getValue(), -100000);
+  EXPECT_EQ(symDimS1.getValue(), pir::ShapedTypeInterface::kDynamic);
   EXPECT_EQ(symDimC10.getSymName(), "C10");
   EXPECT_EQ(symDimC10.getValue(), 10);
   EXPECT_EQ(symDimVec[0].getSymName(), "S2");
@@ -241,16 +243,25 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
   builder.Build<pir::dialect::TieProductEqualOp>(
       2, 2, std::vector<pir::OpResult>{dimOpS8, dimOpS9, dimOpS10, dimOpS11});
 
-  auto op = CreateDenseTensorOp(
-      ctx,
-      {-100000, -100000, -100000, -100000, -100000, -100000},
-      {"op0_attr"},
-      {"op0_name"});
-  auto op_ =
-      CreateDenseTensorOp(ctx,
-                          {-100000, -100000, -100000, -100000, -100000, 10, 20},
-                          {"op1_attr"},
-                          {"op1_name"});
+  auto op = CreateDenseTensorOp(ctx,
+                                {pir::ShapedTypeInterface::kDynamic,
+                                 pir::ShapedTypeInterface::kDynamic,
+                                 pir::ShapedTypeInterface::kDynamic,
+                                 pir::ShapedTypeInterface::kDynamic,
+                                 pir::ShapedTypeInterface::kDynamic,
+                                 pir::ShapedTypeInterface::kDynamic},
+                                {"op0_attr"},
+                                {"op0_name"});
+  auto op_ = CreateDenseTensorOp(ctx,
+                                 {pir::ShapedTypeInterface::kDynamic,
+                                  pir::ShapedTypeInterface::kDynamic,
+                                  pir::ShapedTypeInterface::kDynamic,
+                                  pir::ShapedTypeInterface::kDynamic,
+                                  pir::ShapedTypeInterface::kDynamic,
+                                  10,
+                                  20},
+                                 {"op1_attr"},
+                                 {"op1_name"});
   pir::OpResult res = op->result(0);
   pir::OpResult res_ = op_->result(0);
 
@@ -444,7 +455,8 @@ TEST(shape_op, tie_shape) {
 
   pir::Builder builder = pir::Builder(ctx, program.block());
 
-  auto op = CreateDenseTensorOp(ctx, {-100000, 2}, {"op_attr"}, {"op_name"});
+  auto op = CreateDenseTensorOp(
+      ctx, {pir::ShapedTypeInterface::kDynamic, 2}, {"op_attr"}, {"op_name"});
   pir::OpResult res = op->result(0);
 
   pir::dialect::TieShapeOp tieShapeOp =
@@ -497,9 +509,9 @@ TEST(assist_struct_test, shape_analysis) {
   ::pir::Builder builder = ::pir::Builder(ctx, program.block());
   pir::dialect::FuncOp funcOp = builder.Build<pir::dialect::FuncOp>();
 
-  phi::DDim dims_D_2 = {-100000, 2};
+  phi::DDim dims_D_2 = {pir::ShapedTypeInterface::kDynamic, 2};
   phi::DDim dims_2_2 = {2, 2};
-  phi::DDim dims_D = {-100000};
+  phi::DDim dims_D = {pir::ShapedTypeInterface::kDynamic};
 
   // same shape with dynamic: value1 == value2
   auto op1 = CreateDenseTensorOp(ctx, dims_D_2, {"op1_attr"}, {"op1_name"});
@@ -531,11 +543,11 @@ TEST(assist_struct_test, shape_analysis) {
   builder.SetInsertionPointToEnd(funcOp.block());
   builder.Build<pir::dialect::SymbolicDim>("C2", 2, true, false, true, true);
   pir::dialect::SymbolicDim symDimS0 = builder.Build<pir::dialect::SymbolicDim>(
-      "S0", -100000, false, false, true, true);
+      "S0", pir::ShapedTypeInterface::kDynamic, false, false, true, true);
   pir::dialect::SymbolicDim symDimS1 = builder.Build<pir::dialect::SymbolicDim>(
-      "S1", -100000, false, false, true, true);
+      "S1", pir::ShapedTypeInterface::kDynamic, false, false, true, true);
   pir::dialect::SymbolicDim symDimS2 = builder.Build<pir::dialect::SymbolicDim>(
-      "S2", -100000, false, false, true, true);
+      "S2", pir::ShapedTypeInterface::kDynamic, false, false, true, true);
 
   pir::Attribute attrS0 = pir::StrAttribute::get(ctx, "S0");
   pir::Attribute attrS1 = pir::StrAttribute::get(ctx, "S1");

@@ -22,6 +22,7 @@
 #include <unordered_set>
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/core/utils.h"
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
 
