@@ -365,11 +365,15 @@ def get_host_name_ip():
 
 def add_arguments(argname, type, default, help, argparser, **kwargs):
     """Add argparse's argument.
-    Usage:
-    .. code-block:: python
-        parser = argparse.ArgumentParser()
-        add_argument("name", str, "Jonh", "User name.", parser)
-        args = parser.parse_args()
+    Examples:
+        .. code-block:: python
+
+            >>> import argparse
+            >>> from paddle.distributed.utils import launch_utils
+            >>> parser = argparse.ArgumentParser()
+            >>> launch_utils.add_arguments("name", str, "Jonh", "User name.", parser)
+            >>> args = parser.parse_args()
+
     """
     type = strtobool if type == bool else type
     argparser.add_argument(
