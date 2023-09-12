@@ -101,80 +101,92 @@ class Pipeline1F1BPass(PipelinePassBase):
     def _backward_forward_overlap(self, backward_program, forward_program):
         logger.info("Backward forward overlap enabled in 1F1B.")
         print(f"backward_program :: {backward_program}")
-        print(f"fowr_program :: {forward_program}")
-        # Split BACKWARD
-        valid_comm_op_ids = [
-            op_id
-            for op_id, op in enumerate(backward_program.global_block().ops)
-            if self.is_comm_op_valid_to_overlap(op)
-        ]
-        # TODO(Ruibiao): Constrain the number of valid comm ops to resolve the potential memory explosion issue.
-        is_backward_split_point = (
-            lambda program, op_id: op_id - 1 in valid_comm_op_ids
+        print(f"forward_program :: {forward_program}")
+        # Split program
+        backward_ops, forward_ops = (
+            backward_program.global_block().ops,
+            forward_program.global_block().ops,
         )
-        (
-            splitted_backward_job_types,
-            splitted_backward_programs,
-        ) = self._split_program_for_overlapping(
-            BACKWARD, backward_program, is_backward_split_point
-        )
-        self._multistreaming_for_overlapping(splitted_backward_programs)
+        num_backward_ops, num_forward_ops = len(backward_ops), len(forward_ops)
+        backward_split_points, forward_split_points = [], []
+        backward_op_id, forward_op_id = 0, 0
 
-        # Split FORWARD
-        ops = forward_program.global_block().ops
-        num_ops = len(ops)
-        splitted_op_ids = []
-        op_id = 0
-        for splitted_backward_program in splitted_backward_programs:
-            backward_op_to_overlap = (
-                splitted_backward_program.global_block().ops[-1]
-            )
+        while (
+            backward_op_id < num_backward_ops
+            and forward_op_id < num_forward_ops
+        ):
+            # TODO(Ruibiao): Constrain the number of valid comm ops to resolve the potential memory explosion issue.
+            while (
+                backward_op_id < num_backward_ops
+                and not self.is_comm_op_valid_to_overlap(
+                    backward_ops[backward_op_id]
+                )
+            ):
+                backward_op_id += 1
+
+            if backward_op_id >= num_backward_ops:
+                break
+
+            backward_op_to_overlap = backward_ops[backward_op_id]
             backward_cost_to_overlap = self._op_cost(backward_op_to_overlap)
+            backward_op_id += 1
 
-            forward_cost_to_overlap = self._op_cost(ops[op_id])
+            forward_op_to_overlap = forward_ops[forward_op_id]
+            forward_cost_to_overlap = self._op_cost(forward_op_to_overlap)
             print(
                 f"backward_op_to_overlap : {backward_op_to_overlap}, cost = {backward_cost_to_overlap}"
             )
             print(
-                f"forward_op_to_overlap : {ops[op_id]}, cost = {forward_cost_to_overlap}"
+                f"forward_op_to_overlap : {forward_op_to_overlap}, cost = {forward_cost_to_overlap}"
             )
 
             while (
-                op_id < num_ops
-                and forward_cost_to_overlap <= backward_cost_to_overlap
-            ):
-                op_id += 1
-                op = ops[op_id]
-                # Force split when meet comm op since it cannot overlap with comm op in backward.
-                if op_id > 0 and self.is_comm_op_valid_to_overlap(
-                    ops[op_id - 1]
-                ):
-                    break
-
-                print(
-                    f"forward_op_to_overlap : {ops[op_id]}, cost = {self._op_cost(ops[op_id])}"
+                forward_op_id < num_forward_ops
+                and backward_cost_to_overlap >= forward_cost_to_overlap
+                and (
+                    forward_op_id <= 0
+                    or not self.is_comm_op_valid_to_overlap(
+                        forward_ops[forward_op_id - 1]
+                    )
                 )
-                forward_cost_to_overlap += self._op_cost(ops[op_id])
+            ):
+                forward_op_id += 1
+                forward_op_to_overlap = forward_ops[forward_op_id]
+                forward_cost_to_overlap += self._op_cost(forward_op_to_overlap)
+                print(
+                    f"forward_op_to_overlap : {forward_op_to_overlap}, cost = {self._op_cost(forward_op_to_overlap)}"
+                )
 
-            splitted_op_ids.append(op_id)
-            if op_id >= num_ops:
-                break
+            if (
+                not forward_split_points
+                or forward_op_id > forward_split_points[-1]
+            ):
+                backward_split_points.append(backward_op_id)
+                forward_split_points.append(forward_op_id)
 
-        is_forward_split_point = lambda program, op_id: op_id in splitted_op_ids
+        (
+            splitted_backward_job_types,
+            splitted_backward_programs,
+        ) = self._split_program_for_overlapping(
+            BACKWARD, backward_program, backward_split_points
+        )
         (
             splitted_forward_job_types,
             splitted_forward_programs,
         ) = self._split_program_for_overlapping(
-            FORWARD, forward_program, is_forward_split_point
+            FORWARD, forward_program, forward_split_points
         )
+
+        self._multistreaming_for_overlapping(splitted_backward_programs)
         self._multistreaming_for_overlapping(splitted_forward_programs)
 
         # Rearrange splitted chunks for BACKWARD and FORWARD
         self.jobs_in_stable_phase.clear()
-        num_splitted_forward_jobs = len(splitted_forward_job_types)
-        num_splitted_backward_jobs = len(splitted_backward_job_types)
+        num_splitted_backward_jobs, num_splitted_forward_jobs = len(
+            splitted_backward_job_types
+        ), len(splitted_forward_job_types)
         for idx in range(
-            max(num_splitted_forward_jobs, num_splitted_backward_jobs)
+            max(num_splitted_backward_jobs, num_splitted_forward_jobs)
         ):
             if idx < num_splitted_backward_jobs:
                 self.jobs_in_stable_phase.append(
@@ -275,7 +287,7 @@ class Pipeline1F1BPass(PipelinePassBase):
     def _op_cost(self, op):
         try:
             # TODO(Ruibiao): c_identity is redundant in auto parallel, it is temporarily set as inplace-op and do nothing in kernel, remove it later.
-            if op.type == "c_identity":
+            if op.type == "c_identity" or op.type == "recv_v2":
                 return 0
             return calc_time_by_cost_model(op)
         except:
@@ -312,21 +324,13 @@ class Pipeline1F1BPass(PipelinePassBase):
 
         return types, sub_programs
 
-    def _split_program_for_overlapping(self, job_type, program, is_split_point):
+    def _split_program_for_overlapping(self, job_type, program, split_points):
         assert job_type in [
             FORWARD,
             BACKWARD,
         ], f"job_type should be one of {[FORWARD, BACKWARD]}"
 
-        ops = program.global_block().ops
-        num_ops = len(ops)
-
-        split_ids = []
-        for op_id in range(1, num_ops):
-            if is_split_point(program, op_id):
-                split_ids.append(op_id)
-
-        splitted_programs, __, __ = split_program(program, split_ids)
+        splitted_programs, __, __ = split_program(program, split_points)
 
         splitted_job_types = []
         num_splitted_programs = len(splitted_programs)
