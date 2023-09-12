@@ -27,7 +27,7 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/optim/remove_nested_block.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
 #include "paddle/cinn/poly/stage.h"
@@ -134,7 +134,7 @@ std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
         actual_fn_name, func_args, func_body, temp_buffers);
 
     // 6. Final clean up
-    optim::RemoveNestedBlock(&func->body);
+    optim::SimplifyBlocks(&func->body);
     func->body = ir::Block::Make({func->body});
     result.push_back(ir::LoweredFunc(func.get()));
     num_func++;
