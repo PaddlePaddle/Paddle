@@ -108,6 +108,19 @@ NewIRInterpreter::NewIRInterpreter(
   };
 
   PrepareForCUDAGraphCapture();
+
+  std::stringstream ss;
+  ss << this;
+  ::pir::BuildScope(*ir_block_,
+                    InnerScope(),
+                    ss.str(),
+                    &value_2_var_name_,
+                    &variable_2_var_name_,
+                    &var_name_2_id_,
+                    &variable_list_,
+                    &sub_blocks_);
+
+  interpreter::BuildId2VarName(var_name_2_id_, &id_2_var_name_);
 }
 
 NewIRInterpreter::~NewIRInterpreter() {
@@ -334,6 +347,10 @@ Scope* NewIRInterpreter::InnerScope() {
   return local_scope_ != nullptr ? local_scope_ : scope_;
 }
 
+std::string NewIRInterpreter::GetNameByValue(::pir::Value value) const {
+  return value_2_var_name_.at(value);
+}
+
 void NewIRInterpreter::UpdateSyncOpNum() {
   int64_t sync_op_num = 0;
   for (auto& ins : vec_instruction_base_) {
@@ -503,11 +520,25 @@ void NewIRInterpreter::BuildInstruction() {
   size_t op_idx = 0;
   for (auto& op : *ir_block_) {
     VLOG(6) << "Build Instruction for op: " << op_idx;
+    std::cerr << "op->dialect()->name() " << op->dialect()->name() << std::endl;
     if (op->dialect()->name() == "builtin") {
       if (interpreter::GetSpecialOpNames().count(op->name())) {
         VLOG(6) << "skip process " << op->name();
         continue;
       }
+    } else if (op->dialect()->name() == "cf") {
+      continue;
+    } else if (op->dialect()->name() == "pd_op") {
+      vec_instruction_base_.emplace_back(
+          std::make_unique<CondInstruction>(op_idx++,
+                                            place_,
+                                            op,
+                                            scope_,
+                                            local_scope_,
+                                            value_2_var_name_,
+                                            var_name_2_id_,
+                                            variable_2_var_name_,
+                                            sub_blocks_));
     } else if (op->dialect()->name() == "pd_kernel") {
       auto op_name = op->attributes()
                          .at("op_name")
@@ -529,16 +560,6 @@ void NewIRInterpreter::BuildInstruction() {
                                                       value_2_var_name_,
                                                       var_name_2_id_,
                                                       variable_2_var_name_));
-      } else if (op_name == "pd_op.if") {
-        vec_instruction_base_.emplace_back(
-            std::make_unique<CondInstruction>(op_idx++,
-                                              place_,
-                                              op,
-                                              scope_,
-                                              local_scope_,
-                                              value_2_var_name_,
-                                              var_name_2_id_,
-                                              variable_2_var_name_));
       } else {
         vec_instruction_base_.emplace_back(
             std::make_unique<PhiKernelInstruction>(op_idx++,
@@ -927,18 +948,6 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is BetaRunning.";
     // Build
-    std::stringstream ss;
-    ss << this;
-    ::pir::BuildScope(*ir_block_,
-                      InnerScope(),
-                      ss.str(),
-                      &value_2_var_name_,
-                      &variable_2_var_name_,
-                      &var_name_2_id_,
-                      &variable_list_,
-                      &sub_blocks_);
-
-    interpreter::BuildId2VarName(var_name_2_id_, &id_2_var_name_);
 
     VLOG(4) << "Done BuildScope";
     VLOG(4) << DebugValueInfo();
@@ -981,10 +990,11 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
     }
   }
 
+  std::cerr << "begin clear" << std::endl;
   if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
   }
-
+  std::cerr << "after clear" << std::endl;
   // return Fetch Tensors
   Scope* inner_scope = InnerScope();
   if (FLAGS_enable_new_ir_in_executor) {

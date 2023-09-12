@@ -174,17 +174,6 @@ void CheckInputVars(
   }
 }
 
-std::vector<pir::Operation*> GetYiedOpList(pir::Block* block) {
-  std::vector<pir::Operation*> vec_res;
-  for (auto op : (*block)) {
-    if (op->name() == "cf.yield") {
-      vec_res.push_back(op);
-    }
-  }
-
-  return vec_res;
-}
-
 void BuildValue(pir::Value value,
                 paddle::framework::Scope* inner_scope,
                 const std::string& var_name_prefix,
@@ -459,35 +448,9 @@ void HandleForSpecialOp(
 
     auto& true_branch_scope = inner_scope->NewScope();
     sub_blocks->emplace(true_block, &true_branch_scope);
-    // BuildScope( *true_block, &true_branch_scope,  var_name_prefix,
-    // value_2_var_name,
-    //     variable_2_var_name, var_name_2_id, variable_list, sub_blocks);
 
     auto& false_branch_scope = inner_scope->NewScope();
     sub_blocks->emplace(false_block, &false_branch_scope);
-
-    // BuildScope( *false_block, &false_branch_scope,  var_name_prefix,
-    // value_2_var_name,
-    //     variable_2_var_name, var_name_2_id, variable_list, sub_blocks);
-
-    auto true_branch_yied_ops = GetYiedOpList(true_block);
-    auto false_branch_yeid_ops = GetYiedOpList(false_block);
-
-    PADDLE_ENFORCE_EQ(
-        true_branch_yied_ops.size(),
-        1u,
-        phi::errors::PreconditionNotMet("true branch only have one yield op"));
-    PADDLE_ENFORCE_EQ(
-        false_branch_yeid_ops.size(),
-        1u,
-        phi::errors::PreconditionNotMet("false branch only have one yield op"));
-    auto true_yeid_op = true_branch_yied_ops[0];
-    auto false_yeid_op = false_branch_yeid_ops[0];
-    PADDLE_ENFORCE_EQ(
-        true_yeid_op->num_operands(),
-        false_yeid_op->num_operands(),
-        phi::errors::PreconditionNotMet(
-            "True branch and false branch yied op should have some inputs"));
 
     for (size_t i = 0; i < if_op->num_results(); ++i) {
       // auto true_value = true_yeid_op->operand_source(i);
@@ -500,15 +463,6 @@ void HandleForSpecialOp(
                  variable_2_var_name,
                  var_name_2_id,
                  variable_list);
-
-      // true and false branch output pointing to varaible of it op output
-
-      auto if_op_out_var_name = value_2_var_name->at(if_op_out_value);
-
-      (*value_2_var_name)[true_yeid_op->operand_source(i)] = if_op_out_var_name;
-
-      (*value_2_var_name)[false_yeid_op->operand_source(i)] =
-          if_op_out_var_name;
     }
   }
 }

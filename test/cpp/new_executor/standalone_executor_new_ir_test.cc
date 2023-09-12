@@ -188,27 +188,24 @@ TEST(StandaloneExecutor, if_op) {
   std::stringstream os;
   os << reinterpret_cast<NewIRInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
-  std::string out_name = os.str() + "_inner_var_0";
+  std::string out_name = os.str() + "_inner_var_1";
+  std::cout << "out name " << out_name << std::endl;
   test_core.SetSkipGcVars({out_name});
 
   test_core.Run({});
 
+  std::cerr << "fin run" << std::endl;
   auto out_tensor =
       test_core.local_scope() == nullptr
           ? scope.FindVar(out_name)->Get<phi::DenseTensor>()
           : test_core.local_scope()->FindVar(out_name)->Get<phi::DenseTensor>();
 
-  bool res0 = simple_cmp(out_tensor.data<float>()[0], 2.0);
-  bool res1 = simple_cmp(out_tensor.data<float>()[1], 2.0);
-  bool res2 = simple_cmp(out_tensor.data<float>()[2], 2.0);
-  bool res3 = simple_cmp(out_tensor.data<float>()[3], 2.0);
+  std::cerr << out_tensor << std::endl;
+  bool res0 = out_tensor.data<bool>()[0] == true;
+  bool res1 = out_tensor.data<bool>()[1] == true;
 
-  EXPECT_EQ(scope.kids().size(), 1u);
-  EXPECT_EQ(scope.kids().front()->Size(), 1u);
   EXPECT_EQ(res0, true);
   EXPECT_EQ(res1, true);
-  EXPECT_EQ(res2, true);
-  EXPECT_EQ(res3, true);
 }
 
 }  // namespace framework

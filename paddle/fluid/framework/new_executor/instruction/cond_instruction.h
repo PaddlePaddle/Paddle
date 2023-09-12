@@ -24,7 +24,7 @@ namespace paddle {
 namespace framework {
 class Scope;
 class Value;
-class InterpreterBaseImpl;
+class NewIRInterpreter;
 
 class CondInstruction : public InstructionBase {
  public:
@@ -37,19 +37,28 @@ class CondInstruction : public InstructionBase {
       const std::unordered_map<::pir::Value, std::string>& value_2_var_name,
       const std::map<std::string, int>& var_name_2_id,
       const std::unordered_map<const paddle::framework::Variable*, std::string>&
-          variable_2_var_name);
+          variable_2_var_name,
+      const std::map<pir::Block*, paddle::framework::Scope*>& sub_blocks);
 
   void Run() override;
 
   const std::string& Name() const override { return cond_name_; }
 
  private:
+  void CopyBranchOutput(const std::vector<std::string>& var_names,
+                        const NewIRInterpreter* inter);
+
   std::string cond_name_{"cond_instruction"};
 
   Variable* cond_var;
 
-  InterpreterBaseImpl* true_branch_inter;
-  InterpreterBaseImpl* false_branch_inter;
+  std::vector<Variable*> if_op_outputs_;
+
+  NewIRInterpreter* true_branch_inter;
+  NewIRInterpreter* false_branch_inter;
+
+  std::vector<std::string> true_skip_gc_names_;
+  std::vector<std::string> false_skip_gc_names_;
 };
 
 }  // namespace framework

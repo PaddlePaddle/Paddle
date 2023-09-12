@@ -38,6 +38,19 @@
 namespace paddle {
 namespace framework {
 
+std::vector<pir::Value> GetYiedOpInputs(pir::Block* block) {
+  std::vector<pir::Value> vec_res;
+  for (auto op : (*block)) {
+    if (op->name() == "cf.yield") {
+      for (size_t i = 0; i < op->num_operands(); ++i) {
+        vec_res.push_back(op->operand_source(i));
+      }
+    }
+  }
+
+  return vec_res;
+}
+
 CondInstruction::CondInstruction(
     size_t id,
     const platform::Place& place,
@@ -47,7 +60,8 @@ CondInstruction::CondInstruction(
     const std::unordered_map<::pir::Value, std::string>& value_2_var_name,
     const std::map<std::string, int>& var_name_2_id,
     const std::unordered_map<const paddle::framework::Variable*, std::string>&
-        variable_2_var_name)
+        variable_2_var_name,
+    const std::map<pir::Block*, paddle::framework::Scope*>& sub_blocks)
     : InstructionBase(id, place) {
   // Todo: support paddle::dialect::DistAttribute
   //   if (op_attributes.count("dist_attr") != 0) {
@@ -82,8 +96,8 @@ CondInstruction::CondInstruction(
   VLOG(6) << "finish process analyse kernel type";
 
   // TODO(phlrain): is nupptr ok?
-  SetDeviceContext(ParseDeviceContext(
-      op, nullptr, place, GetExecutionStream(), GetStreamPriority()));
+  // SetDeviceContext(ParseDeviceContext(
+  //     op, nullptr, place, GetExecutionStream(), GetStreamPriority()));
   VLOG(6) << "finish process device context";
 
   Scope* inner_scope = local_scope == nullptr ? scope : local_scope;
@@ -102,23 +116,120 @@ CondInstruction::CondInstruction(
   if (op->isa<paddle::dialect::IfOp>()) {
     auto if_op = op->dyn_cast<paddle::dialect::IfOp>();
 
+    for (size_t i = 0; i < if_op.num_results(); ++i) {
+      if_op_outputs_.push_back(
+          inner_scope->GetVar(value_2_var_name.at(if_op.result(i))));
+    }
+
+    auto cond_value = if_op.operand_source(0);
+    auto var_name = value_2_var_name.at(cond_value);
+    std::cerr << "var name " << var_name << std::endl;
+    cond_var = inner_scope->FindVar(var_name);
+
     auto true_branch_block = if_op.true_block();
     auto false_branch_block = if_op.false_block();
 
-    true_branch_inter =
-        new NewIRInterpreter(place, {}, true_branch_block, inner_scope, {});
+    auto true_branch_yied_inputs = GetYiedOpInputs(true_branch_block);
+    auto false_branch_yied_inputs = GetYiedOpInputs(false_branch_block);
 
+    auto true_scope = sub_blocks.at(true_branch_block);
+    true_branch_inter =
+        new NewIRInterpreter(place, {}, true_branch_block, true_scope, {});
+
+    std::cerr << "11" << std::endl;
+    std::set<std::string> true_skip_gc_names_set;
+    for (auto value : true_branch_yied_inputs) {
+      true_skip_gc_names_.push_back(true_branch_inter->GetNameByValue(value));
+      true_skip_gc_names_set.insert(true_branch_inter->GetNameByValue(value));
+    }
+    true_branch_inter->SetSkipGcVars(true_skip_gc_names_set);
+    // true_branch_iter->SetSkipGcVars( )
+    std::cerr << "12" << std::endl;
+    auto false_scope = sub_blocks.at(false_branch_block);
     false_branch_inter =
-        new NewIRInterpreter(place, {}, false_branch_block, inner_scope, {});
+        new NewIRInterpreter(place, {}, false_branch_block, false_scope, {});
+
+    std::set<std::string> false_skip_gc_names_set;
+    for (auto value : false_branch_yied_inputs) {
+      false_skip_gc_names_.push_back(false_branch_inter->GetNameByValue(value));
+      false_skip_gc_names_set.insert(false_branch_inter->GetNameByValue(value));
+    }
+    false_branch_inter->SetSkipGcVars(false_skip_gc_names_set);
+  }
+
+  std::cerr << "13" << std::endl;
+
+  // InitInputsOutputsIds(
+  //     op, inner_scope, value_2_var_name, var_name_2_id, variable_2_var_name);
+  std::unordered_map<pir::Value, std::vector<int>> inputs;
+  for (size_t i = 0; i < op->num_operands(); i++) {
+    pir::Value value = op->operand_source(i);
+    if (value) {
+      PADDLE_ENFORCE_NE(
+          value_2_var_name.find(value),
+          value_2_var_name.end(),
+          phi::errors::PreconditionNotMet(
+              "input should in name map, [%d] 'th input of [%s] op",
+              i,
+              "if op"));
+      std::vector<int> inputs_id = GetValueIds(value,
+                                               inner_scope,
+                                               value_2_var_name,
+                                               var_name_2_id,
+                                               variable_2_var_name);
+      inputs.emplace(value, inputs_id);
+    }
+  }
+  SetInputs(inputs);
+
+  std::unordered_map<pir::Value, std::vector<int>> outputs;
+  for (size_t i = 0; i < op->num_results(); i++) {
+    pir::Value value = op->result(i);
+    if (value && value.type()) {
+      PADDLE_ENFORCE_NE(
+          value_2_var_name.find(value),
+          value_2_var_name.end(),
+          phi::errors::PreconditionNotMet(
+              "input should in name map, [%d] 'th input of [%s] op",
+              i,
+              "if op"));
+      std::vector<int> outputs_id = GetValueIds(value,
+                                                inner_scope,
+                                                value_2_var_name,
+                                                var_name_2_id,
+                                                variable_2_var_name);
+      outputs.emplace(value, outputs_id);
+    }
+  }
+  SetOutputs(outputs);
+}
+
+void CondInstruction::CopyBranchOutput(
+    const std::vector<std::string>& var_names, const NewIRInterpreter* inter) {
+  for (size_t i = 0; i < var_names.size(); ++i) {
+    auto* inner_var = inter->local_scope()->GetVar(var_names[i]);
+
+    if_op_outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
+        inner_var->Get<phi::DenseTensor>());
   }
 }
 
 void CondInstruction::Run() {
+  std::cerr << "cond run" << std::endl;
   if (cond_var->Get<phi::DenseTensor>().data<bool>()[0]) {
+    std::cerr << "true  " << std::endl;
     true_branch_inter->Run({}, false);
+    std::cerr << "true  fin" << std::endl;
+    CopyBranchOutput(true_skip_gc_names_, true_branch_inter);
   } else {
+    std::cerr << "false  " << std::endl;
     false_branch_inter->Run({}, false);
+    std::cerr << "false fin  " << std::endl;
+
+    CopyBranchOutput(false_skip_gc_names_, false_branch_inter);
   }
+
+  // copy ouptut
 }
 
 }  // namespace framework
