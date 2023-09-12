@@ -24,11 +24,11 @@
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/ir/core/attribute.h"
-#include "paddle/ir/core/block.h"
-#include "paddle/ir/core/builtin_attribute.h"
-#include "paddle/ir/core/program.h"
-#include "paddle/ir/core/value.h"
+#include "paddle/pir/core/attribute.h"
+#include "paddle/pir/core/block.h"
+#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
 
@@ -178,20 +178,20 @@ static void ShareTensorsIntoScopeWithName(
   }
 }
 
-static auto GetNameFromValue(const ::ir::Block *block,
-                             const std::vector<::ir::Value> &values) {
+static auto GetNameFromValue(const ::pir::Block *block,
+                             const std::vector<::pir::Value> &values) {
   // we use name here, later value is used directly.
-  std::unordered_map<::ir::Value, std::string> value2name;
+  std::unordered_map<::pir::Value, std::string> value2name;
   for (auto *op : *block) {
     std::string name;
     if (op->name() == "pd.data") {
       name =
-          op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString();
+          op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
       value2name[op->results()[0].value_impl()] = name;
     } else if (op->name() == "builtin.set_parameter") {
       name = op->attributes()
                  .at("parameter_name")
-                 .dyn_cast<ir::StrAttribute>()
+                 .dyn_cast<pir::StrAttribute>()
                  .AsString();
       value2name[op->operand(0).source()] = name;
     }
@@ -200,7 +200,7 @@ static auto GetNameFromValue(const ::ir::Block *block,
   std::transform(values.begin(),
                  values.end(),
                  std::back_inserter(names),
-                 [&value2name](const ::ir::Value &v) { return value2name[v]; });
+                 [&value2name](const ::pir::Value &v) { return value2name[v]; });
   return names;
 }
 
@@ -245,17 +245,17 @@ static void ShareTensorsFromScope(
   }
 }
 
-static void ShareTensorsIntoScopeByValue(const ::ir::Block *block,
+static void ShareTensorsIntoScopeByValue(const ::pir::Block *block,
                                          const std::vector<Tensor> &tensors,
-                                         const std::vector<::ir::Value> &values,
+                                         const std::vector<::pir::Value> &values,
                                          paddle::framework::Scope *scope) {
   auto names = GetNameFromValue(block, values);
   ShareTensorsIntoScopeWithName(tensors, names, scope);
 }
 
-static void ShareTensorsFromScopeByValue(const ::ir::Block *block,
+static void ShareTensorsFromScopeByValue(const ::pir::Block *block,
                                          const std::vector<Tensor *> &tensors,
-                                         const std::vector<::ir::Value> &values,
+                                         const std::vector<::pir::Value> &values,
                                          paddle::framework::Scope *scope) {
   auto names = GetNameFromValue(block, values);
   for (size_t i = 0; i < tensors.size(); ++i) {
@@ -429,20 +429,20 @@ inline void NewIRRunProgramAPI(
   VLOG(4) << "global_inner_scope:" << global_inner_scope;
 
   auto input_values =
-      PADDLE_GET_CONST(std::vector<::ir::Value>, attrs.at("fx"));
+      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fx"));
   auto output_values =
-      PADDLE_GET_CONST(std::vector<::ir::Value>, attrs.at("fo"));
+      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fo"));
   auto middle_values =
-      PADDLE_GET_CONST(std::vector<::ir::Value>, attrs.at("fm"));
+      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fm"));
   auto param_values =
-      PADDLE_GET_CONST(std::vector<::ir::Value>, attrs.at("fp"));
+      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fp"));
   // auto dout_names =
-  // PADDLE_GET_CONST(std::vector<::ir::Value>, attrs.at("fp"));
+  // PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fp"));
 
   auto *forward_global_block =
-      PADDLE_GET_CONST(::ir::Block *, attrs.at("forward_global_block"));
+      PADDLE_GET_CONST(::pir::Block *, attrs.at("forward_global_block"));
   auto *backward_global_block =
-      PADDLE_GET_CONST(::ir::Block *, attrs.at("backward_global_block"));
+      PADDLE_GET_CONST(::pir::Block *, attrs.at("backward_global_block"));
 
   auto *forward_program =
       forward_global_block->GetParentOp()->GetParentProgram();
@@ -948,22 +948,22 @@ inline void NewIRRunProgramGradAPI(
   VLOG(4) << "global_inner_scope:" << global_inner_scope;
 
   auto *backward_global_block =
-      PADDLE_GET_CONST(::ir::Block *, attrs.at("backward_global_block"));
+      PADDLE_GET_CONST(::pir::Block *, attrs.at("backward_global_block"));
   auto *backward_program =
       backward_global_block->GetParentOp()->GetParentProgram();
 
   auto output_grad_values =
-      PADDLE_GET_CONST(std::vector<::ir::Value>, attrs.at("bo_g"));
+      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bo_g"));
   auto forward_input_values =
-      PADDLE_GET_CONST(std::vector<::ir::Value>, attrs.at("bx"));
+      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bx"));
   auto forward_middle_values =
-      PADDLE_GET_CONST(std::vector<::ir::Value>, attrs.at("bm"));
+      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bm"));
   auto forward_output_values =
-      PADDLE_GET_CONST(std::vector<::ir::Value>, attrs.at("bo"));
+      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bo"));
   auto x_grad_values =
-      PADDLE_GET_CONST(std::vector<::ir::Value>, attrs.at("bx_g"));
+      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bx_g"));
   auto p_grad_values =
-      PADDLE_GET_CONST(std::vector<::ir::Value>, attrs.at("bp_g"));
+      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bp_g"));
 
   auto &interpretercore_info_cache =
       paddle::framework::InterpreterCoreInfoCache::Instance();
@@ -1302,7 +1302,7 @@ class NewIRGradNodeRunProgram : public egr::GradNodeBase {
     }
 
     auto out_grad_values =
-        PADDLE_GET_CONST(std::vector<::ir::Value>, attrs_.at("bo_g"));
+        PADDLE_GET_CONST(std::vector<::pir::Value>, attrs_.at("bo_g"));
     PADDLE_ENFORCE_EQ(hooked_grads[0].size(),
                       out_grad_values.size(),
                       paddle::platform::errors::InvalidArgument(
@@ -1357,7 +1357,7 @@ class NewIRGradNodeRunProgram : public egr::GradNodeBase {
   void ConstructXGradTensors(const std::vector<paddle::Tensor> &x,
                              std::vector<paddle::Tensor> *x_grad) {
     auto x_grad_values =
-        PADDLE_GET_CONST(std::vector<::ir::Value>, attrs_.at("bx_g"));
+        PADDLE_GET_CONST(std::vector<::pir::Value>, attrs_.at("bx_g"));
     PADDLE_ENFORCE_EQ(
         x.size(),
         x_grad_values.size(),
@@ -1381,7 +1381,7 @@ class NewIRGradNodeRunProgram : public egr::GradNodeBase {
   void ConstructParamGradTensors(const std::vector<paddle::Tensor> &params,
                                  std::vector<paddle::Tensor> *param_grads) {
     auto p_grad_values =
-        PADDLE_GET_CONST(std::vector<::ir::Value>, attrs_.at("bp_g"));
+        PADDLE_GET_CONST(std::vector<::pir::Value>, attrs_.at("bp_g"));
     PADDLE_ENFORCE_EQ(params.size(),
                       p_grad_values.size(),
                       paddle::platform::errors::InvalidArgument(

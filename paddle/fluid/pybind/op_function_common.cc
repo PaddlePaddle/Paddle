@@ -33,9 +33,9 @@
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/imperative.h"
-#include "paddle/ir/core/block.h"
-#include "paddle/ir/core/value.h"
 #include "paddle/phi/common/complex.h"
+#include "paddle/pir/core/block.h"
+#include "paddle/pir/core/value.h"
 
 namespace paddle {
 namespace pybind {
@@ -836,12 +836,12 @@ void CastPyArg2AttrIRBlock(PyObject* obj,
                            const std::string& key,
                            const std::string& op_type,
                            ssize_t arg_pos) {
-  VLOG(1) << "After Process ir::Block*";
+  VLOG(1) << "After Process pir::Block*";
   ::pybind11::detail::instance* inst =
       (::pybind11::detail::instance*)obj;  // NOLINT
   void** vh = inst->simple_layout ? inst->simple_value_holder
                                   : &inst->nonsimple.values_and_holders[0];
-  attrs[key] = reinterpret_cast<::ir::Block*&>(vh[0]);
+  attrs[key] = reinterpret_cast<::pir::Block*&>(vh[0]);
 }
 
 void CastPyArg2AttrValues(PyObject* obj,
@@ -849,7 +849,7 @@ void CastPyArg2AttrValues(PyObject* obj,
                           const std::string& key,
                           const std::string& op_type,
                           ssize_t arg_pos) {
-  std::vector<::ir::Value> results;
+  std::vector<::pir::Value> results;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
@@ -860,11 +860,11 @@ void CastPyArg2AttrValues(PyObject* obj,
           (::pybind11::detail::instance*)item;  // NOLINT
       void** vh = inst->simple_layout ? inst->simple_value_holder
                                       : &inst->nonsimple.values_and_holders[0];
-      ::ir::OpResult* opresult = reinterpret_cast<::ir::OpResult*>(vh[0]);
+      ::pir::OpResult* opresult = reinterpret_cast<::pir::OpResult*>(vh[0]);
       if (opresult->impl() == nullptr) {
-        results.emplace_back(ir::Value(nullptr));
+        results.emplace_back(pir::Value(nullptr));
       } else {
-        results.emplace_back(ir::Value(opresult->value_impl()));
+        results.emplace_back(pir::Value(opresult->value_impl()));
       }
     }
   } else {

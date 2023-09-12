@@ -30,6 +30,7 @@
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
@@ -434,15 +435,15 @@ void BindType(py::module *m) {
 
 Operation *BuildOpFrom(
     const Operation *to_copy_op,
-    std::unordered_map<ir::Value, ir::Value> &value_map) {  // NOLINT
-  ir::OperationArgument to_create_argument(to_copy_op->info());
+    std::unordered_map<pir::Value, pir::Value> &value_map) {  // NOLINT
+  pir::OperationArgument to_create_argument(to_copy_op->info());
   to_create_argument.attributes = to_copy_op->attributes();
 
   auto origin_results = to_copy_op->results();
   std::transform(origin_results.begin(),
                  origin_results.end(),
                  std::back_inserter(to_create_argument.output_types),
-                 [](const ir::OpResult &r) {
+                 [](const pir::OpResult &r) {
                    // OpResult -> OpType
                    return r.type();
                  });
@@ -452,7 +453,7 @@ Operation *BuildOpFrom(
   std::transform(origin_operands.begin(),
                  origin_operands.end(),
                  std::back_inserter(to_create_argument.inputs),
-                 [&value_map](const ir::OpOperand &operand) {
+                 [&value_map](const pir::OpOperand &operand) {
                    // Operand -> OpResult
                    return value_map[operand.source()].impl();
                  });
@@ -475,9 +476,9 @@ std::shared_ptr<Program> ProgramClone(const Program &program) {
   // Limitation of this function:
   // 1. don't support Parameters.
   // 2. don't support Regions in operator.
-  ir::IrContext *ctx = ir::IrContext::Instance();
+  pir::IrContext *ctx = pir::IrContext::Instance();
   auto cloned_program = std::make_shared<Program>(ctx);
-  std::unordered_map<ir::Value, ir::Value> value_map;
+  std::unordered_map<pir::Value, pir::Value> value_map;
   for (auto &op : *program.block()) {
     auto *cloned_op = BuildOpFrom(op, value_map);
     cloned_program->block()->push_back(cloned_op);
@@ -501,15 +502,15 @@ void range_block_do(const Block *block, std::vector<int> range, F fn) {
   }
 }
 
-std::vector<ir::Value> AnalysisMiddleVariable(
+std::vector<pir::Value> AnalysisMiddleVariable(
     const Program &program,
-    const std::vector<ir::Value> &forward_inputs,
+    const std::vector<pir::Value> &forward_inputs,
     const std::vector<int> &forward_range,
     const std::vector<int> &backward_range) {
-  std::vector<ir::Value> middle_values;
+  std::vector<pir::Value> middle_values;
 
-  std::unordered_set<ir::Value> backward_inputs;
-  std::unordered_set<ir::Value> x_or_param(forward_inputs.begin(),
+  std::unordered_set<pir::Value> backward_inputs;
+  std::unordered_set<pir::Value> x_or_param(forward_inputs.begin(),
                                            forward_inputs.end());
   range_block_do(
       program.block(), backward_range, [&backward_inputs](Operation *op) {
@@ -531,41 +532,41 @@ std::vector<ir::Value> AnalysisMiddleVariable(
   return middle_values;
 }
 
-void mapping_value(const std::vector<ir::Value> &origin,
-                   const std::unordered_map<ir::Value, ir::Value> &value_map,
-                   std::vector<ir::Value> &out) {  // NOLINT
+void mapping_value(const std::vector<pir::Value> &origin,
+                   const std::unordered_map<pir::Value, pir::Value> &value_map,
+                   std::vector<pir::Value> &out) {  // NOLINT
   std::transform(origin.begin(),
                  origin.end(),
                  std::back_inserter(out),
-                 [&value_map](const ir::Value &v) {
+                 [&value_map](const pir::Value &v) {
                    if (v.impl() == nullptr) return Value(nullptr);
                    return value_map.at(v);
                  });
 }
 
 using SplitedProgram = std::vector<std::shared_ptr<Program>>;
-using SplitedAttribute = std::map<std::string, std::vector<ir::Value>>;
+using SplitedAttribute = std::map<std::string, std::vector<pir::Value>>;
 using SplitedResult = std::pair<SplitedProgram, SplitedAttribute>;
 
-ir::OpResult FakeOpResult() {
+pir::OpResult FakeOpResult() {
   // create a fake opresults to simplify `ForwardBackwardSplit`.
-  return ir::OpResult(nullptr);
+  return pir::OpResult(nullptr);
 }
 
 SplitedResult ForwardBackwardSplit(
     const Program &program,
-    const std::vector<ir::OpResult> &op_result_forward_inputs,
-    const std::vector<ir::OpResult> &op_result_forward_outputs,
-    const std::vector<ir::OpResult> &op_result_forward_inputs_grads,
-    const std::vector<ir::OpResult> &op_result_forward_outputs_grads,
+    const std::vector<pir::OpResult> &op_result_forward_inputs,
+    const std::vector<pir::OpResult> &op_result_forward_outputs,
+    const std::vector<pir::OpResult> &op_result_forward_inputs_grads,
+    const std::vector<pir::OpResult> &op_result_forward_outputs_grads,
     const std::vector<int> &forward_range,
     const std::vector<int> &backward_range) {
   // transform opresult -> value
   VLOG(1) << "Start Prepare data structures.";
-  std::vector<ir::Value> forward_inputs, forward_outputs, forward_inputs_grads,
+  std::vector<pir::Value> forward_inputs, forward_outputs, forward_inputs_grads,
       forward_outputs_grads;
 
-  auto op_result_to_value = [](const ir::OpResult &r) {
+  auto op_result_to_value = [](const pir::OpResult &r) {
     if (r.impl() == nullptr) return Value(nullptr);
     return Value(r.value_impl());
   };
@@ -587,22 +588,22 @@ SplitedResult ForwardBackwardSplit(
                  std::back_inserter(forward_outputs_grads),
                  op_result_to_value);
 
-  std::vector<ir::Value> forward_in_out_values;
-  for (auto &v : std::vector<std::vector<ir::Value> *>(
+  std::vector<pir::Value> forward_in_out_values;
+  for (auto &v : std::vector<std::vector<pir::Value> *>(
            {&forward_inputs, &forward_outputs})) {
     forward_in_out_values.insert(
         forward_in_out_values.end(), v->begin(), v->end());
   }
 
-  std::vector<ir::Value> fx, fp, fm, fo, bx, bp, bm, bo_g, bx_g, bp_g, bo;
-  ir::IrContext *ctx = ir::IrContext::Instance();
+  std::vector<pir::Value> fx, fp, fm, fo, bx, bp, bm, bo_g, bx_g, bp_g, bo;
+  pir::IrContext *ctx = pir::IrContext::Instance();
   auto forward_program = std::make_shared<Program>(ctx);
   auto backward_program = std::make_shared<Program>(ctx);
   auto middle_values = AnalysisMiddleVariable(
       program, forward_in_out_values, forward_range, backward_range);
-  std::unordered_map<ir::Value, ir::Value> forward_value_map;
-  std::unordered_map<ir::Value, ir::Value> backward_value_map;
-  ir::Builder backward_builder = ir::Builder(ctx, backward_program->block());
+  std::unordered_map<pir::Value, pir::Value> forward_value_map;
+  std::unordered_map<pir::Value, pir::Value> backward_value_map;
+  pir::Builder backward_builder = pir::Builder(ctx, backward_program->block());
 
   // forward program construct.
   VLOG(1) << "Before Forward Construct.";
@@ -618,7 +619,7 @@ SplitedResult ForwardBackwardSplit(
   // Step1. insert data op for inputs_values and middle_values
   int counter = 0;
   auto create_data_fn = [&backward_builder, &backward_value_map, &counter](
-                            const ir::Value &v) {
+                            const pir::Value &v) {
     if (v.impl() == nullptr) {
       return;
     }
@@ -640,17 +641,17 @@ SplitedResult ForwardBackwardSplit(
   auto create_output_fn_forward = [&ctx,
                                    &forward_value_map,
                                    &counter,
-                                   &forward_program](const ir::Value &v) {
+                                   &forward_program](const pir::Value &v) {
     if (v.impl() == nullptr) {
       return;
     }
-    auto op_info = ctx->GetRegisteredOpInfo(ir::SetParameterOp::name());
-    ir::AttributeMap attribute_map = {
+    auto op_info = ctx->GetRegisteredOpInfo(pir::SetParameterOp::name());
+    pir::AttributeMap attribute_map = {
         {"parameter_name",
-         ir::StrAttribute::get(
+         pir::StrAttribute::get(
              ctx, std::string("output_") + std::to_string(counter))},
     };
-    ir::Operation *operation = ir::Operation::Create(
+    pir::Operation *operation = pir::Operation::Create(
         {OpResult(forward_value_map[v].impl())}, attribute_map, {}, op_info);
     forward_program->block()->push_back(operation);
     counter += 1;
@@ -659,18 +660,18 @@ SplitedResult ForwardBackwardSplit(
   auto create_output_fn_backward = [&ctx,
                                     &backward_value_map,
                                     &counter,
-                                    &backward_program](const ir::Value &v) {
+                                    &backward_program](const pir::Value &v) {
     if (v.impl() == nullptr) {
       return;
     }
-    auto op_info = ctx->GetRegisteredOpInfo(ir::SetParameterOp::name());
-    ir::AttributeMap attribute_map = {
+    auto op_info = ctx->GetRegisteredOpInfo(pir::SetParameterOp::name());
+    pir::AttributeMap attribute_map = {
         {"parameter_name",
-         ir::StrAttribute::get(
+         pir::StrAttribute::get(
              ctx, std::string("output_") + std::to_string(counter))},
     };
-    ir::Operation *operation =
-        ir::Operation::Create({OpResult(backward_value_map.at(v).impl())},
+    pir::Operation *operation =
+        pir::Operation::Create({OpResult(backward_value_map.at(v).impl())},
                               attribute_map,
                               {},
                               op_info);
@@ -730,7 +731,7 @@ SplitedResult ForwardBackwardSplit(
       forward_outputs_grads, backward_value_map, bo_g);    // write 'bo_g'
   mapping_value(forward_outputs, backward_value_map, bo);  // write 'bo'
 
-  std::map<std::string, std::vector<ir::Value>> attr = {{"fx", fx},
+  std::map<std::string, std::vector<pir::Value>> attr = {{"fx", fx},
                                                         {"fp", fp},
                                                         {"fm", fm},
                                                         {"fo", fo},

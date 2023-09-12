@@ -24,9 +24,9 @@ limitations under the License. */
 
 #include "paddle/fluid/imperative/type_defs.h"
 
-#include "paddle/ir/core/block.h"
-#include "paddle/ir/core/value.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/pir/core/block.h"
+#include "paddle/pir/core/value.h"
 #include "paddle/utils/blank.h"
 #include "paddle/utils/small_vector.h"
 #include "paddle/utils/variant.h"
@@ -65,8 +65,8 @@ using Attribute = paddle::variant<paddle::blank,
                                   double,
                                   paddle::experimental::Scalar,
                                   std::vector<paddle::experimental::Scalar>,
-                                  ::ir::Block*,
-                                  std::vector<::ir::Value>>;
+                                  ::pir::Block*,
+                                  std::vector<::pir::Value>>;
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 
 using OpCreator =

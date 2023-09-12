@@ -1202,7 +1202,7 @@ class ConcreteProgram:
         # framework.default_startup_program().random_seed
         # ) }}}
         with ir_static.program_guard(main_program, startup_program):
-            with _to_static_mode_guard_(is_declarative=True):
+            with _to_static_mode_guard_(is_to_static=True):
                 # 1. Adds `paddle.static.data` layers for input if needed
                 static_inputs = func_spec.newir_to_static_inputs_with_spec(
                     input_spec, main_program

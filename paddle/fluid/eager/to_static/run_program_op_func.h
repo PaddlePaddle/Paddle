@@ -199,9 +199,9 @@ inline void newir_run_program_ad_func(
 
   // Create Middle Output for GradNode.
   auto middle_size =
-      PADDLE_GET_CONST(std::vector<::ir::Value>, attrs.at("fm")).size();
+      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fm")).size();
   auto output_size =
-      PADDLE_GET_CONST(std::vector<::ir::Value>, attrs.at("fo")).size();
+      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fo")).size();
   auto middles = std::vector<paddle::Tensor*>();
   std::shared_ptr<NewIRGradNodeRunProgram> grad_node;
   VLOG(2) << "start run run_program with require_any_grad = "
