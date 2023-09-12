@@ -18,7 +18,7 @@ import numpy as np
 from test_distribution import DistributionNumpy
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distribution import Categorical, Distribution, Normal, Uniform
 
 np.random.seed(2022)
@@ -56,10 +56,10 @@ class CategoricalTest(unittest.TestCase):
     def setUp(self, use_gpu=False, batch_size=3, dims=5):
         self.use_gpu = use_gpu
         if not use_gpu:
-            self.place = fluid.CPUPlace()
+            self.place = base.CPUPlace()
             self.gpu_id = -1
         else:
-            self.place = fluid.CUDAPlace(0)
+            self.place = base.CUDAPlace(0)
             self.gpu_id = 0
 
         self.batch_size = batch_size
@@ -70,8 +70,8 @@ class CategoricalTest(unittest.TestCase):
         self.init_dynamic_data(batch_size, dims)
 
         paddle.enable_static()
-        self.test_program = fluid.Program()
-        self.executor = fluid.Executor(self.place)
+        self.test_program = base.Program()
+        self.executor = base.Executor(self.place)
         self.init_static_data(batch_size, dims)
 
     def init_numpy_data(self, batch_size, dims):
@@ -102,7 +102,7 @@ class CategoricalTest(unittest.TestCase):
         self.value = paddle.to_tensor(self.value_np)
 
     def init_static_data(self, batch_size, dims):
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.logits_static = paddle.static.data(
                 name='logits', shape=self.logits_shape, dtype='float32'
             )
@@ -168,7 +168,7 @@ class CategoricalTest(unittest.TestCase):
 
     def test_categorical_distribution_static(self, tolerance=1e-6):
         paddle.enable_static()
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             categorical = Categorical(self.logits_static)
             other_categorical = Categorical(self.other_logits_static)
 
@@ -186,7 +186,7 @@ class CategoricalTest(unittest.TestCase):
             'value': self.value_np,
         }
 
-        self.executor.run(fluid.default_startup_program())
+        self.executor.run(base.default_startup_program())
         fetch_list = self.executor.run(
             program=self.test_program, feed=feed_vars, fetch_list=fetch_list
         )
@@ -210,7 +210,7 @@ class CategoricalTest2(CategoricalTest):
         self.value_shape = [3]
 
     def init_static_data(self, batch_size, dims):
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.logits_static = paddle.static.data(
                 name='logits', shape=self.logits_shape, dtype='float64'
             )
@@ -231,7 +231,7 @@ class CategoricalTest3(CategoricalTest):
         self.value = paddle.to_tensor(self.value_np)
 
     def init_static_data(self, batch_size, dims):
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.logits_static = self.logits_np
             self.other_logits_static = self.other_logits_np
             self.value_static = paddle.static.data(
@@ -260,7 +260,7 @@ class CategoricalTest4(CategoricalTest):
         self.value = paddle.to_tensor(self.value_np)
 
     def init_static_data(self, batch_size, dims):
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.logits_static = self.logits_np
             self.other_logits_static = self.other_logits_np
             self.value_static = paddle.static.data(
@@ -341,7 +341,7 @@ class CategoricalTest8(CategoricalTest):
         self.value = paddle.to_tensor(self.value_np)
 
     def init_static_data(self, batch_size, dims):
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.logits_static = self.logits_np.tolist()
             self.other_logits_static = self.other_logits_np.tolist()
             self.value_static = paddle.static.data(
@@ -358,7 +358,7 @@ class CategoricalTest9(CategoricalTest):
         self.value = paddle.to_tensor(self.value_np)
 
     def init_static_data(self, batch_size, dims):
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.logits_static = tuple(self.logits_np.tolist())
             self.other_logits_static = tuple(self.other_logits_np.tolist())
             self.value_static = paddle.static.data(

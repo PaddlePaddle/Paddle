@@ -70,8 +70,11 @@ void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
     // TODO(wilber): GraphToProgram seems have bugs.
     for (size_t i = 0; i < program_desc.Size(); ++i) {
       for (size_t j = 0; j < program_desc.Block(i).OpSize(); ++j) {
-        if (program_desc.Block(i).Op(j)->Type() == "tensorrt_engine") {
-          program_desc.Block(i).Op(j)->RemoveAttr("sub_block");
+        if (program_desc.Block(i).Op(static_cast<int>(j))->Type() ==
+            "tensorrt_engine") {
+          program_desc.Block(i)
+              .Op(static_cast<int>(j))
+              ->RemoveAttr("sub_block");
         }
       }
     }
@@ -83,7 +86,7 @@ void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
       program_path = optim_cache_dir + "/" + program_path;
     }
     std::ofstream file(program_path.c_str(), std::ios::binary);
-    file.write(program_bytes.c_str(), program_bytes.size());
+    file.write(program_bytes.c_str(), program_bytes.size());  // NOLINT
     file.close();
     VLOG(3) << "serialize program to " << program_path;
   }

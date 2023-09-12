@@ -19,8 +19,8 @@ from eager_op_test import OpTest
 from op import Operator
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -220,11 +220,11 @@ class TestSGDOpWithLargeInput(unittest.TestCase):
         sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
         sgd_optimizer.minimize(avg_cost)
 
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        compiled_prog = fluid.compiler.CompiledProgram(
-            fluid.default_main_program()
+        place = base.CPUPlace()
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
+        compiled_prog = base.compiler.CompiledProgram(
+            base.default_main_program()
         )
         result = exe.run(compiled_prog, fetch_list=[avg_cost])
 

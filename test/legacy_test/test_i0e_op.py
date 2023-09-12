@@ -19,7 +19,7 @@ from eager_op_test import OpTest
 from scipy import special
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 np.random.seed(100)
 paddle.seed(100)

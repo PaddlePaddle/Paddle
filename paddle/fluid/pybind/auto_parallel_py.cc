@@ -33,6 +33,7 @@
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/p_to_r_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/r_to_p_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/r_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/s_to_r_reshard_function.h"
@@ -268,6 +269,10 @@ void BindAutoParallel(py::module *m) {
       *m, "RToPReshardFunction", ReshardFunction)
       .def(py::init<>());
 
+  py::class_<phi::distributed::PToRReshardFunction>(
+      *m, "PToRReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
   py::class_<ProcessMesh>(*m, "ProcessMesh")
       .def(py::init<>())
       .def(py::init<const std::vector<int64_t> &,
@@ -446,7 +451,8 @@ void BindAutoParallel(py::module *m) {
           },
           py::arg("memo"))
       .def("__str__", &TensorDistAttr::to_string)
-      .def("_is_partial", &TensorDistAttr::is_partial)
+      .def(
+          "_is_partial", &TensorDistAttr::is_partial, py::arg("mesh_axis") = -1)
       .def("_partial_dims", &TensorDistAttr::partial_dims)
       .def("_clean_partial_dims", &TensorDistAttr::clean_partial_dims)
       .def("_set_partial_dims",
@@ -487,10 +493,9 @@ void BindAutoParallel(py::module *m) {
               const std::vector<DistTensorSpec> &input_specs,
               const std::vector<phi::Attribute> &attrs) {
              /*
-             to distingish between single tensor argument and vector argument
-             of one tensor: start - end == 0: single tensor start - end == 1:
-             vector containing one tensor input_ranges: [(0, 0), (1, 3), (3,
-             4)]
+             to distingish between single tensor argument and vector argument of
+             one tensor: start - end == 0: single tensor start - end == 1:
+             vector containing one tensor input_ranges: [(0, 0), (1, 3), (3, 4)]
              + input_specs: [t0, t1, t2, t3]  --> t0, [t1, t2], [t3]
              */
              phi::distributed::InferSpmdContext ctx;
@@ -545,10 +550,9 @@ void BindAutoParallel(py::module *m) {
               const std::vector<DistTensorSpec> &input_specs,
               const std::vector<phi::Attribute> &attrs) {
              /*
-             to distingish between single tensor argument and vector argument
-             of one tensor: start - end == 0: single tensor start - end == 1:
-             vector containing one tensor input_ranges: [(0, 0), (1, 3), (3,
-             4)]
+             to distingish between single tensor argument and vector argument of
+             one tensor: start - end == 0: single tensor start - end == 1:
+             vector containing one tensor input_ranges: [(0, 0), (1, 3), (3, 4)]
              + input_specs: [t0, t1, t2, t3]  --> t0, [t1, t2], [t3]
              */
              phi::distributed::InferSpmdContext ctx;

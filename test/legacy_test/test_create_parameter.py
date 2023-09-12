@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import Program, program_guard
+from paddle.base import Program, program_guard
 
 
 class TestCreateParameterError(unittest.TestCase):

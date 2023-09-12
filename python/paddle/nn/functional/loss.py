@@ -16,15 +16,15 @@ import math
 
 # TODO: define loss functions of neural network
 import paddle
-from paddle import _C_ops, fluid, in_dynamic_mode
+from paddle import _C_ops, base, in_dynamic_mode
 from paddle.framework import core
 from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
 
+from ...base.data_feeder import check_variable_and_dtype
+from ...base.framework import _current_expected_place
+from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
-from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid.framework import _current_expected_place
-from ...fluid.layer_helper import LayerHelper
 from ...tensor.manipulation import reshape
 
 __all__ = []
@@ -161,7 +161,7 @@ def log_loss(input, label, epsilon=1e-4, name=None):
     return loss
 
 
-def fluid_softmax_with_cross_entropy(
+def base_softmax_with_cross_entropy(
     logits,
     label,
     soft_label=False,
@@ -380,7 +380,7 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
     similarity_matrix = paddle.matmul(
         anchor, positive, transpose_x=False, transpose_y=True
     )
-    softmax_ce = fluid_softmax_with_cross_entropy(
+    softmax_ce = base_softmax_with_cross_entropy(
         logits=similarity_matrix, label=labels, soft_label=True
     )
     cross_entropy = paddle.sum(labels * softmax_ce, 0)
@@ -1199,7 +1199,7 @@ def margin_ranking_loss(
         out = _C_ops.subtract(other, input)
         out = _C_ops.multiply(out, label)
         if margin != 0.0:
-            margin = fluid.dygraph.base.to_variable([margin], dtype=out.dtype)
+            margin = base.dygraph.base.to_variable([margin], dtype=out.dtype)
             out = _C_ops.add(out, margin)
         out = _C_ops.relu(out)
         if reduction == 'sum':
@@ -1679,13 +1679,13 @@ def kl_div(input, label, reduction='mean', name=None):
     """
     # ugly type promotion
     if (
-        fluid.data_feeder.convert_dtype(input.dtype) == 'float32'
-        and fluid.data_feeder.convert_dtype(label.dtype) == 'float64'
+        base.data_feeder.convert_dtype(input.dtype) == 'float32'
+        and base.data_feeder.convert_dtype(label.dtype) == 'float64'
     ):
         input = paddle.cast(input, 'float64')
     elif (
-        fluid.data_feeder.convert_dtype(input.dtype) == 'float64'
-        and fluid.data_feeder.convert_dtype(label.dtype) == 'float32'
+        base.data_feeder.convert_dtype(input.dtype) == 'float64'
+        and base.data_feeder.convert_dtype(label.dtype) == 'float32'
     ):
         label = paddle.cast(label, 'float64')
 
@@ -1709,7 +1709,7 @@ def kl_div(input, label, reduction='mean', name=None):
         check_variable_and_dtype(
             label, 'label', ['float32', 'float64'], 'kl_div'
         )
-        fluid.data_feeder.check_type(reduction, 'reduction', str, 'kl_div')
+        base.data_feeder.check_type(reduction, 'reduction', str, 'kl_div')
 
         loss = helper.create_variable_for_type_inference(dtype=input.dtype)
         helper.append_op(
@@ -2483,7 +2483,7 @@ def softmax_with_cross_entropy(
                    [1.15328646])
 
     """
-    return fluid_softmax_with_cross_entropy(
+    return base_softmax_with_cross_entropy(
         logits,
         label,
         soft_label,
@@ -2503,6 +2503,7 @@ def cross_entropy(
     soft_label=False,
     axis=-1,
     use_softmax=True,
+    label_smoothing=0.0,
     name=None,
 ):
     r"""
@@ -2631,8 +2632,12 @@ def cross_entropy(
             :math:`[N_1, N_2, ..., N_k]` or :math:`[N_1, N_2, ..., N_k, 1]`, k >= 1.
             the data type is int32, int64, float32, float64, where each value is [0, C-1].
 
-            2. If soft_label=True, the shape and data type should be same with ``input`` ,
-            and the sum of the labels for each sample should be 1.
+            2. If soft_label=True and no label_smoothing, the shape and data type
+            should be same with ``input`` , and the sum of the labels for each sample should be 1.
+
+            3. If has label_smoothing, (i.e. label_smoothing > 0.0), no matter what ``soft_label`` is,
+            the shape and data type of ``label`` could be either the situation 1 or situation 2.
+            In other words, if label_smoothing > 0.0, the format of label could be one-hot label or integer label.
 
         weight (Tensor, optional): a manual rescaling weight given to each class.
             If given, has to be a Tensor of size C and the data type is float32, float64.
@@ -2648,6 +2653,11 @@ def cross_entropy(
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
         soft_label (bool, optional): Indicate whether label is soft. Default is ``False``.
+        label_smoothing (float, optional): A float in [0.0, 1.0].
+            Specifies the amount of smoothing when computing the loss, where 0.0 means no smoothing.
+            The targets become  a mixture of the original ground truth and a uniform distribution as
+            described in paper 'Rethinking the Inception Architecture for Computer Vision'.
+            Default is ``0.0``.
         axis (int, optional):The index of dimension to perform softmax calculations.
             It should be in range :math:`[-1, rank - 1]`, where :math:`rank` is the
             number of dimensions of input :attr:`input`.
@@ -2673,7 +2683,7 @@ def cross_entropy(
     Examples:
         .. code-block:: python
 
-            >>> # hard labels
+            # hard labels
             >>> import paddle
             >>> paddle.seed(99999)
             >>> N=100
@@ -2688,17 +2698,18 @@ def cross_entropy(
             >>> dy_ret = cross_entropy_loss(
             ...                             input,
             ...                             label)
+
             >>> print(dy_ret)
             Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
                    5.35419278)
 
         .. code-block:: python
 
-            >>> # soft labels
+            # soft labels
+            # case1: soft labels without label_smoothing
             >>> import paddle
             >>> paddle.seed(99999)
             >>> axis = -1
-            >>> ignore_index = -100
             >>> N = 4
             >>> C = 3
             >>> shape = [N, C]
@@ -2717,6 +2728,31 @@ def cross_entropy(
             >>> print(paddle_loss_mean)
             Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
                    1.12801195)
+
+
+            # case2: soft labels with label_smoothing
+            >>> import paddle
+            >>> paddle.seed(99999)
+            >>> axis = -1
+            >>> N = 4
+            >>> C = 3
+            >>> shape = [N, C]
+            >>> label_smoothing = 0.4
+            >>> reduction='mean'
+            >>> weight = None
+            >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
+            >>> labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
+            >>> labels /= paddle.sum(labels, axis=axis, keepdim=True)
+            >>> paddle_loss_mean = paddle.nn.functional.cross_entropy(
+            ...                                                         logits,
+            ...                                                         labels,
+            ...                                                         axis=axis,
+            ...                                                         weight=weight,
+            ...                                                         label_smoothing=label_smoothing,
+            ...                                                         reduction=reduction)
+            >>> print(paddle_loss_mean)
+            Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
+            1.12226281)
 
     """
 
@@ -2748,6 +2784,21 @@ def cross_entropy(
                 input_dims, label_dims
             )
         )
+
+    if label_smoothing > 0.0:
+        soft_label = True
+        # converting the label to one-hot encoding
+        # for 1d case, converting label's shape from [N] to [N, C]
+        # for 2d case, converting label's shape from [N, d_1, ..., d_k] to [N, d_1, ..., d_k, C]
+        if input_dims - 1 == label_dims:
+            label = paddle.squeeze(label, axis=axis)
+            label = paddle.nn.functional.one_hot(label, input.shape[-1])
+
+        label = paddle.nn.functional.label_smooth(
+            label, epsilon=label_smoothing
+        )
+        label = label.astype(input.dtype)
+        label_dims = len(list(label.shape))
 
     if in_dynamic_mode():
         if not soft_label:
@@ -2823,13 +2874,13 @@ def cross_entropy(
                 out = _C_ops.multiply(out, weight_gather_reshape)
 
         if reduction == "sum":
-            #   because of fluid_softmax_with_cross_entropy op's inner logic,
+            #   because of base_softmax_with_cross_entropy op's inner logic,
             #   in the out tensor of this op, the loss of sample with class_index==ignore_index is 0
             #   so, reduce_sum all directly is ok
             return _C_ops.sum(out, [], None, False)
         elif reduction == "mean":
             # 1. if weight==none,
-            #     numerator: reduce_sum all loss directly is ok causeof fluid_softmax_with_cross_entropy's inner logic
+            #     numerator: reduce_sum all loss directly is ok causeof base_softmax_with_cross_entropy's inner logic
             #     denominator: count sample num with class_index!=ignore_index
             # 2. else
             #     numerator: loss's weighted sum
@@ -3126,7 +3177,7 @@ def sigmoid_focal_loss(
             ),
         )
 
-        alpha = fluid.dygraph.base.to_variable([alpha], dtype=loss.dtype)
+        alpha = base.dygraph.base.to_variable([alpha], dtype=loss.dtype)
         alpha_t = _C_ops.add(
             _C_ops.multiply(alpha, label),
             _C_ops.multiply(
@@ -3135,7 +3186,7 @@ def sigmoid_focal_loss(
         )
         loss = _C_ops.multiply(alpha_t, loss)
 
-        gamma = fluid.dygraph.base.to_variable([gamma], dtype=loss.dtype)
+        gamma = base.dygraph.base.to_variable([gamma], dtype=loss.dtype)
         gamma_t = _C_ops.pow(_C_ops.subtract(one, p_t), gamma)
         loss = _C_ops.multiply(gamma_t, loss)
 
@@ -3993,10 +4044,10 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
         )
 
     if not in_dynamic_mode():
-        fluid.data_feeder.check_variable_and_dtype(
+        base.data_feeder.check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'soft_margin_loss'
         )
-        fluid.data_feeder.check_variable_and_dtype(
+        base.data_feeder.check_variable_and_dtype(
             label,
             'label',
             ['int32', 'int64', 'float32', 'float64'],

@@ -261,7 +261,9 @@ PD_REGISTER_KERNEL(exp,
                    int,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 PD_REGISTER_KERNEL(expm1,
                    GPU,
                    ALL_LAYOUT,
@@ -271,7 +273,9 @@ PD_REGISTER_KERNEL(expm1,
                    int,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 PD_REGISTER_KERNEL(square,
                    GPU,
                    ALL_LAYOUT,
@@ -287,10 +291,10 @@ PD_REGISTER_ACTIVATION_KERNEL(hard_shrink, HardShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softshrink, SoftShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh_shrink, TanhShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(elu, EluKernel)
-PD_REGISTER_ACTIVATION_KERNEL(silu, SiluKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(silu, SiluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softsign, SoftsignKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
-PD_REGISTER_ACTIVATION_KERNEL(logsigmoid, LogSigmoidKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(logsigmoid, LogSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hardsigmoid, HardSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hardswish, HardSwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)

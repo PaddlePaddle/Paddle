@@ -14,8 +14,8 @@
 
 import unittest
 
-from paddle.fluid import core
-from paddle.fluid.framework import Program, default_startup_program
+from paddle.base import core
+from paddle.base.framework import Program, default_startup_program
 
 main_program = default_startup_program()
 

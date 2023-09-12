@@ -23,11 +23,11 @@ import unittest
 from functools import reduce
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
-fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
+base.core._set_eager_deletion_mode(0.0, 1.0, True)
 
 
 def simple_fc_net():
@@ -39,7 +39,7 @@ def simple_fc_net():
             hidden,
             size=200,
             activation='tanh',
-            bias_attr=fluid.ParamAttr(
+            bias_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=1.0)
             ),
         )
@@ -70,15 +70,15 @@ def get_persistables_and_non_persistables(prog, fetch_list):
 
 class TestExecutor(unittest.TestCase):
     def test_executor_main(self):
-        places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
 
         for p in places:
             self.place = p
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                with fluid.scope_guard(fluid.Scope()):
-                    with fluid.unique_name.guard():
+            with base.program_guard(base.Program(), base.Program()):
+                with base.scope_guard(base.Scope()):
+                    with base.unique_name.guard():
                         self.executor_main()
 
     def prepare_feed(self, image, label, dev_cnt=1):
@@ -124,7 +124,7 @@ class TestExecutor(unittest.TestCase):
         self.assertEqual(len(outline_np_vars), 0)
 
     def assert_gc_vars(self, program, skip_vars, non_persistable_vars):
-        gc_vars = fluid.core._get_eager_deletion_vars(program.desc, skip_vars)
+        gc_vars = base.core._get_eager_deletion_vars(program.desc, skip_vars)
         self.assertEqual(len(gc_vars), program.num_blocks)
         gc_vars = reduce(lambda x, y: x + y, gc_vars[0])
         self.assertEqual(set(gc_vars), set(non_persistable_vars))
@@ -133,42 +133,42 @@ class TestExecutor(unittest.TestCase):
         image, label, loss = simple_fc_net()
         loss.persistable = False
         persistables, non_persistables = get_persistables_and_non_persistables(
-            fluid.default_main_program(), [loss.name]
+            base.default_main_program(), [loss.name]
         )
         print(f'Non-persistable var number {len(non_persistables)}')
         print(non_persistables)
 
         self.assert_gc_vars(
-            fluid.default_main_program(), [loss.name], non_persistables
+            base.default_main_program(), [loss.name], non_persistables
         )
 
-        exe = fluid.Executor(self.place)
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(self.place)
+        exe.run(base.default_startup_program())
 
-        p = fluid.core.Place()
+        p = base.core.Place()
         p.set_place(self.place)
-        exe = fluid.core.Executor(p)
+        exe = base.core.Executor(p)
 
         for _ in range(10):
             image_np, label_np = self.prepare_feed(image, label)
-            fluid.global_scope().var(image.name).get_tensor().set(
+            base.global_scope().var(image.name).get_tensor().set(
                 image_np, self.place
             )
-            fluid.global_scope().var(label.name).get_tensor().set(
+            base.global_scope().var(label.name).get_tensor().set(
                 label_np, self.place
             )
             # exe.run would not create local scope
             # so that we can detect whether gc clears temporary variables
             exe.run(
-                fluid.default_main_program().desc,
-                fluid.global_scope(),
+                base.default_main_program().desc,
+                base.global_scope(),
                 0,
                 False,
                 True,
                 [loss.name],
             )
             self.assertScopeVar(
-                fluid.global_scope(), persistables, non_persistables
+                base.global_scope(), persistables, non_persistables
             )
 
 
