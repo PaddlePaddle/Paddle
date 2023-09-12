@@ -121,8 +121,7 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                 elif out_type == 'std::vector<Tensor>':
                     output_creation_code += (
                         MULTI_VECTOR_OUT_CREATION_TEMPLATE.format(
-                            i=i,
-                            name=self.outputs['names'][i]
+                            i=i, name=self.outputs['names'][i]
                         )
                     )
                 else:
