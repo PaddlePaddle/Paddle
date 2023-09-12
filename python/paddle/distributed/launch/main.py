@@ -524,6 +524,7 @@ def launch():
             logger.info(
                 f"AtuoTuner for GBS search ends in {end_time-start_time}s."
             )
+
         # build AutoTuner to get new config
         auto_tuner = AutoTuner(tuner_cfg)
         cur_cfg = auto_tuner.search_once()
