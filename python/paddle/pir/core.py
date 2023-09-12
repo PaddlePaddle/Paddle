@@ -82,10 +82,10 @@ def convert_np_dtype_to_dtype_(np_dtype):
 
 def _use_new_ir_api():
     """
-    This API checks whether paddle use new pir api.
+    This API checks whether paddle use pir api.
 
     Returns:
-        bool: Whether paddle use new pir api.
+        bool: Whether paddle use pir api.
 
     """
     # TODO(YuanRisheng): need move import to the top of this file after break import circle

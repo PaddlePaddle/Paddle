@@ -217,10 +217,10 @@ def in_dygraph_mode():
 def in_pir_mode():
     """
 
-    This API checks whether paddle runs in static graph mode and use new pir api.
+    This API checks whether paddle runs in static graph mode and use pir api.
 
     Returns:
-        bool: Whether paddle runs in static graph mode and use new pir api.
+        bool: Whether paddle runs in static graph mode and use pir api.
 
     Examples:
         .. code-block:: python
@@ -242,10 +242,10 @@ def in_pir_mode():
 def in_dynamic_or_pir_mode():
     """
 
-    This API checks whether paddle runs in dynamic graph or new pir mode.
+    This API checks whether paddle runs in dynamic graph or pir mode.
 
     Returns:
-        bool: Whether paddle runs in static graph mode and use new pir api.
+        bool: Whether paddle runs in static graph mode and use pir api.
 
     Examples:
         .. code-block:: python

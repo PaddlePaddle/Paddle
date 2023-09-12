@@ -270,7 +270,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     elif in_pir_mode():
         if act is None:
             return _C_ops.scale(x, scale, float(bias), bias_after_scale)
-        raise ValueError("act is not implement in new pir of scale api.")
+        raise ValueError("act is not implement in pir of scale api.")
     else:
         check_variable_and_dtype(
             x,
