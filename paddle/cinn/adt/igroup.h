@@ -19,14 +19,13 @@
 #include <vector>
 
 #include "paddle/cinn/adt/adt.h"
-#include "paddle/cinn/adt/m_expr.h"
-#include "paddle/cinn/adt/partition_op_stmts.h"
-
 #include "paddle/cinn/adt/anchor_sd_equation_context.h"
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/equation_graph.h"
+#include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/adt/m_ir.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
+#include "paddle/cinn/adt/partition_op_stmts.h"
 
 namespace cinn::adt {
 

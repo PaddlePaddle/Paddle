@@ -16,12 +16,12 @@
 #include <variant>
 
 #include "glog/logging.h"
-
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/equation_solver.h"
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/simplify_value.h"
 #include "paddle/cinn/adt/tags.h"
+#include "paddle/cinn/common/equation_graph_topo_walker.h"
 
 namespace cinn::adt::equation::value {
 
@@ -83,15 +83,17 @@ std::unordered_map<Variable, Value> InferValues(
   const auto& [in_box_in_indexes, in_box_out_indexes] =
       in_box_indexes.value().value().tuple();
   std::unordered_map<Variable, Value> ret{{op_placeholder, Ok{}}};
-  CHECK_EQ(out_box_in_indexes->size(), in_box_in_indexes->size());
-  CHECK_EQ(out_box_out_indexes->size(), in_box_out_indexes->size());
-  for (std::size_t i = 0; i < out_box_in_indexes->size(); ++i) {
-    const auto& value = ctx->GetValue(in_box_in_indexes->at(i));
-    CHECK(ret.emplace(out_box_in_indexes->at(i), value).second);
+  CHECK_EQ(out_box_in_indexes.value()->size(),
+           in_box_in_indexes.value()->size());
+  CHECK_EQ(out_box_out_indexes.value()->size(),
+           in_box_out_indexes.value()->size());
+  for (std::size_t i = 0; i < out_box_in_indexes.value()->size(); ++i) {
+    const auto& value = ctx->GetValue(in_box_in_indexes.value()->at(i));
+    CHECK(ret.emplace(out_box_in_indexes.value()->at(i), value).second);
   }
-  for (std::size_t i = 0; i < out_box_out_indexes->size(); ++i) {
-    const auto& value = ctx->GetValue(in_box_out_indexes->at(i));
-    CHECK(ret.emplace(out_box_out_indexes->at(i), value).second);
+  for (std::size_t i = 0; i < out_box_out_indexes.value()->size(); ++i) {
+    const auto& value = ctx->GetValue(in_box_out_indexes.value()->at(i));
+    CHECK(ret.emplace(out_box_out_indexes.value()->at(i), value).second);
   }
   return ret;
 }

@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/adt/m_ir.h"
 #include <iterator>
 #include <unordered_map>
+
 #include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/adt/m_ir.h"
 
 namespace cinn::adt::m_ir {
 

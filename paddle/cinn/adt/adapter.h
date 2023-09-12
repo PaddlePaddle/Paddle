@@ -13,12 +13,11 @@
 // limitations under the License.
 
 #pragma once
+#include "glog/logging.h"
 
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/hlir/framework/node.h"
-
-#include "glog/logging.h"
 
 namespace cinn::adt::adapter {
 
