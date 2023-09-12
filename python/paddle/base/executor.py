@@ -22,7 +22,7 @@ import numpy as np
 from . import set_flags, get_flags
 from .framework import Program, default_main_program
 
-from ..pir import core as ir_core
+from ..pir import core as pir_core
 from ..pir import OpResult
 from .wrapped_decorator import signature_safe_contextmanager
 from .data_feeder import convert_dtype

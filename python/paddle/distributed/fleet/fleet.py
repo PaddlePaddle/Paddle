@@ -19,7 +19,7 @@ import paddle
 from paddle.base import compiler
 from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.framework import _global_flags, in_dynamic_mode
-from paddle.framework.pir import apply_build_strategy
+from paddle.framework.ir import apply_build_strategy
 
 from .base import topology as tp
 from .base.distributed_strategy import DistributedStrategy

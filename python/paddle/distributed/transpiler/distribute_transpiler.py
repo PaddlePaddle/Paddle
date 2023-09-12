@@ -40,7 +40,7 @@ import numpy as np
 from paddle import framework
 from paddle.base.framework import grad_var_name
 from paddle.framework import Block, Program, core
-from paddle.incubate.distributed.fleet.parameter_server.pir.ps_dispatcher import (
+from paddle.incubate.distributed.fleet.parameter_server.ir.ps_dispatcher import (
     PSDispatcher,
     RoundRobin,
 )

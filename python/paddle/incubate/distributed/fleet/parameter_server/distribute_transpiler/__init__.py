@@ -41,13 +41,13 @@ from paddle.incubate.distributed.fleet.parameter_server import version
 from paddle.incubate.distributed.fleet.parameter_server.pslib.optimizer_factory import (
     DistributedAdam,
 )
-from paddle.incubate.distributed.fleet.parameter_server.pir.public import (
+from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
     get_sparse_tablenames,
 )
-from paddle.incubate.distributed.fleet.parameter_server.pir.public import (
+from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
     _get_lr_ops,
 )
-from paddle.incubate.distributed.fleet.parameter_server.pir.public import (
+from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
     _has_global_step,
 )
 from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
@@ -66,13 +66,13 @@ from paddle.distributed.fleet.base.private_helper_function import (
 from paddle.incubate.distributed.fleet.base import DistributedOptimizer
 from paddle.incubate.distributed.fleet.parameter_server.mode import PSMode
 
-from paddle.incubate.distributed.fleet.parameter_server.pir import (
+from paddle.incubate.distributed.fleet.parameter_server.ir import (
     trainer_pass as worker,
 )
-from paddle.incubate.distributed.fleet.parameter_server.pir import (
+from paddle.incubate.distributed.fleet.parameter_server.ir import (
     pserver_pass as server,
 )
-from paddle.incubate.distributed.fleet.parameter_server.pir import (
+from paddle.incubate.distributed.fleet.parameter_server.ir import (
     public,
 )
 

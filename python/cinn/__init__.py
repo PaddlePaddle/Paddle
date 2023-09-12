@@ -62,7 +62,7 @@ from .poly import (  # noqa: F401
     StageMap,
     create_stages,
 )
-from .pir import (  # noqa: F401
+from .ir import (  # noqa: F401
     Add,
     And,
     Args,
