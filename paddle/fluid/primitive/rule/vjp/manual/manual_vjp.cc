@@ -15,13 +15,13 @@
 // Auto Generated, DO NOT EDIT!
 
 #include "paddle/fluid/primitive/rule/vjp/manual/manual_vjp.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_api.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/prim/utils/static/static_global_utils.h"
 #include "paddle/fluid/primitive/backend/backend.h"
 #include "paddle/fluid/primitive/rule/vjp/details.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
-#include "paddle/ir/core/operation.h"
+#include "paddle/pir/core/operation.h"
 
 namespace paddle {
 namespace primitive {}  // namespace primitive
