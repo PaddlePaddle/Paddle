@@ -34,8 +34,8 @@ from ..framework import (
     core,
     dygraph_only,
     in_dynamic_mode,
-    in_dynamic_or_new_ir_mode,
-    in_new_ir_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
 )
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
@@ -182,7 +182,7 @@ def cast(x, dtype):
     """
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    if in_dynamic_or_new_ir_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.cast(x, dtype)
     else:
         check_variable_and_dtype(
@@ -1133,7 +1133,7 @@ def concat(x, axis=0, name=None):
         if not isinstance(input, Variable):
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
-    elif in_new_ir_mode():
+    elif in_pir_mode():
         if not isinstance(input, paddle.ir.Value):
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
@@ -3599,7 +3599,7 @@ def reshape(x, shape, name=None):
             # the value is [10.]
 
     """
-    if in_dynamic_or_new_ir_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(shape, (list, tuple)):
             new_shape = []
             for ele in shape:

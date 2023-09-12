@@ -40,8 +40,7 @@ from ..framework import (
     convert_np_dtype_to_dtype_,
     core,
     in_dynamic_mode,
-    in_dynamic_or_new_ir_mode,
-    in_new_ir_mode,
+    in_pir_mode,
 )
 
 __all__ = []
@@ -831,7 +830,7 @@ def full_like(x, fill_value, dtype=None, name=None):
 
     if in_dynamic_mode():
         return _C_ops.full_like(x, fill_value, dtype, x.place)
-    elif in_new_ir_mode():
+    elif in_pir_mode():
         place = _current_expected_place()
         return _C_ops.full_like(x, fill_value, dtype, place)
     else:

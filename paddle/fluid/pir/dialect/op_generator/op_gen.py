@@ -1197,7 +1197,6 @@ def OpGenerator(
             if dialect_name == "cinn":
                 logging.warning("cinn is currently not support Vjp function")
             else:
-                # TODO(chenzhiyang) add vjp gen code
                 if (
                     op_info.backward_name
                     and op_info.op_phi_name[0]
