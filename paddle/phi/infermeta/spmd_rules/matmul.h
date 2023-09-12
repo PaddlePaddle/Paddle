@@ -22,16 +22,16 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
-SpmdInfo MatmulSpmdInferForward(const DistMetaTensor& x,
+SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
+                         const DistMetaTensor& y,
+                         bool trans_x,
+                         bool trans_y);
+
+SpmdInfo MatmulInferSpmdReverse(const DistMetaTensor& x,
                                 const DistMetaTensor& y,
+                                const DistMetaTensor& out,
                                 bool trans_x,
                                 bool trans_y);
-
-SpmdInfo MatmulSpmdInferBackward(const DistMetaTensor& x,
-                                 const DistMetaTensor& y,
-                                 const DistMetaTensor& out,
-                                 bool trans_x,
-                                 bool trans_y);
 
 }  // namespace distributed
 }  // namespace phi
