@@ -15,14 +15,13 @@
 
 #pragma once
 
+#include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/core/builtin_type_storage.h"
 #include "paddle/pir/core/type.h"
 
 namespace pir {
 ///
-/// \brief Define built-in parameterless types. Please add the necessary
-/// interface functions for built-in types through the macro
-/// DECLARE_TYPE_UTILITY_FUNCTOR.
+/// \brief Define built-in parameterless types.
 ///
 /// NOTE(zhangbo9674): If you need to directly
 /// cache the object of this built-in type in IrContext, please overload the get
@@ -39,11 +38,10 @@ namespace pir {
 // NOTE(dev): Currently Int8 are not considered as a cached member
 // in IrContextImpl because it is not widely used.
 
-class IR_API VectorType : public Type {
+class IR_API VectorType
+    : public pir::Type::TypeBase<VectorType, pir::Type, VectorTypeStorage> {
  public:
-  using Type::Type;
-
-  DECLARE_TYPE_UTILITY_FUNCTOR(VectorType, VectorTypeStorage);
+  using Base::Base;
 
   std::vector<Type> data() const;
 
@@ -54,11 +52,12 @@ class IR_API VectorType : public Type {
   Type operator[](size_t index) const { return data()[index]; }
 };
 
-class DenseTensorType : public pir::Type {
+class DenseTensorType : public pir::Type::TypeBase<DenseTensorType,
+                                                   pir::Type,
+                                                   DenseTensorTypeStorage,
+                                                   pir::ShapedTypeInterface> {
  public:
-  using Type::Type;
-
-  DECLARE_TYPE_UTILITY_FUNCTOR(DenseTensorType, DenseTensorTypeStorage);
+  using Base::Base;
 
   const pir::Type &dtype() const;
 
@@ -71,14 +70,13 @@ class DenseTensorType : public pir::Type {
   const size_t &offset() const;
 };
 
-#define DECLARE_BUILTIN_TYPE(__name)                   \
-  class IR_API __name : public Type {                  \
-   public:                                             \
-    using Type::Type;                                  \
-                                                       \
-    DECLARE_TYPE_UTILITY_FUNCTOR(__name, TypeStorage); \
-                                                       \
-    static __name get(IrContext *context);             \
+#define DECLARE_BUILTIN_TYPE(__name)                                       \
+  class IR_API __name : public ::pir::Type::TypeBase<__name,               \
+                                                     ::pir::Type,          \
+                                                     ::pir::TypeStorage> { \
+   public:                                                                 \
+    using Base::Base;                                                      \
+    static __name get(IrContext *context);                                 \
   };
 
 #define FOREACH_BUILTIN_TYPE(__macro) \
