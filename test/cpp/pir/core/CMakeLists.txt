@@ -87,7 +87,7 @@ cc_test_old(
   pd_op_dialect
   pir)
 
-cc_test_old(
+cc_test(
   ir_parser_test
   SRCS
   ir_parser_test.cc
