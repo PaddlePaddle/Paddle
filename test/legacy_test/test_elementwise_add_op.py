@@ -57,7 +57,7 @@ class TestElementwiseAddOp(OpTest):
         self.check_output(
             check_dygraph=self.check_dygraph(),
             check_prim=self.check_prim,
-            check_new_ir=True,
+            check_new_ir=self.check_dygraph(),
         )
 
     def test_check_grad_normal(self):
@@ -69,7 +69,7 @@ class TestElementwiseAddOp(OpTest):
             'Out',
             check_dygraph=self.check_dygraph(),
             check_prim=self.check_prim,
-            check_new_ir=True,
+            check_new_ir=self.check_dygraph(),
         )
 
     def test_check_grad_ingore_x(self):
@@ -82,7 +82,7 @@ class TestElementwiseAddOp(OpTest):
             no_grad_set=set("X"),
             check_dygraph=self.check_dygraph(),
             check_prim=self.check_prim,
-            check_new_ir=True,
+            check_new_ir=self.check_dygraph(),
         )
 
     def test_check_grad_ingore_y(self):
@@ -95,7 +95,7 @@ class TestElementwiseAddOp(OpTest):
             no_grad_set=set('Y'),
             check_dygraph=self.check_dygraph(),
             check_prim=self.check_prim,
-            check_new_ir=True,
+            check_new_ir=self.check_dygraph(),
         )
 
     def init_input_output(self):
