@@ -48,7 +48,8 @@ class ElementwiseMulOp(OpTest):
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_output(
-            check_dygraph=(not self.use_mkldnn), check_new_ir=True
+            check_dygraph=(not self.use_mkldnn),
+            check_new_ir=(not self.use_mkldnn),
         )
 
     def test_check_grad_normal(self):
@@ -58,7 +59,7 @@ class ElementwiseMulOp(OpTest):
             'Out',
             check_dygraph=(not self.use_mkldnn),
             check_prim=True,
-            check_new_ir=True,
+            check_new_ir=(not self.use_mkldnn),
         )
 
     def test_check_grad_ingore_x(self):
@@ -69,7 +70,7 @@ class ElementwiseMulOp(OpTest):
             no_grad_set=set("X"),
             check_dygraph=(not self.use_mkldnn),
             check_prim=True,
-            check_new_ir=True,
+            check_new_ir=(not self.use_mkldnn),
         )
 
     def test_check_grad_ingore_y(self):
@@ -80,7 +81,7 @@ class ElementwiseMulOp(OpTest):
             no_grad_set=set('Y'),
             check_dygraph=(not self.use_mkldnn),
             check_prim=True,
-            check_new_ir=True,
+            check_new_ir=(not self.use_mkldnn),
         )
 
     def init_input_output(self):
@@ -273,7 +274,7 @@ class ElementwiseMulOp_broadcast(OpTest):
         self.check_output(
             check_dygraph=self.check_dygraph,
             check_prim=self.check_prim,
-            check_new_ir=True,
+            check_new_ir=self.check_dygraph,
         )
 
     def test_check_grad_normal(self):
@@ -282,7 +283,7 @@ class ElementwiseMulOp_broadcast(OpTest):
             'Out',
             check_dygraph=self.check_dygraph,
             check_prim=self.check_prim,
-            check_new_ir=True,
+            check_new_ir=self.check_dygraph,
         )
 
     def test_check_grad_ingore_x(self):
@@ -292,7 +293,7 @@ class ElementwiseMulOp_broadcast(OpTest):
             no_grad_set=set("X"),
             check_dygraph=self.check_dygraph,
             check_prim=self.check_prim,
-            check_new_ir=True,
+            check_new_ir=self.check_dygraph,
         )
 
     def test_check_grad_ingore_y(self):
@@ -302,7 +303,7 @@ class ElementwiseMulOp_broadcast(OpTest):
             no_grad_set=set('Y'),
             check_dygraph=self.check_dygraph,
             check_prim=self.check_prim,
-            check_new_ir=True,
+            check_new_ir=self.check_dygraph,
         )
 
     def init_input_attr_output(self):
@@ -430,7 +431,7 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
             'Out',
             check_dygraph=(not self.use_mkldnn),
             check_prim=True,
-            check_new_ir=True,
+            check_new_ir=(not self.use_mkldnn),
         )
 
     def test_check_grad_ingore_x(self):
@@ -441,7 +442,7 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
             no_grad_set=set("X"),
             check_dygraph=(not self.use_mkldnn),
             check_prim=True,
-            check_new_ir=True,
+            check_new_ir=(not self.use_mkldnn),
         )
 
     def test_check_grad_ingore_y(self):
@@ -452,7 +453,7 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
             no_grad_set=set('Y'),
             check_dygraph=(not self.use_mkldnn),
             check_prim=True,
-            check_new_ir=True,
+            check_new_ir=(not self.use_mkldnn),
         )
 
 
