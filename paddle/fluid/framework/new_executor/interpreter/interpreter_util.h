@@ -128,6 +128,9 @@ void SetDeviceCommContext(::pir::Operation* op,
                           platform::DeviceContext* dev_ctx);
 
 std::unordered_set<std::string> GetSpecialOpNames();
+
+const std::vector<std::string> GetInstructionCallStack(
+    const std::string &type, const pir::AttributeMap &attrs);
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle

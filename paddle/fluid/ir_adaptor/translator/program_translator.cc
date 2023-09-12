@@ -33,7 +33,6 @@
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/value.h"
 
-
 namespace paddle {
 namespace translator {
 

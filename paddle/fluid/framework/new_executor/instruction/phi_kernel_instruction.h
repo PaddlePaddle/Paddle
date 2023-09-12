@@ -70,7 +70,6 @@ class PhiKernelInstruction : public InstructionBase {
 
   std::string phi_op_name_;
 
-
   ::pir::Operation* op_{nullptr};  // not owned
 };
 

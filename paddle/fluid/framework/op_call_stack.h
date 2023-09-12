@@ -18,8 +18,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/operation_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -30,7 +28,7 @@ void InsertCallStackInfo(const std::string &type,
                          platform::EnforceNotMet *exception);
 
 void InsertCallStackInfo(const std::string &type,
-                         const pir::AttributeMap &attrs,
+                         const std::vector<std::string> &callstack_attr_str,
                          platform::EnforceNotMet *exception);
 
 // only append error op for exception message
