@@ -518,13 +518,12 @@ class OpInfoParser:
         input_types_map = {
             'Tensor': 'paddle::dialect::DenseTensorType',
             'Tensor[]': 'pir::VectorType<paddle::dialect::DenseTensorType>',
-            'SelectedRows': 'paddle::dialect::SelectedRowsType',
         }
         type_list = []
         for input_info in self.op_yaml_item['inputs']:
             assert (
                 input_info['typename'] in input_types_map
-            ), f"{self.op_phi_name} : Input type error: the input type only support Tensor, Tensor[] and SelectedRows, but now is {input_info['typename']}."
+            ), f"{self.op_phi_name} : Input type error: the input type only support Tensor and Tensor[], but now is {input_info['typename']}."
             type_list.append(input_types_map[input_info['typename']])
         return type_list
 

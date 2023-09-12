@@ -154,28 +154,6 @@
   args : (Tensor[] x, bool[] share_dims_and_dtype = {})
   output : Tensor[](out){x.size()}, Tensor[](xout){x.size()}
 
-- op : sparse_weight_embedding_grad_dense
-  args : (Tensor x, SelectedRows weight, Tensor out_grad, int64_t padding_idx = -1, bool sparse = false)
-  output : Tensor(weight_grad)
-  infer_meta:
-    func: UnchangedInferMeta
-    param: [weight]
-  kernel:
-    func: sparse_weight_embedding_grad
-    param: [x, weight, out_grad, padding_idx, sparse]
-    data_type : weight
-
-- op : sparse_weight_embedding_grad_sparse
-  args : (Tensor x, SelectedRows weight, Tensor out_grad, int64_t padding_idx = -1, bool sparse = false)
-  output : SelectedRows(weight_grad)
-  infer_meta:
-    func: UnchangedInferMeta
-    param: [weight]
-  kernel:
-    func: sparse_weight_embedding_sparse_grad
-    param: [x, weight, out_grad, padding_idx, sparse]
-    data_type : weight
-
 - op : write_to_array
   args : (Tensor i, Tensor x)
   output : Tensor[](out)

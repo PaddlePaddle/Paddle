@@ -704,10 +704,6 @@ void HandleForSpecialOp(
               phi::errors::Unimplemented("only support vector type for now"));
         }
       }
-    } else if (op_item->name() == "pd.embedding") {
-      if (op_item->operand_source(1).type().isa<dialect::SelectedRowsType>()) {
-        kernel_fn_str = "sparse_weight_embedding";
-      }
     }
   }
 

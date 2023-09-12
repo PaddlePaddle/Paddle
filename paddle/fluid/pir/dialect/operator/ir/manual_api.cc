@@ -58,13 +58,8 @@ pir::OpResult embedding_grad(pir::OpResult x,
           x, weight, out_grad, padding_idx, sparse);
     }
   } else {
-    if (sparse) {
-      return paddle::dialect::sparse_weight_embedding_grad_sparse(
-          x, weight, out_grad, padding_idx, sparse);
-    } else {
-      return paddle::dialect::sparse_weight_embedding_grad_dense(
-          x, weight, out_grad, padding_idx, sparse);
-    }
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Now we do not support sparse weight embedding_grad."));
   }
 }
 
