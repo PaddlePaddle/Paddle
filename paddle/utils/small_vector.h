@@ -34,8 +34,6 @@
 #include <new>
 #include <stdexcept>
 #include <string>
-#include <type_traits>
-#include <utility>
 
 namespace paddle {
 
