@@ -27,7 +27,6 @@
 #include "paddle/cinn/optim/lower_function_call_bind_vars.h"
 #include "paddle/cinn/optim/lower_intrin.h"
 #include "paddle/cinn/optim/map_extern_call.h"
-#include "paddle/cinn/optim/remove_nested_block.h"
 #include "paddle/cinn/optim/remove_schedule_block.h"
 #include "paddle/cinn/optim/replace_const_param_to_integer.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
@@ -65,8 +64,8 @@ Expr Optimize(Expr e,
   CudaSyncThreadsDropIfThenElse(&copied);
 #endif
 
-  RemoveNestedBlock(&copied);
-  VLOG(4) << "After Optimize RemoveNestedBlock:" << copied;
+  SimplifyBlocks(&copied);
+  VLOG(4) << "After SimplifyBlocks:" << copied;
 
   MapExternCall(&copied, target);
   VLOG(10) << "After Optimize MapExternCall:" << copied;
