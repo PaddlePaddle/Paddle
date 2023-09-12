@@ -20,7 +20,7 @@ sys.path.append(".")
 
 
 class TestCSoftmaxWithCrossEntropy(unittest.TestCase):
-    def pdrun(self):
+    def pdrun(self, need_envs={}):
         cmd = [
             sys.executable,
             "-m",
@@ -29,11 +29,16 @@ class TestCSoftmaxWithCrossEntropy(unittest.TestCase):
             "0,1",
             "c_softmax_with_cross_entropy_op.py",
         ]
-        proc = subprocess.Popen(cmd)
+
+        proc = subprocess.Popen(cmd, env=need_envs)
         return proc
 
     def test_c_softmax_with_cross_entropy_op(self):
         p = self.pdrun()
+        p.wait()
+
+    def test_c_softmax_with_cross_entropy_new_comm(self):
+        p = self.pdrun(need_envs={"FLAGS_dynamic_static_unified_comm": "1"})
         p.wait()
 
 
