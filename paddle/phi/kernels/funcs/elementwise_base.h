@@ -553,43 +553,28 @@ struct Loader {
 
 template <int Index>
 struct InputSetter {
-  template <typename Array>
-  static HOSTDEVICE void Apply(
-      const std::vector<const DenseTensor *> &ins_tensor, Array *ins_data) {
-    (*ins_data)[Index] = (const _ptr_ char *)(ins_tensor[Index]->data());
-  }
-};
-
-template <int Index>
-struct VecSizeGetter {
-  template <typename ArgsT>
-  static HOSTDEVICE void Apply(const std::vector<const DenseTensor *> &ins,
-                               const ArgsT &args,
-                               int *vec_size) {
+  template <typename Array, typename ArgsT>
+  static void Apply(const std::vector<const DenseTensor *> &ins_tensor,
+                    const ArgsT &args,
+                    Array *ins_data) {
     using Type = std::tuple_element_t<Index, ArgsT>;
-    *vec_size = std::min<int>(*vec_size,
-                              phi::GetVectorizedSize(ins[Index]->data<Type>()));
+    (*ins_data)[Index] = (const _ptr_ char *)(ins_tensor[Index]->data<Type>());
   }
 };
 
-template <typename OutT, typename Functor>
-int GetVectorizedSizeForTensors(const std::vector<const DenseTensor *> &ins,
-                                const std::vector<DenseTensor *> &outs) {
+static int GetVectorizedSizeForTensors(
+    const std::vector<const DenseTensor *> &ins,
+    const std::vector<DenseTensor *> &outs) {
 #ifdef PADDLE_WITH_XPU_KP
   int vec_size = 256;
 #else
-  using Traits = phi::funcs::FunctionTraits<Functor>;
-  using ArgsT = typename Traits::ArgsTuple;
-  const int Arity = Traits::arity;
   int vec_size = 4;
-  uint64_t addr = static_cast<uint64_t>(0);
-  ArgsT arg;
-  UnrollerWithoutVecSize<VecSizeGetter, Arity>::step(ins, arg, &vec_size);
-  for (auto iter = outs.begin(); iter != outs.end(); ++iter) {
-    addr = (addr | reinterpret_cast<uint64_t>((*iter)->data<OutT>()));
+  for (size_t i = 0; i < ins.size(); ++i) {
+    vec_size = std::min(vec_size, phi::GetVectorizedSize(ins[i]));
   }
-  vec_size = std::min(
-      vec_size, phi::GetVectorizedSize<OutT>(reinterpret_cast<OutT *>(addr)));
+  for (size_t i = 0; i < outs.size(); ++i) {
+    vec_size = std::min(vec_size, phi::GetVectorizedSize(outs[i]));
+  }
 #endif
   return vec_size;
 }
@@ -738,10 +723,10 @@ __global__ void VectorizedElementwiseKernel(
 }
 
 template <typename OutT, typename Functor, int Arity, int NumOuts, int VecSize>
-void LaunchElementwiseCudaKernel(const KPDevice &ctx,
-                                 const std::vector<const DenseTensor *> &ins,
-                                 std::vector<DenseTensor *> *outs,
-                                 Functor func) {
+void LaunchElementwiseKernel(const KPDevice &ctx,
+                             const std::vector<const DenseTensor *> &ins,
+                             std::vector<DenseTensor *> *outs,
+                             Functor func) {
   // There are at least 1 output, but maybe 0 input (ins.size() == 0).
   // For large tensor numel * sizeof(T) > 2^31, we must use int64_t as index
   // type.
@@ -749,10 +734,14 @@ void LaunchElementwiseCudaKernel(const KPDevice &ctx,
   phi::Array<const _ptr_ char *__restrict__, Arity> ins_data;
   phi::Array<_ptr_ OutT *, NumOuts> outs_data;
 
-  UnrollerWithoutVecSize<InputSetter, Arity>::step(ins, &ins_data);
-  for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] = (_ptr_ OutT *)(ctx.Alloc<OutT>((*outs)[i]));
+  using Traits = phi::funcs::FunctionTraits<Functor>;
+  using ArgsT = typename Traits::ArgsTuple;
+  ArgsT arg;
+  UnrollerWithoutVecSize<InputSetter, Arity>::step(ins, arg, &ins_data);
+  for (int i = 0; i < outs->size(); ++i) {
+    outs_data[i] = (*outs)[i]->data<OutT>();
   }
+
 #ifdef PADDLE_WITH_XPU_KP
   int block_size = 64;
   int grid_size = 8;
@@ -773,6 +762,47 @@ void LaunchElementwiseCudaKernel(const KPDevice &ctx,
       <<<gpu_config.block_per_grid, gpu_config.thread_per_block, 0, stream>>>(
           ins_data, outs_data, numel, main_offset, VecSize, func);
 #endif
+}
+
+template <typename OutT, typename Functor, int Arity, int NumOuts = 1>
+typename std::enable_if<!NeedVectorized<OutT>::value, void>::type
+ElementwiseKernelForDifferentVecSize(
+    const KPDevice &ctx,
+    const std::vector<const DenseTensor *> &ins,
+    std::vector<DenseTensor *> *outs,
+    Functor func) {
+  LaunchElementwiseKernel<OutT, Functor, Arity, NumOuts, VecSizeS>(
+      ctx, ins, outs, func);
+}
+
+template <typename OutT, typename Functor, int Arity, int NumOuts = 1>
+typename std::enable_if<NeedVectorized<OutT>::value, void>::type
+ElementwiseKernelForDifferentVecSize(
+    const KPDevice &ctx,
+    const std::vector<const DenseTensor *> &ins,
+    std::vector<DenseTensor *> *outs,
+    Functor func) {
+  // calculate the max vec_size for all ins and outs
+  int vec_size = GetVectorizedSizeForTensors(ins, *outs);
+  switch (vec_size) {
+    case VecSizeL:
+      LaunchElementwiseKernel<OutT, Functor, Arity, NumOuts, VecSizeL>(
+          ctx, ins, outs, func);
+      break;
+    case VecSizeM:
+      LaunchElementwiseKernel<OutT, Functor, Arity, NumOuts, VecSizeM>(
+          ctx, ins, outs, func);
+      break;
+    case VecSizeS:
+      LaunchElementwiseKernel<OutT, Functor, Arity, NumOuts, VecSizeS>(
+          ctx, ins, outs, func);
+      break;
+    default: {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupported vectorized size: %d !", vec_size));
+      break;
+    }
+  }
 }
 
 template <typename OutT, typename Functor, int NumOuts = 1>
@@ -798,8 +828,8 @@ void ElementwiseKernel(const KPDevice &ctx,
                         outs->size(),
                         NumOuts));
 
-  if (NumOuts > 1) {
-    for (int i = 1; i < NumOuts; ++i) {
+  for (int i = 0; i < outs->size(); ++i) {
+    if (i > 0) {
       PADDLE_ENFORCE_EQ(
           (*outs)[i]->dims(),
           (*outs)[0]->dims(),
@@ -808,29 +838,11 @@ void ElementwiseKernel(const KPDevice &ctx,
               "but %dth output tensor`s shape is not.",
               i));
     }
+    ctx.template Alloc<OutT>((*outs)[i]);
   }
 
-  // calculate the max vec_size for all ins and outs
-  int vec_size = GetVectorizedSizeForTensors<OutT, Functor>(ins, *outs);
-  switch (vec_size) {
-    case VecSizeL:
-      LaunchElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, VecSizeL>(
-          ctx, ins, outs, func);
-      break;
-    case VecSizeM:
-      LaunchElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, VecSizeM>(
-          ctx, ins, outs, func);
-      break;
-    case VecSizeS:
-      LaunchElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, VecSizeS>(
-          ctx, ins, outs, func);
-      break;
-    default: {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "Unsupported vectorized size: %d !", vec_size));
-      break;
-    }
-  }
+  ElementwiseKernelForDifferentVecSize<OutT, Functor, kArity, NumOuts>(
+      ctx, ins, outs, func);
 }
 
 #endif
