@@ -17,13 +17,14 @@
 #include <ostream>
 
 #include "paddle/pir/core/cast_utils.h"
+#include "paddle/pir/core/storage_manager_support.h"
 #include "paddle/pir/core/type_id.h"
-
 namespace pir {
 class TypeStorage;
 class AbstractType;
 class IrContext;
 class Dialect;
+class ShapedTypeInterface;
 ///
 /// \brief Unified interface of the Type class. Derivation of all Type classes
 /// only derives interfaces, not members. For example, DenseTensorType,
@@ -32,7 +33,18 @@ class Dialect;
 ///
 class IR_API Type {
  public:
+  template <typename ConcreteType,
+            typename BaseType,
+            typename StorageType,
+            class... TraitOrInterface>
+  using TypeBase = detail::StorageHelperBase<ConcreteType,
+                                             BaseType,
+                                             StorageType,
+                                             pir::TypeManager,
+                                             TraitOrInterface...>;
+
   using Storage = TypeStorage;
+  using AbstractT = AbstractType;
 
   Type() = default;
 
@@ -59,8 +71,25 @@ class IR_API Type {
   ///
   TypeId type_id();
 
-  const AbstractType &abstract_type();
+  ///
+  /// \brief Support PointerLikeTypeTraits.
+  ///
+  ///
+  const void *AsOpaquePointer() const {
+    return static_cast<const void *>(storage_);
+  }
+  static Type RecoverFromOpaquePointer(const void *pointer) {
+    return Type(reinterpret_cast<Storage *>(const_cast<void *>(pointer)));
+  }
 
+  ///
+  /// \brief Return the abstract type descriptor.
+  ///
+  const AbstractT &abstract_type();
+
+  ///
+  /// \brief Return the Type implementation.
+  ///
   const Storage *storage() const { return storage_; }
 
   Dialect &dialect() const;
@@ -82,6 +111,11 @@ class IR_API Type {
     return pir::dyn_cast<U>(*this);
   }
 
+  template <typename U>
+  U dyn_cast_interface() const {
+    return CastInfo<U>::call(*this);
+  }
+
   void Print(std::ostream &os) const;
 
   static Type Parse(std::istream &is, IrContext *ctx);
@@ -91,34 +125,58 @@ class IR_API Type {
   ///
   friend struct std::hash<Type>;
 
+  template <typename U>
+  U cast() const {
+    return pir::cast<U>(*this);
+  }
+
  protected:
   const Storage *storage_{nullptr};
+
+ private:
+  template <typename T, typename Enabler = void>
+  struct CastInfo {
+    static T call(Type type) {
+      throw("Can't dyn_cast to T, T should be a Type or Interface");
+    }
+  };
+
+  template <typename T>
+  struct CastInfo<
+      T,
+      typename std::enable_if<std::is_base_of<pir::Type, T>::value>::type> {
+    static inline T call(pir::Type type) { return T::dyn_cast(type); }
+  };
 };
 
 IR_API std::ostream &operator<<(std::ostream &os, Type type);
 
-}  // namespace pir
-
 ///
 /// \brief This class represents the base of a type interface.
 ///
+template <typename ConcreteInterface>
+class TypeInterfaceBase : public pir::Type {
+ public:
+  explicit TypeInterfaceBase(Type type) : Type(type) {}
 
-// template <typename ConcreteType>
-// class TypeInterface : public pir::DialectInterface<ConcreteType, Type> {
-//  public:
-//   using Base = TypeInterface<ConcreteType>;
-//   using DialectInterfaceBase = pir::DialectInterface<ConcreteType, Type>;
-//   using DialectInterfaceBase::Base;
+  // Accessor for the ID of this interface.
+  static TypeId GetInterfaceId() { return TypeId::get<ConcreteInterface>(); }
 
-//  private:
-//   /// Returns the impl interface instance for the given type.
-//   static typename InterfaceBase::Concept *getInterfaceFor(Type type) {
-//     return type.getAbstractType().getInterface<ConcreteType>();
-//   }
+  static ConcreteInterface dyn_cast(Type type) {
+    return ConcreteInterface(
+        type, type.abstract_type().GetInterfaceImpl<ConcreteInterface>());
+  }
+};
 
-//   /// Allow access to 'getInterfaceFor'.
-//   friend InterfaceBase;
-// };
+template <typename To, typename From>
+struct cast_impl<
+    To,
+    From,
+    typename std::enable_if<std::is_base_of<pir::Type, From>::value>::type> {
+  static inline To call(const pir::Type type) { return To(type.storage()); }
+};
+
+}  // namespace pir
 
 namespace std {
 ///
