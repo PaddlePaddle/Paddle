@@ -17,11 +17,13 @@
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
 #include "paddle/pir/core/op_base.h"
 
-using OpInfoTuple = std::tuple<std::vector<paddle::dialect::OpInputInfo>,
-                               std::vector<paddle::dialect::OpAttributeInfo>,
-                               std::vector<paddle::dialect::OpOutputInfo>,
-                               paddle::dialect::OpRunTimeInfo,
-                               std::string>;
+using OpInfoTuple =
+    std::tuple<std::vector<paddle::dialect::OpInputInfo>,
+               std::vector<paddle::dialect::OpAttributeInfo>,
+               std::vector<paddle::dialect::OpOutputInfo>,
+               paddle::dialect::OpRunTimeInfo,
+               std::unordered_map<std::string, std::vector<std::string>>,
+               std::string>;
 
 namespace paddle {
 namespace dialect {

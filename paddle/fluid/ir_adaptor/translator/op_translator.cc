@@ -601,8 +601,12 @@ pir::Operation* OpTranscriber::operator()(pir::IrContext* ctx,
   OpInputInfoList input_infos;
   OpAttributeInfoList attr_infos;
   OpOutputInfoList output_infos;
-  std::tie(input_infos, attr_infos, output_infos, std::ignore, std::ignore) =
-      op_info_concept->get_op_info_();
+  std::tie(input_infos,
+           attr_infos,
+           output_infos,
+           std::ignore,
+           std::ignore,
+           std::ignore) = op_info_concept->get_op_info_();
 
   this->InsertSliceOperationForInput(
       ctx, param_map, op_desc, input_infos, program);
@@ -719,8 +723,12 @@ struct AssignValueOpTranscriber : public OpTranscriber {
     OpInputInfoList input_infos;
     OpAttributeInfoList attr_infos;
     OpOutputInfoList output_infos;
-    std::tie(input_infos, attr_infos, output_infos, std::ignore, std::ignore) =
-        op_info_concept->get_op_info_();
+    std::tie(input_infos,
+             attr_infos,
+             output_infos,
+             std::ignore,
+             std::ignore,
+             std::ignore) = op_info_concept->get_op_info_();
     std::unordered_map<std::string, OpAttributeInfo> attr_info_maps;
     for (auto info : attr_infos) {
       attr_info_maps.insert({info.name, info});
@@ -1047,8 +1055,12 @@ struct FetchOpTranscriber : public OpTranscriber {
     OpInputInfoList input_infos;
     OpAttributeInfoList attr_infos;
     OpOutputInfoList output_infos;
-    std::tie(input_infos, attr_infos, output_infos, std::ignore, std::ignore) =
-        op_info_concept->get_op_info_();
+    std::tie(input_infos,
+             attr_infos,
+             output_infos,
+             std::ignore,
+             std::ignore,
+             std::ignore) = op_info_concept->get_op_info_();
 
     this->InsertSliceOperationForInput(
         ctx, param_map, op_desc, input_infos, program);

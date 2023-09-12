@@ -779,6 +779,40 @@ phi::KernelKey GetKernelKey(
   return res;
 }
 
+std::string SelectKernelFuncStr(
+    const std::unordered_map<std::string, std::vector<std::string>>& rules,
+    pir::Operation* op) {
+  std::vector<std::string> args;
+  for (size_t i = 0; i < op->num_operands(); ++i) {
+    if (op->operand_source(i).type().isa<paddle::dialect::DenseTensorType>()) {
+      args.emplace_back("dense");
+    } else {
+      args.emplace_back("selected_rows");
+    }
+  }
+  for (size_t i = 0; i < op->num_results(); ++i) {
+    if (op->result(i).type().isa<paddle::dialect::DenseTensorType>()) {
+      args.emplace_back("dense");
+    } else {
+      args.emplace_back("selected_rows");
+    }
+  }
+  for (auto kv : rules) {
+    std::string kernel_name = kv.first;
+    std::vector<std::string> kernel_args = kv.second;
+    bool match = true;
+    for (size_t i = 0; i < kernel_args.size(); i++) {
+      if (kernel_args[i] != args[i]) {
+        match = false;
+      }
+    }
+    if (match) {
+      return kernel_name;
+    }
+  }
+  return "";
+}
+
 std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
                                                     phi::Place place) {
   if (VLOG_IS_ON(2)) {
@@ -831,7 +865,12 @@ std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
 
     std::string kernel_fn_str;
     if (op_info_parser != nullptr) {
-      kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func[0];
+      if (op_info_parser->OpRuntimeInfo().kernel_func.size() == 1) {
+        kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func[0];
+      } else {
+        kernel_fn_str =
+            SelectKernelFuncStr(op_info_parser->KernelSelectRules(), op_item);
+      }
     }
 
     if (op_item->name() == "pd_op.add_n_" ||

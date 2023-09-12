@@ -43,8 +43,11 @@ OpInfoTuple AddNOp::GetOpInfo() {
       OpOutputInfo("out", "paddle::dialect::DenseTensorType", false, false)};
   paddle::dialect::OpRunTimeInfo run_time_info = OpRunTimeInfo(
       "AddNInferMeta", {"inputs"}, {"add_n"}, {"inputs"}, {}, {}, {}, {});
+  std::unordered_map<std::string, std::vector<std::string>>
+      kernel_select_rules = {};
 
-  return std::make_tuple(inputs, attributes, outputs, run_time_info, "add_n");
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, kernel_select_rules, "add_n");
 }
 
 void AddNOp::Verify() {
@@ -170,7 +173,14 @@ OpInfoTuple AddN_Op::GetOpInfo() {
           "out", "paddle::dialect::DenseTensorType", false, false)};
   paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo(
       "AddNInferMeta", {"inputs"}, {"add_n"}, {"inputs"}, {}, {}, {}, {});
-  return std::make_tuple(inputs, attributes, outputs, run_time_info, "add_n_");
+  std::unordered_map<std::string, std::vector<std::string>>
+      kernel_select_rules = {};
+  return std::make_tuple(inputs,
+                         attributes,
+                         outputs,
+                         run_time_info,
+                         kernel_select_rules,
+                         "add_n_");
 }
 
 void AddN_Op::Build(pir::Builder &builder,
@@ -297,8 +307,14 @@ OpInfoTuple AddNWithKernelOp::GetOpInfo() {
           "out", "paddle::dialect::DenseTensorType", false, false)};
   paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo(
       "AddNInferMeta", {"inputs"}, {"add_n"}, {"inputs"}, {}, {}, {}, {});
-  return std::make_tuple(
-      inputs, attributes, outputs, run_time_info, "add_n_with_kernel");
+  std::unordered_map<std::string, std::vector<std::string>>
+      kernel_select_rules = {};
+  return std::make_tuple(inputs,
+                         attributes,
+                         outputs,
+                         run_time_info,
+                         kernel_select_rules,
+                         "add_n_with_kernel");
 }
 
 void AddNWithKernelOp::Build(pir::Builder &builder,
@@ -444,9 +460,15 @@ OpInfoTuple FusedGemmEpilogueOp::GetOpInfo() {
       {},
       {},
       {});
+  std::unordered_map<std::string, std::vector<std::string>>
+      kernel_select_rules = {};
 
-  return std::make_tuple(
-      inputs, attributes, outputs, run_time_info, "fused_gemm_epilogue");
+  return std::make_tuple(inputs,
+                         attributes,
+                         outputs,
+                         run_time_info,
+                         kernel_select_rules,
+                         "fused_gemm_epilogue");
 }
 
 void FusedGemmEpilogueOp::Build(pir::Builder &builder,
@@ -685,9 +707,14 @@ OpInfoTuple FusedGemmEpilogueGradOp::GetOpInfo() {
                                                {},
                                                {},
                                                {});
-
-  return std::make_tuple(
-      inputs, attributes, outputs, run_time_info, "fused_gemm_epilogue_grad");
+  std::unordered_map<std::string, std::vector<std::string>>
+      kernel_select_rules = {};
+  return std::make_tuple(inputs,
+                         attributes,
+                         outputs,
+                         run_time_info,
+                         kernel_select_rules,
+                         "fused_gemm_epilogue_grad");
 }
 
 void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
@@ -875,9 +902,14 @@ OpInfoTuple SplitGradOp::GetOpInfo() {
                     {},
                     {},
                     {});
-
-  return std::make_tuple(
-      inputs, attributes, outputs, run_time_info, "split_grad");
+  std::unordered_map<std::string, std::vector<std::string>>
+      kernel_select_rules = {};
+  return std::make_tuple(inputs,
+                         attributes,
+                         outputs,
+                         run_time_info,
+                         kernel_select_rules,
+                         "split_grad");
 }
 
 void SplitGradOp::Build(pir::Builder &builder,

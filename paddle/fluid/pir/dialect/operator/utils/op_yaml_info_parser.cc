@@ -84,6 +84,11 @@ const OpRunTimeInfo& OpYamlInfoParser::OpRuntimeInfo() const {
   return std::get<3>(op_info_tuple_);
 }
 
+const std::unordered_map<std::string, std::vector<std::string>>&
+OpYamlInfoParser::KernelSelectRules() const {
+  return std::get<4>(op_info_tuple_);
+}
+
 const std::map<std::string, uint32_t>& OpYamlInfoParser::InputName2Id() const {
   return input_name2id_;
 }
@@ -199,7 +204,7 @@ void OpYamlInfoParser::parse() {
 }
 
 const std::string& OpYamlInfoParser::GetOriginOpName() const {
-  return std::get<4>(op_info_tuple_);
+  return std::get<5>(op_info_tuple_);
 }
 
 }  // namespace dialect

@@ -512,9 +512,15 @@ OpInfoTuple Conv2dFusionOpTest::GetOpInfo() {
                     {},
                     {},
                     {});
+  std::unordered_map<std::string, std::vector<std::string>>
+      kernel_select_rules = {};
 
-  return std::make_tuple(
-      inputs, attributes, outputs, run_time_info, "conv2d_fusion_test");
+  return std::make_tuple(inputs,
+                         attributes,
+                         outputs,
+                         run_time_info,
+                         kernel_select_rules,
+                         "conv2d_fusion_test");
 }
 
 void Conv2dFusionOpTest::Build(pir::Builder &builder,

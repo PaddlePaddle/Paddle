@@ -34,6 +34,8 @@ class OpYamlInfoParser {
   const std::vector<std::string>& TensorParams(bool is_kernel = false) const;
   const std::vector<std::string>& AttrParams(bool is_kernel = false) const;
   const OpRunTimeInfo& OpRuntimeInfo() const;
+  const std::unordered_map<std::string, std::vector<std::string>>&
+  KernelSelectRules() const;
   const std::map<std::string, uint32_t>& InputName2Id() const;
   const std::map<std::string, uint32_t>& OutputName2Id() const;
 
