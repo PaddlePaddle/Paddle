@@ -17,7 +17,11 @@ import os
 import paddle
 from paddle.base import Variable, core
 from paddle.base.data_feeder import check_type
-from paddle.base.framework import convert_np_dtype_to_dtype_, static_only
+from paddle.base.framework import (
+    convert_np_dtype_to_dtype_,
+    in_pir_mode,
+    static_only,
+)
 from paddle.base.layer_helper import LayerHelper
 
 from ..base.variable_index import _setitem_impl_, _setitem_static
@@ -110,7 +114,7 @@ def data(name, shape, dtype=None, lod_level=0):
     if dtype is None:
         dtype = paddle.get_default_dtype()
 
-    if paddle.ir.core._use_new_ir_api():
+    if in_pir_mode():
         ir_dtype = paddle.ir.core.convert_np_dtype_to_dtype_(dtype)
         return paddle._ir_ops.data(name, shape, ir_dtype, core.Place())
 

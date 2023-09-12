@@ -26,7 +26,7 @@ from ..ir import core as ir_core
 from ..ir import OpResult
 from .wrapped_decorator import signature_safe_contextmanager
 from .data_feeder import convert_dtype
-from .framework import Variable, Operator
+from .framework import Variable, Operator, in_pir_mode
 
 from .framework import (
     convert_np_dtype_to_dtype_,
@@ -270,7 +270,7 @@ def check_feed_shape_type(var, feed, num_places=1):
     return True
 
 
-def new_ir_check_feed_shape_type(feed, name, target_shape, dtype, num_places=1):
+def pir_check_feed_shape_type(feed, name, target_shape, dtype, num_places=1):
     """
     Returns True if the variable doesn't require feed check or it is compatible
     with the shape and have same dtype as the fed value.
@@ -510,7 +510,7 @@ def _add_feed_fetch_ops(
     return tmp_program
 
 
-def _add_new_ir_fetch_ops(program, fetch_list, fetch_var_name):
+def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
     import paddle
 
     global_block = program.global_block()
@@ -1011,7 +1011,7 @@ class _ExecutorCache:
         new_exe = _StandaloneExecutor(place, plan, scope)
         return new_program, new_exe
 
-    def get_new_ir_program_and_executor(
+    def get_pir_program_and_executor(
         self,
         program,
         feed,
@@ -1021,7 +1021,7 @@ class _ExecutorCache:
         place,
         scope,
     ):
-        _add_new_ir_fetch_ops(
+        _add_pir_fetch_ops(
             program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
         )
 
@@ -1204,8 +1204,8 @@ class Executor:
                         )
                     check_feed_shape_type(var, cur_feed)
                 idx = op.desc.attr('col')
-                new_ir_flag_name = 'FLAGS_enable_new_ir_in_executor'
-                if get_flags(new_ir_flag_name)[new_ir_flag_name]:
+                pir_flag_name = 'FLAGS_enable_new_ir_in_executor'
+                if get_flags(pir_flag_name)[pir_flag_name]:
                     core.set_feed_variable(
                         scope, cur_feed, feed_target_name, idx
                     )
@@ -1245,7 +1245,7 @@ class Executor:
             else:
                 break
 
-    def _new_ir_feed_data(self, program, feed, scope):
+    def _pir_feed_data(self, program, feed, scope):
         # feed var to framework
         global_block = program.global_block()
         for op in global_block.ops:
@@ -1256,7 +1256,7 @@ class Executor:
                 cur_feed = feed[feed_target_name]
                 if not isinstance(cur_feed, core.LoDTensor):
                     cur_feed = _as_lodtensor(cur_feed, self.place, var_type)
-                new_ir_check_feed_shape_type(
+                pir_check_feed_shape_type(
                     cur_feed, feed_target_name, var_shape, var_type
                 )
                 # the last arg of set_feed_variable has no effect in new ir, we pass 0 by default.
@@ -1621,8 +1621,8 @@ class Executor:
                 'true',
             ]
             self._log_force_set_program_cache(use_program_cache)
-        if ir_core._use_new_ir_api():
-            res = self._run_new_ir_impl(
+        if in_pir_mode():
+            res = self._run_pir_impl(
                 program=program,
                 feed=feed,
                 fetch_list=fetch_list,
@@ -1874,7 +1874,7 @@ class Executor:
         ), f"Program must have _is_inference = True, but get {program._is_inference}"
         return self._run_inference(program._executor, feed)
 
-    def _run_new_ir_impl(
+    def _run_pir_impl(
         self,
         program,
         feed,
@@ -1931,7 +1931,7 @@ class Executor:
                 % (type(feed))
             )
 
-        program, new_exe = self._executor_cache.get_new_ir_program_and_executor(
+        program, new_exe = self._executor_cache.get_pir_program_and_executor(
             program,
             feed,
             fetch_list,
@@ -1941,7 +1941,7 @@ class Executor:
             scope,
         )
 
-        self._new_ir_feed_data(program, feed, scope)
+        self._pir_feed_data(program, feed, scope)
 
         ret = new_exe.run(list(feed.keys()), return_numpy)
         return ret
