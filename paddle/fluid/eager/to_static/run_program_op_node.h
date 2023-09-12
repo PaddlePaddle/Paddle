@@ -223,10 +223,12 @@ static void ShareTensorsFromScopeWithPartialBlock(
     paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &name = tensors[i]->name();
+    bool in_forward_block = forward_global_block.HasVar(name);
+    bool in_backward_block =
+        backward_global_block && backward_global_block->HasVar(name);
     if (name == paddle::framework::kEmptyVarName ||
         name == paddle::framework::kFakeVarName ||
-        (!forward_global_block.HasVar(name) && backward_global_block &&
-         !backward_global_block->HasVar(name))) {
+        (!in_forward_block && !in_backward_block)) {
       VLOG(2) << "find tensor name is " << name << ", skip it!";
       continue;
     }
