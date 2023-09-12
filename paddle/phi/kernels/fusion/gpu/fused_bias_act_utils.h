@@ -100,6 +100,15 @@ struct GeluFunctor {
   }
 };
 
+
+template <typename T>
+struct ReluFunctor {
+  inline __host__ __device__ T operator()(const T x) const {
+    T zero =  static_cast<T>(0.0);
+    return x >  zero ? x : zero;
+  }
+};
+
 template <typename T>
 struct FastGeluFunctor {
   inline __device__ T operator()(const T x) const {
