@@ -31,6 +31,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/phi/core/enforce.h"
@@ -68,6 +69,26 @@ namespace pybind {
 PyTypeObject *g_ir_opresult_pytype = nullptr;
 
 void BindOpsAPI(pybind11::module *module);
+
+inline int64_t GetProgramInt64Attr(const std::shared_ptr<Program> &program,
+                                   const std::string &attr_name,
+                                   int64_t default_value = 0) {
+  auto op = program->module_op();
+  if (op->HasAttribute(attr_name)) {
+    auto val = op->attribute(attr_name).dyn_cast<pir::Int64Attribute>().data();
+    return val;
+  } else {
+    return default_value;
+  }
+}
+
+inline void SetProgramInt64Attr(std::shared_ptr<Program> program,
+                                const std::string &attr_name,
+                                int64_t value) {
+  auto op = program->module_op();
+  op->set_attribute(
+      attr_name, pir::Int64Attribute::get(pir::IrContext::Instance(), value));
+}
 
 void BindProgram(py::module *m) {
   py::class_<Program, std::shared_ptr<Program>> program(*m, "Program", R"DOC(
@@ -126,13 +147,21 @@ void BindProgram(py::module *m) {
              return self->parameters_num();
            })
       .def(
-          "block",
+          "global_block",
           [](std::shared_ptr<Program> self) { return self->block(); },
           return_value_policy::reference)
       .def(
-          "block",
+          "global_block",
           [](const std::shared_ptr<Program> &self) { return self->block(); },
-          return_value_policy::reference);
+          return_value_policy::reference)
+      .def_property(
+          "random_seed",
+          [](const std::shared_ptr<Program> &self) {
+            return GetProgramInt64Attr(self, "random_seed", 0);
+          },
+          [](std::shared_ptr<Program> self, int64_t random_seed) {
+            SetProgramInt64Attr(self, "random_seed", random_seed);
+          });
 }
 
 void BindBlock(py::module *m) {
@@ -144,8 +173,10 @@ void BindBlock(py::module *m) {
         use `Program.block()` to get a block.
   )DOC");
   block.def("front", &Block::front, return_value_policy::reference)
-      .def("get_parent_program",
-           [](Block &self) { return self.GetParentOp()->GetParentProgram(); })
+      .def_property_readonly(
+          "program",
+          [](Block &self) { return self.GetParentOp()->GetParentProgram(); },
+          return_value_policy::reference)
       .def_property_readonly(
           "ops",
           [](Block &self) -> py::list {
@@ -170,7 +201,26 @@ void BindBlock(py::module *m) {
         Returns:
             None
 
-      )DOC");
+      )DOC")
+      .def("all_parameters", [](Block &self) -> py::list {
+        py::list param_list;
+        for (auto iter = self.begin(); iter != self.end(); iter++) {
+          auto op = *iter;
+          if (op->HasAttribute(kAttrIsPersisable)) {
+            auto attrs = op->attribute(kAttrIsPersisable)
+                             .dyn_cast<pir::ArrayAttribute>()
+                             .AsVector();
+            for (uint32_t i = 0; i < attrs.size(); i++) {
+              bool is_persistable =
+                  attrs[i].dyn_cast<pir::BoolAttribute>().data();
+              if (is_persistable) {
+                param_list.append(op->result(i));
+              }
+            }
+          }
+        }
+        return param_list;
+      });
 }
 
 void BindOperation(py::module *m) {
@@ -312,37 +362,36 @@ void BindOpOperand(py::module *m) {
       .def("owner", &OpOperand::owner, return_value_policy::reference);
 }
 
-bool GetStopGradient(const OpResult &self) {
+bool GetOpResultBoolAttr(const OpResult &self, const std::string &attr_name) {
   auto *defining_op = self.owner();
-  if (defining_op->HasAttribute(kAttrStopGradients)) {
-    auto stop_gradients = defining_op->attribute(kAttrStopGradients)
-                              .dyn_cast<pir::ArrayAttribute>()
-                              .AsVector();
-    return stop_gradients[self.GetResultIndex()]
-        .dyn_cast<pir::BoolAttribute>()
-        .data();
+  if (defining_op->HasAttribute(attr_name)) {
+    auto attrs = defining_op->attribute(attr_name)
+                     .dyn_cast<pir::ArrayAttribute>()
+                     .AsVector();
+    return attrs[self.GetResultIndex()].dyn_cast<pir::BoolAttribute>().data();
   } else {
     return false;
   }
 }
 
-void SetStopGradient(const OpResult &self, bool stop_gradient) {
+void SetOpResultBoolAttr(const OpResult &self,
+                         const std::string &attr_name,
+                         bool value) {
   auto *defining_op = self.owner();
-  std::vector<pir::Attribute> stop_gradients;
-  if (defining_op->HasAttribute(kAttrStopGradients)) {
-    stop_gradients = defining_op->attribute(kAttrStopGradients)
-                         .dyn_cast<pir::ArrayAttribute>()
-                         .AsVector();
+  std::vector<pir::Attribute> attrs;
+  if (defining_op->HasAttribute(attr_name)) {
+    attrs = defining_op->attribute(attr_name)
+                .dyn_cast<pir::ArrayAttribute>()
+                .AsVector();
   } else {
-    stop_gradients = std::vector<pir::Attribute>(
+    attrs = std::vector<pir::Attribute>(
         defining_op->num_results(),
         pir::BoolAttribute::get(pir::IrContext::Instance(), false));
   }
-  stop_gradients[self.GetResultIndex()] =
-      pir::BoolAttribute::get(pir::IrContext::Instance(), stop_gradient);
+  attrs[self.GetResultIndex()] =
+      pir::BoolAttribute::get(pir::IrContext::Instance(), value);
   defining_op->set_attribute(
-      kAttrStopGradients,
-      pir::ArrayAttribute::get(pir::IrContext::Instance(), stop_gradients));
+      attr_name, pir::ArrayAttribute::get(pir::IrContext::Instance(), attrs));
 }
 
 void BindOpResult(py::module *m) {
@@ -359,6 +408,26 @@ void BindOpResult(py::module *m) {
            [](OpResult &self, Value &other) {
              return self.value_impl() == other.impl();
            })
+      .def("__neg__",
+           [](OpResult &self) {
+             return paddle::dialect::scale(self, -1.0, 0.0, true);
+           })
+      .def("__add__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::add(self, other);
+           })
+      .def("__sub__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::subtract(self, other);
+           })
+      .def("__mul__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::multiply(self, other);
+           })
+      .def("__truediv__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::divide(self, other);
+           })
       .def("__hash__",
            [](OpResult &self) {
              return std::hash<pir::Value>{}(self.dyn_cast<pir::Value>());
@@ -366,15 +435,45 @@ void BindOpResult(py::module *m) {
       .def("get_defining_op",
            &OpResult::GetDefiningOp,
            return_value_policy::reference)
+      .def_property_readonly(
+          "block",
+          [](OpResult &self) { return self.GetDefiningOp()->GetParent(); },
+          return_value_policy::reference)
+      .def_property_readonly(
+          "name",
+          [](OpResult &self) {
+            if (self.GetDefiningOp()->name() == "builtin.get_parameter") {
+              auto param_name = self.GetDefiningOp()
+                                    ->attributes()
+                                    .at("parameter_name")
+                                    .dyn_cast<pir::StrAttribute>()
+                                    .AsString();
+              return param_name;
+            } else {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "Currently, we can only get name of OpResult that is "
+                  "persistable"));
+            }
+          })
       .def("first_use", &OpResult::first_use, return_value_policy::reference)
       .def("has_one_use", &Value::HasOneUse)
       .def("use_empty", &OpResult::use_empty)
       .def("type", &OpResult::type)
       .def_property(
           "stop_gradient",
-          [](OpResult &self) { return GetStopGradient(self); },
+          [](OpResult &self) {
+            return GetOpResultBoolAttr(self, kAttrStopGradients);
+          },
           [](OpResult &self, bool stop_gradient) {
-            SetStopGradient(self, stop_gradient);
+            SetOpResultBoolAttr(self, kAttrStopGradients, stop_gradient);
+          })
+      .def_property(
+          "is_persistable",
+          [](OpResult &self) {
+            return GetOpResultBoolAttr(self, kAttrIsPersisable);
+          },
+          [](OpResult &self, bool is_persistable) {
+            SetOpResultBoolAttr(self, kAttrIsPersisable, is_persistable);
           })
       .def_property(
           "shape",

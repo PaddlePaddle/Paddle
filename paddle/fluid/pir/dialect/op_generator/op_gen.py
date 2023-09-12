@@ -173,7 +173,7 @@ scalar_type_maps = {
     'bool': 'pir::BoolAttribute',
 }
 
-_NO_NEED_GEN_OPS = {'add_n', 'add_n_', 'add_n_with_kernel', 'split_grad'}
+PD_MANUAL_OP_LIST = {'add_n', 'add_n_', 'add_n_with_kernel', 'split_grad'}
 
 
 def to_phi_and_fluid_op_name(op_item):
@@ -881,7 +881,7 @@ def OpGenerator(
 
         # If op has inplace info, we will generate inplace op and non-inplace op.
         for op_name in op_info.op_phi_name:
-            if op_name in _NO_NEED_GEN_OPS:
+            if op_name in PD_MANUAL_OP_LIST:
                 continue
             op_class_name = to_pascal_case(op_name) + "Op"
             op_dialect_name = dialect_name + "." + op_name
@@ -927,6 +927,7 @@ def OpGenerator(
                     op_class_name,
                     op_input_name_list,
                     op_input_type_list,
+                    op_input_optional_list,
                     op_attribute_name_list,
                     op_attribute_type_list,
                     op_attribute_build_arg_type_list,
@@ -940,7 +941,9 @@ def OpGenerator(
                     op_output_name_list,
                     op_output_type_list,
                     op_output_size_list,
+                    op_output_optional_list,
                     op_infer_meta_map,
+                    op_inplace_map,
                     muta_attr_is_input=False,
                 )
                 if len(op_attribute_name_list) > 0:
@@ -951,6 +954,7 @@ def OpGenerator(
                         op_class_name,
                         op_input_name_list,
                         op_input_type_list,
+                        op_input_optional_list,
                         op_attribute_name_list,
                         op_attribute_type_list,
                         op_attribute_build_arg_type_list,
@@ -964,7 +968,9 @@ def OpGenerator(
                         op_output_name_list,
                         op_output_type_list,
                         op_output_size_list,
+                        op_output_optional_list,
                         op_infer_meta_map,
+                        op_inplace_map,
                         muta_attr_is_input=False,
                         attr_args_is_map=True,
                     )
@@ -982,6 +988,7 @@ def OpGenerator(
                         op_class_name,
                         op_input_name_list,
                         op_input_type_list,
+                        op_input_optional_list,
                         op_attribute_name_list,
                         op_attribute_type_list,
                         op_attribute_build_arg_type_list,
@@ -995,7 +1002,9 @@ def OpGenerator(
                         op_output_name_list,
                         op_output_type_list,
                         op_output_size_list,
+                        op_output_optional_list,
                         op_infer_meta_map,
+                        op_inplace_map,
                         muta_attr_is_input=True,
                     )
 
@@ -1188,7 +1197,6 @@ def OpGenerator(
             if dialect_name == "cinn":
                 logging.warning("cinn is currently not support Vjp function")
             else:
-                # TODO(chenzhiyang) add vjp gen code
                 if (
                     op_info.backward_name
                     and op_info.op_phi_name[0]
