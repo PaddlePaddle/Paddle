@@ -30,8 +30,8 @@
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/phi/core/enforce.h"
@@ -511,7 +511,7 @@ std::vector<pir::Value> AnalysisMiddleVariable(
 
   std::unordered_set<pir::Value> backward_inputs;
   std::unordered_set<pir::Value> x_or_param(forward_inputs.begin(),
-                                           forward_inputs.end());
+                                            forward_inputs.end());
   range_block_do(
       program.block(), backward_range, [&backward_inputs](Operation *op) {
         for (auto &t : op->operands()) {
@@ -672,9 +672,9 @@ SplitedResult ForwardBackwardSplit(
     };
     pir::Operation *operation =
         pir::Operation::Create({OpResult(backward_value_map.at(v).impl())},
-                              attribute_map,
-                              {},
-                              op_info);
+                               attribute_map,
+                               {},
+                               op_info);
     backward_program->block()->push_back(operation);
     counter += 1;
   };
@@ -732,16 +732,16 @@ SplitedResult ForwardBackwardSplit(
   mapping_value(forward_outputs, backward_value_map, bo);  // write 'bo'
 
   std::map<std::string, std::vector<pir::Value>> attr = {{"fx", fx},
-                                                        {"fp", fp},
-                                                        {"fm", fm},
-                                                        {"fo", fo},
-                                                        {"bx", bx},
-                                                        {"bp", bp},
-                                                        {"bm", bm},
-                                                        {"bo_g", bo_g},
-                                                        {"bx_g", bx_g},
-                                                        {"bp_g", bp_g},
-                                                        {"bo", bo}};
+                                                         {"fp", fp},
+                                                         {"fm", fm},
+                                                         {"fo", fo},
+                                                         {"bx", bx},
+                                                         {"bp", bp},
+                                                         {"bm", bm},
+                                                         {"bo_g", bo_g},
+                                                         {"bx_g", bx_g},
+                                                         {"bp_g", bp_g},
+                                                         {"bo", bo}};
   std::vector<std::shared_ptr<Program>> programs = {forward_program,
                                                     backward_program};
   return std::make_pair(programs, attr);

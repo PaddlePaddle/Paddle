@@ -197,10 +197,11 @@ static auto GetNameFromValue(const ::pir::Block *block,
     }
   }
   std::vector<std::string> names;
-  std::transform(values.begin(),
-                 values.end(),
-                 std::back_inserter(names),
-                 [&value2name](const ::pir::Value &v) { return value2name[v]; });
+  std::transform(
+      values.begin(),
+      values.end(),
+      std::back_inserter(names),
+      [&value2name](const ::pir::Value &v) { return value2name[v]; });
   return names;
 }
 
@@ -245,18 +246,20 @@ static void ShareTensorsFromScope(
   }
 }
 
-static void ShareTensorsIntoScopeByValue(const ::pir::Block *block,
-                                         const std::vector<Tensor> &tensors,
-                                         const std::vector<::pir::Value> &values,
-                                         paddle::framework::Scope *scope) {
+static void ShareTensorsIntoScopeByValue(
+    const ::pir::Block *block,
+    const std::vector<Tensor> &tensors,
+    const std::vector<::pir::Value> &values,
+    paddle::framework::Scope *scope) {
   auto names = GetNameFromValue(block, values);
   ShareTensorsIntoScopeWithName(tensors, names, scope);
 }
 
-static void ShareTensorsFromScopeByValue(const ::pir::Block *block,
-                                         const std::vector<Tensor *> &tensors,
-                                         const std::vector<::pir::Value> &values,
-                                         paddle::framework::Scope *scope) {
+static void ShareTensorsFromScopeByValue(
+    const ::pir::Block *block,
+    const std::vector<Tensor *> &tensors,
+    const std::vector<::pir::Value> &values,
+    paddle::framework::Scope *scope) {
   auto names = GetNameFromValue(block, values);
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &name = names[i];
