@@ -158,7 +158,7 @@ TEST(StandaloneExecutor, if_op) {
       std::vector<int64_t>{1}, true, phi::DataType::BOOL);
 
   auto if_op = builder.Build<paddle::dialect::IfOp>(
-      full_op.out(), std::vector<pir::Type>{builder.bool_type()});
+      full_op.out(), std::vector<pir::Type>{full_op.result(0).type()});
 
   pir::Block* true_block = if_op.true_block();
 

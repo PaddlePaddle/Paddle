@@ -659,9 +659,13 @@ void HandleForIfOp(
   pir::Builder builder(ctx, block);
 
   auto base_if_op = op_item->dyn_cast<paddle::dialect::IfOp>();
-
+  auto allocated_dense_tensor_dtype =
+      paddle::dialect::AllocatedDenseTensorType::get(
+          ctx,
+          place,
+          base_if_op.result(0).type().dyn_cast<dialect::DenseTensorType>());
   auto new_if_op = builder.Build<paddle::dialect::IfOp>(
-      new_in, std::vector<pir::Type>{builder.bool_type()});
+      new_in, std::vector<pir::Type>{allocated_dense_tensor_dtype});
 
   // process true block
   pir::Block* true_block = new_if_op.true_block();

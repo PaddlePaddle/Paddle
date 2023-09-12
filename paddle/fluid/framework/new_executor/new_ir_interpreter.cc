@@ -529,8 +529,7 @@ void NewIRInterpreter::BuildInstruction() {
                                                       value_2_var_name_,
                                                       var_name_2_id_,
                                                       variable_2_var_name_));
-      }
-      if (op->name() == "pd_op.if") {
+      } else if (op_name == "pd_op.if") {
         vec_instruction_base_.emplace_back(
             std::make_unique<CondInstruction>(op_idx++,
                                               place_,
