@@ -60,6 +60,44 @@ class TestSetitemInDygraph(unittest.TestCase):
 
         np.testing.assert_allclose(x.numpy(), np_data)
 
+    def test_indexing_with_bool_list1(self):
+        # test bool-list indexing when axes num less than x.rank
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        np_data[[True, False, True], [False, False, False, True]] = 7
+
+        x = paddle.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        x[[True, False, True], [False, False, False, True]] = 7
+
+        np.testing.assert_allclose(x.numpy(), np_data)
+
+    def test_indexing_with_bool_list2(self):
+        # test bool-list indexing when axes num less than x.rank
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        np_data[
+            [True, False, True],
+            [False, False, True, False],
+            [True, False, False, True, False],
+        ] = 8
+
+        x = paddle.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        x[
+            [True, False, True],
+            [False, False, True, False],
+            [True, False, False, True, False],
+        ] = 8
+
+        np.testing.assert_allclose(x.numpy(), np_data)
+
+    def test_indexing_is_multi_dim_list(self):
+        # indexing is multi-dim int list, should be treat as one index, like numpy>=1.23
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
+        np_data[np.array([[2, 3, 4], [1, 2, 5]])] = 100
+
+        x = paddle.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
+        x[[[2, 3, 4], [1, 2, 5]]] = 100
+
+        np.testing.assert_allclose(x.numpy(), np_data)
+
 
 class TestSetitemInStatic(unittest.TestCase):
     def setUp(self):
@@ -159,6 +197,61 @@ class TestSetitemInStatic(unittest.TestCase):
                 (slice(None, None), range(3), [1, 2, 4]),
                 10,
             )
+            res = self.exe.run(fetch_list=[y.name])
+
+        np.testing.assert_allclose(res[0], np_data)
+
+    def test_indexing_with_bool_list1(self):
+        # test bool-list indexing when axes num less than x.rank
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        np_data[[True, False, True], [False, False, False, True]] = 7
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+            y = _setitem_static(
+                x, ([True, False, True], [False, False, False, True]), 7
+            )
+            res = self.exe.run(fetch_list=[y.name])
+
+        np.testing.assert_allclose(res[0], np_data)
+
+    def test_indexing_with_bool_list2(self):
+        # test bool-list indexing when axes num less than x.rank
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        np_data[
+            [True, False, True],
+            [False, False, True, False],
+            [True, False, False, True, False],
+        ] = 8
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+            y = _setitem_static(
+                x,
+                (
+                    [True, False, True],
+                    [False, False, True, False],
+                    [True, False, False, True, False],
+                ),
+                8,
+            )
+            res = self.exe.run(fetch_list=[y.name])
+
+        np.testing.assert_allclose(res[0], np_data)
+
+    def test_indexing_is_multi_dim_list(self):
+        # indexing is multi-dim int list, should be treat as one index, like numpy>=1.23
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
+        np_data[np.array([[2, 3, 4], [1, 2, 5]])] = 10
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
+            y = _setitem_static(x, [[[2, 3, 4], [1, 2, 5]]], 10)
+
             res = self.exe.run(fetch_list=[y.name])
 
         np.testing.assert_allclose(res[0], np_data)

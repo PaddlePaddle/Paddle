@@ -41,16 +41,6 @@ def is_list_tuple(index, contain_type):
     return True
 
 
-def is_one_dim_list(index, contain_type):
-    if isinstance(index, list):
-        for i in index:
-            if not isinstance(i, contain_type):
-                return False
-    else:
-        return False
-    return True
-
-
 def get_list_index_shape(var_dims, index_dims):
     var_dims_size = len(var_dims)
     index_dims_size = len(index_dims)
@@ -405,9 +395,7 @@ def _setitem_impl_(var, item, value):
         return _setitem_for_tensor_array(var, item, value)
 
     inputs = {'Input': var}
-    if isinstance(item, list):
-        if not is_one_dim_list(item, int):
-            item = tuple(item)
+
     # 1. Parse item
     if not isinstance(item, tuple):
         item = (item,)
@@ -701,9 +689,6 @@ def parse_index(x, indices):
     steps = []
     use_strided_slice = False
     has_advanced_index = False
-
-    if isinstance(indices, list) and not is_one_dim_list(indices, int):
-        indices = tuple(indices)
 
     if not isinstance(indices, tuple):
         indices = (indices,)
@@ -1017,9 +1002,9 @@ def _setitem_static(x, indices, values):
 def get_tensor_with_basic_indexing(
     x, axes, starts, ends, steps, decrease_axes, none_axes, use_strided_slice
 ):
-    from .dygraph.base import in_declarative_mode
+    from .dygraph.base import in_to_static_mode
 
-    if in_declarative_mode() and hasattr(x, "is_view_var"):
+    if in_to_static_mode() and hasattr(x, "is_view_var"):
         x.is_view_var = True
 
     if len(axes) == 0:
@@ -1111,7 +1096,7 @@ def get_tensor_with_basic_indexing(
 
         out = paddle.unsqueeze(out, axis=none_axes)
 
-    if in_declarative_mode() and hasattr(out, "is_view_var"):
+    if in_to_static_mode() and hasattr(out, "is_view_var"):
         out.is_view_var = True
     return out
 
