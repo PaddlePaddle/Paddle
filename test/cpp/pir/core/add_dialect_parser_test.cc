@@ -24,7 +24,7 @@
 #include "paddle/pir/core/builtin_attribute_storage.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/ir_parser.h"
+#include "paddle/pir/core/parser/ir_parser.h"
 #include "paddle/pir/core/utils.h"
 
 using OperatorDialect = paddle::dialect::OperatorDialect;
