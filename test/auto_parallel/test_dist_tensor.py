@@ -92,6 +92,8 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
             dist_t_list.append(dist_t)
         return local_t_list, dist_t_list
 
+    # input: phi::Tensor
+    # output: phi::Tensor
     def test_relu_api_for_dist_tensor(self):
         x = np.random.random(size=[4, 4]).astype("float32")
         local_in, dist_in = self.create_local_and_dist_tensor_pair(x)
@@ -104,7 +106,8 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
         dist_out.backward()
         self.check_tensor_eq(local_in.grad, dist_in.grad)
 
-    # input: std::vector<phi::Tensor>, output: phi::Tensor
+    # input: std::vector<phi::Tensor>
+    # output: phi::Tensor
     def test_concat_for_dist_tensor(self):
         x1 = np.random.random(size=[4, 4]).astype("float32")
         x2 = np.random.random(size=[4, 4]).astype("float32")
@@ -121,7 +124,8 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
         self.check_tensor_eq(local_in2.grad, dist_in2.grad)
         self.check_tensor_eq(local_in3.grad, dist_in3.grad)
 
-    # input: std::vector<phi::Tensor>, output: std::vector<phi::Tensor>
+    # input: std::vector<phi::Tensor>
+    # output: std::vector<phi::Tensor>
     def test_broadcast_tensors_for_dist_tensor(self):
         x1 = np.random.random(size=[4, 4]).astype("float32")
         x2 = np.random.random(size=[4, 4]).astype("float32")
@@ -143,8 +147,9 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
         self.check_tensor_eq(local_in1.grad, dist_in1.grad)
         self.check_tensor_eq(local_in2.grad, dist_in2.grad)
 
-    # input: phi::Tensor, output: std::vector<phi::Tensor>
-    def test_unbind_api_for_dist_tensor(self):
+    # input: phi::Tensor
+    # output: std::vector<phi::Tensor>
+    def test_unbind_for_dist_tensor(self):
         x = np.random.random(size=[2, 8]).astype("float32")
         local_in, dist_in = self.create_local_and_dist_tensor_pair(x)
         local_out1, local_out2 = paddle.unbind(local_in, axis=0)
@@ -159,8 +164,9 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
         dist_out.backward()
         self.check_tensor_eq(local_in.grad, dist_in.grad)
 
-    # input: paddle::optional<phi::Tensor>, output: phi::Tensor
-    def test_expand_as_api_for_dist_tensor(self):
+    # input: paddle::optional<phi::Tensor>
+    # output: phi::Tensor
+    def test_expand_as_for_dist_tensor(self):
         x1 = np.random.random(size=[2, 8]).astype("float32")
         x2 = np.random.random(size=[2, 2, 8]).astype("float32")
         local_in1, dist_in1 = self.create_local_and_dist_tensor_pair(x1)
@@ -172,6 +178,8 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
         dist_out.backward()
         self.check_tensor_eq(local_in1.grad, dist_in1.grad)
 
+    # input: paddle::optional<phi::Tensor>
+    # output: phi::Tensor
     def test_bincount_api_for_dist_tensor(self):
         x = np.random.random(size=[16]).astype("int32")
         weight = np.random.random(size=[16]).astype("float32")
@@ -185,8 +193,9 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
 
         self.check_tensor_eq(local_out, dist_out)
 
-    # input: paddle::optional<std::vector<phi::Tensor>>, output: phi::Tensor
-    def test_linear_interp_api_for_dist_tensor(self):
+    # input: paddle::optional<std::vector<phi::Tensor>>
+    # output: phi::Tensor
+    def test_linear_interp_for_dist_tensor(self):
         out_size = np.array(
             [
                 50,
@@ -240,7 +249,24 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
         )
         self.check_tensor_eq(local_out, dist_out)
 
-    def test_check_finite_and_unscale_api_for_dist_tensor(self):
+    # input: std::vector<phi::Tensor>, phi::Tensor
+    # output: inplace std::vector<phi::Tensor>, inplace phi::Tensor
+    def test_adamgrad_for_dist_tensor(self):
+        x = np.random.random((1024, 1024)).astype("float32")
+        x[128][128] = np.inf
+        scale = np.random.random(1).astype("float32")
+        found_inf = np.array([0]).astype(np.bool_)
+
+        local_x, dist_x = self.create_local_and_dist_tensor_pair(x)
+        local_scale, dist_scale = self.create_local_and_dist_tensor_pair(scale)
+        (
+            local_found_inf,
+            dist_found_inf,
+        ) = self.create_local_and_dist_tensor_pair(found_inf)
+
+    # input: std::vector<phi::Tensor>, phi::Tensor
+    # output: inplace std::vector<phi::Tensor>, inplace phi::Tensor
+    def test_check_finite_and_unscale_for_dist_tensor(self):
         x = np.random.random((1024, 1024)).astype("float32")
         x[128][128] = np.inf
         scale = np.random.random(1).astype("float32")
@@ -268,8 +294,67 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
         self.check_tensor_eq(local_x, dist_x)
         self.check_tensor_eq(local_found_inf, dist_found_inf)
 
+    # input: phi::Tensor
+    # output: inplace paddle::optional<phi::Tensor>
+    def test_adagrad_for_dist_tensor(self):
+        dtype = np.float16
+        mp_dtype = np.float32
+        shape = [123, 321]
+
+        param = np.random.random(shape).astype(dtype)
+        grad = np.random.random(shape).astype(dtype)
+        moment = np.random.random(shape).astype(dtype)
+        master_param = param.astype(mp_dtype)
+
+        lr = 0.01
+        epsilon = 1e-8
+
+        local_param, dist_param = self.create_local_and_dist_tensor_pair(param)
+        local_grad, dist_grad = self.create_local_and_dist_tensor_pair(grad)
+        local_moment, dist_moment = self.create_local_and_dist_tensor_pair(
+            moment
+        )
+        (
+            local_master_param,
+            dist_master_param,
+        ) = self.create_local_and_dist_tensor_pair(master_param)
+
+        (
+            local_param_out,
+            local_moment_out,
+            local_master_param_out,
+        ) = paddle._C_ops.adagrad_(
+            local_param,
+            local_grad,
+            local_moment,
+            lr,
+            local_master_param,
+            epsilon,
+            True,
+        )
+
+        (
+            dist_param_out,
+            dist_moment_out,
+            dist_master_param_out,
+        ) = paddle._C_ops.adagrad_(
+            dist_param,
+            dist_grad,
+            dist_moment,
+            lr,
+            dist_master_param,
+            epsilon,
+            True,
+        )
+
+        self.check_tensor_eq(local_param_out, dist_param_out)
+        self.check_tensor_eq(local_moment_out, dist_moment_out)
+        self.check_tensor_eq(local_master_param_out, dist_master_param_out)
+
+    # input: std::vector<phi::Tensor>, phi::Tensor
+    # output: inplace paddle::optional<std::vector<phi::Tensor>>, inplace phi::Tensor
     def test_merged_adam_for_dist_tensor(self):
-        dtype = np.float32
+        dtype = np.float16
         mp_dtype = np.float32
         lr_shape = [[1], [1], [1], [1]]
         shapes = [[3, 4], [2, 7], [5, 6], [7, 8]]
