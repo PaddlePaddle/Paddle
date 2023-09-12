@@ -180,9 +180,9 @@ int CAllReducePluginDynamic::enqueue(
       PADDLE_THROW(platform::errors::InvalidArgument("Invalid reduce type: %d",
                                                      red_type_));
   }
+  const auto& comm_context_manager =
+      phi::distributed::CommContextManager::GetInstance();
   if (FLAGS_dynamic_static_unified_comm) {
-    const auto& comm_context_manager =
-        phi::distributed::CommContextManager::GetInstance();
     PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id_)),
                       true,
                       platform::errors::InvalidArgument(
