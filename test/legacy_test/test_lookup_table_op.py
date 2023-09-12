@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import unittest
-
-import numpy as np
-from eager_op_test import (
+from test.legacy_test.op_test import (
     OpTest,
     check_out_dtype,
     paddle_static_guard,
     skip_check_grad_ci,
 )
+
+import numpy as np
 from op import Operator
 
 import paddle

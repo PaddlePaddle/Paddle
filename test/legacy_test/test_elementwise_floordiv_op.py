@@ -15,9 +15,9 @@
 import random
 import unittest
 from contextlib import contextmanager
+from test.legacy_test.op_test import OpTest, paddle_static_guard
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
 from paddle import base

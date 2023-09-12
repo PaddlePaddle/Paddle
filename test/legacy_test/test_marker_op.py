@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
-
-from eager_op_test import OpTest
+from test.legacy_test.op_test import OpTest
 
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 

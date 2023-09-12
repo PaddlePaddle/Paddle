@@ -14,9 +14,9 @@
 
 import sys
 import unittest
+from test.legacy_test.op_test import OpTest
 
 import numpy as np
-from eager_op_test import OpTest
 
 sys.path.append("../../test/sequence")
 from test_sequence_pool import (

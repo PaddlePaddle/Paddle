@@ -14,9 +14,13 @@
 
 import platform
 import unittest
+from test.legacy_test.op_test import (
+    OpTest,
+    paddle_static_guard,
+    skip_check_grad_ci,
+)
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard, skip_check_grad_ci
 
 import paddle
 import paddle.version as ver

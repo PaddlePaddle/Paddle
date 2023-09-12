@@ -13,10 +13,14 @@
 # limitations under the License.
 
 import unittest
+from test.legacy_test.op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    skip_check_grad_ci,
+)
 
 import numpy as np
 import parameterized as param
-from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 from paddle import _C_ops, base, static

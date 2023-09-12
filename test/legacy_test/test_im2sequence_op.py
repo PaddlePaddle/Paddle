@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import unittest
+from test.legacy_test.op_test import OpTest, skip_check_grad_ci
 
 import numpy as np
-from eager_op_test import OpTest, skip_check_grad_ci
 
 
 def get_output_shape(attrs, in_shape, img_real_size):

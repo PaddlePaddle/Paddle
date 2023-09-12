@@ -14,14 +14,14 @@
 
 import struct
 import unittest
-
-import numpy as np
-from eager_op_test import (
+from test.legacy_test.op_test import (
     OpTest,
     OpTestTool,
     convert_float_to_uint16,
     convert_uint16_to_float,
 )
+
+import numpy as np
 from op import Operator
 
 import paddle

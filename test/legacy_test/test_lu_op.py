@@ -15,11 +15,11 @@
 import copy
 import itertools
 import unittest
+from test.legacy_test.op_test import OpTest
 
 import numpy as np
 import scipy
 import scipy.linalg
-from eager_op_test import OpTest
 
 import paddle
 from paddle import base

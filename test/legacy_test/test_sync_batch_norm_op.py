@@ -23,14 +23,14 @@ import sys
 import tempfile
 import unittest
 from shlex import quote
-
-import numpy as np
-from decorator_helper import prog_scope
-from eager_op_test import (
+from test.legacy_test.op_test import (
     OpTest,
     _set_use_system_allocator,
     convert_float_to_uint16,
 )
+
+import numpy as np
+from decorator_helper import prog_scope
 
 import paddle
 from paddle import base, nn

@@ -14,9 +14,9 @@
 """This is unit test of Test data_norm Op."""
 
 import unittest
+from test.legacy_test.op_test import OpTest
 
 import numpy as np
-from eager_op_test import OpTest
 from op import Operator
 
 import paddle

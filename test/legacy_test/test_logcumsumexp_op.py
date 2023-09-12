@@ -14,14 +14,14 @@
 
 import itertools
 import unittest
-from typing import Optional
-
-import numpy as np
-from eager_op_test import (
+from test.legacy_test.op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
 )
+from typing import Optional
+
+import numpy as np
 
 import paddle
 from paddle import base

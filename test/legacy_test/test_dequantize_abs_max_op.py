@@ -14,9 +14,9 @@
 
 import math
 import unittest
+from test.legacy_test.op_test import OpTest
 
 import numpy as np
-from eager_op_test import OpTest
 
 
 def quantize_max_abs(x, max_range):

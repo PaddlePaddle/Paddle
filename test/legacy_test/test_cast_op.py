@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import unittest
-
-import gradient_checker
-import numpy as np
-from decorator_helper import prog_scope
-from eager_op_test import (
+from test.legacy_test.op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
 )
+
+import gradient_checker
+import numpy as np
+from decorator_helper import prog_scope
 
 import paddle
 from paddle import base

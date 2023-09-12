@@ -13,9 +13,13 @@
 # limitations under the License.
 
 import unittest
+from test.legacy_test.op_test import (
+    OpTest,
+    convert_uint16_to_float,
+    paddle_static_guard,
+)
 
 import numpy as np
-from eager_op_test import OpTest, convert_uint16_to_float, paddle_static_guard
 
 import paddle
 from paddle import base

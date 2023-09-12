@@ -21,7 +21,7 @@ import paddle
 from paddle.base import core
 
 sys.path.append("..")
-from eager_op_test import OpTest
+from test.legacy_test.op_test import OpTest
 
 from paddle import base
 from paddle.base import Program, program_guard

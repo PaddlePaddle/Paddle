@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import unittest
+from test.legacy_test.op_test import OpTest
 
 import numpy as np
-from eager_op_test import OpTest
 from test_fusion_lstm_op import ACTIVATION, fc
 from test_gru_op import gru
 

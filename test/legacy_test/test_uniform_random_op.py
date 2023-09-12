@@ -14,9 +14,9 @@
 
 import os
 import unittest
+from test.legacy_test.op_test import OpTest, convert_uint16_to_float
 
 import numpy as np
-from eager_op_test import OpTest, convert_uint16_to_float
 from op import Operator
 from test_attribute_var import UnittestBase
 

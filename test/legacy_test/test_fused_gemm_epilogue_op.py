@@ -14,9 +14,13 @@
 # limitations under the License.
 
 import unittest
+from test.legacy_test.op_test import (
+    OpTest,
+    skip_check_grad_ci,
+    skip_check_inplace_ci,
+)
 
 import numpy as np
-from eager_op_test import OpTest, skip_check_grad_ci, skip_check_inplace_ci
 
 import paddle
 from paddle.base import core

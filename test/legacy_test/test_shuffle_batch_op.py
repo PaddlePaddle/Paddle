@@ -15,9 +15,9 @@
 
 import os
 import unittest
+from test.legacy_test.op_test import OpTest
 
 import numpy as np
-from eager_op_test import OpTest
 
 from paddle import base
 

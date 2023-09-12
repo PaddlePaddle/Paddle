@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import unittest
+from test.legacy_test.op_test import OpTest
 
 import numpy as np
-from eager_op_test import OpTest
 from test_fc_op import MatrixGenerate, fc_refer
 from test_layer_norm_op import _reference_layer_norm_naive
 

@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import unittest
+from test.legacy_test.op_test import OpTest
 
 import numpy as np
-from eager_op_test import OpTest
 
 
 def generate_compatible_shapes_mul_head(dim_X, dim_Y, transpose_X, transpose_Y):

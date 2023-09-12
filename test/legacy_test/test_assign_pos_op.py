@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import unittest
+from test.legacy_test import op_test
 
-import eager_op_test
 import numpy as np
 
 import paddle
@@ -72,7 +72,7 @@ def get_redefined_allclose(cum_count):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestAssignPosOpInt64(eager_op_test.OpTest):
+class TestAssignPosOpInt64(op_test.OpTest):
     def setUp(self):
         x = np.random.randint(0, 16, size=(100, 2)).astype("int64")
         y = count(x, 16)

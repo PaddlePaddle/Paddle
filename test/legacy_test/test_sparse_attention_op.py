@@ -16,9 +16,9 @@ import copy
 import os
 import re
 import unittest
+from test.legacy_test.op_test import OpTest
 
 import numpy as np
-from eager_op_test import OpTest
 
 import paddle
 import paddle.nn.functional as F
