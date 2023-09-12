@@ -409,7 +409,10 @@ def append_backward_ops(
 
     def make_input_stopgradient(op):
         input_grad_stopgradients = []
-        grad_semantic_info = op.get_input_grad_semantics()
+        if op.name() == "builtin.combine":
+            grad_semantic_info = [True for _ in range(op.num_operands())]
+        else:
+            grad_semantic_info = op.get_input_grad_semantics()
         for input, grad_semantic in zip(
             op.operands_source(), grad_semantic_info
         ):
@@ -429,7 +432,10 @@ def append_backward_ops(
 
     def update_input_grad_map(op, input_grads):
         i = 0
-        grad_semantic_info = op.get_input_grad_semantics()
+        if op.name() == "builtin.combine":
+            grad_semantic_info = [True for _ in range(op.num_operands())]
+        else:
+            grad_semantic_info = op.get_input_grad_semantics()
         for input, grad_semantic in zip(
             op.operands_source(), grad_semantic_info
         ):
@@ -592,10 +598,11 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     )
 
     inverse_effective_forward_ops = inverse_sort_op(effective_forward_ops)
-
+    breakpoint()
     append_backward_ops(
         block, inverse_effective_forward_ops, no_grad_set, backward_ops, state
     )
+    breakpoint()
     # now value_to_valuegrad should be value <-> value (add sum op for the same values's gradvalue)
 
     outputs_set, inputs_set, no_gradvar_set = create_backward_prune_set(
