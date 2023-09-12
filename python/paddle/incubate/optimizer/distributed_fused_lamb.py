@@ -81,7 +81,7 @@ def init_communicator(block, rank, ranks, ring_id):
             'nranks': len(ranks),
             'rank': local_rank,
             'ring_id': ring_id,
-            'endpoints': eps,
+            'endpoints': ','.join(eps),
         },
     )
     tmp_var = block.create_var(name=unique_name.generate('tmp'))
