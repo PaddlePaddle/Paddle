@@ -34,8 +34,8 @@ from ..framework import (
     core,
     dygraph_only,
     in_dynamic_mode,
-    in_pir_mode,
     in_dynamic_or_pir_mode,
+    in_pir_mode,
 )
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
