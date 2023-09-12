@@ -25,7 +25,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/common/graph_utils.h"
 #include "paddle/cinn/ir/buffer.h"
 #include "paddle/cinn/ir/function_base.h"
@@ -34,13 +33,28 @@
 
 namespace cinn {
 
-namespace ast_gen_ius {
-class TensorGroup;
-}  // namespace ast_gen_ius
+namespace ir {
+class Tensor;
+}  // namespace ir
+
+namespace lang {
+template <typename T>
+struct Placeholder;
+
+void InitReduceTensor(poly::StageMap stages,
+                      const ir::Tensor& tensor,
+                      const Target& target = common::DefaultHostTarget());
+}  // namespace lang
 
 namespace ir {
+namespace detail {
+constexpr bool LE(int a, int b) { return a <= b; }
+constexpr bool GE(int a, int b) { return a >= b; }
+
+}  // namespace detail
 
 class _Tensor_;
+class Tensor;
 
 class Tensor : public ir::IrNodeRef {
  public:
@@ -70,8 +84,8 @@ class Tensor : public ir::IrNodeRef {
     return operator()(std::vector<Expr>({a}));
   }
   template <typename... Args>
-  inline typename std::enable_if<sizeof...(Args) >= 2, Expr>::type operator()(
-      Args&&... args) const {
+  inline typename std::enable_if<detail::GE(sizeof...(Args), 2), Expr>::type
+  operator()(Args&&... args) const {
     return operator()({std::forward<Args>(args)...});
   }
   // @}
@@ -274,7 +288,11 @@ class _Tensor_ : public ExprNode<_Tensor_> {
       poly::StageMap stages,
       const Target& target = common::DefaultHostTarget()) const;
 
-  ir::Tensor InitReduction(ast_gen_ius::TensorGroup* tensor_group) const;
+ private:
+  //! Initialize the axis field after the shape field is assigned.
+  void InitAxis() const;
+
+  isl::set GenerateIslDomain() const;
 
   /**
    * Create the initialization tensor.
@@ -286,17 +304,15 @@ class _Tensor_ : public ExprNode<_Tensor_> {
       poly::StageMap stages,
       const Target& target = common::DefaultHostTarget()) const;
 
- private:
-  //! Initialize the axis field after the shape field is assigned.
-  void InitAxis() const;
-
-  isl::set GenerateIslDomain() const;
-
   //! The names of the tensors depend the same buffer and should schedule before
   //! this.
   std::set<std::string> buffer_depended_tensor_names_;
 
   friend Shared<poly::Stage> CreateStage(Tensor tensor);
+
+  friend void lang::InitReduceTensor(poly::StageMap stages,
+                                     const ir::Tensor& tensor,
+                                     const Target& target);
 };
 
 Shared<poly::Stage> CreateStage(Tensor tensor);
