@@ -21,26 +21,6 @@
 
 namespace paddle {
 namespace dialect {
-pir::OpResult split_grad(std::vector<pir::OpResult> out_grads,
-                         pir::OpResult axis) {
-  auto combine_op =
-      APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(out_grads);
-  paddle::dialect::SplitGradOp split_grad_op =
-      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::SplitGradOp>(
-          combine_op.out(), axis);
-
-  return split_grad_op.x_grad();
-}
-
-pir::OpResult split_grad(std::vector<pir::OpResult> out_grads, int axis) {
-  auto combine_op =
-      APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(out_grads);
-  paddle::dialect::SplitGradOp split_grad_op =
-      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::SplitGradOp>(
-          combine_op.out(), axis);
-
-  return split_grad_op.x_grad();
-}
 
 pir::OpResult zeros_like(pir::OpResult x,
                          phi::DataType dtype,

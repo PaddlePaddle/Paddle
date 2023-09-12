@@ -23,11 +23,6 @@
 namespace paddle {
 namespace dialect {
 
-pir::OpResult split_grad(std::vector<pir::OpResult> out_grads,
-                         pir::OpResult axis);
-
-pir::OpResult split_grad(std::vector<pir::OpResult> out_grads, int axis);
-
 pir::OpResult zeros_like(pir::OpResult x,
                          phi::DataType dtype = phi::DataType::UNDEFINED,
                          const Place& place = {});

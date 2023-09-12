@@ -31,8 +31,8 @@
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/core/dialect.h"
 #include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/ir_parser.h"
 #include "paddle/pir/core/ir_printer.h"
+#include "paddle/pir/core/parser/ir_parser.h"
 #include "paddle/pir/core/program.h"
 
 using OperatorDialect = paddle::dialect::OperatorDialect;

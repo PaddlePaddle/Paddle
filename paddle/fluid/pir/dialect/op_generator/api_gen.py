@@ -17,7 +17,12 @@ import os
 import re
 
 import yaml
-from op_gen import OpCompatParser, OpInfoParser, to_pascal_case
+from op_gen import (
+    PD_MANUAL_OP_LIST,
+    OpCompatParser,
+    OpInfoParser,
+    to_pascal_case,
+)
 
 H_FILE_TEMPLATE = """
 
@@ -81,7 +86,6 @@ COMPUTE_OP_TEMPLATE = """
 
 OP_RESULT = 'pir::OpResult'
 VECTOR_TYPE = 'pir::VectorType'
-PD_MANUAL_OP_LIST = ['add_n']
 
 
 def get_op_class_name(op_name):
@@ -117,6 +121,11 @@ class CodeGen:
                 )
             op_info_items.append(OpInfoParser(op, op_compat_item))
         return op_info_items
+
+    def _need_skip(self, op_info, op_name):
+        return (
+            op_info.infer_meta_func is None and op_name not in PD_MANUAL_OP_LIST
+        )
 
     # =====================================
     # Gen declare functions
@@ -198,10 +207,7 @@ class CodeGen:
             for op_name in op_info.op_phi_name:
                 # NOTE:When infer_meta_func is None, the Build() function generated in pd_op
                 # is wrong, so temporarily skip the automatic generation of these APIs
-                if (
-                    op_info.infer_meta_func is None
-                    and op_name not in PD_MANUAL_OP_LIST
-                ):
+                if self._need_skip(op_info, op_name):
                     continue
                 declare_str += self._gen_one_declare(op_info, op_name, False)
                 if len(op_info.mutable_attribute_name_list) > 0:
@@ -332,10 +338,7 @@ class CodeGen:
             for op_name in op_info.op_phi_name:
                 # NOTE:When infer_meta_func is None, the Build() function generated in pd_op
                 # is wrong, so temporarily skip the automatic generation of these APIs
-                if (
-                    op_info.infer_meta_func is None
-                    and op_name not in PD_MANUAL_OP_LIST
-                ):
+                if self._need_skip(op_info, op_name):
                     continue
                 impl_str += self._gen_one_impl(op_info, op_name, False)
                 if len(op_info.mutable_attribute_name_list) > 0:
