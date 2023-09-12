@@ -107,7 +107,7 @@ class ParameterChecks(unittest.TestCase):
 
             linear2 = paddle.nn.Linear(10, 15)
             paddle.nn.utils.vector_to_parameters(vec, linear2.parameters())
-            self.assertEqual(linear2.weight.shape, [150])
+            self.assertEqual(linear2.weight.shape, [10, 15])
             self.assertEqual(linear2.bias.shape, [15])
             np.testing.assert_array_equal(
                 linear1.weight.numpy(), linear2.weight.numpy()
