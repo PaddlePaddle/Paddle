@@ -553,7 +553,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
       std::vector<paddle::Tensor> tensors =
           std::move(CastPyArg2VectorOfTensor(obj, i + 1));
       for (auto& tensor : tensors) {
-        if (tensor.is_dense_tensor() &&
+        if (tensor.initialized() && tensor.is_dense_tensor() &&
             !std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())
                  ->meta()
                  .is_contiguous()) {
@@ -569,7 +569,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
               << ctx.InputRangeAt(i).second - ctx.InputRangeAt(i).first;
     } else {
       paddle::Tensor tensor = std::move(CastPyArg2Tensor(obj, i + 1));
-      if (tensor.is_dense_tensor() &&
+      if (tensor.initialized() && tensor.is_dense_tensor() &&
           !std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())
                ->meta()
                .is_contiguous()) {

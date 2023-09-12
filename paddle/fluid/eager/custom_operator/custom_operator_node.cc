@@ -204,7 +204,7 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
   VLOG(6) << "Prepare Grad inputs";
   for (auto& in : tmp_ins) {
     for (auto& tensor : in) {
-      if (tensor.is_dense_tensor() &&
+      if (tensor.initialized() && tensor.is_dense_tensor() &&
           !std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())
                ->meta()
                .is_contiguous()) {
