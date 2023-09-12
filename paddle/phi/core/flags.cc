@@ -1133,7 +1133,11 @@ PADDLE_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PADDLE_DEFINE_EXPORTED_bool(enable_async_trace,
                             false,
-                            "enable nccl async trace");
+                            "enable collective async trace");
+
+PADDLE_DEFINE_EXPORTED_int32(async_trace_count,
+                            1,
+                            "collective async trace count");
 #endif
 
 /**

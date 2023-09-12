@@ -706,6 +706,7 @@ class ParallelEnv:
         self._rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
         self._world_size = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
         self._device_type = str(os.getenv("PADDLE_XCCL_BACKEND", ""))
+        self._pg_timeout = int(os.getenv("PADDLE_PG_TIMEOUT", "1800000"))
 
         # imperative only support one gpu or xpu
         if self._device_type != "":
@@ -860,6 +861,25 @@ class ParallelEnv:
             # the number of ring is 1
         """
         return self._nrings
+
+    @property
+    def pg_timeout(self):
+        """
+        timeout of process group.
+
+        Its value is equal to the value of the environment variable ``PADDLE_PG_TIMEOUT`` . The default value is 30 minutes.
+
+        Examples:
+          .. code-block:: python
+
+            # execute this command in terminal: export PADDLE_PG_TIMEOUT=1800000
+            import paddle.distributed as dist
+
+            env = dist.ParallelEnv()
+            print("The pg_timeout is %d" % env.pg_timeout)
+            # the pg_timeout of process group 1800000
+        """
+        return self._pg_timeout
 
     # [aliases] Compatible with old method names
     local_rank = rank

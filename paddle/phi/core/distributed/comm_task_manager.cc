@@ -37,6 +37,8 @@
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
+DECLARE_int32(async_trace_count);
+
 namespace phi {
 namespace distributed {
 
@@ -47,11 +49,12 @@ std::atomic<bool> CommTaskManager::terminated_;
 std::mutex CommTaskManager::comm_task_list_mutex_;
 std::condition_variable CommTaskManager::comm_task_list_cv_;
 std::list<std::unique_ptr<CommTask>> CommTaskManager::comm_task_list_;
+int CommTaskManager::check_timeout_count = 0;
 
 CommTaskManager::CommTaskManager() {
   terminated_.store(false);
   comm_task_loop_thread_ = std::thread(&CommTaskManager::CommTaskLoop, this);
-  LOG(INFO) << "CommTaskManager init success.";
+  LOG(INFO) << "CommTaskManager init success. FLAGS_async_trace_count: " << FLAGS_async_trace_count;
 }
 CommTaskManager::~CommTaskManager() {
   terminated_.store(true);
@@ -77,7 +80,7 @@ void CommTaskManager::CommTaskLoop() {
     comm_task_list_cv_.wait_for(
         lock,
         std::chrono::milliseconds(loop_thread_sleep_millis),
-        [&]() -> bool { return terminated_.load(); });
+        [&]() -> bool { return terminated_.load() && check_timeout_count < FLAGS_async_trace_count; });
     for (auto task = comm_task_list_.begin(); task != comm_task_list_.end();) {
       (*task)->CheckAndSetException();
       if ((*task)->IsTimeout()) {
@@ -92,6 +95,8 @@ void CommTaskManager::CommTaskLoop() {
             std::make_exception_ptr(std::runtime_error(exception_msg));
         (*task)->SetException(exception_ptr);
         (*task)->AbortComm();
+
+        ++check_timeout_count;
       }
 
       if (!(*task)->GetTraceUpdated() && (*task)->IsStarted() &&
