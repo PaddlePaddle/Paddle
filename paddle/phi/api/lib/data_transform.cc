@@ -639,13 +639,9 @@ void ReshardPartialOutputToReplicated(
     dist_attr.clean_partial_status();
     VLOG(6) << "FwdAPI Output P2R - "
             << ReshardDebugInfo(*out_tensor, dist_attr);
-    auto p2r_fn = PToRReshardFunction();
-    PADDLE_ENFORCE_EQ(
-        p2r_fn.IsSuitable(*out_tensor, dist_attr),
-        true,
-        phi::errors::Unavaiable(
-            "The Out Tensor cannot be reshard form partial to replicated."));
-    p2r_fn.Eval(dev_ctx, *out_tensor, dist_attr, out_tensor);
+    auto* func =
+        phi::distributed::ChooseProperReshardFunction(*out_tensor, dist_attr);
+    func->Eval(dev_ctx, *out_tensor, dist_attr, out_tensor);
   }
 }
 
