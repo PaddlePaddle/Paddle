@@ -433,7 +433,7 @@ def has_fetch_operations(
     for op in block.ops:
         if op.name() == fetch_op:
             fetch_count += 1
-            if op.operand_source() not in fetch_targets:
+            if op.operand_source(0) not in fetch_targets:
                 raise Exception(
                     "There is a fetch op in Program which will fetch variable that is not belong to fetch_targets."
                 )
@@ -513,7 +513,7 @@ def _add_feed_fetch_ops(
 def _add_new_ir_fetch_ops(program, fetch_list, fetch_var_name):
     import paddle
 
-    global_block = program.block()
+    global_block = program.global_block()
     fetch_op = "pd_op.fetch"
     if not has_fetch_operations(
         global_block, fetch_list, fetch_var_name, fetch_op
@@ -1247,7 +1247,7 @@ class Executor:
 
     def _new_ir_feed_data(self, program, feed, scope):
         # feed var to framework
-        global_block = program.block()
+        global_block = program.global_block()
         for op in global_block.ops:
             if op.name() == 'pd_op.data':
                 feed_target_name = op.attrs()["name"]
@@ -1898,7 +1898,10 @@ class Executor:
 
         fetch_list = self._check_fetch_list(fetch_list)
 
-        if isinstance(program, Program) and len(program.block().ops) == 0:
+        if (
+            isinstance(program, Program)
+            and len(program.global_block().ops) == 0
+        ):
             if use_default_main_program:
                 error_info = (
                     "Now you are using default_main_program, "
