@@ -51,23 +51,15 @@ class TestCastOpFp32ToFp64(OpTest):
         self.input_shape = [10, 10]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_grad(self):
-        self.check_grad(['X'], ['Out'], check_prim=True)
+        self.check_grad(['X'], ['Out'], check_prim=True, check_new_ir=True)
 
 
 class TestCastOpFp32ToFp64_ZeroDim(TestCastOpFp32ToFp64):
     def init_shapes(self):
         self.input_shape = ()
-
-
-class TestCastOpFp32ToFp64_NewIR(TestCastOpFp32ToFp64):
-    def test_check_output(self):
-        self.check_output(check_new_ir=True)
-
-    def test_checkout_grad(self):
-        self.check_grad(['X'], ['Out'], check_new_ir=True)
 
 
 class TestCastOpFp16ToFp32(OpTest):
