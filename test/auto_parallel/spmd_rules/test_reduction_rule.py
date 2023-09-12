@@ -15,7 +15,6 @@
 import unittest
 from collections import OrderedDict
 
-from paddle.distributed.auto_parallel.static.completion import get_spmd_rule
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     DistTensorSpec,
     TensorDistAttr,
@@ -30,7 +29,6 @@ class TestReductionSPMDRule(unittest.TestCase):
     """
 
     def setUp(self):
-        self.rule = get_spmd_rule("max")
         self.rule = core.get_phi_spmd_rule("max")
 
         x_shape = [64, 32]
