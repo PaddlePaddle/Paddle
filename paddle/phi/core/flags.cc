@@ -1136,8 +1136,8 @@ PADDLE_DEFINE_EXPORTED_bool(enable_async_trace,
                             "enable collective async trace");
 
 PADDLE_DEFINE_EXPORTED_int32(async_trace_count,
-                            1,
-                            "collective async trace count");
+                             1,
+                             "collective async trace count");
 #endif
 
 /**

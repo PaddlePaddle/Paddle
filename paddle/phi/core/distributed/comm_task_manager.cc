@@ -54,7 +54,8 @@ int CommTaskManager::check_timeout_count = 0;
 CommTaskManager::CommTaskManager() {
   terminated_.store(false);
   comm_task_loop_thread_ = std::thread(&CommTaskManager::CommTaskLoop, this);
-  LOG(INFO) << "CommTaskManager init success. FLAGS_async_trace_count: " << FLAGS_async_trace_count;
+  LOG(INFO) << "CommTaskManager init success. FLAGS_async_trace_count: "
+            << FLAGS_async_trace_count;
 }
 CommTaskManager::~CommTaskManager() {
   terminated_.store(true);
@@ -80,7 +81,10 @@ void CommTaskManager::CommTaskLoop() {
     comm_task_list_cv_.wait_for(
         lock,
         std::chrono::milliseconds(loop_thread_sleep_millis),
-        [&]() -> bool { return terminated_.load() && check_timeout_count < FLAGS_async_trace_count; });
+        [&]() -> bool {
+          return terminated_.load() &&
+                 check_timeout_count < FLAGS_async_trace_count;
+        });
     for (auto task = comm_task_list_.begin(); task != comm_task_list_.end();) {
       (*task)->CheckAndSetException();
       if ((*task)->IsTimeout()) {
