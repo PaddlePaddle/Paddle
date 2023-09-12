@@ -50,13 +50,13 @@ def get_multiply_program_new_ir():
 class TestCustomVjpTrait(unittest.TestCase):
     def test_gelu_op_custom_vjp_trait(self):
         newir_program = get_gelu_program_new_ir()
-        op = newir_program.block().ops[-1]
+        op = newir_program.global_block().ops[-1]
         self.assertEqual(op.name(), "pd_op.gelu")
         self.assertEqual(has_custom_vjp(op), True)
 
     def test_multiply_op_custom_vjp_trait(self):
         newir_program = get_multiply_program_new_ir()
-        op = newir_program.block().ops[-1]
+        op = newir_program.global_block().ops[-1]
         self.assertEqual(op.name(), "pd_op.multiply")
         self.assertEqual(has_custom_vjp(op), False)
 
