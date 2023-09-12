@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,22 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/**
- * This file implements the strategy to remove the unnecessary nested block.
- */
 #pragma once
-#include <vector>
 
-#include "paddle/cinn/common/common.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/tensor.h"
 
 namespace cinn {
-namespace optim {
+namespace ast_gen_ius {
 
-/**
- * Remove the unecessary nested block.
- */
-void RemoveNestedBlock(Expr* e);
+class AstGen {
+ public:
+  static ir::Expr Build(const ir::Tensor& tensor);
+};
 
-}  // namespace optim
+}  // namespace ast_gen_ius
 }  // namespace cinn
