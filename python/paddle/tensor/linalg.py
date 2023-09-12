@@ -1410,6 +1410,7 @@ def t(input, name=None):
         return out
 
 
+@inplace_apis_in_dygraph_only
 def t_(input, name=None):
     r"""
     Inplace version of ``t`` API, the output Tensor will be inplaced with input ``input``.

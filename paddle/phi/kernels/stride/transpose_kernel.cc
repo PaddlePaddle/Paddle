@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/transpose_kernel.h"
-#include "glog/logging.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -24,7 +23,6 @@ void TransposeStridedKernel(const Context& ctx,
                             const DenseTensor& x,
                             const std::vector<int>& axis,
                             DenseTensor* out) {
-  VLOG(4) << "enter stride transpose";
   size_t x_rank = x.dims().size();
   std::vector<int> formated_axis = axis;
   for (size_t i = 0; i < axis.size(); i++) {
