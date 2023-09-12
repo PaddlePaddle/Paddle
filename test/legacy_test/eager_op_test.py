@@ -1354,7 +1354,7 @@ class OpTest(unittest.TestCase):
             # executor run
             executor = Executor(place)
             outs = executor.run(ir_program, feed=feed, fetch_list=[fetch_list])
-        return outs
+        return outs[0]
 
     def _check_ir_output(self, place, program, feed_map, fetch_list, outs):
         if os.getenv("FLAGS_NEW_IR_OPTEST") is None:
@@ -2071,11 +2071,6 @@ class OpTest(unittest.TestCase):
                 if self.op_test.is_compared_with_fp32():
                     expect, expect_np = self.find_expect_value(name)
                 else:
-                    actual_np = (
-                        actual_np[0]
-                        if isinstance(expect, (tuple, list))
-                        else expect
-                    )
                     expect_np = (
                         expect[0] if isinstance(expect, tuple) else expect
                     )
@@ -2301,6 +2296,7 @@ class OpTest(unittest.TestCase):
             def calculate_output(self):
                 self.is_python_api_test = True
                 new_ir_outs = self.op_test._calc_new_ir_output(place)
+                print(new_ir_outs)
                 if new_ir_outs is None:
                     self.is_python_api_test = False
                     # missing KernelSignature, fall back to eager middle output.
@@ -2308,6 +2304,7 @@ class OpTest(unittest.TestCase):
                         place, no_check_set=no_check_set
                     )
                 self.outputs = new_ir_outs
+
                 if self.op_test.is_compared_with_fp32():
                     self.op_test.enable_cal_ref_output()
                     self.is_python_api_test = True
