@@ -207,5 +207,30 @@ std::set<Expr> CollectReferencedTensors(
   return ts0;
 }
 
+std::set<std::string> CollectTensorNeedsWrite(const Expr* e) {
+  std::set<std::string> tensor_written;
+  IrNodesCollector::handler_t handler = [&](const Expr* x) {
+    if (x->As<ir::Store>()) {
+      tensor_written.insert(
+          x->As<ir::Store>()->tensor.As<ir::_Tensor_>()->name);
+    }
+    if (x->As<ir::_Tensor_>()) {
+      tensor_written.insert(x->As<ir::_Tensor_>()->name);
+    }
+  };
+  IrNodesCollector::teller_t teller = [](const Expr* x) {
+    if (x->As<ir::Store>() && x->As<ir::Store>()->tensor.As<ir::_Tensor_>()) {
+      return true;
+    }
+    if (x->As<ir::_Tensor_>() && x->As<ir::_Tensor_>()->is_call_node()) {
+      return true;
+    }
+    return false;
+  };
+  IrNodesCollector collector(std::move(teller), std::move(handler), false);
+  collector.Visit(e);
+  return tensor_written;
+}
+
 }  // namespace ir
 }  // namespace cinn
