@@ -70,7 +70,7 @@ class TestConv2DMKLDNNOp(TestConv2DOp):
             output = conv2d_bias_naive(output, bias)
             output = output.astype(self.dtype)
             self.attrs['fuse_bias'] = self.fuse_bias
-            self.inputs['Bias'] = OpTest.np_dtype_to_fluid_dtype(bias)
+            self.inputs['Bias'] = OpTest.np_dtype_to_base_dtype(bias)
 
         if (
             self.fuse_residual_connection
@@ -84,7 +84,7 @@ class TestConv2DMKLDNNOp(TestConv2DOp):
             self.attrs[
                 'fuse_residual_connection'
             ] = self.fuse_residual_connection
-            self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
+            self.inputs['ResidualData'] = OpTest.np_dtype_to_base_dtype(
                 input_residual
             )
 

@@ -331,14 +331,26 @@ TEST(LayerNormSPMDRule, Ctor) {
             std::vector<int64_t>({1}));
   VLOG(4) << "test1 done.";
 
-  // ijk[1, 0, -1],k[0],k[0] --> error, begin_norm_axis=2
+  // ijk[1, 0, -1],k[0],k[0] --> ijk[1, -1, -1],z[1],z[1],
+  // begin_norm_axis=2
   x_dist_tensor_spec.set_dims_mapping({1, 0, -1});
   scale_dist_tensor_spec.set_dims_mapping({0});
   bias_dist_tensor_spec.set_dims_mapping({0});
-  EXPECT_ANY_THROW(
-      infered_dist_attrs = layer_norm_rule->InferForward(
-          {x_dist_tensor_spec, scale_dist_tensor_spec, bias_dist_tensor_spec},
-          attrs););
+  infered_dist_attrs = layer_norm_rule->InferForward(
+      {x_dist_tensor_spec, scale_dist_tensor_spec, bias_dist_tensor_spec},
+      attrs);
+  EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
+            std::vector<int64_t>({1, -1, -1}));
+  EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
+            std::vector<int64_t>({-1}));
+  EXPECT_EQ(infered_dist_attrs.first[2].dims_mapping(),
+            std::vector<int64_t>({-1}));
+  EXPECT_EQ(infered_dist_attrs.second[0].dims_mapping(),
+            std::vector<int64_t>({1, -1, -1}));
+  EXPECT_EQ(infered_dist_attrs.second[1].dims_mapping(),
+            std::vector<int64_t>({1}));
+  EXPECT_EQ(infered_dist_attrs.second[2].dims_mapping(),
+            std::vector<int64_t>({1}));
   VLOG(4) << "test2 done.";
 
   // ijk[0, -1, -1],y[-1],y[1] --> ijk[0, 1, -1], i[0], i[0], y=jk,
@@ -362,7 +374,7 @@ TEST(LayerNormSPMDRule, Ctor) {
             std::vector<int64_t>({0}));
   EXPECT_EQ(infered_dist_attrs.second[2].dims_mapping(),
             std::vector<int64_t>({0}));
-  VLOG(4) << "test2 done.";
+  VLOG(4) << "test3 done.";
 }
 
 TEST(MatmulSPMDRuleInferBackward, Ctor) {

@@ -20,15 +20,15 @@ import threading
 import warnings
 import weakref
 
-from paddle.fluid import core, framework
-from paddle.fluid.data_feeder import check_type
-from paddle.fluid.dygraph.base import (
-    _switch_declarative_mode_guard_,
+from paddle.base import core, framework
+from paddle.base.data_feeder import check_type
+from paddle.base.dygraph.base import (
+    _to_static_mode_guard_,
     param_guard,
     switch_to_static_graph,
 )
-from paddle.fluid.unique_name import UniqueNameGenerator
-from paddle.fluid.unique_name import guard as UniqueNameGuard
+from paddle.base.unique_name import UniqueNameGenerator
+from paddle.base.unique_name import guard as UniqueNameGuard
 from paddle.framework import in_dynamic_mode
 from paddle.nn.layer import layers
 from paddle.utils import flatten, gast
@@ -1182,8 +1182,8 @@ class ConcreteProgram:
 
         main_program, startup_program = framework.Program(), framework.Program()
         # Note: The random seed should be synchronized into cached program
-        # if set in `fluid.dygraph_guard` because some ops rely on it, such as
-        # `fluid.layers.dropout`.
+        # if set in `base.dygraph_guard` because some ops rely on it, such as
+        # `base.layers.dropout`.
         main_program.random_seed = framework.default_main_program().random_seed
         startup_program.random_seed = (
             framework.default_startup_program().random_seed
@@ -1192,9 +1192,9 @@ class ConcreteProgram:
         new_name_generator = UniqueNameGenerator()
 
         with framework.program_guard(main_program, startup_program):
-            with _switch_declarative_mode_guard_(
-                is_declarative=True
-            ), UniqueNameGuard(new_name_generator):
+            with _to_static_mode_guard_(is_to_static=True), UniqueNameGuard(
+                new_name_generator
+            ):
                 # 1. Adds `paddle.static.data` layers for input if needed
                 static_inputs = func_spec.to_static_inputs_with_spec(
                     input_spec, main_program

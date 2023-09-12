@@ -17,7 +17,7 @@ import unittest
 
 from hdfs_test_utils import FSTestBase
 
-from paddle import fluid
+from paddle import base
 from paddle.distributed.fleet.utils.fs import FSTimeOut, HDFSClient
 
 java_home = os.environ["JAVA_HOME"]
@@ -42,7 +42,7 @@ class FSTest1(FSTestBase):
         except FSTimeOut as e:
             print(f"execute mv {src} to {dst} timeout")
 
-        ret, output = fluid.core.shell_execute_cmd(cmd, 6 * 1000, 2 * 1000)
+        ret, output = base.core.shell_execute_cmd(cmd, 6 * 1000, 2 * 1000)
         self.assertNotEqual(ret, 0)
         print(f"second mv ret:{ret} output:{output}")
 

@@ -22,22 +22,22 @@
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/event.h"
-#include "paddle/ir/core/builtin_attribute.h"
-#include "paddle/ir/core/operation.h"
-#include "paddle/ir/core/value.h"
+#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/operation.h"
+#include "paddle/pir/core/value.h"
 
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
-#include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
+#include "paddle/fluid/pir/phi_kernel_adaptor/phi_kernel_util.h"
 #include "paddle/fluid/platform/collective_helper.h"
 
 namespace paddle {
 namespace framework {
 
 std::vector<int> GetValueIds(
-    ir::Value value,
+    pir::Value value,
     Scope* inner_scope,
-    const std::unordered_map<::ir::Value, std::string>& value_2_var_name,
+    const std::unordered_map<pir::Value, std::string>& value_2_var_name,
     const std::map<std::string, int>& var_name_2_id,
     const std::unordered_map<const paddle::framework::Variable*, std::string>&
         variable_2_var_name) {
@@ -56,14 +56,14 @@ std::vector<int> GetValueIds(
 }
 
 platform::DeviceContext* ParseDeviceContext(
-    ir::Operation* op,
+    pir::Operation* op,
     platform::DeviceContext* origin_dev_ctx,
     const platform::Place& place,
     const std::string& execution_stream,
     const int stream_priority) {
   auto& op_attributes = op->attributes();
   auto op_name =
-      op_attributes.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
+      op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
   interpreter::ContextManager& ctx_manager =
       interpreter::ContextManager::Instance();
 
@@ -109,10 +109,10 @@ platform::DeviceContext* ParseDeviceContext(
     // c_allreduce_op.h). Now it is just a temporary solution for ONLY
     // c_allreduce_sum which is used in ResNet50 distributed training.
     if (op_name == "c_allreduce_sum" && op_attributes.at("use_calc_stream")
-                                                .dyn_cast<::ir::BoolAttribute>()
+                                                .dyn_cast<pir::BoolAttribute>()
                                                 .data() == false) {
       int ring_id =
-          op_attributes.at("ring_id").dyn_cast<::ir::Int32Attribute>().data();
+          op_attributes.at("ring_id").dyn_cast<pir::Int32Attribute>().data();
       return platform::NCCLCommContext::Instance()
           .Get(ring_id, place)
           ->dev_context();
@@ -126,8 +126,7 @@ platform::DeviceContext* ParseDeviceContext(
   return origin_dev_ctx;
 }
 
-OpFuncType AnalyseOpFuncType(::ir::Operation* op,
-                             const platform::Place& place) {
+OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
   if (platform::is_cpu_place(place)) {
     return OpFuncType::kCpuSync;
   }
@@ -151,12 +150,12 @@ OpFuncType AnalyseOpFuncType(::ir::Operation* op,
   // and so that they would be dispatched to host thread.
   auto& op_attributes = op->attributes();
   auto op_name =
-      op_attributes.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
+      op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
   if (op_name == kCoalesceTensor &&
       (!platform::is_xpu_place(place) ||
-       op->attribute<ir::BoolAttribute>("persist_output").data() == false) &&
-      op->attribute<ir::BoolAttribute>("set_constant").data() == false &&
-      op->attribute<ir::BoolAttribute>("copy_data").data() == false) {
+       op->attribute<pir::BoolAttribute>("persist_output").data() == false) &&
+      op->attribute<pir::BoolAttribute>("set_constant").data() == false &&
+      op->attribute<pir::BoolAttribute>("copy_data").data() == false) {
     return OpFuncType::kGpuSync;
   }
 

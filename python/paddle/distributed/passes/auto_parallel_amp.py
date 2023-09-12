@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+from paddle.base.data_feeder import check_type, check_variable_and_dtype
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     OperatorDistAttr,
 )
@@ -24,7 +25,6 @@ from paddle.distributed.auto_parallel.static.utils import (
     set_var_dist_attr,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
 from paddle.framework import core
 from paddle.static.amp.bf16.amp_utils import (
     AutoMixedPrecisionListsBF16,

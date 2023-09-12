@@ -14,11 +14,11 @@
 
 import paddle
 from paddle import _C_ops
-from paddle.fluid import framework
-from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid.framework import Program
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.base import framework
+from paddle.base.dygraph import base as imperative_base
+from paddle.base.framework import Program
+from paddle.base.layer_helper import LayerHelper
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.framework import in_dynamic_mode
 from paddle.optimizer import Optimizer
 
@@ -300,9 +300,9 @@ class ModelAverage(Optimizer):
 
         Args:
             loss (Tensor): A ``Tensor`` containing the value to minimize.
-            startup_program (Program, optional): :ref:`api_fluid_Program` for
+            startup_program (Program, optional): :ref:`api_base_Program` for
                 initializing parameters in ``parameters``. The default value
-                is None, at this time :ref:`api_fluid_default_startup_program` will be used.
+                is None, at this time :ref:`api_base_default_startup_program` will be used.
             parameters (list, optional): List of ``Tensor`` or ``Tensor.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
