@@ -28,11 +28,8 @@ bool RToSReshardFunction::IsSuitable(const DistTensor& in,
   bool flag = true;
   const auto& in_dist_attr = in.dist_attr();
 
-  const auto& in_dims_mapping = in_dist_attr.dims_mapping();
-  const auto& out_dims_mapping = out_dist_attr.dims_mapping();
-
-  flag &= IsDimsMappingReplicated(in_dims_mapping);
-  flag &= IsDimsMappingShard(out_dims_mapping);
+  flag &= in_dist_attr.is_replicated();
+  flag &= out_dist_attr.is_shard();
 
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
@@ -68,7 +65,7 @@ void RToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
           << " process participate in.";
 
   std::vector<int64_t> split_num_vec =
-      BalancedSplit(in.dims()[split_axis], num_of_process);
+      BalancedSplit(in.dims()[static_cast<int>(split_axis)], num_of_process);
   IntArray sections(split_num_vec);
 
   std::vector<DenseTensor> split_out_vec;

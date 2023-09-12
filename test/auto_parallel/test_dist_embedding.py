@@ -23,8 +23,8 @@ paddle.enable_static()
 
 
 def make_program_lookup_table_v1_mp_dp():
-    main_program = paddle.fluid.Program()
-    start_program = paddle.fluid.Program()
+    main_program = paddle.base.Program()
+    start_program = paddle.base.Program()
     block = main_program.global_block()
     with paddle.static.program_guard(main_program, start_program):
         src_ids = paddle.static.data(
@@ -34,7 +34,7 @@ def make_program_lookup_table_v1_mp_dp():
 
         emb_out = block.create_var(name='emb_out', dtype='float32')
         w = paddle.create_parameter(
-            attr=paddle.fluid.ParamAttr(name="emb_weight"),
+            attr=paddle.base.ParamAttr(name="emb_weight"),
             shape=[64, 128],
             dtype='float32',
             is_bias=False,

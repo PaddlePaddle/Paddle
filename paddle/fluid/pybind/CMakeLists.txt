@@ -39,9 +39,10 @@ set(PYBIND_DEPS
     phi_utils
     phi
     phi_kernel_adaptor
-    pd_dialect
+    pd_op_dialect
     program_translator
-    ir
+    pd_inplace_pass
+    pir
     new_profiler
     jit_layer
     jit_property
@@ -343,7 +344,7 @@ if(WITH_PYTHON)
       add_custom_command(
         OUTPUT ${op_impl_path}/ir.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${IR_LIB} ${op_impl_path}
-        DEPENDS ir)
+        DEPENDS pir)
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/ir.dll)
     endif()
 

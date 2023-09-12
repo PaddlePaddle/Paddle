@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, OpTestTool, convert_float_to_uint16
 from test_conv2d_op import TestConv2DOp, conv2d_forward_naive
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 def conv2d_residual_naive(out, residual):
@@ -91,14 +91,14 @@ class TestConv2DBF16Op(TestConv2DOp):
 
         self.inputs = {
             'Input': self.input,
-            'Filter': OpTest.np_dtype_to_fluid_dtype(
+            'Filter': OpTest.np_dtype_to_base_dtype(
                 self.filter.astype(self.weight_type)
             ),
         }
 
         if self.fuse_residual:
             self.op_type = "fused_conv2d"
-            self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
+            self.inputs['ResidualData'] = OpTest.np_dtype_to_base_dtype(
                 convert_float_to_uint16(self.input_residual)
             )
 

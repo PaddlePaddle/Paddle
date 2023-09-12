@@ -15,13 +15,13 @@
 import numpy as np
 
 from paddle import _C_ops
-from paddle.fluid.data_feeder import (
+from paddle.base.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
 )
-from paddle.fluid.framework import Variable
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.framework import Variable
+from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_mode
 
 from .utils import (

@@ -18,9 +18,9 @@ import unittest
 from auto_checkpoint_utils import AutoCheckpointBase, get_logger
 
 import paddle
-import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
+import paddle.base.incubate.checkpoint.auto_checkpoint as acp
+from paddle.base.incubate.checkpoint.checkpoint_saver import PaddleModel
 from paddle.distributed.fleet.utils.fs import HDFSClient, LocalFS
-from paddle.fluid.incubate.checkpoint.checkpoint_saver import PaddleModel
 
 paddle.enable_static()
 logger = get_logger()

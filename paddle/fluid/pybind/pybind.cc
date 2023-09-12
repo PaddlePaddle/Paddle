@@ -195,17 +195,17 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/interface/vjp.h"
+#include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
 #include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/fluid/pybind/eager_utils.h"
-#include "paddle/ir/core/program.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
+#include "paddle/pir/core/program.h"
 #include "pybind11/stl.h"
 
 PHI_DECLARE_bool(use_mkldnn);
@@ -420,7 +420,7 @@ struct iinfo {
         dtype = "int64";
         break;
       case framework::proto::VarType::INT8:
-        min = std::numeric_limits<int8_t>::min();
+        min = std::numeric_limits<int8_t>::min();  // NOLINT
         max = std::numeric_limits<int8_t>::max();
         bits = 8;
         dtype = "int8";
@@ -676,7 +676,7 @@ static void AssertStaticGraphAndDygraphGradMakerNoDiff() {
                         string::join_strings(ops, ',')));
 }
 
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 static int GetNCCLVersion() {
 #if NCCL_VERSION_CODE >= 2304
   int ver;
@@ -692,19 +692,19 @@ static int GetNCCLVersion() {
 void BindVjp(pybind11::module *m) {
   m->def(
       "call_vjp",
-      [](ir::Operation &fwd_op,
-         const std::vector<std::vector<ir::OpResult>> &out_grads,
+      [](pir::Operation &fwd_op,
+         const std::vector<std::vector<pir::OpResult>> &out_grads,
          const std::vector<std::vector<bool>> &stop_gradients) {
         py::list res;
-        ir::IrContext *ctx = ir::IrContext::Instance();
-        ir::OpInfo fwd_op_info = ctx->GetRegisteredOpInfo(fwd_op.name());
+        pir::IrContext *ctx = pir::IrContext::Instance();
+        pir::OpInfo fwd_op_info = ctx->GetRegisteredOpInfo(fwd_op.name());
         auto vjp_interface_impl =
             fwd_op_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
         if (vjp_interface_impl == nullptr) {
           PADDLE_THROW(phi::errors::InvalidArgument(
               "The vjp function is not registered in %s op ", fwd_op.name()));
         }
-        std::vector<std::vector<ir::OpResult>> vjp_res =
+        std::vector<std::vector<pir::OpResult>> vjp_res =
             vjp_interface_impl->vjp_(&fwd_op, out_grads, stop_gradients);
         PADDLE_ENFORCE_EQ(
             stop_gradients.size(),
@@ -743,9 +743,9 @@ void BindVjp(pybind11::module *m) {
         return res;
       });
 
-  m->def("has_vjp", [](ir::Operation &fwd_op) {
-    ir::IrContext *ctx = ir::IrContext::Instance();
-    ir::OpInfo fwd_op_info = ctx->GetRegisteredOpInfo(fwd_op.name());
+  m->def("has_vjp", [](pir::Operation &fwd_op) {
+    pir::IrContext *ctx = pir::IrContext::Instance();
+    pir::OpInfo fwd_op_info = ctx->GetRegisteredOpInfo(fwd_op.name());
     auto vjp_interface_impl =
         fwd_op_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
     if (vjp_interface_impl == nullptr) return false;
@@ -872,7 +872,7 @@ PYBIND11_MODULE(libpaddle, m) {
   });
 #endif
 
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   m.def("nccl_version", &GetNCCLVersion);
 #endif
 
@@ -1103,7 +1103,7 @@ PYBIND11_MODULE(libpaddle, m) {
   });
 
   // NOTE(zjl): ctest would load environment variables at the beginning even
-  // though we have not `import paddle.fluid as fluid`. So we add this API
+  // though we have not `import paddle.base as base`. So we add this API
   // to enable eager deletion mode in unittest.
   m.def("_set_eager_deletion_mode", &paddle::framework::SetEagerDeletionMode);
 
@@ -1239,12 +1239,15 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          # create tensor from a scope and set value to it.
-          param = scope.var('Param').get_tensor()
-          param_array = np.full((height, row_numel), 5.0).astype("float32")
-          param.set(param_array, place)
+            >>> import paddle
+            >>> import numpy as np
 
+            >>> scope = paddle.static.global_scope()
+            >>> place = paddle.CPUPlace()
+            >>> # create tensor from a scope and set value to it.
+            >>> param = scope.var('Param').get_tensor()
+            >>> param_array = np.full((10, 12), 5.0).astype("float32")
+            >>> param.set(param_array, place)
         )DOC");
   g_framework_scope_pytype = reinterpret_cast<PyTypeObject *>(_Scope.ptr());
   _Scope
@@ -1984,7 +1987,7 @@ All parameter, weight, gradient are variables in Paddle.
           py::init<
               const std::vector<std::shared_ptr<framework::interpreter::Job>> &,
               const std::unordered_map<std::string,
-                                       std::shared_ptr<::ir::Program>> &>(),
+                                       std::shared_ptr<::pir::Program>> &>(),
           py::arg("job_list"),
           py::arg("type_to_ir_program"))
       .def("job_list", &framework::interpreter::Plan::JobList)
@@ -2149,9 +2152,8 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-
-          arr = fluid.LoDTensorArray()
+            >>> import paddle
+            >>> arr = paddle.framework.core.LoDTensorArray()
 )DOC");
   g_framework_lodtensorarray_pytype =
       reinterpret_cast<PyTypeObject *>(pylodtensorarray.ptr());
@@ -2191,15 +2193,15 @@ All parameter, weight, gradient are variables in Paddle.
                    None.
 
              Examples:
-                 .. code-block:: python
+                    .. code-block:: python
 
-                   import paddle.fluid as fluid
-                   import numpy as np
+                        >>> import paddle
+                        >>> import numpy as np
 
-                   arr = fluid.LoDTensorArray()
-                   t = fluid.LoDTensor()
-                   t.set(np.ndarray([5, 30]), fluid.CPUPlace())
-                   arr.append(t)
+                        >>> arr = paddle.framework.core.LoDTensorArray()
+                        >>> t = paddle.framework.core.LoDTensor()
+                        >>> t.set(np.ndarray([5, 30]), paddle.CPUPlace())
+                        >>> arr.append(t)
            )DOC")
       .def(
           "_move_to_list",

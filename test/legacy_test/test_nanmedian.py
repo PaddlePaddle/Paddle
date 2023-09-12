@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 np.random.seed(102)
 
@@ -175,7 +175,7 @@ class TestNanmedian(unittest.TestCase):
 
     def test_dygraph(self):
         paddle.disable_static(place=self.place)
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             data = self.fake_data["col_nan_odd"]
             out = paddle.nanmedian(paddle.to_tensor(data), keepdim=True)
         np_res = np.nanmedian(data, keepdims=True)

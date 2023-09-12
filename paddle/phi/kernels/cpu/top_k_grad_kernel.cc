@@ -102,7 +102,7 @@ void TopkGradKernel(const Context& dev_ctx,
     trans.emplace_back(axis);
     phi::DDim trans_dims(out_dims);
     phi::DDim trans_in_dims(in_dims);
-    for (size_t i = 0; i < trans.size(); i++) {
+    for (int i = 0; i < static_cast<int>(trans.size()); i++) {
       trans_dims[i] = out_dims[trans[i]];
       trans_in_dims[i] = in_dims[trans[i]];
     }
@@ -113,7 +113,7 @@ void TopkGradKernel(const Context& dev_ctx,
     trans_ind.Resize(trans_dims);
     dev_ctx.template Alloc<T>(&trans_dO);
     dev_ctx.template Alloc<int64_t>(&trans_ind);
-    int ndims = trans.size();
+    int ndims = static_cast<int>(trans.size());
 
     // Do transpose
     funcs::TransCompute<phi::CPUContext, T>(

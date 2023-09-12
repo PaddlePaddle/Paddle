@@ -47,8 +47,6 @@ std::set<std::string> StaticBuildBlackList = {
     "cinn_launch" /*: to handle subgraph infermeta*/,
     "run_program" /*: to handle scope output*/,
     "sparse_sparse_coo_tensor" /*: to handle sparse output*/,
-    "shuffle_batch",
-    "shuffle_batch_grad",
     "distributed_fused_lamb_init"};
 
 namespace paddle {
@@ -60,8 +58,6 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
   // is_operator_base = (kernelCode >> 6) & 1
   // is_custom_op = (kernelCode >> 5) & 1
   // use_mkldnn = (kernelCode >> 4) & 1
-  // has_fluid_kernel = (kernelCode >> 3) & 1
-  // has_structed_kernel = (kernelCode >> 2) & 1
   using KernelCode = int8_t;
   std::set<std::pair<std::string, KernelCode>> invalid_ops;
   for (auto& op : block.AllOps()) {
@@ -81,14 +77,12 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
       use_mkldnn = attr.index() == 1 ? PADDLE_GET_CONST(int, attr)
                                      : PADDLE_GET_CONST(bool, attr);
     }
-    bool has_fluid_kernel = OperatorWithKernel::AllOpKernels().count(op_type);
     bool has_structured_kernel =
         phi::KernelFactory::Instance().HasStructuredKernel(op_type);
 
-    KernelCode kernel_code = (in_black_list << 7) + (is_operator_base << 6) +
-                             (is_custom_op << 5) + (use_mkldnn << 4) +
-                             (has_fluid_kernel << 3) +
-                             (has_structured_kernel << 2);
+    KernelCode kernel_code = static_cast<KernelCode>(
+        (in_black_list << 7) + (is_operator_base << 6) + (is_custom_op << 5) +
+        (use_mkldnn << 4) + (has_structured_kernel << 2));
     if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
       if (in_black_list ||
           (is_operator_base &&
@@ -107,8 +101,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
          << ", is_operator_base = " << (item.second >> 6 & 1)
          << ", is_custom_op = " << (item.second >> 5 & 1)
          << ", use_mkldnn = " << (item.second >> 4 & 1)
-         << ", has_fluid_kernel = " << (item.second >> 3 & 1)
-         << ", has_structed_kerenl = " << (item.second >> 2 & 1) << "]\n";
+         << (item.second >> 2 & 1) << "]\n";
     }
     VLOG(1) << ss.str();
   }
