@@ -635,7 +635,9 @@ class PartialProgramLayer:
             filter(_need_aggregation, self._outputs.tolist())
         )
         for _var in to_processed_vars:
-            _insert_aggregation_ops_for_var(target_program, _var)
+            target_program: paddle.static.Program
+            target_var = target_program.global_block().var(_var.name)
+            _insert_aggregation_ops_for_var(target_program, target_var)
 
     @switch_to_static_graph
     def _append_backward_desc(self, main_program):

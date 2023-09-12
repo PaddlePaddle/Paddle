@@ -1312,7 +1312,7 @@ PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_trace_run,
 PHI_DEFINE_EXPORTED_bool(new_ir_apply_inplace_pass,
                          true,
                          "Whether to apply inplace pass on lowering "
-                         "::ir::Program to Kernel Dialect");
+                         "::pir::Program to Kernel Dialect");
 
 PHI_DEFINE_EXPORTED_bool(enable_record_memory, false, "Enable memory recorder");
 
@@ -1328,6 +1328,12 @@ PHI_DEFINE_EXPORTED_int64(host_trace_level,
                           1,
                           "RecordEvent will works "
                           "if host_trace_level >= level.");
+
+PHI_DEFINE_EXPORTED_int32(
+    multiple_of_cupti_buffer_size,
+    1,
+    "Multiple of the CUPTI device buffer size. If the timestamps have "
+    "been dropped when you are profiling, try increasing this value.");
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 /**
