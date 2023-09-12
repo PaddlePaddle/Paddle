@@ -1235,7 +1235,7 @@ void BuildId2VarName(const std::map<std::string, int>& var_name_2_id,
 }
 
 const std::vector<std::string> GetInstructionCallStack(
-    const std::string &type, const pir::AttributeMap &attrs) {
+    const std::string& type, const pir::AttributeMap& attrs) {
   std::vector<std::string> vec_str;
   if (attrs.count("sub_block") != 0) {
     return vec_str;
