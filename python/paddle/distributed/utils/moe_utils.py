@@ -69,7 +69,7 @@ def global_scatter(
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIREES(env:distributed)
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle
             >>> from paddle.distributed import init_parallel_env
             >>> from paddle.distributed.utils imoprt moe_utils
@@ -78,16 +78,21 @@ def global_scatter(
             >>> world_size = 2
             >>> d_model = 2
             >>> in_feat = d_model
-            >>> local_input_buf = paddle.to_tensor([[1, 2],[3, 4],[5, 6],[7, 8],[9, 10]], \
-            ...                                 dtype='float32', stop_gradient=False)
+            >>> local_input_buf = paddle.to_tensor(
+            ...     [[1, 2],[3, 4],[5, 6],[7, 8],[9, 10]],
+            ...     dtype='float32',
+            ...     stop_gradient=False
+            ... )
             >>> if paddle.distributed.ParallelEnv().local_rank == 0:
             ...     local_count = paddle.to_tensor([2, 1, 1, 1], dtype="int64")
             ...     global_count = paddle.to_tensor([2, 1, 1, 1], dtype="int64")
             >>> else:
             ...     local_count = paddle.to_tensor([1, 1, 2, 1], dtype="int64")
             ...     global_count = paddle.to_tensor([1, 1, 2, 1], dtype="int64")
-            >>> a = moe_utils.global_scatter(local_input_buf, \
-            >>> local_count, global_count)
+            >>> a = moe_utils.global_scatter(local_input_buf,
+            ...     local_count,
+            ...     global_count
+            ... )
             >>> a.stop_gradient = False
             >>> print(a)
             >>> # out for rank 0: [[1, 2], [3, 4], [1, 2], [5, 6], [3, 4]]
@@ -189,7 +194,7 @@ def global_gather(
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIREES(env:distributed)
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle
             >>> from paddle.distributed import init_parallel_env
             >>> from paddle.distributed.utils imoprt moe_utils
@@ -198,15 +203,22 @@ def global_gather(
             >>> world_size = 2
             >>> d_model = 2
             >>> in_feat = d_model
-            >>> local_input_buf = paddle._to_tensor([[1, 2],[3, 4],[5, 6],[7, 8],[9, 10]],\
-            ...                             dtype='float32', stop_gradient=False)
+            >>> local_input_buf = paddle._to_tensor(
+            ...     [[1, 2],[3, 4],[5, 6],[7, 8],[9, 10]],
+            ...     dtype='float32',
+            ...     stop_gradient=False
+            ... )
             >>> if paddle.distributed.ParallelEnv().local_rank == 0:
             ...     local_count = paddle.to_tensor([2, 1, 1, 1], dtype="int64")
             ...     global_count = paddle.to_tensor([2, 1, 1, 1], dtype="int64")
             >>> else:
             ...     local_count = paddle.to_tensor([1, 1, 2, 1], dtype="int64")
             ...     global_count = paddle.to_tensor([1, 1, 2, 1], dtype="int64")
-            >>> a = moe_utils.global_gather(local_input_buf, local_count, global_count)
+            >>> a = moe_utils.global_gather(
+            ...     local_input_buf,
+            ...     local_count,
+            ...     global_count
+            ... )
             >>> print(a)
             >>> # out for rank 0: [[1, 2], [3, 4], [7, 8], [1, 2], [7, 8]]
             >>> # out for rank 1: [[5, 6], [9, 10], [3, 4], [5, 6], [9, 10]]
