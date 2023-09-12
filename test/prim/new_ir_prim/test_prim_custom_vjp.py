@@ -70,7 +70,7 @@ class TestPrimMode(unittest.TestCase):
 
             if flag == "backward":
                 whole_ops_before = [
-                    op.name() for op in main_program.block().ops
+                    op.name() for op in main_program.global_block().ops
                 ]
                 assert (
                     "pd_op.gelu" in whole_ops_before
@@ -80,7 +80,9 @@ class TestPrimMode(unittest.TestCase):
                 [res2] = decompose(
                     main_program, [res2], whitelist={"pd_op.gelu"}
                 )
-                whole_ops_after = [op.name() for op in main_program.block().ops]
+                whole_ops_after = [
+                    op.name() for op in main_program.global_block().ops
+                ]
                 assert "pd_op.gelu" not in whole_ops_after
                 core._set_prim_forward_enabled(False)
 
