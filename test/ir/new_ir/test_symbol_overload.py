@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
-
-os.environ["FLAGS_enable_new_ir_api"] = 'true'
 
 import numpy as np
 
@@ -78,7 +75,7 @@ class TestOpresultSymbol(unittest.TestCase):
                 },
                 fetch_list=[res, gradients[0], gradients[1]],
             )
-            ops = [op.name() for op in main_program.block().ops]
+            ops = [op.name() for op in main_program.global_block().ops]
         return outs, ops
 
     def symbol_net(self):
@@ -99,14 +96,14 @@ class TestOpresultSymbol(unittest.TestCase):
                 },
                 fetch_list=[res, gradients[0], gradients[1]],
             )
-            ops = [op.name() for op in main_program.block().ops]
+            ops = [op.name() for op in main_program.global_block().ops]
         return outs, ops
 
     def test_symbol_overload(self):
         res_ref, ops_ref = self.base_net()
         res, ops = self.symbol_net()
         for ref, actual in zip(res_ref, res):
-            np.testing.assert_allclose(ref, actual, rtol=1e-6)
+            np.testing.assert_equal(ref, actual)
         self.assertEqual(ops_ref, ops)
 
 
