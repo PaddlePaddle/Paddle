@@ -946,6 +946,7 @@ def OpGenerator(
                     op_class_name,
                     op_input_name_list,
                     op_input_type_list,
+                    op_input_optional_list,
                     op_attribute_name_list,
                     op_attribute_type_list,
                     op_attribute_build_arg_type_list,
@@ -959,7 +960,9 @@ def OpGenerator(
                     op_output_name_list,
                     op_output_type_list,
                     op_output_size_list,
+                    op_output_optional_list,
                     op_infer_meta_map,
+                    op_inplace_map,
                     muta_attr_is_input=False,
                 )
                 if len(op_attribute_name_list) > 0:
@@ -970,6 +973,7 @@ def OpGenerator(
                         op_class_name,
                         op_input_name_list,
                         op_input_type_list,
+                        op_input_optional_list,
                         op_attribute_name_list,
                         op_attribute_type_list,
                         op_attribute_build_arg_type_list,
@@ -983,7 +987,9 @@ def OpGenerator(
                         op_output_name_list,
                         op_output_type_list,
                         op_output_size_list,
+                        op_output_optional_list,
                         op_infer_meta_map,
+                        op_inplace_map,
                         muta_attr_is_input=False,
                         attr_args_is_map=True,
                     )
@@ -1001,6 +1007,7 @@ def OpGenerator(
                         op_class_name,
                         op_input_name_list,
                         op_input_type_list,
+                        op_input_optional_list,
                         op_attribute_name_list,
                         op_attribute_type_list,
                         op_attribute_build_arg_type_list,
@@ -1014,7 +1021,9 @@ def OpGenerator(
                         op_output_name_list,
                         op_output_type_list,
                         op_output_size_list,
+                        op_output_optional_list,
                         op_infer_meta_map,
+                        op_inplace_map,
                         muta_attr_is_input=True,
                     )
 

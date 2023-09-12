@@ -55,7 +55,7 @@ class TestPrimMode(unittest.TestCase):
                 feed={'x': self.x, 'y': self.y}, fetch_list=[new_out, gradients]
             )
 
-        whole_ops = [op.name() for op in main_program.block().ops]
+        whole_ops = [op.name() for op in main_program.global_block().ops]
         if flag == "forward":
             core._set_prim_forward_enabled(False)
             assert (

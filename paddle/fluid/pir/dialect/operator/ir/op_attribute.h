@@ -20,7 +20,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/ir_parser.h"
+#include "paddle/pir/core/parser/ir_parser.h"
 
 namespace paddle {
 namespace dialect {
