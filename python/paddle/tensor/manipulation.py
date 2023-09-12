@@ -180,9 +180,9 @@ def cast(x, dtype):
             x = paddle.to_tensor([2, 3, 4], 'float64')
             y = paddle.cast(x, 'uint8')
     """
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    if in_dynamic_mode():
+    if in_dynamic_or_new_ir_mode():
         return _C_ops.cast(x, dtype)
     else:
         check_variable_and_dtype(
@@ -3595,7 +3595,7 @@ def reshape(x, shape, name=None):
             # the value is [10.]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_new_ir_mode():
         if isinstance(shape, (list, tuple)):
             new_shape = []
             for ele in shape:

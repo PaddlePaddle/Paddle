@@ -12,20 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/core/op_base.h"
-namespace pir {
-InterfaceValue::~InterfaceValue() {
-  if (model_) free(model_);
-}
+#include "paddle/pir/core/builtin_type_interfaces.h"
+#include "paddle/pir/core/type_id.h"
 
-InterfaceValue::InterfaceValue(InterfaceValue&& val) noexcept {
-  type_id_ = val.type_id_;
-  model_ = val.model_;
-  val.model_ = nullptr;
-}
-
-InterfaceValue& InterfaceValue::operator=(InterfaceValue&& val) noexcept {
-  swap(std::move(val));
-  return *this;
-}
-}  // namespace pir
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::ShapedTypeInterface)
