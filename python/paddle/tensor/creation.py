@@ -40,6 +40,7 @@ from ..framework import (
     convert_np_dtype_to_dtype_,
     core,
     in_dynamic_mode,
+    in_dynamic_or_pir_mode,
     in_pir_mode,
 )
 
@@ -878,7 +879,7 @@ def full_like(x, fill_value, dtype=None, name=None):
 
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
-    if in_dynamic_or_new_ir_mode():
+    if in_dynamic_or_pir_mode():
         place = _current_expected_place()
         if force_cpu:
             place = core.CPUPlace()
