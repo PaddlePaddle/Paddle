@@ -51,16 +51,16 @@ class HybridParallelClipGrad:
 
     def _global_norm(self, global_norm_var_dist, global_norm_var_not_dist):
         # sharding first
-        sharding_flag = (
-            self._hcg.get_sharding_parallel_world_size() > 1
-            and self._hcg.get_data_parallel_world_size() == 1
-        )
+        sharding_flag = self._hcg.get_sharding_parallel_world_size() > 1
+        dp_flag = self._hcg.get_data_parallel_world_size() > 1
         mp_flag = self._hcg.get_model_parallel_world_size() > 1
+        pp_flag = self._hcg.get_pipe_parallel_world_size() > 1
 
         # add all reduce to get global norm of distributed params_and_grads
         if sharding_flag and not g_shard_norm_align_dp:
             # norm of mp distributed variable
             if mp_flag:
+                # dist should reduce among sharding group、mp group、pp group
                 paddle.distributed.all_reduce(
                     global_norm_var_dist,
                     group=self._hcg.get_sharding_parallel_group(),
@@ -70,16 +70,30 @@ class HybridParallelClipGrad:
                 global_norm_var_not_dist,
                 group=self._hcg.get_sharding_parallel_group(),
             )
+
         # norm of mp distributed variable
         if mp_flag:
             # dist should reduce among sharding group、mp group、pp group
-            paddle.distributed.all_reduce(
-                global_norm_var_dist,
-                group=self._hcg.get_check_parallel_group(sharding_flag),
-            )
+
+            # the else branch would suffice, but this branch remains here for number precision backward compatibility
+            if not (dp_flag and sharding_flag):
+                paddle.distributed.all_reduce(
+                    global_norm_var_dist,
+                    group=self._hcg.get_check_parallel_group(sharding_flag),
+                )
+            else:
+                paddle.distributed.all_reduce(
+                    global_norm_var_dist,
+                    group=self._hcg.get_model_parallel_group(),
+                )
+                if pp_flag:
+                    paddle.distributed.all_reduce(
+                        global_norm_var_dist,
+                        group=self._hcg.get_pipe_parallel_group(),
+                    )
 
         # add all reduce to get global norm of non-distributed params_and_grads in groups of pp
-        if self._hcg.get_pipe_parallel_world_size() > 1:
+        if pp_flag:
             paddle.distributed.all_reduce(
                 global_norm_var_not_dist,
                 group=self._hcg.get_pipe_parallel_group(),
@@ -430,15 +444,21 @@ class HybridParallelOptimizer:
     @no_grad()
     @framework.dygraph_only
     def step(self):
-        parameters_list = obtain_optimizer_parameters_list(self._inner_opt)
+        parameter_list = list(obtain_optimizer_parameters_list(self._inner_opt))
+        dp_parameter_list = parameter_list
         if self._sharding_enable:
             assert isinstance(self._inner_opt, DygraphShardingOptimizer)
-            self._inner_opt.reduce_gradients(list(parameters_list), self._hcg)
+            self._inner_opt.reduce_gradients(parameter_list, self._hcg)
+            # dp later do not need to use global parameter list
+            if not g_shard_norm_align_dp:
+                dp_parameter_list = self._inner_opt.filter_parameters(
+                    parameter_list, self._hcg
+                )
 
         if self._dp_enable:
-            fused_allreduce_gradients(list(parameters_list), self._hcg)
+            fused_allreduce_gradients(dp_parameter_list, self._hcg)
 
-        self._step(parameters_list)
+        self._step(parameter_list)
 
     @no_grad()
     def minimize(
@@ -452,14 +472,21 @@ class HybridParallelOptimizer:
             if parameters
             else obtain_optimizer_parameters_list(self._inner_opt)
         )
-
+        parameter_list = list(parameter_list)
+        dp_parameter_list = parameter_list
         # Here sharding should use global parameter list
         if self._sharding_enable:
             assert isinstance(self._inner_opt, DygraphShardingOptimizer)
-            self._inner_opt.reduce_gradients(list(parameter_list), self._hcg)
+            self._inner_opt.reduce_gradients(parameter_list, self._hcg)
+
+            # dp later do not need to use global parameter list
+            if not g_shard_norm_align_dp:
+                dp_parameter_list = self._inner_opt.filter_parameters(
+                    parameter_list, self._hcg
+                )
 
         if self._dp_enable:
-            fused_allreduce_gradients(list(parameter_list), self._hcg)
+            fused_allreduce_gradients(dp_parameter_list, self._hcg)
 
         return self._inner_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set
