@@ -24,6 +24,7 @@
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/transpose_function.cu.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/reduce_max_kernel.h"
 
 namespace phi {
 
@@ -84,8 +85,9 @@ void LogsumexpFallbackKernel(const Context& dev_ctx,
   max_x.Resize(outdim);
   dev_ctx.template Alloc<T>(&max_x);
 
-  phi::funcs::ReduceKernel<T, T, kps::MaxFunctor, kps::IdentityFunctor<T>>(
-      dev_ctx, *in_x, &max_x, kps::IdentityFunctor<T>(), axis_vec);
+  // phi::funcs::ReduceKernel<T, T, kps::MaxFunctor, kps::IdentityFunctor<T>>(
+  //     dev_ctx, *in_x, &max_x, kps::IdentityFunctor<T>(), axis_vec);
+  phi::MaxKernel<T, Context>(dev_ctx, *in_x, axis_vec, false, &max_x);
 
   max_x.Resize(keeped_outdim);
   DenseTensor temp_x = Subtract<T, Context>(dev_ctx, *in_x, max_x);
