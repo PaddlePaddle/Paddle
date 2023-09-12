@@ -64,6 +64,7 @@ typedef SSIZE_T ssize_t;
 
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/flags.h"
 
 PHI_DECLARE_string(tensor_operants_mode);
@@ -549,12 +550,34 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
       continue;
     }
     if (paddle::framework::detail::IsDuplicableVar(input)) {
-      ctx.EmplaceBackInputs(std::move(CastPyArg2VectorOfTensor(obj, i + 1)));
+      std::vector<paddle::Tensor> tensors =
+          std::move(CastPyArg2VectorOfTensor(obj, i + 1));
+      for (auto& tensor : tensors) {
+        if (tensor.is_dense_tensor() &&
+            !std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())
+                 ->meta()
+                 .is_contiguous()) {
+          tensor.set_impl(std::make_shared<phi::DenseTensor>(
+              std::move(paddle::experimental::Trans2Contiguous(
+                  *(std::dynamic_pointer_cast<phi::DenseTensor>(
+                      tensor.impl()))))));
+        }
+      }
+      ctx.EmplaceBackInputs(std::move(tensors));
       VLOG(7) << "Custom operator add input " << input
               << " to CustomOpKernelContext. Add vector<Tensor> size = "
               << ctx.InputRangeAt(i).second - ctx.InputRangeAt(i).first;
     } else {
-      ctx.EmplaceBackInput(std::move(CastPyArg2Tensor(obj, i + 1)));
+      paddle::Tensor tensor = std::move(CastPyArg2Tensor(obj, i + 1));
+      if (tensor.is_dense_tensor() &&
+          !std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())
+               ->meta()
+               .is_contiguous()) {
+        tensor.set_impl(std::make_shared<phi::DenseTensor>(
+            std::move(paddle::experimental::Trans2Contiguous(*(
+                std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()))))));
+      }
+      ctx.EmplaceBackInput(std::move(tensor));
       VLOG(7) << "Custom operator add input " << input
               << " to CustomOpKernelContext. Add Tensor for general case.";
     }

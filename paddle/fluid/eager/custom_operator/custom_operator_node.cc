@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/custom_operator_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace egr {
@@ -201,7 +202,18 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
   }
 
   VLOG(6) << "Prepare Grad inputs";
-  for (const auto& in : tmp_ins) {
+  for (auto& in : tmp_ins) {
+    for (auto& tensor : in) {
+      if (tensor.is_dense_tensor() &&
+          !std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())
+               ->meta()
+               .is_contiguous()) {
+        tensor.set_impl(std::make_shared<phi::DenseTensor>(
+            std::move(paddle::experimental::Trans2Contiguous(*(
+                std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()))))));
+      }
+    }
+
     ctx.EmplaceBackInputs(in);
   }
   VLOG(6) << "Prepare Grad attrs";
