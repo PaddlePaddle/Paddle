@@ -47,16 +47,16 @@
 
 namespace pir {
 
-const std::unordered_set<std::string> SpecialOps = {"pd.feed",
-                                                    "pd.fetch",
+const std::unordered_set<std::string> SpecialOps = {"pd_op.feed",
+                                                    "pd_op.fetch",
                                                     "builtin.combine",
                                                     "builtin.set_parameter",
                                                     "builtin.get_parameter",
                                                     "builtin.slice",
                                                     "builtin.split",
-                                                    "pd.data",
-                                                    "pd.shadow_output",
-                                                    "pd.if"};
+                                                    "pd_op.data",
+                                                    "pd_op.shadow_output",
+                                                    "pd_op.if"};
 
 void AddNewData(pir::Value value,
                 std::string name,
@@ -450,7 +450,7 @@ void HandleForSpecialOp(
     }
   }
 
-  if (op_name == "pd.if") {
+  if (op_name == "pd_op.if") {
     auto if_op = op->dyn_cast<paddle::dialect::IfOp>();
 
     auto true_block = if_op.true_block();
