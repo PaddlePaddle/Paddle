@@ -586,7 +586,7 @@ class PartialProgramLayer:
                 return False
             if var.dtype not in [paddle.float32, paddle.float64]:
                 return False
-            for op in main_program.block(0).ops:
+            for op in main_program.global_block().ops:
                 for in_arg in op.input_arg_names:
                     if in_arg == var.name:
                         return True
@@ -603,7 +603,7 @@ class PartialProgramLayer:
                         out_arg == var_grad_name
                         for out_arg in x[1].output_arg_names
                     ),
-                    enumerate(target_program.block(0).ops),
+                    enumerate(target_program.global_block().ops),
                 )
             )
 
@@ -612,7 +612,7 @@ class PartialProgramLayer:
             if len(finded_ops) == 0:
                 return None
             # step1: create a new var named var.name@GRAD
-            target_program.block(0).create_var(
+            target_program.global_block().create_var(
                 name=new_grad_name,
                 type=var.type,
                 dtype=var.dtype,
@@ -649,7 +649,7 @@ class PartialProgramLayer:
         inputs = list(
             filter(lambda x: isinstance(x, OpResult), self._inputs.tolist())
         )
-        forward_end_idx = len(program.block().ops)
+        forward_end_idx = len(program.global_block().ops)
         if targets:
             with backend_guard(self._backend):
                 check_type(
@@ -668,7 +668,7 @@ class PartialProgramLayer:
                         forward_outputs_grads.append(None)
                         continue
                     opres = (
-                        program.block()
+                        program.global_block()
                         .ops[forward_end_idx + not_stop_gradient_num]
                         .results()[0]
                     )
@@ -742,9 +742,9 @@ class PartialProgramLayer:
     def _prepare_attributes(self):
         attrs = [
             'forward_global_block',
-            self.forward_program.block(),
+            self.forward_program.global_block(),
             'backward_global_block',
-            self.backward_program.block(),
+            self.backward_program.global_block(),
             'is_test',
             not self.training,
             'program_id',
@@ -798,7 +798,7 @@ class PartialProgramLayer:
         backward_start_op_index = forward_end_op_index + len(
             list(filter(lambda r: r.stop_gradient is False, self._outputs))
         )
-        backward_end_op_index = len(whole_program.block().ops)
+        backward_end_op_index = len(whole_program.global_block().ops)
         # For Backward process in CINN, all param@GRAD shoule be skipped for GC, because
         # they will be shared in scope and used by optimizer.
 
