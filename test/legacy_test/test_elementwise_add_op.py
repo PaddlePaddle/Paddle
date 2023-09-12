@@ -152,7 +152,7 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
             atol=1e-3,
             check_dygraph=self.check_dygraph(),
             check_prim=self.check_prim,
-            check_new_ir=True,
+            check_new_ir=self.check_dygraph(),
         )
 
     def test_check_grad_normal(self):
