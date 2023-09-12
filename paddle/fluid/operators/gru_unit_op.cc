@@ -19,68 +19,84 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class GRUUnitOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "GRUUnit");
-    OP_INOUT_CHECK(ctx->HasInput("HiddenPrev"), "Input", "HiddenPrev",
-                   "GRUUnit");
+    OP_INOUT_CHECK(
+        ctx->HasInput("HiddenPrev"), "Input", "HiddenPrev", "GRUUnit");
     OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "GRUUnit");
     OP_INOUT_CHECK(ctx->HasOutput("Gate"), "Output", "Gate", "GRUUnit");
-    OP_INOUT_CHECK(ctx->HasOutput("ResetHiddenPrev"), "Output",
-                   "ResetHiddenPrev", "GRUUnit");
+    OP_INOUT_CHECK(ctx->HasOutput("ResetHiddenPrev"),
+                   "Output",
+                   "ResetHiddenPrev",
+                   "GRUUnit");
     OP_INOUT_CHECK(ctx->HasOutput("Hidden"), "Output", "Hidden", "GRUUnit");
     auto input_dims = ctx->GetInputDim("Input");
     auto hidden_prev_dims = ctx->GetInputDim("HiddenPrev");
     auto weight_dims = ctx->GetInputDim("Weight");
-    int batch_size = input_dims[0];
-    int input_size = input_dims[1];
-    int frame_size = hidden_prev_dims[1];
-    int weight_height = weight_dims[0];
-    int weight_width = weight_dims[1];
+    int batch_size = static_cast<int>(input_dims[0]);
+    int input_size = static_cast<int>(input_dims[1]);
+    int frame_size = static_cast<int>(hidden_prev_dims[1]);
+    int weight_height = static_cast<int>(weight_dims[0]);
+    int weight_width = static_cast<int>(weight_dims[1]);
     if (ctx->IsRuntime() || input_size >= 0) {
-      PADDLE_ENFORCE_EQ(input_size, frame_size * 3,
+      PADDLE_ENFORCE_EQ(input_size,
+                        frame_size * 3,
                         platform::errors::InvalidArgument(
                             "The second dimension of Input(Input) must be 3 "
                             "times of frame_size in GRUUnitOp, but received %d "
                             "(Input) vs %d (frame_size).",
-                            input_size, frame_size));
+                            input_size,
+                            frame_size));
     }
     PADDLE_ENFORCE_EQ(
-        weight_height, frame_size,
+        weight_height,
+        frame_size,
         platform::errors::InvalidArgument(
             "The shape of Input(Weight) matrix must be [frame_size, frame_size "
             "* 3] in GRUUnitOp, but received [%d, %d] (Weight) vs [%d, %d] "
             "(frame_size).",
-            weight_height, weight_width, frame_size, frame_size * 3));
+            weight_height,
+            weight_width,
+            frame_size,
+            frame_size * 3));
     PADDLE_ENFORCE_EQ(
-        weight_width, frame_size * 3,
+        weight_width,
+        frame_size * 3,
         platform::errors::InvalidArgument(
             "The shape of Input(Weight) matrix must be [frame_size, frame_size "
             "* 3] in GRUUnitOp, but received [%d, %d] (Weight) vs [%d, %d] "
             "(frame_size).",
-            weight_height, weight_width, frame_size, frame_size * 3));
+            weight_height,
+            weight_width,
+            frame_size,
+            frame_size * 3));
 
     if (ctx->HasInput("Bias")) {
       auto bias_dims = ctx->GetInputDim("Bias");
-      int bias_height = bias_dims[0];
-      int bias_width = bias_dims[1];
+      int bias_height = static_cast<int>(bias_dims[0]);
+      int bias_width = static_cast<int>(bias_dims[1]);
       PADDLE_ENFORCE_EQ(
-          bias_height, 1,
+          bias_height,
+          1,
           platform::errors::InvalidArgument(
               "The shape of Bias must be [1, frame_size * 3], but received "
               "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
-              bias_height, bias_width, frame_size * 3));
+              bias_height,
+              bias_width,
+              frame_size * 3));
       PADDLE_ENFORCE_EQ(
-          bias_width, frame_size * 3,
+          bias_width,
+          frame_size * 3,
           platform::errors::InvalidArgument(
               "The shape of Bias must be [1, frame_size * 3], but received "
               "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
-              bias_height, bias_width, frame_size * 3));
+              bias_height,
+              bias_width,
+              frame_size * 3));
     }
     ctx->SetOutputDim("Gate", {batch_size, frame_size * 3});
     ctx->SetOutputDim("ResetHiddenPrev", {batch_size, frame_size});
@@ -162,63 +178,83 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "GRUUnitGrad");
-    OP_INOUT_CHECK(ctx->HasInput("HiddenPrev"), "Input", "HiddenPrev",
-                   "GRUUnitGrad");
+    OP_INOUT_CHECK(
+        ctx->HasInput("HiddenPrev"), "Input", "HiddenPrev", "GRUUnitGrad");
     OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "GRUUnitGrad");
     OP_INOUT_CHECK(ctx->HasInput("Gate"), "Input", "Gate", "GRUUnitGrad");
-    OP_INOUT_CHECK(ctx->HasInput("ResetHiddenPrev"), "Input", "ResetHiddenPrev",
+    OP_INOUT_CHECK(ctx->HasInput("ResetHiddenPrev"),
+                   "Input",
+                   "ResetHiddenPrev",
                    "GRUUnitGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Hidden")), "Input",
-                   "Hidden@GRAD", "GRUUnitGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Hidden")),
+                   "Input",
+                   "Hidden@GRAD",
+                   "GRUUnitGrad");
 
     auto input_dims = ctx->GetInputDim("Input");
     auto hidden_prev_dims = ctx->GetInputDim("HiddenPrev");
     auto weight_dims = ctx->GetInputDim("Weight");
     // int batch_size = input_dims[0];
-    int input_size = input_dims[1];
-    int frame_size = hidden_prev_dims[1];
-    int weight_height = weight_dims[0];
-    int weight_width = weight_dims[1];
+    int input_size = static_cast<int>(input_dims[1]);
+    int frame_size = static_cast<int>(hidden_prev_dims[1]);
+    int weight_height = static_cast<int>(weight_dims[0]);
+    int weight_width = static_cast<int>(weight_dims[1]);
     if (ctx->IsRuntime() || input_size >= 0) {
       PADDLE_ENFORCE_EQ(
-          input_size, frame_size * 3,
+          input_size,
+          frame_size * 3,
           platform::errors::InvalidArgument(
               "The second dimension of Input(Input) must be 3 "
               "times of frame_size in GRUUnitGradOp, but received %d "
               "(Input) vs %d (frame_size).",
-              input_size, frame_size));
+              input_size,
+              frame_size));
     }
     PADDLE_ENFORCE_EQ(
-        weight_height, frame_size,
+        weight_height,
+        frame_size,
         platform::errors::InvalidArgument(
             "The shape of Input(Weight) matrix must be [frame_size, frame_size "
             "* 3] in GRUUnitGradOp, but received [%d, %d] (Weight) vs [%d, %d] "
             "(frame_size).",
-            weight_height, weight_width, frame_size, frame_size * 3));
+            weight_height,
+            weight_width,
+            frame_size,
+            frame_size * 3));
     PADDLE_ENFORCE_EQ(
-        weight_width, frame_size * 3,
+        weight_width,
+        frame_size * 3,
         platform::errors::InvalidArgument(
             "The shape of Input(Weight) matrix must be [frame_size, frame_size "
             "* 3] in GRUUnitGradOp, but received [%d, %d] (Weight) vs [%d, %d] "
             "(frame_size).",
-            weight_height, weight_width, frame_size, frame_size * 3));
+            weight_height,
+            weight_width,
+            frame_size,
+            frame_size * 3));
     if (ctx->HasInput("Bias")) {
       auto bias_dims = ctx->GetInputDim("Bias");
-      int bias_height = bias_dims[0];
-      int bias_width = bias_dims[1];
+      int bias_height = static_cast<int>(bias_dims[0]);
+      int bias_width = static_cast<int>(bias_dims[1]);
 
       PADDLE_ENFORCE_EQ(
-          bias_height, 1,
+          bias_height,
+          1,
           platform::errors::InvalidArgument(
               "The shape of Bias must be [1, frame_size * 3], but received "
               "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
-              bias_height, bias_width, frame_size * 3));
+              bias_height,
+              bias_width,
+              frame_size * 3));
       PADDLE_ENFORCE_EQ(
-          bias_width, frame_size * 3,
+          bias_width,
+          frame_size * 3,
           platform::errors::InvalidArgument(
               "The shape of Bias must be [1, frame_size * 3], but received "
               "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
-              bias_height, bias_width, frame_size * 3));
+              bias_height,
+              bias_width,
+              frame_size * 3));
       auto bias_grad_name = framework::GradVarName("Bias");
       if (ctx->HasOutput(bias_grad_name))
         ctx->SetOutputDim(bias_grad_name, bias_dims);
@@ -234,11 +270,11 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(weight_grad_name, weight_dims);
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Hidden")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Hidden")),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -278,16 +314,16 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(GRUUnitGradOpNoNeedBufferVarInferer,
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(gru_unit, ops::GRUUnitOp, ops::GRUUnitOpMaker,
+REGISTER_OPERATOR(gru_unit,
+                  ops::GRUUnitOp,
+                  ops::GRUUnitOpMaker,
                   ops::GRUUnitGradOpMaker<paddle::framework::OpDesc>,
                   ops::GRUUnitGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(gru_unit_grad, ops::GRUUnitGradOp,
+REGISTER_OPERATOR(gru_unit_grad,
+                  ops::GRUUnitGradOp,
                   ops::GRUUnitGradOpNoNeedBufferVarInferer);
 
-REGISTER_OP_CPU_KERNEL(
-    gru_unit, ops::GRUUnitKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GRUUnitKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    gru_unit_grad,
-    ops::GRUUnitGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GRUUnitGradKernel<paddle::platform::CPUDeviceContext, double>);
+PD_REGISTER_STRUCT_KERNEL(
+    gru_unit, CPU, ALL_LAYOUT, ops::GRUUnitKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    gru_unit_grad, CPU, ALL_LAYOUT, ops::GRUUnitGradKernel, float, double) {}

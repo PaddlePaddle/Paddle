@@ -15,10 +15,10 @@
 #ifndef PADDLE_WITH_HIP
 // HIP not support cusolver
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/complex.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/impl/cholesky_solve_kernel_impl.h"

@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/gather_kernel.h"
+
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
-#include "paddle/phi/kernels/gather_kernel.h"
 
 namespace phi {
 
@@ -51,6 +52,10 @@ void GatherKernel(const Context& dev_ctx,
     phi::funcs::GPUGather<T, int64_t>(dev_ctx, x, index, out);
   } else if (index_type == phi::DataType::INT16) {
     phi::funcs::GPUGather<T, int16_t>(dev_ctx, x, index, out);
+  } else {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("The data type of Input(Index) of gather "
+                                     "must be int16, int32 or int64 on GPU."));
   }
 }
 
@@ -65,5 +70,8 @@ PD_REGISTER_KERNEL(gather,
                    int64_t,
                    int,
                    int16_t,
+                   bool,
+                   uint8_t,
+                   int8_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}

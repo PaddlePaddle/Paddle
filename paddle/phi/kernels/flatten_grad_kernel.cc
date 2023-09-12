@@ -16,7 +16,7 @@
 
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
 
@@ -73,4 +73,19 @@ PD_REGISTER_KERNEL(flatten_grad,
                    int,
                    int64_t) {}
 
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+PD_REGISTER_KERNEL(flatten_grad,
+                   Custom,
+                   ALL_LAYOUT,
+                   phi::FlattenGradKernel,
+                   float,
+                   phi::dtype::float16,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
 #endif

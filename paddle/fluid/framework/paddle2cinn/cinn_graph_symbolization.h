@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-// clang-format off
 #include <map>
 #include <string>
 #include <unordered_map>
@@ -25,9 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 
-#include "cinn/frontend/net_builder.h"
-#include "cinn/frontend/op_mapper_registry.h"
-// clang-format on
+#include "paddle/cinn/frontend/net_builder.h"
+#include "paddle/cinn/frontend/op_mapper_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -65,9 +63,10 @@ namespace paddle2cinn {
 class CinnGraphSymbolization {
  public:
   CinnGraphSymbolization(
-      int64_t graph_id, const ir::Graph& graph,
+      int64_t graph_id,
+      const ir::Graph& graph,
       const ::cinn::common::Target& target,
-      const std::map<std::string, const LoDTensor*>& input_tensors)
+      const std::map<std::string, const phi::DenseTensor*>& input_tensors)
       : graph_id_(graph_id),
         graph_(graph),
         target_(target),
@@ -100,7 +99,7 @@ class CinnGraphSymbolization {
   const int64_t graph_id_;
   const ir::Graph& graph_;
   const ::cinn::common::Target& target_;
-  const std::map<std::string, const LoDTensor*>& input_tensors_;
+  const std::map<std::string, const phi::DenseTensor*>& input_tensors_;
 
   // preserve cinn variable map
   std::unordered_map<std::string, ::cinn::frontend::Variable> var_map_;

@@ -16,18 +16,45 @@
 
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/tensor_array.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void SliceGradRawKernel(const Context& ctx,
-                        const DenseTensor& input,
-                        const DenseTensor& out_grad,
-                        const std::vector<int64_t>& axes,
-                        const IntArray& starts,
-                        const IntArray& ends,
-                        const std::vector<int64_t>& infer_flags,
-                        const std::vector<int64_t>& decrease_axis,
-                        DenseTensor* input_grad);
+void SliceGradKernel(const Context& ctx,
+                     const DenseTensor& input,
+                     const DenseTensor& out_grad,
+                     const std::vector<int64_t>& axes,
+                     const IntArray& starts,
+                     const IntArray& ends,
+                     const std::vector<int64_t>& infer_flags,
+                     const std::vector<int64_t>& decrease_axis,
+                     DenseTensor* input_grad);
+
+template <typename Context>
+void SliceGradStridedKernel(const Context& ctx,
+                            const DenseTensor& input,
+                            const DenseTensor& out_grad,
+                            const std::vector<int64_t>& axes,
+                            const IntArray& starts,
+                            const IntArray& ends,
+                            const std::vector<int64_t>& infer_flags,
+                            const std::vector<int64_t>& decrease_axis,
+                            DenseTensor* input_grad);
+
+template <typename T, typename Context>
+void SliceArrayGradKernel(const Context& dev_ctx,
+                          const TensorArray& input,
+                          const TensorArray& out_grad,
+                          const IntArray& starts,
+                          const IntArray& ends,
+                          TensorArray* input_grad);
+
+template <typename T, typename Context>
+void SliceArrayDenseGradKernel(const Context& dev_ctx,
+                               const TensorArray& input,
+                               const DenseTensor& out_grad,
+                               const IntArray& starts,
+                               TensorArray* input_grad);
 
 }  // namespace phi

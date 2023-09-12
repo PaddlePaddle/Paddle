@@ -13,14 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <vector>
 
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/phi/core/tensor_array.h"
 
 namespace paddle {
 namespace framework {
 
-using LoDTensorArray = std::vector<LoDTensor>;
+using LoDTensorArray = phi::TensorArray;
 
 }  // namespace framework
 }  // namespace paddle

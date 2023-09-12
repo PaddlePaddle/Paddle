@@ -30,20 +30,19 @@
 #include <string>
 #include <vector>
 
+#include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/enforce.h"
 
-#ifdef __HIPCC__
-// HIP results in error or nan if > 256
-#define PREDEFINED_BLOCK_SIZE 256
-#else
 // CUDA performs better when thread_per_block is between [64, 512]
 #define PREDEFINED_BLOCK_SIZE 512
-#endif
 
 namespace phi {
 namespace backends {
 namespace gpu {
+
+// Limitation of the setting in one dimension of cuda grid.
+constexpr int kMultiDimslimit = 65536;
 
 template <typename T = int64_t>
 inline T DivUp(T a, T b) {
@@ -52,20 +51,21 @@ inline T DivUp(T a, T b) {
 
 // https://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
 //   for round integer value into next highest power of 2.
-inline int64_t RoundToPowerOfTwo(int64_t n) {
+inline int64_t RoundToNextHighPowOfTwo(int64_t n, int64_t min_val = 1) {
   n--;
   n |= (n >> 1);
   n |= (n >> 2);
   n |= (n >> 4);
   n |= (n >> 8);
   n |= (n >> 16);
-  int64_t min_val = 32;
-#ifdef __HIPCC__
-  int64_t max_val = 256;
-#else
+  return std::max(min_val, (n + 1));
+}
+
+inline int64_t RoundToPowerOfTwo(int64_t n) {
+  constexpr int64_t min_val = 32;
+  int64_t num = RoundToNextHighPowOfTwo(n, min_val);
   int64_t max_val = 1024;
-#endif
-  return std::min(max_val, std::max(min_val, (n + 1)));
+  return std::min(max_val, num);
 }
 
 #ifdef WITH_NV_JETSON
@@ -161,8 +161,8 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& context,
 }
 
 inline GpuLaunchConfig GetGpuLaunchConfig2D(const phi::GPUContext& context,
-                                            int x_dim,
-                                            int y_dim) {
+                                            int64_t x_dim,
+                                            int64_t y_dim) {
   PADDLE_ENFORCE_GT(
       x_dim,
       0,
@@ -177,7 +177,7 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(const phi::GPUContext& context,
                                    y_dim));
 
   const int kThreadsPerBlock = 256;
-  int block_cols = std::min(x_dim, kThreadsPerBlock);
+  int block_cols = std::min<int64_t>(x_dim, kThreadsPerBlock);
   int block_rows = std::max(kThreadsPerBlock / block_cols, 1);
 
   int max_physical_threads = context.GetMaxPhysicalThreadCount();
@@ -187,8 +187,9 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(const phi::GPUContext& context,
   // Noticed, block size is not align to 32, if needed do it yourself.
   config.thread_per_block = dim3(block_cols, block_rows, 1);
 
-  int grid_x = std::min(DivUp<int>(x_dim, block_cols), max_blocks);
-  int grid_y = std::min(max_blocks / grid_x, std::max(y_dim / block_rows, 1));
+  int grid_x = std::min<int64_t>(DivUp<int64_t>(x_dim, block_cols), max_blocks);
+  int grid_y = std::min<int64_t>(max_blocks / grid_x,
+                                 std::max<int64_t>(y_dim / block_rows, 1));
 
   config.block_per_grid = dim3(grid_x, grid_y, 1);
   return config;
@@ -228,6 +229,14 @@ inline GpuLaunchConfig GetGpuLaunchConfig3D(const phi::GPUContext& context,
   return config;
 }
 
+template <typename Context>
+void LimitGridDim(const Context& ctx, dim3* grid_dim) {
+  auto max_grid_dim =
+      reinterpret_cast<const phi::GPUContext&>(ctx).GetCUDAMaxGridDimSize();
+  grid_dim->x = grid_dim->x < max_grid_dim[0] ? grid_dim->x : max_grid_dim[0];
+  grid_dim->y = grid_dim->y < max_grid_dim[1] ? grid_dim->y : max_grid_dim[1];
+  grid_dim->z = grid_dim->z < max_grid_dim[2] ? grid_dim->z : max_grid_dim[2];
+}
 }  // namespace gpu
 }  // namespace backends
 }  // namespace phi

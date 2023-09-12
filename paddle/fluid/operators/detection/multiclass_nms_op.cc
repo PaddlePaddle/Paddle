@@ -13,16 +13,16 @@ limitations under the License. */
 
 #include <glog/logging.h>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detection/nms_util.h"
+#include "paddle/phi/infermeta/ternary.h"
+#include "paddle/phi/kernels/funcs/detection/nms_util.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-
-inline std::vector<size_t> GetNmsLodFromRoisNum(const Tensor* rois_num) {
+inline std::vector<size_t> GetNmsLodFromRoisNum(
+    const phi::DenseTensor* rois_num) {
   std::vector<size_t> rois_lod;
   auto* rois_num_data = rois_num->data<int>();
   rois_lod.push_back(static_cast<size_t>(0));
@@ -45,12 +45,14 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
     auto score_size = score_dims.size();
 
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(score_size == 2 || score_size == 3, true,
+      PADDLE_ENFORCE_EQ(score_size == 2 || score_size == 3,
+                        true,
                         platform::errors::InvalidArgument(
                             "The rank of Input(Scores) must be 2 or 3"
                             ". But received rank = %d",
                             score_size));
-      PADDLE_ENFORCE_EQ(box_dims.size(), 3,
+      PADDLE_ENFORCE_EQ(box_dims.size(),
+                        3,
                         platform::errors::InvalidArgument(
                             "The rank of Input(BBoxes) must be 3"
                             ". But received rank = %d",
@@ -70,26 +72,31 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
                               "12 points: [xi, yi] i= 1,2,...,12 or "
                               "16 points: [xi, yi] i= 1,2,...,16"));
         PADDLE_ENFORCE_EQ(
-            box_dims[1], score_dims[2],
+            box_dims[1],
+            score_dims[2],
             platform::errors::InvalidArgument(
                 "The 2nd dimension of Input(BBoxes) must be equal to "
                 "last dimension of Input(Scores), which represents the "
                 "predicted bboxes."
                 "But received box_dims[1](%s) != socre_dims[2](%s)",
-                box_dims[1], score_dims[2]));
+                box_dims[1],
+                score_dims[2]));
       } else {
-        PADDLE_ENFORCE_EQ(box_dims[2], 4,
+        PADDLE_ENFORCE_EQ(box_dims[2],
+                          4,
                           platform::errors::InvalidArgument(
                               "The last dimension of Input"
                               "(BBoxes) must be 4. But received dimension = %d",
                               box_dims[2]));
         PADDLE_ENFORCE_EQ(
-            box_dims[1], score_dims[1],
+            box_dims[1],
+            score_dims[1],
             platform::errors::InvalidArgument(
                 "The 2nd dimension of Input"
                 "(BBoxes) must be equal to the 2nd dimension of Input(Scores). "
                 "But received box dimension = %d, score dimension = %d",
-                box_dims[1], score_dims[1]));
+                box_dims[1],
+                score_dims[1]));
       }
     }
     // Here the box_dims[0] is not the real dimension of output.
@@ -105,9 +112,9 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "Scores"),
         platform::CPUPlace());
   }
@@ -115,8 +122,9 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
 
 template <class T>
 void SliceOneClass(const platform::DeviceContext& ctx,
-                   const framework::Tensor& items, const int class_id,
-                   framework::Tensor* one_class_item) {
+                   const phi::DenseTensor& items,
+                   const int class_id,
+                   phi::DenseTensor* one_class_item) {
   T* item_data = one_class_item->mutable_data<T>(ctx.GetPlace());
   const T* items_data = items.data<T>();
   const int64_t num_item = items.dims()[0];
@@ -135,12 +143,16 @@ void SliceOneClass(const platform::DeviceContext& ctx,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class MultiClassNMSKernel : public framework::OpKernel<T> {
  public:
-  void NMSFast(const Tensor& bbox, const Tensor& scores,
-               const T score_threshold, const T nms_threshold, const T eta,
-               const int64_t top_k, std::vector<int>* selected_indices,
+  void NMSFast(const phi::DenseTensor& bbox,
+               const phi::DenseTensor& scores,
+               const T score_threshold,
+               const T nms_threshold,
+               const T eta,
+               const int64_t top_k,
+               std::vector<int>* selected_indices,
                const bool normalized) const {
     // The total boxes for each instance.
     int64_t num_boxes = bbox.dims()[0];
@@ -152,31 +164,33 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     std::vector<T> scores_data(num_boxes);
     std::copy_n(scores.data<T>(), num_boxes, scores_data.begin());
     std::vector<std::pair<T, int>> sorted_indices;
-    GetMaxScoreIndex(scores_data, score_threshold, top_k, &sorted_indices);
+    phi::funcs::GetMaxScoreIndex(
+        scores_data, score_threshold, top_k, &sorted_indices);
 
     selected_indices->clear();
     T adaptive_threshold = nms_threshold;
     const T* bbox_data = bbox.data<T>();
 
-    while (sorted_indices.size() != 0) {
+    while (!sorted_indices.empty()) {
       const int idx = sorted_indices.front().second;
       bool keep = true;
-      for (size_t k = 0; k < selected_indices->size(); ++k) {
+      for (const auto kept_idx : *selected_indices) {
         if (keep) {
-          const int kept_idx = (*selected_indices)[k];
           T overlap = T(0.);
           // 4: [xmin ymin xmax ymax]
           if (box_size == 4) {
             overlap =
-                JaccardOverlap<T>(bbox_data + idx * box_size,
-                                  bbox_data + kept_idx * box_size, normalized);
+                phi::funcs::JaccardOverlap<T>(bbox_data + idx * box_size,
+                                              bbox_data + kept_idx * box_size,
+                                              normalized);
           }
           // 8: [x1 y1 x2 y2 x3 y3 x4 y4] or 16, 24, 32
           if (box_size == 8 || box_size == 16 || box_size == 24 ||
               box_size == 32) {
-            overlap = PolyIoU<T>(bbox_data + idx * box_size,
-                                 bbox_data + kept_idx * box_size, box_size,
-                                 normalized);
+            overlap = phi::funcs::PolyIoU<T>(bbox_data + idx * box_size,
+                                             bbox_data + kept_idx * box_size,
+                                             box_size,
+                                             normalized);
           }
           keep = overlap <= adaptive_threshold;
         } else {
@@ -194,7 +208,8 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
   }
 
   void MultiClassNMS(const framework::ExecutionContext& ctx,
-                     const Tensor& scores, const Tensor& bboxes,
+                     const phi::DenseTensor& scores,
+                     const phi::DenseTensor& bboxes,
                      const int scores_size,
                      std::map<int, std::vector<int>>* indices,
                      int* num_nmsed_out) const {
@@ -205,12 +220,12 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     T nms_threshold = static_cast<T>(ctx.Attr<float>("nms_threshold"));
     T nms_eta = static_cast<T>(ctx.Attr<float>("nms_eta"));
     T score_threshold = static_cast<T>(ctx.Attr<float>("score_threshold"));
-    auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
 
     int num_det = 0;
 
     int64_t class_num = scores_size == 3 ? scores.dims()[0] : scores.dims()[1];
-    Tensor bbox_slice, score_slice;
+    phi::DenseTensor bbox_slice, score_slice;
     for (int64_t c = 0; c < class_num; ++c) {
       if (c == background_label) continue;
       if (scores_size == 3) {
@@ -222,8 +237,14 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
         SliceOneClass<T>(dev_ctx, scores, c, &score_slice);
         SliceOneClass<T>(dev_ctx, bboxes, c, &bbox_slice);
       }
-      NMSFast(bbox_slice, score_slice, score_threshold, nms_threshold, nms_eta,
-              nms_top_k, &((*indices)[c]), normalized);
+      NMSFast(bbox_slice,
+              score_slice,
+              score_threshold,
+              nms_threshold,
+              nms_eta,
+              nms_top_k,
+              &((*indices)[c]),
+              normalized);
       if (scores_size == 2) {
         std::stable_sort((*indices)[c].begin(), (*indices)[c].end());
       }
@@ -245,22 +266,22 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
           sdata = score_slice.data<T>();
         }
         const std::vector<int>& label_indices = it.second;
-        for (size_t j = 0; j < label_indices.size(); ++j) {
-          int idx = label_indices[j];
+        for (auto idx : label_indices) {
           score_index_pairs.push_back(
               std::make_pair(sdata[idx], std::make_pair(label, idx)));
         }
       }
       // Keep top k results per image.
-      std::stable_sort(score_index_pairs.begin(), score_index_pairs.end(),
-                       SortScorePairDescend<std::pair<int, int>>);
+      std::stable_sort(score_index_pairs.begin(),
+                       score_index_pairs.end(),
+                       phi::funcs::SortScorePairDescend<std::pair<int, int>>);
       score_index_pairs.resize(keep_top_k);
 
       // Store the new indices.
       std::map<int, std::vector<int>> new_indices;
-      for (size_t j = 0; j < score_index_pairs.size(); ++j) {
-        int label = score_index_pairs[j].second.first;
-        int idx = score_index_pairs[j].second.second;
+      for (auto& score_index_pair : score_index_pairs) {
+        int label = score_index_pair.second.first;
+        int idx = score_index_pair.second.second;
         new_indices[label].push_back(idx);
       }
       if (scores_size == 2) {
@@ -276,10 +297,13 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
   }
 
   void MultiClassOutput(const platform::DeviceContext& ctx,
-                        const Tensor& scores, const Tensor& bboxes,
+                        const phi::DenseTensor& scores,
+                        const phi::DenseTensor& bboxes,
                         const std::map<int, std::vector<int>>& selected_indices,
-                        const int scores_size, Tensor* outs,
-                        int* oindices = nullptr, const int offset = 0) const {
+                        const int scores_size,
+                        phi::DenseTensor* outs,
+                        int* oindices = nullptr,
+                        const int offset = 0) const {
     int64_t class_num = scores.dims()[1];
     int64_t predict_dim = scores.dims()[1];
     int64_t box_size = bboxes.dims()[1];
@@ -291,7 +315,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     auto* bboxes_data = bboxes.data<T>();
     auto* odata = outs->data<T>();
     const T* sdata;
-    Tensor bbox;
+    phi::DenseTensor bbox;
     bbox.Resize({scores.dims()[0], box_size});
     int count = 0;
     for (const auto& it : selected_indices) {
@@ -303,8 +327,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
         sdata = scores_data + label * predict_dim;
       }
 
-      for (size_t j = 0; j < indices.size(); ++j) {
-        int idx = indices[j];
+      for (auto idx : indices) {
         odata[count * out_dim] = label;  // label
         const T* bdata;
         if (scores_size == 3) {
@@ -328,16 +351,16 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* boxes = ctx.Input<LoDTensor>("BBoxes");
-    auto* scores = ctx.Input<LoDTensor>("Scores");
-    auto* outs = ctx.Output<LoDTensor>("Out");
+    auto* boxes = ctx.Input<phi::DenseTensor>("BBoxes");
+    auto* scores = ctx.Input<phi::DenseTensor>("Scores");
+    auto* outs = ctx.Output<phi::DenseTensor>("Out");
     bool return_index = ctx.HasOutput("Index") ? true : false;
-    auto index = ctx.Output<LoDTensor>("Index");
+    auto index = ctx.Output<phi::DenseTensor>("Index");
     bool has_roisnum = ctx.HasInput("RoisNum") ? true : false;
-    auto rois_num = ctx.Input<Tensor>("RoisNum");
-    auto score_dims = scores->dims();
+    auto rois_num = ctx.Input<phi::DenseTensor>("RoisNum");
+    auto score_dims = phi::vectorize<int>(scores->dims());
     auto score_size = score_dims.size();
-    auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
 
     std::vector<std::map<int, std::vector<int>>> all_indices;
     std::vector<size_t> batch_starts = {0};
@@ -345,7 +368,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     int64_t box_dim = boxes->dims()[2];
     int64_t out_dim = box_dim + 2;
     int num_nmsed_out = 0;
-    Tensor boxes_slice, scores_slice;
+    phi::DenseTensor boxes_slice, scores_slice;
     int n = 0;
     if (has_roisnum) {
       n = score_size == 3 ? batch_size : rois_num->numel();
@@ -374,8 +397,8 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
         scores_slice = scores->Slice(boxes_lod[i], boxes_lod[i + 1]);
         boxes_slice = boxes->Slice(boxes_lod[i], boxes_lod[i + 1]);
       }
-      MultiClassNMS(ctx, scores_slice, boxes_slice, score_size, &indices,
-                    &num_nmsed_out);
+      MultiClassNMS(
+          ctx, scores_slice, boxes_slice, score_size, &indices, &num_nmsed_out);
       all_indices.push_back(indices);
       batch_starts.push_back(batch_starts.back() + num_nmsed_out);
     }
@@ -421,19 +444,25 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
         int64_t s = batch_starts[i];
         int64_t e = batch_starts[i + 1];
         if (e > s) {
-          Tensor out = outs->Slice(s, e);
+          phi::DenseTensor out = outs->Slice(s, e);
           if (return_index) {
             int* output_idx =
                 index->mutable_data<int>({num_kept, 1}, ctx.GetPlace());
             oindices = output_idx + s;
           }
-          MultiClassOutput(dev_ctx, scores_slice, boxes_slice, all_indices[i],
-                           score_dims.size(), &out, oindices, offset);
+          MultiClassOutput(dev_ctx,
+                           scores_slice,
+                           boxes_slice,
+                           all_indices[i],
+                           score_dims.size(),
+                           &out,
+                           oindices,
+                           offset);
         }
       }
     }
     if (ctx.HasOutput("NmsRoisNum")) {
-      auto* nms_rois_num = ctx.Output<Tensor>("NmsRoisNum");
+      auto* nms_rois_num = ctx.Output<phi::DenseTensor>("NmsRoisNum");
       nms_rois_num->mutable_data<int>({n}, ctx.GetPlace());
       int* num_data = nms_rois_num->data<int>();
       for (int i = 1; i <= n; i++) {
@@ -461,7 +490,7 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
              "predicted locations of M bounding bboxes, N is the batch size. "
              "Each bounding box has four coordinate values and the layout is "
              "[xmin, ymin, xmax, ymax], when box size equals to 4."
-             "2. (LoDTensor) A 3-D Tensor with shape [M, C, 4]"
+             "2. (phi::DenseTensor) A 3-D Tensor with shape [M, C, 4]"
              "M is the number of bounding boxes, C is the class number");
     AddInput("Scores",
              "Two types of scores are supported:"
@@ -470,7 +499,7 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
              "class number, M is number of bounding boxes. For each category "
              "there are total M scores which corresponding M bounding boxes. "
              " Please note, M is equal to the 2nd dimension of BBoxes. "
-             "2. (LoDTensor) A 2-D LoDTensor with shape [M, C]. "
+             "2. (phi::DenseTensor) A 2-D phi::DenseTensor with shape [M, C]. "
              "M is the number of bbox, C is the class number. In this case, "
              "Input BBoxes should be the second case with shape [M, C, 4].");
     AddAttr<int>(
@@ -505,10 +534,12 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
                   "Whether detections are normalized.")
         .SetDefault(true);
     AddOutput("Out",
-              "(LoDTensor) A 2-D LoDTensor with shape [No, 6] represents the "
+              "(phi::DenseTensor) A 2-D phi::DenseTensor with shape [No, 6] "
+              "represents the "
               "detections. Each row has 6 values: "
               "[label, confidence, xmin, ymin, xmax, ymax] or "
-              "(LoDTensor) A 2-D LoDTensor with shape [No, 10] represents the "
+              "(phi::DenseTensor) A 2-D phi::DenseTensor with shape [No, 10] "
+              "represents the "
               "detections. Each row has 10 values: "
               "[label, confidence, x1, y1, x2, y2, x3, y3, x4, y4]. No is the "
               "total number of detections in this mini-batch."
@@ -529,7 +560,7 @@ Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
 per image if keep_top_k is larger than -1.
 This operator support multi-class and batched inputs. It applying NMS
 independently for each class. The outputs is a 2-D LoDTenosr, for each
-image, the offsets in first dimension of LoDTensor are called LoD, the number
+image, the offsets in first dimension of phi::DenseTensor are called LoD, the number
 of offset is N + 1, where N is the batch size. If LoD[i + 1] - LoD[i] == 0,
 means there is no detected bbox for this image.
 )DOC");
@@ -565,61 +596,39 @@ class MultiClassNMS2OpMaker : public MultiClassNMSOpMaker {
   void Make() override {
     MultiClassNMSOpMaker::Make();
     AddOutput("Index",
-              "(LoDTensor) A 2-D LoDTensor with shape [No, 1] represents the "
+              "(phi::DenseTensor) A 2-D phi::DenseTensor with shape [No, 1] "
+              "represents the "
               "index of selected bbox. The index is the absolute index cross "
               "batches.")
         .AsIntermediate();
   }
 };
 
-class MultiClassNMS3Op : public MultiClassNMS2Op {
- public:
-  MultiClassNMS3Op(const std::string& type,
-                   const framework::VariableNameMap& inputs,
-                   const framework::VariableNameMap& outputs,
-                   const framework::AttributeMap& attrs)
-      : MultiClassNMS2Op(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    MultiClassNMS2Op::InferShape(ctx);
-
-    ctx->SetOutputDim("NmsRoisNum", {-1});
-  }
-};
-
-class MultiClassNMS3OpMaker : public MultiClassNMS2OpMaker {
- public:
-  void Make() override {
-    MultiClassNMS2OpMaker::Make();
-    AddInput("RoisNum",
-             "(Tensor) The number of RoIs in shape (B),"
-             "B is the number of images")
-        .AsDispensable();
-    AddOutput("NmsRoisNum", "(Tensor), The number of NMS RoIs in each image")
-        .AsDispensable();
-  }
-};
+template <typename T, typename DeviceContext>
+class MultiClassNMS2Kernel : public MultiClassNMSKernel<T, DeviceContext> {};
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    multiclass_nms, ops::MultiClassNMSOp, ops::MultiClassNMSOpMaker,
+    multiclass_nms,
+    ops::MultiClassNMSOp,
+    ops::MultiClassNMSOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(multiclass_nms, ops::MultiClassNMSKernel<float>,
-                       ops::MultiClassNMSKernel<double>);
-REGISTER_OPERATOR(
-    multiclass_nms2, ops::MultiClassNMS2Op, ops::MultiClassNMS2OpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(multiclass_nms2, ops::MultiClassNMSKernel<float>,
-                       ops::MultiClassNMSKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(
+    multiclass_nms, CPU, ALL_LAYOUT, ops::MultiClassNMSKernel, float, double) {}
 
 REGISTER_OPERATOR(
-    multiclass_nms3, ops::MultiClassNMS3Op, ops::MultiClassNMS3OpMaker,
+    multiclass_nms2,
+    ops::MultiClassNMS2Op,
+    ops::MultiClassNMS2OpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(multiclass_nms3, ops::MultiClassNMSKernel<float>,
-                       ops::MultiClassNMSKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(multiclass_nms2,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::MultiClassNMS2Kernel,
+                          float,
+                          double) {}

@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/optimizers/distributed_fused_lamb_init_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
 namespace operators {
@@ -24,10 +25,10 @@ class DistributedFusedLambInitOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {}
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto dtype = framework::proto::VarType::FP32;  // dtype is not important
-    return framework::OpKernelType(dtype, ctx.GetPlace());
+    return phi::KernelKey(dtype, ctx.GetPlace());
   }
 };
 
@@ -112,12 +113,7 @@ class DistributedFusedLambInitOpMaker
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(distributed_fused_lamb_init,
                              ops::DistributedFusedLambInitOp,
                              ops::DistributedFusedLambInitOpMaker);
-
-REGISTER_OP_CPU_KERNEL(
-    distributed_fused_lamb_init,
-    ops::DistributedFusedLambInitOpKernel<plat::CPUDeviceContext, float>);

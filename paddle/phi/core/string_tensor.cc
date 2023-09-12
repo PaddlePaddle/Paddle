@@ -14,7 +14,10 @@ limitations under the License. */
 
 #include "paddle/phi/core/string_tensor.h"
 
-#include "paddle/fluid/memory/malloc.h"
+#include "glog/logging.h"
+
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/common/pstring.h"
 
 namespace phi {
 
@@ -34,17 +37,19 @@ StringTensor::StringTensor(const std::shared_ptr<phi::Allocation>& holder,
                            const StringTensorMeta& meta)
     : meta_(meta), holder_(holder) {}
 
-StringTensor::StringTensor(const StringTensor& other) : meta_(other.meta()) {
+StringTensor::StringTensor(const StringTensor& other) {
+  this->meta_ = other.meta();
   holder_ = other.holder_;
 }
 
 StringTensor& StringTensor::operator=(const StringTensor& other) {
+  if (this == &other) return *this;
   meta_ = other.meta();
   holder_ = other.holder_;
   return *this;
 }
 
-StringTensor& StringTensor::operator=(StringTensor&& other) {
+StringTensor& StringTensor::operator=(StringTensor&& other) noexcept {
   meta_ = std::move(other.meta_);
   std::swap(holder_, other.holder_);
   return *this;
@@ -88,8 +93,9 @@ dtype::pstring* StringTensor::data() {
 }
 
 void StringTensor::set_meta(const StringTensorMeta& meta) {
-  PADDLE_ENFORCE(
+  PADDLE_ENFORCE_EQ(
       meta.valid(),
+      true,
       phi::errors::InvalidArgument(
           "Input meta is invalid, please check the meta attribute."));
   meta_.dims = meta.dims;
@@ -129,25 +135,33 @@ void StringTensor::init_holder() {
 
 void* StringTensor::AllocateFrom(Allocator* allocator,
                                  DataType dtype,
-                                 size_t requested_size) {
+                                 size_t requested_size,
+                                 bool fake_alloc) {
   PADDLE_ENFORCE_NOT_NULL(
       allocator,
       errors::InvalidArgument(
           "Required allocator shall not be nullptr, but received nullptr."));
-  PADDLE_ENFORCE(
-      valid(),
-      errors::PreconditionNotMet(
-          "The meta data must be valid when call the mutable data function."));
+
   size_t bytes = numel() * SizeOf(this->dtype());
-  if (requested_size) {
-    PADDLE_ENFORCE_GE(requested_size,
-                      bytes,
-                      errors::InvalidArgument(
-                          "The reserved size %d should be enough to meet the "
-                          "volume required by metadata %d.",
-                          requested_size,
-                          bytes));
-    bytes = requested_size;
+  if (fake_alloc) {
+    bytes = 0;
+  } else {
+    PADDLE_ENFORCE_EQ(
+        valid(),
+        true,
+        errors::PreconditionNotMet("The meta data must be valid when call the "
+                                   "mutable data function."));
+    if (requested_size) {
+      PADDLE_ENFORCE_GE(requested_size,
+                        bytes,
+                        errors::InvalidArgument(
+                            "The reserved size %d should be enough to meet the "
+                            "volume required by metadata %d.",
+                            requested_size,
+                            bytes));
+
+      bytes = requested_size;
+    }
   }
 
   if (!holder_ || holder_->size() < bytes + meta_.offset) {
@@ -178,11 +192,11 @@ dtype::pstring* StringTensor::mutable_data(const phi::Place& place,
     size = requested_size;
   }
 
-  /* some versions of boost::variant don't have operator!= */
+  /* some versions of paddle::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + meta_.offset) {
     holder_.reset();
-    holder_ = paddle::memory::AllocShared(place, size);
+    holder_ = memory_utils::AllocShared(place, size);
     // Initialize the allocated bytes
     init_holder();
     meta_.offset = 0;

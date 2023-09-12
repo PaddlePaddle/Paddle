@@ -12,7 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/collective/c_identity_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -26,7 +29,8 @@ class CIdentityOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "c_identity");
     int ring_id = ctx->Attrs().Get<int>("ring_id");
     PADDLE_ENFORCE_GE(
-        ring_id, 0,
+        ring_id,
+        0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for c_identity must be non-negative.", ring_id));
     framework::DDim dim = ctx->GetInputDim("X");
@@ -34,16 +38,16 @@ class CIdentityOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
 class CIdentityOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) identity tensor.");
     AddOutput("Out", "(Tensor) identity tensor.");
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
@@ -78,15 +82,14 @@ class CIdentityOpGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(c_identity, ops::CIdentityOp,
+DECLARE_INFER_SHAPE_FUNCTOR(c_identity,
+                            CIdentityShapeFunctor,
+                            PD_INFER_META(phi::CIdentityInferMeta));
+
+REGISTER_OPERATOR(c_identity,
+                  ops::CIdentityOp,
                   ops::CIdentityOpGradMaker<paddle::framework::OpDesc>,
                   ops::CIdentityOpGradMaker<paddle::imperative::OpBase>,
-                  ops::CIdentityOpMaker);
-
-REGISTER_OP_CPU_KERNEL(c_identity, ops::CIdentityOpCPUKernel<float>,
-                       ops::CIdentityOpCPUKernel<double>,
-                       ops::CIdentityOpCPUKernel<int>,
-                       ops::CIdentityOpCPUKernel<int64_t>,
-                       ops::CIdentityOpCPUKernel<plat::float16>);
+                  ops::CIdentityOpMaker,
+                  CIdentityShapeFunctor);

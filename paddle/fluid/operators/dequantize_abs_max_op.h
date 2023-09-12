@@ -29,19 +29,21 @@ namespace operators {
 
 template <typename DeviceContext, typename T>
 struct DequantizeFunctor {
-  void operator()(const DeviceContext& dev_ctx, const framework::Tensor* in,
-                  const framework::Tensor* scale, float max_range,
-                  framework::Tensor* out);
+  void operator()(const DeviceContext& dev_ctx,
+                  const phi::DenseTensor* in,
+                  const phi::DenseTensor* scale,
+                  float max_range,
+                  phi::DenseTensor* out);
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class DequantizeMaxAbsKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {
-    auto* in = ctx.Input<framework::Tensor>("X");
-    auto* scale = ctx.Input<framework::Tensor>("Scale");
+    auto* in = ctx.Input<phi::DenseTensor>("X");
+    auto* scale = ctx.Input<phi::DenseTensor>("Scale");
 
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     float max_range = ctx.Attr<float>("max_range");
 

@@ -126,7 +126,7 @@ PDNode *FCElementwiseLayerNorm::operator()(PDNode *x) {
 
 template <typename T>
 static bool IsEqual(const std::vector<T> &x, const std::vector<T> &y) {
-  if (!(x.size() > 0U && y.size() > 0U) || x.size() != y.size()) {
+  if (!(!x.empty() && !y.empty()) || x.size() != y.size()) {
     return false;
   }
   for (size_t i = 0; i < x.size(); ++i) {
@@ -235,17 +235,17 @@ void FCElementwiseLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(fc_bias, fc_bias, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_out, fc_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise, elementwise, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_input, elementwise_input,
-                              fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        elementwise_input, elementwise_input, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm, layer_norm, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_bias, layer_norm_bias, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_scale, layer_norm_scale,
-                              fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_scale, layer_norm_scale, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_out, layer_norm_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_mean, layer_norm_mean, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_variance, layer_norm_variance,
-                              fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_variance, layer_norm_variance, fused_pattern);
 
     if (!IsEqual(fc_out->Var()->GetShape(),
                  elementwise_input->Var()->GetShape())) {
@@ -253,7 +253,7 @@ void FCElementwiseLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     }
 
     int begin_norm_axis =
-        BOOST_GET_CONST(int, layer_norm->Op()->GetAttr("begin_norm_axis"));
+        PADDLE_GET_CONST(int, layer_norm->Op()->GetAttr("begin_norm_axis"));
     auto layer_norm_x_dims = fc_out->Var()->GetShape();
     auto layer_norm_x_mat_dims =
         phi::flatten_to_2d(phi::make_ddim(layer_norm_x_dims), begin_norm_axis);
@@ -283,13 +283,13 @@ void FCElementwiseLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
 
     // outputs
     new_desc.SetOutput("Out", {layer_norm_out->Name()});
-    bool lnm_has_output = layer_norm_mean->outputs.size() > 0U;
+    bool lnm_has_output = !layer_norm_mean->outputs.empty();
     if (lnm_has_output) {
       new_desc.SetOutput("Mean", {layer_norm_mean->Name()});
     } else {
       del_node_set.insert(layer_norm_mean);
     }
-    bool lnv_has_output = layer_norm_variance->outputs.size() > 0U;
+    bool lnv_has_output = !layer_norm_variance->outputs.empty();
     if (lnv_has_output) {
       new_desc.SetOutput("Variance", {layer_norm_variance->Name()});
     } else {

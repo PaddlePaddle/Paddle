@@ -19,11 +19,13 @@
 namespace paddle {
 namespace operators {
 
-template <ElementwiseType ET, typename InT, typename OutT, typename Functor,
-          int NumOuts = 1>
+template <typename OutT, typename Functor, int NumOuts = 1>
 void LaunchElementwiseCudaKernel(
-    const KPDevice &ctx, const std::vector<const framework::Tensor *> &ins,
-    std::vector<framework::Tensor *> *outs, int axis, Functor func) {
+    const KPDevice &ctx,
+    const std::vector<const phi::DenseTensor *> &ins,
+    std::vector<phi::DenseTensor *> *outs,
+    Functor func,
+    int axis = -1) {
   std::vector<const phi::DenseTensor *> pt_inputs;
   std::vector<phi::DenseTensor *> pt_outputs;
   // TODO(YuanRisheng) *_tmp for cache DenseTensor, because the temporary
@@ -35,11 +37,11 @@ void LaunchElementwiseCudaKernel(
   std::vector<std::unique_ptr<phi::DenseTensor>> pt_outputs_tmp;
   for (auto in : ins) {
     pt_inputs_tmp.emplace_back(
-        std::move(paddle::experimental::MakePhiDenseTensor(*in)));
+        std::move(std::make_unique<phi::DenseTensor>(*in)));
   }
   for (auto out : *outs) {
     pt_outputs_tmp.emplace_back(
-        std::move(paddle::experimental::MakePhiDenseTensor(*out)));
+        std::move(std::make_unique<phi::DenseTensor>(*out)));
   }
   for (int i = 0; i < pt_inputs_tmp.size(); i++) {
     pt_inputs.push_back(pt_inputs_tmp[i].get());
@@ -47,8 +49,8 @@ void LaunchElementwiseCudaKernel(
   for (int i = 0; i < pt_outputs_tmp.size(); i++) {
     pt_outputs.push_back(pt_outputs_tmp[i].get());
   }
-  phi::funcs::BroadcastKernel<ET, InT, OutT, Functor, NumOuts>(
-      ctx, pt_inputs, &pt_outputs, axis, func);
+  phi::funcs::BroadcastKernel<OutT, Functor, NumOuts>(
+      ctx, pt_inputs, &pt_outputs, func, axis);
 }
 
 }  // namespace operators

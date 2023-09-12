@@ -22,11 +22,12 @@
 #include <vector>
 
 #include "paddle/fluid/distributed/common/cost_timer.h"
-#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/service/env.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
+#include "paddle/fluid/distributed/ps/service/sparse_shard_value.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 #include "paddle/fluid/platform/timer.h"
 
 namespace paddle {
@@ -71,7 +72,8 @@ class PSClient {
       const PSParameter &config,
       const std::map<uint64_t, std::vector<paddle::distributed::Region>>
           &regions,
-      PSEnvironment &_env, size_t client_id) final;  // NOLINT
+      PSEnvironment &_env,  // NOLINT
+      size_t client_id);
 
   virtual int32_t CreateClient2ClientConnection(int pserver_timeout_ms,
                                                 int pserver_connect_timeout_ms,
@@ -85,14 +87,16 @@ class PSClient {
   virtual std::future<int32_t> Load(const std::string &epoch,
                                     const std::string &mode) = 0;
   // 指定table数据load
-  virtual std::future<int32_t> Load(uint32_t table_id, const std::string &epoch,
+  virtual std::future<int32_t> Load(uint32_t table_id,
+                                    const std::string &epoch,
                                     const std::string &mode) = 0;
 
   // 全量table数据save  value_accessor根据mode，可能有不同的save条件
   virtual std::future<int32_t> Save(const std::string &epoch,
                                     const std::string &mode) = 0;
   // 指定table数据save  value_accessor根据mode，可能有不同的save条件
-  virtual std::future<int32_t> Save(uint32_t table_id, const std::string &epoch,
+  virtual std::future<int32_t> Save(uint32_t table_id,
+                                    const std::string &epoch,
                                     const std::string &mode) = 0;
 
   // 清空table数据
@@ -106,7 +110,8 @@ class PSClient {
   // sender聚集同一区块的请求，累计多个填充buffer
   // server将参数区块中配置的某一维提取返回
   // 返回数据解包后填充到累计的多个buffer中
-  virtual std::future<int32_t> PullDense(Region *regions, size_t region_num,
+  virtual std::future<int32_t> PullDense(Region *regions,
+                                         size_t region_num,
                                          size_t table_id) = 0;  // 保留
 
   // firstly push dense param for parameter server
@@ -127,13 +132,16 @@ class PSClient {
   // 返回结果后，遍历buffer并对values赋值
   // is_training 用于区分请求是训练/预测，server端对于特征和准入会有不同的处理.
   virtual std::future<int32_t> PullSparse(float **select_values,
-                                          size_t table_id, const uint64_t *keys,
-                                          size_t num, bool is_training) = 0;
+                                          size_t table_id,
+                                          const uint64_t *keys,
+                                          size_t num,
+                                          bool is_training) = 0;
 
-  virtual std::future<int32_t> PullSparseParam(float **select_values,
-                                               size_t table_id,
-                                               const uint64_t *keys, size_t num,
-                                               bool is_training) {
+  virtual std::future<int32_t> PullSparseParam(float **select_values UNUSED,
+                                               size_t table_id UNUSED,
+                                               const uint64_t *keys UNUSED,
+                                               size_t num UNUSED,
+                                               bool is_training UNUSED) {
     VLOG(0) << "Did not implement";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
@@ -141,10 +149,14 @@ class PSClient {
     return fut;
   }
 
-  virtual ::std::future<int32_t> PullSparsePtr(char **select_values,
-                                               size_t table_id,
-                                               const uint64_t *keys,
-                                               size_t num) {
+  virtual ::std::future<int32_t> PullSparsePtr(
+      int shard_id UNUSED,
+      char **select_values UNUSED,
+      size_t table_id UNUSED,
+      const uint64_t *keys UNUSED,
+      size_t num UNUSED,
+      uint16_t pass_id UNUSED,
+      const uint16_t &dim_id UNUSED = 0) {
     VLOG(0) << "Did not implement";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
@@ -153,6 +165,15 @@ class PSClient {
   }
 
   virtual std::future<int32_t> PrintTableStat(uint32_t table_id) = 0;
+  virtual std::future<int32_t> SaveCacheTable(uint32_t table_id UNUSED,
+                                              uint16_t pass_id UNUSED,
+                                              size_t threshold UNUSED) {
+    VLOG(0) << "Did not implement";
+    std::promise<int32_t> promise;
+    std::future<int> fut = promise.get_future();
+    promise.set_value(-1);
+    return fut;
+  }
 
   // 确保所有积攒中的请求都发起发送
   virtual std::future<int32_t> Flush() = 0;
@@ -181,9 +202,10 @@ class PSClient {
 
   virtual void FinalizeWorker() = 0;
   // client to client, 消息发送
-  virtual std::future<int32_t> SendClient2ClientMsg(int msg_type,
-                                                    int to_client_id,
-                                                    const std::string &msg) {
+  virtual std::future<int32_t> SendClient2ClientMsg(int msg_type UNUSED,
+                                                    int to_client_id UNUSED,
+                                                    const std::string &msg
+                                                        UNUSED) {
     VLOG(0) << "Did not implement";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
@@ -200,7 +222,8 @@ class PSClient {
     return 0;
   }
 
-  virtual int HandleClient2ClientMsg(int msg_type, int from_client_id,
+  virtual int HandleClient2ClientMsg(int msg_type,
+                                     int from_client_id,
                                      const std::string &msg) {
     auto itr = _msg_handler_map.find(msg_type);
     if (itr == _msg_handler_map.end()) {
@@ -226,25 +249,36 @@ class PSClient {
                                                     void *done) = 0;
 
   virtual std::future<int32_t> PushSparseRawGradient(
-      size_t table_id, const uint64_t *keys, const float **update_values,
-      size_t num, void *done) = 0;
+      size_t table_id,
+      const uint64_t *keys,
+      const float **update_values,
+      size_t num,
+      void *done) = 0;
 
   virtual std::future<int32_t> PushSparseRawGradientPartial(
-      size_t table_id, const uint64_t *keys, const float **update_values,
-      uint32_t num, void *done, int pserver_idx) = 0;
+      size_t table_id,
+      const uint64_t *keys,
+      const float **update_values,
+      uint32_t num,
+      void *done,
+      int pserver_idx) = 0;
 
   virtual std::future<int32_t> PushSparseParam(size_t table_id,
                                                const uint64_t *keys,
                                                const float **update_values,
-                                               size_t num, void *done) = 0;
-  virtual std::future<int32_t> PushSparse(size_t table_id, const uint64_t *keys,
+                                               size_t num,
+                                               void *done) = 0;
+  virtual std::future<int32_t> PushSparse(size_t table_id,
+                                          const uint64_t *keys,
                                           const float **update_values,
                                           size_t num) = 0;
 
   // for save cache
-  virtual std::future<int32_t> CacheShuffle(
-      uint32_t table_id, const std::string &path, const std::string &mode,
-      const std::string &cache_threshold) {
+  virtual std::future<int32_t> CacheShuffle(uint32_t table_id UNUSED,
+                                            const std::string &path UNUSED,
+                                            const std::string &mode UNUSED,
+                                            const std::string &cache_threshold
+                                                UNUSED) {
     VLOG(0) << "Did not implement";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
@@ -253,8 +287,10 @@ class PSClient {
   }
 
   virtual std::future<int32_t> CacheShuffleMultiTable(
-      std::vector<int> tables, const std::string &path, const std::string &mode,
-      const std::string &cache_threshold) {
+      std::vector<int> tables UNUSED,
+      const std::string &path UNUSED,
+      const std::string &mode UNUSED,
+      const std::string &cache_threshold UNUSED) {
     VLOG(0) << "Did not implement";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
@@ -262,9 +298,9 @@ class PSClient {
     return fut;
   }
 
-  virtual std::future<int32_t> SaveCache(uint32_t table_id,
-                                         const std::string &path,
-                                         const std::string &mode) {
+  virtual std::future<int32_t> SaveCache(uint32_t table_id UNUSED,
+                                         const std::string &path UNUSED,
+                                         const std::string &mode UNUSED) {
     VLOG(0) << "Did not implement";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
@@ -272,25 +308,52 @@ class PSClient {
     return fut;
   }
 
-  virtual std::future<int32_t> GetCacheThreshold(uint32_t table_id,
-                                                 double &cache_threshold) {
+  virtual std::future<int32_t> GetCacheThreshold(uint32_t table_id UNUSED,
+                                                 double &cache_threshold
+                                                     UNUSED) {  // NOLINT
     VLOG(0) << "Did not implement";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
     promise.set_value(-1);
     return fut;
+  }
+
+  virtual std::future<int32_t> Revert() {
+    VLOG(0) << "Did not implement";
+    std::promise<int32_t> promise;
+    std::future<int> fut = promise.get_future();
+    promise.set_value(-1);
+    return fut;
+  }
+
+  virtual std::future<int32_t> CheckSavePrePatchDone() {
+    VLOG(0) << "Did not implement";
+    std::promise<int32_t> promise;
+    std::future<int> fut = promise.get_future();
+    promise.set_value(-1);
+    return fut;
+  }
+  // add
+  virtual std::shared_ptr<SparseShardValues> TakePassSparseReferedValues(
+      const size_t &table_id UNUSED,
+      const uint16_t &pass_id UNUSED,
+      const uint16_t &dim_id UNUSED) {
+    VLOG(0) << "Did not implement";
+    return nullptr;
   }
 
  protected:
   virtual int32_t Initialize() = 0;
-  size_t _client_id;
   PSParameter _config;
   std::map<uint64_t, std::vector<paddle::distributed::Region>>
       _dense_pull_regions;
-  PSEnvironment *_env;
   std::unordered_map<uint32_t, std::shared_ptr<ValueAccessor>> _table_accessors;
   std::unordered_map<int32_t, MsgHandlerFunc>
       _msg_handler_map;  // 处理client2client消息
+
+ public:
+  size_t _client_id;
+  PSEnvironment *_env;
 };
 
 template <class T>

@@ -9,11 +9,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/strings/strings_lower_upper_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/strings/strings_lower_upper_kernel.h"
 #include "paddle/phi/kernels/strings/unicode.h"
 
 using pstring = ::phi::dtype::pstring;
@@ -166,14 +167,14 @@ void StringUpperKernel(const ContextT& dev_ctx,
 }  // namespace strings
 }  // namespace phi
 
-PD_REGISTER_GENERAL_KERNEL(strings_lower,
-                           GPU,
-                           ALL_LAYOUT,
-                           phi::strings::StringLowerKernel<phi::GPUContext>,
-                           pstring) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
+    strings_lower,
+    GPU,
+    ALL_LAYOUT,
+    phi::strings::StringLowerKernel<phi::GPUContext>) {}
 
-PD_REGISTER_GENERAL_KERNEL(strings_upper,
-                           GPU,
-                           ALL_LAYOUT,
-                           phi::strings::StringUpperKernel<phi::GPUContext>,
-                           pstring) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
+    strings_upper,
+    GPU,
+    ALL_LAYOUT,
+    phi::strings::StringUpperKernel<phi::GPUContext>) {}

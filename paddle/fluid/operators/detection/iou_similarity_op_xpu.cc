@@ -19,27 +19,34 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class XPUIOUSimilarityKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const framework::LoDTensor* in_x = ctx.Input<framework::LoDTensor>("X");
-    const framework::Tensor* in_y = ctx.Input<framework::Tensor>("Y");
+    const phi::DenseTensor* in_x = ctx.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor* in_y = ctx.Input<phi::DenseTensor>("Y");
     bool normalized = ctx.Attr<bool>("box_normalized");
-    framework::LoDTensor* out = ctx.Output<framework::LoDTensor>("Out");
+    phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
 
     int x_n = in_x->dims()[0];
     int y_n = in_y->dims()[0];
     T eps = static_cast<T>(1e-10);
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r = xpu::iou_similarity(
-        dev_ctx.x_context(), in_x->data<T>(), in_y->data<T>(),
-        out->mutable_data<T>(ctx.GetPlace()), x_n, y_n, eps, normalized);
+    int r = xpu::iou_similarity(dev_ctx.x_context(),
+                                in_x->data<T>(),
+                                in_y->data<T>(),
+                                out->mutable_data<T>(ctx.GetPlace()),
+                                x_n,
+                                y_n,
+                                eps,
+                                normalized);
     PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
+        r,
+        XPU_SUCCESS,
         platform::errors::External(
-            "XPU iou_similarity kernel return wrong value[%d %s].", r,
+            "XPU iou_similarity kernel return wrong value[%d %s].",
+            r,
             XPUAPIErrorMsg[r]));
   }
 };
@@ -50,6 +57,7 @@ class XPUIOUSimilarityKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 using XPU = paddle::platform::XPUDeviceContext;
 
-REGISTER_OP_XPU_KERNEL(iou_similarity, ops::XPUIOUSimilarityKernel<XPU, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    iou_similarity, XPU, ALL_LAYOUT, ops::XPUIOUSimilarityKernel, float) {}
 
 #endif

@@ -40,7 +40,6 @@ if(WITH_MKLML)
   add_definitions(-DLAPACK_FOUND)
 
   add_dependencies(cblas mklml)
-  target_link_libraries(cblas dynload_mklml)
 
   message(STATUS "Found cblas and lapack in MKLML "
                  "(include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
@@ -96,6 +95,7 @@ if(NOT DEFINED CBLAS_PROVIDER)
         STATUS
           "Found OpenBLAS (include: ${OPENBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})"
       )
+
       message(
         STATUS "Found lapack in OpenBLAS (include: ${OPENBLAS_LAPACKE_INC_DIR})"
       )

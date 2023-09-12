@@ -61,7 +61,9 @@ PSServer *PSServerFactory::Create(const PSParameter &ps_config) {
 }
 
 int32_t PSServer::Configure(
-    const PSParameter &config, PSEnvironment &env, size_t server_rank,
+    const PSParameter &config,
+    PSEnvironment &env,
+    size_t server_rank,
     const std::vector<framework::ProgramDesc> &server_sub_program) {
   scope_.reset(new framework::Scope());
   _config = config.server_param();

@@ -27,8 +27,8 @@
 
 namespace phi {
 
-inline DenseTensor UnsqueezeTo(const DenseTensor& src, int ndims) {
-  const phi::DDim& shape = src.dims();
+inline DenseTensor UnsqueezeTo(const DenseTensor &src, int ndims) {
+  const phi::DDim &shape = src.dims();
   int rank = shape.size();
   DenseTensor res;
   res.ShareDataWith(src);
@@ -52,13 +52,13 @@ inline DenseTensor UnsqueezeTo(const DenseTensor& src, int ndims) {
 
 template <typename T>
 struct KronElemFunctor {
-  KronElemFunctor(const T* a,
-                  const T* b,
-                  T* out,
-                  const int64_t* shape_b,
-                  const int64_t* stride_a,
-                  const int64_t* stride_b,
-                  const int64_t* stride_out,
+  KronElemFunctor(const T *a,
+                  const T *b,
+                  T *out,
+                  const int64_t *shape_b,
+                  const int64_t *stride_a,
+                  const int64_t *stride_b,
+                  const int64_t *stride_out,
                   int ndims)
       : a_(a),
         b_(b),
@@ -86,31 +86,34 @@ struct KronElemFunctor {
   }
 
  private:
-  const T* a_;
-  const T* b_;
-  T* out_;
-  const int64_t* shape_b_;
-  const int64_t* stride_a_;
-  const int64_t* stride_b_;
-  const int64_t* stride_out_;
+  const T *a_;
+  const T *b_;
+  T *out_;
+  const int64_t *shape_b_;
+  const int64_t *stride_a_;
+  const int64_t *stride_b_;
+  const int64_t *stride_out_;
   const int ndims_;
 };
 
 template <typename Context, typename T>
 struct KronOpFunctor {
-  void operator()(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const DenseTensor& y,
-                  DenseTensor* out) {
+  void operator()(const Context &dev_ctx,
+                  const DenseTensor &x,
+                  const DenseTensor &y,
+                  DenseTensor *out) {
     int ndims = out->dims().size();
     int64_t numel = out->numel();
 
-    const phi::DDim& dim_x = x.dims();
-    const phi::DDim& dim_y = y.dims();
-    const phi::DDim& dim_out = out->dims();
-    const phi::DDim stride_x = phi::stride(dim_x);
-    const phi::DDim stride_y = phi::stride(dim_y);
-    const phi::DDim stride_out = phi::stride(dim_out);
+    const phi::DDim &dim_x = x.dims();
+    const phi::DDim &dim_y = y.dims();
+    const phi::DDim &dim_out = out->dims();
+    const phi::DDim stride_x =
+        dim_x.size() == 0 ? phi::DDim(dim_x) : phi::stride(dim_x);
+    const phi::DDim stride_y =
+        dim_y.size() == 0 ? phi::DDim(dim_y) : phi::stride(dim_y);
+    const phi::DDim stride_out =
+        dim_out.size() == 0 ? phi::DDim(dim_out) : phi::stride(dim_out);
 
     const int64_t *p_stride_x = nullptr, *p_stride_y = nullptr,
                   *p_stride_out = nullptr, *p_shape_y = nullptr;
@@ -150,10 +153,10 @@ struct KronOpFunctor {
 };
 
 template <typename T, typename Context>
-void KronKernel(const Context& ctx,
-                const DenseTensor& x,
-                const DenseTensor& y,
-                DenseTensor* out) {
+void KronKernel(const Context &ctx,
+                const DenseTensor &x,
+                const DenseTensor &y,
+                DenseTensor *out) {
   ctx.template Alloc<T>(out);
 
   int ndims = out->dims().size();

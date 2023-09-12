@@ -14,10 +14,9 @@
 
 # TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
-from ..fluid.dygraph.layers import Layer  # noqa: F401
-from ..fluid.dygraph.container import LayerList  # noqa: F401
-from ..fluid.dygraph.container import ParameterList  # noqa: F401
-from ..fluid.dygraph.container import Sequential  # noqa: F401
+from .layer.container import LayerList  # noqa: F401
+from .layer.container import ParameterList  # noqa: F401
+from .layer.container import Sequential  # noqa: F401
 
 from .clip import ClipGradByGlobalNorm  # noqa: F401
 from .clip import ClipGradByNorm  # noqa: F401
@@ -71,7 +70,7 @@ from .layer.common import Dropout3D  # noqa: F401
 from .layer.common import AlphaDropout  # noqa: F401
 from .layer.common import Unfold  # noqa: F401
 from .layer.common import Fold  # noqa: F401
-
+from .layer.common import Unflatten  # noqa: F401
 from .layer.pooling import AvgPool1D  # noqa: F401
 from .layer.pooling import AvgPool2D  # noqa: F401
 from .layer.pooling import AvgPool3D  # noqa: F401
@@ -101,16 +100,22 @@ from .layer.loss import HSigmoidLoss  # noqa: F401
 from .layer.loss import MSELoss  # noqa: F401
 from .layer.loss import L1Loss  # noqa: F401
 from .layer.loss import NLLLoss  # noqa: F401
+from .layer.loss import PoissonNLLLoss  # noqa: F401
 from .layer.loss import BCELoss  # noqa: F401
 from .layer.loss import KLDivLoss  # noqa: F401
 from .layer.loss import MarginRankingLoss  # noqa: F401
 from .layer.loss import MultiLabelSoftMarginLoss
 from .layer.loss import CTCLoss  # noqa: F401
+from .layer.loss import RNNTLoss  # noqa: F401
 from .layer.loss import SmoothL1Loss  # noqa: F401
 from .layer.loss import HingeEmbeddingLoss  # noqa: F401
 from .layer.loss import CosineEmbeddingLoss  # noqa: F401
+from .layer.loss import MultiMarginLoss
 from .layer.loss import TripletMarginWithDistanceLoss
 from .layer.loss import TripletMarginLoss
+from .layer.loss import SoftMarginLoss
+from .layer.loss import GaussianNLLLoss
+
 from .layer.norm import BatchNorm  # noqa: F401
 from .layer.norm import SyncBatchNorm  # noqa: F401
 from .layer.norm import GroupNorm  # noqa: F401
@@ -147,9 +152,11 @@ from .layer.vision import PixelUnshuffle  # noqa: F401
 from .layer.vision import ChannelShuffle  # noqa: F401
 from .layer.container import LayerDict  # noqa: F401
 
+from .layer.layers import Layer  # noqa: F401
+
 from .utils.spectral_norm_hook import spectral_norm
 
-# TODO: remove loss, keep it for too many used in unitests
+# TODO: remove loss, keep it for too many used in unittests
 from .layer import loss  # noqa: F401
 
 from . import utils  # noqa: F401
@@ -158,38 +165,44 @@ from . import initializer  # noqa: F401
 from . import quant  # noqa: F401
 
 # TODO: remove 'diag_embed', 'remove_weight_norm', 'weight_norm' months later.
-import paddle.utils.deprecated as deprecated
+from paddle.utils import deprecated
 
 
-@deprecated(since="2.0.0",
-            update_to="paddle.nn.funcitional.diag_embed",
-            level=1,
-            reason="diag_embed in paddle.nn will be removed in future")
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.nn.functional.diag_embed",
+    level=1,
+    reason="diag_embed in paddle.nn will be removed in future",
+)
 def diag_embed(*args):
     '''
-        alias name of paddle.nn.functional.diag_embed
+    alias name of paddle.nn.functional.diag_embed
     '''
     return functional.diag_embed(*args)
 
 
-@deprecated(since="2.0.0",
-            update_to="paddle.nn.utils.remove_weight_norm",
-            level=1,
-            reason="remove_weight_norm in paddle.nn will be removed in future")
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.nn.utils.remove_weight_norm",
+    level=1,
+    reason="remove_weight_norm in paddle.nn will be removed in future",
+)
 def remove_weight_norm(*args):
     '''
-        alias name of paddle.nn.utils.remove_weight_norm
+    alias name of paddle.nn.utils.remove_weight_norm
     '''
     return utils.remove_weight_norm(*args)
 
 
-@deprecated(since="2.0.0",
-            update_to="paddle.nn.utils.weight_norm",
-            level=1,
-            reason="weight_norm in paddle.nn will be removed in future")
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.nn.utils.weight_norm",
+    level=1,
+    reason="weight_norm in paddle.nn will be removed in future",
+)
 def weight_norm(*args):
     '''
-        alias name of paddle.nn.utils.weight_norm
+    alias name of paddle.nn.utils.weight_norm
     '''
     return utils.weight_norm(*args)
 
@@ -258,6 +271,7 @@ __all__ = [  # noqa
     'AdaptiveAvgPool3D',
     'AdaptiveMaxPool3D',
     'NLLLoss',
+    'PoissonNLLLoss',
     'Conv1D',
     'Sequential',
     'Hardswish',
@@ -277,6 +291,7 @@ __all__ = [  # noqa
     'Silu',
     'Conv2DTranspose',
     'CTCLoss',
+    'RNNTLoss',
     'ThresholdedReLU',
     'AdaptiveAvgPool2D',
     'MaxPool1D',
@@ -318,6 +333,10 @@ __all__ = [  # noqa
     'Identity',
     'CosineEmbeddingLoss',
     'RReLU',
+    'MultiMarginLoss',
     'TripletMarginWithDistanceLoss',
     'TripletMarginLoss',
+    'SoftMarginLoss',
+    'GaussianNLLLoss',
+    'Unflatten',
 ]

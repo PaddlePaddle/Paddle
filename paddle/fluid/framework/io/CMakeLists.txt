@@ -5,7 +5,7 @@ cc_library(
 cc_library(
   fs
   SRCS fs.cc
-  DEPS string_helper glog boost enforce shell)
+  DEPS string_helper glog enforce shell)
 
 cc_test(
   test_fs

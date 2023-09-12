@@ -21,7 +21,6 @@ if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
 
-export CI_SKIP_CPP_TEST=OFF
 if [[ "$SYSTEM" == "Linux" ]] || [[ "$SYSTEM" == "Darwin" ]];then
     PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../" && pwd )"
 elif [[ "$SYSTEM" == "Windows_NT" ]];then
@@ -54,7 +53,12 @@ elif [[ "$SYSTEM" == "Windows_NT" ]];then
 fi
 # remove line ended with .exe to get correct deleted_ut list
 ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' | sed '/\.exe$/d' | grep 'test' > $PADDLE_ROOT/br-ut
+#UNITTEST_DEV.spec is used for checking changes of unnitests between pr and paddle_develop in the later step
+spec_path_dev=${PADDLE_ROOT}/paddle/fluid/UNITTEST_DEV.spec
+ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' > ${spec_path_dev}
 cd $PADDLE_ROOT/build
+spec_path_pr=${PADDLE_ROOT}/paddle/fluid/UNITTEST_PR.spec
+ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' > ${spec_path_pr}
 ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' | sed '/\.exe$/d' | grep 'test' > $PADDLE_ROOT/pr-ut
 cd $PADDLE_ROOT
 grep -F -x -v -f br-ut pr-ut > $PADDLE_ROOT/added_ut
@@ -75,4 +79,3 @@ git checkout -f $CURBRANCH
 echo $CURBRANCH
 git branch -D prec_added_ut
 cd $CURDIR
-export CI_SKIP_CPP_TEST=

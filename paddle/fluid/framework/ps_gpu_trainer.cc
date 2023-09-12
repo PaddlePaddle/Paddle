@@ -235,8 +235,8 @@ void PSGPUTrainer::InitializeGPUServer(const TrainerDesc& trainer_desc) {
     config["mf_create_thresholds"] = sparse_table_accessor.embedx_threshold();
     // optimizer config for embed_w and embedx
     add_sparse_optimizer(config, sparse_table_accessor.embed_sgd_param());
-    add_sparse_optimizer(config, sparse_table_accessor.embedx_sgd_param(),
-                         "mf_");
+    add_sparse_optimizer(
+        config, sparse_table_accessor.embedx_sgd_param(), "mf_");
   }
   auto ps_gpu_wrapper = paddle::framework::PSGPUWrapper::GetInstance();
   ps_gpu_wrapper->InitializeGPUServer(config);
@@ -244,11 +244,13 @@ void PSGPUTrainer::InitializeGPUServer(const TrainerDesc& trainer_desc) {
 
 std::string PSGPUTrainer::GetDumpPath(int tid) {
   if (user_define_dump_filename_ != "") {
-    return string::format_string("%s/part-%s-%05d", dump_fields_path_.c_str(),
-                                 user_define_dump_filename_.c_str(), tid);
+    return string::format_string("%s/part-%s-%05d",
+                                 dump_fields_path_.c_str(),
+                                 user_define_dump_filename_.c_str(),
+                                 tid);
   }
-  return string::format_string("%s/part-%03d-%05d", dump_fields_path_.c_str(),
-                               mpi_rank_, tid);
+  return string::format_string(
+      "%s/part-%03d-%05d", dump_fields_path_.c_str(), mpi_rank_, tid);
 }
 
 void PSGPUTrainer::RegisterHeterCallback() {
@@ -274,14 +276,15 @@ void PSGPUTrainer::InitTrainerEnv(const ProgramDesc& main_program,
     for (auto& var : block.AllVars()) {
       if (var->Persistable()) {
         auto name = var->Name();
+        auto* ptr = scope->Var(name);
+        InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
         Variable* root_var = root_scope_->FindVar(name);
         if (!root_var) {
           continue;
         }
-        LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
-        auto* ptr = scope->Var(name);
-        InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
-        LoDTensor* thread_tensor = ptr->GetMutable<LoDTensor>();
+        phi::DenseTensor* root_tensor =
+            root_var->GetMutable<phi::DenseTensor>();
+        phi::DenseTensor* thread_tensor = ptr->GetMutable<phi::DenseTensor>();
         TensorCopy(*root_tensor, place, thread_tensor);
       }
     }
@@ -289,13 +292,27 @@ void PSGPUTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   for (auto& var : main_program.Block(0).AllVars()) {
     if (var->Persistable()) {
       auto it = std::find(need_merge_var_names_.begin(),
-                          need_merge_var_names_.end(), var->Name());
+                          need_merge_var_names_.end(),
+                          var->Name());
       if (it == need_merge_var_names_.end()) {
         VLOG(2) << "train param: " << var->Name();
         trainable_param_.push_back(var->Name());
       }
     }
   }
+
+  for (size_t num = 0; num < places_.size(); ++num) {
+    Scope* scope = workers_[num]->GetThreadScope();
+    for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
+      Variable* thread_var = scope->FindVar(need_merge_var_names_[i]);
+      if (thread_var != nullptr) {
+        continue;
+      }
+      auto* ptr = scope->Var(need_merge_var_names_[i]);
+      InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
+    }
+  }
+
   place_ = place;
   return;
 }
@@ -340,11 +357,12 @@ void PSGPUTrainer::Run() {
 Scope* PSGPUTrainer::GetWorkerScope(int thread_id) { return nullptr; }
 
 template <typename T>
-void PSGPUTrainer::MergeToRootScope(LoDTensor* root_tensor, LoDTensor* tensor) {
-  LoDTensor tmp_root;
+void PSGPUTrainer::MergeToRootScope(phi::DenseTensor* root_tensor,
+                                    phi::DenseTensor* tensor) {
+  phi::DenseTensor tmp_root;
   TensorCopySync(*root_tensor, platform::CPUPlace(), &tmp_root);
   T* tmp_root_data = tmp_root.data<T>();
-  LoDTensor tmp_tensor;
+  phi::DenseTensor tmp_tensor;
   TensorCopySync(*tensor, platform::CPUPlace(), &tmp_tensor);
   T* data = tmp_tensor.data<T>();
   for (int i = 0; i < tmp_tensor.numel(); i++) {
@@ -358,9 +376,9 @@ void PSGPUTrainer::MergeDenseParam() {
   for (auto& name : trainable_param_) {
     VLOG(2) << "merge var " << name << " to root scope";
     Variable* root_var = root_scope_->FindVar(name);
-    LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+    phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
     Variable* var = thread_scope->FindVar(name);
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     TensorCopySync((*tensor), root_tensor->place(), root_tensor);
   }
 }
@@ -374,7 +392,7 @@ void PSGPUTrainer::Finalize() {
     if (root_var == nullptr) {
       continue;
     }
-    LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+    phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
     if (root_tensor == nullptr || !root_tensor->IsInitialized()) {
       continue;
     }
@@ -385,7 +403,8 @@ void PSGPUTrainer::Finalize() {
       if (thread_var == nullptr) {
         continue;
       }
-      LoDTensor* thread_tensor = thread_var->GetMutable<LoDTensor>();
+      phi::DenseTensor* thread_tensor =
+          thread_var->GetMutable<phi::DenseTensor>();
       if (thread_tensor == nullptr || !thread_tensor->IsInitialized()) {
         continue;
       }

@@ -14,7 +14,8 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/op_registry.h"
+#include "glog/logging.h"
+
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {

@@ -194,6 +194,19 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 CUDNN_DNN_ROUTINE_EACH_R8(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+#define CUDNN_DNN_ROUTINE_EACH_FRONTEND(__macro) \
+  __macro(cudnnBackendCreateDescriptor);         \
+  __macro(cudnnBackendDestroyDescriptor);        \
+  __macro(cudnnBackendExecute);                  \
+  __macro(cudnnBackendFinalize);                 \
+  __macro(cudnnBackendGetAttribute);             \
+  __macro(cudnnBackendSetAttribute);             \
+  __macro(cudnnGetStream);                       \
+  __macro(cudnnReorderFilterAndBias);
+CUDNN_DNN_ROUTINE_EACH_FRONTEND(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+#endif
+
 }  // namespace dynload
 }  // namespace phi
 

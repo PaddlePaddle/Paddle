@@ -22,24 +22,27 @@
 
 namespace phi {
 
-// Create the definition of Subtract
-DEFINE_CUDA_ELEMENTWISE_OP(Subtract)
-
 template <typename T, typename Context>
 void SubtractKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
-  int axis = -1;
-  SubtractRawKernel<T>(dev_ctx, x, y, axis, out);
+  std::vector<const DenseTensor*> inputs;
+  inputs.reserve(2);
+  std::vector<DenseTensor*> outputs;
+  outputs.reserve(1);
+  inputs.emplace_back(&x);
+  inputs.emplace_back(&y);
+  outputs.emplace_back(out);
+  dev_ctx.template Alloc<T>(out);
+  funcs::BroadcastKernel<T>(
+      dev_ctx, inputs, &outputs, funcs::SubtractFunctor<T>(), -1);
 }
 
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU_KP
 PD_REGISTER_KERNEL(subtract, KPS, ALL_LAYOUT, phi::SubtractKernel, float) {}
-PD_REGISTER_KERNEL(
-    subtract_raw, KPS, ALL_LAYOUT, phi::SubtractRawKernel, float) {}
 #else
 
 using float16 = phi::dtype::float16;
@@ -47,19 +50,6 @@ using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
-PD_REGISTER_KERNEL(subtract_raw,
-                   KPS,
-                   ALL_LAYOUT,
-                   phi::SubtractRawKernel,
-                   float,
-                   double,
-                   int16_t,
-                   int,
-                   int64_t,
-                   float16,
-                   bfloat16,
-                   complex64,
-                   complex128) {}
 PD_REGISTER_KERNEL(subtract,
                    KPS,
                    ALL_LAYOUT,
@@ -69,8 +59,9 @@ PD_REGISTER_KERNEL(subtract,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::float16,
+                   float16,
+                   bfloat16,
                    complex64,
-                   complex128,
-                   phi::dtype::bfloat16) {}
+                   complex128) {}
+
 #endif

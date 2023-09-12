@@ -56,7 +56,7 @@ namespace framework {
 
 class OperatorBase;
 
-using InferShapeVarPtr = boost::variant<VarDesc *, Variable *>;
+using InferShapeVarPtr = paddle::variant<VarDesc *, Variable *>;
 
 class InferShapeContext {
  public:
@@ -91,11 +91,15 @@ class InferShapeContext {
   virtual std::vector<std::string> Inputs(const std::string &name) const = 0;
   virtual std::vector<std::string> Outputs(const std::string &name) const = 0;
 
-  virtual void ShareDim(const std::string &in, const std::string &out,
-                        size_t i = 0, size_t j = 0) = 0;
+  virtual void ShareDim(const std::string &in,
+                        const std::string &out,
+                        size_t i = 0,
+                        size_t j = 0) = 0;
 
-  virtual void ShareLoD(const std::string &in, const std::string &out,
-                        size_t i = 0, size_t j = 0) const = 0;
+  virtual void ShareLoD(const std::string &in,
+                        const std::string &out,
+                        size_t i = 0,
+                        size_t j = 0) const = 0;
   // share the lod information of all the tensor from in to out.
   // out_vars[i].lod = in_vars[i].lod
   virtual void ShareAllLoD(const std::string &in,
@@ -103,7 +107,8 @@ class InferShapeContext {
 
   virtual int32_t GetLoDLevel(const std::string &in, size_t i = 0) const = 0;
 
-  virtual void SetLoDLevel(const std::string &out, int32_t lod_level,
+  virtual void SetLoDLevel(const std::string &out,
+                           int32_t lod_level,
                            size_t j = 0) const = 0;
 
   virtual bool IsRuntime() const = 0;

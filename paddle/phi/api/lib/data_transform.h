@@ -16,6 +16,17 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
+
+namespace phi {
+class DeviceContext;
+namespace distributed {
+class DistTensor;
+class TensorDistAttr;
+}  // namespace distributed
+}  // namespace phi
 
 namespace paddle {
 namespace experimental {
@@ -55,26 +66,137 @@ class TransformFlag {
   // the complex is always transferd, except stop_transform_ is true.
   bool trans_data_type_ = false;
 
-  // trans_backend_ and trans_layout_ are true defalutly,
+  // trans_backend_ and trans_layout_ are true defaultly,
   // and they can only be setted by global flag.
   bool trans_backend_ = true;
   bool trans_layout_ = true;
 };
 
+static inline phi::TensorArgDef GetKernelInputArgDef(
+    const phi::TensorArgDef& input_def, phi::Backend kernel_backend) {
+  phi::TensorArgDef input_actual_def = input_def;
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  // When the backend of input tensor arg_def is CUSTOM, we need to set it to
+  // the actual backend by expected_kernel_key.
+  if (input_actual_def.backend == phi::Backend::CUSTOM) {
+    input_actual_def.SetBackend(kernel_backend);
+  }
+#endif
+  return input_actual_def;
+}
+
 std::shared_ptr<phi::DenseTensor> PrepareData(
     const Tensor& input,
     const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag);
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel);
 
 paddle::optional<phi::DenseTensor> PrepareData(
     const paddle::optional<Tensor>& input,
     const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag);
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel);
 
 std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
     const std::vector<Tensor>& inputs,
     const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel);
+
+paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
+    const paddle::optional<std::vector<Tensor>>& inputs,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel);
+
+// Only support transfering place for SelectedRows
+std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
+    const Tensor& input,
+    const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag);
+
+paddle::optional<phi::SelectedRows> PrepareDataForSelectedRows(
+    const paddle::optional<Tensor>& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag);
+
+// Only support transfering contiguous for SparseCooTensor
+std::shared_ptr<phi::SparseCooTensor> PrepareDataForSparseCooTensor(
+    const Tensor& input);
+
+paddle::optional<phi::SparseCooTensor> PrepareDataForSparseCooTensor(
+    const paddle::optional<Tensor>& input);
+
+// Only support transfering contiguous for SparseCsrTensor
+std::shared_ptr<phi::SparseCsrTensor> PrepareDataForSparseCsrTensor(
+    const Tensor& input);
+
+paddle::optional<phi::SparseCsrTensor> PrepareDataForSparseCsrTensor(
+    const paddle::optional<Tensor>& input);
+
+// Only support transfering contiguous
+std::shared_ptr<phi::DenseTensor> PrepareDataForDenseTensorInSparse(
+    const Tensor& input);
+
+paddle::optional<phi::DenseTensor> PrepareDataForDenseTensorInSparse(
+    const paddle::optional<Tensor>& input);
+
+void TransDataBackend(const phi::DenseTensor* tensor,
+                      Backend target_backend,
+                      phi::DenseTensor* out);
+
+void TransDataBackend(const std::vector<phi::DenseTensor*>& tensor,
+                      Backend target_backend,
+                      std::vector<phi::DenseTensor*> out);
+
+void TransDataBackend(const phi::SelectedRows* tensor,
+                      Backend target_backend,
+                      phi::SelectedRows* out);
+
+phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor);
+
+void CheckAndTrans2Contiguous(phi::DenseTensor* tensor);
+inline bool NeedTransformPlace(const phi::Place& src_place,
+                               const Backend& target,
+                               const TransformFlag& transform_flag) {
+  // NOTE(dev): The default value of TransformFlag is True, if it is set with
+  // False
+  // somewhere such as ops.yaml or backward.yaml that means we should skip data
+  // transform. Because "stop_transform_" has highest priority.
+  if (!transform_flag.need_trans_backend()) {
+    return false;
+  }
+  bool ret = src_place.GetType() == AllocationType::GPUPINNED ||
+             (target != Backend::ALL_BACKEND &&
+              phi::TransToPhiBackend(src_place) !=
+                  (target != Backend::GPUDNN ? target : Backend::GPU));
+  return ret;
+}
+
+/* ------------------ for auto parallel ----------------------- */
+
+std::shared_ptr<phi::distributed::DistTensor> ReshardDistTensor(
+    phi::DeviceContext* dev_ctx,
+    const Tensor& tensor,
+    const phi::distributed::TensorDistAttr& dist_attr);
+
+std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
+    const Tensor& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel);
+
+std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
+    const std::shared_ptr<phi::distributed::DistTensor>& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel);
+
+std::vector<std::shared_ptr<phi::distributed::DistTensor>>
+PrepareDataForDistTensor(const std::vector<Tensor>& input,
+                         const phi::TensorArgDef& target_args_def,
+                         const TransformFlag& transform_flag,
+                         bool is_stride_kernel);
 
 }  // namespace experimental
 }  // namespace paddle

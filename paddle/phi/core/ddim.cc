@@ -19,15 +19,15 @@
 namespace phi {
 
 DDim make_ddim(std::initializer_list<int64_t> dims) {
-  return DDim(dims.begin(), dims.size());
+  return DDim(dims.begin(), static_cast<int>(dims.size()));
 }
 
 DDim make_ddim(const std::vector<int64_t>& dims) {
-  return DDim(dims.data(), dims.size());
+  return DDim(dims.data(), static_cast<int>(dims.size()));
 }
 
 DDim make_ddim(const std::vector<int>& dims) {
-  return DDim(dims.data(), dims.size());
+  return DDim(dims.data(), static_cast<int>(dims.size()));
 }
 
 struct DDimEqualityVisitor {
@@ -42,8 +42,14 @@ struct DDimEqualityVisitor {
 };
 
 bool DDim::operator==(const DDim& d) const {
-  return size() == d.size() &&
-         this->apply_visitor(DDimEqualityVisitor(d.Get()));
+  if (size() == -1 && d.size() == -1) {
+    return true;
+  } else if (size() == -1 || d.size() == -1) {
+    return false;
+  } else {
+    return size() == d.size() &&
+           this->apply_visitor(DDimEqualityVisitor(d.Get()));
+  }
 }
 
 bool DDim::operator!=(const DDim& d) const { return !(*this == d); }
@@ -66,6 +72,9 @@ struct ProductVisitor {
 };
 
 int64_t product(const DDim& ddim) {
+  if (ddim.size() == -1) {
+    return 0;
+  }
   return ddim.apply_visitor(ProductVisitor());
 }
 
@@ -105,6 +114,9 @@ struct DDimPrinter {
 };
 
 std::ostream& operator<<(std::ostream& os, const DDim& ddim) {
+  if (ddim.size() == -1) {
+    return os;
+  }
   ddim.apply_visitor(DDimPrinter(os));
   return os;
 }
@@ -154,7 +166,7 @@ DDim flatten_to_1d(const DDim& src) { return DDim({product(src)}); }
 DDim stride(const DDim& ddim) {
   DDim strides;
   strides.rank_ = ddim.size();
-  strides[ddim.size() - 1] = 1;
+  if (ddim.size() > 0) strides[ddim.size() - 1] = 1;
   for (int i = ddim.size() - 2; i >= 0; --i) {
     strides[i] = strides[i + 1] * ddim[i + 1];
   }
@@ -164,7 +176,7 @@ DDim stride(const DDim& ddim) {
 DDim stride_numel(const DDim& ddim) {
   DDim strides;
   strides.rank_ = ddim.size();
-  strides[ddim.size() - 1] = ddim[ddim.size() - 1];
+  if (ddim.size() > 0) strides[ddim.size() - 1] = ddim[ddim.size() - 1];
   for (int i = ddim.size() - 2; i >= 0; --i) {
     strides[i] = strides[i + 1] * ddim[i];
   }
@@ -172,71 +184,47 @@ DDim stride_numel(const DDim& ddim) {
 }
 
 DDim DDim::reshape(std::vector<int>& shape) const {
-  const int64_t copy_dim_val = 0;
   const DDim& in_dims = *this;
-  DDim out_dims;
-  out_dims.rank_ = shape.size();
+
+  for (int i = 0; i < static_cast<int>(shape.size()); ++i) {
+    if (shape[i] == 0) {
+      shape[i] = static_cast<int>(in_dims.at(i));
+    }
+  }
 
   // Dim marked as "-1" must be inferred
   auto it = std::find(shape.begin(), shape.end(), -1);
   if (it != shape.end()) {
-    int index = std::distance(shape.begin(), it);
+    int index = static_cast<int>(std::distance(shape.begin(), it));
     int reshape_out_product =
         std::accumulate(shape.begin(), shape.end(), -1, std::multiplies<int>());
-    shape[index] = product(in_dims) / reshape_out_product;
+    shape[index] = static_cast<int>(product(in_dims)) / reshape_out_product;
   }
 
-  for (size_t i = 0; i < shape.size(); ++i) {
-    if (shape[i] == copy_dim_val) {
-      PADDLE_ENFORCE_LT(static_cast<int>(i),
-                        in_dims.size(),
-                        phi::errors::InvalidArgument(
-                            "Index %d of shape under which the value of 0 "
-                            "is stored, must be lower than the number of "
-                            "old dimensions. But received shape[%d] = 0, "
-                            "dimensions = %d, shape = [%s].",
-                            i,
-                            in_dims.size(),
-                            in_dims));
-      out_dims[i] = in_dims[i];
-    } else {
-      out_dims[i] = shape[i];
-    }
-  }
-  return out_dims;
+  return phi::make_ddim(shape);
 }
 
 DDim DDim::transpose(const std::vector<int>& axis) const {
   const DDim& in_dims = *this;
-  size_t in_rank = in_dims.size();
-  size_t axis_size = axis.size();
-
-  auto axis_set = std::set<int>(axis.begin(), axis.end());
-  PADDLE_ENFORCE_EQ(axis_set.size(),
-                    axis_size,
-                    phi::errors::InvalidArgument(
-                        "In an axis array, elements must be unique."));
-
-  PADDLE_ENFORCE_EQ(
-      in_rank,
-      axis_size,
-      phi::errors::InvalidArgument("The input dimension's size "
-                                   "should be equal to the axis's size. "
-                                   "But received dimension is %d, "
-                                   "axis's size is %d",
-                                   in_rank,
-                                   axis_size));
-
-  PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()),
-                    axis_size,
-                    phi::errors::InvalidArgument(
-                        "Axis values must be ranging from 0 to (dims - 1)."));
 
   DDim out_dims(in_dims);
-  for (size_t i = 0; i < axis_size; i++) {
+  for (int i = 0; i < static_cast<int>(axis.size()); i++) {
     out_dims[i] = in_dims[axis[i]];
   }
   return out_dims;
 }
 
 }  // namespace phi
+
+namespace std {
+
+std::size_t hash<phi::DDim>::operator()(phi::DDim const& ddim) const {
+  int ndim = ddim.size();
+  std::size_t seed = ndim;
+  for (int i = 0; i < ndim; ++i) {
+    seed ^= ddim.Get()[i] + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+  }
+  return seed;
+}
+
+}  // namespace std

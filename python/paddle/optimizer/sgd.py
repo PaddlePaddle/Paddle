@@ -12,17 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .optimizer import Optimizer
-from ..fluid import core
-from ..fluid import framework
-from ..fluid.framework import Variable, name_scope
-from ..fluid.dygraph import no_grad
-from paddle import _C_ops
 import warnings
-from ..fluid.layer_helper import LayerHelper
-from ..fluid import unique_name
-from ..fluid import layers
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+
+from paddle import _C_ops
+
+from ..base import framework
+from ..base.dygraph import no_grad
+from ..base.framework import in_dynamic_or_new_ir_mode
+from .optimizer import Optimizer
 
 __all__ = []
 
@@ -40,80 +37,60 @@ class SGD(Optimizer):
             It can be a float value, a ``Tensor`` with a float type or a LearningRateDecay. The default value is 0.001.
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
-            It canbe a float value as coeff of L2 regularization or \
-            :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
-            If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
+            It can be a float value as coeff of L2 regularization or \
+            :ref:`api_base_regularizer_L1Decay`, :ref:`api_base_regularizer_L2Decay`.
+            If a parameter has set regularizer using :ref:`api_base_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
             Otherwise, the regularization setting here in optimizer will take effect. \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
-            some derived class of ``GradientClipBase`` . There are three cliping strategies
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three clipping strategies
+            ( :ref:`api_base_clip_GradientClipByGlobalNorm` , :ref:`api_base_clip_GradientClipByNorm` ,
+            :ref:`api_base_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): The default value is None. Normally there is no need for user
                 to set this property. For more information, please refer to
-                :ref:`api_guide_Name` . 
-        
+                :ref:`api_guide_Name` .
+
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            inp = paddle.uniform(min=-0.1, max=0.1, shape=[10, 10], dtype='float32')
-            linear = paddle.nn.Linear(10, 10)
-            inp = paddle.to_tensor(inp)
-            out = linear(inp)
-            loss = paddle.mean(out)
-            sgd = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), weight_decay=0.01)
-            out.backward()
-            sgd.step()
-            sgd.clear_grad()
+            >>> inp = paddle.uniform(min=-0.1, max=0.1, shape=[10, 10], dtype='float32')
+            >>> linear = paddle.nn.Linear(10, 10)
+            >>> inp = paddle.to_tensor(inp)
+            >>> out = linear(inp)
+            >>> loss = paddle.mean(out)
+            >>> sgd = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), weight_decay=0.01)
+            >>> out.backward()
+            >>> sgd.step()
+            >>> sgd.clear_grad()
 
     """
 
-    def __init__(self,
-                 learning_rate=0.001,
-                 parameters=None,
-                 weight_decay=None,
-                 grad_clip=None,
-                 multi_precision=False,
-                 name=None):
+    def __init__(
+        self,
+        learning_rate=0.001,
+        parameters=None,
+        weight_decay=None,
+        grad_clip=None,
+        multi_precision=False,
+        name=None,
+    ):
         if learning_rate is None:
             raise ValueError("learning_rate is not set")
-        super(SGD, self).__init__(learning_rate=learning_rate,
-                                  parameters=parameters,
-                                  weight_decay=weight_decay,
-                                  grad_clip=grad_clip,
-                                  name=name)
+        super().__init__(
+            learning_rate=learning_rate,
+            parameters=parameters,
+            weight_decay=weight_decay,
+            grad_clip=grad_clip,
+            name=name,
+        )
         self.type = "sgd"
         self._multi_precision = multi_precision
         self._master_weights = {}
-
-    def _create_master_weight(self, param):
-        if param.name in self._master_weights:
-            var = self._master_weights[param.name]
-        else:
-            assert isinstance(self.helper, LayerHelper)
-
-            var_name = param.name + "_fp32_master"
-            var_name = unique_name.generate(var_name)
-            var = layers.create_global_var(name=var_name,
-                                           shape=param.shape,
-                                           value=0,
-                                           dtype='float32',
-                                           persistable=True)
-            block = self.helper.startup_program.global_block()
-            block.append_op(type="cast",
-                            inputs={"X": [param]},
-                            outputs={"Out": [var]},
-                            attrs={
-                                "in_dtype": param.dtype,
-                                "out_dtype": core.VarDesc.VarType.FP32
-                            })
-            self._master_weights[param.name] = var
-        return var
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -122,12 +99,18 @@ class SGD(Optimizer):
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
-            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
-                master_p = self._create_master_weight(p)
+            if p.name in self._already_create_accumulater:
                 continue
-            if p.dtype == core.VarDesc.VarType.FP16 and not self._multi_precision:
+            if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
+                master_p = self._create_master_weight(p)
+                self._already_create_accumulater.add(p.name)
+                continue
+            if (
+                self._is_dtype_fp16_or_bf16(p.dtype)
+                and not self._multi_precision
+            ):
                 warnings.warn(
-                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Accumulating with FP16/BF16 in optimizer can lead to poor accuracy or slow convergence."
                     "Consider using multi_precision=True option of the Adam optimizer."
                 )
 
@@ -136,44 +119,51 @@ class SGD(Optimizer):
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
-        find_master = self._multi_precision and param_and_grad[
-            0].dtype == core.VarDesc.VarType.FP16
-        master_weight = (self._master_weights[param_and_grad[0].name]
-                         if find_master else None)
+        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+            param_and_grad[0].dtype
+        )
+        master_weight = (
+            self._master_weights[param_and_grad[0].name]
+            if find_master
+            else None
+        )
 
         lr = self._create_param_lr(param_and_grad)
-        if in_dygraph_mode():
-            _C_ops.final_state_sgd(param_and_grad[0], lr, param_and_grad[1],
-                                   master_weight, find_master)
+        if in_dynamic_or_new_ir_mode():
+            _C_ops.sgd_(
+                param_and_grad[0],
+                lr,
+                param_and_grad[1],
+                master_weight,
+                find_master,
+            )
             return None
-        if _in_legacy_dygraph():
-            _C_ops.sgd(param_and_grad[0], lr, param_and_grad[1], master_weight,
-                       param_and_grad[0], master_weight)
-            return None
+        else:
+            assert isinstance(block, framework.Block)
+            # create the optimize op
+            inputs = {
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "LearningRate": lr,
+            }
 
-        assert isinstance(block, framework.Block)
-        # create the optimize op
-        inputs = {
-            "Param": param_and_grad[0],
-            "Grad": param_and_grad[1],
-            "LearningRate": lr
-        }
+            outputs = {"ParamOut": param_and_grad[0]}
 
-        outputs = {"ParamOut": param_and_grad[0]}
+            attrs = {"multi_precision": find_master}
 
-        attrs = {"multi_precision": find_master}
+            if find_master:
+                inputs["MasterParam"] = master_weight
+                outputs["MasterParamOut"] = master_weight
 
-        if find_master:
-            inputs["MasterParam"] = master_weight
-            outputs["MasterParamOut"] = master_weight
+            sgd_op = block.append_op(
+                type=self.type,
+                inputs=inputs,
+                outputs=outputs,
+                attrs=attrs,
+                stop_gradient=True,
+            )
 
-        sgd_op = block.append_op(type=self.type,
-                                 inputs=inputs,
-                                 outputs=outputs,
-                                 attrs=attrs,
-                                 stop_gradient=True)
-
-        return sgd_op
+            return sgd_op
 
     def _update_param_group(self, parameters):
         parameters = parameters.get('params')

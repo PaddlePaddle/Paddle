@@ -44,8 +44,8 @@ namespace details {
 // all variable in each devices.
 // The outside vector is the device vector. Each element of this vector is a
 // map from variable name to variables. The variables, who have the same name,
-// will have a differsent version. The offset in the
-// `std::vector<VarHandle*>` is the version of varaibles.
+// will have a different version. The offset in the
+// `std::vector<VarHandle*>` is the version of variables.
 typedef std::vector<std::unordered_map<std::string, std::vector<VarHandle *>>>
     GraphVars;
 constexpr char kGraphVars[] = "vars";
@@ -88,7 +88,7 @@ inline bool IsOpRole(const OpDesc &op, OpRole role) {
   const auto &attrs = op.GetAttrMap();
   auto iter = attrs.find(OpProtoAndCheckerMaker::OpRoleAttrName());
   if (iter == attrs.end()) return false;
-  return static_cast<bool>(BOOST_GET_CONST(int, iter->second) &
+  return static_cast<bool>(PADDLE_GET_CONST(int, iter->second) &
                            static_cast<int>(role));
 }
 
@@ -96,13 +96,15 @@ inline std::vector<std::string> GetOpRoleVarsOrEmpty(const OpDesc &op) {
   const auto &attrs = op.GetAttrMap();
   auto iter = attrs.find(OpProtoAndCheckerMaker::OpRoleVarAttrName());
   if (iter == attrs.end()) return {};
-  auto &ret = BOOST_GET_CONST(std::vector<std::string>, iter->second);
+  auto &ret = PADDLE_GET_CONST(std::vector<std::string>, iter->second);
   PADDLE_ENFORCE_EQ(
-      ret.size() % 2, 0,
+      ret.size() % 2,
+      0,
       platform::errors::InvalidArgument(
           "The size of attribute %s must be an even number, but got %d",
-          OpProtoAndCheckerMaker::OpRoleVarAttrName(), ret.size()));
-  return BOOST_GET_CONST(std::vector<std::string>, iter->second);
+          OpProtoAndCheckerMaker::OpRoleVarAttrName(),
+          ret.size()));
+  return PADDLE_GET_CONST(std::vector<std::string>, iter->second);
 }
 
 bool IsDataParallelInferenceGraph(const ir::Graph &graph);
@@ -115,7 +117,8 @@ bool HasDropLastReadOp(const ir::Graph &graph);
 bool HasKeepLastReadOp(const ir::Graph &graph);
 
 template <typename T>
-void CopyGraphAttrIfExists(const ir::Graph &src, ir::Graph *dst,
+void CopyGraphAttrIfExists(const ir::Graph &src,
+                           ir::Graph *dst,
                            const std::string &name) {
   if (src.Has(name)) {
     auto &attr = src.Get<T>(name);

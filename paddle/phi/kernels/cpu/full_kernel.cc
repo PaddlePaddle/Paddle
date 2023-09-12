@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/impl/full_whit_tensor_kernel_impl.h"
 
 namespace phi {
 
@@ -32,7 +33,7 @@ template <typename T, typename Context>
 void FullKernel(const Context& dev_ctx,
                 const IntArray& shape,
                 const Scalar& val,
-                DataType dtype,
+                DataType dtype UNUSED,
                 DenseTensor* out) {
   out->Resize(phi::make_ddim(shape.GetData()));
   FullValue<T>(dev_ctx, out, val.to<T>());
@@ -40,11 +41,11 @@ void FullKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void FullLikeKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
+                    const DenseTensor& x UNUSED,
                     const Scalar& val,
-                    DataType dtype,
+                    DataType dtype UNUSED,
                     DenseTensor* out) {
-  auto value = val.to<float>();
+  auto value = val.to<double>();
   using CommonType = typename std::common_type<
       float,
       typename std::conditional<std::is_same<T, phi::dtype::float16>::value,
@@ -80,6 +81,18 @@ void FullLikeKernel(const Context& dev_ctx,
   FullValue<T>(dev_ctx, out, value);
 }
 
+template <typename T, typename Context>
+void FullIntArrayKernel(const Context& dev_ctx,
+                        const IntArray& val,
+                        DataType dtype UNUSED,
+                        DenseTensor* out) {
+  out->Resize(phi::make_ddim({static_cast<int64_t>(val.GetData().size())}));
+  T* out_data = dev_ctx.template Alloc<T>(out);
+  for (size_t i = 0; i < val.GetData().size(); ++i) {
+    out_data[i] = static_cast<T>(val.GetData()[i]);
+  }
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(full,
@@ -88,6 +101,7 @@ PD_REGISTER_KERNEL(full,
                    phi::FullKernel,
                    float,
                    double,
+                   int8_t,
                    uint8_t,
                    int16_t,
                    int,
@@ -108,6 +122,32 @@ PD_REGISTER_KERNEL(full_like,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
+
+PD_REGISTER_KERNEL(
+    full_int_array, CPU, ALL_LAYOUT, phi::FullIntArrayKernel, int, int64_t) {}
+
+PD_REGISTER_KERNEL(full_with_tensor,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::FullWithTensorKernel,
+                   float,
+                   double,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
 }

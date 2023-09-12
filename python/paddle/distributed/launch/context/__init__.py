@@ -17,13 +17,11 @@ from paddle.distributed.launch import plugins
 from .node import Node
 from .status import Status
 from .args_envs import parse_args, fetch_envs, env_args_mapping
-import six
 
 import logging
 
 
-class Context(object):
-
+class Context:
     def __init__(self, enable_plugin=True):
         self.args, self.unknown_args = parse_args()
         self.envs = fetch_envs()
@@ -40,41 +38,41 @@ class Context(object):
 
         if enable_plugin:
             self._enable_plugin()
+        self.max_time_per_task = -1
+        self.run_best = False
 
     def print(self):
         self.logger.info("-----------  Configuration  ----------------------")
-        for arg, value in sorted(six.iteritems(vars(self.args))):
-            self.logger.info("%s: %s" % (arg, value))
+        for arg, value in sorted(vars(self.args).items()):
+            self.logger.info(f"{arg}: {value}")
         self.logger.info("--------------------------------------------------")
 
     def is_legacy_mode(self):
         if self.args.legacy:
             return True
 
-        if len(self.unknown_args) > 0:
-            self.logger.warning("Compatible mode enable with args {}".format(
-                self.unknown_args))
-            return True
-
-        legacy_env_list = [
-            'DISTRIBUTED_TRAINER_ENDPOINTS',
-            'PADDLE_ELASTIC_JOB_ID',
-            'FLAGS_START_PORT',
-        ]
-
-        for env in legacy_env_list:
-            if env in self.envs:
-                self.logger.warning(
-                    "ENV {} is deprecated, legacy launch enable".format(env))
-                return True
-
         if self.args.master:
             return False
 
+        if len(self.unknown_args) > 0:
+            self.logger.warning(
+                f"Compatible mode enable with args {self.unknown_args}"
+            )
+            return True
+
+        return False
+
+    def is_auto_tuner_mode(self):
+        if self.args.auto_tuner_json:
+            return True
         return False
 
     def get_envs(self):
         return self.envs.copy()
+
+    def set_envs(self, env={}):
+        env = {k: v for k, v in env.items() if isinstance(v, str)}
+        self.envs.update(env)
 
     def _enable_plugin(self):
         for pl in plugins.enabled_plugins:
@@ -84,7 +82,8 @@ class Context(object):
         logger = logging.getLogger("LAUNCH")
         logger.setLevel(self.args.log_level.upper() or level)
         formatter = logging.Formatter(
-            fmt='%(name)s %(levelname)s %(asctime)s %(message)s')
+            fmt='%(name)s %(levelname)s %(asctime)s %(message)s'
+        )
         ch = logging.StreamHandler()
         ch.setFormatter(formatter)
         logger.addHandler(ch)
@@ -98,5 +97,9 @@ class Context(object):
 
     def set_env_in_args(self):
         for k, v in env_args_mapping.items():
+            attr, attr_type = v
             if k in self.envs:
-                setattr(self.args, v, self.envs[k])
+                print(
+                    f"LAUNCH WARNNING args {attr} will be overridden by env: {k} value: {self.envs[k]}"
+                )
+                setattr(self.args, attr, attr_type(self.envs[k]))

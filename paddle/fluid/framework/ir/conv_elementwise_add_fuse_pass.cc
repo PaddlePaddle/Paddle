@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/conv_elementwise_add_fuse_pass.h"
-
+#include "paddle/fluid/framework/ir/cutlass_teller.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -116,12 +116,25 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
     new_op_desc.SetOutput("Output", {output_name});
     new_op_desc.SetAttr("is_test", true);
     new_op_desc.SetAttr("use_cudnn", false);
+
+    bool is_fp16_precision =
+        static_cast<phi::DataType>(Get<int>("model_precision")) ==
+            phi::DataType::FLOAT16 ||
+        Get<bool>("enable_gpu_mixed");
+    bool cutlass_enable = Get<bool>("use_cutlass");
+    auto* scope = param_scope();
+    bool cutlass_can_fuse = CutlassTeller::Instance()->CbaCanSupport(
+        conv_op->Op(), scope, act_type, Get<int>("gpu_device_id"));
+    if (cutlass_can_fuse && cutlass_enable && is_fp16_precision) {
+      new_op_desc.SetAttr("use_cutlass", true);
+    }
+
     auto* elementwise_add_op_desc = elementwise_add_op->Op();
     auto out_threshold_attr =
         elementwise_add_op_desc->GetNullableAttr("out_threshold");
     // set the out_threshold of the elementwise add op to be the out_threshold
     // of the conv2d_fusion
-    if (out_threshold_attr.which()) {
+    if (out_threshold_attr.index()) {
       new_op_desc.SetAttr("out_threshold", out_threshold_attr);
     }
     new_op_desc.Flush();
@@ -131,7 +144,8 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // Link inputs and outputs.
     PADDLE_ENFORCE_NE(
-        subgraph.count(x), 0,
+        subgraph.count(x),
+        0,
         platform::errors::NotFound("Detector did not find input x of conv2d."));
     auto* conv_in_node = subgraph.at(x);
 

@@ -22,9 +22,16 @@ namespace operators {
 // constructor and init
 template <typename T>
 FusedTransformerEncoderLayer<T>::FusedTransformerEncoderLayer(
-    int batch_size_, int max_seq_len_, int dim_embed_, int dim_feedforward_,
-    int num_head_, float dropout_, float act_dropout_, float attn_dropout_,
-    std::string act_method_, bool normalize_pre_or_post_) {
+    int batch_size_,
+    int max_seq_len_,
+    int dim_embed_,
+    int dim_feedforward_,
+    int num_head_,
+    float dropout_,
+    float act_dropout_,
+    float attn_dropout_,
+    std::string act_method_,
+    bool normalize_pre_or_post_) {
   // configurations
   batch_size = batch_size_;
   max_seq_len = max_seq_len_;
@@ -41,14 +48,22 @@ FusedTransformerEncoderLayer<T>::FusedTransformerEncoderLayer(
   normalize_pre_or_post = normalize_pre_or_post_;
 
   // init attn
-  fused_attn =
-      new FusedAttention<T>(batch_size, max_seq_len, dim_embed, num_head,
-                            dropout, attn_dropout, normalize_pre_or_post);
+  fused_attn = new FusedAttention<T>(batch_size,
+                                     max_seq_len,
+                                     dim_embed,
+                                     num_head,
+                                     dropout,
+                                     attn_dropout,
+                                     normalize_pre_or_post);
 
   // init ffn
-  fused_ffn =
-      new FusedFFN<T>(batch_size, max_seq_len, dim_embed, dim_feedforward_,
-                      act_dropout, act_method, normalize_pre_or_post);
+  fused_ffn = new FusedFFN<T>(batch_size,
+                              max_seq_len,
+                              dim_embed,
+                              dim_feedforward_,
+                              act_dropout,
+                              act_method,
+                              normalize_pre_or_post);
 }
 
 // deconstructor
@@ -73,8 +88,11 @@ void FusedTransformerEncoderLayer<T>::ComputeBackward() {}
 
 // constructor and init
 template <typename T>
-FusedAttention<T>::FusedAttention(int batch_size_, int max_seq_len_,
-                                  int dim_embed_, int num_head_, float dropout_,
+FusedAttention<T>::FusedAttention(int batch_size_,
+                                  int max_seq_len_,
+                                  int dim_embed_,
+                                  int num_head_,
+                                  float dropout_,
                                   float attn_dropout_,
                                   bool normalize_pre_or_post_) {
   // configurations
@@ -108,9 +126,13 @@ void FusedAttention<T>::ComputeBackward() {}
 
 // constructor and init
 template <typename T>
-FusedFFN<T>::FusedFFN(int batch_size_, int max_seq_len_, int dim_embed_,
-                      int dim_feedforward_, float act_dropout_,
-                      std::string act_method_, bool normalize_pre_or_post_) {
+FusedFFN<T>::FusedFFN(int batch_size_,
+                      int max_seq_len_,
+                      int dim_embed_,
+                      int dim_feedforward_,
+                      float act_dropout_,
+                      std::string act_method_,
+                      bool normalize_pre_or_post_) {
   batch_size = batch_size_;
   max_seq_len = max_seq_len_;
   dim_embed = dim_embed_;
@@ -134,9 +156,15 @@ void FusedFFN<T>::ComputeBackward() {}
 
 // init
 template <typename T>
-FusedMHA<T>::FusedMHA(int batch_size_, int max_seq_len_, int dim_embed_,
-                      int num_head_, float dropout_, bool is_test_,
-                      uint64_t seed_, uint64_t* seqlen_, uint64_t* cu_seqlen_) {
+FusedMHA<T>::FusedMHA(int batch_size_,
+                      int max_seq_len_,
+                      int dim_embed_,
+                      int num_head_,
+                      float dropout_,
+                      bool is_test_,
+                      uint64_t seed_,
+                      uint64_t* seqlen_,
+                      uint64_t* cu_seqlen_) {
   batch_size = batch_size_;
   max_seq_len = max_seq_len_;
   dim_embed = dim_embed_;
@@ -156,7 +184,8 @@ void FusedMHA<T>::ComputeForward(T* output, T* softmax_mask) {}
 
 // compute backward
 template <typename T>
-void FusedMHA<T>::ComputeBackward(const T* grad_output, T* softmax_mask,
+void FusedMHA<T>::ComputeBackward(const T* grad_output,
+                                  T* softmax_mask,
                                   T* grad_x) {}
 }  // namespace operators
 }  // namespace paddle

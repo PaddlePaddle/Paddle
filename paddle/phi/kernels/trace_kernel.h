@@ -18,6 +18,25 @@
 
 namespace phi {
 
+/**
+ * @brief Trace Kernel.
+ *        Return the sum along diagonals of the input tensor.
+ *        The behavior of this operator is similar to how `numpy.trace` works.
+ *
+ *        If Input is 2-D, returns the sum of diagonal.
+ *        If Input has larger dimensions, then returns an tensor of diagonals
+ *        sum, diagonals be taken from the 2-D planes specified by dim1 and
+ *        dim2.
+ * @param  ctx      device context
+ * @param  x        The input tensor, from which the diagonals are taken
+ * @param  offset   offset of the diagonal from the main diagonal.
+ *                  Can be bothpositive and negative.
+ * @param  axis1    the first axis of the 2-D planes from which the diagonals
+ *                  should be taken. Can be either positive or negative
+ * @param  axis2    the second axis of the 2-D planes from which the diagonals
+ *                  should be taken. Can be either positive or negative
+ * @param  out      the sum along diagonals of the input tensor
+ */
 template <typename T, typename Context>
 void TraceKernel(const Context& ctx,
                  const DenseTensor& x,

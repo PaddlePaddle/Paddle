@@ -12,10 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/softmax_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
-#include "paddle/phi/kernels/softmax_kernel.h"
 
 namespace phi {
 
@@ -25,6 +27,14 @@ void SoftmaxGPUDNNKernel(const Context& dev_ctx,
                          int axis,
                          DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
+
+  const int rank = x.dims().size();
+  // For 0D Tensor
+  if (rank == 0) {
+    phi::funcs::set_constant(dev_ctx, out, 1.0);
+    return;
+  }
+
   SoftmaxForwardCUDAKernelDriver<T>(dev_ctx, x, axis, out);
 }
 

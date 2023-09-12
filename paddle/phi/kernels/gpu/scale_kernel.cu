@@ -12,30 +12,31 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/scale_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/scale_kernel.h"
 
 namespace phi {
 
-template <typename InT>
+template <typename DataT, typename ParamT>
 struct ScaleFunctor {
-  InT bias;
-  InT scale;
+  ParamT bias;
+  ParamT scale;
   bool bias_after_scale;
 
-  ScaleFunctor(InT scale_data, InT bias_data, bool is_bias_after_sacle)
+  ScaleFunctor(ParamT scale_data, ParamT bias_data, bool is_bias_after_sacle)
       : bias(bias_data),
         scale(scale_data),
         bias_after_scale(is_bias_after_sacle) {}
 
-  __device__ __forceinline__ InT operator()(const InT x) const {
+  __device__ __forceinline__ DataT operator()(const DataT x) const {
     if (bias_after_scale) {
-      return scale * x + bias;
+      return static_cast<DataT>(scale * static_cast<ParamT>(x) + bias);
     } else {
-      return scale * (x + bias);
+      return static_cast<DataT>(scale * (static_cast<ParamT>(x) + bias));
     }
   }
 };
@@ -47,16 +48,21 @@ void ScaleKernel(const Context& dev_ctx,
                  float bias,
                  bool bias_after_scale,
                  DenseTensor* out) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   std::vector<const DenseTensor*> inputs;
   std::vector<DenseTensor*> outputs;
   inputs.emplace_back(&x);
   outputs.emplace_back(out);
   dev_ctx.template Alloc<T>(out);
+  if (x.numel() <= 0 || (!x.IsInitialized())) {
+    return;
+  }
   phi::funcs::ElementwiseKernel<T>(
       dev_ctx,
       inputs,
       &outputs,
-      ScaleFunctor<T>(scale.to<T>(), static_cast<T>(bias), bias_after_scale));
+      ScaleFunctor<T, MT>(
+          scale.to<MT>(), static_cast<MT>(bias), bias_after_scale));
 }
 
 }  // namespace phi
@@ -73,4 +79,6 @@ PD_REGISTER_KERNEL(scale,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

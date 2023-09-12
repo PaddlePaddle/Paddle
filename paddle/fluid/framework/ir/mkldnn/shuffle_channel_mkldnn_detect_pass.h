@@ -27,7 +27,7 @@ class Graph;
 class ShuffleChannelMKLDNNDetectPass : public FusePassBase {
  public:
   ShuffleChannelMKLDNNDetectPass();
-  virtual ~ShuffleChannelMKLDNNDetectPass() {}
+  virtual ~ShuffleChannelMKLDNNDetectPass() = default;
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;

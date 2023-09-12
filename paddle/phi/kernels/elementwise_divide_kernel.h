@@ -20,13 +20,6 @@
 namespace phi {
 
 template <typename T, typename Context>
-void DivideRawKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const DenseTensor& y,
-                     int axis,
-                     DenseTensor* out);
-
-template <typename T, typename Context>
 void DivideKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,

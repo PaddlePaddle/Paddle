@@ -14,7 +14,7 @@
 
 #pragma once
 
-#if !defined(_WIN32) && !defined(__APPLE__)
+#if !defined(_WIN32)
 
 #include "paddle/phi/capi/include/c_data_type.h"
 
@@ -24,7 +24,7 @@ extern "C" {
 
 typedef struct PD_Tensor PD_Tensor;
 
-PD_DataType PD_TensorGetDataType(const PD_Tensor *tensor, PD_Status *status);
+PD_DataType PD_TensorGetPDDataType(const PD_Tensor *tensor, PD_Status *status);
 
 PD_DataLayout PD_TensorGetDataLayout(const PD_Tensor *tensor,
                                      PD_Status *status);
@@ -81,6 +81,10 @@ void PD_TensorShareDataWith(PD_Tensor *dst,
 void PD_TensorShareLoDWith(PD_Tensor *dst,
                            const PD_Tensor *src,
                            PD_Status *status);
+
+PD_Tensor *PD_OptionalTensorGetPointer(PD_Tensor *tensor);
+
+PD_List PD_TensorVectorToList(PD_Tensor *tensor);
 
 #ifdef __cplusplus
 }  // extern "C"

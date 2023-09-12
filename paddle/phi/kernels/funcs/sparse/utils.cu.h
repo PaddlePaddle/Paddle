@@ -26,6 +26,19 @@ __global__ void DistanceKernel(const T* start, const T* end, T* distance) {
   }
 }
 
+inline __device__ bool SetBits(const int value, int* ptr) {
+  const int index = value >> 5;
+  const int mask = 1 << (value & 31);
+  const int old = atomicOr(ptr + index, mask);
+  return (mask & old) != 0;
+}
+
+inline __device__ bool TestBits(const int value, const int* ptr) {
+  const int index = value >> 5;
+  const int mask = 1 << (value & 31);
+  return (mask & ptr[index]) != 0;
+}
+
 }  // namespace sparse
 }  // namespace funcs
 }  // namespace phi

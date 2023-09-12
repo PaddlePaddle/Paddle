@@ -13,46 +13,68 @@
 // limitations under the License.
 
 #pragma once
-#include <map>
+
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/jit/ast.h"
-#include "paddle/fluid/jit/base_function.h"
-#include "paddle/fluid/jit/compilation_unit.h"
-#include "paddle/fluid/jit/exector_function.h"
-#include "paddle/fluid/jit/object.h"
-#include "paddle/fluid/jit/pe_function.h"
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/place.h"
+
+#include "function.h"  //NOLINT
 
 namespace paddle {
+
+namespace framework {
+class Variable;
+}  // namespace framework
+
 namespace jit {
-using Variable = paddle::framework::Variable;
-using VariableNameMap = std::map<std::string, Variable>;
+class CompilationUnit;
+class FunctionInfo;
+
 using DenseTensor = phi::DenseTensor;
+using Tensor = paddle::Tensor;
+using Variable = paddle::framework::Variable;
+using VariableMap = std::unordered_map<std::string, std::shared_ptr<Variable>>;
+using FunctionInfoMap =
+    std::unordered_map<std::string, std::shared_ptr<FunctionInfo>>;
 
 class Layer {
  public:
-  // TODO(dev): Make vector<string>, num_slot as in argument
-  // Layer(const std::shared_ptr<ClassType>& type) : obj_(type, /*num_slot*/ 0U)
-  // {}
-  Layer(
-      const std::vector<std::string>& func_names,
-      const std::vector<framework::ProgramDesc>& program_descs,
-      const std::vector<std::vector<std::string>>& param_names_for_each_program,
-      const VariableNameMap& params_dict);
+  Layer(const std::shared_ptr<VariableMap>& params_map,
+        const std::shared_ptr<VariableMap>& attrs_map_,
+        const FunctionInfoMap& info_map,
+        const phi::Place& place);
 
-  // TODO(dev): make it as const function
-  std::shared_ptr<BaseFunction> GetFunction(const std::string& name);
+  jit::Function Function(const std::string& name) const;
 
-  std::vector<Variable> forward(const VariableNameMap& inputs);
+  template <typename T>
+  T Attribute(const std::string& name) const;
+
+  std::vector<Tensor> forward(const std::vector<Tensor>& inputs);
+
+  std::vector<DenseTensor> forward(const std::vector<DenseTensor>& inputs);
+
+  void to(const phi::Place& place);
+
+  void SetEngine(const std::string& name,
+                 const std::shared_ptr<BaseEngine>& engine);
+
+  const std::shared_ptr<jit::FunctionInfo>& FunctionInfo(
+      const std::string& name) const;
+
+  std::vector<std::string> FunctionNames() const;
+
+  std::shared_ptr<Layer> Clone(void* stream = nullptr);
 
  private:
-  // internal::Object obj_;
-  // std::vector<framework::ProgramDesc> all_program_desc_;
-  // std::vector<std::vector<std::string>> param_name_for_each_program_;
-  // std::vector<Variable> all_param_;
-  std::map<std::string, std::shared_ptr<BaseFunction>> function_dict;
+  std::shared_ptr<VariableMap> params_map_;
+  std::shared_ptr<VariableMap> attrs_map_;
+  FunctionInfoMap info_map_;
+  phi::Place place_;
+  std::shared_ptr<CompilationUnit> unit_;
 };
 
 }  // namespace jit

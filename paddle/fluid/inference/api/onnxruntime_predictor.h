@@ -21,8 +21,6 @@
 
 #include "onnxruntime_c_api.h"    // NOLINT
 #include "onnxruntime_cxx_api.h"  // NOLINT
-#include "paddle/fluid/framework/naive_executor.h"
-#include "paddle/fluid/framework/op_compatible_info.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
@@ -94,13 +92,35 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   /// \param[in] AnalysisConfig config
   ///
   explicit ONNXRuntimePredictor(const AnalysisConfig &config)
-      : config_(config), env_(ORT_LOGGING_LEVEL_WARNING, "onnx") {
+      : env_(std::make_shared<Ort::Env>(ORT_LOGGING_LEVEL_WARNING,
+                                        "paddle-ort")),
+        session_(nullptr),
+        binding_(nullptr),
+        config_(config) {
+    predictor_id_ = inference::GetUniqueId();
+  }
+  ///
+  /// \brief Clone a ONNXRuntime Predictor object
+  ///
+  /// \param[in] AnalysisConfig config
+  ///
+  explicit ONNXRuntimePredictor(const AnalysisConfig &config,
+                                std::shared_ptr<Ort::Env> env,
+                                std::shared_ptr<Ort::Session> session)
+      : env_(env), session_(session), binding_(nullptr), config_(config) {
     predictor_id_ = inference::GetUniqueId();
   }
   ///
   /// \brief Destroy the ONNXRuntime Predictor object
   ///
   ~ONNXRuntimePredictor();
+
+  ///
+  /// \brief Initialize ORT Binding
+  ///
+  /// \return Whether the init function executed successfully
+  ///
+  bool InitBinding();
 
   ///
   /// \brief Initialize predictor
@@ -176,6 +196,8 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   ///
   std::unique_ptr<PaddlePredictor> Clone(void *stream = nullptr) override;
 
+  std::shared_ptr<framework::Scope> scope_;
+
  protected:
   const void *GetDeviceContexts() const override;
 
@@ -191,14 +213,24 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   ///
   bool FindONNXDesc(const std::string &name, bool is_input);
 
- private:
-  AnalysisConfig config_;
+  /// \brief get the Ort Value(input Tensor).
+  ///
+  /// \param[in] desc ONNXDesce(name、shape、dtype)
+  ///
+  /// \param[in] device_name "cpu" or "gpu" of device
+  ///
+  /// \return get a Ort::Value
+  ///
+  Ort::Value GetOrtValue(const ONNXDesc &desc, const char *device_name);
 
+ private:
   // ONNXRuntime
-  Ort::Env env_;
-  Ort::Session session_{nullptr};
+  std::shared_ptr<Ort::Env> env_;
+  std::shared_ptr<Ort::Session> session_{nullptr};
   std::shared_ptr<Ort::IoBinding> binding_;
 
+  AnalysisConfig config_;
+  std::mutex clone_mutex_;
   platform::Place place_;
   std::vector<ONNXDesc> input_desc_;
   std::vector<ONNXDesc> output_desc_;

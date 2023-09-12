@@ -44,7 +44,8 @@ class MemOptVarInfo {
 
   void SetRefCnt(size_t ref_cnt) {
     PADDLE_ENFORCE_GE(
-        ref_cnt, 1,
+        ref_cnt,
+        1,
         platform::errors::InvalidArgument(
             "Reference count(%d) must be larger than or equal to 1.", ref_cnt));
     ref_cnt_ = ref_cnt;

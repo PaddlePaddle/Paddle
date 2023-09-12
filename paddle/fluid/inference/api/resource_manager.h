@@ -22,6 +22,8 @@
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/cpu/forwards.h"
+#include "paddle/phi/common/place.h"
+#include "unsupported/Eigen/CXX11/Tensor"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
@@ -52,6 +54,16 @@ class GPUContextResource {
  public:
   explicit GPUContextResource(const phi::Place& place, void* stream);
   ~GPUContextResource();
+  phi::Place Place() const;
+
+  std::function<phi::dnnHandle_t()> GetDnnHandleCreator();
+  std::function<phi::blasHandle_t()> GetBlasHandleCreator();
+  std::function<phi::blasHandle_t()> GetBlasTensorCoreHandleCreator();
+  std::function<phi::blasHandle_t()> GetBlasTF32TensorCoreHandleCreator();
+  std::function<phi::blasLtHandle_t()> GetBlasLtHandleCreator();
+  std::function<phi::solverHandle_t()> GetSolverDnHandleCreator();
+  std::function<phi::sparseHandle_t()> GetSparseHandleCreator();
+  std::function<Eigen::GpuDevice*()> GetGpuEigenDeviceCreator();
 
   gpuStream_t GetStream() const;
   dnnHandle_t GetDnnHandle() const;
@@ -77,7 +89,6 @@ class GPUContextResource {
   void InitGpuEigenDevice();
   void InitDnnHanlde();
   void DestroyDnnHandle();
-  void InitBlasHandle();
   void DestroyBlasHandle();
   void InitBlasLtHandle();
   void DestroyBlasLtHandle();
@@ -130,14 +141,14 @@ class ResourceManager {
   std::mutex cpu_mutex_;
   std::unique_ptr<CPUContextResource> cpu_resource_{nullptr};
 
-// GPU Resource
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
+  // GPU Resource
  public:
   void* InitGPUResource(const phi::Place& place, void* stream);
   void DestroyGPUResource(void* stream);
   GPUContextResource* GetGPUResource(void* stream) const;
   int RefCount(void* stream) const;
+  void GpuResourceSwitchStream(void* old_stream, void* new_stream);
 
  private:
   void Decrease(void* stream);

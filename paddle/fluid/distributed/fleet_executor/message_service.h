@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
+#if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_PSLIB)
 #pragma once
 
 #include "brpc/server.h"
@@ -26,11 +26,13 @@ class MessageServiceImpl : public MessageService {
   virtual ~MessageServiceImpl() {}
   virtual void ReceiveInterceptorMessage(
       google::protobuf::RpcController* control_base,
-      const InterceptorMessage* request, InterceptorResponse* response,
+      const InterceptorMessage* request,
+      InterceptorResponse* response,
       google::protobuf::Closure* done);
   virtual void IncreaseBarrierCount(
       google::protobuf::RpcController* control_base,
-      const InterceptorMessage* request, InterceptorResponse* response,
+      const InterceptorMessage* request,
+      InterceptorResponse* response,
       google::protobuf::Closure* done);
 };
 

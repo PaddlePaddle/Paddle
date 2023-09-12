@@ -25,7 +25,7 @@ std::string InsertIndentationIntoEachLine(const std::string &str) {
   std::ostringstream sout;
   size_t start_pos = 0;
   size_t end_pos = 0;
-  while ((end_pos = str.find_first_of("\n", start_pos)) != std::string::npos) {
+  while ((end_pos = str.find_first_of('\n', start_pos)) != std::string::npos) {
     sout << "    " << str.substr(start_pos, end_pos - start_pos + 1);
     start_pos = end_pos + 1;
   }
@@ -33,7 +33,8 @@ std::string InsertIndentationIntoEachLine(const std::string &str) {
   return sout.str();
 }
 
-void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
+void InsertCallStackInfo(const std::string &type,
+                         const AttributeMap &attrs,
                          platform::EnforceNotMet *exception) {
   if (attrs.count("sub_block") != 0) {
     return;
@@ -42,7 +43,7 @@ void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
   const std::vector<std::string> *callstack = nullptr;
   auto iter = attrs.find(OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
   if (iter != attrs.end()) {
-    callstack = &BOOST_GET_CONST(std::vector<std::string>, iter->second);
+    callstack = &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
     if (callstack->empty()) callstack = nullptr;
   }
 

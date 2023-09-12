@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/init.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 
 namespace paddle {
@@ -57,6 +58,23 @@ void RegisterAllCustomOperator() {
                    "Therefore, we will not repeat the registration here.";
     }
   }
+}
+
+void InitGflagsFromEnv() {
+  // support set gflags from environment.
+  std::vector<std::string> gflags;
+  const phi::ExportedFlagInfoMap &env_map = phi::GetExportedFlagInfoMap();
+  std::ostringstream os;
+  for (auto &pair : env_map) {
+    os << pair.second.name << ",";
+  }
+  std::string tryfromenv_str = os.str();
+  if (!tryfromenv_str.empty()) {
+    tryfromenv_str.pop_back();
+    tryfromenv_str = "--tryfromenv=" + tryfromenv_str;
+    gflags.push_back(tryfromenv_str);
+  }
+  framework::InitGflags(gflags);
 }
 
 }  // namespace inference

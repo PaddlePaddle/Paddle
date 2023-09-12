@@ -17,11 +17,14 @@
 namespace paddle {
 namespace framework {
 
-void InterpreterCoreFastGarbageCollector::Add(
-    Variable* var, platform::DeviceEvent* event,
-    const platform::DeviceContext* ctx) {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "Not implemented for InterpreterCoreFastGarbageCollector."));
+void InterpreterCoreFastGarbageCollector::Add(Variable* var,
+                                              const Instruction&) {
+  Add(var);
+}
+
+void InterpreterCoreFastGarbageCollector::Add(Variable* var,
+                                              const InstructionBase*) {
+  Add(var);
 }
 
 void InterpreterCoreFastGarbageCollector::Add(Variable* var) {
@@ -29,8 +32,8 @@ void InterpreterCoreFastGarbageCollector::Add(Variable* var) {
     return;
   }
 
-  if (var->IsType<LoDTensor>()) {
-    Add(var->GetMutable<LoDTensor>()->MoveMemoryHolder());
+  if (var->IsType<phi::DenseTensor>()) {
+    Add(var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
   } else if (var->IsType<
                  operators::reader::
                      OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
@@ -69,7 +72,7 @@ void InterpreterCoreFastGarbageCollector::Add(Garbage garbage) {
     std::unique_ptr<GarbageQueue> pending_delete_garbages;
     {  // lock guard
       std::lock_guard<memory::SpinLock> guard(spinlock_);
-      cur_memory_size_ += garbage->size();
+      cur_memory_size_ += static_cast<int64_t>(garbage->size());
       garbages_->push_back(std::move(garbage));
 
       if (cur_memory_size_ >= max_memory_size_) {

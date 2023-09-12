@@ -28,6 +28,10 @@ CUSPARSE_ROUTINE_EACH(DEFINE_WRAP);
 CUSPARSE_ROUTINE_EACH_R2(DEFINE_WRAP);
 #endif
 
+#ifdef CUSPARSE_ROUTINE_EACH_R3
+CUSPARSE_ROUTINE_EACH_R3(DEFINE_WRAP);
+#endif
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

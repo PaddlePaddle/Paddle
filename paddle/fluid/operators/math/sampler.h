@@ -34,7 +34,8 @@ class Sampler {
  public:
   explicit Sampler(int64_t range, unsigned int seed = 0UL) : range_(range) {
     PADDLE_ENFORCE_GT(
-        range, 0,
+        range,
+        0,
         platform::errors::InvalidArgument(
             "Range should be greater than 0, but recevied %d.", range));
     if (seed == 0) {
@@ -107,8 +108,10 @@ class LogUniformSampler : public Sampler {
  */
 class CustomSampler : public Sampler {
  public:
-  explicit CustomSampler(int64_t range, const float* probabilities,
-                         const int* alias, const float* alias_probabilities,
+  explicit CustomSampler(int64_t range,
+                         const float* probabilities,
+                         const int* alias,
+                         const float* alias_probabilities,
                          unsigned int seed = 0UL);
 
   ~CustomSampler() override {}

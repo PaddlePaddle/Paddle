@@ -26,6 +26,124 @@ function(find_register FILENAME PATTERN OUTPUT)
       PARENT_SCOPE)
 endfunction()
 
+function(find_phi_register FILENAME ADD_PATH PATTERN)
+  # set op_name to OUTPUT
+  file(READ ${FILENAME} CONTENT)
+  string(
+    REGEX
+      MATCH
+      "${PATTERN}\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z]*,[ \\\t\r\n]*[A-Z_]*"
+      register
+      "${CONTENT}")
+  if(NOT register STREQUAL "")
+    string(REPLACE "${PATTERN}(" "" register "${register}")
+    string(REPLACE "," ";" register "${register}")
+    string(REGEX REPLACE "[ \\\t\r\n]+" "" register "${register}")
+    string(REGEX REPLACE "//cuda_only" "" register "${register}")
+    list(GET register 0 kernel_name)
+    list(GET register 1 kernel_backend)
+    list(GET register 2 kernel_layout)
+
+    file(
+      APPEND ${ADD_PATH}
+      "PD_DECLARE_KERNEL(${kernel_name}, ${kernel_backend}, ${kernel_layout});\n"
+    )
+  endif()
+endfunction()
+
+# Just for those gpu kernels locating at "fluid/operators/", such as 'class_center_sample_op.cu'.
+# Add other file modes if need in the future.
+function(register_cu_kernel TARGET)
+  set(options "")
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS DEPS)
+  cmake_parse_arguments(register_cu_kernel "${options}" "${oneValueArgs}"
+                        "${multiValueArgs}" ${ARGN})
+
+  set(cu_srcs)
+  set(op_common_deps operator op_registry layer common_infer_shape_functions)
+  foreach(cu_src ${register_cu_kernel_SRCS})
+    if(${cu_src} MATCHES ".*\\.cu$")
+      list(APPEND cu_srcs ${cu_src})
+    endif()
+  endforeach()
+  list(LENGTH cu_srcs cu_srcs_len)
+  if(${cu_srcs_len} EQUAL 0)
+    message(
+      FATAL_ERROR
+        "The GPU kernel file of ${TARGET} should contains at least one .cu file"
+    )
+  endif()
+  if(WITH_GPU)
+    nv_library(
+      ${TARGET}
+      SRCS ${cu_srcs}
+      DEPS ${op_library_DEPS} ${op_common_deps})
+  elseif(WITH_ROCM)
+    hip_library(
+      ${TARGET}
+      SRCS ${cu_srcs}
+      DEPS ${op_library_DEPS} ${op_common_deps})
+  endif()
+  set(OP_LIBRARY
+      ${TARGET} ${OP_LIBRARY}
+      CACHE INTERNAL "op libs")
+  foreach(cu_src ${cu_srcs})
+    set(op_name "")
+    # Add PHI Kernel Registry Message
+    find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_KERNEL")
+    find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_STRUCT_KERNEL")
+    find_phi_register(${cu_src} ${pybind_file}
+                      "PD_REGISTER_KERNEL_FOR_ALL_DTYPE")
+    find_register(${cu_src} "REGISTER_OP_CUDA_KERNEL" op_name)
+    if(NOT ${op_name} EQUAL "")
+      file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CUDA);\n")
+    endif()
+  endforeach()
+endfunction()
+
+# Just for those mkldnn kernels locating at "fluid/operators/mkldnn/", such as 'layer_norm_mkldnn_op.cc'.
+# Add other file modes if need in the future.
+function(register_mkldnn_kernel TARGET)
+  set(options "")
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS DEPS)
+  cmake_parse_arguments(register_mkldnn_kernel "${options}" "${oneValueArgs}"
+                        "${multiValueArgs}" ${ARGN})
+
+  set(mkldnn_cc_srcs)
+  set(op_common_deps operator op_registry phi layer
+                     common_infer_shape_functions)
+  foreach(mkldnn_src ${register_mkldnn_kernel_SRCS})
+    if(${mkldnn_src} MATCHES ".*_mkldnn_op.cc$")
+      list(APPEND mkldnn_cc_srcs mkldnn/${mkldnn_src})
+    endif()
+  endforeach()
+  list(LENGTH mkldnn_cc_srcs mkldnn_cc_srcs_len)
+  if(${mkldnn_cc_srcs_len} EQUAL 0)
+    message(
+      FATAL_ERROR
+        "The MKLDNN kernel file of ${TARGET} should contains at least one *.*_mkldnn_op.cc file"
+    )
+  endif()
+  if(WITH_MKLDNN)
+    cc_library(
+      ${TARGET}
+      SRCS ${mkldnn_cc_srcs}
+      DEPS ${op_library_DEPS} ${op_common_deps})
+  endif()
+  set(OP_LIBRARY
+      ${TARGET} ${OP_LIBRARY}
+      CACHE INTERNAL "op libs")
+  foreach(mkldnn_src ${mkldnn_cc_srcs})
+    set(op_name "")
+    find_register(${mkldnn_src} "REGISTER_OP_KERNEL" op_name)
+    if(NOT ${op_name} EQUAL "")
+      file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, MKLDNN);\n")
+    endif()
+  endforeach()
+endfunction()
+
 function(op_library TARGET)
   # op_library is a function to create op library. The interface is same as
   # cc_library. But it handle split GPU/CPU code and link some common library
@@ -37,8 +155,6 @@ function(op_library TARGET)
   set(hip_cc_srcs)
   set(xpu_cc_srcs)
   set(xpu_kp_cc_srcs)
-  set(npu_cc_srcs)
-  set(mlu_cc_srcs)
   set(cudnn_cu_cc_srcs)
   set(miopen_cu_cc_srcs)
   set(cudnn_cu_srcs)
@@ -47,14 +163,8 @@ function(op_library TARGET)
   set(MIOPEN_FILE)
   set(mkldnn_cc_srcs)
   set(MKLDNN_FILE)
-  set(op_common_deps operator op_registry math_function layer
+  set(op_common_deps operator op_registry phi layer
                      common_infer_shape_functions)
-  if(WITH_ASCEND_CL)
-    set(op_common_deps ${op_common_deps} npu_op_runner)
-  endif()
-  if(WITH_MLU)
-    set(op_common_deps ${op_common_deps} mlu_baseop)
-  endif()
 
   # Option `UNITY` is used to specify that operator `TARGET` will compiles with Unity Build.
   set(options UNITY)
@@ -82,9 +192,6 @@ function(op_library TARGET)
         file(RENAME ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.kps
              ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.cu)
         list(APPEND cu_srcs ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.cu)
-      endif()
-      if(WITH_NV_JETSON)
-        list(REMOVE_ITEM cu_srcs "decode_jpeg_op.cu")
       endif()
       if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.part.cu)
         set(PART_CUDA_KERNEL_FILES
@@ -150,18 +257,6 @@ function(op_library TARGET)
         list(APPEND xpu_kp_cc_srcs ${TARGET}.kps)
       endif()
     endif()
-    if(WITH_ASCEND_CL)
-      string(REPLACE "_op" "_op_npu" NPU_FILE "${TARGET}")
-      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${NPU_FILE}.cc)
-        list(APPEND npu_cc_srcs ${NPU_FILE}.cc)
-      endif()
-    endif()
-    if(WITH_MLU)
-      string(REPLACE "_op" "_op_mlu" MLU_FILE "${TARGET}")
-      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${MLU_FILE}.cc)
-        list(APPEND mlu_cc_srcs ${MLU_FILE}.cc)
-      endif()
-    endif()
   else()
     foreach(src ${op_library_SRCS})
       if(WITH_ROCM AND ${src} MATCHES ".*_cudnn_op.cu$")
@@ -188,12 +283,18 @@ function(op_library TARGET)
         list(APPEND xpu_kp_cc_srcs ${src})
       elseif(WITH_XPU_KP AND ${src} MATCHES ".*\\.kps$")
         list(APPEND xpu_kp_cc_srcs ${src})
-      elseif(WITH_ASCEND_CL AND ${src} MATCHES ".*_op_npu.cc$")
-        list(APPEND npu_cc_srcs ${src})
-      elseif(WITH_MLU AND ${src} MATCHES ".*_op_mlu.cc$")
-        list(APPEND mlu_cc_srcs ${src})
       elseif(${src} MATCHES ".*\\.cc$")
         list(APPEND cc_srcs ${src})
+      elseif((WITH_ROCM OR WITH_GPU) AND ${src} MATCHES ".*\\.kps$")
+        string(REPLACE ".kps" ".cu" src_cu ${src})
+        file(COPY ${src} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+        file(RENAME ${CMAKE_CURRENT_BINARY_DIR}/${src}
+             ${CMAKE_CURRENT_BINARY_DIR}/${src_cu})
+        if(WITH_ROCM)
+          list(APPEND hip_srcs ${CMAKE_CURRENT_BINARY_DIR}/${src_cu})
+        else()
+          list(APPEND cu_srcs ${CMAKE_CURRENT_BINARY_DIR}/${src_cu})
+        endif()
       else()
         message(
           FATAL_ERROR
@@ -284,7 +385,7 @@ function(op_library TARGET)
     list(REMOVE_ITEM hip_srcs "eigh_op.cu")
     list(REMOVE_ITEM hip_srcs "lstsq_op.cu")
     list(REMOVE_ITEM hip_srcs "multinomial_op.cu")
-    list(REMOVE_ITEM hip_srcs "decode_jpeg_op.cu")
+    list(REMOVE_ITEM hip_srcs "multiclass_nms3_op.cu")
     hip_library(
       ${TARGET}
       SRCS ${cc_srcs} ${hip_cc_srcs} ${miopen_cu_cc_srcs} ${miopen_cu_srcs}
@@ -296,24 +397,11 @@ function(op_library TARGET)
       SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs} ${xpu_kp_cc_srcs}
       DEPS ${op_library_DEPS} ${op_common_deps})
   else()
-    # deal with CANN version control while registering NPU operators before build
-    if(WITH_ASCEND_CL)
-      if(CANN_VERSION LESS 504000)
-        list(REMOVE_ITEM npu_cc_srcs "multinomial_op_npu.cc")
-        list(REMOVE_ITEM npu_cc_srcs "take_along_axis_op_npu.cc")
-      endif()
-    endif()
     # Unity Build relies on global option `WITH_UNITY_BUILD` and local option `UNITY`.
     if(WITH_UNITY_BUILD AND op_library_UNITY)
       # Combine the cc source files.
-      compose_unity_target_sources(
-        ${UNITY_TARGET}
-        cc
-        ${cc_srcs}
-        ${mkldnn_cc_srcs}
-        ${xpu_cc_srcs}
-        ${npu_cc_srcs}
-        ${mlu_cc_srcs})
+      compose_unity_target_sources(${UNITY_TARGET} cc ${cc_srcs}
+                                   ${mkldnn_cc_srcs} ${xpu_cc_srcs})
       if(TARGET ${UNITY_TARGET})
         # If `UNITY_TARGET` exists, add source files to `UNITY_TARGET`.
         target_sources(${UNITY_TARGET} PRIVATE ${unity_target_cc_sources})
@@ -329,8 +417,7 @@ function(op_library TARGET)
     else()
       cc_library(
         ${TARGET}
-        SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs} ${npu_cc_srcs}
-             ${mlu_cc_srcs}
+        SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs}
         DEPS ${op_library_DEPS} ${op_common_deps})
     endif()
   endif()
@@ -342,8 +429,6 @@ function(op_library TARGET)
   list(LENGTH mkldnn_cc_srcs mkldnn_cc_srcs_len)
   list(LENGTH xpu_cc_srcs xpu_cc_srcs_len)
   list(LENGTH miopen_cu_cc_srcs miopen_cu_cc_srcs_len)
-  list(LENGTH npu_cc_srcs npu_cc_srcs_len)
-  list(LENGTH mlu_cc_srcs mlu_cc_srcs_len)
 
   # Define operators that don't need pybind here.
   foreach(
@@ -371,7 +456,23 @@ function(op_library TARGET)
   foreach(cc_src ${cc_srcs})
     # pybind USE_OP_ITSELF
     set(op_name "")
+    # Add PHI Kernel Registry Message
+    find_phi_register(${cc_src} ${pybind_file} "PD_REGISTER_KERNEL")
+    find_phi_register(${cc_src} ${pybind_file} "PD_REGISTER_STRUCT_KERNEL")
+    find_phi_register(${cc_src} ${pybind_file}
+                      "PD_REGISTER_KERNEL_FOR_ALL_DTYPE")
     find_register(${cc_src} "REGISTER_OPERATOR" op_name)
+    if(NOT ${op_name} EQUAL "")
+      file(APPEND ${pybind_file} "USE_OP_ITSELF(${op_name});\n")
+      # hack: for example, the target in conv_transpose_op.cc is conv2d_transpose, used in mkldnn
+      set(TARGET ${op_name})
+      set(pybind_flag 1)
+    endif()
+
+    # pybind USE_OP_ITSELF
+    set(op_name "")
+    # Add PHI Kernel Registry Message
+    find_register(${cc_src} "REGISTER_ACTIVATION_OP" op_name)
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_ITSELF(${op_name});\n")
       # hack: for example, the target in conv_transpose_op.cc is conv2d_transpose, used in mkldnn
@@ -408,6 +509,11 @@ function(op_library TARGET)
   # message("cu_srcs ${cu_srcs}")
   foreach(cu_src ${cu_srcs})
     set(op_name "")
+    # Add PHI Kernel Registry Message
+    find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_KERNEL")
+    find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_STRUCT_KERNEL")
+    find_phi_register(${cu_src} ${pybind_file}
+                      "PD_REGISTER_KERNEL_FOR_ALL_DTYPE")
     find_register(${cu_src} "REGISTER_OP_CUDA_KERNEL" op_name)
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CUDA);\n")
@@ -421,6 +527,10 @@ function(op_library TARGET)
   foreach(hip_src ${hip_srcs})
     set(op_name "")
     find_register(${hip_src} "REGISTER_OP_CUDA_KERNEL" op_name)
+    find_phi_register(${hip_src} ${pybind_file} "PD_REGISTER_KERNEL")
+    find_phi_register(${hip_src} ${pybind_file} "PD_REGISTER_STRUCT_KERNEL")
+    find_phi_register(${hip_src} ${pybind_file}
+                      "PD_REGISTER_KERNEL_FOR_ALL_DTYPE")
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CUDA);\n")
       set(pybind_flag 1)
@@ -454,6 +564,7 @@ function(op_library TARGET)
       foreach(xpu_src ${xpu_cc_srcs})
         set(op_name "")
         find_register(${xpu_src} "REGISTER_OP_XPU_KERNEL" op_name)
+        find_phi_register(${xpu_src} ${pybind_file} "PD_REGISTER_STRUCT_KERNEL")
         if(NOT ${op_name} EQUAL "")
           file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, XPU);\n")
           set(pybind_flag 1)
@@ -474,33 +585,11 @@ function(op_library TARGET)
     foreach(xpu_kp_src ${xpu_kp_cc_srcs})
       set(op_name "")
       find_register(${xpu_kp_src} "REGISTER_OP_KERNEL" op_name)
+      find_phi_register(${xpu_kp_src} ${pybind_file}
+                        "PD_REGISTER_STRUCT_KERNEL")
       if(NOT ${op_name} EQUAL "")
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, KP);\n")
         message(STATUS "Building KP Target: ${op_name}")
-        set(pybind_flag 1)
-      endif()
-    endforeach()
-  endif()
-
-  # pybind USE_OP_DEVICE_KERNEL for NPU
-  if(WITH_ASCEND_CL AND ${npu_cc_srcs_len} GREATER 0)
-    foreach(npu_src ${npu_cc_srcs})
-      set(op_name "")
-      find_register(${npu_src} "REGISTER_OP_NPU_KERNEL" op_name)
-      if(NOT ${op_name} EQUAL "")
-        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, NPU);\n")
-        set(pybind_flag 1)
-      endif()
-    endforeach()
-  endif()
-
-  # pybind USE_OP_DEVICE_KERNEL for MLU
-  if(WITH_MLU AND ${mlu_cc_srcs_len} GREATER 0)
-    foreach(mlu_src ${mlu_cc_srcs})
-      set(op_name "")
-      find_register(${mlu_src} "REGISTER_OP_MLU_KERNEL" op_name)
-      if(NOT ${op_name} EQUAL "")
-        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, MLU);\n")
         set(pybind_flag 1)
       endif()
     endforeach()
@@ -510,28 +599,7 @@ function(op_library TARGET)
   if(WITH_MKLDNN AND ${mkldnn_cc_srcs_len} GREATER 0)
     # Append first implemented MKLDNN activation operator
     if(${MKLDNN_FILE} STREQUAL "activation_mkldnn_op")
-      file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(relu, MKLDNN);\n")
-    elseif(${MKLDNN_FILE} STREQUAL "conv_mkldnn_op")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN, FP32);\n")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN, S8);\n")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN, U8);\n")
-    elseif(${MKLDNN_FILE} STREQUAL "transpose_mkldnn_op")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(transpose2, MKLDNN, FP32);\n")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(transpose2, MKLDNN, S8);\n")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(transpose2, MKLDNN, U8);\n")
-    elseif(${MKLDNN_FILE} STREQUAL "fc_mkldnn_op")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(fc, MKLDNN, FP32);\n")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(fc, MKLDNN, S8);\n")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(fc, MKLDNN, U8);\n")
+      file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(softplus, MKLDNN);\n")
     else()
       foreach(mkldnn_src ${mkldnn_cc_srcs})
         set(op_name "")
@@ -586,8 +654,6 @@ function(register_operators)
     "*_op.cc")
   string(REPLACE "_mkldnn" "" OPS "${OPS}")
   string(REPLACE "_xpu" "" OPS "${OPS}")
-  string(REPLACE "_npu" "" OPS "${OPS}")
-  string(REPLACE "_mlu" "" OPS "${OPS}")
   string(REPLACE ".cc" "" OPS "${OPS}")
   list(REMOVE_DUPLICATES OPS)
   list(LENGTH register_operators_DEPS register_operators_DEPS_len)
@@ -610,4 +676,59 @@ function(register_operators)
       finish_unity_target(cu)
     endif()
   endif()
+endfunction()
+
+function(prune_pybind_h)
+  set(op_list ${OP_LIST})
+
+  list(APPEND op_list "load_combine")
+  list(APPEND op_list "tensorrt_engine")
+
+  # add fused_op in op_list
+  list(APPEND op_list "fc")
+  list(APPEND op_list "conv2d_fusion")
+  list(APPEND op_list "fusion_seqconv_eltadd_relu")
+  list(APPEND op_list "fusion_seqpool_cvm_concat")
+  list(APPEND op_list "fusion_gru")
+  list(APPEND op_list "fusion_seqexpand_concat_fc")
+  list(APPEND op_list "fusion_repeated_fc_relu")
+  list(APPEND op_list "fusion_squared_mat_sub")
+
+  # add plugin_op in op_list
+  list(APPEND op_list "anchor_generator")
+
+  file(STRINGS ${pybind_file} op_registry_list)
+
+  file(WRITE ${pybind_file_prune} "")
+  file(
+    APPEND ${pybind_file_prune}
+    "// Generated by the paddle/fluid/operators/CMakeLists.txt.  DO NOT EDIT!\n"
+  )
+
+  # add USE_OP_ITSELF for all op in op_list
+  foreach(op_name IN LISTS op_list)
+    file(APPEND ${pybind_file_prune} "USE_OP_ITSELF(${op_name});\n")
+  endforeach()
+
+  foreach(op_registry IN LISTS op_registry_list)
+    if(NOT ${op_registry} EQUAL "")
+      foreach(op_name IN LISTS op_list)
+        string(FIND ${op_registry} "(${op_name})" index1)
+        string(FIND ${op_registry} "(${op_name}," index2)
+        string(FIND ${op_registry} "USE_OP_ITSELF" index3)
+        if(((NOT ${index1} EQUAL "-1") OR (NOT ${index2} EQUAL "-1"))
+           AND (${index3} EQUAL "-1"))
+          file(APPEND ${pybind_file_prune} "${op_registry}\n")
+        endif()
+      endforeach()
+    endif()
+  endforeach()
+
+  file(WRITE ${pybind_file} "")
+  file(STRINGS ${pybind_file_prune} op_registry_list_tmp)
+  foreach(op_name IN LISTS op_registry_list_tmp)
+    if(NOT ${op_name} EQUAL "")
+      file(APPEND ${pybind_file} "${op_name}\n")
+    endif()
+  endforeach()
 endfunction()

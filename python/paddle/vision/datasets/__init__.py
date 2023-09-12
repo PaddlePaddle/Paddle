@@ -21,7 +21,13 @@ from .cifar import Cifar10  # noqa: F401
 from .cifar import Cifar100  # noqa: F401
 from .voc2012 import VOC2012  # noqa: F401
 
-__all__ = [  #noqa
-    'DatasetFolder', 'ImageFolder', 'MNIST', 'FashionMNIST', 'Flowers',
-    'Cifar10', 'Cifar100', 'VOC2012'
+__all__ = [  # noqa
+    'DatasetFolder',
+    'ImageFolder',
+    'MNIST',
+    'FashionMNIST',
+    'Flowers',
+    'Cifar10',
+    'Cifar100',
+    'VOC2012',
 ]

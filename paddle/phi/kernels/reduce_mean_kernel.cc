@@ -22,17 +22,24 @@ namespace phi {
 template <typename T, typename Context>
 void MeanKernel(const Context& dev_ctx,
                 const DenseTensor& x,
-                const std::vector<int64_t>& dims,
+                const IntArray& dims,
                 bool keep_dim,
                 DenseTensor* out) {
-  bool reduce_all = false;
+  bool reduce_all = recompute_reduce_all(x, dims);
   MeanRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    mean, CPU, ALL_LAYOUT, phi::MeanKernel, float, double, bool) {}
+PD_REGISTER_KERNEL(mean,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::MeanKernel,
+                   float,
+                   double,
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(mean,
@@ -44,9 +51,22 @@ PD_REGISTER_KERNEL(mean,
                    bool,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 #endif
 
-#if defined(PADDLE_WITH_XPU_KP)
+#if defined(PADDLE_WITH_XPU_KP) && !defined(PADDLE_WITH_XPU)
 PD_REGISTER_KERNEL(mean, KPS, ALL_LAYOUT, phi::MeanKernel, float) {}
+#endif
+
+#if defined(PADDLE_WITH_DNNL)
+PD_REGISTER_KERNEL(
+    mean, OneDNN, ONEDNN, phi::MeanKernel, float, phi::dtype::bfloat16) {}
+#endif
+
+#if defined(PADDLE_WITH_XPU)
+PD_REGISTER_KERNEL(
+    mean, XPU, ALL_LAYOUT, phi::MeanKernel, float, phi::dtype::float16) {}
 #endif

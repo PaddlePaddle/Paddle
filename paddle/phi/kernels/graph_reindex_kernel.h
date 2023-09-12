@@ -19,13 +19,38 @@
 namespace phi {
 
 template <typename T, typename Context>
+std::shared_ptr<phi::Allocation> FillHashTable(const Context& dev_ctx,
+                                               const T* input,
+                                               int num_input,
+                                               int64_t len_hashtable,
+                                               T* keys,
+                                               int* values,
+                                               int* key_index,
+                                               int* final_nodes_len);
+
+template <typename T, typename Context>
+void ReindexSrc(const Context& dev_ctx,
+                T* edges_src,
+                T* keys,
+                int* values,
+                int64_t num_edges,
+                int64_t table_size);
+
+template <typename T, typename Context>
+void ReindexDst(const Context& dev_ctx,
+                T* reindex_dst_data,
+                int* scan_dst_data,
+                const int* count_data,
+                int num_edge_types,
+                int node_len);
+
+template <typename T, typename Context>
 void GraphReindexKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& neighbors,
                         const DenseTensor& count,
                         const paddle::optional<DenseTensor>& hashtable_value,
                         const paddle::optional<DenseTensor>& hashtable_index,
-                        bool flag_buffer_hashtable,
                         DenseTensor* reindex_src,
                         DenseTensor* reindex_dst,
                         DenseTensor* out_nodes);

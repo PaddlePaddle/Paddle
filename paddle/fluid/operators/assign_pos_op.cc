@@ -12,7 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/assign_pos_op.h"
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -22,29 +24,31 @@ class AssignPosOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("cum_count"), "Input", "cum_count",
-                   "AssignPos");
-    OP_INOUT_CHECK(ctx->HasInput("eff_num_len"), "Input", "eff_num_len",
-                   "AssignPos");
+    OP_INOUT_CHECK(
+        ctx->HasInput("cum_count"), "Input", "cum_count", "AssignPos");
+    OP_INOUT_CHECK(
+        ctx->HasInput("eff_num_len"), "Input", "eff_num_len", "AssignPos");
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "AssignPos");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "AssignPos");
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto cum_count_dtype =
         OperatorWithKernel::IndicateVarDataType(ctx, "cum_count");
     auto X_dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-    PADDLE_ENFORCE_EQ(cum_count_dtype, X_dtype,
+    PADDLE_ENFORCE_EQ(cum_count_dtype,
+                      X_dtype,
                       platform::errors::InvalidArgument(
                           "The dtype of the cum_count and X should be same"));
-    PADDLE_ENFORCE_EQ(cum_count_dtype, framework::proto::VarType::INT64,
+    PADDLE_ENFORCE_EQ(cum_count_dtype,
+                      framework::proto::VarType::INT64,
                       platform::errors::InvalidArgument(
                           "The dtype of the cum_count_dtype, eff_num_len and "
                           "X should be same as int64"));
-    return framework::OpKernelType(cum_count_dtype, ctx.device_context());
+    return phi::KernelKey(cum_count_dtype, ctx.device_context().GetPlace());
   }
 };
 
@@ -60,7 +64,7 @@ class AssignPosOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 assign_pos_op Operator.
 
-Assign pos decides which tokens should be fetched belong to 
+Assign pos decides which tokens should be fetched belong to
 specially counter orderingly.
 
 )DOC");
@@ -71,10 +75,7 @@ specially counter orderingly.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(assign_pos, ops::AssignPosOp,
+REGISTER_OP_WITHOUT_GRADIENT(assign_pos,
+                             ops::AssignPosOp,
                              ops::AssignPosOpMaker);
-
-REGISTER_OP_CPU_KERNEL(assign_pos, ops::AssignPosOpCPUKernel<int>,
-                       ops::AssignPosOpCPUKernel<int64_t>);

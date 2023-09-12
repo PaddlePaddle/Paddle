@@ -17,7 +17,9 @@ ENV HOME /root
 # Add bash enhancements
 COPY paddle/scripts/docker/root/ /root/
 
-RUN apt-get update && \
+RUN chmod 777 /tmp
+
+RUN apt-get update --allow-unauthenticated && \
   apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa && \
   apt-get update && \
   apt-get install -y curl wget vim git unzip unrar tar xz-utils libssl-dev bzip2 gzip \ 
@@ -28,6 +30,10 @@ RUN apt-get update && \
 # Downgrade gcc&&g++
 WORKDIR /usr/bin 
 COPY tools/dockerfile/build_scripts /build_scripts 
+# Older versions of patchelf limited the size of the files being processed and were fixed in this pr.
+# # https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa
+# # So install a newer version here.
+RUN bash /build_scripts/install_patchelf.sh
 RUN bash /build_scripts/install_gcc.sh gcc82 && rm -rf /build_scripts 
 RUN cp gcc gcc.bak && cp g++ g++.bak && rm gcc && rm g++ 
 RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc 
@@ -44,7 +50,7 @@ ENV PATH=/home/cmake-3.16.0-Linux-x86_64/bin:$PATH
 
 
 RUN apt-get update && \
-  apt-get install -y python3.7 python3.7-dev && \
+  apt-get install -y python3.7 python3.7-dev python3.7-distutils && \
   mv /usr/bin/python /usr/bin/python.bak && ln -s /usr/bin/python3.7 /usr/bin/python && \
   mv /usr/bin/python3 /usr/bin/python3.bak && ln -s /usr/bin/python3.7 /usr/bin/python3
 
@@ -98,14 +104,6 @@ RUN pip3.7 --no-cache-dir install pylint pytest astroid isort
 
 COPY ./python/requirements.txt /root/
 RUN pip3.7 --no-cache-dir install -r /root/requirements.txt
-
-
-# Older versions of patchelf limited the size of the files being processed and were fixed in this pr.
-# https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa
-# So install a newer version here.
-RUN wget -q https://paddle-ci.cdn.bcebos.com/patchelf_0.10-2_amd64.deb && \
-    dpkg -i patchelf_0.10-2_amd64.deb && \
-    rm -rf patchelf_0.10-2_amd64.deb
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 #RUN mkdir /var/run/sshd && echo 'root:root' | chpasswd && sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config && sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config

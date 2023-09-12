@@ -18,6 +18,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#ifdef PADDLE_WITH_TENSORRT
+#include "paddle/fluid/inference/tensorrt/helper.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -105,6 +108,20 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("skip_layernorm_fuse", graph);
+
+#ifdef PADDLE_WITH_TENSORRT
+  auto trt_version = paddle::inference::tensorrt::GetTrtRuntimeVersion();
+  if (std::get<0>(trt_version) * 1000 + std::get<1>(trt_version) * 100 +
+          std::get<2>(trt_version) * 10 <
+      7200) {
+    VLOG(3) << "skip_layernorm oss plugin only available for trt version >= "
+               "7.2 Stop this pass";
+    return;
+  }
+#else
+  // if no tensorrt, early stop
+  return;
+#endif
   int found_subgraph_count = 0;
 
   GraphPatternDetector gpd;
@@ -135,16 +152,23 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     }
 
     VLOG(4) << "handle TrtSkipLayerNorm fuse";
+
+    // x and y 's rank must be same
+    if (subgraph.at(x)->Var()->GetShape().size() !=
+        subgraph.at(y)->Var()->GetShape().size()) {
+      return;
+    }
+
     GET_IR_NODE_FROM_SUBGRAPH(elementwise, elementwise, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm, layer_norm, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_bias, layer_norm_bias, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_scale, layer_norm_scale,
-                              fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_scale, layer_norm_scale, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_out, layer_norm_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_mean, layer_norm_mean, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_variance, layer_norm_variance,
-                              fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_variance, layer_norm_variance, fused_pattern);
 
     std::unordered_set<const Node *> del_node_set;
 
@@ -159,9 +183,21 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     new_desc.SetInput("Bias", {layer_norm_bias->Name()});
 
     if (layer_norm->Op()->HasAttr("out_threshold")) {
-      new_desc.SetAttr("enable_int8", true);
       new_desc.SetAttr("out_threshold",
                        layer_norm->Op()->GetAttr("out_threshold"));
+    }
+    if (subgraph.at(x)->inputs[0]->Op()->HasAttr("out_threshold")) {
+      new_desc.SetAttr(
+          "X", subgraph.at(x)->inputs[0]->Op()->GetAttr("out_threshold"));
+    }
+    if (subgraph.at(y)->inputs[0]->Op()->HasAttr("out_threshold")) {
+      new_desc.SetAttr(
+          "Y", subgraph.at(y)->inputs[0]->Op()->GetAttr("out_threshold"));
+    }
+
+    if (layer_norm->Op()->HasAttr("smooth_scale")) {
+      new_desc.SetAttr("smooth_scale",
+                       layer_norm->Op()->GetAttr("smooth_scale"));
     }
 
     // outputs
@@ -169,8 +205,21 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
 
     // attrs
     new_desc.SetAttr("epsilon", layer_norm->Op()->GetAttr("epsilon"));
-    new_desc.SetAttr("begin_norm_axis",
-                     layer_norm->Op()->GetAttr("begin_norm_axis"));
+
+    if (layer_norm->Op()->HasAttr("begin_norm_axis")) {
+      int32_t begin_norm_axis = PADDLE_GET_CONST(
+          int32_t, layer_norm->Op()->GetAttr("begin_norm_axis"));
+      int32_t input_rank =
+          static_cast<int32_t>(elementwise_out->Var()->GetShape().size());
+      if ((begin_norm_axis != -1) && (begin_norm_axis != input_rank - 1)) {
+        LOG(WARNING) << "skip_layernorm pass only support "
+                        "layer_norm'begin_norm_axis == input_rank - 1.";
+        return;
+      }
+      new_desc.SetAttr("begin_norm_axis", begin_norm_axis);
+    }
+    int32_t hidden_size = layer_norm_scale->Var()->GetShape()[0];
+    new_desc.SetAttr("hidden_size", hidden_size);
 
     auto fused_node = graph->CreateOpNode(&new_desc);  // OpDesc will be copied.
 
@@ -196,23 +245,25 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
     std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
 
-    if (use_varseqlen && pos_id != "" && mask_id != "") {
-      if (graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
+    if (use_varseqlen && !pos_id.empty() && !mask_id.empty()) {
+      if ((graph->Has(framework::ir::kEmbEltwiseLayernormPass) ||
+           graph->Has(framework::ir::kPrelnEmbEltwiseLayernormPass)) &&
           graph->Has(framework::ir::kMultiheadMatmulPass)) {
         VLOG(3) << "start varseqlen trt_skip_layernorm_fuse_pass";
       } else {
         PADDLE_THROW(platform::errors::Fatal(
             "Use transformer'varseqlen need "
-            "embedding_eltwise_layernorm_fuse_pass. please use no_varseqlen"));
+            "trt_embedding_eltwise_layernorm_fuse_pass, "
+            "trt_multihead_matmul_fuse_pass. please use no_varseqlen"));
       }
-    } else if (!use_varseqlen && pos_id == "" && mask_id == "") {
+    } else if (!use_varseqlen && pos_id.empty()) {
       VLOG(3) << "start no_varseqlen trt_skip_layernorm_fuse_pass";
     } else {
       PADDLE_THROW(
           platform::errors::Fatal("Use transformer'varseqlen need config: "
                                   "use_varseqlen, set pos_id, set "
                                   "mask_id. Or not use varseqlen, do not set "
-                                  "pos_id, set mask_id. Please "
+                                  "pos_id. Please "
                                   "reconfig"));
     }
   }

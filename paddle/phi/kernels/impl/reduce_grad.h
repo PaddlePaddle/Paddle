@@ -14,10 +14,10 @@
 
 #pragma once
 
+#include "paddle/phi/core/macros.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/reduce_grad_functions.h"
-
 namespace phi {
 
 template <typename Context,
@@ -27,13 +27,14 @@ template <typename Context,
           bool kNoNeedBufferY = false>
 void ComputeFromInput(const Context& dev_ctx,
                       const DenseTensor& x,
-                      const DenseTensor& out_grad,
+                      const DenseTensor& out_grad UNUSED,
                       const paddle::optional<DenseTensor>& out,
                       const DenseTensor& input2,
                       const std::vector<int64_t>& dims,
-                      bool keep_dim,
+                      bool keep_dim UNUSED,
                       bool reduce_all,
                       DenseTensor* x_grad) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto* input0 = &x;
   auto* input1 = out.get_ptr();
   auto* output = x_grad;
@@ -91,6 +92,8 @@ void ReduceGradKernel(const Context& dev_ctx,
                       bool keep_dim,
                       bool reduce_all,
                       DenseTensor* x_grad) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+
   if (x.dtype() != out_grad.dtype()) {
     DenseTensorMeta x_grad_meta(
         out_grad.dtype(), x_grad->dims(), x_grad->layout());

@@ -19,6 +19,7 @@
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
@@ -45,7 +46,7 @@ struct LogSoftmaxFunctor {
     constexpr int kClassDim = 1;
     constexpr int kAxisDim = 1;
 
-    int axis_dim = X->dims()[axis];
+    int axis_dim = static_cast<int>(X->dims()[axis]);
     const int n = funcs::SizeToAxis(axis, X->dims());
     const int d = funcs::SizeFromAxis(axis, X->dims());
     phi::DDim dim_2d{n, d};
@@ -109,6 +110,11 @@ void LogSoftmaxKernel(const Context& dev_ctx,
   const int canonical_axis = funcs::CanonicalAxis(axis, rank);
 
   dev_ctx.template Alloc<T>(out);
+  // For 0D Tensor
+  if (rank == 0) {
+    phi::funcs::set_constant(dev_ctx, out, 0.0);
+    return;
+  }
   if (x.numel() != 0) {
     LogSoftmaxFunctor<Context, T>()(dev_ctx, &x, out, canonical_axis);
   }
@@ -116,5 +122,7 @@ void LogSoftmaxKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+// TODO(YuanRisheng): The layout of mkldnn kernel should be MKLDNN, we should
+// support specifying the exact layout when the kernel is registered
 PD_REGISTER_KERNEL(
     log_softmax, CPU, ALL_LAYOUT, phi::LogSoftmaxKernel, float, double) {}

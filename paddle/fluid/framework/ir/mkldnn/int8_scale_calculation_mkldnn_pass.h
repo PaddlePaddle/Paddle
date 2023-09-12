@@ -27,10 +27,11 @@ class Graph;
 class Int8ScaleCalculationMkldnnPass : public FusePassBase {
  public:
   Int8ScaleCalculationMkldnnPass();
-  virtual ~Int8ScaleCalculationMkldnnPass() {}
+  virtual ~Int8ScaleCalculationMkldnnPass() = default;
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
+  void Int8ScaleImpl(ir::Graph* graph, const std::string& conv_type) const;
 };
 
 }  // namespace ir

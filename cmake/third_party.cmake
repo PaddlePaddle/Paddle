@@ -27,6 +27,23 @@ set(THIRD_PARTY_CACHE_PATH
 set(THIRD_PARTY_BUILD_TYPE Release)
 set(third_party_deps)
 
+include(ProcessorCount)
+ProcessorCount(NPROC)
+if(NOT WITH_SETUP_INSTALL)
+  #NOTE(risemeup1):Initialize any submodules.
+  message(
+    STATUS
+      "Check submodules of paddle, and run 'git submodule update --init --recursive'"
+  )
+  execute_process(
+    COMMAND git submodule update --init --recursive
+    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
+    RESULT_VARIABLE result_var)
+  if(NOT result_var EQUAL 0)
+    message(FATAL_ERROR "Failed to get submodule, please check your network !")
+  endif()
+
+endif()
 # cache funciton to avoid repeat download code of third_party.
 # This function has 4 parameters, URL / REPOSITOR / TAG / DIR:
 # 1. URL:           specify download url of 3rd party
@@ -225,7 +242,7 @@ if(NOT DEFINED WITH_MKLDNN)
   if(WITH_MKL AND AVX2_FOUND)
     set(WITH_MKLDNN ON)
   else()
-    message(STATUS "Do not have AVX2 intrinsics and disabled MKL-DNN")
+    message(STATUS "Do not have AVX2 intrinsics and disabled MKL-DNN.")
     set(WITH_MKLDNN OFF)
   endif()
 endif()
@@ -233,7 +250,7 @@ endif()
 if(WIN32
    OR APPLE
    OR NOT WITH_GPU
-   OR ON_INFER)
+   OR (ON_INFER AND NOT WITH_PYTHON))
   set(WITH_DGC OFF)
 endif()
 
@@ -242,50 +259,78 @@ if(${CMAKE_VERSION} VERSION_GREATER "3.5.2")
   )# adds --depth=1 arg to git clone of External_Projects
 endif()
 
-########################### include third_party according to flags ###############################
 include(external/zlib) # download, build, install zlib
 include(external/gflags) # download, build, install gflags
 include(external/glog) # download, build, install glog
-include(external/boost) # download boost
+
+########################### include third_party according to flags ###############################
+if(WITH_CINN)
+  if(WITH_MKL)
+    add_definitions(-DCINN_WITH_MKL_CBLAS)
+  endif()
+  if(WITH_MKLDNN)
+    add_definitions(-DCINN_WITH_DNNL)
+  endif()
+  include(cmake/cinn/version.cmake)
+  if(NOT EXISTS ${CMAKE_BINARY_DIR}/cmake/cinn/config.cmake)
+    file(COPY ${PROJECT_SOURCE_DIR}/cmake/cinn/config.cmake
+         DESTINATION ${CMAKE_BINARY_DIR}/cmake/cinn)
+  endif()
+  include(${CMAKE_BINARY_DIR}/cmake/cinn/config.cmake)
+  include(cmake/cinn/external/absl.cmake)
+  include(cmake/cinn/external/llvm.cmake)
+  include(cmake/cinn/external/isl.cmake)
+  include(cmake/cinn/external/ginac.cmake)
+  include(cmake/cinn/external/openmp.cmake)
+  include(cmake/cinn/external/jitify.cmake)
+endif()
+
+# cinn_only includes third-party libraries separately
+if(CINN_ONLY)
+  include(external/gtest)
+  include(external/protobuf)
+  if(WITH_PYTHON)
+    include(external/pybind11)
+  endif()
+  if(WITH_MKL)
+    include(external/mklml)
+  endif()
+  if(WITH_MKLDNN)
+    include(external/mkldnn)
+  endif()
+  return()
+endif()
+
 include(external/eigen) # download eigen3
 include(external/threadpool) # download threadpool
 include(external/dlpack) # download dlpack
 include(external/xxhash) # download, build, install xxhash
 include(external/warpctc) # download, build, install warpctc
+include(external/warprnnt) # download, build, install warprnnt
 include(external/utf8proc) # download, build, install utf8proc
 
-list(
-  APPEND
-  third_party_deps
-  extern_eigen3
-  extern_gflags
-  extern_glog
-  extern_boost
-  extern_xxhash)
+list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog
+     extern_xxhash)
 list(
   APPEND
   third_party_deps
   extern_zlib
   extern_dlpack
   extern_warpctc
+  extern_warprnnt
   extern_threadpool
   extern_utf8proc)
 include(external/lapack) # download, build, install lapack
 
-list(
-  APPEND
-  third_party_deps
-  extern_eigen3
-  extern_gflags
-  extern_glog
-  extern_boost
-  extern_xxhash)
+list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog
+     extern_xxhash)
 list(
   APPEND
   third_party_deps
   extern_zlib
   extern_dlpack
   extern_warpctc
+  extern_warprnnt
   extern_threadpool
   extern_lapack)
 
@@ -308,9 +353,9 @@ if(TARGET extern_protobuf)
   list(APPEND third_party_deps extern_protobuf)
 endif()
 
-if(WITH_PYTHON)
+if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   include(external/python) # find python and python_module
-  include(external/pybind11) # download pybind11
+  include(external/pybind11) # prepare submodule pybind11
   list(APPEND third_party_deps extern_pybind)
 endif()
 
@@ -338,34 +383,27 @@ if(WITH_GPU)
     ${URL} "externalError" MD5 a712a49384e77ca216ad866712f7cafa
   )# download file externalErrorMsg.tar.gz
   if(WITH_TESTING)
-    # copy externalErrorMsg.pb, just for unittest can get error message correctly.
+    # copy externalErrorMsg.pb for UnitTest
     set(SRC_DIR ${THIRD_PARTY_PATH}/externalError/data)
-    if(WIN32 AND (NOT "${CMAKE_GENERATOR}" STREQUAL "Ninja"))
-      set(DST_DIR1
-          ${CMAKE_BINARY_DIR}/paddle/fluid/third_party/externalError/data)
-    else()
-      set(DST_DIR1 ${CMAKE_BINARY_DIR}/paddle/third_party/externalError/data)
-    endif()
-    set(DST_DIR2
+    # for python UT 'test_exception.py'
+    set(DST_DIR1
         ${CMAKE_BINARY_DIR}/python/paddle/include/third_party/externalError/data
     )
+    # for C++ UT 'enforce_test'
+    set(DST_DIR2 ${CMAKE_BINARY_DIR}/paddle/third_party/externalError/data)
     add_custom_command(
       TARGET download_externalError
       POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR1}
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR2}
-      COMMENT "copy_directory from ${SRC_DIR} to ${DST_DIR}")
+      COMMENT "copy_directory from ${SRC_DIR} to ${DST_DIR1}"
+      COMMENT "copy_directory from ${SRC_DIR} to ${DST_DIR2}")
   endif()
 endif()
 
 if(WITH_XPU)
   include(external/xpu) # download, build, install xpu
   list(APPEND third_party_deps extern_xpu)
-endif()
-
-if(WITH_MLU)
-  include(external/concurrentqueue) # download, build, install concurrentqueue
-  list(APPEND third_party_deps extern_concurrentqueue)
 endif()
 
 if(WITH_PSLIB)
@@ -401,16 +439,6 @@ if(WITH_BOX_PS)
   list(APPEND third_party_deps extern_box_ps)
 endif()
 
-if(WITH_ASCEND OR WITH_ASCEND_CL)
-  include(external/ascend)
-  if(WITH_ASCEND OR WITH_ASCEND_CL)
-    list(APPEND third_party_deps extern_ascend)
-  endif()
-  if(WITH_ASCEND_CL)
-    list(APPEND third_party_deps extern_ascend_cl)
-  endif()
-endif()
-
 if(WITH_PSCORE)
   include(external/snappy)
   list(APPEND third_party_deps extern_snappy)
@@ -431,10 +459,39 @@ if(WITH_PSCORE)
 
   include(external/rocksdb) # download, build, install rocksdb
   list(APPEND third_party_deps extern_rocksdb)
+
+  include(external/jemalloc) # download, build, install jemalloc
+  list(APPEND third_party_deps extern_jemalloc)
+endif()
+
+if(WITH_RPC
+   AND NOT WITH_PSCORE
+   AND NOT WITH_PSLIB)
+  include(external/snappy)
+  list(APPEND third_party_deps extern_snappy)
+
+  include(external/leveldb)
+  list(APPEND third_party_deps extern_leveldb)
+
+  include(external/brpc)
+  list(APPEND third_party_deps extern_brpc)
+endif()
+
+if(WITH_DISTRIBUTE
+   AND NOT WITH_PSLIB
+   AND NOT WITH_PSCORE
+   AND NOT WITH_RPC)
+  include(external/snappy)
+  list(APPEND third_party_deps extern_snappy)
+
+  include(external/leveldb)
+  list(APPEND third_party_deps extern_leveldb)
+  include(external/brpc)
+  list(APPEND third_party_deps extern_brpc)
 endif()
 
 if(WITH_XBYAK)
-  include(external/xbyak) # download, build, install xbyak
+  include(external/xbyak) # prepare submodule xbyak
   list(APPEND third_party_deps extern_xbyak)
 endif()
 
@@ -455,20 +512,6 @@ if(WITH_LITE)
   include(external/lite)
 endif()
 
-if(WITH_CINN)
-  message(STATUS "Compile Paddle with CINN.")
-  include(external/cinn)
-  add_definitions(-DPADDLE_WITH_CINN)
-  if(WITH_GPU)
-    add_definitions(-DCINN_WITH_CUDA)
-    add_definitions(-DCINN_WITH_CUDNN)
-  endif()
-  if(WITH_MKL)
-    add_definitions(-DCINN_WITH_MKL_CBLAS)
-    add_definitions(-DCINN_WITH_MKLDNN)
-  endif()
-endif()
-
 if(WITH_CRYPTO)
   include(external/cryptopp) # download, build, install cryptopp
   list(APPEND third_party_deps extern_cryptopp)
@@ -486,11 +529,6 @@ if(WIN32)
   list(APPEND third_party_deps extern_dirent)
 endif()
 
-if(WITH_INFRT)
-  include(external/llvm)
-  list(APPEND third_party_deps ${llvm_libs})
-endif()
-
 if(WITH_IPU)
   include(external/poplar)
   list(APPEND third_party_deps extern_poplar)
@@ -499,6 +537,32 @@ endif()
 if(WITH_CUSPARSELT)
   include(external/cusparselt) # download, build, install cusparselt
   list(APPEND third_party_deps extern_cusparselt)
+endif()
+
+if(WITH_GPU
+   AND NOT WITH_ARM
+   AND NOT WIN32
+   AND NOT APPLE)
+  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.0)
+    include(external/cutlass) # download, build, install cusparselt
+    list(APPEND third_party_deps extern_cutlass)
+    set(WITH_CUTLASS ON)
+  endif()
+  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.4)
+    foreach(arch ${NVCC_ARCH_BIN})
+      if(${arch} GREATER_EQUAL 80)
+        include(external/flashattn)
+        list(APPEND third_party_deps extern_flashattn)
+        set(WITH_FLASHATTN ON)
+        break()
+      endif()
+    endforeach()
+  endif()
+endif()
+
+if(WITH_CUDNN_FRONTEND)
+  include(external/cudnn-frontend) # download cudnn-frontend
+  list(APPEND third_party_deps extern_cudnn_frontend)
 endif()
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

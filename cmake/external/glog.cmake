@@ -19,9 +19,8 @@ set(GLOG_INSTALL_DIR ${THIRD_PARTY_PATH}/install/glog)
 set(GLOG_INCLUDE_DIR
     "${GLOG_INSTALL_DIR}/include"
     CACHE PATH "glog include directory." FORCE)
-set(GLOG_REPOSITORY ${GIT_URL}/google/glog.git)
 set(GLOG_TAG v0.4.0)
-
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/glog)
 if(WIN32)
   set(GLOG_LIBRARIES
       "${GLOG_INSTALL_DIR}/lib/glog.lib"
@@ -45,7 +44,7 @@ if(WITH_ARM_BRPC)
   file(
     WRITE ${GLOG_SOURCE_DIR}/CMakeLists.txt
     "PROJECT(ARM_GLOGS)\n" "cmake_minimum_required(VERSION 3.0)\n"
-    "install(DIRECTORY arm_glog/include arm_glog/lib \n"
+    "install(DIRECTORY arm_glog/include arm_glog/lib\n"
     "        DESTINATION . USE_SOURCE_PERMISSIONS)\n")
   ExternalProject_Add(
     extern_glog
@@ -67,8 +66,7 @@ else()
   ExternalProject_Add(
     extern_glog
     ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-    GIT_REPOSITORY ${GLOG_REPOSITORY}
-    GIT_TAG ${GLOG_TAG}
+    SOURCE_DIR ${SOURCE_DIR}
     DEPENDS gflags
     PREFIX ${GLOG_PREFIX_DIR}
     UPDATE_COMMAND ""

@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/reduce_mean_grad_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
-#include "paddle/phi/kernels/gpu/reduce_grad.h"
-#include "paddle/phi/kernels/reduce_mean_grad_kernel.h"
 
 namespace phi {
 
@@ -24,27 +25,36 @@ template <typename T, typename Context>
 void ReduceMeanGradKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& out_grad,
-                          const std::vector<int64_t>& dims,
+                          const IntArray& dims,
                           bool keep_dim,
                           bool reduce_all,
                           DenseTensor* x_grad) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  // get reduce_dim and reduce_num for reduce_mean_grad
   int dim_size = x.dims().size();
   std::vector<int> reduce_dims =
-      funcs::details::GetReduceDim(dims, dim_size, reduce_all);
+      funcs::details::GetReduceDim(dims.GetData(), dim_size, reduce_all);
+
+  auto update_dims = vectorize(x.dims());
   int reduce_num = 1;
   for (auto i : reduce_dims) {
     reduce_num *= (x.dims())[i];
+    update_dims[i] = 1;
   }
-  using MPType = typename kps::details::MPTypeTrait<T>::Type;
-  ReduceGradKernel<T, T, Context, kps::DivideFunctor<T, MPType>>(
-      dev_ctx,
-      x,
-      out_grad,
-      dims,
-      keep_dim,
-      reduce_all,
-      x_grad,
-      kps::DivideFunctor<T, MPType>(reduce_num));
+
+  // make new tensor
+  DenseTensor new_out_grad(out_grad.dtype());
+  new_out_grad.ShareDataWith(out_grad);
+  new_out_grad.Resize(phi::make_ddim(update_dims));
+
+  // call BroadcastKernel
+  dev_ctx.Alloc(x_grad, x.dtype());
+  std::vector<const DenseTensor*> inputs = {&new_out_grad};
+  std::vector<DenseTensor*> outputs = {x_grad};
+
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  funcs::BroadcastKernel<T>(
+      dev_ctx, inputs, &outputs, kps::DivideFunctor<T, MPType>(reduce_num), 0);
 }
 
 }  // namespace phi
@@ -56,4 +66,7 @@ PD_REGISTER_KERNEL(mean_grad,
                    bool,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

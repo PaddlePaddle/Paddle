@@ -56,7 +56,7 @@ void SetTransformerInputConvertPass::ApplyImpl(ir::Graph *graph) const {
   std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
 
   if (!(graph->Has(framework::ir::kMultiheadMatmulPass) && with_dynamic_shape &&
-        (pos_id != ""))) {
+        (!pos_id.empty()))) {
     VLOG(3) << "Transformer model need MultiheadMatmul, and "
                "with_dynamic_shape. Stop this pass, "
                "please reconfig.";
@@ -140,8 +140,8 @@ void SetTransformerInputConvertPass::ApplyImpl(ir::Graph *graph) const {
   auto handler1 = [&](const GraphPatternDetector::subgraph_t &subgraph,
                       Graph *graph) {
     VLOG(3) << "link pos_id, max_seqlen to multihead_matmul.";
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul, multihead_matmul,
-                              multihead_matmul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        multihead_matmul, multihead_matmul, multihead_matmul_pattern);
 
     IR_NODE_LINK_TO(transformer_input_convert_out0_node, multihead_matmul);
     IR_NODE_LINK_TO(transformer_input_convert_out1_node, multihead_matmul);

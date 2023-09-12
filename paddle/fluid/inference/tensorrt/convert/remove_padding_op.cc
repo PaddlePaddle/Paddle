@@ -16,16 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/remove_padding_plugin.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -35,7 +25,8 @@ namespace tensorrt {
 class RemovePadding : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     if (!engine_->with_dynamic_shape()) {
       PADDLE_THROW(platform::errors::Fatal(
           "remove_padding_op: If you want to use transformer, must "
@@ -62,7 +53,7 @@ class RemovePadding : public OpConverter {
             platform::errors::Fatal("use with_interleaved must be int8."));
       }
       float out_scale =
-          BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+          PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
       engine_->SetTensorDynamicRange(layer->getOutput(0), out_scale);
       auto* transpose =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(layer->getOutput(0)));

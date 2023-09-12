@@ -12,13 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/kernels/pool_grad_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/gpudnn/pool_gpudnn.h"
-#include "paddle/phi/kernels/pool_grad_kernel.h"
 #include "paddle/phi/kernels/pool_kernel.h"
 
 #ifdef PADDLE_WITH_HIP
@@ -43,7 +44,7 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
                              const std::string& padding_algorithm,
                              DenseTensor* dx) {
   PADDLE_ENFORCE_EQ(
-      paddle::platform::is_gpu_place(ctx.GetPlace()),
+      ctx.GetPlace().GetType() == phi::AllocationType::GPU,
       true,
       errors::InvalidArgument("Pool operator CUDA kernel must use CUDAPlace "
                               "rather than CPUPlace."));
@@ -304,7 +305,7 @@ void Pool2dGradGPUDNNKernel(const Context& ctx,
                             const DenseTensor& x,
                             const DenseTensor& out,
                             const DenseTensor& dout,
-                            const std::vector<int>& kernel_size,
+                            const IntArray& kernel_size,
                             const std::vector<int>& strides,
                             const std::vector<int>& paddings,
                             bool ceil_mode,
@@ -315,11 +316,13 @@ void Pool2dGradGPUDNNKernel(const Context& ctx,
                             bool adaptive,
                             const std::string& padding_algorithm,
                             DenseTensor* dx) {
+  std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
+                                   kernel_size.GetData().end());
   PoolGradRawGPUDNNKernel<T, Context>(ctx,
                                       x,
                                       out,
                                       dout,
-                                      kernel_size,
+                                      kernel_size_val,
                                       strides,
                                       paddings,
                                       exclusive,
@@ -334,7 +337,7 @@ void Pool2dGradGPUDNNKernel(const Context& ctx,
 template <typename T, typename Context>
 void Pool2dDoubleGradGPUDNNKernel(const Context& ctx,
                                   const DenseTensor& x,
-                                  const std::vector<int>& kernel_size,
+                                  const IntArray& kernel_size,
                                   const std::vector<int>& strides,
                                   const std::vector<int>& paddings,
                                   bool ceil_mode,

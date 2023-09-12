@@ -12,16 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/funcs/lstm_compute.h"
 #include "paddle/phi/kernels/funcs/detail/lstm_gpu_kernel.h"
 #include "paddle/phi/kernels/funcs/detail/lstm_kernel.h"
-#include "paddle/phi/kernels/funcs/lstm_compute.h"
 
 namespace phi {
 namespace funcs {
 
 template <class T>
-struct LstmUnitFunctor<paddle::platform::CUDADeviceContext, T> {
-  static void compute(const paddle::platform::CUDADeviceContext& context,
+struct LstmUnitFunctor<phi::GPUContext, T> {
+  static void compute(const phi::GPUContext& context,
                       LstmMetaValue<T> value,
                       int frame_size,
                       int batch_size,
@@ -43,8 +43,8 @@ struct LstmUnitFunctor<paddle::platform::CUDADeviceContext, T> {
 };
 
 template <class T>
-struct LstmUnitGradFunctor<paddle::platform::CUDADeviceContext, T> {
-  static void compute(const paddle::platform::CUDADeviceContext& context,
+struct LstmUnitGradFunctor<phi::GPUContext, T> {
+  static void compute(const phi::GPUContext& context,
                       LstmMetaValue<T> value,
                       LstmMetaGrad<T> grad,
                       int frame_size,
@@ -67,10 +67,10 @@ struct LstmUnitGradFunctor<paddle::platform::CUDADeviceContext, T> {
   }
 };
 
-template class LstmUnitFunctor<paddle::platform::CUDADeviceContext, float>;
-template class LstmUnitFunctor<paddle::platform::CUDADeviceContext, double>;
-template class LstmUnitGradFunctor<paddle::platform::CUDADeviceContext, float>;
-template class LstmUnitGradFunctor<paddle::platform::CUDADeviceContext, double>;
+template class LstmUnitFunctor<phi::GPUContext, float>;
+template class LstmUnitFunctor<phi::GPUContext, double>;
+template class LstmUnitGradFunctor<phi::GPUContext, float>;
+template class LstmUnitGradFunctor<phi::GPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

@@ -24,7 +24,7 @@ template <typename T, typename Context>
 void DropoutNdGradKernel(const Context& dev_ctx,
                          const DenseTensor& mask,
                          const DenseTensor& out_grad,
-                         float p,
+                         const Scalar& p,
                          bool is_test,
                          const std::string& mode,
                          const std::vector<int>& axis,
@@ -35,6 +35,7 @@ void DropoutNdGradKernel(const Context& dev_ctx,
 
   auto dX = EigenVector<T>::Flatten(*grad_x);
   auto dY = EigenVector<T>::Flatten(*grad_y);
+  float prob = p.to<float>();
 
   auto& place = *dev_ctx.eigen_device();
   auto& dropout_implementation = mode;
@@ -42,20 +43,20 @@ void DropoutNdGradKernel(const Context& dev_ctx,
     if (dropout_implementation == "upscale_in_train") {
       dX.device(place) = static_cast<T>(1) * dY;
     } else {
-      dX.device(place) = dY * static_cast<T>(1.0f - p);
+      dX.device(place) = dY * static_cast<T>(1.0f - prob);
     }
   } else {
     std::vector<int64_t> out_dims = phi::vectorize(out_grad.dims());
     auto M = EigenVector<uint8_t>::Flatten(mask);
     if (dropout_implementation == "upscale_in_train") {
-      if (p == 1.0f) {
+      if (prob == 1.0f) {
         dX.device(place) = static_cast<T>(0) * dY;
       } else {
         if (axis.empty()) {
-          dX.device(place) = dY * M.cast<T>() / static_cast<T>(1.0f - p);
+          dX.device(place) = dY * M.cast<T>() / static_cast<T>(1.0f - prob);
         } else {
-          dX.device(place) =
-              dY * M.broadcast(out_dims).cast<T>() / static_cast<T>(1.0f - p);
+          dX.device(place) = dY * M.broadcast(out_dims).cast<T>() /
+                             static_cast<T>(1.0f - prob);
         }
       }
     } else {
@@ -72,12 +73,12 @@ template <typename T, typename Context>
 void DropoutGradRawKernel(const Context& dev_ctx,
                           const DenseTensor& mask,
                           const DenseTensor& out_grad,
-                          float p,
+                          const Scalar& p,
                           bool is_test,
                           const std::string& mode,
                           DenseTensor* x_grad) {
   DropoutNdGradKernel<T, Context>(
-      dev_ctx, mask, out_grad, p, is_test, mode, {}, x_grad);
+      dev_ctx, mask, out_grad, p.to<float>(), is_test, mode, {}, x_grad);
 }
 
 }  // namespace phi

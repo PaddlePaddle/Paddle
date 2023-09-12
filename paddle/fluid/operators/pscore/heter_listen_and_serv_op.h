@@ -58,7 +58,8 @@ template <class TKey, class TValue>
 class DoubleFindMap : public std::unordered_map<TKey, TValue> {
  public:
   typename std::unordered_map<TKey, TValue>::iterator find_value(TValue v) {
-    return std::find_if(this->begin(), this->end(),
+    return std::find_if(this->begin(),
+                        this->end(),
                         [&v](const std::pair<const std::string, int> p) {
                           return p.second == v;
                         });

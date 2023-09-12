@@ -63,22 +63,27 @@ void BasicAucCalculator::compute() {
 
 void BoxWrapper::CheckEmbedSizeIsValid(int embedx_dim, int expand_embed_dim) {
   PADDLE_ENFORCE_EQ(
-      embedx_dim_, embedx_dim,
+      embedx_dim_,
+      embedx_dim,
       platform::errors::InvalidArgument("SetInstance(): invalid embedx_dim. "
                                         "When embedx_dim = %d, but got %d.",
-                                        embedx_dim_, embedx_dim));
-  PADDLE_ENFORCE_EQ(expand_embed_dim_, expand_embed_dim,
+                                        embedx_dim_,
+                                        embedx_dim));
+  PADDLE_ENFORCE_EQ(expand_embed_dim_,
+                    expand_embed_dim,
                     platform::errors::InvalidArgument(
                         "SetInstance(): invalid expand_embed_dim. When "
                         "expand_embed_dim = %d, but got %d.",
-                        expand_embed_dim_, expand_embed_dim));
+                        expand_embed_dim_,
+                        expand_embed_dim));
 }
 
 void BoxWrapper::PullSparse(const paddle::platform::Place& place,
                             const std::vector<const uint64_t*>& keys,
                             const std::vector<float*>& values,
                             const std::vector<int64_t>& slot_lengths,
-                            const int hidden_size, const int expand_embed_dim) {
+                            const int hidden_size,
+                            const int expand_embed_dim) {
 #define EMBEDX_CASE(i, ...)                                                  \
   case i: {                                                                  \
     constexpr size_t EmbedxDim = i;                                          \
@@ -90,11 +95,11 @@ void BoxWrapper::PullSparse(const paddle::platform::Place& place,
     }                                                                        \
   } break
 
-#define PULLSPARSE_CASE(i, ...)                                             \
-  case i: {                                                                 \
-    constexpr size_t ExpandDim = i;                                         \
-    PullSparseCase<EmbedxDim, ExpandDim>(place, keys, values, slot_lengths, \
-                                         hidden_size, expand_embed_dim);    \
+#define PULLSPARSE_CASE(i, ...)                                            \
+  case i: {                                                                \
+    constexpr size_t ExpandDim = i;                                        \
+    PullSparseCase<EmbedxDim, ExpandDim>(                                  \
+        place, keys, values, slot_lengths, hidden_size, expand_embed_dim); \
   } break
 
   CheckEmbedSizeIsValid(hidden_size - 3, expand_embed_dim);
@@ -128,12 +133,16 @@ void BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
     }                                                                        \
   } break
 
-#define PUSHSPARSE_CASE(i, ...)                                             \
-  case i: {                                                                 \
-    constexpr size_t ExpandDim = i;                                         \
-    PushSparseGradCase<EmbedxDim, ExpandDim>(place, keys, grad_values,      \
-                                             slot_lengths, hidden_size,     \
-                                             expand_embed_dim, batch_size); \
+#define PUSHSPARSE_CASE(i, ...)                                \
+  case i: {                                                    \
+    constexpr size_t ExpandDim = i;                            \
+    PushSparseGradCase<EmbedxDim, ExpandDim>(place,            \
+                                             keys,             \
+                                             grad_values,      \
+                                             slot_lengths,     \
+                                             hidden_size,      \
+                                             expand_embed_dim, \
+                                             batch_size);      \
   } break
 
   CheckEmbedSizeIsValid(hidden_size - 3, expand_embed_dim);
@@ -189,28 +198,32 @@ void BoxWrapper::FeedPass(int date,
                           const std::vector<uint64_t>& feasgin_to_box) const {
   int ret = boxps_ptr_->FeedPass(date, feasgin_to_box);
   PADDLE_ENFORCE_EQ(
-      ret, 0,
+      ret,
+      0,
       platform::errors::PreconditionNotMet("FeedPass failed in BoxPS."));
 }
 
 void BoxWrapper::BeginFeedPass(int date, boxps::PSAgentBase** agent) const {
   int ret = boxps_ptr_->BeginFeedPass(date, *agent);
   PADDLE_ENFORCE_EQ(
-      ret, 0,
+      ret,
+      0,
       platform::errors::PreconditionNotMet("BeginFeedPass failed in BoxPS."));
 }
 
 void BoxWrapper::EndFeedPass(boxps::PSAgentBase* agent) const {
   int ret = boxps_ptr_->EndFeedPass(agent);
   PADDLE_ENFORCE_EQ(
-      ret, 0,
+      ret,
+      0,
       platform::errors::PreconditionNotMet("EndFeedPass failed in BoxPS."));
 }
 
 void BoxWrapper::BeginPass() const {
   int ret = boxps_ptr_->BeginPass();
   PADDLE_ENFORCE_EQ(
-      ret, 0,
+      ret,
+      0,
       platform::errors::PreconditionNotMet("BeginPass failed in BoxPS."));
 }
 
@@ -260,41 +273,43 @@ void BoxWrapper::GetRandomData(
   VLOG(0) << "Begin GetRandomData";
   std::vector<std::thread> threads;
   for (int tid = 0; tid < auc_runner_thread_num_; ++tid) {
-    threads.push_back(std::thread([this, &pass_data, tid, &slots_to_replace,
-                                   result]() {
-      int debug_erase_cnt = 0;
-      int debug_push_cnt = 0;
-      size_t ins_num = pass_data.size();
-      int start = tid * ins_num / auc_runner_thread_num_;
-      int end = (tid + 1) * ins_num / auc_runner_thread_num_;
-      VLOG(3) << "GetRandomData begin for thread[" << tid << "], and process ["
-              << start << ", " << end << "), total ins: " << ins_num;
-      const auto& random_pool = random_ins_pool_list[tid];
-      for (int i = start; i < end; ++i) {
-        const auto& ins = pass_data[i];
-        const RecordCandidate& rand_rec = random_pool.Get(replace_idx_[i]);
-        Record new_rec = ins;
-        for (auto it = new_rec.uint64_feasigns_.begin();
-             it != new_rec.uint64_feasigns_.end();) {
-          if (slots_to_replace.find(it->slot()) != slots_to_replace.end()) {
-            it = new_rec.uint64_feasigns_.erase(it);
-            debug_erase_cnt += 1;
-          } else {
-            ++it;
+    threads.push_back(
+        std::thread([this, &pass_data, tid, &slots_to_replace, result]() {
+          int debug_erase_cnt = 0;
+          int debug_push_cnt = 0;
+          size_t ins_num = pass_data.size();
+          int start = tid * ins_num / auc_runner_thread_num_;
+          int end = (tid + 1) * ins_num / auc_runner_thread_num_;
+          VLOG(3) << "GetRandomData begin for thread[" << tid
+                  << "], and process [" << start << ", " << end
+                  << "), total ins: " << ins_num;
+          const auto& random_pool = random_ins_pool_list[tid];
+          for (int i = start; i < end; ++i) {
+            const auto& ins = pass_data[i];
+            const RecordCandidate& rand_rec = random_pool.Get(replace_idx_[i]);
+            Record new_rec = ins;
+            for (auto it = new_rec.uint64_feasigns_.begin();
+                 it != new_rec.uint64_feasigns_.end();) {
+              if (slots_to_replace.find(it->slot()) != slots_to_replace.end()) {
+                it = new_rec.uint64_feasigns_.erase(it);
+                debug_erase_cnt += 1;
+              } else {
+                ++it;
+              }
+            }
+            for (auto slot : slots_to_replace) {
+              auto range = rand_rec.feas_.equal_range(slot);
+              for (auto it = range.first; it != range.second; ++it) {
+                new_rec.uint64_feasigns_.push_back({it->second, it->first});
+                debug_push_cnt += 1;
+              }
+            }
+            (*result)[i] = std::move(new_rec);
           }
-        }
-        for (auto slot : slots_to_replace) {
-          auto range = rand_rec.feas_.equal_range(slot);
-          for (auto it = range.first; it != range.second; ++it) {
-            new_rec.uint64_feasigns_.push_back({it->second, it->first});
-            debug_push_cnt += 1;
-          }
-        }
-        (*result)[i] = std::move(new_rec);
-      }
-      VLOG(3) << "thread[" << tid << "]: erase feasign num: " << debug_erase_cnt
-              << " repush feasign num: " << debug_push_cnt;
-    }));
+          VLOG(3) << "thread[" << tid
+                  << "]: erase feasign num: " << debug_erase_cnt
+                  << " repush feasign num: " << debug_push_cnt;
+        }));
   }
   for (int tid = 0; tid < auc_runner_thread_num_; ++tid) {
     threads[tid].join();

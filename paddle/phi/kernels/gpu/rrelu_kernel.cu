@@ -12,11 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/rrelu_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
-#include "paddle/phi/kernels/rrelu_kernel.h"
 
 namespace phi {
 
@@ -92,7 +93,7 @@ void RReluKernel(const Context& ctx,
     RReluTestCudaFunctor<T> functor(x_data, out_data, noise_data, mid_val);
     for_range(functor);
   } else {
-    using MT = typename kps::details::MPTypeTrait<T>::Type;
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     funcs::uniform_distribution<MT> dist;
     funcs::uniform_real_transform<MT> trans(lower, upper);
     funcs::distribution_and_transform<T>(ctx, noise, dist, trans);
@@ -109,4 +110,5 @@ PD_REGISTER_KERNEL(rrelu,
                    phi::RReluKernel,
                    float,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    double) {}

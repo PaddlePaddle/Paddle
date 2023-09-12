@@ -85,7 +85,7 @@ class Array {
     return ptr + i;
   }
 
-  T data_[N];
+  T data_[N] = {};
 };
 
 template <typename T>

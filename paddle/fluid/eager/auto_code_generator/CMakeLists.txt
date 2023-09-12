@@ -1,4 +1,4 @@
-add_subdirectory(final_state_generator)
+add_subdirectory(generator)
 
 set(EAGER_GENERETOR_DEPS
     ${GLOB_OP_LIB}
@@ -12,6 +12,11 @@ set(EAGER_GENERETOR_DEPS
     imperative_profiler
     imperative_flag)
 
+if(WITH_CUSTOM_DEVICE)
+  set(EAGER_GENERETOR_DEPS ${EAGER_GENERETOR_DEPS}
+                           custom_device_common_op_registry)
+endif()
+
 add_executable(eager_generator eager_generator.cc)
 target_link_libraries(eager_generator ${EAGER_GENERETOR_DEPS})
 
@@ -22,40 +27,22 @@ if(WITH_ROCM)
   target_link_libraries(eager_generator ${ROCM_HIPRTC_LIB})
 endif()
 
+if(WITH_CINN)
+  target_link_libraries(eager_generator ${PYTHON_LIBRARIES})
+endif()
+
 # Prepare file structure
 message(
   "Generate dygraph file structure at path: ${PADDLE_SOURCE_DIR}/paddle/fluid/eager/generated"
 )
+
+set(CODE_GEN_SPLIT_FILE_COUNT "8")
+
 execute_process(
   COMMAND
     "${PYTHON_EXECUTABLE}"
     "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/generate_file_structures.py"
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/")
-
-set(tmp_dygraph_forward_h_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.tmp.h"
-)
-set(tmp_dygraph_forward_cc_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions.tmp.cc"
-)
-set(tmp_dygraph_node_h_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.tmp.h"
-)
-set(tmp_dygraph_node_cc_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.tmp.cc"
-)
-set(dygraph_forward_h_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
-)
-set(dygraph_forward_cc_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions.cc"
-)
-set(dygraph_node_h_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.h"
-)
-set(dygraph_node_cc_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.cc"
-)
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/" "${CODE_GEN_SPLIT_FILE_COUNT}")
 
 if(WIN32)
   set(EAGER_CODEGEN_DEPS eager_generator)
@@ -63,6 +50,23 @@ if(WIN32)
     set(eager_generator_path "${CMAKE_CURRENT_BINARY_DIR}")
   else()
     set(eager_generator_path "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}")
+  endif()
+
+  if(WITH_SHARED_PHI)
+    message("Copied phi.dll for Eager AutoCodeGen")
+    add_custom_command(
+      OUTPUT ${eager_generator_path}/phi.dll
+      COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${eager_generator_path}
+      DEPENDS phi)
+    list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/phi.dll)
+  endif()
+
+  if(WITH_SHARED_IR)
+    add_custom_command(
+      OUTPUT ${eager_generator_path}/ir.dll
+      COMMAND ${CMAKE_COMMAND} -E copy ${IR_LIB} ${eager_generator_path}
+      DEPENDS pir)
+    list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/ir.dll)
   endif()
 
   if(${CBLAS_PROVIDER} STREQUAL MKLML)
@@ -110,52 +114,22 @@ if(WIN32)
   endif()
 
   add_custom_target(
-    eager_codegen
+    legacy_eager_codegen
     COMMAND
       "${eager_generator_path}/eager_generator.exe"
       "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_dygraph_forward_h_path}
-            ${dygraph_forward_h_path}
-    COMMENT
-      "copy_if_different ${tmp_dygraph_forward_h_path} to ${dygraph_forward_h_path}"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_dygraph_forward_cc_path}
-            ${dygraph_forward_cc_path}
-    COMMENT
-      "copy_if_different ${tmp_dygraph_forward_cc_path} to ${dygraph_forward_cc_path}"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_dygraph_node_h_path}
-            ${dygraph_node_h_path}
-    COMMENT
-      "copy_if_different ${tmp_dygraph_node_h_path} to ${dygraph_node_h_path}"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_dygraph_node_cc_path}
-            ${dygraph_node_cc_path}
-    COMMENT
-      "copy_if_different ${tmp_dygraph_node_cc_path} to ${dygraph_node_cc_path}"
+      "${CODE_GEN_SPLIT_FILE_COUNT}"
     DEPENDS ${EAGER_CODEGEN_DEPS}
     VERBATIM)
 else()
   add_custom_target(
-    eager_codegen
+    legacy_eager_codegen
     COMMAND
       ${CMAKE_COMMAND} -E env
-      "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${CMAKE_CURRENT_BINARY_DIR}/../../pybind"
+      "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${CMAKE_CURRENT_BINARY_DIR}/../../pybind:${PADDLE_BINARY_DIR}/third_party/install/mklml/lib"
       "${CMAKE_CURRENT_BINARY_DIR}/eager_generator"
       "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_dygraph_forward_h_path}
-            ${dygraph_forward_h_path}
-    COMMENT
-      "copy_if_different ${tmp_dygraph_forward_h_path} to ${dygraph_forward_h_path}"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_dygraph_forward_cc_path}
-            ${dygraph_forward_cc_path}
-    COMMENT
-      "copy_if_different ${tmp_dygraph_forward_cc_path} to ${dygraph_forward_cc_path}"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_dygraph_node_h_path}
-            ${dygraph_node_h_path}
-    COMMENT
-      "copy_if_different ${tmp_dygraph_node_h_path} to ${dygraph_node_h_path}"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_dygraph_node_cc_path}
-            ${dygraph_node_cc_path}
-    COMMENT
-      "copy_if_different ${tmp_dygraph_node_cc_path} to ${dygraph_node_cc_path}"
+      "${CODE_GEN_SPLIT_FILE_COUNT}"
     DEPENDS eager_generator
     VERBATIM)
 endif()

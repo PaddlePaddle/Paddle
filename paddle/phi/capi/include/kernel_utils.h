@@ -16,13 +16,16 @@
 
 #include "paddle/phi/capi/include/common.h"
 
-#if !defined(_WIN32) && !defined(__APPLE__)
+#if !defined(_WIN32)
 
 namespace phi {
 namespace capi {
 
 #define CUSTOM_PHI_KERNEL(...) \
   ::phi::capi::CustomKernelImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Compute
+
+#define PHI_CAPI_INFER_META(...) \
+  ::phi::capi::InferMetaFnImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Call
 
 #define CUSTOM_PHI_VARIADIC_KERNEL(...)                      \
   reinterpret_cast<void *>(                                  \
@@ -130,283 +133,283 @@ namespace capi {
   PD_CUSTOM_PHI_KERNEL_EXPAND(                                            \
       _PD_BUILD_KERNEL_INSTANTIATION_14(meta_kernel_fn, backend, __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_1(registrar_class,                    \
-                                          kernel_name,                        \
-                                          backend,                            \
-                                          layout,                             \
-                                          registrar_id,                       \
-                                          meta_kernel_fn,                     \
-                                          cpp_dtype)                          \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  int TouchCustomKernelSymbolFor_##kernel_name##_##backend##_##layout() {     \
-    return 0;                                                                 \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_1(registrar_class,                     \
+                                          kernel_name,                         \
+                                          backend,                             \
+                                          layout,                              \
+                                          registrar_id,                        \
+                                          meta_kernel_fn,                      \
+                                          cpp_dtype)                           \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  int TouchCustomKernelSymbolFor_##kernel_name##_##backend##_##layout() {      \
+    return 0;                                                                  \
   }
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_2(registrar_class,                    \
-                                          kernel_name,                        \
-                                          backend,                            \
-                                          layout,                             \
-                                          registrar_id,                       \
-                                          meta_kernel_fn,                     \
-                                          cpp_dtype,                          \
-                                          ...)                                \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_1(registrar_class,                      \
-                                        kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PD_CUSTOM_PHI_KERNEL_ID,              \
-                                        meta_kernel_fn,                       \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_2(registrar_class,                     \
+                                          kernel_name,                         \
+                                          backend,                             \
+                                          layout,                              \
+                                          registrar_id,                        \
+                                          meta_kernel_fn,                      \
+                                          cpp_dtype,                           \
+                                          ...)                                 \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_1(registrar_class,                       \
+                                        kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PD_CUSTOM_PHI_KERNEL_ID,               \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_3(registrar_class,                    \
-                                          kernel_name,                        \
-                                          backend,                            \
-                                          layout,                             \
-                                          registrar_id,                       \
-                                          meta_kernel_fn,                     \
-                                          cpp_dtype,                          \
-                                          ...)                                \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_2(registrar_class,                      \
-                                        kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PD_CUSTOM_PHI_KERNEL_ID,              \
-                                        meta_kernel_fn,                       \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_3(registrar_class,                     \
+                                          kernel_name,                         \
+                                          backend,                             \
+                                          layout,                              \
+                                          registrar_id,                        \
+                                          meta_kernel_fn,                      \
+                                          cpp_dtype,                           \
+                                          ...)                                 \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_2(registrar_class,                       \
+                                        kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PD_CUSTOM_PHI_KERNEL_ID,               \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_4(registrar_class,                    \
-                                          kernel_name,                        \
-                                          backend,                            \
-                                          layout,                             \
-                                          registrar_id,                       \
-                                          meta_kernel_fn,                     \
-                                          cpp_dtype,                          \
-                                          ...)                                \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_3(registrar_class,                      \
-                                        kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PD_CUSTOM_PHI_KERNEL_ID,              \
-                                        meta_kernel_fn,                       \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_4(registrar_class,                     \
+                                          kernel_name,                         \
+                                          backend,                             \
+                                          layout,                              \
+                                          registrar_id,                        \
+                                          meta_kernel_fn,                      \
+                                          cpp_dtype,                           \
+                                          ...)                                 \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_3(registrar_class,                       \
+                                        kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PD_CUSTOM_PHI_KERNEL_ID,               \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_5(registrar_class,                    \
-                                          kernel_name,                        \
-                                          backend,                            \
-                                          layout,                             \
-                                          registrar_id,                       \
-                                          meta_kernel_fn,                     \
-                                          cpp_dtype,                          \
-                                          ...)                                \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_4(registrar_class,                      \
-                                        kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PD_CUSTOM_PHI_KERNEL_ID,              \
-                                        meta_kernel_fn,                       \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_5(registrar_class,                     \
+                                          kernel_name,                         \
+                                          backend,                             \
+                                          layout,                              \
+                                          registrar_id,                        \
+                                          meta_kernel_fn,                      \
+                                          cpp_dtype,                           \
+                                          ...)                                 \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_4(registrar_class,                       \
+                                        kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PD_CUSTOM_PHI_KERNEL_ID,               \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_6(registrar_class,                    \
-                                          kernel_name,                        \
-                                          backend,                            \
-                                          layout,                             \
-                                          registrar_id,                       \
-                                          meta_kernel_fn,                     \
-                                          cpp_dtype,                          \
-                                          ...)                                \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_5(registrar_class,                      \
-                                        kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PD_CUSTOM_PHI_KERNEL_ID,              \
-                                        meta_kernel_fn,                       \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_6(registrar_class,                     \
+                                          kernel_name,                         \
+                                          backend,                             \
+                                          layout,                              \
+                                          registrar_id,                        \
+                                          meta_kernel_fn,                      \
+                                          cpp_dtype,                           \
+                                          ...)                                 \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_5(registrar_class,                       \
+                                        kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PD_CUSTOM_PHI_KERNEL_ID,               \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_7(registrar_class,                    \
-                                          kernel_name,                        \
-                                          backend,                            \
-                                          layout,                             \
-                                          registrar_id,                       \
-                                          meta_kernel_fn,                     \
-                                          cpp_dtype,                          \
-                                          ...)                                \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_6(registrar_class,                      \
-                                        kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PD_CUSTOM_PHI_KERNEL_ID,              \
-                                        meta_kernel_fn,                       \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_7(registrar_class,                     \
+                                          kernel_name,                         \
+                                          backend,                             \
+                                          layout,                              \
+                                          registrar_id,                        \
+                                          meta_kernel_fn,                      \
+                                          cpp_dtype,                           \
+                                          ...)                                 \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_6(registrar_class,                       \
+                                        kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PD_CUSTOM_PHI_KERNEL_ID,               \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_8(registrar_class,                    \
-                                          kernel_name,                        \
-                                          backend,                            \
-                                          layout,                             \
-                                          registrar_id,                       \
-                                          meta_kernel_fn,                     \
-                                          cpp_dtype,                          \
-                                          ...)                                \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_7(registrar_class,                      \
-                                        kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PD_CUSTOM_PHI_KERNEL_ID,              \
-                                        meta_kernel_fn,                       \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_8(registrar_class,                     \
+                                          kernel_name,                         \
+                                          backend,                             \
+                                          layout,                              \
+                                          registrar_id,                        \
+                                          meta_kernel_fn,                      \
+                                          cpp_dtype,                           \
+                                          ...)                                 \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_7(registrar_class,                       \
+                                        kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PD_CUSTOM_PHI_KERNEL_ID,               \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_9(registrar_class,                    \
-                                          kernel_name,                        \
-                                          backend,                            \
-                                          layout,                             \
-                                          registrar_id,                       \
-                                          meta_kernel_fn,                     \
-                                          cpp_dtype,                          \
-                                          ...)                                \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_8(registrar_class,                      \
-                                        kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PD_CUSTOM_PHI_KERNEL_ID,              \
-                                        meta_kernel_fn,                       \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_9(registrar_class,                     \
+                                          kernel_name,                         \
+                                          backend,                             \
+                                          layout,                              \
+                                          registrar_id,                        \
+                                          meta_kernel_fn,                      \
+                                          cpp_dtype,                           \
+                                          ...)                                 \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_8(registrar_class,                       \
+                                        kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PD_CUSTOM_PHI_KERNEL_ID,               \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_10(registrar_class,                   \
-                                           kernel_name,                       \
-                                           backend,                           \
-                                           layout,                            \
-                                           registrar_id,                      \
-                                           meta_kernel_fn,                    \
-                                           cpp_dtype,                         \
-                                           ...)                               \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_9(registrar_class,                      \
-                                        kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PD_CUSTOM_PHI_KERNEL_ID,              \
-                                        meta_kernel_fn,                       \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_10(registrar_class,                    \
+                                           kernel_name,                        \
+                                           backend,                            \
+                                           layout,                             \
+                                           registrar_id,                       \
+                                           meta_kernel_fn,                     \
+                                           cpp_dtype,                          \
+                                           ...)                                \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_9(registrar_class,                       \
+                                        kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PD_CUSTOM_PHI_KERNEL_ID,               \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_11(registrar_class,                   \
-                                           kernel_name,                       \
-                                           backend,                           \
-                                           layout,                            \
-                                           registrar_id,                      \
-                                           meta_kernel_fn,                    \
-                                           cpp_dtype,                         \
-                                           ...)                               \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_10(registrar_class,                     \
-                                         kernel_name,                         \
-                                         backend,                             \
-                                         layout,                              \
-                                         PD_CUSTOM_PHI_KERNEL_ID,             \
-                                         meta_kernel_fn,                      \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_11(registrar_class,                    \
+                                           kernel_name,                        \
+                                           backend,                            \
+                                           layout,                             \
+                                           registrar_id,                       \
+                                           meta_kernel_fn,                     \
+                                           cpp_dtype,                          \
+                                           ...)                                \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_10(registrar_class,                      \
+                                         kernel_name,                          \
+                                         backend,                              \
+                                         layout,                               \
+                                         PD_CUSTOM_PHI_KERNEL_ID,              \
+                                         meta_kernel_fn,                       \
                                          __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_12(registrar_class,                   \
-                                           kernel_name,                       \
-                                           backend,                           \
-                                           layout,                            \
-                                           registrar_id,                      \
-                                           meta_kernel_fn,                    \
-                                           cpp_dtype,                         \
-                                           ...)                               \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_11(registrar_class,                     \
-                                         kernel_name,                         \
-                                         backend,                             \
-                                         layout,                              \
-                                         PD_CUSTOM_PHI_KERNEL_ID,             \
-                                         meta_kernel_fn,                      \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_12(registrar_class,                    \
+                                           kernel_name,                        \
+                                           backend,                            \
+                                           layout,                             \
+                                           registrar_id,                       \
+                                           meta_kernel_fn,                     \
+                                           cpp_dtype,                          \
+                                           ...)                                \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_11(registrar_class,                      \
+                                         kernel_name,                          \
+                                         backend,                              \
+                                         layout,                               \
+                                         PD_CUSTOM_PHI_KERNEL_ID,              \
+                                         meta_kernel_fn,                       \
                                          __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_13(registrar_class,                   \
-                                           kernel_name,                       \
-                                           backend,                           \
-                                           layout,                            \
-                                           registrar_id,                      \
-                                           meta_kernel_fn,                    \
-                                           cpp_dtype,                         \
-                                           ...)                               \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_12(registrar_class,                     \
-                                         kernel_name,                         \
-                                         backend,                             \
-                                         layout,                              \
-                                         PD_CUSTOM_PHI_KERNEL_ID,             \
-                                         meta_kernel_fn,                      \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_13(registrar_class,                    \
+                                           kernel_name,                        \
+                                           backend,                            \
+                                           layout,                             \
+                                           registrar_id,                       \
+                                           meta_kernel_fn,                     \
+                                           cpp_dtype,                          \
+                                           ...)                                \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_12(registrar_class,                      \
+                                         kernel_name,                          \
+                                         backend,                              \
+                                         layout,                               \
+                                         PD_CUSTOM_PHI_KERNEL_ID,              \
+                                         meta_kernel_fn,                       \
                                          __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_14(registrar_class,                   \
-                                           kernel_name,                       \
-                                           backend,                           \
-                                           layout,                            \
-                                           registrar_id,                      \
-                                           meta_kernel_fn,                    \
-                                           cpp_dtype,                         \
-                                           ...)                               \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_13(registrar_class,                     \
-                                         kernel_name,                         \
-                                         backend,                             \
-                                         layout,                              \
-                                         PD_CUSTOM_PHI_KERNEL_ID,             \
-                                         meta_kernel_fn,                      \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_14(registrar_class,                    \
+                                           kernel_name,                        \
+                                           backend,                            \
+                                           layout,                             \
+                                           registrar_id,                       \
+                                           meta_kernel_fn,                     \
+                                           cpp_dtype,                          \
+                                           ...)                                \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_13(registrar_class,                      \
+                                         kernel_name,                          \
+                                         backend,                              \
+                                         layout,                               \
+                                         PD_CUSTOM_PHI_KERNEL_ID,              \
+                                         meta_kernel_fn,                       \
                                          __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_15(registrar_class,                   \
-                                           kernel_name,                       \
-                                           backend,                           \
-                                           layout,                            \
-                                           registrar_id,                      \
-                                           meta_kernel_fn,                    \
-                                           cpp_dtype,                         \
-                                           ...)                               \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_14(registrar_class,                     \
-                                         kernel_name,                         \
-                                         backend,                             \
-                                         layout,                              \
-                                         PD_CUSTOM_PHI_KERNEL_ID,             \
-                                         meta_kernel_fn,                      \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_15(registrar_class,                    \
+                                           kernel_name,                        \
+                                           backend,                            \
+                                           layout,                             \
+                                           registrar_id,                       \
+                                           meta_kernel_fn,                     \
+                                           cpp_dtype,                          \
+                                           ...)                                \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_14(registrar_class,                      \
+                                         kernel_name,                          \
+                                         backend,                              \
+                                         layout,                               \
+                                         PD_CUSTOM_PHI_KERNEL_ID,              \
+                                         meta_kernel_fn,                       \
                                          __VA_ARGS__))
 
 #define _PD_BUILD_KERNEL_REGISTRAR_INIT(                                   \
@@ -454,47 +457,67 @@ namespace capi {
                                                    meta_kernel_fn,      \
                                                    __VA_ARGS__))
 
-#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_DEVICE_CONTEXT(dev_ctx)     \
+#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_DEVICE_CONTEXT(dev_ctx)      \
+  template <typename... Tail>                                                 \
+  struct CustomKernelCallHelper<const dev_ctx &, Tail...> {                   \
+    template <int dev_ctx_idx,                                                \
+              int in_idx,                                                     \
+              int attr_idx,                                                   \
+              int out_idx,                                                    \
+              typename... PreviousArgs>                                       \
+    static void Compute(PD_KernelContext *ctx, PreviousArgs &...pargs) {      \
+      static_assert(in_idx == 0,                                              \
+                    "Kernel's DeviceContext should appear before Inputs.");   \
+      static_assert(                                                          \
+          attr_idx == 0,                                                      \
+          "Kernel's DeviceContext should appear before Attributes.");         \
+      static_assert(out_idx == 0,                                             \
+                    "Kernel's DeviceContext should appear before Outputs.");  \
+      dev_ctx arg = PD_GetDeviceContext(ctx);                                 \
+      CustomKernelCallHelper<Tail...>::                                       \
+          template Compute<dev_ctx_idx + 1, in_idx, attr_idx, out_idx>(       \
+              ctx, pargs..., arg);                                            \
+    }                                                                         \
+    template <int idx, typename... PreviousArgs>                              \
+    static void VariadicCompute(const std::tuple<DevCtx, Args &...> &ctx,     \
+                                PreviousArgs &...pargs) {                     \
+      const dev_ctx &arg = std::get<idx>(ctx);                                \
+      auto dev_ctx_wrapper = phi::capi::DeviceContext(                        \
+          reinterpret_cast<PD_DeviceContext *>(const_cast<dev_ctx *>(&arg))); \
+      return CustomKernelCallHelper<Tail...>::template VariadicCompute<idx +  \
+                                                                       1>(    \
+          ctx, pargs..., dev_ctx_wrapper);                                    \
+    }                                                                         \
+  }
+
+#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_INPUT(tensor_type)          \
   template <typename... Tail>                                                \
-  struct CustomKernelCallHelper<const dev_ctx &, Tail...> {                  \
+  struct CustomKernelCallHelper<const tensor_type &, Tail...> {              \
     template <int dev_ctx_idx,                                               \
               int in_idx,                                                    \
               int attr_idx,                                                  \
               int out_idx,                                                   \
               typename... PreviousArgs>                                      \
     static void Compute(PD_KernelContext *ctx, PreviousArgs &...pargs) {     \
-      static_assert(in_idx == 0,                                             \
-                    "Kernel's DeviceContext should appear before Inputs.");  \
-      static_assert(                                                         \
-          attr_idx == 0,                                                     \
-          "Kernel's DeviceContext should appear before Attributes.");        \
+      static_assert(attr_idx == 0,                                           \
+                    "Kernel's Input should appear before Attributes.");      \
       static_assert(out_idx == 0,                                            \
-                    "Kernel's DeviceContext should appear before Outputs."); \
-      dev_ctx arg = PD_GetDeviceContext(ctx);                                \
+                    "Kernel's Input should appear before Outputs.");         \
+      const tensor_type arg = PD_InputAt(ctx, in_idx);                       \
       CustomKernelCallHelper<Tail...>::                                      \
-          template Compute<dev_ctx_idx + 1, in_idx, attr_idx, out_idx>(      \
+          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(      \
               ctx, pargs..., arg);                                           \
     }                                                                        \
-  }
-
-#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_INPUT(tensor_type)      \
-  template <typename... Tail>                                            \
-  struct CustomKernelCallHelper<const tensor_type &, Tail...> {          \
-    template <int dev_ctx_idx,                                           \
-              int in_idx,                                                \
-              int attr_idx,                                              \
-              int out_idx,                                               \
-              typename... PreviousArgs>                                  \
-    static void Compute(PD_KernelContext *ctx, PreviousArgs &...pargs) { \
-      static_assert(attr_idx == 0,                                       \
-                    "Kernel's Input should appear before Attributes.");  \
-      static_assert(out_idx == 0,                                        \
-                    "Kernel's Input should appear before Outputs.");     \
-      const tensor_type arg = PD_InputAt(ctx, in_idx);                   \
-      CustomKernelCallHelper<Tail...>::                                  \
-          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(  \
-              ctx, pargs..., arg);                                       \
-    }                                                                    \
+    template <int idx, typename... PreviousArgs>                             \
+    static void VariadicCompute(const std::tuple<DevCtx, Args &...> &ctx,    \
+                                PreviousArgs &...pargs) {                    \
+      const tensor_type &arg = std::get<idx>(ctx);                           \
+      auto tensor = phi::capi::DenseTensor(                                  \
+          reinterpret_cast<PD_Tensor *>(const_cast<tensor_type *>(&arg)));   \
+      return CustomKernelCallHelper<Tail...>::template VariadicCompute<idx + \
+                                                                       1>(   \
+          ctx, pargs..., tensor);                                            \
+    }                                                                        \
   }
 
 #define PD_SPECIALIZE_CustomKernelCallHelper_FOR_OPTIONAL_INPUT(tensor_type) \
@@ -516,99 +539,174 @@ namespace capi {
           template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(      \
               ctx, pargs..., arg);                                           \
     }                                                                        \
+    template <int idx, typename... PreviousArgs>                             \
+    static void VariadicCompute(const std::tuple<DevCtx, Args &...> &ctx,    \
+                                PreviousArgs &...pargs) {                    \
+      auto &arg = std::get<idx>(ctx);                                        \
+      paddle::optional<tensor_type> tensor =                                 \
+          PD_OptionalTensor(reinterpret_cast<PD_Tensor *>(                   \
+              const_cast<paddle::optional<tensor_type> *>(&arg)));           \
+      return CustomKernelCallHelper<Tail...>::template VariadicCompute<idx + \
+                                                                       1>(   \
+          ctx, pargs..., tensor);                                            \
+    }                                                                        \
   }
 
-#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_MULTI_INPUT(tensor_type) \
-  template <typename... Tail>                                             \
-  struct CustomKernelCallHelper<const std::vector<const tensor_type *> &, \
-                                Tail...> {                                \
-    template <int dev_ctx_idx,                                            \
-              int in_idx,                                                 \
-              int attr_idx,                                               \
-              int out_idx,                                                \
-              typename... PreviousArgs>                                   \
-    static void Compute(PD_KernelContext *ctx, PreviousArgs &...pargs) {  \
-      static_assert(attr_idx == 0,                                        \
-                    "Kernel's Input should appear before Attributes.");   \
-      static_assert(out_idx == 0,                                         \
-                    "Kernel's Input should appear before Outputs.");      \
-      auto arg = PD_MultiInputAt(ctx, in_idx);                            \
-      auto arg_wrapper = PD_GetPointerVector(&arg);                       \
-      CustomKernelCallHelper<Tail...>::                                   \
-          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(   \
-              ctx, pargs..., arg_wrapper);                                \
-    }                                                                     \
+#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_MULTI_INPUT(tensor_type)    \
+  template <typename... Tail>                                                \
+  struct CustomKernelCallHelper<const std::vector<const tensor_type *> &,    \
+                                Tail...> {                                   \
+    template <int dev_ctx_idx,                                               \
+              int in_idx,                                                    \
+              int attr_idx,                                                  \
+              int out_idx,                                                   \
+              typename... PreviousArgs>                                      \
+    static void Compute(PD_KernelContext *ctx, PreviousArgs &...pargs) {     \
+      static_assert(attr_idx == 0,                                           \
+                    "Kernel's Input should appear before Attributes.");      \
+      static_assert(out_idx == 0,                                            \
+                    "Kernel's Input should appear before Outputs.");         \
+      auto arg = PD_MultiInputAt(ctx, in_idx);                               \
+      std::vector<const tensor_type *> tensor_ptr_vec;                       \
+      for (auto &tensor : arg) {                                             \
+        tensor_ptr_vec.push_back(tensor.raw_data() ? &tensor : nullptr);     \
+      }                                                                      \
+      CustomKernelCallHelper<Tail...>::                                      \
+          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(      \
+              ctx, pargs..., tensor_ptr_vec);                                \
+    }                                                                        \
+    template <int idx, typename... PreviousArgs>                             \
+    static void VariadicCompute(const std::tuple<DevCtx, Args &...> &ctx,    \
+                                PreviousArgs &...pargs) {                    \
+      auto &arg = std::get<idx>(ctx);                                        \
+      auto tensor_vec = PD_TensorVector(reinterpret_cast<PD_Tensor *>(       \
+          const_cast<std::vector<const tensor_type *> *>(&arg)));            \
+      std::vector<const tensor_type *> tensor_ptr_vec;                       \
+      for (auto &tensor : tensor_vec) {                                      \
+        tensor_ptr_vec.push_back(tensor.raw_data() ? &tensor : nullptr);     \
+      }                                                                      \
+      return CustomKernelCallHelper<Tail...>::template VariadicCompute<idx + \
+                                                                       1>(   \
+          ctx, pargs..., tensor_ptr_vec);                                    \
+    }                                                                        \
   }
 
-#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_ATTRIBUTE(attr_type)     \
-  template <typename... Tail>                                             \
-  struct CustomKernelCallHelper<attr_type, Tail...> {                     \
-    template <int dev_ctx_idx,                                            \
-              int in_idx,                                                 \
-              int attr_idx,                                               \
-              int out_idx,                                                \
-              typename... PreviousArgs>                                   \
-    static void Compute(PD_KernelContext *ctx, PreviousArgs &...pargs) {  \
-      static_assert(out_idx == 0,                                         \
-                    "Kernel's Attributes should appear before Outputs."); \
-      attr_type arg = PD_AttrAt<attr_type>(ctx, attr_idx);                \
-      CustomKernelCallHelper<Tail...>::                                   \
-          template Compute<dev_ctx_idx, in_idx, attr_idx + 1, out_idx>(   \
-              ctx, pargs..., arg);                                        \
-    }                                                                     \
+#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_ATTRIBUTE(attr_type)        \
+  template <typename... Tail>                                                \
+  struct CustomKernelCallHelper<attr_type, Tail...> {                        \
+    template <int dev_ctx_idx,                                               \
+              int in_idx,                                                    \
+              int attr_idx,                                                  \
+              int out_idx,                                                   \
+              typename... PreviousArgs>                                      \
+    static void Compute(PD_KernelContext *ctx, PreviousArgs &...pargs) {     \
+      static_assert(out_idx == 0,                                            \
+                    "Kernel's Attributes should appear before Outputs.");    \
+      attr_type arg = PD_AttrAt<attr_type>(ctx, attr_idx);                   \
+      CustomKernelCallHelper<Tail...>::                                      \
+          template Compute<dev_ctx_idx, in_idx, attr_idx + 1, out_idx>(      \
+              ctx, pargs..., arg);                                           \
+    }                                                                        \
+    template <int idx, typename... PreviousArgs>                             \
+    static void VariadicCompute(const std::tuple<DevCtx, Args &...> &ctx,    \
+                                PreviousArgs &...pargs) {                    \
+      auto &arg = std::get<idx>(ctx);                                        \
+      auto attr = PD_Attr<attr_type>(reinterpret_cast<void *>(&arg));        \
+      return CustomKernelCallHelper<Tail...>::template VariadicCompute<idx + \
+                                                                       1>(   \
+          ctx, pargs..., attr);                                              \
+    }                                                                        \
   }
 
-#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_CONST_ATTRIBUTE_REF(     \
-    attr_type)                                                            \
-  template <typename... Tail>                                             \
-  struct CustomKernelCallHelper<const attr_type &, Tail...> {             \
-    template <int dev_ctx_idx,                                            \
-              int in_idx,                                                 \
-              int attr_idx,                                               \
-              int out_idx,                                                \
-              typename... PreviousArgs>                                   \
-    static void Compute(PD_KernelContext *ctx, PreviousArgs &...pargs) {  \
-      static_assert(out_idx == 0,                                         \
-                    "Kernel's Attributes should appear before Outputs."); \
-      attr_type arg = PD_AttrAt<attr_type>(ctx, attr_idx);                \
-      CustomKernelCallHelper<Tail...>::                                   \
-          template Compute<dev_ctx_idx, in_idx, attr_idx + 1, out_idx>(   \
-              ctx, pargs..., arg);                                        \
-    }                                                                     \
+#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_CONST_ATTRIBUTE_REF(        \
+    attr_type)                                                               \
+  template <typename... Tail>                                                \
+  struct CustomKernelCallHelper<const attr_type &, Tail...> {                \
+    template <int dev_ctx_idx,                                               \
+              int in_idx,                                                    \
+              int attr_idx,                                                  \
+              int out_idx,                                                   \
+              typename... PreviousArgs>                                      \
+    static void Compute(PD_KernelContext *ctx, PreviousArgs &...pargs) {     \
+      static_assert(out_idx == 0,                                            \
+                    "Kernel's Attributes should appear before Outputs.");    \
+      attr_type arg = PD_AttrAt<attr_type>(ctx, attr_idx);                   \
+      CustomKernelCallHelper<Tail...>::                                      \
+          template Compute<dev_ctx_idx, in_idx, attr_idx + 1, out_idx>(      \
+              ctx, pargs..., arg);                                           \
+    }                                                                        \
+    template <int idx, typename... PreviousArgs>                             \
+    static void VariadicCompute(const std::tuple<DevCtx, Args &...> &ctx,    \
+                                PreviousArgs &...pargs) {                    \
+      const attr_type &arg = std::get<idx>(ctx);                             \
+      auto attr = PD_Attr<attr_type>(                                        \
+          reinterpret_cast<void *>(const_cast<attr_type *>(&arg)));          \
+      return CustomKernelCallHelper<Tail...>::template VariadicCompute<idx + \
+                                                                       1>(   \
+          ctx, pargs..., attr);                                              \
+    }                                                                        \
   }
 
-#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_OUTPUT(tensor_type)     \
-  template <typename... Tail>                                            \
-  struct CustomKernelCallHelper<tensor_type *, Tail...> {                \
-    template <int dev_ctx_idx,                                           \
-              int in_idx,                                                \
-              int attr_idx,                                              \
-              int out_idx,                                               \
-              typename... PreviousArgs>                                  \
-    static void Compute(PD_KernelContext *ctx, PreviousArgs &...pargs) { \
-      auto arg = PD_OutputAt(ctx, out_idx);                              \
-      tensor_type *ptr = (arg.raw_data() ? &arg : nullptr);              \
-      CustomKernelCallHelper<Tail...>::                                  \
-          template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx + 1>(  \
-              ctx, pargs..., ptr);                                       \
-    }                                                                    \
+#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_OUTPUT(tensor_type)         \
+  template <typename... Tail>                                                \
+  struct CustomKernelCallHelper<tensor_type *, Tail...> {                    \
+    template <int dev_ctx_idx,                                               \
+              int in_idx,                                                    \
+              int attr_idx,                                                  \
+              int out_idx,                                                   \
+              typename... PreviousArgs>                                      \
+    static void Compute(PD_KernelContext *ctx, PreviousArgs &...pargs) {     \
+      auto arg = PD_OutputAt(ctx, out_idx);                                  \
+      tensor_type *ptr = (arg.raw_data() ? &arg : nullptr);                  \
+      CustomKernelCallHelper<Tail...>::                                      \
+          template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx + 1>(      \
+              ctx, pargs..., ptr);                                           \
+    }                                                                        \
+    template <int idx, typename... PreviousArgs>                             \
+    static void VariadicCompute(const std::tuple<DevCtx, Args &...> &ctx,    \
+                                PreviousArgs &...pargs) {                    \
+      tensor_type *arg = std::get<idx>(ctx);                                 \
+      auto tensor =                                                          \
+          phi::capi::DenseTensor(reinterpret_cast<PD_Tensor *>(arg));        \
+      auto tensor_ptr = tensor.raw_data() ? &tensor : nullptr;               \
+      return CustomKernelCallHelper<Tail...>::template VariadicCompute<idx + \
+                                                                       1>(   \
+          ctx, pargs..., tensor_ptr);                                        \
+    }                                                                        \
   }
 
-#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_MULTI_OUTPUT(tensor_type) \
-  template <typename... Tail>                                              \
-  struct CustomKernelCallHelper<std::vector<tensor_type *>, Tail...> {     \
-    template <int dev_ctx_idx,                                             \
-              int in_idx,                                                  \
-              int attr_idx,                                                \
-              int out_idx,                                                 \
-              typename... PreviousArgs>                                    \
-    static void Compute(PD_KernelContext *ctx, PreviousArgs &...pargs) {   \
-      auto arg = PD_MultiOutputAt(ctx, out_idx);                           \
-      auto arg_wrapper = PD_GetPointerVector(&arg);                        \
-      CustomKernelCallHelper<Tail...>::                                    \
-          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(    \
-              ctx, pargs..., arg_wrapper);                                 \
-    }                                                                      \
+#define PD_SPECIALIZE_CustomKernelCallHelper_FOR_MULTI_OUTPUT(tensor_type)   \
+  template <typename... Tail>                                                \
+  struct CustomKernelCallHelper<std::vector<tensor_type *>, Tail...> {       \
+    template <int dev_ctx_idx,                                               \
+              int in_idx,                                                    \
+              int attr_idx,                                                  \
+              int out_idx,                                                   \
+              typename... PreviousArgs>                                      \
+    static void Compute(PD_KernelContext *ctx, PreviousArgs &...pargs) {     \
+      auto arg = PD_MultiOutputAt(ctx, out_idx);                             \
+      std::vector<tensor_type *> tensor_ptr_vec;                             \
+      for (auto &tensor : arg) {                                             \
+        tensor_ptr_vec.push_back(tensor.raw_data() ? &tensor : nullptr);     \
+      }                                                                      \
+      CustomKernelCallHelper<Tail...>::                                      \
+          template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx + 1>(      \
+              ctx, pargs..., tensor_ptr_vec);                                \
+    }                                                                        \
+    template <int idx, typename... PreviousArgs>                             \
+    static void VariadicCompute(const std::tuple<DevCtx, Args &...> &ctx,    \
+                                PreviousArgs &...pargs) {                    \
+      std::vector<tensor_type *> &arg = std::get<idx>(ctx);                  \
+      auto tensor_vec = PD_TensorVector(reinterpret_cast<PD_Tensor *>(       \
+          const_cast<std::vector<tensor_type *> *>(&arg)));                  \
+      std::vector<tensor_type *> tensor_ptr_vec;                             \
+      for (auto &tensor : tensor_vec) {                                      \
+        tensor_ptr_vec.push_back(tensor.raw_data() ? &tensor : nullptr);     \
+      }                                                                      \
+      return CustomKernelCallHelper<Tail...>::template VariadicCompute<idx + \
+                                                                       1>(   \
+          ctx, pargs..., tensor_ptr_vec);                                    \
+    }                                                                        \
   }
 
 template <typename T>
@@ -627,9 +725,10 @@ struct CustomKernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
         template Compute<0, 0, 0, 0>(ctx);
   }
 
-  static void VariadicCompute(const phi::capi::DeviceContext &dev_ctx,
-                              Args... args) {
-    return kernel_fn(static_cast<DevCtx>(dev_ctx), std::forward<Args>(args)...);
+  static void VariadicCompute(DevCtx dev_ctx, Args... args) {
+    const std::tuple<DevCtx, Args &...> args_tuple(dev_ctx, args...);
+    return CustomKernelCallHelper<DevCtx, Args..., CustomTypeTag<int>>::
+        template VariadicCompute<0>(args_tuple);
   }
 
  private:
@@ -691,6 +790,13 @@ struct CustomKernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
       static_assert(dev_ctx_idx > 0,
                     "Kernel should pass DeviceContext as argument.");
       static_assert(out_idx > 0, "Kernel should have output argument.");
+      return kernel_fn(dev_ctx, args...);
+    }
+
+    template <int idx>
+    static void VariadicCompute(const std::tuple<DevCtx, Args &...> &ctx,
+                                DevCtx dev_ctx,
+                                Args... args) {
       return kernel_fn(dev_ctx, args...);
     }
   };
@@ -804,6 +910,151 @@ struct CustomKernelArgsParseFunctor<Return_ (*)(Args_...)> {
       std::index_sequence<INDEX...>) {
     return {std::type_index(typeid(Arg<INDEX>))...};
   }
+};
+
+#define PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_ATTRIBUTE(attr_type)      \
+  template <typename... Tail>                                                  \
+  struct InferMetaFnCallHelper<attr_type, Tail...> {                           \
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs> \
+    static void Call(PD_InferMetaContext *ctx, PreviousArgs &...pargs) {       \
+      static_assert(out_idx == 0,                                              \
+                    "InferMeta's Attributes should appear before Outputs.");   \
+      attr_type arg = PD_InferMetaAttrAt<attr_type>(ctx, attr_idx);            \
+      InferMetaFnCallHelper<                                                   \
+          Tail...>::template Call<in_idx, attr_idx + 1, out_idx>(ctx,          \
+                                                                 pargs...,     \
+                                                                 arg);         \
+    }                                                                          \
+  }
+
+#define PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(      \
+    attr_type)                                                                 \
+  template <typename... Tail>                                                  \
+  struct InferMetaFnCallHelper<const attr_type &, Tail...> {                   \
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs> \
+    static void Call(PD_InferMetaContext *ctx, PreviousArgs &...pargs) {       \
+      static_assert(out_idx == 0,                                              \
+                    "InferMeta's Attributes should appear before Outputs.");   \
+      attr_type arg = PD_InferMetaAttrAt<attr_type>(ctx, attr_idx);            \
+      InferMetaFnCallHelper<                                                   \
+          Tail...>::template Call<in_idx, attr_idx + 1, out_idx>(ctx,          \
+                                                                 pargs...,     \
+                                                                 arg);         \
+    }                                                                          \
+  }
+
+template <typename T>
+struct InferMetaTypeTag {};
+
+template <typename Fn, Fn fn>
+struct InferMetaFnImpl;
+
+template <typename Return, typename... Args, Return (*infer_meta_fn)(Args...)>
+struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
+  static void Call(PD_InferMetaContext *ctx) {
+    InferMetaFnCallHelper<Args...,
+                          InferMetaTypeTag<int>>::template Call<0, 0, 0>(ctx);
+  }
+
+ private:
+  template <typename... RemainingArgs>
+  struct InferMetaFnCallHelper;
+
+  template <typename... Tail>
+  struct InferMetaFnCallHelper<const MetaTensor &, Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Call(PD_InferMetaContext *ctx, PreviousArgs &...pargs) {
+      static_assert(attr_idx == 0,
+                    "InferMeta's Input should appear before Attributes.");
+      static_assert(out_idx == 0,
+                    "InferMeta's Input should appear before Outputs.");
+      auto arg = MetaTensor(PD_InferMetaContextInputAt(ctx, in_idx));
+      InferMetaFnCallHelper<
+          Tail...>::template Call<in_idx + 1, attr_idx, out_idx>(ctx,
+                                                                 pargs...,
+                                                                 arg);
+    }
+  };
+
+  template <typename... Tail>
+  struct InferMetaFnCallHelper<const std::vector<const MetaTensor *> &,
+                               Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Call(PD_InferMetaContext *ctx, PreviousArgs &...pargs) {
+      static_assert(attr_idx == 0,
+                    "InferMeta's Input should appear before Attributes.");
+      static_assert(out_idx == 0,
+                    "InferMeta's Input should appear before Outputs.");
+      auto arg = PD_InferMetaMultiInputAt(ctx, in_idx);
+      std::vector<const MetaTensor *> tensor_ptr_vec;
+      for (auto &tensor : arg) {
+        tensor_ptr_vec.push_back(tensor.raw_data() ? &tensor : nullptr);
+      }
+      InferMetaFnCallHelper<Tail...>::
+          template Call<in_idx + 1, attr_idx, out_idx>(
+              ctx, pargs..., tensor_ptr_vec);
+    }
+  };
+
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_ATTRIBUTE(bool);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_ATTRIBUTE(int);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_ATTRIBUTE(int64_t);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_ATTRIBUTE(float);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_ATTRIBUTE(DataType);
+  // PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_ATTRIBUTE(Backend);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_ATTRIBUTE(DataLayout);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(std::string);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(Scalar);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(IntArray);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
+      std::vector<bool>);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
+      std::vector<int>);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
+      std::vector<int64_t>);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
+      std::vector<float>);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
+      std::vector<double>);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
+      std::vector<std::string>);
+
+  template <typename... Tail>
+  struct InferMetaFnCallHelper<MetaTensor *, Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Call(PD_InferMetaContext *ctx, PreviousArgs &...pargs) {
+      auto arg = MetaTensor(PD_InferMetaContextOutputAt(ctx, out_idx));
+      auto *arg_ptr = &arg;
+      InferMetaFnCallHelper<
+          Tail...>::template Call<in_idx, attr_idx, out_idx + 1>(ctx,
+                                                                 pargs...,
+                                                                 arg_ptr);
+    }
+  };
+
+  template <typename... Tail>
+  struct InferMetaFnCallHelper<std::vector<MetaTensor *>, Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Call(PD_InferMetaContext *ctx, PreviousArgs &...pargs) {
+      auto arg = PD_InferMetaMultiOutputAt(ctx, out_idx);
+      std::vector<MetaTensor *> tensor_ptr_vec;
+      for (auto &tensor : arg) {
+        tensor_ptr_vec.push_back(tensor.raw_data() ? &tensor : nullptr);
+      }
+      InferMetaFnCallHelper<Tail...>::
+          template Call<in_idx, attr_idx, out_idx + 1>(
+              ctx, pargs..., tensor_ptr_vec);
+    }
+  };
+
+  /* End case */
+  template <typename T>
+  struct InferMetaFnCallHelper<InferMetaTypeTag<T>> {
+    template <int in_idx, int attr_idx, int out_idx>
+    static void Call(PD_InferMetaContext *ctx, Args &...args) {
+      return infer_meta_fn(args...);
+    }
+  };
 };
 
 }  // namespace capi

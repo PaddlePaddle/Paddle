@@ -28,11 +28,13 @@ class RecvOpV2 : public framework::OperatorWithKernel {
     int peer = ctx->Attrs().Get<int>("peer");
     int ring_id = ctx->Attrs().Get<int>("ring_id");
     PADDLE_ENFORCE_GE(
-        peer, 0,
+        peer,
+        0,
         platform::errors::InvalidArgument(
             "The peer (%d) for recv_v2 op must be non-negative.", peer));
     PADDLE_ENFORCE_GE(
-        ring_id, 0,
+        ring_id,
+        0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for recv_v2 op must be non-negative.", ring_id));
 
@@ -40,7 +42,8 @@ class RecvOpV2 : public framework::OperatorWithKernel {
         framework::proto::VarType::LOD_TENSOR) {
       auto out_shape = ctx->Attrs().Get<std::vector<int>>("out_shape");
       PADDLE_ENFORCE_GE(
-          out_shape.size(), 1,
+          out_shape.size(),
+          1,
           platform::errors::InvalidArgument(
               "The size of the output shape must be greater than 0 "
               "but the value given is %d.",
@@ -50,13 +53,15 @@ class RecvOpV2 : public framework::OperatorWithKernel {
         // No need to check out shape if with dynamic_shape,
         // since the shape will be recv from send_v2
         for (size_t i = 0; i < out_shape.size(); ++i) {
-          PADDLE_ENFORCE_GE(out_shape[i], 1,
+          PADDLE_ENFORCE_GE(out_shape[i],
+                            1,
                             platform::errors::InvalidArgument(
                                 "The shape attribute for recv_v2 must be set "
                                 "explicitly, but the %dth element is %d which "
                                 "is less than 1. Or dynamic_shape should be "
                                 "set to True for both send_v2 and recv_v2.",
-                                i, out_shape[i]));
+                                i,
+                                out_shape[i]));
         }
         ctx->SetOutputDim("Out", phi::make_ddim(out_shape));
       }
@@ -64,30 +69,25 @@ class RecvOpV2 : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     int dtype = ctx.Attr<int>("dtype");
     framework::proto::VarType::Type type =
         framework::proto::VarType::Type(dtype);
-    return framework::OpKernelType(type, ctx.GetPlace());
+    return phi::KernelKey(type, ctx.GetPlace());
   }
 };
 
 class RecvOpV2Maker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddOutput("Out", "(Tensor) tensor to receive.");
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
     AddAttr<int>("peer", "(int default 0) rank id for sender.").SetDefault(0);
     AddAttr<int>("dtype", "(int default 5('float32')) data type of tensor.")
         .SetDefault(5);
-#if defined(PADDLE_WITH_ASCEND_CL)
-    AddAttr<std::string>("tag", "(string default tag) tag for broadcasting.")
-        .SetDefault("tag");
-    AddAttr<int>("srTag", "(string default tag) tag for broadcasting.")
-        .SetDefault(0);
-#endif
+
     AddAttr<std::vector<int>>("out_shape", "shape of the output tensor.")
         .SetDefault(std::vector<int>());
     AddAttr<bool>(
@@ -114,8 +114,12 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(recv_v2, ops::RecvOpV2, ops::RecvOpV2Maker);
 
-REGISTER_OP_CPU_KERNEL(recv_v2, ops::RecvOpV2CPUKernel<float>,
-                       ops::RecvOpV2CPUKernel<double>,
-                       ops::RecvOpV2CPUKernel<int>,
-                       ops::RecvOpV2CPUKernel<int64_t>,
-                       ops::RecvOpV2CPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(recv_v2,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::RecvOpV2CPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import difflib
 import sys
 
 try:
@@ -42,7 +41,7 @@ for i in origin:
         error = True
         diffs.append(i)
 '''
-If you delete the unit test, such as commenting it out, 
+If you delete the unit test, such as commenting it out,
 please ask for approval of one RD below for passing CI:
 
     - kolinwei(recommended) or zhouwei25

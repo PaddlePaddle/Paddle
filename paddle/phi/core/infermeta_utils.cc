@@ -21,12 +21,12 @@ void InferMetaContext::SetMetaConfig(MetaConfig config) {
 }
 
 void InferMetaContext::EmplaceBackInput(MetaTensor input) {
-  int index = inputs_.size();
+  int index = static_cast<int>(inputs_.size());
   inputs_.emplace_back(std::move(input));
   input_range_.emplace_back(std::pair<int, int>(index, index + 1));
 }
 void InferMetaContext::EmplaceBackOutput(MetaTensor output) {
-  int index = outputs_.size();
+  int index = static_cast<int>(outputs_.size());
   outputs_.emplace_back(std::move(output));
   output_range_.emplace_back(std::pair<int, int>(index, index + 1));
 }
@@ -36,7 +36,7 @@ void InferMetaContext::EmplaceBackAttr(Attribute attr) {
 
 void InferMetaContext::EmplaceBackInputs(
     paddle::small_vector<MetaTensor, phi::kInputSmallVectorSize> inputs) {
-  int index = inputs_.size();
+  int index = static_cast<int>(inputs_.size());
   input_range_.emplace_back(std::pair<int, int>(index, index + inputs.size()));
   inputs_.insert(inputs_.end(),
                  std::make_move_iterator(inputs.begin()),
@@ -44,7 +44,7 @@ void InferMetaContext::EmplaceBackInputs(
 }
 void InferMetaContext::EmplaceBackOutputs(
     paddle::small_vector<MetaTensor, phi::kOutputSmallVectorSize> outputs) {
-  int index = outputs_.size();
+  int index = static_cast<int>(outputs_.size());
   output_range_.emplace_back(
       std::pair<int, int>(index, index + outputs.size()));
   outputs_.insert(outputs_.end(),
@@ -68,8 +68,13 @@ const MetaTensor& InferMetaContext::InputAt(size_t idx) const {
 std::vector<const MetaTensor*> InferMetaContext::InputsBetween(
     size_t start, size_t end) const {
   std::vector<const MetaTensor*> result;
-  result.reserve(end - start);
+  // If vector only contains one input that is not initialized,
+  // we should return a empty vector
+  if (end - start == 1 && !inputs_.at(start).initialized()) {
+    return result;
+  }
 
+  result.reserve(end - start);
   for (size_t i = start; i < end; ++i) {
     auto& in = inputs_.at(i);
     result.emplace_back(in.initialized() ? &in : nullptr);
@@ -104,6 +109,12 @@ MetaTensor* InferMetaContext::MutableOutputAt(size_t idx) {
 std::vector<MetaTensor*> InferMetaContext::MutableOutputBetween(size_t start,
                                                                 size_t end) {
   std::vector<MetaTensor*> result;
+  // If vector only contains one output that is not initialized,
+  // we should return a empty vector
+  if (end - start == 1 && !outputs_.at(start).initialized()) {
+    return result;
+  }
+
   result.reserve(end - start);
   for (size_t i = start; i < end; ++i) {
     auto& out = outputs_.at(i);
@@ -122,6 +133,10 @@ const AttrType& InferMetaContext::AttrAt(size_t idx) const {
         "type is `%s`.",
         std::type_index(typeid(AttrType)).name()));
   }
+}
+
+const Attribute& InferMetaContext::AttrAt(size_t idx) const {
+  return attrs_.at(idx);
 }
 
 template const bool& InferMetaContext::AttrAt(size_t idx) const;
@@ -143,6 +158,9 @@ template const IntArray& InferMetaContext::AttrAt(size_t idx) const;
 template const DataType& InferMetaContext::AttrAt(size_t idx) const;
 template const DataLayout& InferMetaContext::AttrAt(size_t idx) const;
 template const Place& InferMetaContext::AttrAt(size_t idx) const;
+template const TensorRef& InferMetaContext::AttrAt(size_t idx) const;
+template const std::vector<TensorRef>& InferMetaContext::AttrAt(
+    size_t idx) const;
 
 MetaFnFactory& MetaFnFactory::Instance() {
   static MetaFnFactory g_meta_fn_map;

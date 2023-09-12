@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace phi {
@@ -100,23 +101,45 @@ inline void GetOutShape(const DDim& x_dims,
                         const std::vector<int>& dilations,
                         const std::vector<int>& strides,
                         DDim* out_dims) {
-  PADDLE_ENFORCE_EQ(
-      x_dims.size(),
-      5,
-      phi::errors::InvalidArgument("the shape of x should be (N, D, H, W, C)"));
-  PADDLE_ENFORCE_EQ(kernel_sizes.size(),
-                    5,
-                    phi::errors::InvalidArgument(
-                        "the shape of kernel should be (D, H, W, C, OC)"));
+  const bool is2D = out_dims->size() == 4 ? true : false;
+  if (is2D) {
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(),
+        4,
+        phi::errors::InvalidArgument("the shape of x should be (N, H, W, C)"));
+    PADDLE_ENFORCE_EQ(kernel_sizes.size(),
+                      4,
+                      phi::errors::InvalidArgument(
+                          "the shape of kernel should be (H, W, C, OC)"));
 
-  // infer out shape
-  (*out_dims)[0] = x_dims[0];
-  (*out_dims)[4] = kernel_sizes[4];
-  for (int i = 1; i < 4; i++) {
-    (*out_dims)[i] = (x_dims[i] + 2 * paddings[i - 1] -
-                      dilations[i - 1] * (kernel_sizes[i - 1] - 1) - 1) /
-                         strides[i - 1] +
-                     1;
+    // infer out shape
+    (*out_dims)[0] = x_dims[0];
+    (*out_dims)[3] = kernel_sizes[3];
+    for (int i = 1; i < 3; i++) {
+      (*out_dims)[i] = (x_dims[i] + 2 * paddings[i - 1] -
+                        dilations[i - 1] * (kernel_sizes[i - 1] - 1) - 1) /
+                           strides[i - 1] +
+                       1;
+    }
+  } else {
+    PADDLE_ENFORCE_EQ(x_dims.size(),
+                      5,
+                      phi::errors::InvalidArgument(
+                          "the shape of x should be (N, D, H, W, C)"));
+    PADDLE_ENFORCE_EQ(kernel_sizes.size(),
+                      5,
+                      phi::errors::InvalidArgument(
+                          "the shape of kernel should be (D, H, W, C, OC)"));
+
+    // infer out shape
+    (*out_dims)[0] = x_dims[0];
+    (*out_dims)[4] = kernel_sizes[4];
+    for (int i = 1; i < 4; i++) {
+      (*out_dims)[i] = (x_dims[i] + 2 * paddings[i - 1] -
+                        dilations[i - 1] * (kernel_sizes[i - 1] - 1) - 1) /
+                           strides[i - 1] +
+                       1;
+    }
   }
 }
 
@@ -140,17 +163,20 @@ inline void SubmPreProcess(const Context& dev_ctx,
                            DenseTensor* kernel_grad,
                            DenseTensor* x_grad) {
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
-  T* d_kernel_ptr = kernel_grad->data<T>();
-  blas.GEMM(CblasTrans,
-            CblasNoTrans,
-            x.non_zero_elements().dims()[1],
-            out_grad.dims()[1],
-            x.non_zero_elements().dims()[0],
-            static_cast<T>(1),
-            x.non_zero_elements().data<T>(),
-            out_grad.data<T>(),
-            static_cast<T>(0),
-            d_kernel_ptr + half_kernel_size * in_channels * out_channels);
+  const bool is_params_freezing = kernel_grad == nullptr;
+  if (!is_params_freezing) {
+    T* d_kernel_ptr = kernel_grad->data<T>();
+    blas.GEMM(CblasTrans,
+              CblasNoTrans,
+              x.non_zero_elements().dims()[1],
+              out_grad.dims()[1],
+              x.non_zero_elements().dims()[0],
+              static_cast<T>(1),
+              x.non_zero_elements().data<T>(),
+              out_grad.data<T>(),
+              static_cast<T>(0),
+              d_kernel_ptr + half_kernel_size * in_channels * out_channels);
+  }
 
   // call gemm: d_x = out_grad * transpose(kernel)
   // (n, out_channels) * (out_channels, in_channels)
@@ -186,6 +212,88 @@ inline void PrefixSum(const T* counter, T* offsets, const int n) {
     offset += counter[i];
   }
   offsets[n] = offset;
+}
+
+template <typename IntT>
+inline const IntT* GetRulebookPtr(const SparseCooTensor& coo,
+                                  const DenseTensor& rulebook,
+                                  const std::string& key,
+                                  int* rulebook_len) {
+  if (!key.empty()) {
+    const auto* indices_pairs = coo.IndicesPairs(key);
+    if (indices_pairs != nullptr) {
+      const DenseTensor& tmp_rulebook = indices_pairs->first;
+      *rulebook_len = tmp_rulebook.dims()[1];
+      return tmp_rulebook.data<IntT>();
+    }
+  }
+  *rulebook_len = rulebook.dims()[1];
+  return rulebook.data<IntT>();
+}
+
+inline const int* GetCounterPtr(const SparseCooTensor& coo,
+                                const DenseTensor& counter,
+                                const std::string& key) {
+  if (!key.empty()) {
+    const auto* indices_pairs = coo.IndicesPairs(key);
+    if (indices_pairs != nullptr) {
+      return indices_pairs->second.data<int>();
+    }
+  }
+  return counter.data<int>();
+}
+
+template <typename T, typename IntT, typename Context>
+inline const IntT* PrepareSubm(const Context& dev_ctx,
+                               const SparseCooTensor& x,
+                               const std::string& key,
+                               const DDim& out_dims,
+                               SparseCooTensor* out,
+                               int* counter,
+                               int* offsets,
+                               int* rulebook_len,
+                               bool* need_product_rulebook) {
+  const auto* indices_pairs = x.IndicesPairs(key);
+  if (indices_pairs != nullptr) {
+    *need_product_rulebook = false;
+    const DenseTensor& rulebook = indices_pairs->first;
+    const int counter_size = indices_pairs->second.numel();
+    memcpy(
+        counter, indices_pairs->second.data<int>(), counter_size * sizeof(int));
+    out->SetIndicesDict(x.GetIndicesDict());
+
+    *rulebook_len = rulebook.dims()[1];
+
+    DenseTensor out_indices =
+        phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
+    DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+    phi::Copy(
+        dev_ctx, x.non_zero_indices(), dev_ctx.GetPlace(), false, &out_indices);
+    out->SetMember(out_indices, out_values, out_dims, false);
+    PrefixSum<int>(counter, offsets, counter_size);
+    return rulebook.data<IntT>();
+  }
+  return nullptr;
+}
+
+template <typename Context>
+inline void SaveToTable(const Context& dev_ctx,
+                        const SparseCooTensor& x,
+                        const std::string& key,
+                        const DenseTensor& in_rulebook,
+                        const DenseTensor& h_counter,
+                        SparseCooTensor* out,
+                        DenseTensor* out_rulebook,
+                        DenseTensor* counter) {
+  out->SetIndicesDict(x.GetIndicesDict());
+  if (!key.empty()) {
+    out->SaveIndicesPairs(key, std::make_pair(in_rulebook, h_counter));
+  } else {
+    *out_rulebook = in_rulebook;
+    counter->Resize({h_counter.numel()});
+    int* counter_ptr = dev_ctx.template HostAlloc<int>(counter);
+    memcpy(counter_ptr, h_counter.data<int>(), h_counter.numel() * sizeof(int));
+  }
 }
 
 }  // namespace sparse

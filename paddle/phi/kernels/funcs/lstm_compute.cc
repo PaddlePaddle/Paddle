@@ -22,38 +22,6 @@ namespace phi {
 namespace funcs {
 
 template <class T>
-struct LstmUnitFunctor<paddle::platform::CPUDeviceContext, T> {
-  static void compute(const paddle::platform::CPUDeviceContext& context,
-                      LstmMetaValue<T> value,
-                      int frame_size,
-                      int batch_size,
-                      T cell_clip,
-                      const phi::funcs::detail::ActivationType& gate_act,
-                      const phi::funcs::detail::ActivationType& cell_act,
-                      const phi::funcs::detail::ActivationType& cand_act,
-                      bool old_api_version = true) {
-    for (int b = 0; b < batch_size; b++) {
-      detail::cpu_lstm_forward(context,
-                               phi::funcs::detail::forward::lstm<T>(),
-                               value,
-                               frame_size,
-                               cell_clip,
-                               cand_act,
-                               gate_act,
-                               cell_act,
-                               old_api_version);
-      value.gate_value += frame_size * 4;
-      value.state_value += frame_size;
-      value.state_active_value += frame_size;
-      value.output_value += frame_size;
-      if (value.prev_state_value) {
-        value.prev_state_value += frame_size;
-      }
-    }
-  }
-};
-
-template <class T>
 struct LstmUnitFunctor<CPUContext, T> {
   static void compute(const CPUContext& context,
                       LstmMetaValue<T> value,
@@ -80,49 +48,6 @@ struct LstmUnitFunctor<CPUContext, T> {
       value.output_value += frame_size;
       if (value.prev_state_value) {
         value.prev_state_value += frame_size;
-      }
-    }
-  }
-};
-
-template <class T>
-struct LstmUnitGradFunctor<paddle::platform::CPUDeviceContext, T> {
-  static void compute(const paddle::platform::CPUDeviceContext& context,
-                      LstmMetaValue<T> value,
-                      LstmMetaGrad<T> grad,
-                      int frame_size,
-                      int batch_size,
-                      T cell_clip,
-                      const phi::funcs::detail::ActivationType& gate_act,
-                      const phi::funcs::detail::ActivationType& cell_act,
-                      const phi::funcs::detail::ActivationType& cand_act,
-                      bool old_api_version = true) {
-    for (int b = 0; b < batch_size; b++) {
-      detail::cpu_lstm_backward(context,
-                                phi::funcs::detail::backward::lstm<T>(),
-                                value,
-                                grad,
-                                frame_size,
-                                cell_clip,
-                                cand_act,
-                                gate_act,
-                                cell_act,
-                                old_api_version);
-
-      value.gate_value += frame_size * 4;
-      value.state_value += frame_size;
-      value.state_active_value += frame_size;
-      value.output_value += frame_size;
-      if (value.prev_state_value) {
-        value.prev_state_value += frame_size;
-      }
-
-      grad.gate_grad += frame_size * 4;
-      grad.state_grad += frame_size;
-      grad.state_active_grad += frame_size;
-      grad.output_grad += frame_size;
-      if (grad.prev_state_grad) {
-        grad.prev_state_grad += frame_size;
       }
     }
   }
@@ -170,11 +95,6 @@ struct LstmUnitGradFunctor<CPUContext, T> {
     }
   }
 };
-
-template class LstmUnitFunctor<paddle::platform::CPUDeviceContext, float>;
-template class LstmUnitFunctor<paddle::platform::CPUDeviceContext, double>;
-template class LstmUnitGradFunctor<paddle::platform::CPUDeviceContext, float>;
-template class LstmUnitGradFunctor<paddle::platform::CPUDeviceContext, double>;
 
 template class LstmUnitFunctor<CPUContext, float>;
 template class LstmUnitFunctor<CPUContext, double>;

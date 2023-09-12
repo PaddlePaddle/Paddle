@@ -20,6 +20,7 @@
 #include <cstring>
 #include <iostream>
 #include <limits>
+#include "paddle/phi/core/hostdevice.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cuComplex.h>
 #include <thrust/complex.h>
@@ -30,20 +31,14 @@
 #include <thrust/complex.h>  // NOLINT
 #endif
 
+#ifndef PADDLE_WITH_HIP
 #if !defined(_WIN32)
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
 #else
 #define PADDLE_ALIGN(x) __declspec(align(x))
 #endif
-
-#if (defined(__CUDACC__) || defined(__HIPCC__))
-#define HOSTDEVICE __host__ __device__
-#define DEVICE __device__
-#define HOST __host__
 #else
-#define HOSTDEVICE
-#define DEVICE
-#define HOST
+#define PADDLE_ALIGN(x)
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -114,16 +109,16 @@ struct PADDLE_ALIGN(sizeof(T) * 2) complex {
 
   template <typename T1 = T>
   HOSTDEVICE explicit complex(
-      const std::enable_if_t<std::is_same<T1, float>::value, complex<double>>&
-          val) {
+      const typename std::enable_if<std::is_same<T1, float>::value,
+                                    complex<double>>::type& val) {
     real = val.real;
     imag = val.imag;
   }
 
   template <typename T1 = T>
   HOSTDEVICE explicit complex(
-      const std::enable_if_t<std::is_same<T1, double>::value, complex<float>>&
-          val) {
+      const typename std::enable_if<std::is_same<T1, double>::value,
+                                    complex<float>>::type& val) {
     real = val.real;
     imag = val.imag;
   }
@@ -432,12 +427,62 @@ HOSTDEVICE inline complex<T> sqrt(const complex<T>& a) {
 }
 
 template <typename T>
+HOSTDEVICE inline complex<T> sin(const complex<T>& a) {
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+  return complex<T>(thrust::sin(thrust::complex<T>(a)));
+#else
+  return complex<T>(std::sin(std::complex<T>(a)));
+#endif
+}
+
+template <typename T>
+HOSTDEVICE inline complex<T> cos(const complex<T>& a) {
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+  return complex<T>(thrust::cos(thrust::complex<T>(a)));
+#else
+  return complex<T>(std::cos(std::complex<T>(a)));
+#endif
+}
+
+template <typename T>
+HOSTDEVICE inline complex<T> tan(const complex<T>& a) {
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+  return complex<T>(thrust::tan(thrust::complex<T>(a)));
+#else
+  return complex<T>(std::tan(std::complex<T>(a)));
+#endif
+}
+
+template <typename T>
 HOSTDEVICE inline complex<T> tanh(const complex<T>& a) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
     (defined(__CUDA_ARCH__) || defined(__HIPCC__))
   return complex<T>(thrust::tanh(thrust::complex<T>(a)));
 #else
   return complex<T>(std::tanh(std::complex<T>(a)));
+#endif
+}
+
+template <typename T>
+HOSTDEVICE inline complex<T> conj(const complex<T>& a) {
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+  return complex<T>(thrust::conj(thrust::complex<T>(a)));
+#else
+  return complex<T>(std::conj(std::complex<T>(a)));
+#endif
+}
+
+template <typename T>
+HOSTDEVICE inline complex<T> exp(const complex<T>& a) {
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+  return complex<T>(thrust::exp(thrust::complex<T>(a)));
+#else
+  return complex<T>(std::exp(std::complex<T>(a)));
 #endif
 }
 

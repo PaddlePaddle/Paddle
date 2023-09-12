@@ -18,8 +18,8 @@
 
 namespace paddle {
 namespace distributed {
-// DEFINE_string(cert_path, "./cert.pem", "cert.pem path");
-// DEFINE_string(key_path, "./key.pem", "key.pem path");
+// PD_DEFINE_string(cert_path, "./cert.pem", "cert.pem path");
+// PD_DEFINE_string(key_path, "./key.pem", "key.pem path");
 std::shared_ptr<HeterServer> HeterServer::s_instance_ = nullptr;
 std::mutex HeterServer::mtx_;
 
@@ -32,17 +32,12 @@ void HeterServer::StartHeterService(bool neeed_encrypt) {
   server_.AddService(&service_, brpc::SERVER_DOESNT_OWN_SERVICE);
   brpc::ServerOptions options;
   if (neeed_encrypt) {
-#ifdef PADDLE_WITH_ARM_BRPC
     options.mutable_ssl_options()->default_cert.certificate = "/cert.pem";
     options.mutable_ssl_options()->default_cert.private_key = "/key.pem";
-#else
-    options.ssl_options.default_cert.certificate = "/cert.pem";
-    options.ssl_options.default_cert.private_key = "/key.pem";
-#endif
   }
   if (server_.Start(endpoint_.c_str(), &options) != 0) {
     VLOG(0) << "HeterServer start fail. Try again.";
-    auto ip_port = paddle::string::Split(endpoint_, ':');
+    auto ip_port = ::paddle::string::Split(endpoint_, ':');
     std::string ip = ip_port[0];
     int port = std::stoi(ip_port[1]);
     std::string int_ip_port = GetIntTypeEndpoint(ip, port);
@@ -72,17 +67,12 @@ void HeterServer::StartHeterInterService(bool neeed_encrypt) {
   server_inter_.AddService(&service_, brpc::SERVER_DOESNT_OWN_SERVICE);
   brpc::ServerOptions options;
   if (neeed_encrypt) {
-#ifdef PADDLE_WITH_ARM_BRPC
     options.mutable_ssl_options()->default_cert.certificate = "/cert.pem";
     options.mutable_ssl_options()->default_cert.private_key = "/key.pem";
-#else
-    options.ssl_options.default_cert.certificate = "/cert.pem";
-    options.ssl_options.default_cert.private_key = "/key.pem";
-#endif
   }
   if (server_inter_.Start(endpoint_inter_.c_str(), &options) != 0) {
     VLOG(4) << "switch inter server start fail. Try again.";
-    auto ip_port = paddle::string::Split(endpoint_inter_, ':');
+    auto ip_port = ::paddle::string::Split(endpoint_inter_, ':');
     std::string ip = ip_port[0];
     int port = std::stoi(ip_port[1]);
     std::string int_ip_port = GetIntTypeEndpoint(ip, port);
@@ -117,7 +107,8 @@ void HeterServer::WaitServerReady() {
 }
 
 int SendAndRecvVariableHandler::SaveInSwitchWithShard(
-    const MultiVarMsg* request, PsResponseMessage* response,
+    const MultiVarMsg* request,
+    PsResponseMessage* response,
     brpc::Controller* cntl) {
   VLOG(4) << "entering SaveInSwitchWithShard";
   int32_t group_id = request->group_id();
@@ -174,7 +165,8 @@ int SendAndRecvVariableHandler::QueryInSwitchWithShard(
 }
 
 int SendAndRecvVariableHandler::SaveInSwitchWithScope(
-    const MultiVarMsg* request, PsResponseMessage* response,
+    const MultiVarMsg* request,
+    PsResponseMessage* response,
     brpc::Controller* cntl) {
   VLOG(4) << "entering SaveInSwitchWithScope";
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
@@ -201,8 +193,8 @@ int SendAndRecvVariableHandler::SaveInSwitchWithScope(
     WaitForVarsConsumed(0, var_name);
   }
   auto& request_io_buffer = cntl->request_attachment();
-  distributed::DeserializeFromMultiVarMsgAndIOBuf(*request, &request_io_buffer,
-                                                  cpu_dev_ctx, local_scope);
+  distributed::DeserializeFromMultiVarMsgAndIOBuf(
+      *request, &request_io_buffer, cpu_dev_ctx, local_scope);
   lk.unlock();
   for (auto var_name : send_var_names) {
     std::unique_lock<std::mutex> lk(scope_mutex_);
@@ -252,7 +244,7 @@ int SendAndRecvVariableHandler::QueryInSwitchWithScope(
       LOG(INFO) << "local_scope not find var: " << req_var_name;
     }
     butil::IOBuf temp_iobuf;
-    if (var_ptr->IsType<framework::LoDTensor>()) {
+    if (var_ptr->IsType<phi::DenseTensor>()) {
       SerializeLodTensor(var_ptr, cpu_dev_ctx, send_var_msg, &temp_iobuf);
     } else if (var_ptr->IsType<phi::SelectedRows>()) {
       SerializeSelectedRows(var_ptr, cpu_dev_ctx, send_var_msg, &temp_iobuf);

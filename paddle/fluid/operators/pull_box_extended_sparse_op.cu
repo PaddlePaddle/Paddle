@@ -14,12 +14,12 @@
 
 #include "paddle/fluid/operators/pull_box_extended_sparse_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PullBoxExtendedSparseCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -27,7 +27,7 @@ class PullBoxExtendedSparseCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PushBoxExtendedSparseCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -38,9 +38,16 @@ class PushBoxExtendedSparseCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(pull_box_extended_sparse,
-                        ops::PullBoxExtendedSparseCUDAKernel<float>,
-                        ops::PullBoxExtendedSparseCUDAKernel<double>);
-REGISTER_OP_CUDA_KERNEL(push_box_extended_sparse,
-                        ops::PushBoxExtendedSparseCUDAKernel<float>,
-                        ops::PushBoxExtendedSparseCUDAKernel<double>);
+
+PD_REGISTER_STRUCT_KERNEL(pull_box_extended_sparse,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::PullBoxExtendedSparseCUDAKernel,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(push_box_extended_sparse,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::PushBoxExtendedSparseCUDAKernel,
+                          float,
+                          double) {}

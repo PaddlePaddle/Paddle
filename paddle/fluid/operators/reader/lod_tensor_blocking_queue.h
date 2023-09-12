@@ -34,16 +34,16 @@ class LoDTensorBlockingQueue {
 
   ~LoDTensorBlockingQueue() { VLOG(10) << "Destruct LoDTensorBlockingQueue"; }
 
-  bool Push(const std::vector<framework::LoDTensor>& lod_tensor_vec) {
+  bool Push(const paddle::framework::LoDTensorArray& lod_tensor_vec) {
     return queue_.Send(lod_tensor_vec);
   }
 
-  bool Push(std::vector<framework::LoDTensor>&& lod_tensor_vec) {
+  bool Push(paddle::framework::LoDTensorArray&& lod_tensor_vec) {
     return queue_.Send(std::move(lod_tensor_vec));
   }
 
-  std::vector<framework::LoDTensor> Pop(bool* ok = nullptr) {
-    std::vector<framework::LoDTensor> lod_tensor_vec;
+  paddle::framework::LoDTensorArray Pop(bool* ok = nullptr) {
+    paddle::framework::LoDTensorArray lod_tensor_vec;
     bool success = queue_.Receive(&lod_tensor_vec);
     if (ok != nullptr) *ok = success;
     return lod_tensor_vec;
@@ -67,7 +67,7 @@ class LoDTensorBlockingQueue {
   inline bool WaitForInited(size_t) { return true; }
 
  private:
-  BlockingQueue<std::vector<framework::LoDTensor>> queue_;
+  BlockingQueue<paddle::framework::LoDTensorArray> queue_;
 };
 
 class OrderedMultiDeviceLoDTensorBlockingQueue {
@@ -82,20 +82,23 @@ class OrderedMultiDeviceLoDTensorBlockingQueue {
 
   bool WaitForInited(size_t milliseconds) {
     std::unique_lock<std::mutex> lock(init_mutex_);
-    return cv_.wait_for(lock, std::chrono::milliseconds(milliseconds),
-                        [this] { return !queues_.empty(); });
+    return cv_.wait_for(lock, std::chrono::milliseconds(milliseconds), [this] {
+      return !queues_.empty();
+    });
   }
 
   void SetDeviceCount(size_t dev_cnt) {
     {
       std::lock_guard<std::mutex> lock(init_mutex_);
-      PADDLE_ENFORCE_GE(dev_cnt, 1,
+      PADDLE_ENFORCE_GE(dev_cnt,
+                        1,
                         platform::errors::InvalidArgument(
                             "Device count to init "
                             "OrderedMultiDeviceLoDTensorBlockingQueue"
                             " must be larger than 1"));
       if (!queues_.empty()) {
-        PADDLE_ENFORCE_EQ(queues_.size(), dev_cnt,
+        PADDLE_ENFORCE_EQ(queues_.size(),
+                          dev_cnt,
                           platform::errors::InvalidArgument(
                               "queues should be only inited once"));
         return;
@@ -105,7 +108,7 @@ class OrderedMultiDeviceLoDTensorBlockingQueue {
       queues_.resize(dev_cnt);
       for (auto& item : queues_) {
         auto cap = (capacity_ + dev_cnt - 1) / dev_cnt;
-        item.reset(new LoDTensorBlockingQueue(cap, speed_test_mode_));
+        item = std::make_unique<LoDTensorBlockingQueue>(cap, speed_test_mode_);
       }
     }
     cv_.notify_all();
@@ -114,12 +117,13 @@ class OrderedMultiDeviceLoDTensorBlockingQueue {
   const std::shared_ptr<LoDTensorBlockingQueue>& GetQueue(size_t idx) const {
     EnforceIsInited();
     PADDLE_ENFORCE_LT(
-        idx, queues_.size(),
+        idx,
+        queues_.size(),
         platform::errors::OutOfRange("The queue index is out of range"));
     return queues_[idx];
   }
 
-  bool Push(const std::vector<framework::LoDTensor>& lod_tensor_vec) {
+  bool Push(const paddle::framework::LoDTensorArray& lod_tensor_vec) {
     return CurQueue()->Push(lod_tensor_vec);
   }
 
@@ -154,7 +158,7 @@ class OrderedMultiDeviceLoDTensorBlockingQueue {
     auto dev_cnt = queues_.size();
     for (auto& item : queues_) {
       auto cap = (capacity_ + dev_cnt - 1) / dev_cnt;
-      item.reset(new LoDTensorBlockingQueue(cap, speed_test_mode_));
+      item = std::make_unique<LoDTensorBlockingQueue>(cap, speed_test_mode_);
     }
     data_index_ = 0;
   }
@@ -178,7 +182,8 @@ class OrderedMultiDeviceLoDTensorBlockingQueue {
 
  private:
   void EnforceIsInited() const {
-    PADDLE_ENFORCE_EQ(queues_.empty(), false,
+    PADDLE_ENFORCE_EQ(queues_.empty(),
+                      false,
                       platform::errors::NotFound("queue has not been inited"));
   }
 
@@ -202,10 +207,12 @@ class LoDTensorBlockingQueueHolder {
  public:
   void InitOnce(size_t capacity, bool speed_test_mode = false) {
     PADDLE_ENFORCE_EQ(
-        queue_, nullptr,
+        queue_,
+        nullptr,
         platform::errors::AlreadyExists("LoDTensorBlockingQueueHolder::"
                                         "InitOnce() can only be called once"));
-    queue_.reset(new LoDTensorBlockingQueue(capacity, speed_test_mode));
+    queue_ =
+        std::make_unique<LoDTensorBlockingQueue>(capacity, speed_test_mode);
   }
 
   inline const std::shared_ptr<LoDTensorBlockingQueue>& GetQueue() const {
@@ -219,12 +226,13 @@ class LoDTensorBlockingQueueHolder {
 class OrderedMultiDeviceLoDTensorBlockingQueueHolder {
  public:
   void InitOnce(size_t capacity, bool speed_test_mode = false) {
-    PADDLE_ENFORCE_EQ(queue_, nullptr,
+    PADDLE_ENFORCE_EQ(queue_,
+                      nullptr,
                       platform::errors::AlreadyExists(
                           "OrderedMultiDeviceLoDTensorBlockingQueueHolder::"
                           "InitOnce() can only be called once"));
-    queue_.reset(new OrderedMultiDeviceLoDTensorBlockingQueue(capacity,
-                                                              speed_test_mode));
+    queue_ = std::make_unique<OrderedMultiDeviceLoDTensorBlockingQueue>(
+        capacity, speed_test_mode);
   }
 
   inline const std::shared_ptr<OrderedMultiDeviceLoDTensorBlockingQueue>&

@@ -22,8 +22,11 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/platform/dynload/tensorrt.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/utils/data_type.h"
 
 namespace paddle {
 namespace inference {
@@ -89,9 +92,24 @@ static std::tuple<int, int, int> GetTrtRuntimeVersion() {
 }
 
 static std::tuple<int, int, int> GetTrtCompileVersion() {
-  return std::tuple<int, int, int>{NV_TENSORRT_MAJOR, NV_TENSORRT_MINOR,
-                                   NV_TENSORRT_PATCH};
+  return std::tuple<int, int, int>{
+      NV_TENSORRT_MAJOR, NV_TENSORRT_MINOR, NV_TENSORRT_PATCH};
 }
+
+static float TrtMajorVersion(int full_version) {
+  return (full_version / 100) / 10.0;
+}
+
+template <typename T>
+struct Destroyer {
+  void operator()(T* x) {
+    if (x) {
+      x->destroy();
+    }
+  }
+};
+template <typename T>
+using infer_ptr = std::unique_ptr<T, Destroyer<T>>;
 
 // A logger for create TensorRT infer builder.
 class NaiveLogger : public nvinfer1::ILogger {
@@ -130,10 +148,11 @@ class NaiveProfiler : public nvinfer1::IProfiler {
   typedef std::pair<std::string, float> Record;
   std::vector<Record> mProfile;
 
-  virtual void reportLayerTime(const char* layerName, float ms) TRT_NOEXCEPT {
+  void reportLayerTime(const char* layerName, float ms) TRT_NOEXCEPT override {
     auto record =
-        std::find_if(mProfile.begin(), mProfile.end(),
-                     [&](const Record& r) { return r.first == layerName; });
+        std::find_if(mProfile.begin(), mProfile.end(), [&](const Record& r) {
+          return r.first == layerName;
+        });
     if (record == mProfile.end())
       mProfile.push_back(std::make_pair(layerName, ms));
     else
@@ -143,8 +162,8 @@ class NaiveProfiler : public nvinfer1::IProfiler {
   void printLayerTimes() {
     float totalTime = 0;
     for (size_t i = 0; i < mProfile.size(); i++) {
-      printf("%-40.40s %4.3fms\n", mProfile[i].first.c_str(),
-             mProfile[i].second);
+      printf(
+          "%-40.40s %4.3fms\n", mProfile[i].first.c_str(), mProfile[i].second);
       totalTime += mProfile[i].second;
     }
     printf("Time over all layers: %4.3f\n", totalTime);
@@ -175,6 +194,10 @@ inline void PrintITensorShape(nvinfer1::ITensor* X) {
 template <typename T>
 inline std::string Vec2Str(const std::vector<T>& vec) {
   std::ostringstream os;
+  if (vec.empty()) {
+    os << "()";
+    return os.str();
+  }
   os << "(";
   for (size_t i = 0; i < vec.size() - 1; ++i) {
     os << vec[i] << ",";
@@ -182,6 +205,160 @@ inline std::string Vec2Str(const std::vector<T>& vec) {
   os << vec[vec.size() - 1] << ")";
   return os.str();
 }
+
+static inline nvinfer1::DataType PhiType2NvType(phi::DataType type) {
+  nvinfer1::DataType nv_type = nvinfer1::DataType::kFLOAT;
+  switch (type) {
+    case phi::DataType::FLOAT32:
+      nv_type = nvinfer1::DataType::kFLOAT;
+      break;
+    case phi::DataType::FLOAT16:
+      nv_type = nvinfer1::DataType::kHALF;
+      break;
+    case phi::DataType::INT32:
+    case phi::DataType::INT64:
+      nv_type = nvinfer1::DataType::kINT32;
+      break;
+    case phi::DataType::INT8:
+      nv_type = nvinfer1::DataType::kINT8;
+      break;
+#if IS_TRT_VERSION_GE(7000)
+    case phi::DataType::BOOL:
+      nv_type = nvinfer1::DataType::kBOOL;
+      break;
+#endif
+    default:
+      paddle::platform::errors::InvalidArgument(
+          "phi::DataType not supported data type %s.", type);
+      break;
+  }
+  return nv_type;
+}
+
+using FluidDT = paddle::framework::proto::VarType_Type;
+using TRT_DT = nvinfer1::DataType;
+static TRT_DT FluidDataType2TRT(FluidDT type) {
+  switch (type) {
+    case FluidDT::VarType_Type_FP32:
+    case FluidDT::VarType_Type_FP64:
+      return TRT_DT::kFLOAT;
+    case FluidDT::VarType_Type_INT32:
+    case FluidDT::VarType_Type_INT64:
+      return TRT_DT::kINT32;
+    case FluidDT::VarType_Type_FP16:
+      return TRT_DT::kHALF;
+#if IS_TRT_VERSION_GE(8400)
+    case FluidDT::VarType_Type_BOOL:
+      return TRT_DT::kBOOL;
+
+#endif
+    default:
+      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+          "unsupported datatype in TRT op converter, type: %s. "
+          "Boolean type is supported as TRT input/output "
+          "using TensorRT v8.4+.",
+          VarType_Type_Name(type)));
+  }
+  return TRT_DT::kINT32;
+}
+
+// The T can be int32 or int64 type.
+template <typename T>
+static nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape,
+                                   std::string input,
+                                   bool with_dynamic_shape = false) {
+  PADDLE_ENFORCE_GE(shape.size(),
+                    0UL,
+                    paddle::platform::errors::InvalidArgument(
+                        "TensorRT's tensor input requires at least 0 "
+                        "dimensions, but input %s has %d dims.",
+                        input,
+                        shape.size()));
+
+  auto ShapeStr = [](const std::vector<T>& shape) {
+    std::ostringstream os;
+    os << "[";
+    for (size_t i = 0; i < shape.size(); ++i) {
+      if (i == shape.size() - 1) {
+        os << shape[i];
+      } else {
+        os << shape[i] << ",";
+      }
+    }
+    os << "]";
+    return os.str();
+  };
+  if (!with_dynamic_shape) {
+    if (shape.size() == 4UL) {
+      if (shape[2] == -1 || shape[3] == -1) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "The input [%s] shape of trt subgraph is %s, please enable "
+            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
+            input,
+            ShapeStr(shape)));
+      }
+      return nvinfer1::Dims3(shape[1], shape[2], shape[3]);
+    } else if (shape.size() == 5UL) {
+      if (shape[2] == -1 || shape[3] == -1 || shape[4] == -1) {
+        PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+            "The input [%s] shape of trt subgraph is %s, please enable "
+            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
+            input,
+            ShapeStr(shape)));
+      }
+      return nvinfer1::Dims4(shape[1], shape[2], shape[3], shape[4]);
+    } else if (shape.size() == 3UL) {
+      if (shape[1] == -1 || shape[2] == -1) {
+        PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+            "The input [%s] shape of trt subgraph is %s, please enable "
+            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
+            input,
+            ShapeStr(shape)));
+      }
+      return nvinfer1::Dims2(shape[1], shape[2]);
+    } else if (shape.size() == 2UL) {
+      if (shape[1] == -1) {
+        PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+            "The input [%s] shape of trt subgraph is %s, please enable "
+            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
+            input,
+            ShapeStr(shape)));
+      }
+      nvinfer1::Dims dims;
+      dims.nbDims = 1;
+      dims.d[0] = shape[1];
+      return dims;
+    }
+    // static shape doesn't support 1D op so far.
+    PADDLE_ENFORCE_NE(shape.size(),
+                      1UL,
+                      paddle::platform::errors::InvalidArgument(
+                          "The input [%s] shape of trt subgraph is %s."
+                          "it's not supported by trt so far",
+                          input,
+                          ShapeStr(shape)));
+
+    nvinfer1::Dims dims;
+    dims.nbDims = shape.size() - 1;
+    for (size_t i = 1; i < shape.size(); i++) {
+      dims.d[i - 1] = shape[i];
+    }
+    return dims;
+  } else {
+    if (shape.size() == 4UL) {
+      return nvinfer1::Dims4(shape[0], shape[1], shape[2], shape[3]);
+    } else if (shape.size() == 3UL) {
+      return nvinfer1::Dims3(shape[0], shape[1], shape[2]);
+    }
+    nvinfer1::Dims dims;
+    dims.nbDims = shape.size();
+    for (size_t i = 0; i < shape.size(); i++) {
+      dims.d[i] = shape[i];
+    }
+    return dims;
+  }
+}
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

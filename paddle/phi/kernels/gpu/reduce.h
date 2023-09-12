@@ -36,6 +36,7 @@ void Reduce(const KPDevice& dev_ctx,
             DataType out_dtype,
             DenseTensor* out,
             bool is_mean = false) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   std::vector<int> reduce_dims =
       phi::funcs::details::GetReduceDim(dims, x.dims().size(), reduce_all);
 
@@ -46,14 +47,15 @@ void Reduce(const KPDevice& dev_ctx,
 #ifndef PADDLE_WITH_XPU_KP
   if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x.dtype()) {
     auto tmp_tensor = phi::Cast<T>(dev_ctx, x, out_dtype);
-    PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_3_TYPES(
+    PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_4_TYPES(
         phi::DataType::INT32,
         phi::DataType::INT64,
         phi::DataType::FLOAT16,
+        phi::DataType::BFLOAT16,
         out_dtype,
         "ReduceKernel",
         ([&] {
-          using MPType = typename kps::details::MPTypeTrait<data_t>::Type;
+          using MPType = typename phi::dtype::MPTypeTrait<data_t>::Type;
           phi::funcs::ReduceKernel<data_t,
                                    data_t,
                                    ReduceOp,
@@ -66,7 +68,7 @@ void Reduce(const KPDevice& dev_ctx,
               is_mean);
         }));
   } else {
-    using MPType = typename kps::details::MPTypeTrait<T>::Type;
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     phi::funcs::ReduceKernel<T, T, ReduceOp, TransformOp<T, MPType>>(
         dev_ctx,
         x,
@@ -76,7 +78,7 @@ void Reduce(const KPDevice& dev_ctx,
         is_mean);
   }
 #else
-  using MPType = typename kps::details::MPTypeTrait<T>::Type;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   phi::funcs::ReduceKernel<T, T, ReduceOp, TransformOp<T, MPType>>(
       dev_ctx,
       x,

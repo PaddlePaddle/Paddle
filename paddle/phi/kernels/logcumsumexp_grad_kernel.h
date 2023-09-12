@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
 
 namespace phi {
 
@@ -28,4 +29,4 @@ void LogcumsumexpGradKernel(const Context& dev_ctx,
                             bool exclusive,
                             bool reverse,
                             DenseTensor* d_x);
-}
+}  // namespace phi

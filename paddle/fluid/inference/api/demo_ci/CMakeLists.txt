@@ -33,7 +33,7 @@ if(NOT DEFINED DEMO_NAME)
   message(FATAL_ERROR "please set DEMO_NAME with -DDEMO_NAME=demo_name")
 endif()
 
-include_directories("${PADDLE_LIB}/")
+include_directories("${PADDLE_LIB}/paddle/include")
 set(PADDLE_LIB_THIRD_PARTY_PATH "${PADDLE_LIB}/third_party/install/")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}protobuf/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}glog/include")
@@ -158,7 +158,7 @@ if(WITH_MKL)
     if(WIN32)
       set(MKLDNN_LIB ${MKLDNN_PATH}/lib/mkldnn.lib)
     else()
-      set(MKLDNN_LIB ${MKLDNN_PATH}/lib/libmkldnn.so.0)
+      set(MKLDNN_LIB ${MKLDNN_PATH}/lib/libdnnl.so.3)
     endif()
   endif()
 else()
@@ -189,21 +189,7 @@ else()
 endif()
 
 if(WITH_ONNXRUNTIME)
-  if(WIN32)
-    set(DEPS
-        ${DEPS} ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/onnxruntime.lib
-        paddle2onnx)
-  elseif(APPLE)
-    set(DEPS
-        ${DEPS}
-        ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/libonnxruntime.1.10.0.dylib
-        paddle2onnx)
-  else()
-    set(DEPS
-        ${DEPS}
-        ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/libonnxruntime.so.1.10.0
-        paddle2onnx)
-  endif()
+  set(DEPS ${DEPS} onnxruntime paddle2onnx)
 endif()
 
 if(NOT WIN32)

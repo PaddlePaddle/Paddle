@@ -14,8 +14,10 @@
 
 #pragma once
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -24,7 +26,7 @@ namespace phi {
 
 template <typename Context, typename T, class Enable = void>
 struct IndexSelectAdd {
-  void operator()(const Context& ctx,
+  void operator()(const Context& ctx UNUSED,
                   int slice_size,
                   const T* src_pointer,
                   const T* p_pointer,
@@ -62,10 +64,10 @@ void IndexSelectInner(const Context& ctx,
   auto index_size = index.dims()[0];
 
   DenseTensor index_cpu_copy;
-  if (!paddle::platform::is_cpu_place(index.place())) {
+  if (index.place().GetType() != phi::AllocationType::CPU) {
     phi::Copy(ctx, index, phi::CPUPlace(), true, &index_cpu_copy);
   }
-  const IndexT* index_data = paddle::platform::is_cpu_place(index.place())
+  const IndexT* index_data = index.place().GetType() == phi::AllocationType::CPU
                                  ? index.data<IndexT>()
                                  : index_cpu_copy.data<IndexT>();
   ctx.template Alloc<T>(output);

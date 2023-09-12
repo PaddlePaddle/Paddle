@@ -32,7 +32,8 @@ namespace operators {
 
 class DependOp : public framework::OperatorBase {
  public:
-  DependOp(const std::string &type, const framework::VariableNameMap &inputs,
+  DependOp(const std::string &type,
+           const framework::VariableNameMap &inputs,
            const framework::VariableNameMap &outputs,
            const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
@@ -47,13 +48,20 @@ class DependOp : public framework::OperatorBase {
 
     auto x_name = Input("X");
     auto out_name = Output("Out");
-    PADDLE_ENFORCE_EQ(x_name, out_name,
+    PADDLE_ENFORCE_EQ(x_name,
+                      out_name,
                       platform::errors::PreconditionNotMet(
                           "Input(X) and Output(Out) varibale should be the "
                           "same, but got Input is %s and Output is %s.",
-                          x_name, out_name));
+                          x_name,
+                          out_name));
     return;
   }
+};
+
+class DependOpShapeInference : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext *ctx) const override {}
 };
 
 class DependOpProtoMaker : public framework::OpProtoAndCheckerMaker {
@@ -70,7 +78,7 @@ b = opA(a)
 y = opB(x)
 
 if tensor b and tensor x has some inner dependency, for example, x share data with b,
-we need to add explicit dependency for x <- b, otherwise the these two operators may 
+we need to add explicit dependency for x <- b, otherwise the these two operators may
 be executed parellel in static graph. We can use depend op as below,
 
 b = opA(a)
@@ -81,11 +89,18 @@ y = opB(x)
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(DependNoNeedBufferVarsInferer, "X", "Dep");
+
 }  // namespace operators
 }  // namespace paddle
 
+namespace ops = paddle::operators;
+
 REGISTER_OPERATOR(
-    depend, paddle::operators::DependOp,
+    depend,
+    ops::DependOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    paddle::operators::DependOpProtoMaker);
+    ops::DependOpProtoMaker,
+    ops::DependOpShapeInference,
+    ops::DependNoNeedBufferVarsInferer);

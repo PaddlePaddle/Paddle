@@ -20,6 +20,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/attribute.h"
+#include "paddle/fluid/framework/attribute_checker.h"
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -42,6 +43,7 @@ class OpInfo {
  public:
   OpCreator creator_;
   GradOpMakerFN grad_op_maker_;
+  CompositeGradOpMakerFN grad_comp_op_maker_;
   proto::OpProto* proto_{nullptr};
   OpAttrChecker* checker_{nullptr};
   InferVarTypeFN infer_var_type_;
@@ -66,7 +68,8 @@ class OpInfo {
     PADDLE_ENFORCE_NOT_NULL(
         proto_,
         platform::errors::NotFound("Operator's Proto has not been registered"));
-    PADDLE_ENFORCE_EQ(proto_->IsInitialized(), true,
+    PADDLE_ENFORCE_EQ(proto_->IsInitialized(),
+                      true,
                       platform::errors::InvalidArgument(
                           "Operator's Proto in op info is not initialized."));
     return *proto_;
@@ -79,27 +82,22 @@ class OpInfo {
     return creator_;
   }
 
-  const GradOpMakerFN& GradOpMaker() const {
-    // Normally, proto_ should not be null, except some special operators, such
-    // as LeaklyReluDoubleGrad op.
-    std::string type = proto_ ? proto_->type() : "unknown";
-    PADDLE_ENFORCE_NOT_NULL(
-        grad_op_maker_,
-        platform::errors::NotFound(
-            "Operator %s's GradOpMaker has not been "
-            "registered.\nPlease check whether (%s) operator has "
-            "gradient operator.\nIf not, please set stop_gradient to be True "
-            "for its input and output variables using var.stop_gradient=True.",
-            type.c_str(), type.c_str()));
-    return grad_op_maker_;
+  const GradOpMakerFN& GradOpMaker() const { return grad_op_maker_; }
+
+  const CompositeGradOpMakerFN& CompGradOpMaker() const {
+    return grad_comp_op_maker_;
   }
 
   // some ops don't have grad_op_maker, add check before use GradOpMaker()
   bool HasGradOpMaker() const { return grad_op_maker_ != nullptr; }
 
+  bool HasCompGradOpMaker() const { return grad_comp_op_maker_ != nullptr; }
+
   bool HasNonEmptyGradOpMaker() const {
     return grad_op_maker_ != nullptr && !use_empty_grad_op_desc_maker_;
   }
+
+  bool HasEmptyGradOpMaker() const { return use_empty_grad_op_desc_maker_; }
 
   const DygraphGradOpMakerFN& DygraphGradOpMaker() const {
     // Normally, proto_ should not be null, except some special operators, such
@@ -112,7 +110,8 @@ class OpInfo {
             "registered.\nPlease check whether (%s) operator has "
             "gradient operator.\nIf not, please set stop_gradient to be True "
             "for its input and output variables using var.stop_gradient=True.",
-            type.c_str(), type.c_str()));
+            type.c_str(),
+            type.c_str()));
     return dygraph_grad_op_maker_;
   }
 
@@ -138,7 +137,8 @@ class OpInfoMap {
   }
 
   void Insert(const std::string& type, const OpInfo& info) {
-    PADDLE_ENFORCE_NE(Has(type), true,
+    PADDLE_ENFORCE_NE(Has(type),
+                      true,
                       platform::errors::AlreadyExists(
                           "Operator (%s) has been registered.", type));
     map_.insert({type, info});

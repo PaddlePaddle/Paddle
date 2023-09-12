@@ -25,8 +25,10 @@ class TopkCalculator {
     _shard_max_size = _total_max_size / shard_num;
     _shard_max_size = _shard_max_size > 1 ? _shard_max_size : 1;
     for (int i = 0; i < shard_num; ++i) {
-      _mpq.emplace(i, std::priority_queue<double, std::vector<double>,
-                                          std::greater<double>>());
+      _mpq.emplace(i,
+                   std::priority_queue<double,
+                                       std::vector<double>,
+                                       std::greater<double>>());
     }
   }
   ~TopkCalculator() {}
@@ -58,8 +60,9 @@ class TopkCalculator {
   }
 
  private:
-  std::unordered_map<int, std::priority_queue<double, std::vector<double>,
-                                              std::greater<double>>>
+  std::unordered_map<
+      int,
+      std::priority_queue<double, std::vector<double>, std::greater<double>>>
       _mpq;
   int _shard_num;
   size_t _total_max_size;

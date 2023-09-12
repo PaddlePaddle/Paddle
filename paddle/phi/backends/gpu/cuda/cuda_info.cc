@@ -14,8 +14,9 @@
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
-// TODO(phi): remove fluid headers.
-#include "paddle/fluid/platform/enforce.h"
+#include "glog/logging.h"
+
+#include "paddle/phi/core/enforce.h"
 
 static std::once_flag g_device_props_size_init_flag;
 static std::vector<std::unique_ptr<std::once_flag>> g_device_props_init_flags;
@@ -63,7 +64,12 @@ static int GetGPUDeviceCountImpl() {
     }
   }
   int count;
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetDeviceCount(&count));
+  status = cudaGetDeviceCount(&count);
+  if (status != cudaSuccess) {
+    VLOG(2) << "You have gpu driver and cuda installed, but the machine not "
+               "has any gpu card.";
+    count = 0;
+  }
   return count;
 }
 
@@ -197,6 +203,13 @@ std::array<int, 3> GetGpuMaxGridDimSize(int id) {
   return ret;
 }
 
+std::pair<int, int> GetGpuStreamPriorityRange() {
+  int least_priority, greatest_priority;
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaDeviceGetStreamPriorityRange(&least_priority, &greatest_priority));
+  return std::make_pair(least_priority, greatest_priority);
+}
+
 const gpuDeviceProp &GetDeviceProperties(int id) {
   std::call_once(g_device_props_size_init_flag, [&] {
     int gpu_num = 0;
@@ -241,6 +254,7 @@ void SetDeviceId(int id) {
                                    id,
                                    GetGPUDeviceCount()));
   PADDLE_RETRY_CUDA_SUCCESS(cudaSetDevice(id));
+  VLOG(4) << "SetDeviceId " << id;
 }
 
 void GpuMemcpyAsync(void *dst,

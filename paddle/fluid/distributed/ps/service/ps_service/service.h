@@ -19,10 +19,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/service/ps_client.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
 #include "paddle/fluid/distributed/ps/service/server.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 
 namespace paddle {
 namespace distributed {
@@ -33,25 +33,29 @@ class PsRequestMessage;
 class PsResponseMessage;
 class PsService;
 
-using paddle::distributed::PsRequestMessage;
-using paddle::distributed::PsResponseMessage;
-using paddle::distributed::PsService;
+using ::paddle::distributed::PsRequestMessage;
+using ::paddle::distributed::PsResponseMessage;
+using ::paddle::distributed::PsService;
 
 class PSCore {
  public:
-  explicit PSCore() {}
+  PSCore() {}
   virtual ~PSCore() {}
 
   virtual int InitServer(
       const std::string& dist_desc,
-      const std::vector<std::string>* host_sign_list, int node_num, int index,
+      const std::vector<std::string>* host_sign_list,
+      int node_num,
+      int index,
       int trainers,
       const std::vector<framework::ProgramDesc>& server_sub_program = {});
   virtual int InitWorker(
       const std::string& dist_desc,
-      const std::map<uint64_t, std::vector<paddle::distributed::Region>>&
+      const std::map<uint64_t, std::vector<::paddle::distributed::Region>>&
           regions,
-      const std::vector<std::string>* host_sign_list, int node_num, int index);
+      const std::vector<std::string>* host_sign_list,
+      int node_num,
+      int index);
   virtual uint64_t RunServer(const std::string& ip, uint32_t port);
   virtual int StopServer();
   virtual int FinalizeWorker();
@@ -59,16 +63,16 @@ class PSCore {
   virtual int CreateClient2ClientConnection(int pserver_timeout_ms,
                                             int pserver_connect_timeout_ms,
                                             int max_retry);
-  std::shared_ptr<paddle::distributed::PSServer>
+  std::shared_ptr<::paddle::distributed::PSServer>
       _server_ptr;  // pointer to server
-  std::shared_ptr<paddle::distributed::PSClient>
+  std::shared_ptr<::paddle::distributed::PSClient>
       _worker_ptr;  // pointer to worker
-  virtual paddle::distributed::PSParameter* GetParam();
+  virtual ::paddle::distributed::PSParameter* GetParam();
 
  private:
   void InitGFlag(const std::string& gflags);
-  paddle::distributed::PSParameter _ps_param;
-  paddle::distributed::PaddlePSEnvironment _ps_env;
+  ::paddle::distributed::PSParameter _ps_param;
+  ::paddle::distributed::PaddlePSEnvironment _ps_env;
 };
 
 }  // namespace distributed

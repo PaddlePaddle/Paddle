@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
@@ -29,8 +28,8 @@ def get_lines(info_file):
     Returns:
         float: Coverage rate.
     """
-    hits = .0
-    total = .0
+    hits = 0.0
+    total = 0.0
 
     with open(info_file) as info_file:
         for line in info_file:
@@ -48,30 +47,36 @@ def get_lines(info_file):
 
     if total == 0:
         print('no data found')
-        exit()
+        sys.exit()
 
     return hits / total
 
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
-        exit()
+        sys.exit()
 
     info_file = sys.argv[1]
     expected = float(sys.argv[2])
 
     if not os.path.isfile(info_file):
-        print('info file {} is not exists, ignored'.format(info_file))
-        exit()
+        print(f'info file {info_file} is not exists, ignored')
+        sys.exit()
 
     actual = get_lines(info_file)
     actual = round(actual, 3)
 
     if actual < expected:
-        print('expected >= {} %, actual {} %, failed'.format(
-            round(expected * 100, 1), round(actual * 100, 1)))
+        print(
+            'expected >= {} %, actual {} %, failed'.format(
+                round(expected * 100, 1), round(actual * 100, 1)
+            )
+        )
 
-        exit(1)
+        sys.exit(1)
 
-    print('expected >= {} %, actual {} %, passed'.format(
-        round(expected * 100, 1), round(actual * 100, 1)))
+    print(
+        'expected >= {} %, actual {} %, passed'.format(
+            round(expected * 100, 1), round(actual * 100, 1)
+        )
+    )

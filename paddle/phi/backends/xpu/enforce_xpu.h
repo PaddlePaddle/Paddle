@@ -14,9 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
+#include "paddle/phi/core/enforce.h"
+#ifdef PADDLE_WITH_XPU_BKCL
 #include "xpu/bkcl.h"
+#endif
 
 namespace phi {
 namespace backends {
@@ -93,10 +95,11 @@ inline const char* xpuGetErrorString(int stat) {
     case XPUERR_INTERRUPTED:
       return "Execution interrupted by user";
     default:
-      return "unkonwn error";
+      return "unknown error";
   }
 }
 
+#ifdef PADDLE_WITH_XPU_BKCL
 inline const char* bkclGetErrorString(BKCLResult_t stat) {
   switch (stat) {
     case BKCL_SUCCESS:
@@ -113,6 +116,7 @@ inline const char* bkclGetErrorString(BKCLResult_t stat) {
       return "Unknown BKCL status";
   }
 }
+#endif
 
 inline const char* xdnnGetErrorString(int stat) {
   switch (stat) {
@@ -136,10 +140,12 @@ inline std::string build_xpu_error_msg(int stat) {
   return msg + xpuGetErrorString(stat) + " ";
 }
 
+#ifdef PADDLE_WITH_XPU_BKCL
 inline std::string build_xpu_error_msg(BKCLResult_t stat) {
   std::string msg("BKCL Error, ");
   return msg + bkclGetErrorString(stat) + " ";
 }
+#endif
 
 inline std::string build_xpu_xdnn_error_msg(int stat, std::string msg) {
   return msg + " XDNN Error, " + xdnnGetErrorString(stat) + " ";
@@ -158,7 +164,9 @@ struct ExternalApiType {};
   }
 
 DEFINE_EXTERNAL_API_TYPE(int, XPU_SUCCESS);
+#ifdef PADDLE_WITH_XPU_BKCL
 DEFINE_EXTERNAL_API_TYPE(BKCLResult_t, BKCL_SUCCESS);
+#endif
 
 #undef DEFINE_EXTERNAL_API_TYPE
 
@@ -197,6 +205,16 @@ DEFINE_EXTERNAL_API_TYPE(BKCLResult_t, BKCL_SUCCESS);
               "XPU memory is not enough"));                  \
       __THROW_ERROR_INTERNAL__(__summary__);                 \
     }                                                        \
+  } while (0)
+#define PADDLE_ENFORCE_XRE_SUCCESS(COND)                         \
+  do {                                                           \
+    auto __cond__ = (COND);                                      \
+    auto xre_msg = xpu_strerror(__cond__);                       \
+    if (UNLIKELY(__cond__ != XPU_SUCCESS)) {                     \
+      auto __summary__ =                                         \
+          phi::errors::External("XPU Runtime Error: ", xre_msg); \
+      __THROW_ERROR_INTERNAL__(__summary__);                     \
+    }                                                            \
   } while (0)
 
 }  // namespace xpu

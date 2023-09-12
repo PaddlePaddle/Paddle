@@ -53,4 +53,16 @@ namespace phi {
 #define PD_CONCATENATE2(arg1, arg2) arg1##arg2
 #define PD_EXPAND(x) x
 
+#if defined(__NVCC__) || defined(__HIPCC__)
+#define PADDLE_RESTRICT __restrict__
+#else
+#define PADDLE_RESTRICT
+#endif
+
+#ifndef PADDLE_WITH_MUSL
+#if defined(__FLT_MAX__)
+#define FLT_MAX __FLT_MAX__
+#endif  // __FLT_MAX__
+#endif  // PADDLE_WITH_MUSL
+
 }  // namespace phi

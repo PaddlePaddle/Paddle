@@ -15,7 +15,7 @@
 function(generate_unify_header DIR_NAME)
   set(options "")
   set(oneValueArgs HEADER_NAME SKIP_SUFFIX)
-  set(multiValueArgs "")
+  set(multiValueArgs EXCLUDES)
   cmake_parse_arguments(generate_unify_header "${options}" "${oneValueArgs}"
                         "${multiValueArgs}" ${ARGN})
 
@@ -33,6 +33,9 @@ function(generate_unify_header DIR_NAME)
     set(skip_suffix "${generate_unify_header_SKIP_SUFFIX}")
   endif()
 
+  # exclude files
+  list(LENGTH generate_unify_header_EXCLUDES generate_unify_header_EXCLUDES_len)
+
   # generate target header file
   set(header_file ${CMAKE_CURRENT_SOURCE_DIR}/include/${header_name}.h)
   file(
@@ -43,6 +46,13 @@ function(generate_unify_header DIR_NAME)
   # get all top-level headers and write into header file
   file(GLOB HEADERS "${CMAKE_CURRENT_SOURCE_DIR}\/${DIR_NAME}\/*.h")
   foreach(header ${HEADERS})
+    if(${generate_unify_header_EXCLUDES_len} GREATER 0)
+      get_filename_component(header_file_name ${header} NAME)
+      list(FIND generate_unify_header_EXCLUDES ${header_file_name} _index)
+      if(NOT ${_index} EQUAL -1)
+        continue()
+      endif()
+    endif()
     if("${skip_suffix}" STREQUAL "")
       string(REPLACE "${PADDLE_SOURCE_DIR}\/" "" header "${header}")
       file(APPEND ${header_file} "#include \"${header}\"\n")
@@ -54,6 +64,11 @@ function(generate_unify_header DIR_NAME)
       endif()
     endif()
   endforeach()
+  if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
+    if(${kernel_name} MATCHES ".*_grad")
+      continue()
+    endif()
+  endif()
   # append header into extension.h
   string(REPLACE "${PADDLE_SOURCE_DIR}\/" "" header_file "${header_file}")
   file(APPEND ${phi_extension_header_file} "#include \"${header_file}\"\n")
@@ -68,412 +83,121 @@ function(kernel_declare TARGET_LIST)
     string(
       REGEX
         MATCH
-        "(PD_REGISTER_KERNEL|PD_REGISTER_GENERAL_KERNEL)\\([ \t\r\n]*[a-z0-9_]*,[ \t\r\n\/]*[a-z0-9_]*"
+        "(PD_REGISTER_KERNEL|PD_REGISTER_KERNEL_FOR_ALL_DTYPE|PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE|PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z_]*,[ \\\t\r\n]*[A-Z_]*"
         first_registry
         "${kernel_impl}")
-    if(NOT first_registry STREQUAL "")
+    set(kernel_declare_id "")
+    while(NOT first_registry STREQUAL "")
+      string(REPLACE "${first_registry}" "" kernel_impl "${kernel_impl}")
+      # some gpu kernel can run on cuda, but not support jetson, so we add this branch
+      if(WITH_NV_JETSON)
+        string(FIND "${first_registry}" "decode_jpeg" pos)
+        if(pos GREATER 1)
+          set(first_registry "")
+        endif()
+      endif()
+      # fusion group kernel is not supported in windows and mac
+      if(WIN32 OR APPLE)
+        string(FIND "${first_registry}" "fusion_group" pos)
+        if(pos GREATER 1)
+          set(first_registry "")
+        endif()
+      endif()
       # some gpu kernel only can run on cuda, not support rocm, so we add this branch
       if(WITH_ROCM)
         string(FIND "${first_registry}" "cuda_only" pos)
         if(pos GREATER 1)
-          continue()
+          set(first_registry "")
         endif()
       endif()
-      # parse the first kernel name
-      string(REPLACE "PD_REGISTER_KERNEL(" "" kernel_name "${first_registry}")
-      string(REPLACE "PD_REGISTER_GENERAL_KERNEL(" "" kernel_name
-                     "${kernel_name}")
-      string(REPLACE "," "" kernel_name "${kernel_name}")
-      string(REGEX REPLACE "[ \t\r\n]+" "" kernel_name "${kernel_name}")
-      string(REGEX REPLACE "//cuda_only" "" kernel_name "${kernel_name}")
-      # append kernel declare into declarations.h
-      # TODO(chenweihang): default declare ALL_LAYOUT for each kernel
-      if(${kernel_path} MATCHES "./cpu\/")
-        file(APPEND ${kernel_declare_file}
-             "PD_DECLARE_KERNEL(${kernel_name}, CPU, ALL_LAYOUT);\n")
-      elseif(${kernel_path} MATCHES "./gpu\/")
-        file(APPEND ${kernel_declare_file}
-             "PD_DECLARE_KERNEL(${kernel_name}, GPU, ALL_LAYOUT);\n")
-      elseif(${kernel_path} MATCHES "./xpu\/")
-        file(APPEND ${kernel_declare_file}
-             "PD_DECLARE_KERNEL(${kernel_name}, XPU, ALL_LAYOUT);\n")
-      elseif(${kernel_path} MATCHES "./gpudnn\/")
-        file(APPEND ${kernel_declare_file}
-             "PD_DECLARE_KERNEL(${kernel_name}, GPUDNN, ALL_LAYOUT);\n")
-      elseif(${kernel_path} MATCHES "./kps\/")
-        file(APPEND ${kernel_declare_file}
-             "PD_DECLARE_KERNEL(${kernel_name}, KPS, ALL_LAYOUT);\n")
-      else()
-        # deal with device independent kernel, now we use CPU temporaary
-        file(APPEND ${kernel_declare_file}
-             "PD_DECLARE_KERNEL(${kernel_name}, CPU, ALL_LAYOUT);\n")
-      endif()
-    endif()
-  endforeach()
-endfunction()
 
-function(kernel_library TARGET)
-  return()
-  set(common_srcs)
-  set(cpu_srcs)
-  set(gpu_srcs)
-  set(xpu_srcs)
-  set(gpudnn_srcs)
-  set(kps_srcs)
-  # parse and save the deps kerenl targets
-  set(all_srcs)
-  set(kernel_deps)
-
-  set(oneValueArgs SUB_DIR)
-  set(multiValueArgs SRCS DEPS)
-  set(target_build_flag 1)
-
-  cmake_parse_arguments(kernel_library "${options}" "${oneValueArgs}"
-                        "${multiValueArgs}" ${ARGN})
-
-  # used for cc_library selected_rows dir target
-  set(target_suffix "")
-  if("${kernel_library_SUB_DIR}" STREQUAL "selected_rows")
-    set(target_suffix "_sr")
-  endif()
-  if("${kernel_library_SUB_DIR}" STREQUAL "sparse")
-    set(target_suffix "_sp")
-  endif()
-
-  list(LENGTH kernel_library_SRCS kernel_library_SRCS_len)
-  # one kernel only match one impl file in each backend
-  if(${kernel_library_SRCS_len} EQUAL 0)
-    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.cc)
-      list(APPEND common_srcs ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.cc)
-    endif()
-    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cpu/${TARGET}.cc)
-      list(APPEND cpu_srcs ${CMAKE_CURRENT_SOURCE_DIR}/cpu/${TARGET}.cc)
-    endif()
-    if(WITH_GPU OR WITH_ROCM)
-      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/${TARGET}.cu)
-        list(APPEND gpu_srcs ${CMAKE_CURRENT_SOURCE_DIR}/gpu/${TARGET}.cu)
-      endif()
-      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/${TARGET}.cu.cc)
-        list(APPEND gpu_srcs ${CMAKE_CURRENT_SOURCE_DIR}/gpu/${TARGET}.cu.cc)
-      endif()
-      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/kps/${TARGET}.cu)
-        list(APPEND gpu_srcs ${CMAKE_CURRENT_SOURCE_DIR}/kps/${TARGET}.cu)
-      endif()
-      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpudnn/${TARGET}.cu)
-        list(APPEND gpudnn_srcs ${CMAKE_CURRENT_SOURCE_DIR}/gpudnn/${TARGET}.cu)
-      endif()
-    endif()
-    if(WITH_XPU)
-      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/xpu/${TARGET}.cc)
-        list(APPEND xpu_srcs ${CMAKE_CURRENT_SOURCE_DIR}/xpu/${TARGET}.cc)
-      endif()
-    endif()
-    if(WITH_XPU_KP)
-      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/kps/${TARGET}.cu)
-        # Change XPU2 file suffix
-        # NOTE(chenweihang): If we can be sure that the *.kps suffix is no longer used, it can be copied directly to *.xpu
-        file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/kps/${TARGET}.cu
-             DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/kps)
-        file(RENAME ${CMAKE_CURRENT_BINARY_DIR}/kps/${TARGET}.cu
-             ${CMAKE_CURRENT_BINARY_DIR}/kps/${TARGET}.kps)
-        list(APPEND kps_srcs ${CMAKE_CURRENT_BINARY_DIR}/kps/${TARGET}.kps)
-      endif()
-    endif()
-  else()
-    # TODO(chenweihang): impl compile by source later
-  endif()
-
-  list(APPEND all_srcs ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.h)
-  if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/impl/${TARGET}_impl.h)
-    list(APPEND all_srcs ${CMAKE_CURRENT_SOURCE_DIR}/impl/${TARGET}_impl.h)
-  endif()
-  list(APPEND all_srcs ${common_srcs})
-  list(APPEND all_srcs ${cpu_srcs})
-  list(APPEND all_srcs ${gpu_srcs})
-  list(APPEND all_srcs ${xpu_srcs})
-  list(APPEND all_srcs ${gpudnn_srcs})
-  list(APPEND all_srcs ${kps_srcs})
-
-  set(all_include_kernels)
-  set(all_kernel_name)
-
-  foreach(src ${all_srcs})
-    file(READ ${src} target_content)
-    # "kernels/xxx"(DenseTensor Kernel) can only include each other, but can't include "SUB_DIR/xxx" (such as selected_rows Kernel)
-    string(REGEX MATCHALL
-                 "#include \"paddle\/phi\/kernels\/[a-z0-9_]+_kernel.h\""
-                 include_kernels ${target_content})
-    list(APPEND all_include_kernels ${include_kernels})
-
-    # "SUB_DIR/xxx" can include "kernels/xx" and "SUB_DIR/xxx"
-    if(NOT "${kernel_library_SUB_DIR}" STREQUAL "")
-      string(
-        REGEX
-          MATCHALL
-          "#include \"paddle\/phi\/kernels\/${kernel_library_SUB_DIR}\/[a-z0-9_]+_kernel.h\""
-          include_kernels
-          ${target_content})
-      list(APPEND all_include_kernels ${include_kernels})
-    endif()
-
-    foreach(include_kernel ${all_include_kernels})
-      if("${kernel_library_SUB_DIR}" STREQUAL "")
-        string(REGEX REPLACE "#include \"paddle\/phi\/kernels\/" "" kernel_name
-                             ${include_kernel})
-        string(REGEX REPLACE ".h\"" "" kernel_name ${kernel_name})
-        list(APPEND all_kernel_name ${kernel_name})
-      else()
-        # NOTE(dev): we should firstly match kernel_library_SUB_DIR.
-        if(${include_kernel} MATCHES
-           "#include \"paddle\/phi\/kernels\/${kernel_library_SUB_DIR}\/")
+      if(NOT first_registry STREQUAL "")
+        string(
+          REGEX
+            MATCH
+            "(PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z_]*,[ \\\t\r\n]*[A-Z_]*"
+            is_all_backend
+            "${first_registry}")
+        if(NOT is_all_backend STREQUAL "")
+          # parse the registerd kernel message
+          string(
+            REPLACE "PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM("
+                    "" kernel_msg "${first_registry}")
+        else()
           string(
             REGEX
-            REPLACE
-              "#include \"paddle\/phi\/kernels\/${kernel_library_SUB_DIR}\/" ""
-              kernel_name ${include_kernel})
-          # for selected_rows directory, add ${target_suffix}.
-          string(REGEX REPLACE ".h\"" "${target_suffix}" kernel_name
-                               ${kernel_name})
-          list(APPEND all_kernel_name ${kernel_name})
+              MATCH
+              "(PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z_]*,[ \\\t\r\n]*[A-Z_]*"
+              is_all_backend
+              "${first_registry}")
+
+          # parse the registerd kernel message
+          string(REPLACE "PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(" ""
+                         kernel_msg "${first_registry}")
+        endif()
+        string(REPLACE "PD_REGISTER_KERNEL(" "" kernel_msg "${kernel_msg}")
+        string(REPLACE "PD_REGISTER_KERNEL_FOR_ALL_DTYPE(" "" kernel_msg
+                       "${kernel_msg}")
+        string(REPLACE "," ";" kernel_msg "${kernel_msg}")
+        string(REGEX REPLACE "[ \\\t\r\n]+" "" kernel_msg "${kernel_msg}")
+        string(REGEX REPLACE "//cuda_only" "" kernel_msg "${kernel_msg}")
+
+        list(GET kernel_msg 0 kernel_name)
+        if(NOT is_all_backend STREQUAL "")
+          list(GET kernel_msg 1 kernel_layout)
+          set(kernel_backend "CPU")
         else()
-          string(REGEX REPLACE "#include \"paddle\/phi\/kernels\/" ""
-                               kernel_name ${include_kernel})
-          string(REGEX REPLACE ".h\"" "" kernel_name ${kernel_name})
-          list(APPEND all_kernel_name ${kernel_name})
+          list(GET kernel_msg 1 kernel_backend)
+          list(GET kernel_msg 2 kernel_layout)
+        endif()
+        set(kernel_declare_id
+            "${kernel_declare_id}PD_DECLARE_KERNEL(${kernel_name}, ${kernel_backend}, ${kernel_layout});"
+        )
+        if("${KERNEL_LIST}" STREQUAL "")
+          set(first_registry "")
+        else()
+          string(
+            REGEX
+              MATCH
+              "(PD_REGISTER_KERNEL|PD_REGISTER_KERNEL_FOR_ALL_DTYPE|PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE|PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z_]*,[ \\\t\r\n]*[A-Z_]*"
+              first_registry
+              "${kernel_impl}")
         endif()
       endif()
-      list(APPEND kernel_deps ${all_kernel_name})
-    endforeach()
-  endforeach()
-  list(REMOVE_DUPLICATES kernel_deps)
-  list(REMOVE_ITEM kernel_deps ${TARGET}${target_suffix})
-
-  list(LENGTH common_srcs common_srcs_len)
-  list(LENGTH cpu_srcs cpu_srcs_len)
-  list(LENGTH gpu_srcs gpu_srcs_len)
-  list(LENGTH xpu_srcs xpu_srcs_len)
-  list(LENGTH gpudnn_srcs gpudnn_srcs_len)
-  list(LENGTH kps_srcs kps_srcs_len)
-
-  # kernel source file level
-  # level 1: base device kernel (if any device or dnn kernel exists, the cpu_kernel must be exists!!!)
-  # - cpu_srcs / gpu_srcs / xpu_srcs / kps_srcs
-  # = dnn srcs: gpudnn_srcs
-  # level 2: device-independent kernel
-  # - common_srcs
-
-  set(partial_build_flag 0)
-  set(base_build_flag 0)
-  if(${common_srcs_len} GREATER 0)
-    set(partial_build_flag 1)
-  endif()
-  if(${cpu_srcs_len} GREATER 0
-     OR ${gpu_srcs_len} GREATER 0
-     OR ${xpu_srcs_len} GREATER 0
-     OR ${kps_srcs_len} GREATER 0)
-    set(base_build_flag 1)
-  endif()
-
-  # gpudnn or mkldnn needs to be compiled separately
-  set(dnn_kernels)
-  if(${gpudnn_srcs_len} GREATER 0)
-    if(WITH_GPU)
-      nv_library(
-        ${TARGET}_gpudnn${target_suffix}
-        SRCS ${gpudnn_srcs}
-        DEPS ${kernel_library_DEPS} ${kernel_deps})
-    elseif(WITH_ROCM)
-      hip_library(
-        ${TARGET}_gpudnn${target_suffix}
-        SRCS ${gpudnn_srcs}
-        DEPS ${kernel_library_DEPS} ${kernel_deps})
-    endif()
-    list(APPEND dnn_kernels ${TARGET}_gpudnn${target_suffix})
-  endif()
-  list(LENGTH dnn_kernels dnn_kernels_len)
-
-  if(${partial_build_flag} EQUAL 0 AND ${base_build_flag} EQUAL 1)
-    if(WITH_GPU)
-      if(${dnn_kernels_len} GREATER 0)
-        nv_library(
-          ${TARGET}_base${target_suffix}
-          SRCS ${cpu_srcs} ${gpu_srcs}
-          DEPS ${kernel_library_DEPS} ${kernel_deps})
-        nv_library(${TARGET}${target_suffix} DEPS ${TARGET}_base${target_suffix}
-                                                  ${dnn_kernels})
-      else()
-        nv_library(
-          ${TARGET}${target_suffix}
-          SRCS ${cpu_srcs} ${gpu_srcs}
-          DEPS ${kernel_library_DEPS} ${kernel_deps})
-      endif()
-    elseif(WITH_ROCM)
-      if(${dnn_kernels_len} GREATER 0)
-        hip_library(
-          ${TARGET}_base${target_suffix}
-          SRCS ${cpu_srcs} ${gpu_srcs}
-          DEPS ${kernel_library_DEPS} ${kernel_deps})
-        hip_library(${TARGET}${target_suffix}
-                    DEPS ${TARGET}_base${target_suffix} ${dnn_kernels})
-      else()
-        hip_library(
-          ${TARGET}${target_suffix}
-          SRCS ${cpu_srcs} ${gpu_srcs}
-          DEPS ${kernel_library_DEPS} ${kernel_deps})
-      endif()
-    elseif(WITH_XPU_KP)
-      xpu_library(
-        ${TARGET}${target_suffix}
-        SRCS ${cpu_srcs} ${kps_srcs} ${xpu_srcs}
-        DEPS ${kernel_library_DEPS} ${kernel_deps})
-    else()
-      cc_library(
-        ${TARGET}${target_suffix}
-        SRCS ${cpu_srcs} ${xpu_srcs}
-        DEPS ${kernel_library_DEPS} ${kernel_deps})
-    endif()
-  elseif(${partial_build_flag} EQUAL 1 AND ${base_build_flag} EQUAL 1)
-    if(WITH_GPU)
-      nv_library(
-        ${TARGET}_base${target_suffix}
-        SRCS ${cpu_srcs} ${gpu_srcs}
-        DEPS ${kernel_library_DEPS} ${kernel_deps})
-      nv_library(
-        ${TARGET}${target_suffix}
-        SRCS ${common_srcs}
-        DEPS ${TARGET}_base${target_suffix} ${dnn_kernels})
-    elseif(WITH_ROCM)
-      hip_library(
-        ${TARGET}_base${target_suffix}
-        SRCS ${cpu_srcs} ${gpu_srcs}
-        DEPS ${kernel_library_DEPS} ${kernel_deps})
-      hip_library(
-        ${TARGET}${target_suffix}
-        SRCS ${common_srcs}
-        DEPS ${TARGET}_base${target_suffix} ${dnn_kernels})
-    elseif(WITH_XPU_KP)
-      xpu_library(
-        ${TARGET}_base${target_suffix}
-        SRCS ${cpu_srcs} ${kps_srcs} ${xpu_srcs}
-        DEPS ${kernel_library_DEPS} ${kernel_deps})
-      xpu_library(
-        ${TARGET}${target_suffix}
-        SRCS ${common_srcs}
-        DEPS ${TARGET}_base${target_suffix})
-    else()
-      cc_library(
-        ${TARGET}_base${target_suffix}
-        SRCS ${cpu_srcs} ${xpu_srcs}
-        DEPS ${kernel_library_DEPS} ${kernel_deps})
-      cc_library(
-        ${TARGET}${target_suffix}
-        SRCS ${common_srcs}
-        DEPS ${TARGET}_base${target_suffix})
-    endif()
-  elseif(${partial_build_flag} EQUAL 1 AND ${base_build_flag} EQUAL 0)
-    if(WITH_GPU)
-      nv_library(
-        ${TARGET}${target_suffix}
-        SRCS ${common_srcs}
-        DEPS ${kernel_library_DEPS} ${kernel_deps})
-    elseif(WITH_ROCM)
-      hip_library(
-        ${TARGET}${target_suffix}
-        SRCS ${common_srcs}
-        DEPS ${kernel_library_DEPS} ${kernel_deps})
-    elseif(WITH_XPU_KP)
-      xpu_library(
-        ${TARGET}${target_suffix}
-        SRCS ${common_srcs}
-        DEPS ${kernel_library_DEPS} ${kernel_deps})
-    else()
-      cc_library(
-        ${TARGET}${target_suffix}
-        SRCS ${common_srcs}
-        DEPS ${kernel_library_DEPS} ${kernel_deps})
-    endif()
-  else()
-    set(target_build_flag 0)
-  endif()
-
-  if(${target_build_flag} EQUAL 1)
-    if(${common_srcs_len} GREATER 0
-       OR ${cpu_srcs_len} GREATER 0
-       OR ${gpu_srcs_len} GREATER 0
-       OR ${xpu_srcs_len} GREATER 0
-       OR ${kps_srcs_len} GREATER 0
-       OR ${gpudnn_srcs_len} GREATER 0)
-      # append target into PHI_KERNELS property
-      get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
-      set(phi_kernels ${phi_kernels} ${TARGET}${target_suffix})
-      set_property(GLOBAL PROPERTY PHI_KERNELS ${phi_kernels})
-    endif()
-
-    # parse kernel name and auto generate kernel declaration
-    # here, we don't need to check WITH_XXX, because if not WITH_XXX, the
-    # xxx_srcs_len will be equal to 0
-    if(${common_srcs_len} GREATER 0)
-      kernel_declare(${common_srcs})
-    endif()
-    if(${cpu_srcs_len} GREATER 0)
-      kernel_declare(${cpu_srcs})
-    endif()
-    if(${gpu_srcs_len} GREATER 0)
-      kernel_declare(${gpu_srcs})
-    endif()
-    if(${xpu_srcs_len} GREATER 0)
-      kernel_declare(${xpu_srcs})
-    endif()
-    if(${gpudnn_srcs_len} GREATER 0)
-      kernel_declare(${gpudnn_srcs})
-    endif()
-    if(${kps_srcs_len} GREATER 0)
-      kernel_declare(${kps_srcs})
-    endif()
-  endif()
-endfunction()
-
-function(register_kernels)
-  set(options "")
-  set(oneValueArgs SUB_DIR)
-  set(multiValueArgs EXCLUDES DEPS)
-  cmake_parse_arguments(register_kernels "${options}" "${oneValueArgs}"
-                        "${multiValueArgs}" ${ARGN})
-
-  file(
-    GLOB KERNELS
-    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-    "*_kernel.h")
-  string(REPLACE ".h" "" KERNELS "${KERNELS}")
-  list(LENGTH register_kernels_DEPS register_kernels_DEPS_len)
-
-  foreach(target ${KERNELS})
-    list(FIND register_kernels_EXCLUDES ${target} _index)
-    if(${_index} EQUAL -1)
-      if(${register_kernels_DEPS_len} GREATER 0)
-        kernel_library(${target} DEPS ${register_kernels_DEPS} SUB_DIR
-                       ${register_kernels_SUB_DIR})
-      else()
-        kernel_library(${target} SUB_DIR ${register_kernels_SUB_DIR})
-      endif()
+    endwhile()
+    # append kernel declare into declarations.h
+    if(NOT kernel_declare_id STREQUAL "")
+      file(APPEND ${kernel_declare_file} "${kernel_declare_id}\n")
     endif()
   endforeach()
 endfunction()
 
 function(append_op_util_declare TARGET)
-  file(READ ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET} target_content)
+  file(READ ${TARGET} target_content)
+  string(REGEX MATCH "(PD_REGISTER_ARG_MAPPING_FN)\\([ \t\r\n]*[a-z0-9_]*"
+               util_registrar "${target_content}")
+  if(NOT ${util_registrar} EQUAL "")
+    string(REPLACE "PD_REGISTER_ARG_MAPPING_FN" "PD_DECLARE_ARG_MAPPING_FN"
+                   util_declare "${util_registrar}")
+    string(APPEND util_declare ");\n")
+    file(APPEND ${op_utils_header} "${util_declare}")
+  endif()
+endfunction()
+
+function(append_op_kernel_map_declare TARGET)
+  file(READ ${TARGET} target_content)
   string(
     REGEX
       MATCH
-      "(PD_REGISTER_BASE_KERNEL_NAME|PD_REGISTER_ARG_MAPPING_FN)\\([ \t\r\n]*[a-z0-9_]*"
-      util_registrar
+      "(PD_REGISTER_BASE_KERNEL_NAME)\\([ \t\r\n]*[a-z0-9_]*,[ \\\t\r\n]*[a-z0-9_]*"
+      kernel_mapping_registrar
       "${target_content}")
-  string(REPLACE "PD_REGISTER_ARG_MAPPING_FN" "PD_DECLARE_ARG_MAPPING_FN"
-                 util_declare "${util_registrar}")
-  string(REPLACE "PD_REGISTER_BASE_KERNEL_NAME" "PD_DECLARE_BASE_KERNEL_NAME"
-                 util_declare "${util_declare}")
-  string(APPEND util_declare ");\n")
-  file(APPEND ${op_utils_header} "${util_declare}")
+  if(NOT ${kernel_mapping_registrar} EQUAL "")
+    string(REPLACE "PD_REGISTER_BASE_KERNEL_NAME" "PD_DECLARE_BASE_KERNEL_NAME"
+                   kernel_mapping_declare "${kernel_mapping_registrar}")
+    string(APPEND kernel_mapping_declare ");\n")
+    file(APPEND ${op_utils_header} "${kernel_mapping_declare}")
+  endif()
 endfunction()
 
 function(register_op_utils TARGET_NAME)
@@ -484,17 +208,83 @@ function(register_op_utils TARGET_NAME)
   cmake_parse_arguments(register_op_utils "${options}" "${oneValueArgs}"
                         "${multiValueArgs}" ${ARGN})
 
-  file(
-    GLOB SIGNATURES
-    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-    "*_sig.cc")
+  file(GLOB SIGNATURES "${PADDLE_SOURCE_DIR}/paddle/phi/ops/compat/*_sig.cc")
   foreach(target ${SIGNATURES})
     append_op_util_declare(${target})
-    list(APPEND utils_srcs ${CMAKE_CURRENT_SOURCE_DIR}/${target})
+    append_op_kernel_map_declare(${target})
+    list(APPEND utils_srcs ${target})
   endforeach()
 
   cc_library(
     ${TARGET_NAME}
     SRCS ${utils_srcs}
     DEPS ${register_op_utils_DEPS})
+endfunction()
+
+function(prune_declaration_h)
+  set(kernel_list ${KERNEL_LIST})
+  file(STRINGS ${kernel_declare_file} kernel_registry_list)
+
+  file(WRITE ${kernel_declare_file_prune} "")
+  file(APPEND ${kernel_declare_file_prune}
+       "// Generated by the paddle/phi/kernels/CMakeLists.txt.  DO NOT EDIT!\n")
+  file(APPEND ${kernel_declare_file_prune} "#pragma once\n")
+  file(APPEND ${kernel_declare_file_prune}
+       "#include \"paddle/phi/core/kernel_registry.h\"\n")
+
+  set(kernel_declare_list_prune)
+  foreach(kernel_registry IN LISTS kernel_registry_list)
+    if(NOT "${kernel_registry}" EQUAL "")
+      foreach(kernel_name IN LISTS kernel_list)
+        string(FIND "${kernel_registry}" "(${kernel_name})" index1)
+        string(FIND "${kernel_registry}" "(${kernel_name}," index2)
+        if((NOT ${index1} EQUAL "-1") OR (NOT ${index2} EQUAL "-1"))
+          string(
+            REGEX
+              MATCH
+              "PD_DECLARE_KERNEL\\([a-z0-9_]*, [[a-z0-9_]*]?[a-zA-Z_]*, [A-Z_]*\\)"
+              first_registry
+              "${kernel_registry}")
+          list(APPEND kernel_declare_list_prune "${first_registry}")
+        endif()
+      endforeach()
+    endif()
+  endforeach()
+
+  list(REMOVE_DUPLICATES kernel_declare_list_prune)
+  foreach(kernel_declare_prune IN LISTS kernel_declare_list_prune)
+    file(APPEND ${kernel_declare_file_prune} "${kernel_declare_prune};\n")
+  endforeach()
+
+  file(WRITE ${kernel_declare_file} "")
+  file(STRINGS ${kernel_declare_file_prune} kernel_registry_list_tmp)
+  foreach(kernel_registry IN LISTS kernel_registry_list_tmp)
+    if(NOT ${kernel_registry} EQUAL "")
+      file(APPEND ${kernel_declare_file} "${kernel_registry}\n")
+    endif()
+  endforeach()
+endfunction()
+
+function(collect_srcs SRC_GROUP)
+  set(options)
+  set(oneValueArgs)
+  set(multiValueArgs "SRCS")
+  cmake_parse_arguments(prefix "" "" "${multiValueArgs}" ${ARGN})
+  foreach(src ${prefix_SRCS})
+    set(${SRC_GROUP}
+        "${${SRC_GROUP}};${CMAKE_CURRENT_SOURCE_DIR}/${src}"
+        CACHE INTERNAL "")
+  endforeach()
+endfunction()
+
+function(collect_generated_srcs SRC_GROUP)
+  set(options)
+  set(oneValueArgs)
+  set(multiValueArgs "SRCS")
+  cmake_parse_arguments(prefix "" "" "${multiValueArgs}" ${ARGN})
+  foreach(src ${prefix_SRCS})
+    set(${SRC_GROUP}
+        "${${SRC_GROUP}};${src}"
+        CACHE INTERNAL "")
+  endforeach()
 endfunction()

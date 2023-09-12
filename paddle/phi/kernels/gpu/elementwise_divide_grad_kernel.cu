@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/elementwise_divide_grad_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/elementwise_divide_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/gpu/elementwise_grad.h"
 #include "paddle/phi/kernels/impl/elementwise_grad_kernel_impl.h"
@@ -35,23 +36,22 @@ void DivideGradKernel(const Context& dev_ctx,
                       DenseTensor* dy) {
   const auto place = dev_ctx.GetPlace();
   if (dx != nullptr && dy != nullptr) {
-    std::vector<const DenseTensor*> ins = {&dout, &out, &y};
-    GetGradXAndYOut<ElementwiseType::kTernary, T>(
-        dev_ctx,
-        place,
-        axis,
-        ins,
-        dout,
-        dx,
-        dy,
-        funcs::DivGradXYFunctor<T, T>());
+    std::vector<const DenseTensor*> ins = {&dout, &x, &y};
+    GetGradXAndYOut<T>(dev_ctx,
+                       place,
+                       axis,
+                       ins,
+                       dout,
+                       dx,
+                       dy,
+                       funcs::DivGradXYFunctor<T, T>());
   } else if (dx != nullptr && dy == nullptr) {
     std::vector<const DenseTensor*> ins = {&dout, &y};
-    GetGradXOrYOut<ElementwiseType::kBinary, T>(
+    GetGradXOrYOut<T>(
         dev_ctx, place, axis, ins, dout, dx, funcs::DivGradXFunctor<T>());
   } else if (dy != nullptr && dx == nullptr) {
-    std::vector<const DenseTensor*> ins = {&dout, &out, &y};
-    GetGradXOrYOut<ElementwiseType::kTernary, T>(
+    std::vector<const DenseTensor*> ins = {&dout, &x, &y};
+    GetGradXOrYOut<T>(
         dev_ctx, place, axis, ins, dout, dy, funcs::DivGradYFunctor<T>());
   }
 }

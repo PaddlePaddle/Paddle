@@ -92,7 +92,8 @@ class Dot {
     std::string target;
     std::vector<Attr> attrs;
 
-    Edge(const std::string& source, const std::string& target,
+    Edge(const std::string& source,
+         const std::string& target,
          const std::vector<Attr>& attrs)
         : source(source), target(target), attrs(attrs) {}
 
@@ -116,8 +117,10 @@ class Dot {
 
   explicit Dot(const std::vector<Attr>& attrs) : attrs_(attrs) {}
 
-  void AddNode(const std::string& id, const std::vector<Attr>& attrs,
-               std::string label = "", bool use_local_id = false) {
+  void AddNode(const std::string& id,
+               const std::vector<Attr>& attrs,
+               std::string label = "",
+               bool use_local_id = false) {
     CHECK(!nodes_.count(id)) << "duplicate Node '" << id << "'";
     if (label.empty()) label = id;
     if (use_local_id) {
@@ -127,7 +130,8 @@ class Dot {
     }
   }
 
-  void AddEdge(const std::string& source, const std::string& target,
+  void AddEdge(const std::string& source,
+               const std::string& target,
                const std::vector<Attr>& attrs) {
     CHECK(!source.empty());
     CHECK(!target.empty());

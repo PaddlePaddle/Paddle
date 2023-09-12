@@ -20,7 +20,7 @@ namespace paddle {
 namespace framework {
 
 bool IsProgramVersionSupported(int64_t version) {
-  /* So far, all old versions of Tensor are supported in the
+  /* So far, all old versions of phi::DenseTensor are supported in the
    * new version. The compatibility judgment cannot be made only
    * by the version number. Please do not use this interface,
    * it may be discarded because backward compatibility.
@@ -29,7 +29,7 @@ bool IsProgramVersionSupported(int64_t version) {
 }
 
 bool IsTensorVersionSupported(uint32_t version) {
-  /* So far, all old versions of Tensor are supported in the
+  /* So far, all old versions of phi::DenseTensor are supported in the
    * new version. The compatibility judgment cannot be made only
    * by the version number. Please do not use this interface,
    * it may be discarded because backward compatibility.
@@ -39,10 +39,11 @@ bool IsTensorVersionSupported(uint32_t version) {
 
 std::string DumpVersion(const int64_t version) {
   std::stringstream buffer;
-  const int major = version / MAJOR_COEFF;
-  const int minor = (version - major * MAJOR_COEFF) / MINOR_COEFF;
-  const int patch =
-      (version - major * MAJOR_COEFF - minor * MINOR_COEFF) / PATCH_COEFF;
+  const int major = static_cast<int>(version / MAJOR_COEFF);
+  const int minor =
+      static_cast<int>((version - major * MAJOR_COEFF) / MINOR_COEFF);
+  const int patch = static_cast<int>(
+      (version - major * MAJOR_COEFF - minor * MINOR_COEFF) / PATCH_COEFF);
   buffer << major << "." << minor << "." << patch;
   return buffer.str();
 }

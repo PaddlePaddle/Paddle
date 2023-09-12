@@ -22,16 +22,26 @@
 
 namespace phi {
 
-// Create the definition of Multiply
-DEFINE_CPU_ELEMENTWISE_OP(Multiply)
-
 template <typename T, typename Context>
 void MultiplyKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
-  int axis = -1;
-  MultiplyRawKernel<T>(dev_ctx, x, y, axis, out);
+  dev_ctx.template Alloc<T>(out);
+  if (x.dims() == y.dims()) {
+    SameDimsElementwiseCompute<SameDimsMultiplyFunctor<CPUContext, T>>()(
+        dev_ctx, x, y, out);
+  } else {
+    auto x_dims = x.dims();
+    auto y_dims = y.dims();
+    if (x_dims.size() >= y_dims.size()) {
+      funcs::ElementwiseCompute<funcs::MultiplyFunctor<T>, T>(
+          dev_ctx, x, y, funcs::MultiplyFunctor<T>(), out, -1);
+    } else {
+      funcs::ElementwiseCompute<funcs::InverseMultiplyFunctor<T>, T>(
+          dev_ctx, x, y, funcs::InverseMultiplyFunctor<T>(), out, -1);
+    }
+  }
 }
 
 }  // namespace phi
@@ -41,19 +51,6 @@ using complex128 = ::phi::dtype::complex<double>;
 
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
 // using bfloat16 = ::phi::dtype::bfloat16;
-
-PD_REGISTER_KERNEL(multiply_raw,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::MultiplyRawKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   bool,
-                   complex64,
-                   complex128,
-                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(multiply,
                    CPU,

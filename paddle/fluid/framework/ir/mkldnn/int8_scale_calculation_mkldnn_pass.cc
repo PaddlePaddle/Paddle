@@ -14,16 +14,54 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/int8_scale_calculation_mkldnn_pass.h"
 
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-Int8ScaleCalculationMkldnnPass::Int8ScaleCalculationMkldnnPass() {
+Int8ScaleCalculationMkldnnPass::Int8ScaleCalculationMkldnnPass() {  // NOLINT
   AddOpCompat(OpCompat("conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("ResidualData")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "AnyLayout"})
+      .End();
+  AddOpCompat(OpCompat("fused_conv2d"))
       .AddInput("Input")
       .IsTensor()
       .End()
@@ -63,6 +101,12 @@ Int8ScaleCalculationMkldnnPass::Int8ScaleCalculationMkldnnPass() {
 }
 
 void Int8ScaleCalculationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
+  Int8ScaleImpl(graph, "fused_conv2d");
+  Int8ScaleImpl(graph, "conv2d");
+}
+
+void Int8ScaleCalculationMkldnnPass::Int8ScaleImpl(
+    ir::Graph* graph, const std::string& conv_type) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
@@ -70,7 +114,7 @@ void Int8ScaleCalculationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   GraphPatternDetector gpd;
   patterns::Conv conv_pattern(gpd.mutable_pattern(),
                               "int8_scale_calculation_mkldnn_pass");
-  conv_pattern();
+  conv_pattern(conv_type);
 
   int found_int8_scales_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -80,6 +124,9 @@ void Int8ScaleCalculationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
     GET_IR_NODE_FROM_SUBGRAPH(conv_op, conv_op, conv_pattern);
+    if (conv_op->Op()->Type() == "conv2d") {
+      ConvertToFusedOp(conv_op->Op());
+    }
 
     if (!platform::HasOpINT8DataType(conv_op->Op()) ||
         conv_op->Op()->HasAttr("Sum_scale")) {
@@ -112,7 +159,7 @@ void Int8ScaleCalculationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
       }
     }
 
-    if (has_bias && conv_op->Op()->Input("Bias").size() > 0) {
+    if (has_bias && !conv_op->Op()->Input("Bias").empty()) {
       auto bias_scales = std::vector<float>(count);
       for (int i = 0; i < count; i++) {
         bias_scales[i] = scale_in_data * scale_weights_data[i];

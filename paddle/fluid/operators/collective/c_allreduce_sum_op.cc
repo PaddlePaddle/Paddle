@@ -33,7 +33,7 @@ class CAllReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
 
  protected:
   void Apply(GradOpPtr<T> retv) const override {
-    bool use_mp = BOOST_GET_CONST(bool, this->GetAttr("use_model_parallel"));
+    bool use_mp = PADDLE_GET_CONST(bool, this->GetAttr("use_model_parallel"));
     if (use_mp) {
       retv->SetType("c_identity");
     } else {
@@ -47,10 +47,16 @@ class CAllReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
 
 class CAllReduceSumOpMaker : public CAllReduceOpMaker {
  protected:
+  void ExtraMake() override {
+    AddInput("Cond", "(Tensor), whether to do all reduce or not.")
+        .AsDispensable();
+  }
   std::string GetName() const override { return "Sum"; }
 };
 
 DECLARE_INPLACE_OP_INFERER(AllreduceSumInplaceInferer, {"X", "Out"});
+
+DEFINE_C_ALLREDUCE_CPU_KERNEL(CAllReduceSum, kRedSum)
 
 }  // namespace operators
 }  // namespace paddle
@@ -58,14 +64,17 @@ DECLARE_INPLACE_OP_INFERER(AllreduceSumInplaceInferer, {"X", "Out"});
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(c_allreduce_sum, ops::CAllReduceOp,
-                  ops::CAllReduceSumOpGradMaker<paddle::framework::OpDesc>,
-                  ops::CAllReduceSumOpGradMaker<paddle::imperative::OpBase>,
-                  ops::CAllReduceSumOpMaker, ops::AllreduceSumInplaceInferer);
+REGISTER_OP_WITHOUT_GRADIENT(c_allreduce_sum,
+                             ops::CAllReduceOp,
+                             ops::CAllReduceSumOpMaker,
+                             ops::AllreduceSumInplaceInferer)
 
-REGISTER_OP_CPU_KERNEL(c_allreduce_sum,
-                       ops::CAllReduceOpCPUKernel<ops::kRedSum, float>,
-                       ops::CAllReduceOpCPUKernel<ops::kRedSum, double>,
-                       ops::CAllReduceOpCPUKernel<ops::kRedSum, int>,
-                       ops::CAllReduceOpCPUKernel<ops::kRedSum, int64_t>,
-                       ops::CAllReduceOpCPUKernel<ops::kRedSum, plat::float16>)
+PD_REGISTER_STRUCT_KERNEL(c_allreduce_sum,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CAllReduceSumCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

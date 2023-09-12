@@ -224,7 +224,6 @@ void MultiDotKernel(const Context& ctx,
       phi::DDim tmp_dim = phi::make_ddim({Ka, Nc});
       tmp_out.Resize(tmp_dim);
       ctx.template Alloc<T>(&tmp_out);
-      std::cout << tmp_out << std::endl;
       blas.MatMul(
           *ins[1], mat_dim_b, *ins[2], mat_dim_c, scale, &tmp_out, T(0));
       auto mat_dim_tmp = phi::funcs::CreateMatrixDescriptor(tmp_dim, 0, false);
@@ -447,8 +446,13 @@ void MultiDotGradKernel(const Context& ctx,
   } else {
     MultiDotGradMatChainOrder<Context, T>(
         ctx, dout, ins, dout_dim, ins_dims, &dx);
+    // if x's shape is: [3] [3, 4] [4]
+    // dx's shape will be: [1, 3] [3, 4] [4, 1]
     if (ins[n - 1]->dims().size() == 1) {
       dx[n - 1]->Resize({dx[n - 1]->dims()[0]});
+    }
+    if (ins[0]->dims().size() == 1) {
+      dx[0]->Resize({dx[0]->dims()[1]});
     }
   }
 }

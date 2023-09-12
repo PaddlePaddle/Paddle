@@ -17,15 +17,15 @@
 #include <map>
 #include <vector>
 
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
-#include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/api/include/api.h"
+#include "paddle/phi/api/include/fused_api.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -33,14 +33,14 @@
 
 namespace paddle {
 namespace distributed {
-using Tensor = paddle::experimental::Tensor;
-using Scalar = paddle::experimental::ScalarBase<paddle::experimental::Tensor>;
-using IntArray =
-    paddle::experimental::IntArrayBase<paddle::experimental::Tensor>;
+using Tensor = paddle::Tensor;
+using Scalar = paddle::experimental::ScalarBase<paddle::Tensor>;
+using IntArray = paddle::experimental::IntArrayBase<paddle::Tensor>;
 using Backend = paddle::experimental::Backend;
 
 std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
-    const std::vector<Tensor>, const std::vector<bool> &is_sparse_gradient,
+    const std::vector<Tensor>,
+    const std::vector<bool> &is_sparse_gradient,
     const std::vector<size_t> &group_size_limits,
     const std::vector<int64_t> &tensor_indices = {});
 
@@ -73,7 +73,8 @@ class EagerGroup {
   void ConcatTensors(const platform::Place &);
 
   // context is used to select the stream for split
-  void SplitTensors(const platform::Place &);
+
+  void SplitTensors(const platform::DeviceContext &);
 
   friend std::ostream &operator<<(std::ostream &, const EagerGroup &);
 };

@@ -16,9 +16,6 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/device_context.h"
-#endif
 
 namespace paddle {
 namespace memory {
@@ -54,7 +51,7 @@ void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num);
  *
  */
 template <typename DstPlace, typename SrcPlace>
-void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num,
-          void* stream);
+void Copy(
+    DstPlace, void* dst, SrcPlace, const void* src, size_t num, void* stream);
 }  // namespace memory
 }  // namespace paddle

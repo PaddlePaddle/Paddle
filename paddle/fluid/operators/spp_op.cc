@@ -63,18 +63,22 @@ class SppOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(X) of SppOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(Out) of SppOp should not be null."));
     auto in_x_dims = ctx->GetInputDim("X");
     int pyramid_height = ctx->Attrs().Get<int>("pyramid_height");
-    PADDLE_ENFORCE_EQ(in_x_dims.size(), 4,
+    PADDLE_ENFORCE_EQ(in_x_dims.size(),
+                      4,
                       platform::errors::InvalidArgument(
                           "Spping intput must be of 4-dimensional."));
-    int outlen = ((std::pow(4, pyramid_height) - 1) / (4 - 1)) * in_x_dims[1];
+    int outlen =
+        ((std::pow(4, pyramid_height) - 1) / (4 - 1)) * in_x_dims[1];  // NOLINT
     std::vector<int64_t> output_shape({in_x_dims[0], outlen});
     ctx->SetOutputDim("Out", phi::make_ddim(output_shape));
   }
@@ -85,10 +89,12 @@ class SppOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
+        ctx->HasInput("X"),
+        true,
         platform::errors::InvalidArgument("Input(X) must not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput(framework::GradVarName("X")), true,
+        ctx->HasOutput(framework::GradVarName("X")),
+        true,
         platform::errors::InvalidArgument("Input(X@GRAD) should not be null."));
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
@@ -98,13 +104,14 @@ class SppOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    spp, ops::SppOp, ops::SppOpMaker,
+    spp,
+    ops::SppOp,
+    ops::SppOpMaker,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(spp_grad, ops::SppOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    spp, ops::SppKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SppKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    spp_grad, ops::SppGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SppGradKernel<paddle::platform::CPUDeviceContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(spp, CPU, ALL_LAYOUT, ops::SppKernel, float, double) {
+}
+PD_REGISTER_STRUCT_KERNEL(
+    spp_grad, CPU, ALL_LAYOUT, ops::SppGradKernel, float, double) {}

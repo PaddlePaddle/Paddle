@@ -42,8 +42,6 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
     : ParallelContext(strategy, platform::CUDAPlace(device_id))
 #elif PADDLE_WITH_XPU_BKCL
     : ParallelContext(strategy, platform::XPUPlace(device_id))
-#elif PADDLE_WITH_ASCEND_CL
-    : ParallelContext(strategy, platform::NPUPlace(device_id))
 #else
     : ParallelContext(strategy, platform::CPUPlace())
 #endif
@@ -81,7 +79,8 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
   VLOG(0) << "init node size " << node_nranks << " rank "
           << node_strategy_.local_rank_;
 
-  PADDLE_ENFORCE_NE(node_nranks, 0,
+  PADDLE_ENFORCE_NE(node_nranks,
+                    0,
                     platform::errors::InvalidArgument(
                         "The number of local nranks should not be zero."));
   node_strategy_.nranks_ = node_nranks;
@@ -111,16 +110,12 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
   node_parallel_ctx_ =
       std::make_shared<BKCLParallelContext>(node_strategy_, node_place_);
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  node_place_ = platform::NPUPlace(device_id);
-  node_parallel_ctx_ =
-      std::make_shared<HCCLParallelContext>(node_strategy_, node_place_);
-#endif
 }
 
 void HeterParallelContext::Init() {
   PADDLE_ENFORCE_NE(
-      node_parallel_ctx_, nullptr,
+      node_parallel_ctx_,
+      nullptr,
       platform::errors::Unavailable(
           "The heter parallel context has not been initialized."));
 
@@ -151,9 +146,9 @@ void HeterParallelContext::AllReduceByStream(const framework::Variable &src,
   if (inter_parallel_ctx_ != nullptr) {
     // copy src to cpu
     // dst is now the src
-    auto src_tensor = dst->Get<framework::LoDTensor>();
+    auto src_tensor = dst->Get<phi::DenseTensor>();
     framework::Variable src_cpu;
-    auto src_cpu_tensor = src_cpu.GetMutable<framework::LoDTensor>();
+    auto src_cpu_tensor = src_cpu.GetMutable<phi::DenseTensor>();
     framework::TensorCopySync(src_tensor, platform::CPUPlace(), src_cpu_tensor);
 
     // allreduce src/cpu to dst/cpu
@@ -162,8 +157,8 @@ void HeterParallelContext::AllReduceByStream(const framework::Variable &src,
     inter_parallel_ctx_->WaitComm(ring_id);
 
     // copy dst/cpu to dst
-    auto dst_cpu_tensor = dst_cpu.Get<framework::LoDTensor>();
-    auto dst_tensor = dst->GetMutable<framework::LoDTensor>();
+    auto dst_cpu_tensor = dst_cpu.Get<phi::DenseTensor>();
+    auto dst_tensor = dst->GetMutable<phi::DenseTensor>();
     framework::TensorCopySync(dst_cpu_tensor, dst_tensor->place(), dst_tensor);
 
     inter_parallel_ctx_->WaitComm(ring_id);

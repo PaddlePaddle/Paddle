@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import subprocess
-import shlex
-import os
 import json
+import os
 import shutil
+import subprocess
 
 
-class Info(object):
-
+class Info:
     def __repr__(self):
         return str(self.__dict__)
 
@@ -77,20 +75,28 @@ def query_smi(query=None, query_type="gpu", index=None, dtype=None):
 
 def get_gpu_info(index=None):
     q = "index,uuid,driver_version,name,gpu_serial,display_active,display_mode".split(
-        ",")
+        ","
+    )
     d = [int, str, str, str, str, str, str]
-    index = index if index is None or isinstance(
-        index, list) else str(index).split(",")
+    index = (
+        index
+        if index is None or isinstance(index, list)
+        else str(index).split(",")
+    )
 
     return query_smi(q, index=index, dtype=d)
 
 
 def get_gpu_util(index=None):
     q = "index,utilization.gpu,memory.total,memory.used,memory.free,timestamp".split(
-        ",")
+        ","
+    )
     d = [int, int, int, int, int, str]
-    index = index if index is None or isinstance(
-        index, list) else str(index).split(",")
+    index = (
+        index
+        if index is None or isinstance(index, list)
+        else str(index).split(",")
+    )
 
     return query_smi(q, index=index, dtype=d)
 
@@ -98,8 +104,11 @@ def get_gpu_util(index=None):
 def get_gpu_process(index=None):
     q = "pid,process_name,gpu_uuid,gpu_name,used_memory".split(",")
     d = [int, str, str, str, int]
-    index = index if index is None or isinstance(
-        index, list) else str(index).split(",")
+    index = (
+        index
+        if index is None or isinstance(index, list)
+        else str(index).split(",")
+    )
 
     return query_smi(q, index=index, query_type="compute", dtype=d)
 

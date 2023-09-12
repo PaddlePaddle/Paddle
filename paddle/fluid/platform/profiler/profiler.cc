@@ -25,25 +25,54 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/cuda_tracer.h"
+#include "paddle/fluid/platform/profiler/custom_device/custom_tracer.h"
 #include "paddle/fluid/platform/profiler/extra_info.h"
 #include "paddle/fluid/platform/profiler/host_tracer.h"
-#include "paddle/fluid/platform/profiler/mlu/mlu_tracer.h"
 #include "paddle/fluid/platform/profiler/trace_event_collector.h"
 #include "paddle/fluid/platform/profiler/utils.h"
+#include "paddle/fluid/platform/profiler/xpu_tracer.h"
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#endif
 
 namespace paddle {
 namespace platform {
 
-void SynchronizeAllDevice();
+void SynchronizeDevice() {
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+#endif
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  for (const auto& dev_type : dev_types) {
+    auto i = phi::DeviceManager::GetDevice(dev_type);
+    auto place = paddle::platform::CustomPlace(dev_type, i);
+    phi::DeviceManager::SynchronizeDevice(place);
+  }
+#endif
+#ifdef PADDLE_WITH_XPU
+  // TODO(zhangxiaoci) xpu do not support device sync yet
+  // KL3 might do
+#endif
+}
 
 std::atomic<bool> Profiler::alive_{false};
 
-std::unique_ptr<Profiler> Profiler::Create(const ProfilerOptions& options) {
+uint32_t Profiler::span_indx = 0;
+const char* Profiler::version = "1.0.2";
+
+std::unique_ptr<Profiler> Profiler::Create(
+    const ProfilerOptions& options,
+    const std::vector<std::string>& custom_device_types) {
   if (alive_.exchange(true)) {
     return nullptr;
   }
-  return std::unique_ptr<Profiler>(new Profiler(options));
+  return std::unique_ptr<Profiler>(new Profiler(options, custom_device_types));
 }
 
 bool Profiler::IsCuptiSupported() {
@@ -56,13 +85,19 @@ bool Profiler::IsCuptiSupported() {
 
 bool Profiler::IsCnpapiSupported() {
   bool supported = false;
-#ifdef PADDLE_WITH_MLU
+  return supported;
+}
+
+bool Profiler::IsXPTISupported() {
+  bool supported = false;
+#ifdef PADDLE_WITH_XPTI
   supported = true;
 #endif
   return supported;
 }
 
-Profiler::Profiler(const ProfilerOptions& options) {
+Profiler::Profiler(const ProfilerOptions& options,
+                   const std::vector<std::string>& custom_device_types) {
   options_ = options;
   std::bitset<32> trace_switch(options_.trace_switch);
   if (trace_switch.test(kProfileCPUOptionBit)) {
@@ -73,8 +108,13 @@ Profiler::Profiler(const ProfilerOptions& options) {
   if (trace_switch.test(kProfileGPUOptionBit)) {
     tracers_.emplace_back(&CudaTracer::GetInstance(), false);
   }
-  if (trace_switch.test(kProfileMLUOptionBit)) {
-    tracers_.emplace_back(&MluTracer::GetInstance(), false);
+  if (trace_switch.test(kProfileCustomDeviceOptionBit)) {
+    for (const auto& dev_type : custom_device_types) {
+      tracers_.emplace_back(&CustomTracer::GetInstance(dev_type), false);
+    }
+  }
+  if (trace_switch.test(kProfileXPUOptionBit)) {
+    tracers_.emplace_back(&XPUTracer::GetInstance(), false);
   }
 }
 
@@ -87,7 +127,7 @@ void Profiler::Prepare() {
 }
 
 void Profiler::Start() {
-  SynchronizeAllDevice();
+  SynchronizeDevice();
   for (auto& tracer : tracers_) {
     tracer.Get().StartTracing();
   }
@@ -95,15 +135,17 @@ void Profiler::Start() {
 }
 
 std::unique_ptr<ProfilerResult> Profiler::Stop() {
-  SynchronizeAllDevice();
+  SynchronizeDevice();
   TraceEventCollector collector;
   for (auto& tracer : tracers_) {
     tracer.Get().StopTracing();
     tracer.Get().CollectTraceData(&collector);
   }
   std::unique_ptr<NodeTrees> tree(
-      new NodeTrees(collector.HostEvents(), collector.RuntimeEvents(),
-                    collector.DeviceEvents(), collector.MemEvents(),
+      new NodeTrees(collector.HostEvents(),
+                    collector.RuntimeEvents(),
+                    collector.DeviceEvents(),
+                    collector.MemEvents(),
                     collector.OperatorSupplementEvents()));
   cpu_utilization_.RecordEndTimeInfo();
   ExtraInfo extrainfo;
@@ -117,10 +159,26 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
       collector.ThreadNames();
   for (const auto& kv : thread_names) {
     extrainfo.AddExtraInfo(string_format(std::string("%llu"), kv.first),
-                           std::string("%s"), kv.second.c_str());
+                           std::string("%s"),
+                           kv.second.c_str());
   }
-  return std::unique_ptr<ProfilerResult>(
-      new platform::ProfilerResult(std::move(tree), extrainfo));
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  std::map<uint32_t, gpuDeviceProp> device_property_map;
+  std::vector<int32_t> device_ids = GetSelectedDevices();
+  for (auto device_id : device_ids) {
+    const gpuDeviceProp& device_property = GetDeviceProperties(device_id);
+    device_property_map[device_id] = device_property;
+  }
+  ProfilerResult* profiler_result_ptr = new platform::ProfilerResult(
+      std::move(tree), extrainfo, device_property_map);
+#else
+  ProfilerResult* profiler_result_ptr =
+      new platform::ProfilerResult(std::move(tree), extrainfo);
+#endif
+  profiler_result_ptr->SetVersion(std::string(version));
+  profiler_result_ptr->SetSpanIndx(span_indx);
+  span_indx += 1;
+  return std::unique_ptr<ProfilerResult>(profiler_result_ptr);
 }
 
 }  // namespace platform

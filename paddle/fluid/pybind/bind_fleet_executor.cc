@@ -65,6 +65,7 @@ struct npy_format_descriptor<paddle::platform::float16> {
 namespace paddle {
 namespace pybind {
 
+using paddle::distributed::DependType;
 using paddle::distributed::DistModel;
 using paddle::distributed::DistModelConfig;
 using paddle::distributed::DistModelDataBuf;
@@ -80,7 +81,8 @@ DistModelDataBuf DistModelDataBufCreate(
     py::array_t<T, py::array::c_style | py::array::forcecast> data) {
   // accept numpy array directly
   DistModelDataBuf buf(data.size() * sizeof(T));
-  std::copy_n(static_cast<const T*>(data.data()), data.size(),
+  std::copy_n(static_cast<const T*>(data.data()),
+              data.size(),
               static_cast<T*>(buf.data()));
   return buf;
 }
@@ -91,20 +93,23 @@ void DistModelDataBufReset(
     py::array_t<T, py::array::c_style | py::array::forcecast> data) {  // NOLINT
   // reset the data with numpy array directly
   buf.Resize(data.size() * sizeof(T));
-  std::copy_n(static_cast<const T*>(data.data()), data.size(),
+  std::copy_n(static_cast<const T*>(data.data()),
+              data.size(),
               static_cast<T*>(buf.data()));
 }
 
 template <typename T>
 DistModelTensor DistModelTensorCreate(
     py::array_t<T, py::array::c_style | py::array::forcecast> data,
-    const std::string name, const std::vector<std::vector<size_t>>& lod,
+    const std::string name,
+    const std::vector<std::vector<size_t>>& lod,
     bool copy) {
   DistModelTensor tensor;
 
   if (copy) {
     DistModelDataBuf buf(data.size() * sizeof(T));
-    std::copy_n(static_cast<const T*>(data.data()), data.size(),
+    std::copy_n(static_cast<const T*>(data.data()),
+                data.size(),
                 static_cast<T*>(buf.data()));
     tensor.data = std::move(buf);
   } else {
@@ -157,19 +162,30 @@ void BindFleetExecutor(py::module* m) {
   py::class_<FleetExecutor>(*m, "FleetExecutor")
       .def(py::init<const std::string&>())
       .def("init", &FleetExecutor::Init)
-      .def("run", &FleetExecutor::Run,
-           py::call_guard<py::gil_scoped_release>());
+      .def(
+          "run", &FleetExecutor::Run, py::call_guard<py::gil_scoped_release>());
+
+  py::enum_<DependType>(*m, "DependType")
+      .value("NORMAL", DependType::NORMAL)
+      .value("LOOP", DependType::LOOP)
+      .value("STOP_LOOP", DependType::STOP_LOOP);
 
   py::class_<TaskNode>(*m, "TaskNode")
       .def(py::init<framework::ProgramDesc*, int64_t, int64_t, int64_t>())
-      .def(py::init<int32_t, const std::vector<framework::OpDesc*>&, int64_t,
-                    int64_t, int64_t, int64_t>())
+      .def(py::init<int32_t,
+                    const std::vector<framework::OpDesc*>&,
+                    int64_t,
+                    int64_t,
+                    int64_t>())
       .def("task_id", &TaskNode::task_id)
       .def("add_upstream_task", &TaskNode::AddUpstreamTask)
       .def("add_downstream_task", &TaskNode::AddDownstreamTask)
       .def("set_run_pre_steps", &TaskNode::SetRunPerSteps)
       .def("set_run_at_offset", &TaskNode::SetRunAtOffset)
       .def("set_type", &TaskNode::SetType)
+      .def("set_cond_var_name", &TaskNode::SetCondVarName)
+      .def("set_vars_to_shape", &TaskNode::SetVarsToShape)
+      .def("set_vars_to_dtype", &TaskNode::SetVarsToDtype)
       .def("role", &TaskNode::role)
       .def("init", [](TaskNode& self) { self.Init(); })
       .def("set_program", &TaskNode::SetProgram);
@@ -251,20 +267,24 @@ void BindFleetExecutor(py::module* m) {
 
   py::class_<DistModelTensor>(*m, "DistModelTensor")
       .def(py::init<>())
-      .def(py::init(&DistModelTensorCreate<int32_t>), py::arg("data"),
+      .def(py::init(&DistModelTensorCreate<int32_t>),
+           py::arg("data"),
            py::arg("name") = "",
            py::arg("lod") = std::vector<std::vector<size_t>>(),
            py::arg("copy") = true)
-      .def(py::init(&DistModelTensorCreate<int64_t>), py::arg("data"),
+      .def(py::init(&DistModelTensorCreate<int64_t>),
+           py::arg("data"),
            py::arg("name") = "",
            py::arg("lod") = std::vector<std::vector<size_t>>(),
            py::arg("copy") = true)
-      .def(py::init(&DistModelTensorCreate<float>), py::arg("data"),
+      .def(py::init(&DistModelTensorCreate<float>),
+           py::arg("data"),
            py::arg("name") = "",
            py::arg("lod") = std::vector<std::vector<size_t>>(),
            py::arg("copy") = true)
       .def(py::init(&DistModelTensorCreate<paddle::platform::float16>),
-           py::arg("data"), py::arg("name") = "",
+           py::arg("data"),
+           py::arg("name") = "",
            py::arg("lod") = std::vector<std::vector<size_t>>(),
            py::arg("copy") = true)
       .def_readwrite("name", &DistModelTensor::name)

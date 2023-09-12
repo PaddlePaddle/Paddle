@@ -13,22 +13,28 @@
 // limitations under the License.
 
 #pragma once
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
 
 #include <unordered_map>
 
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/utils/rw_lock.h"
+
+#include "paddle/phi/backends/c_comm_lib.h"
 #include "paddle/phi/backends/device_base.h"
 #include "paddle/phi/backends/device_ext.h"
 #include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/backends/event.h"
 #include "paddle/phi/backends/stream.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/core/utils/rw_lock.h"
 
 namespace phi {
 class Device final {
  public:
   Device(size_t dev_id, DeviceInterface* impl) : dev_id_(dev_id), impl_(impl) {}
+
+  ~Device();
+
+  void CheckInitialized();
 
   // Stream
   // ! Create an asynchronous stream
@@ -52,7 +58,8 @@ class Device final {
 
   // Event
   // ! Create an event.
-  void CreateEvent(event::Event* event, event::Event::Flag flags);
+  void CreateEvent(event::Event* event,
+                   event::Event::Flag flags = event::Event::Flag::Default);
 
   // ! Destroy an event.
   void DestroyEvent(event::Event* event);
@@ -105,11 +112,23 @@ class Device final {
 
   void MemorySet(void* ptr, uint8_t value, size_t size);
 
+  // Blas
+  // ! y = alpha * x + beta * y
+  template <typename T>
+  void BlasAXPBY(const stream::Stream& stream,
+                 size_t numel,
+                 float alpha,
+                 const T* x,
+                 float beta,
+                 T* y);
+
   std::string Type();
 
  private:
   size_t dev_id_;
   DeviceInterface* impl_;
+  std::once_flag initialized_once_flag_;
+  bool initialized_{false};
 };
 
 class DeviceManager {
@@ -130,10 +149,6 @@ class DeviceManager {
   static void Finalize(const std::string& device_type);
 
   static void SynchronizeDevice(const Place& place);
-
-  static void InitDevice(const Place& place);
-
-  static void DeInitDevice(const Place& place);
 
   static void SetDevice(const std::string& device_type, size_t device_id);
 
@@ -159,7 +174,108 @@ class DeviceManager {
 
   static std::vector<size_t> GetDeviceList(const std::string& device_type);
 
-  static void Clear();
+  static std::vector<size_t> GetSelectedDeviceList(
+      const std::string& device_type);
+
+  // CCL
+  static void CCLDestroyComm(const std::string& device_type,
+                             ccl::CCLComm ccl_comm);
+  static void CCLCommInitRank(const std::string& device_type,
+                              size_t num_ranks,
+                              ccl::CCLRootId* root_id,
+                              size_t rank_id,
+                              ccl::CCLComm* ccl_comm);
+  static void CCLGetUniqueId(const std::string& device_type,
+                             ccl::CCLRootId* root_id);
+  static void CCLBroadcast(const std::string& device_type,
+                           void* data,
+                           size_t num,
+                           ccl::CCLDataType data_type,
+                           size_t root,
+                           const ccl::CCLComm& ccl_comm,
+                           const stream::Stream& stream);
+  static void CCLAllReduce(const std::string& device_type,
+                           void* in_data,
+                           void* out_data,
+                           size_t num,
+                           ccl::CCLDataType data_type,
+                           ccl::CCLReduceOp reduce_op,
+                           const ccl::CCLComm& ccl_comm,
+                           const stream::Stream& stream);
+  static void CCLReduce(const std::string& device_type,
+                        void* in_data,
+                        void* out_data,
+                        size_t num,
+                        ccl::CCLDataType data_type,
+                        ccl::CCLReduceOp reduce_op,
+                        size_t root_id,
+                        const ccl::CCLComm& ccl_comm,
+                        const stream::Stream& stream);
+  static void CCLAllGather(const std::string& device_type,
+                           void* in_data,
+                           void* out_data,
+                           size_t num,
+                           ccl::CCLDataType data_type,
+                           const ccl::CCLComm& ccl_comm,
+                           const stream::Stream& stream);
+  static void CCLReduceScatter(const std::string& device_type,
+                               void* in_data,
+                               void* out_data,
+                               size_t num,
+                               ccl::CCLDataType data_type,
+                               ccl::CCLReduceOp op,
+                               const ccl::CCLComm& ccl_comm,
+                               const stream::Stream& stream);
+  static void CCLGroupStart(const std::string& device_type);
+  static void CCLGroupEnd(const std::string& device_type);
+  static void CCLSend(const std::string& device_type,
+                      void* sendbuf,
+                      size_t num,
+                      ccl::CCLDataType data_type,
+                      size_t dst_rank,
+                      const ccl::CCLComm& ccl_comm,
+                      const stream::Stream& stream);
+  static void CCLRecv(const std::string& device_type,
+                      void* recvbuf,
+                      size_t num,
+                      ccl::CCLDataType data_type,
+                      size_t src_rank,
+                      const ccl::CCLComm& ccl_comm,
+                      const stream::Stream& stream);
+
+  static void CCLAllToAll(const std::string& device_type,
+                          const void** send_buf,
+                          const size_t* send_count,
+                          const ccl::CCLDataType* send_dtype,
+                          void** recv_buf,
+                          const size_t* recv_count,
+                          const ccl::CCLDataType* recv_dtype,
+                          size_t rank,
+                          size_t nranks,
+                          const ccl::CCLComm& comm,
+                          const stream::Stream& stream);
+  // profiler
+  static void ProfilerInitialize(const std::string& dev_type,
+                                 phi::TraceEventCollector* collector,
+                                 void** context);
+  static void ProfilerFinalize(const std::string& dev_type,
+                               phi::TraceEventCollector* collector,
+                               void* context);
+  static void ProfilerPrepareTracing(const std::string& dev_type,
+                                     phi::TraceEventCollector* collector,
+                                     void* context);
+  static void ProfilerStartTracing(const std::string& dev_type,
+                                   phi::TraceEventCollector* collector,
+                                   void* context);
+  static void ProfilerStopTracing(const std::string& dev_type,
+                                  phi::TraceEventCollector* collector,
+                                  void* context);
+  static void ProfilerCollectTraceData(const std::string& dev_type,
+                                       phi::TraceEventCollector* collector,
+                                       uint64_t start_ns,
+                                       void* context);
+
+  static void Release();
 
  private:
   DISABLE_COPY_AND_ASSIGN(DeviceManager);
@@ -176,12 +292,14 @@ class DeviceManager {
 
 std::vector<std::string> ListAllLibraries(const std::string& library_dir);
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 void LoadCustomRuntimeLib(const std::string& dso_lib_path, void* dso_handle);
 
 void LoadCustomRuntimeLib(const CustomRuntimeParams& runtime_params,
                           std::unique_ptr<C_DeviceInterface> device_interface,
                           const std::string& dso_lib_path,
                           void* dso_handle);
+#endif
 
 class Registrar {
  public:
@@ -194,5 +312,3 @@ class Registrar {
 };
 
 }  // namespace phi
-
-#endif

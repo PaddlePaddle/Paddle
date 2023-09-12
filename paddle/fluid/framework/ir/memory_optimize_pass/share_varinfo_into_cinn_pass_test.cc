@@ -26,8 +26,14 @@
 #include "paddle/fluid/framework/program_desc.h"
 
 USE_OP_ITSELF(mul);
-USE_OP(cinn_launch);
 USE_OP_ITSELF(elementwise_add);
+
+USE_OP_ITSELF(cinn_launch);
+PD_DECLARE_KERNEL(cinn_launch, CPU, ALL_LAYOUT);
+#ifdef PADDLE_WITH_CUDA
+PD_DECLARE_KERNEL(cinn_launch, GPU, ALL_LAYOUT);
+#endif
+
 namespace paddle::framework {
 
 using Name2VarInfoMap =
@@ -42,9 +48,11 @@ static ProgramDesc BuildProgramInsideCinnLaunchOp() {
   block->Var("var4");
   block->Var("var5");
 
-  auto add_op = std::unique_ptr<OpDesc>(
-      new OpDesc("elementwise_add", {{"X", {"var1"}}, {"Y", {"var2"}}},
-                 {{"Out", {"var3"}}}, {}));
+  auto add_op =
+      std::unique_ptr<OpDesc>(new OpDesc("elementwise_add",
+                                         {{"X", {"var1"}}, {"Y", {"var2"}}},
+                                         {{"Out", {"var3"}}},
+                                         {}));
   block->AppendAllocatedOp(std::move(add_op));
   auto mul_op = std::unique_ptr<OpDesc>(new OpDesc(
       "mul", {{"X", {"var3"}}, {"Y", {"var4"}}}, {{"Out", {"var5"}}}, {}));
@@ -62,8 +70,10 @@ static ProgramDesc BuildProgramWithCinnLaunchOp(int64_t compilation_key) {
   block->Var("var5");
 
   auto cinn_launch_op = std::unique_ptr<OpDesc>(
-      new OpDesc("cinn_launch", {{"X", {"var1", "var2", "var4"}}},
-                 {{"Out", {"var5"}}}, {{"compilation_key", compilation_key}}));
+      new OpDesc("cinn_launch",
+                 {{"X", {"var1", "var2", "var4"}}},
+                 {{"Out", {"var5"}}},
+                 {{"compilation_key", compilation_key}}));
   block->AppendAllocatedOp(std::move(cinn_launch_op));
   return program;
 }
@@ -74,8 +84,10 @@ struct TestPassContext {
     details::BuildStrategy build_strategy;
     details::ExecutionStrategy exec_strategy;
     exec_strategy.use_device_ = paddle::platform::kCUDA;
-    executor.reset(new ParallelExecutor(platform::CUDAPlace(0), &scope,
-                                        exec_strategy, build_strategy,
+    executor.reset(new ParallelExecutor(platform::CUDAPlace(0),
+                                        &scope,
+                                        exec_strategy,
+                                        build_strategy,
                                         graph.get()));
   }
 

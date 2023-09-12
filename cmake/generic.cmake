@@ -96,7 +96,7 @@ if(NOT APPLE AND NOT WIN32)
   link_libraries(${CMAKE_THREAD_LIBS_INIT})
   if(WITH_PSLIB OR WITH_DISTRIBUTE)
     set(CMAKE_CXX_LINK_EXECUTABLE
-        "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt -lz -lssl")
+        "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt -lz -lssl -lcrypto")
   else()
     set(CMAKE_CXX_LINK_EXECUTABLE
         "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt")
@@ -115,6 +115,19 @@ function(find_fluid_modules TARGET_NAME)
     get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
     set(fluid_modules ${fluid_modules} ${TARGET_NAME})
     set_property(GLOBAL PROPERTY FLUID_MODULES "${fluid_modules}")
+  endif()
+endfunction()
+
+# NOTE(Aurelius84): NOT_INFER_MODULES is used to tag
+# and not considered as DEPS for inference libs.
+set_property(GLOBAL PROPERTY NOT_INFER_MODULES "")
+
+function(ignore_infer_modules TARGET_NAME)
+  get_property(not_infer_modules GLOBAL PROPERTY NOT_INFER_MODULES)
+  list(FIND not_infer_modules TARGET_NAME is_found)
+  if(is_found EQUAL -1) # NOT FOUND
+    set(not_infer_modules ${not_infer_modules} ${TARGET_NAME})
+    set_property(GLOBAL PROPERTY NOT_INFER_MODULES "${not_infer_modules}")
   endif()
 endfunction()
 
@@ -195,6 +208,7 @@ function(create_dummy_static_lib TARGET_NAME)
   # the dummy target would be consisted of limit size libraries
   set(limit ${merge_LIMIT})
   list(LENGTH merge_LIBS libs_len)
+  message("libs_len ${libs_len}")
   foreach(lib ${merge_LIBS})
     list(APPEND merge_list ${lib})
     list(LENGTH merge_list listlen)
@@ -334,7 +348,15 @@ function(check_coverage_opt TARGET_NAME SRCS)
 endfunction()
 
 function(cc_library TARGET_NAME)
-  set(options STATIC static SHARED shared INTERFACE interface)
+  set(options
+      STATIC
+      static
+      SHARED
+      shared
+      INTERFACE
+      interface
+      NOT_FOR_INFER
+      not_for_infer)
   set(oneValueArgs "")
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(cc_library "${options}" "${oneValueArgs}"
@@ -346,6 +368,9 @@ function(cc_library TARGET_NAME)
         CACHE STRING "output library name for target ${TARGET_NAME}")
   endif()
   if(cc_library_SRCS)
+    if(cc_library_NOT_FOR_INFER OR cc_library_not_for_infer)
+      ignore_infer_modules(${TARGET_NAME})
+    endif()
     if(cc_library_SHARED OR cc_library_shared) # build *.so
       add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
     elseif(cc_library_INTERFACE OR cc_library_interface)
@@ -363,20 +388,7 @@ function(cc_library TARGET_NAME)
         list(REMOVE_ITEM cc_library_DEPS warpctc)
         add_dependencies(${TARGET_NAME} warpctc)
       endif()
-      # Only deps libmklml.so, not link
-      if("${cc_library_DEPS};" MATCHES "mklml;")
-        list(REMOVE_ITEM cc_library_DEPS mklml)
-        if(NOT "${TARGET_NAME}" MATCHES "dynload_mklml")
-          list(APPEND cc_library_DEPS dynload_mklml)
-        endif()
-        add_dependencies(${TARGET_NAME} mklml)
-        if(WIN32)
-          target_link_libraries(${TARGET_NAME} ${MKLML_IOMP_LIB})
-        else()
-          target_link_libraries(${TARGET_NAME}
-                                "-L${MKLML_LIB_DIR} -liomp5 -Wl,--as-needed")
-        endif()
-      endif()
+
       # remove link to python, see notes at:
       # https://github.com/pybind/pybind11/blob/master/docs/compiling.rst#building-manually
       if("${cc_library_DEPS};" MATCHES "python;")
@@ -443,7 +455,7 @@ function(cc_binary TARGET_NAME)
 endfunction()
 
 function(cc_test_build TARGET_NAME)
-  if(WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+  if(WITH_TESTING)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
@@ -456,25 +468,10 @@ function(cc_test_build TARGET_NAME)
       endif()
     endif()
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-    target_link_libraries(
-      ${TARGET_NAME}
-      ${cc_test_DEPS}
-      ${os_dependency_modules}
-      paddle_gtest_main
-      lod_tensor
-      memory
-      gtest
-      gflags
-      glog)
-    add_dependencies(
-      ${TARGET_NAME}
-      ${cc_test_DEPS}
-      paddle_gtest_main
-      lod_tensor
-      memory
-      gtest
-      gflags
-      glog)
+    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS}
+                          ${os_dependency_modules} paddle_gtest_main gtest glog)
+    add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main gtest
+                     glog)
     common_link(${TARGET_NAME})
     if(WITH_ROCM)
       target_link_libraries(${TARGET_NAME} ${ROCM_HIPRTC_LIB})
@@ -484,15 +481,18 @@ function(cc_test_build TARGET_NAME)
 endfunction()
 
 function(cc_test_run TARGET_NAME)
-  if(WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
-    set(oneValueArgs "")
+  if(WITH_TESTING)
+    set(oneValueArgs DIR)
     set(multiValueArgs COMMAND ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
+    if(cc_test_DIR STREQUAL "")
+      set(cc_test_DIR ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
     add_test(
       NAME ${TARGET_NAME}
       COMMAND ${cc_test_COMMAND} ${cc_test_ARGS}
-      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+      WORKING_DIRECTORY ${cc_test_DIR})
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
                                               FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
@@ -512,11 +512,58 @@ function(cc_test_run TARGET_NAME)
   endif()
 endfunction()
 
+set_property(GLOBAL PROPERTY TEST_SRCS "")
+set_property(GLOBAL PROPERTY TEST_NAMES "")
 function(cc_test TARGET_NAME)
-  # The environment variable `CI_SKIP_CPP_TEST` is used to skip the compilation
-  # and execution of test in CI. `CI_SKIP_CPP_TEST` is set to ON when no files
-  # other than *.py are modified.
-  if(WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+  if(WITH_TESTING)
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS ARGS)
+    cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
+                          "${multiValueArgs}" ${ARGN})
+    if(WIN32)
+      # NOTE(zhiqiu): on windows platform, the symbols should be exported
+      # explicitly by __declspec(dllexport), however, there are serveral
+      # symbols not exported, and link error occurs.
+      # so, the tests are not built against dynamic libraries now.
+      cc_test_old(
+        ${TARGET_NAME}
+        SRCS
+        ${cc_test_SRCS}
+        DEPS
+        ${cc_test_DEPS}
+        ARGS
+        ${cc_test_ARGS})
+    else()
+      list(LENGTH cc_test_SRCS len)
+      # message("cc_test_SRCS ${cc_test_SRCS}")
+      # message("cc_test_ARGS ${cc_test_ARGS}")
+
+      if(${len} GREATER 1)
+        message(
+          SEND_ERROR
+            "The number source file of cc_test should be 1, but got ${len}, the source files are: ${cc_test_SRCS}"
+        )
+      endif()
+
+      list(LENGTH cc_test_ARGS len_arg)
+      if(len_arg GREATER_EQUAL 1)
+        set_property(GLOBAL PROPERTY "${TARGET_NAME}_ARGS" "${cc_test_ARGS}")
+        #message("${TARGET_NAME}_ARGS arg ${arg}")
+      endif()
+
+      get_property(test_srcs GLOBAL PROPERTY TEST_SRCS)
+      set(test_srcs ${test_srcs} "${CMAKE_CURRENT_SOURCE_DIR}/${cc_test_SRCS}")
+      set_property(GLOBAL PROPERTY TEST_SRCS "${test_srcs}")
+
+      get_property(test_names GLOBAL PROPERTY TEST_NAMES)
+      set(test_names ${test_names} ${TARGET_NAME})
+      set_property(GLOBAL PROPERTY TEST_NAMES "${test_names}")
+    endif()
+  endif()
+endfunction()
+
+function(cc_test_old TARGET_NAME)
+  if(WITH_TESTING)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
@@ -524,17 +571,7 @@ function(cc_test TARGET_NAME)
     cc_test_build(${TARGET_NAME} SRCS ${cc_test_SRCS} DEPS ${cc_test_DEPS})
     # we dont test hcom op, because it need complex configuration
     # with more than one machine
-    if(NOT
-       ("${TARGET_NAME}" STREQUAL "c_broadcast_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "c_allreduce_sum_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "c_allreduce_max_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "c_reducescatter_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "c_allgather_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "send_v2_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "c_reduce_sum_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "recv_v2_op_npu_test"))
-      cc_test_run(${TARGET_NAME} COMMAND ${TARGET_NAME} ARGS ${cc_test_ARGS})
-    endif()
+    cc_test_run(${TARGET_NAME} COMMAND ${TARGET_NAME} ARGS ${cc_test_ARGS})
   elseif(WITH_TESTING AND NOT TEST ${TARGET_NAME})
     add_test(NAME ${TARGET_NAME} COMMAND ${CMAKE_COMMAND} -E echo CI skip
                                          ${TARGET_NAME}.)
@@ -617,12 +654,7 @@ function(nv_binary TARGET_NAME)
 endfunction()
 
 function(nv_test TARGET_NAME)
-  # The environment variable `CI_SKIP_CPP_TEST` is used to skip the compilation
-  # and execution of test in CI. `CI_SKIP_CPP_TEST` is set to ON when no files
-  # other than *.py are modified.
-  if(WITH_GPU
-     AND WITH_TESTING
-     AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+  if(WITH_GPU AND WITH_TESTING)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}"
@@ -633,25 +665,9 @@ function(nv_test TARGET_NAME)
     # Reference: https://cmake.org/cmake/help/v3.10/module/FindCUDA.html
     add_executable(${TARGET_NAME} ${nv_test_SRCS})
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-    target_link_libraries(
-      ${TARGET_NAME}
-      ${nv_test_DEPS}
-      paddle_gtest_main
-      lod_tensor
-      memory
-      gtest
-      gflags
-      glog
-      ${os_dependency_modules})
-    add_dependencies(
-      ${TARGET_NAME}
-      ${nv_test_DEPS}
-      paddle_gtest_main
-      lod_tensor
-      memory
-      gtest
-      gflags
-      glog)
+    target_link_libraries(${TARGET_NAME} ${nv_test_DEPS}
+                          ${os_dependency_modules} paddle_gtest_main phi)
+    add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
@@ -736,12 +752,7 @@ function(hip_binary TARGET_NAME)
 endfunction()
 
 function(hip_test TARGET_NAME)
-  # The environment variable `CI_SKIP_CPP_TEST` is used to skip the compilation
-  # and execution of test in CI. `CI_SKIP_CPP_TEST` is set to ON when no files
-  # other than *.py are modified.
-  if(WITH_ROCM
-     AND WITH_TESTING
-     AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+  if(WITH_ROCM AND WITH_TESTING)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(hip_test "${options}" "${oneValueArgs}"
@@ -759,8 +770,8 @@ function(hip_test TARGET_NAME)
       lod_tensor
       memory
       gtest
-      gflags
       glog
+      phi
       ${os_dependency_modules})
     add_dependencies(
       ${TARGET_NAME}
@@ -769,7 +780,7 @@ function(hip_test TARGET_NAME)
       lod_tensor
       memory
       gtest
-      gflags
+      phi
       glog)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
@@ -850,12 +861,7 @@ function(xpu_binary TARGET_NAME)
 endfunction()
 
 function(xpu_test TARGET_NAME)
-  # The environment variable `CI_SKIP_CPP_TEST` is used to skip the compilation
-  # and execution of test in CI. `CI_SKIP_CPP_TEST` is set to ON when no files
-  # other than *.py are modified.
-  if(WITH_XPU_KP
-     AND WITH_TESTING
-     AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+  if(WITH_XPU_KP AND WITH_TESTING)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(xpu_test "${options}" "${oneValueArgs}"
@@ -871,7 +877,7 @@ function(xpu_test TARGET_NAME)
       lod_tensor
       memory
       gtest
-      gflags
+      phi
       glog
       ${os_dependency_modules})
     add_dependencies(
@@ -881,7 +887,7 @@ function(xpu_test TARGET_NAME)
       lod_tensor
       memory
       gtest
-      gflags
+      phi
       glog)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
@@ -1043,8 +1049,8 @@ function(paddle_protobuf_generate_cpp SRCS HDRS)
     add_custom_command(
       OUTPUT "${_protobuf_protoc_src}" "${_protobuf_protoc_hdr}"
       COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}"
-      COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} -I${CMAKE_CURRENT_SOURCE_DIR}
-              --cpp_out "${CMAKE_CURRENT_BINARY_DIR}" ${ABS_FIL}
+      COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} -I${PADDLE_SOURCE_DIR} --cpp_out
+              "${PADDLE_BINARY_DIR}" ${ABS_FIL}
       # Set `EXTERN_PROTOBUF_DEPEND` only if need to compile `protoc.exe`.
       DEPENDS ${ABS_FIL} ${EXTERN_PROTOBUF_DEPEND}
       COMMENT "Running C++ protocol buffer compiler on ${FIL}"
@@ -1082,7 +1088,21 @@ function(py_proto_compile TARGET_NAME)
                         "${multiValueArgs}" ${ARGN})
   set(py_srcs)
   protobuf_generate_python(py_srcs ${py_proto_compile_SRCS})
-  add_custom_target(${TARGET_NAME} ALL DEPENDS ${py_srcs} protobuf)
+
+  add_custom_target(${TARGET_NAME}_replace DEPENDS ${py_srcs})
+
+  foreach(py_src ${py_srcs})
+    add_custom_command(
+      TARGET ${TARGET_NAME}_replace
+      POST_BUILD
+      COMMAND ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/cmake/replace_string.py
+              ${py_src}
+      COMMENT
+        "Replacing 'paddle.fluid' with 'paddle.base' generated by protobuf"
+      COMMENT "Replace ${py_src}")
+  endforeach()
+
+  add_custom_target(${TARGET_NAME} ALL DEPENDS protobuf ${TARGET_NAME}_replace)
 endfunction()
 
 function(py_test TARGET_NAME)

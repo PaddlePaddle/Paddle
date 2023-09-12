@@ -18,18 +18,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 
 // only can include the headers in paddle/top/api dirs
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 
 namespace paddle {
 namespace operators {
 
-using ElementwiseType = phi::ElementwiseType;
-
 template <typename OutT, typename Functor, int NumOuts = 1>
 void LaunchSameDimsElementwiseCudaKernel(
-    const KPDevice &ctx, const std::vector<const framework::Tensor *> &ins,
-    std::vector<framework::Tensor *> *outs, Functor func) {
+    const KPDevice &ctx,
+    const std::vector<const phi::DenseTensor *> &ins,
+    std::vector<phi::DenseTensor *> *outs,
+    Functor func) {
   std::vector<const phi::DenseTensor *> pt_inputs;
   std::vector<phi::DenseTensor *> pt_outputs;
   // TODO(YuanRisheng) *_tmp for cache DenseTensor, because the temporary
@@ -41,11 +40,11 @@ void LaunchSameDimsElementwiseCudaKernel(
   std::vector<std::unique_ptr<phi::DenseTensor>> pt_outputs_tmp;
   for (auto in : ins) {
     pt_inputs_tmp.emplace_back(
-        std::move(paddle::experimental::MakePhiDenseTensor(*in)));
+        std::move(std::make_unique<phi::DenseTensor>(*in)));
   }
   for (auto out : *outs) {
     pt_outputs_tmp.emplace_back(
-        std::move(paddle::experimental::MakePhiDenseTensor(*out)));
+        std::move(std::make_unique<phi::DenseTensor>(*out)));
   }
   for (int i = 0; i < pt_inputs_tmp.size(); i++) {
     pt_inputs.push_back(pt_inputs_tmp[i].get());
@@ -53,8 +52,8 @@ void LaunchSameDimsElementwiseCudaKernel(
   for (int i = 0; i < pt_outputs_tmp.size(); i++) {
     pt_outputs.push_back(pt_outputs_tmp[i].get());
   }
-  phi::funcs::ElementwiseKernel<OutT, Functor, NumOuts>(ctx, pt_inputs,
-                                                        &pt_outputs, func);
+  phi::funcs::ElementwiseKernel<OutT, Functor, NumOuts>(
+      ctx, pt_inputs, &pt_outputs, func);
 }
 
 }  // namespace operators

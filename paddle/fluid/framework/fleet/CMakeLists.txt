@@ -3,7 +3,7 @@ if(WITH_PSLIB)
     set(BRPC_DEPS pslib_brpc)
   else()
     if(NOT WITH_HETERPS)
-      set(BRPC_DEPS brpc)
+      set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS})
     endif()
   endif()
   cc_library(
@@ -25,10 +25,18 @@ endif()
 
 if(WITH_HETERPS)
   if(WITH_NCCL AND WITH_GPU)
-    nv_library(
-      ps_gpu_wrapper
-      SRCS ps_gpu_wrapper.cu ps_gpu_wrapper.cc
-      DEPS heter_ps gloo_wrapper ${BRPC_DEPS})
+    if(WITH_PSCORE)
+      nv_library(
+        ps_gpu_wrapper
+        SRCS ps_gpu_wrapper.cu ps_gpu_wrapper.cc
+        DEPS heter_ps gloo_wrapper ps_framework_proto graph_gpu_wrapper fleet
+             ${BRPC_DEPS})
+    else()
+      nv_library(
+        ps_gpu_wrapper
+        SRCS ps_gpu_wrapper.cu ps_gpu_wrapper.cc
+        DEPS heter_ps gloo_wrapper ${BRPC_DEPS})
+    endif()
     add_subdirectory(heter_ps)
   elseif(WITH_XPU_KP)
     xpu_library(
@@ -116,10 +124,3 @@ cc_test(
   test_fleet_cc
   SRCS test_fleet.cc
   DEPS fleet_wrapper gloo_wrapper fs shell)
-
-if(WITH_ASCEND OR WITH_ASCEND_CL)
-  cc_library(
-    ascend_wrapper
-    SRCS ascend_wrapper.cc
-    DEPS framework_proto lod_tensor ascend_ge ascend_graph)
-endif()

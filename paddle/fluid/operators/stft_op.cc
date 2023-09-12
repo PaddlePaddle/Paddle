@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/operators/stft_op.h"
 
-#include "paddle/fluid/operators/spectral_helper.h"
-
 namespace paddle {
 namespace operators {
 class StftOp : public framework::OperatorWithKernel {
@@ -32,35 +30,41 @@ class StftOp : public framework::OperatorWithKernel {
     const auto x_dims = ctx->GetInputDim("X");
     const int x_rank = x_dims.size();
     const auto window_dims = ctx->GetInputDim("Window");
-    const int window_size = window_dims[0];
+    const int window_size = static_cast<int>(window_dims[0]);
     const bool onesided = ctx->Attrs().Get<bool>("onesided");
 
     PADDLE_ENFORCE_EQ(
-        x_rank, 2,
+        x_rank,
+        2,
         platform::errors::InvalidArgument(
             "Input(X) of StftOp should be a tensor with shape [N, T], "
             "but got rank %s.",
             x_rank));
     PADDLE_ENFORCE_GT(
-        hop_length, 0,
+        hop_length,
+        0,
         platform::errors::InvalidArgument(
             "Attribute(hop_length) should be greater than 0, but got %s.",
             hop_length));
     PADDLE_ENFORCE_EQ(
-        window_size, n_fft,
+        window_size,
+        n_fft,
         platform::errors::InvalidArgument(
             "Input(Window) of StftOp should be equal with n_fft %s, "
             "but got %s.",
-            n_fft, window_size));
+            n_fft,
+            window_size));
 
-    int seq_length = x_dims[x_rank - 1];
+    int seq_length = static_cast<int>(x_dims[x_rank - 1]);
     int n_frames = 1 + (seq_length - n_fft) / hop_length;
 
-    PADDLE_ENFORCE_LE(n_fft, seq_length,
+    PADDLE_ENFORCE_LE(n_fft,
+                      seq_length,
                       platform::errors::InvalidArgument(
                           "Attribute(frame_length) should be less equal than "
                           "sequence length, but got (%s) > (%s).",
-                          n_fft, seq_length));
+                          n_fft,
+                          seq_length));
 
     std::vector<int64_t> output_shape;
     output_shape.push_back(x_dims[0]);
@@ -75,10 +79,10 @@ class StftOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     const auto in_dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(in_dtype, ctx.GetPlace());
+    return phi::KernelKey(in_dtype, ctx.GetPlace());
   }
 };
 
@@ -124,24 +128,24 @@ class StftGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     const auto out_grad_name = framework::GradVarName("Out");
-    OP_INOUT_CHECK(ctx->HasInput(out_grad_name), "Input", out_grad_name,
-                   "stft_grad");
+    OP_INOUT_CHECK(
+        ctx->HasInput(out_grad_name), "Input", out_grad_name, "stft_grad");
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "stft_grad");
 
     const auto x_grad_name = framework::GradVarName("X");
-    OP_INOUT_CHECK(ctx->HasOutput(x_grad_name), "Output", x_grad_name,
-                   "stft_grad");
+    OP_INOUT_CHECK(
+        ctx->HasOutput(x_grad_name), "Output", x_grad_name, "stft_grad");
 
     ctx->ShareDim("X", /*->*/ x_grad_name);
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     const auto in_dtype = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
     const auto kernel_dtype = framework::ToRealType(in_dtype);
-    return framework::OpKernelType(kernel_dtype, ctx.GetPlace());
+    return phi::KernelKey(kernel_dtype, ctx.GetPlace());
   }
 };
 
@@ -150,16 +154,14 @@ class StftGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(stft, ops::StftOp, ops::StftOpMaker,
+REGISTER_OPERATOR(stft,
+                  ops::StftOp,
+                  ops::StftOpMaker,
                   ops::StftGradOpMaker<paddle::framework::OpDesc>,
                   ops::StftGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(stft_grad, ops::StftGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    stft, ops::StftKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::StftKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    stft_grad, ops::StftGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::StftGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(stft_grad,
+                       ops::StftGradKernel<phi::CPUContext, float>,
+                       ops::StftGradKernel<phi::CPUContext, double>);

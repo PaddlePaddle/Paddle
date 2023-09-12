@@ -16,7 +16,8 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/mode.h"
 
 namespace phi {
@@ -32,8 +33,16 @@ void ModeGradKernel(const Context& dev_ctx,
   auto in_dims = x.dims();
   auto out_dims = indices.dims();
 
+  T* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
+
   // axis < 0, get the real axis
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
+
+  // For 0D Tensor
+  if (in_dims.size() == 0) {
+    phi::funcs::set_constant(dev_ctx, x_grad, 1.0);
+    return;
+  }
 
   if (!keepdim) {
     std::vector<int> tmp_out_shape;
@@ -46,7 +55,6 @@ void ModeGradKernel(const Context& dev_ctx,
     }
     out_dims = phi::make_ddim(tmp_out_shape);
   }
-  T* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
 
   if (axis == in_dims.size() - 1) {
     // allocate the memory for the input_grad
@@ -97,7 +105,7 @@ void ModeGradKernel(const Context& dev_ctx,
     trans_axis.emplace_back(axis);
     DDim trans_shape(out_dims);
     DDim trans_in_shape(in_dims);
-    for (size_t i = 0; i < trans_axis.size(); i++) {
+    for (int i = 0; i < static_cast<int>(trans_axis.size()); i++) {
       trans_shape[i] = out_dims[trans_axis[i]];
       trans_in_shape[i] = in_dims[trans_axis[i]];
     }
@@ -110,7 +118,7 @@ void ModeGradKernel(const Context& dev_ctx,
     trans_ind.Resize(trans_shape);
     dev_ctx.template Alloc<int64_t>(&trans_ind);
 
-    int ndims = trans_axis.size();
+    int ndims = static_cast<int>(trans_axis.size());
 
     if (keepdim) {
       // Do transpose

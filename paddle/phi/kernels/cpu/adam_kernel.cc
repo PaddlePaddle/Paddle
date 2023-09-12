@@ -16,14 +16,15 @@
 
 #include <vector>
 
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/jit/kernels.h"
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 
-DECLARE_int32(inner_op_parallelism);
+PD_DECLARE_int32(inner_op_parallelism);
 
 namespace phi {
 
@@ -61,7 +62,7 @@ void AdamDenseKernel(const Context& dev_ctx,
         errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
                                 skip_update->numel()));
     std::vector<bool> skip_update_vec;
-    paddle::framework::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
+    phi::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
     skip_update_ = skip_update_vec[0];
   }
   // skip_update=true, just copy input to output, and TensorCopy will call
@@ -71,9 +72,10 @@ void AdamDenseKernel(const Context& dev_ctx,
     phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
     phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
     phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
-    phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
-    phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
-
+    if (!use_global_beta_pow) {
+      phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
+      phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
+    }
     return;
   }
 
@@ -115,7 +117,7 @@ void AdamDenseKernel(const Context& dev_ctx,
       learning_rate.data<T>()[0] * (sqrt(1 - beta2_p) / (1 - beta1_p));
   T eps = epsilon_ * sqrt(1 - beta2_p);
 
-  paddle::operators::jit::adam_attr_t attr(beta1_, beta2_);
+  phi::jit::adam_attr_t attr(beta1_, beta2_);
   int64_t numel = param.numel();
 
   const T* param_ptr = param.data<T>();
@@ -124,9 +126,8 @@ void AdamDenseKernel(const Context& dev_ctx,
   const T* grad_ptr = grad.data<T>();
 
   auto adam =
-      paddle::operators::jit::KernelFuncs<paddle::operators::jit::AdamTuple<T>,
-                                          phi::CPUPlace>::Cache()
-          .At(attr);
+      phi::jit::KernelFuncs<phi::jit::AdamTuple<T>, phi::CPUPlace>::Cache().At(
+          attr);
 
   static constexpr int64_t chunk_size = 512;
 
@@ -167,7 +168,111 @@ void AdamDenseKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void MergedAdamKernel(
+    const Context& dev_ctx,
+    const std::vector<const DenseTensor*>& param,
+    const std::vector<const DenseTensor*>& grad,
+    const std::vector<const DenseTensor*>& learning_rate,
+    const std::vector<const DenseTensor*>& moment1,
+    const std::vector<const DenseTensor*>& moment2,
+    const std::vector<const DenseTensor*>& beta1_pow,
+    const std::vector<const DenseTensor*>& beta2_pow,
+    const paddle::optional<std::vector<const DenseTensor*>>& master_param,
+    const Scalar& beta1,
+    const Scalar& beta2,
+    const Scalar& epsilon,
+    bool multi_precision,
+    bool use_global_beta_pow,
+    std::vector<DenseTensor*> param_out,
+    std::vector<DenseTensor*> moment1_out,
+    std::vector<DenseTensor*> moment2_out,
+    std::vector<DenseTensor*> beta1_pow_out,
+    std::vector<DenseTensor*> beta2_pow_out,
+    std::vector<DenseTensor*> master_param_out) {
+  size_t param_num = param.size();
+  PADDLE_ENFORCE_EQ(
+      param_num,
+      grad.size(),
+      errors::InvalidArgument("The size of Input(grad) must be equal to "
+                              "Input(param), but got the size of Input(grad) "
+                              "is %d, the size of Input(param) is %d.",
+                              grad.size(),
+                              param_num));
+  PADDLE_ENFORCE_EQ(
+      param_num,
+      learning_rate.size(),
+      errors::InvalidArgument(
+          "The size of Input(learning_rate) must be equal to "
+          "Input(param), but got the size of Input(learning_rate) "
+          "is %d, the size of Input(param) is %d.",
+          learning_rate.size(),
+          param_num));
+  PADDLE_ENFORCE_EQ(param_num,
+                    moment1.size(),
+                    errors::InvalidArgument(
+                        "The size of Input(moment1) must be equal to "
+                        "Input(param), but got the size of Input(moment1) "
+                        "is %d, the size of Input(param) is %d.",
+                        moment1.size(),
+                        param_num));
+  PADDLE_ENFORCE_EQ(param_num,
+                    moment2.size(),
+                    errors::InvalidArgument(
+                        "The size of Input(moment2) must be equal to "
+                        "Input(param), but got the size of Input(moment2) "
+                        "is %d, the size of Input(param) is %d.",
+                        moment2.size(),
+                        param_num));
+  PADDLE_ENFORCE_EQ(param_num,
+                    beta1_pow.size(),
+                    errors::InvalidArgument(
+                        "The size of Input(beta1_pow) must be equal to "
+                        "Input(param), but got the size of Input(beta1_pow) "
+                        "is %d, the size of Input(param) is %d.",
+                        beta1_pow.size(),
+                        param_num));
+  PADDLE_ENFORCE_EQ(param_num,
+                    beta2_pow.size(),
+                    errors::InvalidArgument(
+                        "The size of Input(beta2_pow) must be equal to "
+                        "Input(param), but got the size of Input(beta2_pow) "
+                        "is %d, the size of Input(param) is %d.",
+                        beta2_pow.size(),
+                        param_num));
+  T beta1_ = beta1.to<T>();
+  T beta2_ = beta2.to<T>();
+  T epsilon_ = epsilon.to<T>();
+
+  for (size_t idx = 0; idx < param_num; idx++) {
+    phi::funcs::AdamFunctor<T, phi::funcs::CPUAdam> functor(
+        beta1_,
+        beta2_,
+        epsilon_,
+        beta1_pow[idx]->data<T>(),
+        beta2_pow[idx]->data<T>(),
+        moment1[idx]->data<T>(),
+        dev_ctx.template Alloc<T>(moment1_out[idx]),
+        moment2[idx]->data<T>(),
+        dev_ctx.template Alloc<T>(moment2_out[idx]),
+        learning_rate[idx]->data<T>(),
+        grad[idx]->data<T>(),
+        param[idx]->data<T>(),
+        dev_ctx.template Alloc<T>(param_out[idx]));
+    functor(param[idx]->numel());
+    if (!use_global_beta_pow) {
+      dev_ctx.template Alloc<T>(beta1_pow_out[idx])[0] =
+          beta1_ * beta1_pow[idx]->data<T>()[0];
+      dev_ctx.template Alloc<T>(beta2_pow_out[idx])[0] =
+          beta2_ * beta2_pow[idx]->data<T>()[0];
+    }
+  }
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(adam, CPU, ALL_LAYOUT, phi::AdamDenseKernel, float, double) {
 }
+
+PD_REGISTER_KERNEL(
+    merged_adam, CPU, ALL_LAYOUT, phi::MergedAdamKernel, float, double) {}

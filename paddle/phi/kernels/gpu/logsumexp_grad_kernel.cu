@@ -12,10 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/logsumexp_grad_kernel_impl.h"
 #include "paddle/phi/kernels/logsumexp_grad_kernel.h"
 
-PD_REGISTER_KERNEL(
-    logsumexp_grad, GPU, ALL_LAYOUT, phi::LogsumexpGradKernel, float, double) {}
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/logsumexp_grad_kernel_impl.h"
+
+PD_REGISTER_KERNEL(logsumexp_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LogsumexpGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

@@ -38,7 +38,8 @@ paddle::framework::DataFeedDesc load_datafeed_param_from_file(
   paddle::framework::DataFeedDesc data_feed_desc;
   int file_descriptor = open(filename, O_RDONLY);
   PADDLE_ENFORCE_NE(
-      file_descriptor, -1,
+      file_descriptor,
+      -1,
       platform::errors::Unavailable(
           "Cannot open file %s c load datafeed param from file.", filename));
   google::protobuf::io::FileInputStream fileInput(file_descriptor);
@@ -51,7 +52,8 @@ const std::vector<std::string> load_filelist_from_file(const char* filename) {
   std::vector<std::string> filelist;
   std::ifstream fin(filename);
   PADDLE_ENFORCE_EQ(
-      fin.good(), true,
+      fin.good(),
+      true,
       platform::errors::Unavailable(
           "Cannot open file %s when load filelist from file.", filename));
   std::string line;
@@ -159,15 +161,14 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
       std::unique_ptr<paddle::framework::Scope> scope(
           new paddle::framework::Scope());
       const auto& multi_slot_desc = data_feed_desc.multi_slot_desc();
-      std::map<std::string, const paddle::framework::LoDTensor*>
-          lodtensor_targets;
+      std::map<std::string, const phi::DenseTensor*> lodtensor_targets;
       for (int i = 0; i < multi_slot_desc.slots_size(); ++i) {
         const auto& slot = multi_slot_desc.slots(i);
         if (slot.is_used()) {
           const auto& name = slot.name();
           readers[idx]->AddFeedVar(scope->Var(name), name);
           lodtensor_targets[name] =
-              &scope->FindVar(name)->Get<paddle::framework::LoDTensor>();
+              &scope->FindVar(name)->Get<phi::DenseTensor>();
         }
       }
       readers[idx]->Start();
@@ -178,8 +179,7 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
           if (!slot.is_used()) {
             continue;
           }
-          const paddle::framework::LoDTensor* tens =
-              lodtensor_targets[slot.name()];
+          const phi::DenseTensor* tens = lodtensor_targets[slot.name()];
           if (slot.is_dense()) {  // dense branch
             if (slot.type() == "uint64") {
               const int64_t* data = tens->data<int64_t>();
@@ -282,7 +282,8 @@ void GetElemSetFromFile(std::vector<MultiTypeSet>* file_elem_set,
   for (const auto& file : filelist) {
     std::ifstream fin(file.c_str());
     PADDLE_ENFORCE_EQ(
-        fin.good(), true,
+        fin.good(),
+        true,
         platform::errors::Unavailable(
             "Can not open %s when get element set from file.", file.c_str()));
     while (1) {

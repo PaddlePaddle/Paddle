@@ -30,7 +30,8 @@ bool NeedSplit(size_t block_size, size_t alignment, size_t allock_size) {
 VirtualMemoryAutoGrowthBestFitAllocator::
     VirtualMemoryAutoGrowthBestFitAllocator(
         const std::shared_ptr<Allocator> &underlying_allocator,
-        size_t alignment, const platform::CUDAPlace &place)
+        size_t alignment,
+        const platform::CUDAPlace &place)
     : underlying_allocator_(
           std::make_shared<AlignedAllocator>(underlying_allocator, alignment)),
       alignment_(alignment),
@@ -145,7 +146,7 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendAndMerge(size_t size) {
   allocations_.push_back(std::move(allocateptr));  // hold allocation
 
   if (all_blocks_.empty()) {
-    all_blocks_.push_back(Block(ptr, size, true));
+    all_blocks_.emplace_back(ptr, size, true);
     free_blocks_.emplace(std::make_pair(size, ptr), all_blocks_.begin());
     return;
   }
@@ -164,7 +165,7 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendAndMerge(size_t size) {
                                block_it);
         } else {
           // do not merge
-          all_blocks_.push_front(Block(ptr, size, true));
+          all_blocks_.emplace_back(ptr, size, true);
           free_blocks_.emplace(std::make_pair(size, ptr), all_blocks_.begin());
         }
       } else {
@@ -221,7 +222,7 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendAndMerge(size_t size) {
                          block_it);
   } else {
     // do not merge
-    all_blocks_.push_back(Block(ptr, size, true));
+    all_blocks_.emplace_back(ptr, size, true);
     auto block_it = all_blocks_.end();
     block_it--;
     free_blocks_.emplace(std::make_pair(size, ptr), block_it);

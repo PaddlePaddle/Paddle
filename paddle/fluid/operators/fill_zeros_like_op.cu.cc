@@ -19,30 +19,30 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    fill_zeros_like,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext,
-                             paddle::platform::float16>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, bool>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext,
-                             paddle::platform::complex<float>>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext,
-                             paddle::platform::complex<double>>);
+namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(
-    fill_zeros_like2,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext,
-                             paddle::platform::float16>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, bool>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext,
-                             paddle::platform::complex<float>>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext,
-                             paddle::platform::complex<double>>);
+PD_REGISTER_STRUCT_KERNEL(fill_zeros_like,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FillZerosLikeKernel,
+                          int,
+                          int64_t,
+                          float,
+                          double,
+                          plat::float16,
+                          bool,
+                          plat::complex<float>,
+                          plat::complex<double>) {}
+
+PD_REGISTER_STRUCT_KERNEL(fill_zeros_like2,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FillZerosLikeKernel2,
+                          int,
+                          int64_t,
+                          float,
+                          double,
+                          plat::float16,
+                          bool,
+                          plat::complex<float>,
+                          plat::complex<double>) {}

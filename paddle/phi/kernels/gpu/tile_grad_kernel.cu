@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/tile_grad_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/tile_grad_kernel_impl.h"
-#include "paddle/phi/kernels/tile_grad_kernel.h"
 
 PD_REGISTER_KERNEL(tile_grad,
                    GPU,
@@ -26,4 +27,5 @@ PD_REGISTER_KERNEL(tile_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

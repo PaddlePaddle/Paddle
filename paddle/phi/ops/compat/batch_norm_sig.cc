@@ -33,19 +33,18 @@ KernelSignature BatchNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (is_test && !use_global_stats && !trainable_statistics &&
       !fuse_with_relu) {
     return KernelSignature("batch_norm_infer",
-                           {"X", "Scale", "Bias", "Mean", "Variance"},
+                           {"X", "Mean", "Variance", "Scale", "Bias"},
                            {"momentum", "epsilon", "data_layout"},
                            {"Y", "MeanOut", "VarianceOut"});
   } else {
     return KernelSignature("batch_norm",
-                           {"X", "Scale", "Bias", "Mean", "Variance"},
-                           {"momentum",
+                           {"X", "Mean", "Variance", "Scale", "Bias"},
+                           {"is_test",
+                            "momentum",
                             "epsilon",
                             "data_layout",
-                            "is_test",
                             "use_global_stats",
-                            "trainable_statistics",
-                            "fuse_with_relu"},
+                            "trainable_statistics"},
                            {"Y",
                             "MeanOut",
                             "VarianceOut",
@@ -56,7 +55,7 @@ KernelSignature BatchNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature BatchNormGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("batch_norm_grad",
                          {
                              "X",
@@ -74,14 +73,13 @@ KernelSignature BatchNormGradOpArgumentMapping(
                           "data_layout",
                           "is_test",
                           "use_global_stats",
-                          "trainable_statistics",
-                          "fuse_with_relu"},
+                          "trainable_statistics"},
                          {"X@GRAD", "Scale@GRAD", "Bias@GRAD"});
 }
 
 KernelSignature BatchNormGradGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("batch_norm_grad_grad",
+    const ArgumentMappingContext& ctx UNUSED) {
+  return KernelSignature("batch_norm_double_grad",
                          {"X",
                           "Scale",
                           "Mean",
@@ -97,8 +95,7 @@ KernelSignature BatchNormGradGradOpArgumentMapping(
                           "data_layout",
                           "is_test",
                           "use_global_stats",
-                          "trainable_statistics",
-                          "fuse_with_relu"},
+                          "trainable_statistics"},
                          {"DX", "DScale", "DDY"});
 }
 

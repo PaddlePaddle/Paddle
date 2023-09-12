@@ -43,7 +43,7 @@ bool IsPersistable(const framework::VarDesc *var) {
 }
 
 bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
-                                 framework::LoDTensor *input_tensor,
+                                 phi::DenseTensor *input_tensor,
                                  const platform::Place &place) {
   VLOG(3) << "Loading data from DistModelTensor for " << input_data.name;
   framework::DDim dims = phi::make_ddim(input_data.shape);
@@ -71,25 +71,58 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
 
   if (platform::is_cpu_place(place)) {
     VLOG(3) << "Loading data for CPU.";
-    std::memcpy(static_cast<void *>(input_tensor_ptr), input_data.data.data(),
+    std::memcpy(static_cast<void *>(input_tensor_ptr),
+                input_data.data.data(),
                 input_data.data.length());
   } else if (platform::is_gpu_place(place)) {
     VLOG(3) << "Loading data for GPU.";
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto *dev_ctx =
-        dynamic_cast<const platform::CUDADeviceContext *>(pool.Get(place));
+    auto *dev_ctx = dynamic_cast<const phi::GPUContext *>(pool.Get(place));
     auto gpu_place = place;
-    memory::Copy(gpu_place, static_cast<void *>(input_tensor_ptr),
-                 platform::CPUPlace(), input_data.data.data(),
-                 input_data.data.length(), dev_ctx->stream());
+    memory::Copy(gpu_place,
+                 static_cast<void *>(input_tensor_ptr),
+                 platform::CPUPlace(),
+                 input_data.data.data(),
+                 input_data.data.length(),
+                 dev_ctx->stream());
 #else
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Paddle wasn't compiled with CUDA, but place is GPU."));
 #endif
+  } else if (platform::is_xpu_place(place)) {
+    VLOG(3) << "Loading data for XPU.";
+#if defined(PADDLE_WITH_XPU)
+    auto xpu_place = place;
+    memory::Copy(xpu_place,
+                 static_cast<void *>(input_tensor_ptr),
+                 platform::CPUPlace(),
+                 input_data.data.data(),
+                 input_data.data.length());
+#else
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Paddle wasn't compiled with XPU, but place is XPU."));
+#endif
+  } else if (platform::is_custom_place(place)) {
+    VLOG(3) << "Loading data for CustomDevice: " << place;
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto *dev_ctx = dynamic_cast<const phi::CustomContext *>(pool.Get(place));
+    auto custom_place = place;
+    memory::Copy(custom_place,
+                 static_cast<void *>(input_tensor_ptr),
+                 platform::CPUPlace(),
+                 input_data.data.data(),
+                 input_data.data.length(),
+                 dev_ctx->stream());
+#else
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Paddle wasn't compiled with custom_device, but place is "
+        "CustomPlace."));
+#endif
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "DistModel only supports CPU and GPU."));
+        "DistModel only supports CPU and GPU and XPU and CustomDevice."));
   }
 
   framework::LoD dst_lod;
@@ -139,15 +172,17 @@ class DistModelTimer {
 bool DistModel::Init() {
   carrier_id_ = "inference";
   bool init_method = (!config_.model_dir.empty() || config_.program_desc);
-  PADDLE_ENFORCE_EQ(init_method, true,
+  PADDLE_ENFORCE_EQ(init_method,
+                    true,
                     platform::errors::InvalidArgument(
                         "One of model dir or program desc must be provided to "
                         "dist model inference."));
   if (config_.program_desc) {
     PADDLE_ENFORCE_NOT_NULL(
-        config_.scope, platform::errors::InvalidArgument(
-                           "Scope must be provided to dist model inference if "
-                           "program desc has been provided."));
+        config_.scope,
+        platform::errors::InvalidArgument(
+            "Scope must be provided to dist model inference if "
+            "program desc has been provided."));
   }
   if (!PreparePlace()) {
     return false;
@@ -184,9 +219,15 @@ bool DistModel::PreparePlace() {
     place_ = paddle::platform::CUDAPlace(config_.device_id);
   } else if (config_.place == "CPU") {
     place_ = paddle::platform::CPUPlace();
+  } else if (config_.place == "XPU") {
+    place_ = paddle::platform::XPUPlace(config_.device_id);
+  } else if (config_.place == "CUSTOM_DEVICE") {
+    place_ =
+        paddle::platform::CustomPlace(config_.device_type, config_.device_id);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Place must be choosen from GPU or CPU, but got %s.", config_.place));
+        "Place must be choosen from GPU or CPU or XPU, but got %s.",
+        config_.place));
   }
   return true;
 }
@@ -201,7 +242,8 @@ bool DistModel::CommInit() {
   std::string var_name_base = "comm_init_";
   for (int64_t ring_id : ring_ids) {
     VLOG(3) << "Init comm for ring id: " << ring_id;
-    int64_t ranks_in_group = config_.ring_id_to_ranks_[ring_id].size();
+    int64_t ranks_in_group =
+        static_cast<int64_t>(config_.ring_id_to_ranks_[ring_id].size());
     int64_t rank_in_group = 0;
     std::vector<int64_t> &ranks = config_.ring_id_to_ranks_[ring_id];
     for (int64_t rank : ranks) {
@@ -217,8 +259,12 @@ bool DistModel::CommInit() {
       }
       peer_endpoints.emplace_back(config_.trainer_endpoints[rank]);
     }
-    InsertCommOp(var_name_base + std::to_string(order), ranks_in_group,
-                 rank_in_group, peer_endpoints, comm_init_block, ring_id);
+    InsertCommOp(var_name_base + std::to_string(order),
+                 static_cast<int>(ranks_in_group),
+                 static_cast<int>(rank_in_group),
+                 peer_endpoints,
+                 comm_init_block,
+                 static_cast<int>(ring_id));
     order += 1;
   }
   framework::NaiveExecutor e(place_);
@@ -229,9 +275,12 @@ bool DistModel::CommInit() {
   return true;
 }
 
-void DistModel::InsertCommOp(std::string tmp_var_name, int nranks, int rank,
+void DistModel::InsertCommOp(std::string tmp_var_name,
+                             int nranks,
+                             int rank,
                              const std::vector<std::string> &peer_endpoints,
-                             framework::BlockDesc *block, int ring_id) {
+                             framework::BlockDesc *block,
+                             int ring_id) {
   /*
    * tmp_var_name: the var name for var comm_id
    * nranks: number of total ranks
@@ -273,6 +322,52 @@ void DistModel::InsertCommOp(std::string tmp_var_name, int nranks, int rank,
     comm_init_op->SetAttr("op_role",
                           static_cast<int>(framework::OpRole::kForward));
     comm_init_op->CheckAttrs();
+  } else if (config_.place == "XPU") {
+    framework::VarDesc *new_var = block->Var(tmp_var_name);
+    new_var->SetType(framework::proto::VarType::RAW);
+    new_var->SetPersistable(true);
+    framework::OpDesc *gen_bkcl_id_op = block->AppendOp();
+    gen_bkcl_id_op->SetType("c_gen_bkcl_id");
+    gen_bkcl_id_op->SetOutput("Out", {tmp_var_name});
+    gen_bkcl_id_op->SetAttr("rank", rank);
+    gen_bkcl_id_op->SetAttr("endpoint", config_.current_endpoint);
+    gen_bkcl_id_op->SetAttr("other_endpoints", peer_endpoints);
+    gen_bkcl_id_op->SetAttr("ring_id", ring_id);
+    gen_bkcl_id_op->SetAttr("op_role",
+                            static_cast<int>(framework::OpRole::kForward));
+    gen_bkcl_id_op->CheckAttrs();
+    framework::OpDesc *comm_init_op = block->AppendOp();
+    comm_init_op->SetType("c_comm_init");
+    comm_init_op->SetInput("X", {tmp_var_name});
+    comm_init_op->SetAttr("rank", rank);
+    comm_init_op->SetAttr("nranks", nranks);
+    comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("op_role",
+                          static_cast<int>(framework::OpRole::kForward));
+    comm_init_op->CheckAttrs();
+  } else if (config_.place == "CUSTOM_DEVICE") {
+    framework::VarDesc *new_var = block->Var(tmp_var_name);
+    new_var->SetType(framework::proto::VarType::RAW);
+    new_var->SetPersistable(true);
+    framework::OpDesc *gen_bkcl_id_op = block->AppendOp();
+    gen_bkcl_id_op->SetType("c_gen_xccl_id");
+    gen_bkcl_id_op->SetOutput("Out", {tmp_var_name});
+    gen_bkcl_id_op->SetAttr("rank", rank);
+    gen_bkcl_id_op->SetAttr("endpoint", config_.current_endpoint);
+    gen_bkcl_id_op->SetAttr("other_endpoints", peer_endpoints);
+    gen_bkcl_id_op->SetAttr("ring_id", ring_id);
+    gen_bkcl_id_op->SetAttr("op_role",
+                            static_cast<int>(framework::OpRole::kForward));
+    gen_bkcl_id_op->CheckAttrs();
+    framework::OpDesc *comm_init_op = block->AppendOp();
+    comm_init_op->SetType("c_comm_init");
+    comm_init_op->SetInput("X", {tmp_var_name});
+    comm_init_op->SetAttr("rank", rank);
+    comm_init_op->SetAttr("nranks", nranks);
+    comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("op_role",
+                          static_cast<int>(framework::OpRole::kForward));
+    comm_init_op->CheckAttrs();
   } else {
     LOG(WARNING) << "DistModelInf doesn't init comm.";
     // TODO(fleet exe dev): comm init for more devices
@@ -280,7 +375,7 @@ void DistModel::InsertCommOp(std::string tmp_var_name, int nranks, int rank,
 }
 
 bool DistModel::PrepareScope() {
-  scope_.reset(new framework::Scope());
+  scope_ = std::make_unique<framework::Scope>();
   return true;
 }
 
@@ -297,7 +392,8 @@ bool DistModel::PrepareProgram() {
 bool DistModel::LoadProgram() {
   VLOG(3) << "Loading program from " << config_.model_dir;
   PADDLE_ENFORCE_NE(
-      config_.model_dir, "",
+      config_.model_dir,
+      "",
       platform::errors::InvalidArgument("Model dir must be provided."));
   std::string model_path = config_.model_dir + ".pdmodel";
   framework::proto::ProgramDesc program_proto;
@@ -305,18 +401,19 @@ bool DistModel::LoadProgram() {
   // Read binary
   std::ifstream fin(model_path, std::ios::in | std::ios::binary);
   PADDLE_ENFORCE_EQ(
-      static_cast<bool>(fin.is_open()), true,
+      static_cast<bool>(fin.is_open()),
+      true,
       platform::errors::NotFound(
           "Cannot open file %s, please confirm whether the file is normal.",
           model_path));
   fin.seekg(0, std::ios::end);
   pb_content.resize(fin.tellg());
   fin.seekg(0, std::ios::beg);
-  fin.read(&(pb_content.at(0)), pb_content.size());
+  fin.read(&(pb_content.at(0)), pb_content.size());  // NOLINT
   fin.close();
   program_proto.ParseFromString(pb_content);
   VLOG(5) << pb_content;
-  program_.reset(new framework::ProgramDesc(program_proto));
+  program_ = std::make_unique<framework::ProgramDesc>(program_proto);
   return true;
 }
 
@@ -373,22 +470,32 @@ bool DistModel::LoadParameters() {
 }
 
 bool DistModel::PrepareFleetExe() {
-  task_node_.reset(new TaskNode(program_.get(), config_.local_rank));
+  task_node_ = std::make_unique<TaskNode>(program_.get(), config_.local_rank);
   // With auto cut, there is no concept of pp, no need to add dependency.
   task_node_->SetType("Compute");
   task_node_->Init();
   executor_desc_ = FleetExecutorDesc();
   executor_desc_.set_cur_rank(config_.local_rank);
   std::unordered_map<int64_t, int64_t> id_to_rank;
+
   for (int i = 0; i < config_.nranks; ++i) {
     RankInfo *rank_info = executor_desc_.add_cluster_info();
     rank_info->set_rank(i);
-    rank_info->set_ip_port(config_.trainer_endpoints[i]);
+    if (config_.nranks == 1) {
+      rank_info->set_ip_port("");
+    } else {
+      rank_info->set_ip_port(config_.trainer_endpoints[i]);
+    }
     id_to_rank.insert({i, i});
   }
-  fleet_exe.reset(new FleetExecutor(executor_desc_));
-  fleet_exe->Init(carrier_id_, *(program_.get()), scope_.get(), place_, 1,
-                  {task_node_.get()}, id_to_rank);
+  fleet_exe = std::make_unique<FleetExecutor>(executor_desc_);
+  fleet_exe->Init(carrier_id_,
+                  *(program_.get()),
+                  scope_.get(),
+                  place_,
+                  1,
+                  {task_node_.get()},
+                  id_to_rank);
   return true;
 }
 
@@ -396,7 +503,7 @@ bool DistModel::PrepareFeedAndFetch() {
   for (auto *op : program_->Block(0).AllOps()) {
     if (op->Type() == "feed") {
       VLOG(3) << "feed op with feed var: " << op->Output("Out")[0];
-      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
+      int idx = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (feeds_.size() <= static_cast<size_t>(idx)) {
         feeds_.resize(idx + 1);
       }
@@ -426,7 +533,7 @@ bool DistModel::PrepareFeedAndFetch() {
       }
     } else if (op->Type() == "fetch") {
       VLOG(3) << "fetch op with fetch var: " << op->Input("X")[0];
-      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
+      int idx = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (fetches_.size() <= static_cast<size_t>(idx)) {
         fetches_.resize(idx + 1);
       }
@@ -435,11 +542,11 @@ bool DistModel::PrepareFeedAndFetch() {
     }
   }
 
-  if (feeds_.size() == 0) {
+  if (feeds_.empty()) {
     LOG(ERROR) << "No feed ops in the inf program, please check the program.";
     return false;
   }
-  if (fetches_.size() == 0) {
+  if (fetches_.empty()) {
     LOG(ERROR) << "No fetch op in the inf program, please check the program.";
     return false;
   }
@@ -457,7 +564,7 @@ bool DistModel::FeedData(const std::vector<DistModelTensor> &input_data,
   feed_tensors_.resize(feeds_.size());
   for (size_t i = 0; i < input_data.size(); ++i) {
     // feed each data separately
-    framework::LoDTensor *input_tensor = &(feed_tensors_[i]);
+    phi::DenseTensor *input_tensor = &(feed_tensors_[i]);
     if (!LoadDataFromDistModelTensor(input_data[i], input_tensor, place_)) {
       LOG(ERROR) << "Fail to load data from tensor " << input_data[i].name;
       return false;
@@ -476,7 +583,7 @@ bool DistModel::FeedData(const std::vector<DistModelTensor> &input_data,
                  << DistModelDTypeToString(input_data[i].dtype) << ".";
       return false;
     }
-    int feed_idx = feed_names_[target_name];
+    int feed_idx = static_cast<int>(feed_names_[target_name]);
     framework::SetFeedVariable(scope, *input_tensor, "feed", feed_idx);
   }
   return true;
@@ -487,16 +594,18 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
   VLOG(3) << "DistModel is fetch results.";
   output_data->resize(fetches_.size());
   for (size_t i = 0; i < fetches_.size(); ++i) {
-    int idx = BOOST_GET_CONST(int, fetches_[i]->GetAttr("col"));
+    int idx = PADDLE_GET_CONST(int, fetches_[i]->GetAttr("col"));
     VLOG(3) << "Fetching data for [" << idx_to_fetches_[idx] << "]";
     PADDLE_ENFORCE_EQ(
-        static_cast<size_t>(idx), i,
+        static_cast<size_t>(idx),
+        i,
         platform::errors::InvalidArgument(
-            "Fetch op's col attr(%d) should be equal to the index(%d)", idx,
+            "Fetch op's col attr(%d) should be equal to the index(%d)",
+            idx,
             i));
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
-    auto &fetch = BOOST_GET(framework::LoDTensor, fetch_var);
+    auto &fetch = PADDLE_GET(phi::DenseTensor, fetch_var);
     auto type = framework::TransToProtoVarType(fetch.dtype());
     auto output = &(output_data->at(i));
     output->name = idx_to_fetches_[idx];
@@ -527,7 +636,7 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
 }
 
 template <typename T>
-bool DistModel::FetchResult(const framework::LoDTensor &fetch,
+bool DistModel::FetchResult(const phi::DenseTensor &fetch,
                             DistModelTensor *output_data) {
   auto shape = phi::vectorize(fetch.dims());
   output_data->shape.assign(shape.begin(), shape.end());

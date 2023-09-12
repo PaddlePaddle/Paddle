@@ -24,7 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/common/transform.h"
+#include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -33,14 +34,24 @@ namespace framework {
 class OpKernelType;
 class Variable;
 
-void TransformData(const OpKernelType &expected_kernel_type,
-                   const OpKernelType &kernel_type_for_var,
-                   const Tensor &input_tensor, Tensor *out);
+void TransformData(const phi::KernelKey &expected_kernel_type,
+                   const phi::KernelKey &kernel_type_for_var,
+                   const phi::DenseTensor &input_tensor,
+                   phi::DenseTensor *out,
+                   const phi::Place &place);
 
 /**
  * Set OutVar from InVar, except the tensor is shared with `tensor`
  */
-void SetTensorToVariable(const Variable &in_var, const Tensor &tensor,
+void SetTensorToVariable(const Variable &in_var,
+                         const phi::DenseTensor &tensor,
                          Variable *out_var);
+
+phi::GetKernelTypeForVarContext BuildGetKernelTypeForVarContext(
+    const phi::KernelKey &kernel_key,
+    const AttributeMap &fluid_attrs,
+    phi::AttributeMap *phi_attrs,
+    bool has_infer_varkernel_fn);
+
 }  // namespace framework
 }  // namespace paddle

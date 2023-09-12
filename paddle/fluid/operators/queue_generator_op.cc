@@ -44,12 +44,14 @@ class QueueGeneratorOp : public framework::OperatorBase {
                const platform::Place& dev_place) const override {
     std::vector<std::string> names = Attr<std::vector<std::string>>("names");
     PADDLE_ENFORCE_GT(
-        names.size(), 0,
+        names.size(),
+        0,
         platform::errors::InvalidArgument("The attribute 'names' for "
                                           "Op(queue_generator) must be set."));
 
     int capacity = Attr<int>("capacity");
-    PADDLE_ENFORCE_GT(capacity, 0,
+    PADDLE_ENFORCE_GT(capacity,
+                      0,
                       platform::errors::InvalidArgument(
                           "The attribute 'capacity' for Op(queue_generator) "
                           "must be set a positive value, "
@@ -63,12 +65,14 @@ class QueueGeneratorOp : public framework::OperatorBase {
   }
 
  private:
-  void GenerateQueue(const framework::Scope* scope, const std::string& name,
+  void GenerateQueue(const framework::Scope* scope,
+                     const std::string& name,
                      size_t capacity) const {
     auto var = scope->FindVar(name);
     PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::NotFound(
-                 "Can't find var named '%s' in the global scope.", name));
+        var,
+        platform::errors::NotFound(
+            "Can't find var named '%s' in the global scope.", name));
     auto ptr = var->GetMutable<reader::LoDTensorBlockingQueueHolder>();
     ptr->InitOnce(capacity);
 
@@ -97,5 +101,6 @@ Generate and initialize one or more LodTensorBlockingQueueHolders.
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_WITHOUT_GRADIENT(queue_generator, ops::QueueGeneratorOp,
+REGISTER_OP_WITHOUT_GRADIENT(queue_generator,
+                             ops::QueueGeneratorOp,
                              ops::QueueGeneratorOpMaker);

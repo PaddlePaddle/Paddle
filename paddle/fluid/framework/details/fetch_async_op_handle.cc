@@ -24,7 +24,8 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-FetchAsyncOpHandle::FetchAsyncOpHandle(ir::Node *node, FetchResultType *data,
+FetchAsyncOpHandle::FetchAsyncOpHandle(ir::Node *node,
+                                       FetchResultType *data,
                                        size_t offset,
                                        std::vector<Scope *> *local_scopes,
                                        std::vector<Scope *> *local_exec_scopes,
@@ -36,7 +37,7 @@ FetchAsyncOpHandle::FetchAsyncOpHandle(ir::Node *node, FetchResultType *data,
       local_exec_scopes_(local_exec_scopes),
       return_merged_(return_merged) {}
 
-FetchAsyncOpHandle::~FetchAsyncOpHandle() {}
+FetchAsyncOpHandle::~FetchAsyncOpHandle() = default;
 
 void FetchAsyncOpHandle::RecordWaitEventOnCtx(
     platform::DeviceContext *waited_ctx) {
@@ -44,14 +45,17 @@ void FetchAsyncOpHandle::RecordWaitEventOnCtx(
       "No nodes need to wait FetchAsyncOp. Unexpceted Error."));
 }
 
-static void CheckTensorAttrs(const LoDTensor *tensor,
+static void CheckTensorAttrs(const phi::DenseTensor *tensor,
                              const proto::VarType::Type &type,
-                             const DataLayout &layout, const DDim &dims,
-                             const LoD &lod, const size_t offset) {
+                             const DataLayout &layout,
+                             const DDim &dims,
+                             const LoD &lod,
+                             const size_t offset) {
   if (tensor->numel() && tensor->IsInitialized()) {
     // step1: check type
     PADDLE_ENFORCE_EQ(
-        type, framework::TransToProtoVarType(tensor->dtype()),
+        type,
+        framework::TransToProtoVarType(tensor->dtype()),
         platform::errors::InvalidArgument(
             "The data type of fetched Tensors or the items of fetched "
             "LoDTensorArray are different from each other on different "
@@ -59,11 +63,14 @@ static void CheckTensorAttrs(const LoDTensor *tensor,
             "(th) fetched variable. Please set the "
             "parameter `return_merged = False` when you "
             "call the `Executor.run()` method.",
-            DataTypeToString(type), tensor->dtype(), offset));
+            DataTypeToString(type),
+            tensor->dtype(),
+            offset));
 
     // step2: check layout
     PADDLE_ENFORCE_EQ(
-        layout, tensor->layout(),
+        layout,
+        tensor->layout(),
         platform::errors::InvalidArgument(
             "The layout of fetched Tensors or the items of fetched "
             "LoDTensorArray are different from each other on different "
@@ -71,13 +78,15 @@ static void CheckTensorAttrs(const LoDTensor *tensor,
             "(th) fetched variable. Please set the "
             "parameter `return_merged = False` when you "
             "call the `Executor.run()` method.",
-            DataLayoutToString(layout), DataLayoutToString(tensor->layout()),
+            phi::DataLayoutToString(layout),
+            phi::DataLayoutToString(tensor->layout()),
             offset));
   }
 
   // step3: check dims
   auto tensor_dims = tensor->dims();
-  PADDLE_ENFORCE_EQ(dims.size(), tensor_dims.size(),
+  PADDLE_ENFORCE_EQ(dims.size(),
+                    tensor_dims.size(),
                     platform::errors::InvalidArgument(
                         "The dimension sizes of fetched Tensors or "
                         "the items of fetched LoDTensorArray are "
@@ -86,9 +95,12 @@ static void CheckTensorAttrs(const LoDTensor *tensor,
                         "(th) fetched variable. Please set the "
                         "parameter `return_merged = False` when you "
                         "call the `Executor.run()` method.",
-                        dims, tensor_dims, offset));
+                        dims,
+                        tensor_dims,
+                        offset));
   for (int j = 1; j < dims.size(); j++) {
-    PADDLE_ENFORCE_EQ(dims[j], tensor_dims[j],
+    PADDLE_ENFORCE_EQ(dims[j],
+                      tensor_dims[j],
                       platform::errors::InvalidArgument(
                           "The dimensions of fetched Tensors or "
                           "the items of fetched LoDTensorArray are "
@@ -97,12 +109,15 @@ static void CheckTensorAttrs(const LoDTensor *tensor,
                           "%zu (th) fetched variable. Please set the "
                           "parameter `return_merged = False` when "
                           "you call the `Executor.run()` method.",
-                          dims, tensor_dims, offset));
+                          dims,
+                          tensor_dims,
+                          offset));
   }
 
   // step4: check lod
   PADDLE_ENFORCE_EQ(
-      lod.size(), tensor->lod().size(),
+      lod.size(),
+      tensor->lod().size(),
       platform::errors::InvalidArgument(
           "The LoD information of fetched Tensors or the items of fetched "
           "LoDTensorArray are different from each other on different "
@@ -110,11 +125,13 @@ static void CheckTensorAttrs(const LoDTensor *tensor,
           "(th) fetched variable. Please set the "
           "parameter `return_merged = False` when you "
           "call the `Executor.run()` method.",
-          lod, tensor->lod(), offset));
+          lod,
+          tensor->lod(),
+          offset));
 }
 
-static void TransData(const framework::Tensor *src_item,
-                      framework::Tensor *dst_item,
+static void TransData(const phi::DenseTensor *src_item,
+                      phi::DenseTensor *dst_item,
                       const platform::DeviceContext &ctx) {
   if (src_item->IsInitialized() && src_item->numel() > 0) {
     if (platform::is_gpu_place(src_item->place())) {
@@ -128,11 +145,11 @@ static void TransData(const framework::Tensor *src_item,
 }
 
 void FetchAsyncOpHandle::FetchMergedLodTensor(
-    const std::vector<const LoDTensor *> &src_lodtensors,
-    LoDTensor *dst_lodtensor) {
+    const std::vector<const phi::DenseTensor *> &src_lodtensors,
+    phi::DenseTensor *dst_lodtensor) {
   // calc dst type,layout,dim,lod and calc check dim
   proto::VarType::Type new_type = proto::VarType::FP32;
-  framework::DataLayout new_layout;
+  phi::DataLayout new_layout = phi::DataLayout::UNDEFINED;
   framework::DDim new_dim;
   LoD new_lod = src_lodtensors[0]->lod();
 
@@ -147,22 +164,30 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
     }
   }
 
-  bool find_first_dims = false;
-  for (auto *t : src_lodtensors) {
-    if (t->numel() && t->IsInitialized()) {
-      if (!find_first_dims) {
-        new_dim = t->dims();
-        find_first_dims = true;
-      } else {
-        new_dim[0] += t->dims()[0];
-      }
-    }
-  }
-
   // check src type,layout,dim,lod consistence
   for (size_t i = 1; i < src_lodtensors.size(); ++i) {
-    CheckTensorAttrs(src_lodtensors[i], new_type, new_layout, check_dim,
-                     new_lod, offset_);
+    CheckTensorAttrs(
+        src_lodtensors[i], new_type, new_layout, check_dim, new_lod, offset_);
+  }
+
+  auto rank = src_lodtensors[0]->dims().size();
+
+  // for 0D tensor, can't concat eath tensor. So stack 0D and concat 1+D tensor
+  if (rank == 0) {
+    int src_lodtensor_size = static_cast<int>(src_lodtensors.size());
+    new_dim = phi::make_ddim(std::vector<int>({src_lodtensor_size}));
+  } else {
+    bool find_first_dims = false;
+    for (auto *t : src_lodtensors) {
+      if (t->numel() && t->IsInitialized()) {
+        if (!find_first_dims) {
+          new_dim = t->dims();
+          find_first_dims = true;
+        } else {
+          new_dim[0] += t->dims()[0];
+        }
+      }
+    }
   }
 
   // set dst tensor
@@ -178,9 +203,17 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
   }
 
   // slice and memcpy
+  // for 0D tensor, can't concat each tensor, stack them. for 1+D tensor, concat
+  // them
   int begin = 0;
+  int end = 0;
   for (auto *src : src_lodtensors) {
-    int end = begin + src->dims()[0];
+    if (rank == 0) {
+      end = begin + 1;
+    } else {
+      end = static_cast<int>(begin + src->dims()[0]);
+    }
+
     if (end == begin) {
       continue;
     }
@@ -191,16 +224,16 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
 }
 
 void FetchAsyncOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name(),
-                                     platform::TracerEventType::Operator, 1);
+  platform::RecordEvent record_event(
+      Name(), platform::TracerEventType::Operator, 1);
   WaitInputVarGenerated(true);
 
   // get src vars
   auto &scopes = *local_exec_scopes_;
   std::vector<Variable *> src_vars;
   src_vars.reserve(inputs_.size());
-  for (size_t i = 0; i < inputs_.size(); ++i) {
-    auto *var_handle = static_cast<VarHandle *>(inputs_[i]);
+  for (auto &input : inputs_) {
+    auto *var_handle = static_cast<VarHandle *>(input);
     auto &scope = scopes.at(var_handle->scope_idx());
     auto *var = scope->FindVar(var_handle->name());
     PADDLE_ENFORCE_NOT_NULL(
@@ -211,53 +244,53 @@ void FetchAsyncOpHandle::RunImpl() {
   }
 
   if (return_merged_) {
-    auto &val = BOOST_GET(FetchList, *data_);
-    if (src_vars[0]->IsType<LoDTensor>()) {
+    auto &val = PADDLE_GET(FetchList, *data_);
+    if (src_vars[0]->IsType<phi::DenseTensor>()) {
       // to lodtensor type
-      std::vector<const LoDTensor *> src_lodtensors;
+      std::vector<const phi::DenseTensor *> src_lodtensors;
       src_lodtensors.reserve(src_vars.size());
-      for (size_t i = 0; i < src_vars.size(); ++i) {
-        src_lodtensors.emplace_back(&src_vars[i]->Get<framework::LoDTensor>());
+      for (auto src_var : src_vars) {
+        src_lodtensors.emplace_back(&src_var->Get<phi::DenseTensor>());
       }
 
-      LoDTensor dst_lodtensor;
+      phi::DenseTensor dst_lodtensor;
       FetchMergedLodTensor(src_lodtensors, &dst_lodtensor);
       val.at(offset_) = std::move(dst_lodtensor);
     } else {
       // to lodtensorarray type
       std::vector<const LoDTensorArray *> src_lodtensor_arrays;
       src_lodtensor_arrays.reserve(src_vars.size());
-      for (size_t i = 0; i < src_vars.size(); ++i) {
+      for (auto src_var : src_vars) {
         src_lodtensor_arrays.emplace_back(
-            &src_vars[i]->Get<framework::LoDTensorArray>());
+            &src_var->Get<framework::LoDTensorArray>());
       }
 
       LoDTensorArray dst_lodtensor_array;
       dst_lodtensor_array.resize(src_lodtensor_arrays[0]->size());
 
       for (size_t i = 0; i < dst_lodtensor_array.size(); ++i) {
-        std::vector<const LoDTensor *> src_lodtensors;
+        std::vector<const phi::DenseTensor *> src_lodtensors;
         src_lodtensors.reserve(src_lodtensor_arrays.size());
-        for (size_t j = 0; j < src_lodtensor_arrays.size(); ++j) {
-          src_lodtensors.emplace_back(&(*src_lodtensor_arrays[j])[i]);
+        for (auto *src_lodtensor_array : src_lodtensor_arrays) {
+          src_lodtensors.emplace_back(&(*src_lodtensor_array)[i]);
         }
         FetchMergedLodTensor(src_lodtensors, &dst_lodtensor_array[i]);
       }
       val.at(offset_) = std::move(dst_lodtensor_array);
     }
   } else {
-    auto &val = BOOST_GET(FetchUnmergedList, *data_);
+    auto &val = PADDLE_GET(FetchUnmergedList, *data_);
     auto &dst_tensors = val.at(offset_);
     dst_tensors.reserve(src_vars.size());
 
-    for (size_t i = 0; i < src_vars.size(); ++i) {
-      if (src_vars[i]->IsType<LoDTensor>()) {
-        auto &t = src_vars[i]->Get<framework::LoDTensor>();
-        LoDTensor item;
+    for (auto src_var : src_vars) {
+      if (src_var->IsType<phi::DenseTensor>()) {
+        auto &t = src_var->Get<phi::DenseTensor>();
+        phi::DenseTensor item;
         TransData(&t, &item, *dev_ctxes_[t.place()]);
         dst_tensors.emplace_back(std::move(item));
       } else {
-        auto &t = src_vars[i]->Get<framework::LoDTensorArray>();
+        auto &t = src_var->Get<framework::LoDTensorArray>();
         LoDTensorArray item;
         item.resize(t.size());
         for (size_t j = 0; j < t.size(); ++j) {

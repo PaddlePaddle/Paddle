@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
 
 namespace phi {
@@ -34,6 +35,10 @@ void AssignValueInferMeta(const std::vector<int>& shape,
                           DataType dtype,
                           MetaTensor* out);
 
+void CreateIntArrayInferMeta(const IntArray& data,
+                             DataType dtype,
+                             MetaTensor* out);
+
 void CreateInferMeta(const IntArray& shape, DataType dtype, MetaTensor* out);
 
 void CreateInferMetaBase(const std::vector<int64_t>& shape,
@@ -41,22 +46,42 @@ void CreateInferMetaBase(const std::vector<int64_t>& shape,
                          DataLayout layout,
                          MetaTensor* out);
 
-void EyeInferMeta(int64_t num_rows,
-                  int64_t num_columns,
-                  DataType dtype,
-                  MetaTensor* out);
+void DataInferMeta(const std::string& name,
+                   const phi::IntArray& shape,
+                   phi::DataType data_type,
+                   MetaTensor* out);
 
-void GaussianRandomInferMeta(const IntArray& shape,
-                             float mean,
-                             float std,
-                             int seed,
-                             DataType dtype,
-                             MetaTensor* out);
+void EyeInferMeta(const Scalar& num_rows,
+                  const Scalar& num_columns,
+                  DataType dtype,
+                  MetaTensor* out,
+                  MetaConfig config = MetaConfig());
+
+void GaussianInferMeta(const IntArray& shape,
+                       float mean,
+                       float std,
+                       int seed,
+                       DataType dtype,
+                       MetaTensor* out);
 
 void RandpermInferMeta(int n, DataType dtype, MetaTensor* out);
 
 void RandintInferMeta(
     int low, int high, const IntArray& shape, DataType dtype, MetaTensor* out);
+
+void PRecvInferMeta(int peer, DataType dtype, MetaTensor* out);
+
+void PRecvArrayInferMeta(int peer,
+                         DataType dtype,
+                         const std::vector<int>& out_shape,
+                         MetaTensor* out);
+
+void RecvV2InferMeta(const int ring_id,
+                     const bool dynamic_shape,
+                     const int peer,
+                     const std::vector<int>& out_shape,
+                     DataType dtype,
+                     MetaTensor* out);
 
 void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
                                       float mean,
@@ -67,11 +92,11 @@ void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
 
 void UniformRandomInferMeta(const IntArray& shape,
                             DataType dtype,
-                            float min,
-                            float max,
-                            int seed,
                             MetaTensor* out);
 
 void TrilIndicesInferMeta(
     int rows, int cols, int offset, DataType dtype, MetaTensor* out);
+
+void TriuIndicesInferMeta(
+    int row, int col, int offset, DataType dtype, MetaTensor* out);
 }  // namespace phi

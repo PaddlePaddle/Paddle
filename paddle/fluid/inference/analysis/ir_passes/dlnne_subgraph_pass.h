@@ -21,7 +21,6 @@
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/analysis/ir_passes/subgraph_util.h"
-#include "paddle/fluid/inference/api/paddle_analysis_config.h"
 
 namespace paddle {
 namespace framework {
@@ -34,9 +33,6 @@ class Node;
 
 namespace paddle {
 namespace inference {
-
-int ConvertGraph(std::string graph_name);
-
 namespace analysis {
 
 class DlnneSubgraphPass : public framework::ir::FusePassBase {
@@ -44,8 +40,11 @@ class DlnneSubgraphPass : public framework::ir::FusePassBase {
   void ApplyImpl(framework::ir::Graph *graph) const override;
 
  private:
+  void InferShapeForDlnneMainGraph() const;
+  bool IsDynamicOp(std::string var_name, bool use_static_batch) const;
   void CleanIntermediateOutputs(framework::ir::Node *node);
-  void CreateDlnneOp(framework::ir::Node *x, framework::ir::Graph *graph,
+  void CreateDlnneOp(framework::ir::Node *x,
+                     framework::ir::Graph *graph,
                      const std::vector<std::string> &graph_params,
                      std::vector<std::string> *repetitive_params) const;
 };

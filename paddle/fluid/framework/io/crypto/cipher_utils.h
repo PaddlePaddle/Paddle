@@ -34,7 +34,8 @@ class CipherUtils {
   template <typename val_type>
   static bool GetValue(
       const std::unordered_map<std::string, std::string>& config,
-      const std::string& key, val_type* output);
+      const std::string& key,
+      val_type* output);
 
   static const int AES_DEFAULT_IV_SIZE;
   static const int AES_DEFAULT_TAG_SIZE;
@@ -43,12 +44,14 @@ class CipherUtils {
 template <>
 bool CipherUtils::GetValue<bool>(
     const std::unordered_map<std::string, std::string>& config,
-    const std::string& key, bool* output);
+    const std::string& key,
+    bool* output);
 
 template <typename val_type>
 bool CipherUtils::GetValue(
     const std::unordered_map<std::string, std::string>& config,
-    const std::string& key, val_type* output) {
+    const std::string& key,
+    val_type* output) {
   auto itr = config.find(key);
   if (itr == config.end()) {
     return false;

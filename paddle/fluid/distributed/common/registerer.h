@@ -29,7 +29,8 @@ class Any {
   Any() : content_(NULL) {}
 
   template <typename ValueType>
-  Any(const ValueType &value) : content_(new Holder<ValueType>(value)) {}
+  explicit Any(const ValueType &value)
+      : content_(new Holder<ValueType>(value)) {}
 
   Any(const Any &other)
       : content_(other.content_ ? other.content_->clone() : NULL) {}
@@ -38,7 +39,9 @@ class Any {
 
   template <typename ValueType>
   ValueType *any_cast() {
-    return content_ ? &static_cast<Holder<ValueType> *>(content_)->held_ : NULL;
+    return content_
+               ? &static_cast<Holder<ValueType> *>(content_)->held_  // NOLINT
+               : NULL;
   }
 
  private:
@@ -113,7 +116,7 @@ inline PsCoreClassMap &global_factory_map_cpp() { return global_factory_map(); }
    public:                                              \
     Any NewInstance() { return Any(new name()); }       \
   };                                                    \
-  void register_factory_##name() {                      \
+  static void register_factory_##name() {               \
     FactoryMap &map = global_factory_map_cpp()[#clazz]; \
     if (map.find(#name) == map.end()) {                 \
       map[#name] = new ObjectFactory##name();           \

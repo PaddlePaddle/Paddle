@@ -52,11 +52,19 @@ template <typename T, typename Context, typename Reducer>
 void ScanKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 int axis,
-                bool flatten,
+                bool flatten UNUSED,
                 bool exclusive,
                 bool reverse,
                 Reducer reducer,
                 DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
+
+  if (x.numel() == 1) {
+    auto raw_dims = out->dims();
+    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    out->Resize(raw_dims);
+    return;
+  }
   auto out_dims = out->dims();
 
   PADDLE_ENFORCE_EQ(
@@ -72,16 +80,14 @@ void ScanKernel(const Context& dev_ctx,
     axis += out_dims.size();
   }
 
-  dev_ctx.template Alloc<T>(out);
-
   int pre = 1;
   int post = 1;
-  int mid = out_dims[axis];
+  int mid = static_cast<int>(out_dims[axis]);
   for (int i = 0; i < axis; ++i) {
-    pre *= out_dims[i];
+    pre *= static_cast<int>(out_dims[i]);
   }
   for (int i = axis + 1; i < out_dims.size(); ++i) {
-    post *= out_dims[i];
+    post *= static_cast<int>(out_dims[i]);
   }
 
   auto x0 = EigenVector<T>::Flatten(x);
@@ -135,7 +141,7 @@ void ScanKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void CumsumKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  int axis,
+                  const Scalar& axis,
                   bool flatten,
                   bool exclusive,
                   bool reverse,
@@ -143,7 +149,7 @@ void CumsumKernel(const Context& dev_ctx,
   using Reducer = Eigen::internal::SumReducer<T>;
   auto reducer = Reducer();
   ScanKernel<T, Context, Reducer>(
-      dev_ctx, x, axis, flatten, exclusive, reverse, reducer, out);
+      dev_ctx, x, axis.to<int>(), flatten, exclusive, reverse, reducer, out);
 }
 
 template <typename T>

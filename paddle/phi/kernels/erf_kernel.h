@@ -18,6 +18,19 @@ limitations under the License. */
 
 namespace phi {
 
+/**
+ * @brief Erf Kernel.
+ *        The equation is:
+ *        $$
+ *        f(x) = \frac{2}{\sqrt{\pi}} \int_{0}^{x}e^{- \eta^{2}}d\eta
+ *        $$
+ *
+ *        The input `x` can carry the LoD (Level of Details) information,
+ *        or not. And the output shares the LoD information with input `x`.
+ * @param  ctx   device context
+ * @param  x     The input tensor of erf kernel
+ * @param  out   The output tensor of erf kernel
+ */
 template <typename T, typename Context>
 void ErfKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out);
 

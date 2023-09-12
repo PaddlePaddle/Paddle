@@ -25,7 +25,8 @@
 #include <unordered_set>
 #include <vector>
 
-#include "gflags/gflags.h"
+#include "paddle/phi/core/macros.h"
+#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace distributed {
@@ -65,7 +66,7 @@ struct PSHost {
     s << "host: " << ip;
     s << " port: " << port;
     s << " rank: " << rank;
-    s << " uint: " << SerializeToUint64();
+    s << " uint64: " << SerializeToUint64();
     return s.str();
   }
 
@@ -86,8 +87,10 @@ struct PSHost {
     rank = std::stoi(endpoint_info[2]);
   }
 
-  void StringSplit(const std::string &str, char sep,
-                   std::vector<std::string> *pieces, bool ignore_null = true) {
+  void StringSplit(const std::string &str,
+                   char sep,
+                   std::vector<std::string> *pieces,
+                   bool ignore_null = true) {
     pieces->clear();
     if (str.empty()) {
       if (!ignore_null) {
@@ -113,32 +116,49 @@ class PSEnvironment {
   explicit PSEnvironment() {}  // NOLINT
   virtual ~PSEnvironment() {}
 
-  virtual int32_t SetPsServers(uint64_t *host_sign_list, int node_num) {
+  virtual int32_t SetPsServers(uint64_t *host_sign_list UNUSED,
+                               int node_num UNUSED) {
     return 0;
   }
   virtual int32_t SetPsServers(
-      const std::vector<std::string> *host_endpoint_list, int node_num) {
+      const std::vector<std::string> *host_endpoint_list UNUSED,
+      int node_num UNUSED) {
     return 0;
   }
 
-  virtual int32_t SetPsClients(uint64_t *host_sign_list, int node_num) {
+  virtual int32_t SetPsClients(uint64_t *host_sign_list UNUSED,
+                               int node_num UNUSED) {
     return 0;
   }
 
-  virtual int32_t SetPsClients(std::string *host_endpoint_list, int node_num) {
+  virtual int32_t SetPsClients(std::string *host_endpoint_list UNUSED,
+                               int node_num UNUSED) {
     return 0;
   }
+
   virtual uint64_t GetLocalHostSign() { return 0; }
   virtual std::vector<PSHost> GetPsServers() const { return _ps_server_list; }
-  virtual int32_t RegistePsServer(const std::string &ip, uint32_t port,
+  virtual int32_t RegistePsServer(const std::string &ip,
+                                  uint32_t port,
                                   int32_t rank) {
     return RegistePsHost(ip, port, rank, _ps_server_list, _ps_server_sign_set);
   }
 
   virtual std::vector<PSHost> GetPsClients() const { return _ps_client_list; }
-  virtual int32_t RegistePsClient(const std::string &ip, uint32_t port,
+  virtual int32_t RegistePsClient(const std::string &ip,
+                                  uint32_t port,
                                   int32_t rank) {
     return RegistePsHost(ip, port, rank, _ps_client_list, _ps_client_sign_set);
+  }
+
+  virtual std::vector<PSHost> GetCoordinators() const {
+    return _coordinator_list;
+  }
+  virtual int32_t RegisteCoordinatorClient(const std::string &ip,
+                                           uint32_t port,
+                                           int32_t rank) {
+    return RegistePsHost(
+        ip, port, rank, _coordinator_list, _coordinator_sign_set);
   }
 
   virtual std::vector<uint64_t> GetClientInfo() {
@@ -167,7 +187,9 @@ class PSEnvironment {
  protected:
   //注册一个host //  NOLINT
   virtual int32_t RegistePsHost(
-      const std::string &ip, uint32_t port, int32_t rank,
+      const std::string &ip,
+      uint32_t port,
+      int32_t rank,
       std::vector<PSHost> &host_list,            // NOLINT
       std::unordered_set<uint64_t> &sign_set) {  // NOLINT
     PSHost host;
@@ -190,6 +212,9 @@ class PSEnvironment {
 
   std::vector<PSHost> _ps_server_list;
   std::unordered_set<uint64_t> _ps_server_sign_set;  // for unique filter
+
+  std::vector<PSHost> _coordinator_list;
+  std::unordered_set<uint64_t> _coordinator_sign_set;
 };
 
 class PaddlePSEnvironment : public PSEnvironment {
@@ -209,7 +234,8 @@ class PaddlePSEnvironment : public PSEnvironment {
       }
     }
     std::sort(
-        _ps_server_list.begin(), _ps_server_list.end(),
+        _ps_server_list.begin(),
+        _ps_server_list.end(),
         [](const PSHost &h1, const PSHost &h2) { return h1.rank < h2.rank; });
     return 0;
   }
@@ -227,7 +253,8 @@ class PaddlePSEnvironment : public PSEnvironment {
       }
     }
     std::sort(
-        _ps_server_list.begin(), _ps_server_list.end(),
+        _ps_server_list.begin(),
+        _ps_server_list.end(),
         [](const PSHost &h1, const PSHost &h2) { return h1.rank < h2.rank; });
     return 0;
   }
@@ -244,7 +271,8 @@ class PaddlePSEnvironment : public PSEnvironment {
       }
     }
     std::sort(
-        _ps_client_list.begin(), _ps_client_list.end(),
+        _ps_client_list.begin(),
+        _ps_client_list.end(),
         [](const PSHost &h1, const PSHost &h2) { return h1.rank < h2.rank; });
     return 0;
   }
@@ -262,10 +290,27 @@ class PaddlePSEnvironment : public PSEnvironment {
       }
     }
     std::sort(
-        _ps_client_list.begin(), _ps_client_list.end(),
+        _ps_client_list.begin(),
+        _ps_client_list.end(),
         [](const PSHost &h1, const PSHost &h2) { return h1.rank < h2.rank; });
     VLOG(1) << "env.set_ps_clients done\n";
     return 0;
+  }
+
+  virtual void SetCoordinators(const std::vector<std::string> *host_sign_list,
+                               size_t node_num) {
+    _coordinator_list.clear();
+    _coordinator_sign_set.clear();
+    for (size_t i = 0; i < node_num; ++i) {
+      if (host_sign_list->at(i) != "") {
+        PSHost host;
+        host.ParseFromString(host_sign_list->at(i));
+        _coordinator_list.push_back(host);
+        _coordinator_sign_set.insert(host.rank);
+        VLOG(0) << "fl-ps > coordinator info in env: " << host.ToString();
+      }
+    }
+    return;
   }
 
   virtual uint64_t GetLocalHostSign() {

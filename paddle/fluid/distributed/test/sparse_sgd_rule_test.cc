@@ -18,7 +18,7 @@ limitations under the License. */
 #include <iostream>
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/ps.pb.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 
 namespace paddle {
 namespace distributed {
@@ -41,25 +41,33 @@ TEST(sparse_value_naive_sgd_test, init_and_update) {
   float grad[kItemSize];
   rule.InitValue(w, w + 9, true);
 
-  for (auto i = 0u; i < kItemSize; ++i) {
-    ASSERT_FLOAT_EQ(w[i], 0);
+  for (float item : w) {
+    ASSERT_FLOAT_EQ(item, 0);
   }
 
   // check init_value for random
   rule.InitValue(w, w + 9, false);
-  for (auto i = 0u; i < kItemSize; ++i) {
-    ASSERT_TRUE(w[i] >= rule.MinBound() && w[i] <= rule.MaxBound());
+  for (float item : w) {
+    ASSERT_TRUE(item >= rule.MinBound() && item <= rule.MaxBound());
   }
 
   // check update_value for one field
-  for (auto i = 0u; i < kItemSize; ++i) {
-    w[i] = 0;
+  for (auto& item : w) {
+    item = 0;
   }
   for (auto i = 0u; i < kItemSize; ++i) {
     grad[i] = (i + 1) * 1.0;
   }
-  float label[] = {-0.100000, -0.200000, -0.300000, -0.400000, -0.500000,
-                   -0.600000, -0.700000, -0.800000, -0.900000, -1.000000};
+  float label[] = {-0.100000,
+                   -0.200000,
+                   -0.300000,
+                   -0.400000,
+                   -0.500000,
+                   -0.600000,
+                   -0.700000,
+                   -0.800000,
+                   -0.900000,
+                   -1.000000};
   const float* ptr_grad = grad;
   rule.UpdateValue(w, w + 9, ptr_grad);
 
@@ -113,9 +121,17 @@ TEST(downpour_sparse_adagrad_test, test_init_and_update) {
 
   const float* ptr_grad = grad;
   rule.UpdateValue(w, w + 10, ptr_grad);
-  float label[] = {-0.100000, -0.200000, -0.300000, -0.400000,
-                   -0.500000, -0.600000, -0.700000, -0.800000,
-                   -0.900000, -1.000000, 38.500000};
+  float label[] = {-0.100000,
+                   -0.200000,
+                   -0.300000,
+                   -0.400000,
+                   -0.500000,
+                   -0.600000,
+                   -0.700000,
+                   -0.800000,
+                   -0.900000,
+                   -1.000000,
+                   38.500000};
   for (auto i = 0u; i < kValueSize; ++i) {
     ASSERT_FLOAT_EQ(w[i], label[i]);
   }

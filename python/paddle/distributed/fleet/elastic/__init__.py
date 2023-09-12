@@ -13,7 +13,8 @@
 # limitations under the License.
 
 import signal
-import os, sys
+import os
+import sys
 
 from .manager import ElasticManager
 from .manager import ElasticStatus
@@ -25,12 +26,12 @@ from paddle.distributed.fleet.launch_utils import DistributeMode
 
 
 def enable_elastic(args, distribute_mode):
-    #elastic_level = os.getenv('PADDLE_ELASTIC_FAULT_TOLERANC_LEVEL')
-    #if not elastic_level and (elastic_level != ElasticLevel.FAULT_TOLERANCE and
+    # elastic_level = os.getenv('PADDLE_ELASTIC_FAULT_TOLERANC_LEVEL')
+    # if not elastic_level and (elastic_level != ElasticLevel.FAULT_TOLERANCE and
     #                          elastic_level != ElasticLevel.ELASTIC):
     #    return False
 
-    #if distribute_mode != DistributeMode.COLLECTIVE:
+    # if distribute_mode != DistributeMode.COLLECTIVE:
     #    return False
 
     if not args.elastic_server and not os.getenv('PADDLE_ELASTIC_SERVER'):
@@ -46,10 +47,10 @@ def enable_elastic(args, distribute_mode):
 
 
 def launch_elastic(args, distribute_mode):
-
     server = args.elastic_server or os.getenv('PADDLE_ELASTIC_SERVER')
     srv, port = server.split(':')
     import etcd3
+
     etcd_client = etcd3.client(host=srv, port=port)
     elastic = ElasticManager(args, etcd_client)
 
@@ -58,7 +59,6 @@ def launch_elastic(args, distribute_mode):
     signal.signal(signal.SIGINT, elastic.signal_handler)
 
     while True:
-
         # wait for all nodes ready to run
         elastic.wait()
 

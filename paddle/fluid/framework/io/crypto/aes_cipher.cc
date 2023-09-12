@@ -44,7 +44,8 @@
 namespace paddle {
 namespace framework {
 
-void AESCipher::Init(const std::string& cipher_name, const int& iv_size,
+void AESCipher::Init(const std::string& cipher_name,
+                     const int& iv_size,
                      const int& tag_size) {
   aes_cipher_name_ = cipher_name;
   iv_size_ = iv_size;
@@ -66,15 +67,18 @@ std::string AESCipher::EncryptInternal(const std::string& plaintext,
   if (need_iv) {
     iv_ = CipherUtils::GenKey(iv_size_);
     m_cipher.get()->SetKeyWithIV(
-        key_char, key.size(),
-        reinterpret_cast<const unsigned char*>(&(iv_.at(0))), iv_.size());
+        key_char,
+        key.size(),
+        reinterpret_cast<const unsigned char*>(&(iv_.at(0))),
+        iv_.size());
   } else {
     m_cipher.get()->SetKey(key_char, key.size());
   }
 
   std::string ciphertext;
   m_filter->Attach(new CryptoPP::StringSink(ciphertext));
-  CryptoPP::StringSource(plaintext, true, new CryptoPP::Redirector(*m_filter));
+  CryptoPP::Redirector* filter_redirector = new CryptoPP::Redirector(*m_filter);
+  CryptoPP::StringSource(plaintext, true, filter_redirector);
   if (need_iv) {
     return iv_ + ciphertext;
   }
@@ -95,15 +99,18 @@ std::string AESCipher::DecryptInternal(const std::string& ciphertext,
     iv_ = ciphertext.substr(0, iv_size_ / 8);
     ciphertext_beg = iv_size_ / 8;
     m_cipher.get()->SetKeyWithIV(
-        key_char, key.size(),
-        reinterpret_cast<const unsigned char*>(&(iv_.at(0))), iv_.size());
+        key_char,
+        key.size(),
+        reinterpret_cast<const unsigned char*>(&(iv_.at(0))),
+        iv_.size());
   } else {
     m_cipher.get()->SetKey(key_char, key.size());
   }
   std::string plaintext;
   m_filter->Attach(new CryptoPP::StringSink(plaintext));
-  CryptoPP::StringSource(ciphertext.substr(ciphertext_beg), true,
-                         new CryptoPP::Redirector(*m_filter));
+  CryptoPP::Redirector* filter_redirector = new CryptoPP::Redirector(*m_filter);
+  CryptoPP::StringSource(
+      ciphertext.substr(ciphertext_beg), true, filter_redirector);
 
   return plaintext;
 }
@@ -119,15 +126,18 @@ std::string AESCipher::AuthenticatedEncryptInternal(
   if (need_iv) {
     iv_ = CipherUtils::GenKey(iv_size_);
     m_cipher.get()->SetKeyWithIV(
-        key_char, key.size(),
-        reinterpret_cast<const unsigned char*>(&(iv_.at(0))), iv_.size());
+        key_char,
+        key.size(),
+        reinterpret_cast<const unsigned char*>(&(iv_.at(0))),
+        iv_.size());
   } else {
     m_cipher.get()->SetKey(key_char, key.size());
   }
 
   std::string ciphertext;
   m_filter->Attach(new CryptoPP::StringSink(ciphertext));
-  CryptoPP::StringSource(plaintext, true, new CryptoPP::Redirector(*m_filter));
+  CryptoPP::Redirector* filter_redirector = new CryptoPP::Redirector(*m_filter);
+  CryptoPP::StringSource(plaintext, true, filter_redirector);
   if (need_iv) {
     ciphertext = iv_.append(ciphertext);
   }
@@ -148,58 +158,71 @@ std::string AESCipher::AuthenticatedDecryptInternal(
     iv_ = ciphertext.substr(0, iv_size_ / 8);
     ciphertext_beg = iv_size_ / 8;
     m_cipher.get()->SetKeyWithIV(
-        key_char, key.size(),
-        reinterpret_cast<const unsigned char*>(&(iv_.at(0))), iv_.size());
+        key_char,
+        key.size(),
+        reinterpret_cast<const unsigned char*>(&(iv_.at(0))),
+        iv_.size());
   } else {
     m_cipher.get()->SetKey(key_char, key.size());
   }
   std::string plaintext;
   m_filter->Attach(new CryptoPP::StringSink(plaintext));
-  CryptoPP::StringSource(ciphertext.substr(ciphertext_beg), true,
-                         new CryptoPP::Redirector(*m_filter));
+  CryptoPP::Redirector* filter_redirector = new CryptoPP::Redirector(*m_filter);
+  CryptoPP::StringSource(
+      ciphertext.substr(ciphertext_beg), true, filter_redirector);
   PADDLE_ENFORCE_EQ(
-      m_filter->GetLastResult(), true,
+      m_filter->GetLastResult(),
+      true,
       paddle::platform::errors::InvalidArgument("Integrity check failed. "
                                                 "Invalid ciphertext input."));
   return plaintext;
 }
 
 void AESCipher::BuildCipher(
-    bool for_encrypt, bool* need_iv,
+    bool for_encrypt,
+    bool* need_iv,
     CryptoPP::member_ptr<CryptoPP::SymmetricCipher>* m_cipher,
     CryptoPP::member_ptr<CryptoPP::StreamTransformationFilter>* m_filter) {
   if (aes_cipher_name_ == "AES_ECB_PKCSPadding" && for_encrypt) {
     m_cipher->reset(new CryptoPP::ECB_Mode<CryptoPP::AES>::Encryption);
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
-        *(*m_cipher).get(), NULL,
+        *(*m_cipher).get(),
+        nullptr,
         CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
   } else if (aes_cipher_name_ == "AES_ECB_PKCSPadding" && !for_encrypt) {
     m_cipher->reset(new CryptoPP::ECB_Mode<CryptoPP::AES>::Decryption);
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
-        *(*m_cipher).get(), NULL,
+        *(*m_cipher).get(),
+        nullptr,
         CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
   } else if (aes_cipher_name_ == "AES_CBC_PKCSPadding" && for_encrypt) {
     m_cipher->reset(new CryptoPP::CBC_Mode<CryptoPP::AES>::Encryption);
     *need_iv = true;
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
-        *(*m_cipher).get(), NULL,
+        *(*m_cipher).get(),
+        nullptr,
         CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
   } else if (aes_cipher_name_ == "AES_CBC_PKCSPadding" && !for_encrypt) {
     m_cipher->reset(new CryptoPP::CBC_Mode<CryptoPP::AES>::Decryption);
     *need_iv = true;
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
-        *(*m_cipher).get(), NULL,
+        *(*m_cipher).get(),
+        nullptr,
         CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
   } else if (aes_cipher_name_ == "AES_CTR_NoPadding" && for_encrypt) {
     m_cipher->reset(new CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption);
     *need_iv = true;
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
-        *(*m_cipher).get(), NULL, CryptoPP::BlockPaddingSchemeDef::NO_PADDING));
+        *(*m_cipher).get(),
+        nullptr,
+        CryptoPP::BlockPaddingSchemeDef::NO_PADDING));
   } else if (aes_cipher_name_ == "AES_CTR_NoPadding" && !for_encrypt) {
     m_cipher->reset(new CryptoPP::CTR_Mode<CryptoPP::AES>::Decryption);
     *need_iv = true;
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
-        *(*m_cipher).get(), NULL, CryptoPP::BlockPaddingSchemeDef::NO_PADDING));
+        *(*m_cipher).get(),
+        nullptr,
+        CryptoPP::BlockPaddingSchemeDef::NO_PADDING));
   } else {
     PADDLE_THROW(paddle::platform::errors::Unimplemented(
         "Create cipher error. "
@@ -216,7 +239,10 @@ void AESCipher::BuildAuthEncCipher(
     m_cipher->reset(new CryptoPP::GCM<CryptoPP::AES>::Encryption);
     *need_iv = true;
     m_filter->reset(new CryptoPP::AuthenticatedEncryptionFilter(
-        *(*m_cipher).get(), NULL, false, tag_size_ / 8,
+        *(*m_cipher).get(),
+        nullptr,
+        false,
+        tag_size_ / 8,
         CryptoPP::DEFAULT_CHANNEL,
         CryptoPP::BlockPaddingSchemeDef::NO_PADDING));
   } else {
@@ -235,8 +261,10 @@ void AESCipher::BuildAuthDecCipher(
     m_cipher->reset(new CryptoPP::GCM<CryptoPP::AES>::Decryption);
     *need_iv = true;
     m_filter->reset(new CryptoPP::AuthenticatedDecryptionFilter(
-        *(*m_cipher).get(), NULL,
-        CryptoPP::AuthenticatedDecryptionFilter::DEFAULT_FLAGS, tag_size_ / 8,
+        *(*m_cipher).get(),
+        nullptr,
+        CryptoPP::AuthenticatedDecryptionFilter::DEFAULT_FLAGS,
+        tag_size_ / 8,
         CryptoPP::BlockPaddingSchemeDef::NO_PADDING));
   } else {
     PADDLE_THROW(paddle::platform::errors::Unimplemented(
@@ -264,7 +292,7 @@ void AESCipher::EncryptToFile(const std::string& plaintext,
                               const std::string& filename) {
   std::ofstream fout(filename, std::ios::binary);
   std::string ciphertext = this->Encrypt(plaintext, key);
-  fout.write(ciphertext.data(), ciphertext.size());
+  fout.write(ciphertext.data(), ciphertext.size());  // NOLINT
   fout.close();
 }
 

@@ -56,6 +56,7 @@
 #include <vector>
 
 #include "glog/logging.h"
+#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace framework {
@@ -104,8 +105,8 @@ class EventCount {
       CheckState(state);
       uint64_t newstate = state + kWaiterInc;
       CheckState(newstate);
-      if (state_.compare_exchange_weak(state, newstate,
-                                       std::memory_order_seq_cst))
+      if (state_.compare_exchange_weak(
+              state, newstate, std::memory_order_seq_cst))
         return;
     }
   }
@@ -129,8 +130,8 @@ class EventCount {
                       std::memory_order_relaxed);
       }
       CheckState(newstate);
-      if (state_.compare_exchange_weak(state, newstate,
-                                       std::memory_order_acq_rel)) {
+      if (state_.compare_exchange_weak(
+              state, newstate, std::memory_order_acq_rel)) {
         if ((state & kSignalMask) == 0) {
           w->epoch += kEpochInc;
           Park(w);
@@ -154,8 +155,8 @@ class EventCount {
           ((state & kSignalMask) >> kSignalShift))
         newstate -= kSignalInc;
       CheckState(newstate);
-      if (state_.compare_exchange_weak(state, newstate,
-                                       std::memory_order_acq_rel))
+      if (state_.compare_exchange_weak(
+              state, newstate, std::memory_order_acq_rel))
         return;
     }
   }
@@ -186,8 +187,8 @@ class EventCount {
         newstate = (state & (kWaiterMask | kSignalMask)) | next;
       }
       CheckState(newstate);
-      if (state_.compare_exchange_weak(state, newstate,
-                                       std::memory_order_acq_rel)) {
+      if (state_.compare_exchange_weak(
+              state, newstate, std::memory_order_acq_rel)) {
         if (!notify_all && (signals < waiters))
           return;  // unblocked pre-wait thread
         if ((state & kStackMask) == kStackMask) return;
@@ -242,7 +243,7 @@ class EventCount {
   Waiter* waiters_{nullptr};
   size_t waiter_num_{0};
 
-  static void CheckState(uint64_t state, bool waiter = false) {
+  static void CheckState(uint64_t state, bool waiter UNUSED = false) {
     static_assert(kEpochBits >= 20, "not enough bits to prevent ABA problem");
     const uint64_t waiters = (state & kWaiterMask) >> kWaiterShift;
     const uint64_t signals = (state & kSignalMask) >> kSignalShift;

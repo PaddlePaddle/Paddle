@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/yolo_box_kernel.h"
+#include <array>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -37,13 +38,13 @@ void YoloBoxKernel(const Context& dev_ctx,
   auto* input = &x;
   auto* imgsize = &img_size;
   float scale = scale_x_y;
-  float bias = -0.5 * (scale - 1.);
+  float bias = -0.5f * (scale - 1.f);
 
-  const int n = input->dims()[0];
-  const int h = input->dims()[2];
-  const int w = input->dims()[3];
-  const int box_num = boxes->dims()[1];
-  const int an_num = anchors.size() / 2;
+  const int n = static_cast<int>(input->dims()[0]);
+  const int h = static_cast<int>(input->dims()[2]);
+  const int w = static_cast<int>(input->dims()[3]);
+  const int box_num = static_cast<int>(boxes->dims()[1]);
+  const int an_num = static_cast<int>(anchors.size() / 2);
   int input_size_h = downsample_ratio * h;
   int input_size_w = downsample_ratio * w;
 
@@ -51,19 +52,22 @@ void YoloBoxKernel(const Context& dev_ctx,
   const int an_stride = (class_num + 5) * stride;
 
   DenseTensor anchors_;
-  auto anchors_data =
-      anchors_.mutable_data<int>({an_num * 2}, dev_ctx.GetPlace());
+  anchors_.Resize({an_num * 2});
+  auto anchors_data = dev_ctx.template Alloc<int>(&anchors_);
   std::copy(anchors.begin(), anchors.end(), anchors_data);
 
   const T* input_data = input->data<T>();
   const int* imgsize_data = imgsize->data<int>();
-  T* boxes_data = boxes->mutable_data<T>({n, box_num, 4}, dev_ctx.GetPlace());
+  boxes->Resize({n, box_num, 4});
+  T* boxes_data = dev_ctx.template Alloc<T>(boxes);
   memset(boxes_data, 0, boxes->numel() * sizeof(T));
-  T* scores_data =
-      scores->mutable_data<T>({n, box_num, class_num}, dev_ctx.GetPlace());
+
+  scores->Resize({n, box_num, class_num});
+  T* scores_data = dev_ctx.template Alloc<T>(scores);
+
   memset(scores_data, 0, scores->numel() * sizeof(T));
 
-  T box[4];
+  std::array<T, 4> box;
   for (int i = 0; i < n; i++) {
     int img_height = imgsize_data[2 * i];
     int img_width = imgsize_data[2 * i + 1];
@@ -87,7 +91,7 @@ void YoloBoxKernel(const Context& dev_ctx,
 
           int box_idx = funcs::GetEntryIndex(
               i, j, k * w + l, an_num, an_stride, stride, 0, iou_aware);
-          funcs::GetYoloBox<T>(box,
+          funcs::GetYoloBox<T>(box.data(),
                                input_data,
                                anchors_data,
                                l,
@@ -104,8 +108,12 @@ void YoloBoxKernel(const Context& dev_ctx,
                                scale,
                                bias);
           box_idx = (i * box_num + j * stride + k * w + l) * 4;
-          funcs::CalcDetectionBox<T>(
-              boxes_data, box, box_idx, img_height, img_width, clip_bbox);
+          funcs::CalcDetectionBox<T>(boxes_data,
+                                     box.data(),
+                                     box_idx,
+                                     img_height,
+                                     img_width,
+                                     clip_bbox);
 
           int label_idx = funcs::GetEntryIndex(
               i, j, k * w + l, an_num, an_stride, stride, 5, iou_aware);

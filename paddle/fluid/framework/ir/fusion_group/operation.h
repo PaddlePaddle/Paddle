@@ -28,8 +28,12 @@ namespace fusion_group {
 
 struct Operation {
   Operation() = default;
-  Operation(int t, int n, std::string o, std::vector<std::string> e,
-            std::vector<std::string> i_n, std::vector<std::string> o_n)
+  Operation(int t,
+            int n,
+            std::string o,
+            std::vector<std::string> e,
+            std::vector<std::string> i_n,
+            std::vector<std::string> o_n)
       : type(t),
         num_operands(n),
         op_type(o),
@@ -72,9 +76,10 @@ class OperationMap {
 
   static OperationMap& Instance() {
     PADDLE_ENFORCE_NOT_NULL(
-        map, platform::errors::PreconditionNotMet(
-                 "Please initialize OperationMap first, by calling "
-                 "framework::fusion_group::OperationMap::Init()!"));
+        map,
+        platform::errors::PreconditionNotMet(
+            "Please initialize OperationMap first, by calling "
+            "framework::fusion_group::OperationMap::Init()!"));
     return *map;
   }
 
@@ -93,14 +98,18 @@ class OperationMap {
 
   Operation& Get(std::string op_type) {
     auto iter = operations_.find(op_type);
-    PADDLE_ENFORCE_NE(iter, operations_.end(),
+    PADDLE_ENFORCE_NE(iter,
+                      operations_.end(),
                       platform::errors::Unimplemented(
                           "Operation %s is not supported yet.", op_type));
     return iter->second;
   }
 
  private:
-  void Insert(int type, int num_operands, std::string op_type, std::string expr,
+  void Insert(int type,
+              int num_operands,
+              std::string op_type,
+              std::string expr,
               std::vector<std::string> grad_exprs,
               std::vector<std::string> input_names,
               std::vector<std::string> output_names);

@@ -25,7 +25,6 @@ void GatherGradKernel(const Context& dev_ctx,
                       const DenseTensor& index,
                       const DenseTensor& out_grad,
                       const Scalar& axis,
-                      bool overwrite,
                       DenseTensor* x_grad);
 
 }  // namespace phi

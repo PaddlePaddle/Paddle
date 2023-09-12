@@ -20,7 +20,9 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
+void SetOp(ProgramDesc* prog,
+           const std::string& type,
+           const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs,
            std::vector<float> scale_weights = {1.5f}) {
@@ -69,22 +71,33 @@ ProgramDesc BuildProgramDesc(bool convWithExistingBias,
   }
 
   if (convWithExistingBias) {
-    SetOp(&prog, "conv2d", "conv",
+    SetOp(&prog,
+          "conv2d",
+          "conv",
           std::vector<std::string>({"c", "weights", "conv_bias"}),
-          std::vector<std::string>({"f"}), scale_weights);
+          std::vector<std::string>({"f"}),
+          scale_weights);
   } else if (scale_weights.size() > 1) {
-    SetOp(&prog, "conv2d", "conv",
+    SetOp(&prog,
+          "conv2d",
+          "conv",
           std::vector<std::string>({"c", "weights", "conv_bias"}),
-          std::vector<std::string>({"f"}), scale_weights);
+          std::vector<std::string>({"f"}),
+          scale_weights);
   } else {
-    SetOp(&prog, "conv2d", "conv", std::vector<std::string>({"c", "weights"}),
+    SetOp(&prog,
+          "conv2d",
+          "conv",
+          std::vector<std::string>({"c", "weights"}),
           std::vector<std::string>({"f"}));
   }
 
   return prog;
 }
 
-void MainTest(bool convWithExistingBias, int removed_nodes_count, float scale,
+void MainTest(bool convWithExistingBias,
+              int removed_nodes_count,
+              float scale,
               std::vector<float> scale_weights = {1.5f}) {
   auto prog = BuildProgramDesc(convWithExistingBias, scale_weights);
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));

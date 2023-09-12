@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/detail/activation_functions.h"
 
 namespace phi {

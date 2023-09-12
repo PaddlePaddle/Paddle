@@ -18,6 +18,17 @@
 
 namespace phi {
 
+/**
+ * @brief Solves a linear system of equations with a positive semidefinite
+ *        matrix to be inverted given its Cholesky factor matrix uu
+ * @param  ctx     device context
+ * @param  x       The input tensor, shape of (*,m,k)
+ * @param  y       The input tensor, shape of (*,m,m) composed of upper or lower
+ *                 triangular Cholesky factor
+ * @param  upper   whether to consider the Cholesky factor as a lower or upper
+ *                 triangular matrix
+ * @param  out     The output tensor, shape same to x
+ */
 template <typename T, typename Context>
 void CholeskySolveKernel(const Context& dev_ctx,
                          const DenseTensor& x,

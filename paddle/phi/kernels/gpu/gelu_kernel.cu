@@ -25,7 +25,7 @@
 #include "paddle/phi/kernels/gpu/gelu_funcs.h"
 // clang-format on
 
-DECLARE_bool(use_fast_math);
+PD_DECLARE_bool(use_fast_math);
 
 namespace phi {
 
@@ -93,4 +93,5 @@ PD_REGISTER_KERNEL(gelu,
                    phi::GeluKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

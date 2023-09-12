@@ -110,11 +110,11 @@ void FeatureNode::recover_from_buffer(char* buffer) {
     memcpy(&feat_len, buffer, sizeof(int));
     buffer += sizeof(int);
 
-    char str[feat_len + 1];
+    char str[feat_len + 1];  // NOLINT
     memcpy(str, buffer, feat_len);
     buffer += feat_len;
     str[feat_len] = '\0';
-    feature.push_back(std::string(str));
+    feature.push_back(str);  // NOLINT
   }
 }
 }  // namespace distributed

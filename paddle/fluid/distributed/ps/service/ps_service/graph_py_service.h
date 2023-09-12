@@ -27,12 +27,12 @@
 
 #include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/service/env.h"
 #include "paddle/fluid/distributed/ps/service/graph_brpc_client.h"
 #include "paddle/fluid/distributed/ps/service/graph_brpc_server.h"
 #include "paddle/fluid/distributed/ps/service/ps_service/service.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -116,20 +116,25 @@ class GraphPyService {
     this->num_node_types = num_node_types;
   }
   int get_server_size(int server_size) { return server_size; }
-  std::vector<std::string> split(std::string& str, const char pattern);
-  void set_up(std::string ips_str, int shard_num,
+  std::vector<std::string> split(const std::string& str, const char pattern);
+  void set_up(std::string ips_str,
+              int shard_num,
               std::vector<std::string> node_types,
               std::vector<std::string> edge_types);
 
-  void add_table_feat_conf(std::string node_type, std::string feat_name,
-                           std::string feat_dtype, int32_t feat_shape);
+  void add_table_feat_conf(std::string node_type,
+                           std::string feat_name,
+                           std::string feat_dtype,
+                           int32_t feat_shape);
 };
 class GraphPyServer : public GraphPyService {
  public:
   GraphPyServer() {}
-  void set_up(std::string ips_str, int shard_num,
+  void set_up(std::string ips_str,
+              int shard_num,
               std::vector<std::string> node_types,
-              std::vector<std::string> edge_types, int rank) {
+              std::vector<std::string> edge_types,
+              int rank) {
     set_rank(rank);
     GraphPyService::set_up(ips_str, shard_num, node_types, edge_types);
   }
@@ -138,30 +143,33 @@ class GraphPyServer : public GraphPyService {
 
   void start_server(bool block = true);
   ::paddle::distributed::PSParameter GetServerProto();
-  std::shared_ptr<paddle::distributed::GraphBrpcServer> get_ps_server() {
+  std::shared_ptr<::paddle::distributed::GraphBrpcServer> get_ps_server() {
     return pserver_ptr;
   }
 
  protected:
   int rank;
-  std::shared_ptr<paddle::distributed::GraphBrpcServer> pserver_ptr;
+  std::shared_ptr<::paddle::distributed::GraphBrpcServer> pserver_ptr;
   std::thread* server_thread;
 };
 class GraphPyClient : public GraphPyService {
  public:
-  void set_up(std::string ips_str, int shard_num,
+  void set_up(std::string ips_str,
+              int shard_num,
               std::vector<std::string> node_types,
-              std::vector<std::string> edge_types, int client_id) {
+              std::vector<std::string> edge_types,
+              int client_id) {
     set_client_id(client_id);
     GraphPyService::set_up(ips_str, shard_num, node_types, edge_types);
   }
-  std::shared_ptr<paddle::distributed::GraphBrpcClient> get_ps_client() {
+  std::shared_ptr<::paddle::distributed::GraphBrpcClient> get_ps_client() {
     return worker_ptr;
   }
-  void bind_local_server(int local_channel_index, GraphPyServer& server) {
+  void bind_local_server(int local_channel_index,
+                         GraphPyServer& server) {  // NOLINT
     worker_ptr->set_local_channel(local_channel_index);
     worker_ptr->set_local_graph_service(
-        (paddle::distributed::GraphBrpcService*)server.get_ps_server()
+        (::paddle::distributed::GraphBrpcService*)server.get_ps_server()
             ->get_service());
   }
   void StopServer();
@@ -169,32 +177,39 @@ class GraphPyClient : public GraphPyService {
   void load_edge_file(std::string name, std::string filepath, bool reverse);
   void load_node_file(std::string name, std::string filepath);
   void clear_nodes(std::string name);
-  void add_graph_node(std::string name, std::vector<int64_t>& node_ids,
-                      std::vector<bool>& weight_list);
-  void remove_graph_node(std::string name, std::vector<int64_t>& node_ids);
+  void add_graph_node(std::string name,
+                      std::vector<int64_t>& node_ids,   // NOLINT
+                      std::vector<bool>& weight_list);  // NOLINT
+  void remove_graph_node(std::string name,
+                         std::vector<int64_t>& node_ids);  // NOLINT
   int get_client_id() { return client_id; }
   void set_client_id(int client_id) { this->client_id = client_id; }
   void start_client();
   std::pair<std::vector<std::vector<int64_t>>, std::vector<float>>
-  batch_sample_neighbors(std::string name, std::vector<int64_t> node_ids,
-                         int sample_size, bool return_weight,
+  batch_sample_neighbors(std::string name,
+                         std::vector<int64_t> node_ids,
+                         int sample_size,
+                         bool return_weight,
                          bool return_edges);
-  std::vector<int64_t> random_sample_nodes(std::string name, int server_index,
+  std::vector<int64_t> random_sample_nodes(std::string name,
+                                           int server_index,
                                            int sample_size);
   std::vector<std::vector<std::string>> get_node_feat(
-      std::string name, std::vector<int64_t> node_ids,
+      std::string name,
+      std::vector<int64_t> node_ids,
       std::vector<std::string> feature_names);
-  void set_node_feat(std::string node_type, std::vector<int64_t> node_ids,
+  void set_node_feat(std::string node_type,
+                     std::vector<int64_t> node_ids,
                      std::vector<std::string> feature_names,
                      const std::vector<std::vector<std::string>> features);
-  std::vector<FeatureNode> pull_graph_list(std::string name, int server_index,
-                                           int start, int size, int step = 1);
+  std::vector<FeatureNode> pull_graph_list(
+      std::string name, int server_index, int start, int size, int step = 1);
   ::paddle::distributed::PSParameter GetWorkerProto();
 
  protected:
   mutable std::mutex mutex_;
   int client_id;
-  std::shared_ptr<paddle::distributed::GraphBrpcClient> worker_ptr;
+  std::shared_ptr<::paddle::distributed::GraphBrpcClient> worker_ptr;
   std::thread* client_thread;
   bool stoped_ = false;
 };

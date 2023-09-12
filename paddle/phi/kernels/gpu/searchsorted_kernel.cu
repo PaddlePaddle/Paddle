@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/searchsorted_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/searchsorted_kernel_impl.h"
-#include "paddle/phi/kernels/searchsorted_kernel.h"
 
 PD_REGISTER_KERNEL(searchsorted,
                    GPU,
@@ -24,4 +25,6 @@ PD_REGISTER_KERNEL(searchsorted,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}

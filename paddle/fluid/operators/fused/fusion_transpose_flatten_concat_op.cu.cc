@@ -24,13 +24,14 @@ namespace operators {
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto ins = ctx.MultiInput<framework::Tensor>("X");
-    auto* out = ctx.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(ctx.GetPlace());
+    auto ins = ctx.MultiInput<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
+    dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
     auto odims = out->dims();
 
     std::vector<int> trans_axis = ctx.Attr<std::vector<int>>("trans_axis");
@@ -52,14 +53,13 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
         platform::dynload::cudnnCreateTensorDescriptor(&out_desc));
     cudnnDataType_t cudnn_dtype = CudnnDataType<T>::type;
 
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
 
     T* odata = out->data<T>();
-    for (size_t k = 0; k < ins.size(); ++k) {
-      auto perm_shape = GetPermuteShape(trans_axis, ins[k]->dims());
+    for (auto& item : ins) {
+      auto perm_shape = GetPermuteShape(trans_axis, item->dims());
       int osize = 1;
-      auto idims = ins[k]->dims();
+      auto idims = item->dims();
       for (int i = 0; i < rank; i++) {
         stride_x[i] = 1;
         for (int j = trans_axis[i] + 1; j < rank; j++) {
@@ -94,9 +94,13 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
           out_desc, cudnn_dtype, max_dim, dims_y.data(), stride_y.data()));
 
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnTransformTensor(
-          handle, CudnnDataType<T>::kOne(), in_desc,
-          static_cast<const void*>(ins[k]->data<T>()),
-          CudnnDataType<T>::kZero(), out_desc, static_cast<void*>(odata)));
+          handle,
+          CudnnDataType<T>::kOne(),
+          in_desc,
+          static_cast<const void*>(item->data<T>()),
+          CudnnDataType<T>::kZero(),
+          out_desc,
+          static_cast<void*>(odata)));
       if (concat_axis == 0) {
         odata += osize;
       } else {
@@ -115,6 +119,10 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(fusion_transpose_flatten_concat,
-                        ops::TransposeFlattenConcatFusionKernel<float>,
-                        ops::TransposeFlattenConcatFusionKernel<double>);
+
+PD_REGISTER_STRUCT_KERNEL(fusion_transpose_flatten_concat,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::TransposeFlattenConcatFusionKernel,
+                          float,
+                          double) {}

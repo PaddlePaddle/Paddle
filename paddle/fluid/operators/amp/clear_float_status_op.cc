@@ -26,16 +26,17 @@ class ClearFloatStatusOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasOutput("FloatStatusOut"), "Output", "FloatStatusOut",
+    OP_INOUT_CHECK(ctx->HasOutput("FloatStatusOut"),
+                   "Output",
+                   "FloatStatusOut",
                    "clear_float_status");
     ctx->SetOutputDim("FloatStatusOut", ctx->GetInputDim("FloatStatus"));
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.GetPlace());
+    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
   }
 };
 
@@ -53,7 +54,7 @@ class ClearFloatStatusMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class ClearFloatStatusKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -66,12 +67,13 @@ class ClearFloatStatusKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(
-    clear_float_status, ops::ClearFloatStatusOp, ops::ClearFloatStatusMaker,
+    clear_float_status,
+    ops::ClearFloatStatusOp,
+    ops::ClearFloatStatusMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(clear_float_status,
-                       ops::ClearFloatStatusKernel<CPU, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    clear_float_status, CPU, ALL_LAYOUT, ops::ClearFloatStatusKernel, float) {}

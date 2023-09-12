@@ -16,7 +16,8 @@
 
 namespace phi {
 
-KernelSignature MulGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature MulGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("matmul_with_flatten_grad",
                          {"X", "Y", "Out@GRAD"},
                          {"x_num_col_dims", "y_num_col_dims"},
@@ -24,7 +25,7 @@ KernelSignature MulGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature MulDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("matmul_with_flatten_double_grad",
                          {"X", "Y", "DOut", "DDX", "DDY"},
                          {"x_num_col_dims", "y_num_col_dims"},

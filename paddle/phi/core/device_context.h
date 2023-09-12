@@ -20,7 +20,9 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/distributed/comm_context.h"
 #include "paddle/phi/core/generator.h"
+#include "paddle/phi/core/utils/type_registry.h"
 
 namespace phi {
 class TensorBase;
@@ -32,8 +34,6 @@ class TensorBase;
  * DeviceContext.
  */
 class PADDLE_API DeviceContext {
-  using DataType = paddle::experimental::DataType;
-
  public:
   /**
    * @brief Default construct.
@@ -48,12 +48,12 @@ class PADDLE_API DeviceContext {
   /**
    * @brief Move construct.
    */
-  DeviceContext(DeviceContext&&);
+  DeviceContext(DeviceContext&&) noexcept;
 
   /**
    * @brief Move assign operator.
    */
-  DeviceContext& operator=(DeviceContext&&);
+  DeviceContext& operator=(DeviceContext&&) noexcept;
 
   /**
    * @brief Default destruct.
@@ -82,6 +82,13 @@ class PADDLE_API DeviceContext {
   void SetZeroAllocator(const Allocator*);
 
   /**
+   * @brief Set the zero-size host Allocator object.
+   *
+   * @param allocator
+   */
+  void SetHostZeroAllocator(const Allocator*);
+
+  /**
    * @brief Set the zero-size Allocator object.
    *
    * @param allocator
@@ -104,15 +111,45 @@ class PADDLE_API DeviceContext {
 
   const Allocator& GetZeroAllocator() const;
 
+  const Allocator& GetHostZeroAllocator() const;
+
   const Allocator& GetPinnedAllocator() const;
+
+#ifdef PADDLE_WITH_CUDA
+  /**
+   * @brief Set the CUDA graph Allocator object.
+   *
+   * @param allocator
+   */
+  void SetCUDAGraphAllocator(const Allocator*);
+
+  /**
+   * @brief Get the const CUDA graph Allocator object.
+   *
+   * @return Allocator
+   */
+  const Allocator& GetCUDAGraphAllocator() const;
+
+  /**
+   * @brief Test whether the CUDA graph allocator is valid
+   *
+   * This method should be called before calling GetCUDAGraphAllocator().
+   * Other unit can calls GetCUDAGraphAllocator() method,
+   * only when this method returns True!
+   *
+   * @return true if cuda_graph_allocator_ is valid, false otherwise
+   */
+  bool IsCUDAGraphAllocatorValid() const;
+#endif
 
   /**
    * @brief Allocate device memory for tensor.
    */
-  void* Alloc(TensorBase*,
-              DataType dtype,
-              size_t requested_size = 0,
-              bool pinned = false) const;
+  virtual void* Alloc(TensorBase*,
+                      DataType dtype,
+                      size_t requested_size = 0,
+                      bool pinned = false,
+                      bool fake_alloc = false) const;
 
   template <typename T>
   T* Alloc(TensorBase* tensor,
@@ -124,12 +161,14 @@ class PADDLE_API DeviceContext {
    */
   void* HostAlloc(TensorBase* tensor,
                   DataType dtype,
-                  size_t requested_size = 0) const;
+                  size_t requested_size = 0,
+                  bool fake_alloc = false) const;
 
   template <typename T>
   T* HostAlloc(TensorBase* tensor, size_t requested_size = 0) const;
 
   virtual const Place& GetPlace() const = 0;
+
   // TODO(wilber): The fluid framework uses wait() in many places, how to delete
   // this API interface.
   virtual void Wait() const {}
@@ -160,9 +199,35 @@ class PADDLE_API DeviceContext {
    */
   Generator* GetHostGenerator() const;
 
+  /**
+   * @brief Return the type information of the derived class to support
+   *        safely downcast in non-rtti environment.
+   *
+   * @return The type information of the derived class.
+   */
+  TypeInfo<DeviceContext> type_info() const { return type_info_; }
+
+  /**
+   * @brief Set the comm context point.
+   *
+   * @param CommContext
+   */
+  void SetCommContext(distributed::CommContext* comm_context);
+
+  /**
+   * @brief Get the comm context point.
+   *
+   * @return comm context point
+   */
+  distributed::CommContext* GetCommContext() const;
+
  private:
   struct Impl;
   std::unique_ptr<Impl> impl_;
+
+  template <typename T, typename U>
+  friend class TypeInfoTraits;
+  TypeInfo<DeviceContext> type_info_{TypeInfo<DeviceContext>::kUnknownType};
 };
 
 }  // namespace phi

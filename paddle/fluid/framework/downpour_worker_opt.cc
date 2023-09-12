@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/device_worker.h"
+#include "paddle/fluid/operators/isfinite_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 
 namespace paddle {
@@ -167,14 +168,14 @@ void DownpourWorkerOpt::Initialize(const TrainerDesc& desc) {
     uint64_t dest_table = copy_table_config_.dest_sparse_tables(i);
     VLOG(3) << "copy_sparse_tables_ push back " << src_table << "->"
             << dest_table;
-    copy_sparse_tables_.push_back(std::make_pair(src_table, dest_table));
+    copy_sparse_tables_.emplace_back(src_table, dest_table);
   }
   for (int i = 0; i < copy_table_config_.src_dense_tables_size(); ++i) {
     uint64_t src_table = copy_table_config_.src_dense_tables(i);
     uint64_t dest_table = copy_table_config_.dest_dense_tables(i);
     VLOG(3) << "copy_dense_tables_ push back " << src_table << "->"
             << dest_table;
-    copy_dense_tables_.push_back(std::make_pair(src_table, dest_table));
+    copy_dense_tables_.emplace_back(src_table, dest_table);
   }
   for (auto& m : copy_table_config_.table_denpendency_map()) {
     if (sparse_key_names_.find(m.key()) != sparse_key_names_.end()) {
@@ -196,7 +197,7 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
   auto& block = program.Block(0);
   std::vector<OpDesc*> ops = block.AllOps();
   // check if Independent between losses if not skip for now
-  int loss_num = loss_names_.size();
+  int loss_num = static_cast<int>(loss_names_.size());
   std::unordered_map<std::string, std::unordered_set<std::string>>
       loss_input_map;
   std::unordered_map<std::string, std::unordered_set<std::string>>
@@ -235,8 +236,7 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
   }
 
   for (int i = 0; i < loss_num; i++) {
-    for (auto op_iter = ops.begin(); op_iter != ops.end(); ++op_iter) {
-      auto& op_desc = *op_iter;
+    for (auto& op_desc : ops) {
       if (HasOutput(*op_desc, loss_grad_names[i]) ||
           HasDependentInput(*op_desc, loss_output_grad_map[loss_names_[i]])) {
         AppendInputVar(*op_desc, &loss_input_grad_map[loss_names_[i]]);
@@ -246,8 +246,7 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
   }
 
   for (int i = 0; i < loss_num; i++) {
-    for (auto op_iter = ops.begin(); op_iter != ops.end(); ++op_iter) {
-      auto& op_desc = *op_iter;
+    for (auto& op_desc : ops) {
       if ((HasDependentInput(*op_desc, loss_output_map[loss_names_[i]]) &&
            OnlyHasDependentInput(*op_desc, loss_output_map[loss_names_[i]]) &&
            NotHasDependentOutput(*op_desc, loss_input_map[loss_names_[i]])) ||
@@ -279,8 +278,7 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
   loss_ops_.resize(loss_num);
   std::string async_wait_flag = "async_wait_flag";
   for (int i = 0; i < loss_num; i++) {
-    for (auto op_iter = ops.begin(); op_iter != ops.end(); ++op_iter) {
-      auto& op_desc = *op_iter;
+    for (auto& op_desc : ops) {
       if ((op_desc->Type() == "fill_constant" &&
            HasDependentOutput(*op_desc,
                               loss_output_grad_map[loss_names_[i]])) ||
@@ -328,8 +326,8 @@ void DownpourWorkerOpt::TrainFiles() {
   while ((cur_batch = device_reader_->Next()) > 0) {
     if (copy_table_config_.need_copy()) {
       if (copy_table_config_.sparse_copy_by_feasign()) {
-        for (size_t i = 0; i < copy_sparse_tables_.size(); ++i) {
-          uint64_t tid = copy_sparse_tables_[i].first;
+        for (auto& copy_sparse_table : copy_sparse_tables_) {
+          uint64_t tid = copy_sparse_table.first;
           feasign_set_[tid].insert(sparse_push_keys_[tid].begin(),
                                    sparse_push_keys_[tid].end());
         }
@@ -353,20 +351,31 @@ void DownpourWorkerOpt::TrainFiles() {
         }
       }
       if (table.is_local()) {
-        fleet_ptr_->PullSparseVarsFromLocal(
-            *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
-            &feature_values_[tid], table.fea_dim());
+        fleet_ptr_->PullSparseVarsFromLocal(*thread_scope_,
+                                            tid,
+                                            sparse_key_names_[tid],
+                                            &features_[tid],
+                                            &feature_values_[tid],
+                                            table.fea_dim());
         CollectLabelInfo(i);
         continue;
       } else if (table.is_async()) {
-        pull_async_status = fleet_ptr_->PullSparseVarsAsync(
-            *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
-            &feature_values_[tid], table.fea_dim());
+        pull_async_status =
+            fleet_ptr_->PullSparseVarsAsync(*thread_scope_,
+                                            tid,
+                                            sparse_key_names_[tid],
+                                            &features_[tid],
+                                            &feature_values_[tid],
+                                            table.fea_dim());
         continue;
       } else {
-        fleet_ptr_->PullSparseVarsSync(
-            *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
-            &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid]);
+        fleet_ptr_->PullSparseVarsSync(*thread_scope_,
+                                       tid,
+                                       sparse_key_names_[tid],
+                                       &features_[tid],
+                                       &feature_values_[tid],
+                                       table.fea_dim(),
+                                       sparse_value_names_[tid]);
       }
       CollectLabelInfo(i);
       FillSparseValue(i);
@@ -384,8 +393,8 @@ void DownpourWorkerOpt::TrainFiles() {
       int op_idx = 0;
       for (auto& op : loss_ops_[loss_idx]) {
         bool need_skip = false;
-        for (auto t = 0u; t < skip_ops_.size(); ++t) {
-          if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+        for (auto& skip_op : skip_ops_) {
+          if (op->Type().find(skip_op) != std::string::npos) {
             need_skip = true;
             break;
           }
@@ -421,17 +430,19 @@ void DownpourWorkerOpt::TrainFiles() {
       if (var == nullptr) {
         continue;
       }
-      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
       if (tensor == nullptr) {
         continue;
       }
       PADDLE_ENFORCE_EQ(
-          framework::TensorContainsInf(*tensor), false,
+          framework::TensorContainsInf(*tensor),
+          false,
           platform::errors::InvalidArgument("The target tensor %s contains Inf "
                                             "should check some layers output.",
                                             var_name));
       PADDLE_ENFORCE_EQ(
-          framework::TensorContainsNAN(*tensor), false,
+          framework::TensorContainsNAN(*tensor),
+          false,
           platform::errors::InvalidArgument("The target tensor %s contains Nan "
                                             "should check some layers output.",
                                             var_name));
@@ -452,10 +463,20 @@ void DownpourWorkerOpt::TrainFiles() {
         }
         bool scale_sparse_gradient_with_batch_size_ = true;
         fleet_ptr_->PushSparseVarsWithLabelAsync(
-            *thread_scope_, tid, features_[tid], feature_labels_[tid],
-            sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
-            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_, &sparse_push_keys_[tid], no_cvm_,
+            *thread_scope_,
+            tid,
+            features_[tid],
+            feature_labels_[tid],
+            sparse_key_names_[tid],
+            sparse_grad_names_[tid],
+            table.emb_dim(),
+            &feature_grads_[tid],
+            &push_sparse_status_,
+            cur_batch,
+            use_cvm_,
+            dump_slot_,
+            &sparse_push_keys_[tid],
+            no_cvm_,
             scale_sparse_gradient_with_batch_size_);
       }
     }
@@ -465,9 +486,12 @@ void DownpourWorkerOpt::TrainFiles() {
            ++i) {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_dense_table_id(i));
-        fleet_ptr_->PushDenseVarsAsync(
-            *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
-            scale_datanorm_, cur_batch);
+        fleet_ptr_->PushDenseVarsAsync(*thread_scope_,
+                                       tid,
+                                       dense_grad_names_[tid],
+                                       &push_sparse_status_,
+                                       scale_datanorm_,
+                                       cur_batch);
       }
       VLOG(3) << "push dense gradient done.";
 

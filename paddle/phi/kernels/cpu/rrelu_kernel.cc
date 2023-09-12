@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/rrelu_kernel.h"
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -32,7 +32,7 @@ void RReluKernel(const Context& dev_ctx,
   T* o_ptr = dev_ctx.template Alloc<T>(out);
   T* n_ptr = dev_ctx.template Alloc<T>(noise);
   T zero = static_cast<T>(0);
-  int numel = x.numel();
+  int numel = static_cast<int>(x.numel());
   int i = 0;
 
   if (is_test) {
@@ -50,7 +50,7 @@ void RReluKernel(const Context& dev_ctx,
     return;
   }
 
-  auto engine = paddle::framework::GetCPURandomEngine(0);
+  auto engine = dev_ctx.GetGenerator()->GetCPUEngine();
 
   std::uniform_real_distribution<float> dist(lower, upper);
 

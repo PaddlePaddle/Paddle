@@ -13,133 +13,212 @@
 // limitations under the License.
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 
-#include "paddle/fluid/framework/new_executor/interpretercore_util.h"
+#include "paddle/fluid/framework/new_executor/feed_fetch_utils.h"
+#include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
+#include "paddle/fluid/framework/new_executor/program_interpreter.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/flags.h"
+
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
+
+#include "paddle/fluid/ir_adaptor/translator/translate.h"
+#include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/pass/pass.h"
+#include "paddle/pir/pass/pass_manager.h"
+
+PHI_DECLARE_bool(enable_new_ir_in_executor);
+PHI_DECLARE_bool(enable_new_ir_api);
+PHI_DECLARE_bool(new_ir_apply_inplace_pass);
 
 namespace paddle {
 namespace framework {
 StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
-                                       const ProgramDesc& startup_prog,
-                                       const ProgramDesc& main_prog,
+                                       const interpreter::Plan& plan,
                                        Scope* scope)
-    : place_(place),
-      startup_prog_(startup_prog),
-      main_prog_(main_prog),
-      global_scope_(VariableScope(scope)) {
-  // NOTE(zhiqiu): it is needed to sync the variables in scope to
-  // variable_scope, since the some variable only exists in scope.
-  // For example, 'lod_tensor_blocking_queue_0' used in dataloader.
-  // These variables may be created in scope, and it is not existed as
-  // variable in program.
-  if (scope) {
-    const std::string blocking_queue_prefix = "lod_tensor_blocking_queue";
-    auto vars = scope->LocalVarNames();
-    for (const auto& name : vars) {
-      if (name.find(blocking_queue_prefix) != std::string::npos) {
-        if (!global_scope_.HasVar(name)) {
-          auto* v = scope->Var(name);
-          VLOG(4) << "Sync Variable from scope to variable scope: " << name;
-          global_scope_.AddVar(name, *v);
+    : place_(place), plan_(plan), scope_(scope) {
+  int64_t micro_batch_num = plan_.MicroBatchNum();
+  vec_force_events_to_wait_.resize(micro_batch_num);
+  for (int64_t i = 0; i < micro_batch_num; ++i) {
+    micro_batch_scopes_.emplace_back(&scope->NewScope());
+  }
+  std::stringstream ss;
+  ss << "Create " << micro_batch_num << " micro_batch_scopes for scope "
+     << scope_ << " : ";
+  for (Scope* scope : micro_batch_scopes_) {
+    ss << scope << ", ";
+  }
+  VLOG(6) << ss.str();
+
+  const auto& jobs = plan_.JobList();
+  for (const auto& job : jobs) {
+    const std::string& job_type = job->Type();
+    std::shared_ptr<ProgramDesc> program = nullptr;
+    std::shared_ptr<::pir::Program> ir_program = nullptr;
+    if (FLAGS_enable_new_ir_api) {
+      ir_program = plan_.IrProgram(job_type);
+    } else {
+      program = std::make_shared<ProgramDesc>(*(plan_.Program(job_type)));
+    }
+
+    int64_t micro_batch_id = job->MicroBatchId();
+    PADDLE_ENFORCE(
+        micro_batch_id >= 0 && micro_batch_id < micro_batch_num,
+        phi::errors::Unavailable("The micro batch id (%lld) out of bound, "
+                                 "which should be in the range of [0, %lld].",
+                                 micro_batch_id,
+                                 micro_batch_num));
+
+    if (micro_batch_num > 1 && !FLAGS_enable_new_ir_api) {
+      SetColAttrForFeedFetchOps(program, micro_batch_num, micro_batch_id);
+    }
+
+    interpreter::ExecutionConfig execution_config;
+    execution_config.create_local_scope = false;
+    execution_config.skip_gc_vars = job->SkipGcVars();
+
+    // TODO(phlrain) we only support cpu for now
+    if (FLAGS_enable_new_ir_in_executor) {
+      std::shared_ptr<::pir::Program> base_program = ir_program;
+      if (!FLAGS_enable_new_ir_api) {
+        VLOG(6) << "begin to translate" << std::endl;
+        base_program = paddle::TranslateLegacyProgramToProgram(*program);
+      }
+      auto block = base_program->block();
+      for (auto it = block->begin(); it != block->end(); ++it) {
+        if ((*it)->name() == "pd_op.fetch") {
+          size_t index = (*it)
+                             ->attributes()
+                             .at("col")
+                             .dyn_cast<pir::Int32Attribute>()
+                             .data();
+
+          if (fetch_var_names_.size() < index + 1) {
+            fetch_var_names_.resize(index + 1);
+          }
+
+          fetch_var_names_[index] = (*it)
+                                        ->attributes()
+                                        .at("name")
+                                        .dyn_cast<pir::StrAttribute>()
+                                        .AsString() +
+                                    "@fetch";
         }
+      }
+      auto kernel_program =
+          paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
+
+      if (FLAGS_new_ir_apply_inplace_pass) {
+        pir::PassManager pm(pir::IrContext::Instance(), 3);
+        pm.AddPass(pir::CreateInplacePass());
+        pm.Run(kernel_program.get());
+      }
+
+      interpretercores_.emplace_back(
+          std::make_shared<InterpreterCore>(place_,
+                                            fetch_var_names_,
+                                            std::move(kernel_program),
+                                            scope_,
+                                            execution_config));
+    } else {
+      interpretercores_.emplace_back(
+          std::make_shared<InterpreterCore>(place_,
+                                            program->Block(0),
+                                            micro_batch_scopes_[micro_batch_id],
+                                            execution_config));
+      interpretercores_.back()->SetCopyProgram(program);
+
+      // Note(lizhiyu): Add mannual event info
+      auto prog_inter = const_cast<ProgramInterpreter*>(
+          static_cast<const ProgramInterpreter*>(
+              interpretercores_.back()->Impl()));
+      prog_inter->SetForceEventsToWaitInfo(
+          &(vec_force_events_to_wait_[micro_batch_id]));
+
+      // NOTE(lizhiyu): Now we only check backward subprogram. After static
+      // build strategy is completely, we should
+      //                check all the program in the PP strategy.
+      if (job_type == "backward" && jobs.size() > 1) {
+        PADDLE_ENFORCE_EQ(static_cast<const ProgramInterpreter*>(
+                              interpretercores_.back()->Impl())
+                              ->IsStaticBuild(),
+                          true,
+                          phi::errors::InvalidArgument(
+                              "When using pipeline strategy in auto "
+                              "prarallelism with new executor, "
+                              "the backward subprogram must be builded in real "
+                              "static build mode, but it can not "
+                              "be staticly builded in this case. You can "
+                              "enable 'GLOG_v=1' to obtain log information."));
       }
     }
   }
-
-  // NOTE(zhiqiu): for startup_program, initialize scope and run once
-  // if startup_program is empty, the scope is initialize during first run
-  if (startup_prog.Block(0).AllOps().size() > 0) {
-    VLOG(4) << "Run startup program";
-    // init scope
-    BuildVariableScope(startup_prog, &global_scope_);
-    std::vector<paddle::framework::OpFuncNode> vec_func_list;
-    // No need to use_local_scope for startup_program, its variables are
-    // persistable
-    paddle::framework::interpreter::build_op_func_list(
-        place_, startup_prog.Block(0), {}, &vec_func_list, &global_scope_,
-        false);
-  }
 }
 
 paddle::framework::FetchList StandaloneExecutor::Run(
-    const std::vector<std::string>& feed_names,
-    const std::vector<framework::LoDTensor>& feed_tensors,
-    const std::vector<std::string>& fetch_names) {
-  platform::RecordEvent record_event("StandaloneExecutor::run",
-                                     platform::TracerEventType::UserDefined, 1);
+    const std::vector<std::string>& feed_names) {
+  platform::RecordEvent record_event(
+      "StandaloneExecutor::run", platform::TracerEventType::UserDefined, 1);
 
-  auto core = GetInterpreterCore(feed_names, fetch_names, true);
+  const auto& jobs = plan_.JobList();
 
-  return core->Run(feed_names, feed_tensors);
-}
-
-paddle::framework::FetchList StandaloneExecutor::Run(
-    const std::vector<std::string>& feed_names,
-    const std::vector<std::string>& fetch_names) {
-  platform::RecordEvent record_event("StandaloneExecutor::run",
-                                     platform::TracerEventType::UserDefined, 1);
-
-  auto core = GetInterpreterCore(feed_names, fetch_names, false);
-  VLOG(4) << "StandaloneExecutor: " << this << ", InterpreterCore: " << core;
-  return core->Run(feed_names);
-}
-
-framework::interpreter::CostInfo StandaloneExecutor::DryRun(
-    const std::vector<std::string>& feed_names,
-    const std::vector<framework::LoDTensor>& feed_tensors) {
-  auto core = GetInterpreterCore(feed_names, {}, true);
-
-  return core->DryRun(feed_names, feed_tensors);
-}
-
-void StandaloneExecutor::BuildVariableScope(const framework::ProgramDesc& pdesc,
-                                            VariableScope* var_scope) {
-  auto& global_block = pdesc.Block(0);
-
-  for (auto& var : global_block.AllVars()) {
-    if (var->Name() == framework::kEmptyVarName) {
-      continue;
+  std::map<std::string, size_t> type_to_first_id;
+  if (!is_interpretercore_build_result_shared_) {
+    type_to_first_id[jobs[0]->Type()] = 0;
+    for (size_t job_idx = 1; job_idx < jobs.size(); ++job_idx) {
+      interpretercores_[job_idx]->ShareWorkQueueFrom(interpretercores_[0]);
+      // TODO(Ruibiao): Share other build result, e.g., kernel choosing, data
+      // transfer, op dependency, thread scheduling, GC, event analyzer, and so
+      // on.
+      if (type_to_first_id.count(jobs[job_idx]->Type()) == 0) {
+        type_to_first_id[jobs[job_idx]->Type()] = job_idx;
+      }
     }
-    if (!var_scope->HasVar(var->Name())) {
-      VLOG(4) << "Create variable from startup_prog: "
-              << var->Proto()->SerializeAsString();
-      var_scope->AddVar(var->Name(), var);
+    is_interpretercore_build_result_shared_ = true;
+  }
+
+  for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
+    const auto& job = jobs[job_idx];
+    const std::string& job_type = job->Type();
+    platform::RecordEvent record_event(
+        job_type + "-" + std::to_string(job->MicroBatchId()),
+        platform::TracerEventType::UserDefined,
+        1);
+
+    VLOG(6) << "Run job (" << job_idx << "), type = " << job_type
+            << ", micro_batch_id =" << job->MicroBatchId();
+
+    // Note(sonder): Share build results don't work for new IR now.
+    if (type_to_first_id.count(job_type) != 0 &&
+        !FLAGS_enable_new_ir_in_executor) {
+      interpretercores_[job_idx]->ShareBuildResultsFrom(
+          interpretercores_[type_to_first_id[job_type]]);
     }
-  }
-}
-
-std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
-    const std::vector<std::string>& feed_names,
-    const std::vector<std::string>& fetch_names, bool add_fetch_op) {
-  std::ostringstream oss;
-  oss << "feed:";
-  for (auto& feedname : feed_names) {
-    oss << feedname << ",";
-  }
-  oss << "fetch:";
-  for (auto& fetchname : fetch_names) {
-    oss << fetchname << ",";
-  }
-
-  auto iter = interpretercores_.find(oss.str());
-
-  if (iter == interpretercores_.end()) {
-    VLOG(3) << "create interpreter_core for " << oss.str() << " on place "
-            << place_;
-    VLOG(3) << "add fetch op: " << add_fetch_op;
-    std::shared_ptr<InterpreterCore> core = nullptr;
-
-    if (add_fetch_op) {
-      core = CreateInterpreterCore(place_, main_prog_, &global_scope_,
-                                   fetch_names);
+    // TODO(zhaoyinglia): use a more general method
+    if (jobs.size() > 1 && job_type != "forward") {
+      const std::vector<std::string> tmp_feed_names = {};
+      interpretercores_[job_idx]->Run(tmp_feed_names, /*need_fetch = */ false);
     } else {
-      core = std::make_shared<InterpreterCore>(
-          place_, main_prog_.Block(0), /*skip_gc_vars=*/std::set<std::string>(),
-          &global_scope_);
+      interpretercores_[job_idx]->Run(feed_names, /*need_fetch = */ false);
     }
-    interpretercores_.emplace(oss.str(), core);
-    return core;
+  }
+
+  // return Fetch Tensors
+  if (FLAGS_enable_new_ir_in_executor) {
+    framework::FetchList fetch_res;
+    for (auto& var_name : fetch_var_names_) {
+      auto* var = scope_->FindVar(var_name);
+      fetch_res.push_back(var->Get<phi::DenseTensor>());
+    }
+
+    return fetch_res;
   } else {
-    return iter->second;
+    auto* fetch_var = scope_->FindVar(interpreter::kFetchVarName);
+    if (fetch_var) {
+      return std::move(*fetch_var->GetMutable<framework::FetchList>());
+    } else {
+      return {};
+    }
   }
 }
 

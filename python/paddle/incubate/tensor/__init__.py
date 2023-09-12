@@ -16,5 +16,6 @@ from .math import segment_sum
 from .math import segment_mean
 from .math import segment_max
 from .math import segment_min
+from .manipulation import _npu_identity
 
 __all__ = []

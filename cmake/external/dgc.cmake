@@ -12,8 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if(WIN32)
+  message(SEND_ERROR "The current dgc support linux only")
+  return()
+endif()
+
 include(ExternalProject)
 
+set(DGC_DOWNLOAD_DIR ${PADDLE_SOURCE_DIR}/third_party/dgc/${CMAKE_SYSTEM_NAME})
 set(DGC_PREFIX_DIR "${THIRD_PARTY_PATH}/dgc")
 set(DGC_SOURCES_DIR "${THIRD_PARTY_PATH}/dgc/src/extern_dgc")
 set(DGC_INSTALL_DIR "${THIRD_PARTY_PATH}/install/dgc")
@@ -23,17 +29,49 @@ set(DGC_INCLUDE_DIR
 set(DGC_LIBRARIES
     "${DGC_INSTALL_DIR}/lib/libdgc.a"
     CACHE FILEPATH "dgc library." FORCE)
-set(DGC_URL "https://fleet.bj.bcebos.com/dgc/collective_f66ef73.tgz")
+set(DGC_URL "https://fleet.bj.bcebos.com/dgc/collective_7369ff.tgz")
 include_directories(${DGC_INCLUDE_DIR})
+set(DGC_CACHE_FILENAME "collective_7369ff.tgz")
+set(DGC_URL_MD5 ede459281a0f979da8d84f81287369ff)
+
+function(download_dgc)
+  message(
+    STATUS "Downloading ${DGC_URL} to ${DGC_DOWNLOAD_DIR}/${DGC_CACHE_FILENAME}"
+  )
+  # NOTE: If the version is updated, consider emptying the folder; maybe add timeout
+  file(
+    DOWNLOAD ${DGC_URL} ${DGC_DOWNLOAD_DIR}/${DGC_CACHE_FILENAME}
+    EXPECTED_MD5 ${DGC_URL_MD5}
+    STATUS ERR)
+  if(ERR EQUAL 0)
+    message(STATUS "Download ${DGC_CACHE_FILENAME} success")
+  else()
+    message(
+      FATAL_ERROR
+        "Download failed, error: ${ERR}\n You can try downloading ${DGC_CACHE_FILENAME} again"
+    )
+  endif()
+endfunction()
+
+if(EXISTS ${DGC_DOWNLOAD_DIR}/${DGC_CACHE_FILENAME})
+  file(MD5 ${DGC_DOWNLOAD_DIR}/${DGC_CACHE_FILENAME} DGC_MD5)
+  if(NOT DGC_MD5 STREQUAL DGC_URL_MD5)
+    download_dgc()
+  endif()
+else()
+  download_dgc()
+endif()
 
 ExternalProject_Add(
   extern_dgc
   ${EXTERNAL_PROJECT_LOG_ARGS}
-  URL ${DGC_URL}
-  URL_MD5 "94e6fa1bc97169d0e1aad44570fe3251"
+  URL ${DGC_DOWNLOAD_DIR}/${DGC_CACHE_FILENAME}
+  URL_MD5 ${DGC_URL_MD5}
   PREFIX "${DGC_PREFIX_DIR}"
   CONFIGURE_COMMAND ""
-  BUILD_COMMAND make -j $(nproc)
+  BUILD_COMMAND make -j${NPROC}
+  DOWNLOAD_DIR ${DGC_DOWNLOAD_DIR}
+  SOURCE_DIR ${DGC_SOURCES_DIR}
   INSTALL_COMMAND
     mkdir -p ${DGC_INSTALL_DIR}/lib/ ${DGC_INCLUDE_DIR}/dgc && cp
     ${DGC_SOURCES_DIR}/build/lib/libdgc.a ${DGC_LIBRARIES} && cp

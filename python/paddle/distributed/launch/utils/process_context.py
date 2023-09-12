@@ -12,20 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
+import os
+import signal
 import subprocess
-import os, sys, signal, time
+import sys
+import time
+
+LIMIT_LEN_ENVS = ["TRAINER_IP_PORT_LIST", "PADDLE_TRAINER_ENDPOINTS"]
 
 
-class ProcessContext(object):
-
-    def __init__(self,
-                 cmd,
-                 env=os.environ,
-                 out=sys.stdout,
-                 err=sys.stderr,
-                 group=True,
-                 preexec_fn=None,
-                 shell=False):
+class ProcessContext:
+    def __init__(
+        self,
+        cmd,
+        env=os.environ,
+        out=sys.stdout,
+        err=sys.stderr,
+        group=True,
+        preexec_fn=None,
+        shell=False,
+    ):
         self._cmd = cmd
         self._env = env
         self._preexec_fn = preexec_fn
@@ -38,12 +45,35 @@ class ProcessContext(object):
 
     def _start(self):
         pre_fn = os.setsid if self._group else None
-        self._proc = subprocess.Popen(self._cmd,
-                                      env=self._env,
-                                      stdout=self._stdout,
-                                      stderr=self._stderr,
-                                      preexec_fn=self._preexec_fn or pre_fn,
-                                      shell=self._shell)
+        log_dir = self._env["PADDLE_LOG_DIR"]
+        os.makedirs(log_dir, exist_ok=True)
+
+        rank = self._env.get("PADDLE_TRAINER_ID")
+        if rank is not None:
+            rank = int(rank)
+            backup_env_path = str(
+                os.path.join(log_dir, f'backup_env.{rank}.json')
+            )
+            envs = {"PADDLE_BACKUP_ENV_PATH": backup_env_path}
+
+            max_len = int(os.getenv('PADDLE_ENV_LIMIT_LEN', 48000))
+            for k, v in self._env.items():
+                if k not in LIMIT_LEN_ENVS or len(v) < max_len:
+                    envs[k] = v
+
+            with open(backup_env_path, 'w') as f:
+                json.dump(dict(self._env), f, indent=4, sort_keys=True)
+        else:
+            envs = self._env
+
+        self._proc = subprocess.Popen(
+            self._cmd,
+            env=envs,
+            stdout=self._stdout,
+            stderr=self._stderr,
+            preexec_fn=self._preexec_fn or pre_fn,
+            shell=self._shell,
+        )
 
     def _close_std(self):
         try:

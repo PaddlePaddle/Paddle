@@ -12,16 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/lgamma_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/lgamma_kernel.h"
 
 namespace phi {
 template <typename T>
 struct CudaLgammaFunctor {
   __device__ __forceinline__ T operator()(const T x) const {
-    return Eigen::numext::lgamma(x);
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    const MT mp_x = static_cast<MT>(x);
+    return static_cast<T>(Eigen::numext::lgamma(mp_x));
   }
 };
 template <typename T, typename Context>
@@ -37,4 +41,11 @@ void LgammaKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(lgamma, GPU, ALL_LAYOUT, phi::LgammaKernel, float, double) {}
+PD_REGISTER_KERNEL(lgamma,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LgammaKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

@@ -31,15 +31,15 @@ inline void GetDims(const phi::DDim& dim,
                     bool asvector) {
   *pre = 1;
   *post = 1;
-  *n = dim[axis];
+  *n = static_cast<int>(dim[axis]);
   if (asvector) {
-    *n = product(dim);
+    *n = static_cast<int>(product(dim));
   } else {
     for (int i = 0; i < axis; ++i) {
-      (*pre) *= dim[i];
+      (*pre) *= static_cast<int>(dim[i]);
     }
     for (int i = axis + 1; i < dim.size(); ++i) {
-      (*post) *= dim[i];
+      (*post) *= static_cast<int>(dim[i]);
     }
   }
 }
@@ -49,8 +49,8 @@ void PNormKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  float porder,
                  int axis,
-                 float epsilon,
-                 bool keepdim,
+                 float epsilon UNUSED,
+                 bool keepdim UNUSED,
                  bool asvector,
                  DenseTensor* out) {
   auto* in_x = &x;
@@ -60,6 +60,13 @@ void PNormKernel(const Context& dev_ctx,
   if (axis < 0) axis = xdim.size() + axis;
   int pre, n, post;
   GetDims(xdim, axis, &pre, &n, &post, asvector);
+
+  for (int i = 0; i < xdim.size(); i++) {
+    PADDLE_ENFORCE_LT(0,
+                      xdim[i],
+                      errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
+  }
 
   auto* place = dev_ctx.eigen_device();
 

@@ -37,11 +37,12 @@ uint64_t Release(const platform::Place& place) {
 std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                         size_t size,
                                         const phi::Stream& stream) {
-  return allocation::AllocatorFacade::Instance().AllocShared(place, size,
-                                                             stream);
+  return allocation::AllocatorFacade::Instance().AllocShared(
+      place, size, stream);
 }
 
-AllocationPtr Alloc(const platform::CUDAPlace& place, size_t size,
+AllocationPtr Alloc(const platform::CUDAPlace& place,
+                    size_t size,
                     const phi::Stream& stream) {
   return allocation::AllocatorFacade::Instance().Alloc(place, size, stream);
 }
@@ -70,6 +71,14 @@ gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation) {
   return allocation::AllocatorFacade::Instance().GetStream(allocation);
 }
 
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+void RecordStream(std::shared_ptr<Allocation> allocation,
+                  phi::stream::stream_t stream) {
+  return allocation::AllocatorFacade::Instance().RecordStream(allocation,
+                                                              stream);
+}
 #endif
 }  // namespace memory
 }  // namespace paddle

@@ -36,7 +36,6 @@ class PingPongInterceptor : public Interceptor {
 
   void PingPong(const InterceptorMessage& msg) {
     if (msg.message_type() == STOP) {
-      stop_ = true;
       StopCarrier();
       return;
     }

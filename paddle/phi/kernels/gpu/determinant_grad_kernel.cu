@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/determinant_grad_kernel.h"
+
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/determinant_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(determinant_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::DeterminantGradKernel,
+                   phi::dtype::float16,
                    float,
                    double) {}

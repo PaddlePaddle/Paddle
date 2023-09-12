@@ -28,7 +28,8 @@ void DistModelDataBuf::Reset(void* data, size_t length) {
 
 void DistModelDataBuf::Free() {
   if (memory_owned_ && data_) {
-    PADDLE_ENFORCE_GT(length_, 0UL,
+    PADDLE_ENFORCE_GT(length_,
+                      0UL,
                       platform::errors::PreconditionNotMet(
                           "Error occurred when deconstruct DistModelDataBuf: "
                           "it contains no data!"));
@@ -55,6 +56,9 @@ void DistModelDataBuf::Resize(size_t length) {
 }
 
 DistModelDataBuf& DistModelDataBuf::operator=(const DistModelDataBuf& other) {
+  if (this == &other) {
+    return *this;
+  }
   if (!other.memory_owned_) {
     data_ = other.data_;
     length_ = other.length_;
@@ -74,7 +78,8 @@ DistModelDataBuf& DistModelDataBuf::operator=(const DistModelDataBuf& other) {
   return *this;
 }
 
-DistModelDataBuf& DistModelDataBuf::operator=(DistModelDataBuf&& other) {
+DistModelDataBuf& DistModelDataBuf::operator=(
+    DistModelDataBuf&& other) noexcept {
   data_ = other.data_;
   memory_owned_ = other.memory_owned_;
   length_ = other.length_;
@@ -84,7 +89,7 @@ DistModelDataBuf& DistModelDataBuf::operator=(DistModelDataBuf&& other) {
   return *this;
 }
 
-DistModelDataBuf::DistModelDataBuf(DistModelDataBuf&& other)
+DistModelDataBuf::DistModelDataBuf(DistModelDataBuf&& other) noexcept
     : data_(other.data_),
       length_(other.length_),
       memory_owned_(other.memory_owned_) {

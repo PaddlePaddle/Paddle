@@ -12,10 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/matmul_grad_kernel.h"
+
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/matmul_grad_kernel_impl.h"
-#include "paddle/phi/kernels/matmul_grad_kernel.h"
 
 PD_REGISTER_KERNEL(matmul_grad,
                    GPU,
@@ -54,6 +55,7 @@ PD_REGISTER_KERNEL(matmul_with_flatten_grad,
                    phi::MatmulWithFlattenGradKernel,
                    float,
                    double,
+                   phi::dtype::bfloat16,
                    phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(matmul_with_flatten_double_grad,
@@ -62,4 +64,5 @@ PD_REGISTER_KERNEL(matmul_with_flatten_double_grad,
                    phi::MatmulWithFlattenDoubleGradKernel,
                    float,
                    double,
+                   phi::dtype::bfloat16,
                    phi::dtype::float16) {}

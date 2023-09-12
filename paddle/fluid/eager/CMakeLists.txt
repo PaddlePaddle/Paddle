@@ -1,20 +1,20 @@
 set(eager_deps
-    phi_api
-    phi_dygraph_api
+    phi
     hook_utils
-    tensor_utils
     utils
     global_utils
     backward
-    phi_tensor
     tracer
     layer
     autograd_meta
     eager_nan_inf_utils
     grad_node_info
     grad_tensor_holder
-    accumulation_node
     custom_operator_node)
+
+if(NOT (NOT WITH_PYTHON AND ON_INFER))
+  set(eager_deps ${eager_deps} accumulation_node prim_utils)
+endif()
 
 set(fluid_deps
     tracer
@@ -33,39 +33,38 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
 endif()
 
 add_subdirectory(api)
-add_subdirectory(accumulation)
 add_subdirectory(custom_operator)
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+  add_subdirectory(accumulation)
   add_subdirectory(pylayer)
   cc_library(
     grad_tensor_holder
     SRCS grad_tensor_holder.cc
     DEPS grad_node_info gradient_accumulator)
-  add_dependencies(grad_tensor_holder eager_final_state_codegen)
+  add_dependencies(grad_tensor_holder eager_codegen)
   cc_library(
     backward
     SRCS backward.cc
-    DEPS grad_tensor_holder utils autograd_meta grad_node_info switch_autotune)
+    DEPS grad_tensor_holder utils autograd_meta grad_node_info phi)
 endif()
 
 cc_library(
   eager_nan_inf_utils
   SRCS nan_inf_utils.cc
-  DEPS phi_tensor nan_inf_utils enforce)
+  DEPS phi nan_inf_utils enforce)
 cc_library(
   grad_node_info
   SRCS grad_node_info.cc
-  DEPS phi_api phi_tensor)
+  DEPS phi)
 
 cc_library(
   autograd_meta
   SRCS autograd_meta.cc
-  DEPS phi_api phi_tensor)
+  DEPS phi)
 cc_library(
   utils
   SRCS utils.cc
-  DEPS phi_api
-       phi_tensor
+  DEPS phi
        global_utils
        layer
        proto_desc
@@ -73,10 +72,6 @@ cc_library(
        op_registry
        variable_helper
        memcpy
-       scale_op
+       generated_op
        autograd_meta
        hook_utils)
-
-if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
-  add_subdirectory(tests)
-endif()

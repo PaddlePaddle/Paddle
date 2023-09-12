@@ -25,12 +25,13 @@ struct ReverseFunctor {
   void operator()(const Context& dev_ctx,
                   const DenseTensor& in,
                   DenseTensor* out,
-                  const std::vector<int>& axis) {
+                  const IntArray& axis) {
+    auto& axis_data = axis.GetData();
     Eigen::DSizes<bool, Rank> reverse_axis;
     for (int i = 0; i < Rank; ++i) {
       reverse_axis[i] = false;
     }
-    for (int a : axis) {
+    for (int a : axis_data) {
       if (a >= 0) {
         reverse_axis[a] = true;
       } else {
@@ -50,7 +51,7 @@ struct ReverseFunctor {
 template <typename T, typename Context>
 void ReverseKernel(const Context& dev_ctx,
                    const DenseTensor& x,
-                   const std::vector<int>& axis,
+                   const IntArray& axis,
                    DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   int rank = x.dims().size();

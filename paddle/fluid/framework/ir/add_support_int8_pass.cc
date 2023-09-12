@@ -42,7 +42,7 @@ void AddSupportInt8Pass::ApplyImpl(ir::Graph* graph) const {
     // OP'Attr hasn't std::vector<std::pair< >>. To do: Support multi-tensor
     // scale for one input
     for (size_t i = 0; i < quanted_op_desc->InputNames().size(); i++) {
-      if (quanted_op_desc->Input(quanted_op_desc->InputNames()[i]).size() > 0 &&
+      if (!quanted_op_desc->Input(quanted_op_desc->InputNames()[i]).empty() &&
           quanted_op_desc->HasAttr(
               "Input_scale_" +
               quanted_op_desc->Input(quanted_op_desc->InputNames()[i])[0])) {
@@ -66,8 +66,8 @@ void AddSupportInt8Pass::ApplyImpl(ir::Graph* graph) const {
             if (out_op_node->Op()->HasAttr("Input_scale_" + input_name)) {
               for (size_t i = 0; i < quanted_op_desc->OutputNames().size();
                    i++) {
-                if (quanted_op_desc->Output(quanted_op_desc->OutputNames()[i])
-                            .size() > 0 &&
+                if (!quanted_op_desc->Output(quanted_op_desc->OutputNames()[i])
+                         .empty() &&
                     input_name == quanted_op_desc->Output(
                                       quanted_op_desc->OutputNames()[i])[0]) {
                   outscale_flag = true;

@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/reduce_all_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
-#include "paddle/phi/kernels/reduce_all_kernel.h"
 
 namespace phi {
 
@@ -25,7 +25,8 @@ void AllRawKernel(const Context& dev_ctx,
                   bool keep_dim,
                   bool reduce_all,
                   DenseTensor* out) {
-  auto out_dtype = x.dtype();
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  auto out_dtype = phi::DataType::BOOL;
   phi::Reduce<T, kps::LogicalAndFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 }
@@ -33,7 +34,19 @@ void AllRawKernel(const Context& dev_ctx,
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU_KP
-PD_REGISTER_KERNEL(all_raw, KPS, ALL_LAYOUT, phi::AllRawKernel, bool) {}
+PD_REGISTER_KERNEL(all_raw, KPS, ALL_LAYOUT, phi::AllRawKernel, bool) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
 #else
-PD_REGISTER_KERNEL(all_raw, KPS, ALL_LAYOUT, phi::AllRawKernel, bool) {}
+PD_REGISTER_KERNEL(all_raw,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::AllRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
 #endif

@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/strided_slice_grad_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/strided_slice_grad_kernel_impl.h"
-#include "paddle/phi/kernels/strided_slice_grad_kernel.h"
 
 PD_REGISTER_KERNEL(strided_slice_raw_grad,
                    GPU,
@@ -27,6 +28,8 @@ PD_REGISTER_KERNEL(strided_slice_raw_grad,
                    int64_t,
                    float,
                    double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
@@ -39,5 +42,7 @@ PD_REGISTER_KERNEL(strided_slice_array_grad,
                    int64_t,
                    float,
                    double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}

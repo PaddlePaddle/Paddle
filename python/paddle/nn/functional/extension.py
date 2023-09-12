@@ -15,26 +15,26 @@
 # TODO: define the extention functions
 
 import numpy as np
-from ...fluid.data_feeder import check_dtype
-from ...fluid.layer_helper import LayerHelper
-from ...static import Variable
+
+from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
+
+from ...base.data_feeder import (
+    check_dtype,
+    check_type,
+    check_variable_and_dtype,
+)
+from ...base.layer_helper import LayerHelper
+from ...common_ops_import import Variable
+from ...framework import convert_np_dtype_to_dtype_, core
 from ...tensor.creation import assign
-from ...fluid import dygraph_utils
-from ...tensor.layer_function_generator import templatedoc
-from paddle import in_dynamic_mode
-from paddle import _C_ops
-from ...fluid.framework import _non_static_mode, _in_legacy_dygraph, in_dygraph_mode
-from ...fluid.data_feeder import check_variable_and_dtype, check_type
-from ...framework import core
-from ...common_ops_import import convert_np_dtype_to_dtype_
 
 __all__ = []
 
 
 def diag_embed(input, offset=0, dim1=-2, dim2=-1):
     """
-    This OP creates a tensor whose diagonals of certain 2D planes (specified by dim1 and dim2) 
-    are filled by ``input``. By default, a 2D plane formed by the last two dimensions 
+    Creates a tensor whose diagonals of certain 2D planes (specified by dim1 and dim2)
+    are filled by ``input``. By default, a 2D plane formed by the last two dimensions
     of the returned tensor will be selected.
 
     The argument ``offset`` determines which diagonal is generated:
@@ -48,101 +48,105 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
         offset(int, optional): Which diagonal to consider. Default: 0 (main diagonal).
         dim1(int, optional): The first dimension with respect to which to take diagonal. Default: -2.
         dim2(int, optional): The second dimension with respect to which to take diagonal. Default: -1.
-    
+
     Returns:
         Tensor, the output data type is the same as input data type.
-    
+
     Examples:
         .. code-block:: python
 
-            import paddle.nn.functional as F
-            import numpy as np
-            
-            diag_embed = np.random.randn(2, 3).astype('float32')
-            # [[ 0.7545889 , -0.25074545,  0.5929117 ],
-            #  [-0.6097662 , -0.01753256,  0.619769  ]]
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            data1 = F.diag_embed(diag_embed)
-            data1.numpy()
-            # [[[ 0.7545889 ,  0.        ,  0.        ],
-            #  [ 0.        , -0.25074545,  0.        ],
-            #   [ 0.        ,  0.        ,  0.5929117 ]],
+            >>> diag_embed_input = paddle.arange(6)
 
-            # [[-0.6097662 ,  0.        ,  0.        ],
-            #  [ 0.        , -0.01753256,  0.        ],
-            #  [ 0.        ,  0.        ,  0.619769  ]]]
+            >>> diag_embed_output1 = F.diag_embed(diag_embed_input)
+            >>> print(diag_embed_output1)
+            Tensor(shape=[6, 6], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0, 0, 0, 0, 0],
+             [0, 1, 0, 0, 0, 0],
+             [0, 0, 2, 0, 0, 0],
+             [0, 0, 0, 3, 0, 0],
+             [0, 0, 0, 0, 4, 0],
+             [0, 0, 0, 0, 0, 5]])
 
-            data2 = F.diag_embed(diag_embed, offset=-1, dim1=0, dim2=2)
-            data2.numpy()
-            # [[[ 0.        ,  0.        ,  0.        ,  0.        ],
-            #   [ 0.7545889 ,  0.        ,  0.        ,  0.        ],
-            #   [ 0.        , -0.25074545,  0.        ,  0.        ],
-            #   [ 0.        ,  0.        ,  0.5929117 ,  0.        ]],
-            #
-            #  [[ 0.        ,  0.        ,  0.        ,  0.        ],
-            #   [-0.6097662 ,  0.        ,  0.        ,  0.        ],
-            #   [ 0.        , -0.01753256,  0.        ,  0.        ],
-            #   [ 0.        ,  0.        ,  0.619769  ,  0.        ]]]
+            >>> diag_embed_output2 = F.diag_embed(diag_embed_input, offset=-1, dim1=0,dim2=1 )
+            >>> print(diag_embed_output2)
+            Tensor(shape=[7, 7], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0],
+             [0, 1, 0, 0, 0, 0, 0],
+             [0, 0, 2, 0, 0, 0, 0],
+             [0, 0, 0, 3, 0, 0, 0],
+             [0, 0, 0, 0, 4, 0, 0],
+             [0, 0, 0, 0, 0, 5, 0]])
 
-            data3 = F.diag_embed(diag_embed, offset=1, dim1=0, dim2=2)
-            data3.numpy()
-            # [[[ 0.        ,  0.7545889 ,  0.        ,  0.        ],
-            #   [ 0.        , -0.6097662 ,  0.        ,  0.        ]],
-            #
-            #  [[ 0.        ,  0.        , -0.25074545,  0.        ],
-            #   [ 0.        ,  0.        , -0.01753256,  0.        ]],
-            #
-            #  [[ 0.        ,  0.        ,  0.        ,  0.5929117 ],
-            #   [ 0.        ,  0.        ,  0.        ,  0.619769  ]],
-            #
-            #  [[ 0.        ,  0.        ,  0.        ,  0.        ],
-            #   [ 0.        ,  0.        ,  0.        ,  0.        ]]]
+            >>> diag_embed_input_2dim = paddle.reshape(diag_embed_input,[2,3])
+            >>> print(diag_embed_input_2dim)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 1, 2],
+            [3, 4, 5]])
+            >>> diag_embed_output3 = F.diag_embed(diag_embed_input_2dim,offset= 0, dim1=0, dim2=2 )
+            >>> print(diag_embed_output3)
+            Tensor(shape=[3, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[0, 0, 0],
+              [3, 0, 0]],
+             [[0, 1, 0],
+              [0, 4, 0]],
+             [[0, 0, 2],
+              [0, 0, 5]]])
     """
-    inputs = {'Input': [input]}
-    attrs = {'offset': offset, 'dim1': dim1, 'dim2': dim2}
-
     if not isinstance(input, Variable):
         input = assign(input)
 
+    if in_dynamic_mode():
+        return _C_ops.diag_embed(input, offset, dim1, dim2)
+
+    inputs = {'Input': [input]}
+    attrs = {'offset': offset, 'dim1': dim1, 'dim2': dim2}
+
     def __check_input(input, offset, dim1, dim2):
-        check_dtype(input.dtype, 'Input',
-                    ['int32', 'int64', 'float16', 'float32', 'float64'],
-                    'diag_embed')
+        check_dtype(
+            input.dtype,
+            'Input',
+            ['int32', 'int64', 'float16', 'float32', 'float64'],
+            'diag_embed',
+        )
 
         input_shape = list(input.shape)
-        assert len(input_shape) >= 1,                     \
-                "Input must be at least 1-dimensional, "   \
-                "But received Input's dimensional: %s.\n" %  \
-                len(input_shape)
+        assert len(input_shape) >= 1, (
+            "Input must be at least 1-dimensional, "
+            "But received Input's dimensional: %s.\n" % len(input_shape)
+        )
 
-        assert np.abs(dim1) <= len(input_shape),    \
-            "Dim1 is out of range (expected to be in range of [%d, %d], but got %d).\n"  \
+        assert np.abs(dim1) <= len(input_shape), (
+            "Dim1 is out of range (expected to be in range of [%d, %d], but got %d).\n"
             % (-(len(input_shape) + 1), len(input_shape), dim1)
+        )
 
-        assert np.abs(dim2) <= len(input_shape),      \
-            "Dim2 is out of range (expected to be in range of [%d, %d], but got %d).\n"  \
+        assert np.abs(dim2) <= len(input_shape), (
+            "Dim2 is out of range (expected to be in range of [%d, %d], but got %d).\n"
             % (-(len(input_shape) + 1), len(input_shape), dim2)
+        )
 
         dim1_ = dim1 if dim1 >= 0 else len(input_shape) + dim1 + 1
         dim2_ = dim2 if dim2 >= 0 else len(input_shape) + dim2 + 1
-        assert dim1_ != dim2_,       \
-               "dim1 and dim2 cannot be the same dimension." \
-                "But received dim1 = %d, dim2 = %d\n"%(dim1, dim2)
+        assert dim1_ != dim2_, (
+            "dim1 and dim2 cannot be the same dimension."
+            "But received dim1 = %d, dim2 = %d\n" % (dim1, dim2)
+        )
 
-    if not in_dynamic_mode():
-        __check_input(input, offset, dim1, dim2)
+    __check_input(input, offset, dim1, dim2)
     helper = LayerHelper("diag_embed", **locals())
 
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
 
-    helper.append_op(type='diag_embed',
-                     inputs={'Input': [input]},
-                     attrs={
-                         'offset': offset,
-                         'dim1': dim1,
-                         'dim2': dim2
-                     },
-                     outputs={'Out': [out]})
+    helper.append_op(
+        type='diag_embed',
+        inputs={'Input': [input]},
+        attrs={'offset': offset, 'dim1': dim1, 'dim2': dim2},
+        outputs={'Out': [out]},
+    )
     out.stop_gradient = True
     return out
 
@@ -186,37 +190,37 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             to :ref:`api_guide_Name`. Usually name is no need to set and \
             None by default.
 
-    Returns: The output sequence mask. Tensor with shape [d_1, d_2, ..., d_n, maxlen] \
+    Returns:
+            Tensor, The output sequence mask. Tensor with shape [d_1, d_2, ..., d_n, maxlen] \
             and data type of :code:`dtype`. The data type should be bool, float32, float64, int8, \
             int32 or int64.
-
-    Return Type: Tensor
 
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            lengths = paddle.to_tensor([10, 9, 8])
-            mask = paddle.nn.functional.sequence_mask(lengths)
+            >>> lengths = paddle.to_tensor([10, 9, 8])
+            >>> mask = paddle.nn.functional.sequence_mask(lengths)
 
-            print(mask.numpy())
-            # [[1 1 1 1 1 1 1 1 1 1]
-            #  [1 1 1 1 1 1 1 1 1 0]
-            #  [1 1 1 1 1 1 1 1 0 0]]
+            >>> print(mask)
+            Tensor(shape=[3, 10], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+             [1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+             [1, 1, 1, 1, 1, 1, 1, 1, 0, 0]])
 
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
         if maxlen is not None:
             if isinstance(maxlen, core.eager.Tensor):
                 attrs = ('out_dtype', dtype)
-                out = _C_ops.sequence_mask(x, maxlen, *attrs)
+                out = _legacy_C_ops.sequence_mask(x, maxlen, *attrs)
             else:
                 attrs = ('out_dtype', dtype, 'maxlen', maxlen)
-                out = _C_ops.sequence_mask(x, None, *attrs)
+                out = _legacy_C_ops.sequence_mask(x, None, *attrs)
             out.stop_gradient = True
             return out
 
@@ -231,10 +235,9 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
         else:
             attrs['maxlen'] = maxlen
 
-    helper.append_op(type='sequence_mask',
-                     inputs=inputs,
-                     outputs={'Y': out},
-                     attrs=attrs)
+    helper.append_op(
+        type='sequence_mask', inputs=inputs, outputs={'Y': out}, attrs=attrs
+    )
 
     out.stop_gradient = True
     return out
@@ -291,46 +294,90 @@ def gather_tree(ids, parents):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            ids = paddle.to_tensor([[[2, 2], [6, 1]], [[3, 9], [6, 1]], [[0, 1], [9, 0]]])
+            >>> ids = paddle.to_tensor([[[2, 2], [6, 1]], [[3, 9], [6, 1]], [[0, 1], [9, 0]]])
 
-            parents = paddle.to_tensor([[[0, 0], [1, 1]], [[1, 0], [1, 0]], [[0, 0], [0, 1]]])
+            >>> parents = paddle.to_tensor([[[0, 0], [1, 1]], [[1, 0], [1, 0]], [[0, 0], [0, 1]]])
 
-            final_sequences = paddle.nn.functional.gather_tree(ids, parents)
-            # [[[2, 2], [1, 6]], [[3, 3], [6, 1]], [[0, 1], [9, 0]]]
+            >>> final_sequences = paddle.nn.functional.gather_tree(ids, parents)
+            >>> [[[2, 2], [1, 6]], [[3, 3], [6, 1]], [[0, 1], [9, 0]]]
+            >>> final_sequences = paddle.nn.functional.gather_tree(ids, parents)
+            >>> print(final_sequences)
+            Tensor(shape=[3, 2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[2, 2],
+              [1, 6]],
+             [[3, 3],
+              [6, 1]],
+             [[0, 1],
+              [9, 0]]])
+
 
     """
-    if in_dygraph_mode():
-        return _C_ops.final_state_gather_tree(ids, parents)
+    if ids.ndim != 3:
+        raise ValueError(
+            "The input ids must be a 3D tensor with shape [length, batch_size, beam_size]"
+        )
+    if ids.ndim != parents.ndim:
+        raise ValueError("The ids's shape must be the same as parents' shape. ")
+
+    if in_dynamic_mode():
+        return _C_ops.gather_tree(ids, parents)
     else:
-        if _in_legacy_dygraph():
-            return _C_ops.gather_tree(ids, parents)
-        else:
-            helper = LayerHelper('gather_tree', **locals())
-            check_variable_and_dtype(ids, 'ids', ['int32', 'int64'],
-                                     'gather_tree')
-            check_variable_and_dtype(parents, 'parents', ['int32', 'int64'],
-                                     'gather_tree')
-            out = helper.create_variable_for_type_inference(dtype=ids.dtype)
+        helper = LayerHelper('gather_tree', **locals())
+        check_variable_and_dtype(ids, 'ids', ['int32', 'int64'], 'gather_tree')
+        check_variable_and_dtype(
+            parents, 'parents', ['int32', 'int64'], 'gather_tree'
+        )
+        out = helper.create_variable_for_type_inference(dtype=ids.dtype)
 
-            helper.append_op(type="gather_tree",
-                             inputs={
-                                 "Ids": ids,
-                                 "Parents": parents
-                             },
-                             outputs={"Out": out})
+        helper.append_op(
+            type="gather_tree",
+            inputs={"Ids": ids, "Parents": parents},
+            outputs={"Out": out},
+        )
 
-            return out
+        return out
 
 
-@templatedoc()
 def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
     """
 
     **Temporal Shift Operator**
 
-    ${comment}
+    Calculate the temporal shifting features for Input(X).
+
+    Input(X) should be in shape of [N*T, C, H, W] or [N*T, H, W, C], while
+    N is the batch size, T is the temporal segment number specified by
+    :attr:`seg_num`, C is the channel number, H and W is the height and
+    width of features.
+
+    Temporal Shifting is calculated as follows when data format is NCHW:
+
+    Step 1: Reshape Input(X) to [N, T, C, H, W].
+
+    Step 2: Pad 0 to reshaping result in the 2nd(T) dimension with
+    padding width as 1 on each side, padding result will be in shape
+    of [N, T+2, C, H, W].
+
+    Step 3: Assume :attr:`shift_ratio` is :math:`1/4`, slice padding
+    result as follows:
+
+    $$
+    slice1 = x[:, :T, :C/4, :, :]
+    $$
+    $$
+    slice2 = x[:, 2:T+2, C/4:C/2, :, :]
+    $$
+    $$
+    slice3 = x[:, 1:T+1, C/2:, :, :]
+    $$
+
+    Step 4: Concatenate three slices along the 3rd(C) dimension and
+    reshape result to [N*T, C, H, W].
+
+    For details of temporal shifting, please refer to paper:
+    `Temporal Shift Module <http://arxiv.org/abs/1811.08383>`_ .
 
     Args:
         x(Tensor): ${x_comment}
@@ -346,41 +393,46 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
         out(Tensor): The temporal shifting result is a tensor with the
         same shape and same data type as the input.
 
-    Raises:
-        TypeError: seg_num must be int type.
-
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            input = paddle.randn([6, 4, 2, 2])
-            out = F.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
+            >>> input = paddle.randn([6, 4, 2, 2])
+            >>> out = F.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
     """
     if data_format not in ["NCHW", "NHWC"]:
-        raise ValueError("Attr(data_format) should be 'NCHW' or 'NHWC'. "
-                         "Received Attr(data_format): {}.".format(data_format))
-    if _non_static_mode():
-        return _C_ops.temporal_shift(x, 'seg_num', seg_num, 'shift_ratio',
-                                     shift_ratio, 'data_format', data_format)
+        raise ValueError(
+            "Attr(data_format) should be 'NCHW' or 'NHWC'. "
+            "Received Attr(data_format): {}.".format(data_format)
+        )
+    if in_dynamic_mode():
+        return _C_ops.temporal_shift(x, seg_num, shift_ratio, data_format)
+    else:
+        helper = LayerHelper("temporal_shift", **locals())
+        check_variable_and_dtype(
+            x,
+            'x',
+            ['float16', 'uint16', 'float32', 'float64'],
+            'temporal_shift',
+        )
+        check_type(seg_num, 'seg_num', int, 'temporal_shift')
+        check_type(shift_ratio, 'shift_ratio', float, 'temporal_shift')
 
-    helper = LayerHelper("temporal_shift", **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'temporal_shift')
-    check_type(seg_num, 'seg_num', int, 'temporal_shift')
-    check_type(shift_ratio, 'shift_ratio', float, 'temporal_shift')
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        if not isinstance(seg_num, int):
+            raise TypeError("seg_num must be int type.")
 
-    if not isinstance(seg_num, int):
-        raise TypeError("seg_num must be int type.")
-
-    helper.append_op(type="temporal_shift",
-                     inputs={"X": x},
-                     outputs={"Out": out},
-                     attrs={
-                         "seg_num": seg_num,
-                         "shift_ratio": shift_ratio,
-                         "data_format": data_format
-                     })
-    return out
+        helper.append_op(
+            type="temporal_shift",
+            inputs={"X": x},
+            outputs={"Out": out},
+            attrs={
+                "seg_num": seg_num,
+                "shift_ratio": shift_ratio,
+                "data_format": data_format,
+            },
+        )
+        return out

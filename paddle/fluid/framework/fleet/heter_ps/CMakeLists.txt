@@ -9,16 +9,16 @@ if(WITH_GPU)
   endif()
   nv_library(
     heter_comm_kernel
-    SRCS heter_comm_kernel.cu feature_value.h
+    SRCS heter_comm_kernel.cu feature_value.h feature_value.cu
     DEPS ${HETERPS_DEPS})
   nv_library(
     hashtable_kernel
-    SRCS hashtable_kernel.cu feature_value.h
+    SRCS hashtable_kernel.cu feature_value.h feature_value.cu
     DEPS ${HETERPS_DEPS})
   nv_library(
     heter_comm
-    SRCS heter_comm.h feature_value.h heter_resource.cc heter_resource.h
-         mem_pool.h
+    SRCS heter_comm.h feature_value.h feature_value.cu heter_resource.cc
+         heter_resource.h mem_pool.h
     DEPS ${HETERPS_DEPS} heter_comm_kernel hashtable_kernel)
   nv_test(
     test_heter_comm
@@ -46,7 +46,8 @@ if(WITH_GPU)
            hashtable_kernel
            heter_ps
            ${HETERPS_DEPS}
-           graph_gpu_ps)
+           graph_gpu_ps
+           fleet_wrapper)
     nv_test(
       test_cpu_query
       SRCS test_cpu_query.cu

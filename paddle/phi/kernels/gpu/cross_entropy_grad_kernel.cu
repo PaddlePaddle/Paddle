@@ -22,17 +22,16 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 
-#include "paddle/fluid/operators/math/cross_entropy.h"
-#include "paddle/fluid/operators/math/softmax.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
-#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/softmax.h"
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
 namespace phi {
@@ -175,11 +174,7 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
   const int64_t d = phi::funcs::SizeFromAxis(axis_v, logit_grad->dims());
   const int64_t remain = d / axis_dim;
 
-#ifdef __HIPCC__
-  int block = 256;
-#else
   int block = 512;
-#endif
   auto stream = dev_ctx.stream();
 
   // do not with softmax op, and input is softmax
@@ -250,7 +245,7 @@ void CrossEntropyWithSoftmaxGradKernel(const Context& dev_ctx,
   if (soft_label) {
     PADDLE_ENFORCE_EQ(
         dtype,
-        paddle::experimental::CppTypeToDataType<T>::Type(),
+        phi::CppTypeToDataType<T>::Type(),
         phi::errors::InvalidArgument("The Input(Label) should be with the "
                                      "same data type as kernel data type."));
     CrossEntropyWithSoftmaxGradGPUKernel<T, T>(dev_ctx,
@@ -282,6 +277,7 @@ void CrossEntropyWithSoftmaxGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+#ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -289,3 +285,22 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
                    float,
                    double,
                    phi::dtype::float16) {}
+#else
+#if CUDNN_VERSION_MIN(8, 1, 0)
+PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CrossEntropyWithSoftmaxGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+#else
+PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CrossEntropyWithSoftmaxGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+#endif
+#endif

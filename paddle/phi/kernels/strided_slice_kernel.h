@@ -16,6 +16,7 @@
 
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/tensor_array.h"
 
 namespace phi {
 
@@ -39,14 +40,34 @@ void StridedSliceKernel(const Context& dev_ctx,
                         const IntArray& strides,
                         DenseTensor* out);
 
+template <typename Context>
+void StridedSliceRawStridedKernel(const Context& dev_ctx,
+                                  const DenseTensor& x,
+                                  const std::vector<int>& axes,
+                                  const IntArray& starts,
+                                  const IntArray& ends,
+                                  const IntArray& strides,
+                                  const std::vector<int>& infer_flags,
+                                  const std::vector<int>& decrease_axis,
+                                  DenseTensor* out);
+
+template <typename Context>
+void StridedSliceStridedKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const std::vector<int>& axes,
+                               const IntArray& starts,
+                               const IntArray& ends,
+                               const IntArray& strides,
+                               DenseTensor* out);
+
 template <typename T, typename Context>
 void StridedSliceArrayKernel(const Context& dev_ctx,
-                             const std::vector<const DenseTensor*>& x,
+                             const TensorArray& x,
                              const std::vector<int>& axes,
                              const IntArray& starts,
                              const IntArray& ends,
                              const IntArray& strides,
                              const std::vector<int>& infer_flags,
                              const std::vector<int>& decrease_axis,
-                             std::vector<DenseTensor*> out);
+                             TensorArray* out);
 }  // namespace phi

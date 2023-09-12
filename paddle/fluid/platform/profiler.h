@@ -28,31 +28,33 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/profiler.pb.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/platform/profiler/mem_tracing.h"
+#include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 
+#include "paddle/phi/api/profiler/profiler.h"
+
+namespace phi {
+namespace proto {
+class Profile;
+}
+}  // namespace phi
+
 namespace paddle {
 namespace platform {
+
+namespace proto {
+class Profile;
+}
 
 const int kEnableProfiler = 1;
 const int kDisableProfiler = 2;
 
-enum class ProfilerState {
-  kDisabled,  // disabled state
-  kCPU,       // CPU profiling state
-  kCUDA,      // GPU profiling state
-  kAll,       // Profile both CPU and GPU. (Currently experimental).
-};
-
-// it is the flag to control to print the profiling result
-enum class TracerOption {
-  kDefault,      // print the different op type profiling result
-  kOpDetail,     // print the detail profiling result of different op type
-  kAllOpDetail,  // print the detail profiling result of different op name
-};
+using ProfilerState = phi::ProfilerState;
+using TracerOption = phi::TracerOption;
 
 // Candidate keys to sort the profiling report
 enum class EventSortingKey {
@@ -102,6 +104,22 @@ struct MemEvenRecorder {
  public:
   void PushMemRecord(const void* ptr, const Place& place, size_t size);
   void PopMemRecord(const void* ptr, const Place& place);
+  void PushMemRecord(const void* ptr,
+                     const Place& place,
+                     size_t size,
+                     TracerMemEventType type,
+                     uint64_t current_allocated,
+                     uint64_t current_reserved,
+                     uint64_t peak_allocated,
+                     uint64_t peak_reserved);
+  void PopMemRecord(const void* ptr,
+                    const Place& place,
+                    size_t size,
+                    TracerMemEventType type,
+                    uint64_t current_allocated,
+                    uint64_t current_reserved,
+                    uint64_t peak_allocated,
+                    uint64_t peak_reserved);
   void Flush();
   static MemEvenRecorder& Instance() { return recorder; }
 
@@ -138,61 +156,36 @@ struct RecordBlock {
 };
 
 template <typename T>
-struct EventList {
-  constexpr static size_t kMB = 1024 * 1024;
-  constexpr static size_t kEventBlockSize = 16 * kMB;
-  constexpr static size_t kEventSize = sizeof(T);
-  constexpr static size_t kEventAlign = alignof(T);
-  constexpr static size_t kNumBlock =
-      kEventBlockSize /
-      ((kEventSize + kEventAlign - 1) / kEventAlign * kEventAlign);
-
-  template <typename... Args>
-  T* Record(Args&&... args) {
-    if (event_blocks.empty() || event_blocks.front().size() == kNumBlock) {
-      event_blocks.emplace_front();
-      event_blocks.front().reserve(kNumBlock);
-    }
-    event_blocks.front().emplace_back(std::forward<Args>(args)...);
-    return &event_blocks.front().back();
-  }
-
-  std::vector<T> Reduce() {
-    std::vector<T> result;
-    for (auto& block : event_blocks) {
-      result.insert(result.begin(), std::make_move_iterator(block.begin()),
-                    std::make_move_iterator(block.end()));
-    }
-    event_blocks.clear();
-    return result;
-  }
-
-  void Clear() { event_blocks.clear(); }
-
-  std::forward_list<std::vector<T>> event_blocks;
-};
+using EventList = phi::EventList<T>;
 
 void Mark(const std::string& name);
-void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
-                  const Place& place, const std::string& annotation);
-void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
-                 const Place& place, const std::string& annotation);
-Event* PushEvent(const std::string& name, const EventRole role,
-                 const std::string attr = "none");
-void PopEvent(const std::string& name, const EventRole role,
-              const std::string attr = "none");
+void PushMemEvent(uint64_t start_ns,
+                  uint64_t end_ns,
+                  size_t bytes,
+                  const Place& place,
+                  const std::string& annotation);
+void PopMemEvent(uint64_t start_ns,
+                 uint64_t end_ns,
+                 size_t bytes,
+                 const Place& place,
+                 const std::string& annotation);
+
+using phi::PopEvent;
+using phi::PushEvent;
+
 // Return the event list of all threads. Assumed the returned value calls
 // event_lists, event_lists[i][j] represents the j-th Event of i-th thread.
 std::vector<std::vector<Event>> GetAllEvents();
 
 // Enable the profiling function.
 void EnableProfiler(ProfilerState state);
-// Clear the g_all_event_lists, which is total event lists of all threads.
+// Clear the phi::ProfilerHelper::g_all_event_lists, which is total event lists
+// of all threads.
 void ResetProfiler();
 void DisableProfiler(EventSortingKey sorted_key,
                      const std::string& profile_path);
 // Disable profiler but return events instead of print it.
-void CompleteProfilerEvents(proto::Profile* tracer_profile,
+void CompleteProfilerEvents(phi::proto::Profile* tracer_profile,
                             std::vector<std::vector<Event>>* time_events,
                             std::vector<std::vector<MemEvent>>* mem_events);
 
@@ -217,6 +210,9 @@ void NvprofDisableRecordEvent();
 
 void EnableHostEventRecorder();
 void DisableHostEventRecorder();
+
+void EnableMemoryRecorder();
+void DisableMemoryRecorder();
 
 // Defined for UT
 std::string PrintHostEvents();

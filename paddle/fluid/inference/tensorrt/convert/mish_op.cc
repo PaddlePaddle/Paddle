@@ -16,27 +16,18 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/mish_op_plugin.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
 /*
- * Mish converter from fluid to tensorRT.
+ * Mish OP
  */
 class MishOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
-    VLOG(4) << "convert fluid Mish op to tensorrt Mish plugin";
+                  const framework::Scope& scope,
+                  bool test_mode) override {
+    VLOG(4) << "convert mish op to tensorrt mish plugin";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
@@ -45,7 +36,7 @@ class MishOpConverter : public OpConverter {
 
     const float threshold =
         op_desc.HasAttr("threshold")
-            ? BOOST_GET_CONST(float, op_desc.GetAttr("threshold"))
+            ? PADDLE_GET_CONST(float, op_desc.GetAttr("threshold"))
             : 20.0f;
 
     nvinfer1::ILayer* layer = nullptr;

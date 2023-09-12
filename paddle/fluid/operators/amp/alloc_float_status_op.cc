@@ -26,16 +26,17 @@ class AllocFloatStatusOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasOutput("FloatStatus"), "Output", "FloatStatus",
+    OP_INOUT_CHECK(ctx->HasOutput("FloatStatus"),
+                   "Output",
+                   "FloatStatus",
                    "alloc_float_status");
     ctx->SetOutputDim("FloatStatus", {8});
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.GetPlace());
+    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
   }
 };
 
@@ -50,7 +51,7 @@ class AllocFloatStatusMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class AllocFloatStatusKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -63,12 +64,14 @@ class AllocFloatStatusKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
 REGISTER_OPERATOR(
-    alloc_float_status, ops::AllocFloatStatusOp, ops::AllocFloatStatusMaker,
+    alloc_float_status,
+    ops::AllocFloatStatusOp,
+    ops::AllocFloatStatusMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(alloc_float_status,
-                       ops::AllocFloatStatusKernel<CPU, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    alloc_float_status, CPU, ALL_LAYOUT, ops::AllocFloatStatusKernel, float) {}

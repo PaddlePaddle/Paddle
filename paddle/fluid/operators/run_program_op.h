@@ -31,14 +31,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/framework/variable.h"
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/operators/cuda_graph_with_in_out.h"
 #endif
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace operators {
@@ -48,23 +49,25 @@ using BlockDesc = framework::BlockDesc;
 using ProgramDesc = framework::ProgramDesc;
 
 using Variable = framework::Variable;
-using LoDTensor = framework::LoDTensor;
 using SelectedRows = phi::SelectedRows;
 
 namespace details {
 
-// all input vars should be LoDTensor & is initialized
+// all input vars should be phi::DenseTensor & is initialized
 static void CheckInputVarStatus(const Variable &var,
                                 const std::string &var_name) {
+  PADDLE_ENFORCE_EQ(var.IsType<phi::DenseTensor>(),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The input variable %s of "
+                        "RunProgram(Grad)Op holds "
+                        "wrong type. Expect type is phi::DenseTensor, but "
+                        "receive type is %s.",
+                        var_name,
+                        platform::demangle(framework::ToTypeName(var.Type()))));
   PADDLE_ENFORCE_EQ(
-      var.IsType<LoDTensor>(), true,
-      platform::errors::InvalidArgument(
-          "The input variable %s of "
-          "RunProgram(Grad)Op holds "
-          "wrong type. Expect type is LoDTensor, but receive type is %s.",
-          var_name, platform::demangle(framework::ToTypeName(var.Type()))));
-  PADDLE_ENFORCE_EQ(
-      var.Get<LoDTensor>().IsInitialized(), true,
+      var.Get<phi::DenseTensor>().IsInitialized(),
+      true,
       platform::errors::InvalidArgument("The tensor in input variable %s of "
                                         "RunProgram(Grad)Op "
                                         "is not initialized.",
@@ -74,16 +77,19 @@ static void CheckInputVarStatus(const Variable &var,
 static void CheckOutputVarStatus(const Variable &src_var,
                                  const Variable &dst_var,
                                  const std::string &var_name) {
-  if (dst_var.IsType<LoDTensor>()) {
+  if (dst_var.IsType<phi::DenseTensor>()) {
     PADDLE_ENFORCE_EQ(
-        src_var.IsType<LoDTensor>(), true,
+        src_var.IsType<phi::DenseTensor>(),
+        true,
         platform::errors::InvalidArgument(
             "The output variable %s get from "
             "RunProgram(Grad)Op's internal scope holds "
-            "wrong type. Expect type is LoDTensor, but receive type is %s.",
+            "wrong type. Expect type is phi::DenseTensor, but receive type is "
+            "%s.",
             var_name,
             platform::demangle(framework::ToTypeName(src_var.Type()))));
-    PADDLE_ENFORCE_EQ(src_var.Get<LoDTensor>().IsInitialized(), true,
+    PADDLE_ENFORCE_EQ(src_var.Get<phi::DenseTensor>().IsInitialized(),
+                      true,
                       platform::errors::InvalidArgument(
                           "The tensor in output variable %s get from "
                           "RunProgram(Grad)Op's internal "
@@ -91,7 +97,8 @@ static void CheckOutputVarStatus(const Variable &src_var,
                           var_name));
   } else if (dst_var.IsType<phi::SelectedRows>()) {
     PADDLE_ENFORCE_EQ(
-        src_var.IsType<phi::SelectedRows>(), true,
+        src_var.IsType<phi::SelectedRows>(),
+        true,
         platform::errors::InvalidArgument(
             "The output variable %s get from "
             "RunProgram(Grad)Op's internal scope holds "
@@ -109,19 +116,20 @@ static void CheckOutputVarStatus(const Variable &src_var,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The RunProgram(Grad)Op only support output "
-        "variable of type LoDTensor or SelectedRows, "
+        "variable of type phi::DenseTensor or SelectedRows, "
         "but received variable %s's type is %s",
-        var_name, platform::demangle(framework::ToTypeName(dst_var.Type()))));
+        var_name,
+        platform::demangle(framework::ToTypeName(dst_var.Type()))));
   }
 }
 
 static void VariableShare(const Variable &src_var, Variable *dst_var) {
-  // The previous check ensures that the variable type can only be LoDTensor or
-  // SelectedRows.
-  if (src_var.IsType<LoDTensor>()) {
-    auto *lod_tensor = dst_var->GetMutable<LoDTensor>();
-    lod_tensor->ShareDataWith(src_var.Get<LoDTensor>());
-    lod_tensor->set_lod(src_var.Get<LoDTensor>().lod());
+  // The previous check ensures that the variable type can only be
+  // phi::DenseTensor or SelectedRows.
+  if (src_var.IsType<phi::DenseTensor>()) {
+    auto *lod_tensor = dst_var->GetMutable<phi::DenseTensor>();
+    lod_tensor->ShareDataWith(src_var.Get<phi::DenseTensor>());
+    lod_tensor->set_lod(src_var.Get<phi::DenseTensor>().lod());
   } else if (src_var.IsType<phi::SelectedRows>()) {
     auto *selected_rows = dst_var->GetMutable<phi::SelectedRows>();
     selected_rows->mutable_value()->ShareDataWith(
@@ -135,7 +143,8 @@ static void ShareVarsIntoScope(const std::vector<Variable *> &vars,
                                const std::vector<std::string> &var_names,
                                framework::Scope *scope) {
   for (size_t i = 0; i < vars.size(); ++i) {
-    if (var_names[i] == "Fake_var") {
+    if (var_names[i] == framework::kFakeVarName ||
+        var_names[i] == paddle::framework::kEmptyVarName) {
       continue;
     }
     auto *var = scope->Var(var_names[i]);
@@ -154,7 +163,8 @@ static void ShareVarsFromScope(const std::vector<Variable *> &vars,
     // because we can't findthem in scope. So we skip sharing these vars or
     // var@GRAD if they don't appear in global block.
     if (var_names[i] == framework::kEmptyVarName ||
-        var_names[i] == "Fake_var" || !global_block.HasVar(var_names[i])) {
+        var_names[i] == framework::kFakeVarName ||
+        !global_block.HasVar(var_names[i])) {
       VLOG(2) << "find variable name is " << var_names[i] << ", skip it!";
       continue;
     }
@@ -162,10 +172,11 @@ static void ShareVarsFromScope(const std::vector<Variable *> &vars,
     // the result is grad calculation error, which will be very hidden!
     auto *var = scope->FindVar(var_names[i]);
     PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::NotFound("The output variable %s is not in "
-                                        "RunProgram(Grad)Op'"
-                                        "s internal scope.",
-                                        var_names[i]));
+        var,
+        platform::errors::NotFound("The output variable %s is not in "
+                                   "RunProgram(Grad)Op'"
+                                   "s internal scope.",
+                                   var_names[i]));
     CheckOutputVarStatus(*var, *vars[i], var_names[i]);
     VariableShare(*var, vars[i]);
   }
@@ -189,7 +200,7 @@ static cudaStreamCaptureMode StringToCUDAGraphCaptureMode(
 
 }  // namespace details
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class RunProgramOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -203,7 +214,8 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_CUDA
     auto mode = details::StringToCUDAGraphCaptureMode(capture_mode);
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::is_gpu_place(ctx.GetPlace()),
+        true,
         phi::errors::InvalidArgument("The cuda_graph_capture_mode is only "
                                      "valid when using NVIDIA GPU."));
     auto *graph_var = ctx.OutputVar("CUDAGraph");
@@ -233,8 +245,8 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
       VLOG(10) << "Capture Forward CUDA Graph";
     } else {
       VLOG(10) << "Run Forward CUDA Graph directly";
-      ExecuteCUDAGraph(ctx, {"X"}, {"Out", "DOut"},
-                       inner_graphs[graph_idx].get());
+      ExecuteCUDAGraph(
+          ctx, {"X"}, {"Out", "DOut"}, inner_graphs[graph_idx].get());
     }
 #else
     PADDLE_THROW(
@@ -279,18 +291,20 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     auto *out_scope_vec = ctx.Output<StepScopeVar>("OutScope");
     std::unique_ptr<framework::Scope> inner_scope{nullptr};
     if (out_scope_vec->size() == 0) {
-      // For cuda graph under static mode usage.
-      // For static mode, we cannot set value of a tensor before any run,
+      // For cuda graph under static graph mode usage.
+      // For static graph mode, we cannot set value of a tensor before any run,
       // the OutScope variable passed to the op actually contains nothing.
       // Just create a tmp scope to run the program.
       PADDLE_ENFORCE_EQ(
-          use_cuda_graph, true,
+          use_cuda_graph,
+          true,
           platform::errors::InvalidArgument(
               "If not provide OutScope then must run under cuda graph mode."));
       inner_scope = std::make_unique<framework::Scope>();
     } else {
       PADDLE_ENFORCE_EQ(
-          out_scope_vec->size(), 1,
+          out_scope_vec->size(),
+          1,
           platform::errors::InvalidArgument(
               "The OutScope of RunProgramGradOp should only hold one scope."));
     }
@@ -322,9 +336,13 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
             *program, ctx.GetPlace(), start_op_index, end_op_index, &scope);
         is_new_created = true;
       } else {
-        auto cache_info = framework::GetExecutorInfoFromCache(
-            *program, ctx.GetPlace(), start_op_index, end_op_index,
-            /*is_grad=*/false, program_id, &scope);
+        auto cache_info = framework::GetExecutorInfoFromCache(*program,
+                                                              ctx.GetPlace(),
+                                                              start_op_index,
+                                                              end_op_index,
+                                                              /*is_grad=*/false,
+                                                              program_id,
+                                                              &scope);
         pe_and_graph.first = cache_info.first;
         is_new_created = cache_info.second;
       }
@@ -354,10 +372,10 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
       parallel_executor->RunWithoutFetch(skip_eager_delete_vars);
     }
     // Step 4. Get Output
-    details::ShareVarsFromScope(output_vars, output_var_names, *global_block,
-                                &scope);
-    details::ShareVarsFromScope(dout_vars, dout_var_names, *global_block,
-                                &scope);
+    details::ShareVarsFromScope(
+        output_vars, output_var_names, *global_block, &scope);
+    details::ShareVarsFromScope(
+        dout_vars, dout_var_names, *global_block, &scope);
 
     // Debug info: scope info when run end
     framework::Scope *target_scope{nullptr};
@@ -373,14 +391,14 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     }
     VLOG(2) << "The number of sub scopes after forward: "
             << target_scope->kids().size();
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (FLAGS_use_mkldnn) platform::DontClearMKLDNNCache(ctx.GetPlace());
 #endif
     return pe_and_graph;
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class RunProgramGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -393,7 +411,8 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_CUDA
     auto mode = details::StringToCUDAGraphCaptureMode(capture_mode);
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::is_gpu_place(ctx.GetPlace()),
+        true,
         phi::errors::InvalidArgument("The cuda_graph_capture_mode is only "
                                      "valid when using NVIDIA GPU."));
     auto *graph_var =
@@ -416,11 +435,16 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
                             ? inner_graphs[0]->PoolID()
                             : inner_graphs[1]->PoolID();
       inner_graphs[graph_idx] =
-          CaptureCUDAGraph(callable, ctx, {framework::GradVarName("Out")},
-                           {framework::GradVarName("X")}, mode, pool_id);
+          CaptureCUDAGraph(callable,
+                           ctx,
+                           {framework::GradVarName("Out")},
+                           {framework::GradVarName("X")},
+                           mode,
+                           pool_id);
       VLOG(10) << "Capture Backward CUDA Graph";
     } else {
-      ExecuteCUDAGraph(ctx, {framework::GradVarName("Out")},
+      ExecuteCUDAGraph(ctx,
+                       {framework::GradVarName("Out")},
                        {framework::GradVarName("X")},
                        inner_graphs[graph_idx].get());
       VLOG(10) << "Run Backward CUDA Graph directly";
@@ -471,14 +495,16 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
 
     auto *out_scope_vec = ctx.Input<StepScopeVar>("OutScope");
     PADDLE_ENFORCE_EQ(
-        out_scope_vec->size(), 1,
+        out_scope_vec->size(),
+        1,
         platform::errors::InvalidArgument(
             "The OutScope of RunProgramGradOp should only hold one scope."));
 
     framework::Scope *global_inner_scope = out_scope_vec->front();
     auto sub_scope_num = global_inner_scope->kids().size();
     VLOG(2) << "The number of sub scopes before backward: " << sub_scope_num;
-    PADDLE_ENFORCE_GT(sub_scope_num, 0,
+    PADDLE_ENFORCE_GT(sub_scope_num,
+                      0,
                       platform::errors::InvalidArgument(
                           "The OutScope of RunProgramGradOp should hold at "
                           "least one sub scope."));
@@ -495,9 +521,13 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
             *program, ctx.GetPlace(), start_op_index, end_op_index, &scope);
         is_new_created = true;
       } else {
-        auto cache_info = framework::GetExecutorInfoFromCache(
-            *program, ctx.GetPlace(), start_op_index, end_op_index,
-            /*is_grad*/ true, program_id, &scope);
+        auto cache_info = framework::GetExecutorInfoFromCache(*program,
+                                                              ctx.GetPlace(),
+                                                              start_op_index,
+                                                              end_op_index,
+                                                              /*is_grad*/ true,
+                                                              program_id,
+                                                              &scope);
         pe_and_graph.first = cache_info.first;
         is_new_created = cache_info.second;
       }
@@ -520,8 +550,8 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
                                                    &skip_eager_delete_vars);
       }
 
-      details::ShareVarsIntoScope(output_grad_vars, output_grad_var_names,
-                                  &scope);
+      details::ShareVarsIntoScope(
+          output_grad_vars, output_grad_var_names, &scope);
       // Debug info: scope info when run end
       VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
@@ -531,10 +561,10 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     }
 
     // Step 4. get outputs
-    details::ShareVarsFromScope(input_grad_vars, input_grad_var_names,
-                                *global_block, &scope);
-    details::ShareVarsFromScope(param_grad_vars, param_grad_names,
-                                *global_block, &scope);
+    details::ShareVarsFromScope(
+        input_grad_vars, input_grad_var_names, *global_block, &scope);
+    details::ShareVarsFromScope(
+        param_grad_vars, param_grad_names, *global_block, &scope);
 
     // Step5. drop current scope
     global_inner_scope->DeleteScope(&scope);

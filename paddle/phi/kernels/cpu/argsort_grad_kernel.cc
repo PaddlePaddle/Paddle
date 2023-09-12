@@ -55,15 +55,21 @@ void ArgsortGradKernel(const Context& dev_ctx,
                        const DenseTensor& input,
                        const DenseTensor& out_grad,
                        int axis,
-                       bool descending,
+                       bool descending UNUSED,
                        DenseTensor* in_grad) {
   auto in_dims = indices.dims();
+  auto rank = input.dims().size();
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
   dev_ctx.template Alloc<T>(in_grad);
   auto dxt = EigenVector<T>::Flatten(*in_grad);
   auto& place = *dev_ctx.eigen_device();
   dxt.device(place) = dxt.constant(static_cast<T>(0));
   if (out_grad.numel() == 0) return;
+
+  if (rank == 0) {
+    phi::Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, in_grad);
+    return;
+  }
 
   // Do full assign
   if (axis == -1 || axis + 1 == in_dims.size()) {
@@ -90,7 +96,7 @@ void ArgsortGradKernel(const Context& dev_ctx,
     trans.push_back(axis);
     phi::DDim trans_dims(in_dims);
     for (size_t i = 0; i < trans.size(); i++) {
-      trans_dims[i] = in_dims[trans[i]];
+      trans_dims[static_cast<int>(i)] = in_dims[trans[i]];
     }
 
     DenseTensor trans_dO;

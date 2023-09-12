@@ -11,6 +11,9 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
+#pragma once
+
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
@@ -25,47 +28,29 @@ class CSyncCalcStreamOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CSyncCalcStreamKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
 
     auto place = ctx.GetPlace();
-    auto dev_ctx = static_cast<platform::CUDADeviceContext*>(
+    auto dev_ctx = static_cast<phi::GPUContext*>(
         platform::DeviceContextPool::Instance().Get(place));
 
     platform::GpuStreamSync(dev_ctx->stream());
 
-#elif defined(PADDLE_WITH_ASCEND_CL) && !defined(_WIN32)
-    auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_npu_place(place), true,
-                      platform::errors::PreconditionNotMet(
-                          "Sync stream op can run on npu place only for now."));
-
-    auto dev_ctx = static_cast<platform::NPUDeviceContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
-    platform::NPUStreamSync(dev_ctx->stream());
-
-#elif defined(PADDLE_WITH_CNCL)
-    auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_mlu_place(place), true,
-                      platform::errors::PreconditionNotMet(
-                          "Sync stream op can run on mlu place only for now."));
-
-    auto dev_ctx = static_cast<platform::MLUDeviceContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
-    platform::MLUStreamSync(dev_ctx->stream());
 #elif defined(PADDLE_WITH_XPU_BKCL)
     auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_xpu_place(place), true,
+    PADDLE_ENFORCE_EQ(platform::is_xpu_place(place),
+                      true,
                       platform::errors::PreconditionNotMet(
                           "Sync stream op can run on xpu place only for now."));
 

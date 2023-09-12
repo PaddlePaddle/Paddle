@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/log_softmax_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
-#include "paddle/phi/kernels/log_softmax_kernel.h"
 
 namespace phi {
 
@@ -24,7 +26,14 @@ void LogSoftmaxKernel(const Context &dev_ctx,
                       const DenseTensor &x,
                       int axis,
                       DenseTensor *out) {
+  const int rank = x.dims().size();
+
   dev_ctx.template Alloc<T>(out);
+  // For 0D Tensor
+  if (rank == 0) {
+    phi::funcs::set_constant(dev_ctx, out, 0.0);
+    return;
+  }
   phi::SoftmaxForwardCUDAKernelDriver<T, true>(dev_ctx, x, axis, out);
 }
 

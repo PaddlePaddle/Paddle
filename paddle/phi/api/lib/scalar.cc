@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/common/scalar.h"
 
+#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/api/lib/tensor_copy.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
@@ -31,12 +32,19 @@ ScalarBase<Tensor>::ScalarBase(const Tensor& tensor_in)
                         "now Tensor has `%d` elements",
                         tensor_in.numel()));
   auto tensor_in_place = tensor_in.place().GetType();
-  if (tensor_in_place == phi::AllocationType::GPU) {
+  if (tensor_in_place == phi::AllocationType::XPU ||
+      tensor_in_place == phi::AllocationType::GPU) {
     Tensor dst_tensor;
     copy(tensor_in, phi::CPUPlace(), true, &dst_tensor);
     GetDataFromTensor(dst_tensor);
   } else if (tensor_in_place == phi::AllocationType::CPU) {
     GetDataFromTensor(tensor_in);
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  } else if (tensor_in_place == phi::AllocationType::CUSTOM) {
+    Tensor dst_tensor;
+    copy(tensor_in, phi::CPUPlace(), true, &dst_tensor);
+    GetDataFromTensor(dst_tensor);
+#endif
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Now, it is not supported to construct Scalar using tensor that its "

@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <type_traits>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/kernels/addmm_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -37,8 +39,8 @@ void AddmmKernel(const Context& dev_ctx,
                  const DenseTensor& input,
                  const DenseTensor& x,
                  const DenseTensor& y,
-                 float alpha,
                  float beta,
+                 float alpha,
                  DenseTensor* out) {
   auto input_dims = input.dims();
   auto x_dims = x.dims();
@@ -110,17 +112,19 @@ void AddmmKernel(const Context& dev_ctx,
   funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, 2>::Eval(
       place, eigen_out, eigen_input, bcast_dims);
 
+  T t_alpha = static_cast<T>(alpha);
+  T t_beta = static_cast<T>(beta);
   blas.GEMM(false,
             false,
             x_dims[0],
             y_dims[1],
             x_dims[1],
-            alpha,
+            t_alpha,
             x.data<T>(),
             x_dims[1],
             y.data<T>(),
             y_dims[1],
-            beta,
+            t_beta,
             out->data<T>(),
             y_dims[1]);
 }

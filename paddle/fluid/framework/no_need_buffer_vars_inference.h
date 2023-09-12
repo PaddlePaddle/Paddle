@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace framework {
@@ -83,25 +84,26 @@ class NoNeedBufferVarsInference {
   }
 };
 
-#define DECLARE_NO_NEED_BUFFER_VARS_INFERER(class_type, ...)          \
-  class class_type final                                              \
-      : public ::paddle::framework::NoNeedBufferVarsInference {       \
-   public:                                                            \
-    using ::paddle::framework::NoNeedBufferVarsInference::            \
-        NoNeedBufferVarsInference;                                    \
-                                                                      \
-    const std::unordered_set<std::string> &operator()(                \
-        const ::paddle::framework::InferNoNeedBufferVarsContext &ctx) \
-        const final {                                                 \
-      static std::unordered_set<std::string> __ret__{__VA_ARGS__};    \
-      return __ret__;                                                 \
-    }                                                                 \
+#define DECLARE_NO_NEED_BUFFER_VARS_INFERER(class_type, ...)         \
+  class class_type final                                             \
+      : public ::paddle::framework::NoNeedBufferVarsInference {      \
+   public:                                                           \
+    using ::paddle::framework::NoNeedBufferVarsInference::           \
+        NoNeedBufferVarsInference;                                   \
+                                                                     \
+    const std::unordered_set<std::string> &operator()(               \
+        const ::paddle::framework::InferNoNeedBufferVarsContext &ctx \
+            UNUSED) const final {                                    \
+      static std::unordered_set<std::string> __ret__{__VA_ARGS__};   \
+      return __ret__;                                                \
+    }                                                                \
   }
 
 class InferNoNeedBufferVarsFN {
  public:
   inline const std::unordered_set<std::string> &operator()(
-      const VariableNameMap &inputs, const VariableNameMap &outputs,
+      const VariableNameMap &inputs,
+      const VariableNameMap &outputs,
       const AttributeMap &attrs) const {
     PADDLE_ENFORCE_NOT_NULL(
         inferer_,
@@ -129,11 +131,13 @@ class InferNoNeedBufferVarsFN {
 
   inline void Reset(const std::shared_ptr<NoNeedBufferVarsInference> &inferer) {
     PADDLE_ENFORCE_NOT_NULL(
-        inferer, platform::errors::InvalidArgument("The input inferer of "
-                                                   "InferNoNeedBufferVarsFN::"
-                                                   "Reset is nullptr."));
+        inferer,
+        platform::errors::InvalidArgument("The input inferer of "
+                                          "InferNoNeedBufferVarsFN::"
+                                          "Reset is nullptr."));
     PADDLE_ENFORCE_EQ(
-        inferer_, nullptr,
+        inferer_,
+        nullptr,
         platform::errors::AlreadyExists(
             "The `inferer_` of InferNoNeedBufferVarsFN has been initialized."));
     inferer_ = inferer;

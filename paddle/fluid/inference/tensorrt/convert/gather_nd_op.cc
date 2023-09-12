@@ -22,14 +22,26 @@ namespace tensorrt {
 class GatherNdOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
-    VLOG(4) << "convert a paddle gather_nd op to tensorrt gather_nd plugin";
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     framework::OpDesc op_desc(op, nullptr);
+    auto input = engine_->GetITensor(op_desc.Input("X")[0]);
+    auto index = engine_->GetITensor(op_desc.Input("Index")[0]);
+    auto output_name = op_desc.Output("Out")[0];
+
+    // AddGatherV2 is supported by the trt version of 8.2.
+#if IS_TRT_VERSION_GE(8200)
+    VLOG(3) << "convert gather_nd op to tensorrt gather_nd layer";
+
+    auto layer = TRT_ENGINE_ADD_LAYER(
+        engine_, GatherV2, *input, *index, nvinfer1::GatherMode::kND);
+    layer->setNbElementWiseDims(0);
+    RreplenishLayerAndOutput(layer, "gather_nd", {output_name}, test_mode);
+#else
+    VLOG(4) << "convert a paddle gather_nd op to tensorrt gather_nd plugin";
 
     // Declare inputs
     std::vector<nvinfer1::ITensor*> inputs;
-    auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
-    auto* index = engine_->GetITensor(op_desc.Input("Index")[0]);
     inputs.emplace_back(input);
     inputs.emplace_back(index);
 
@@ -40,7 +52,6 @@ class GatherNdOpConverter : public OpConverter {
     layer = engine_->AddDynamicPlugin(inputs.data(), inputs.size(), plugin);
 
     std::string layer_name = "gather_nd (Output: ";
-    auto output_name = op_desc.Output("Out")[0];
     layer->getOutput(0)->setName(output_name.c_str());
     engine_->SetITensor(output_name, layer->getOutput(0));
     layer_name += output_name;
@@ -48,6 +59,7 @@ class GatherNdOpConverter : public OpConverter {
       engine_->DeclareOutput(output_name);
     }
     layer->setName((layer_name + ")").c_str());
+#endif
   }
 };
 

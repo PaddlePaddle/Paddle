@@ -35,18 +35,20 @@ namespace tensorrt {
 
 class TensorRTEngine;
 
-struct TRTInt8Calibrator : public nvinfer1::IInt8EntropyCalibrator2 {
+class TRTInt8Calibrator : public nvinfer1::IInt8EntropyCalibrator2 {
  public:
   TRTInt8Calibrator(const std::unordered_map<std::string, size_t>& buffers,
-                    int batch_size, std::string engine_name,
+                    int batch_size,
+                    std::string engine_name,
                     const platform::Place place);
 
   explicit TRTInt8Calibrator(const std::string& calibration_data);
-  ~TRTInt8Calibrator();
+  ~TRTInt8Calibrator() override;
 
   int getBatchSize() const TRT_NOEXCEPT override;
 
-  bool getBatch(void* bindings[], const char* names[],
+  bool getBatch(void* bindings[],
+                const char* names[],
                 int num_bindings) TRT_NOEXCEPT override;
 
   bool setBatch(const std::unordered_map<std::string, void*>& data);
@@ -71,7 +73,7 @@ struct TRTInt8Calibrator : public nvinfer1::IInt8EntropyCalibrator2 {
   std::condition_variable cond_;
 
   std::unordered_map<std::string, std::pair<void*, size_t>> data_buffers_;
-  std::vector<framework::Tensor> data_tensors_;
+  std::vector<phi::DenseTensor> data_tensors_;
 
   std::string engine_name_;
   std::string calibration_table_;
@@ -89,7 +91,7 @@ class TRTCalibratorEngine {
  */
 class TRTCalibratorEngineManager {
  public:
-  bool Has() const { return res_.size() > 0; }
+  bool Has() const { return !res_.empty(); }
   bool Has(const std::string& name) const {
     if (res_.count(name) == 0) return false;
     return res_.at(name).get() != nullptr;

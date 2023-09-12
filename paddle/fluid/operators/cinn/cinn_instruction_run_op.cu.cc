@@ -17,8 +17,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace ops = paddle::operators;
-using CUDADeviceContext = paddle::platform::CUDADeviceContext;
 /* see [Why use single type kernel] */
-REGISTER_OP_CUDA_KERNEL(
-    cinn_instruction_run,
-    ops::CinnInstructionRunOpKernel<CUDADeviceContext, float>);
+PD_REGISTER_STRUCT_KERNEL(cinn_instruction_run,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::CinnInstructionRunOpKernel,
+                          float) {}

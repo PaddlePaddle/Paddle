@@ -12,29 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/reduce_max_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
-#include "paddle/phi/kernels/reduce_max_kernel.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void MaxRawKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const std::vector<int64_t>& dims,
-                  bool keep_dim,
-                  bool reduce_all,
-                  DenseTensor* out) {
+void MaxKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               const IntArray& dims,
+               bool keep_dim,
+               DenseTensor* out) {
+  bool reduce_all = recompute_reduce_all(x, dims);
   auto out_dtype = x.dtype();
   phi::Reduce<T, kps::MaxFunctor, kps::IdentityFunctor>(
-      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+      dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
 }
 
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU_KP
-PD_REGISTER_KERNEL(max_raw, KPS, ALL_LAYOUT, phi::MaxRawKernel, float) {}
+PD_REGISTER_KERNEL(max, KPS, ALL_LAYOUT, phi::MaxKernel, float) {}
 #else
-PD_REGISTER_KERNEL(
-    max_raw, KPS, ALL_LAYOUT, phi::MaxRawKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(max,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::MaxKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 #endif

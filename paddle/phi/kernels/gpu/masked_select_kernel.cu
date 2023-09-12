@@ -12,21 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/masked_select_kernel.h"
+
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
 #include <thrust/reverse.h>
 #include <thrust/scan.h>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/expand_kernel.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/select_impl.cu.h"
-#include "paddle/phi/kernels/masked_select_kernel.h"
 
 namespace phi {
 
 template <typename MT, typename InT, typename OutT>
 struct MaskedSelectFunctor {
-  HOSTDEVICE MaskedSelectFunctor() {}
+  HOSTDEVICE MaskedSelectFunctor() = default;
 
   HOSTDEVICE inline void operator()(OutT* out,
                                     const MT* mask,
@@ -46,12 +50,29 @@ void MaskedSelectKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& mask,
                         DenseTensor* out) {
-  auto* mask_data = mask.data<bool>();
-  auto input_data = x.data<T>();
+  DenseTensor mask_expand;
+  DenseTensor x_expand;
 
-  auto mask_size = mask.numel();
-  auto input_dim = x.dims();
-  auto mask_dim = mask.dims();
+  auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
+      vectorize(x.dims()), vectorize(mask.dims()));
+
+  DDim epxand_dims = make_ddim(expanded_size);
+  if (mask.dims() != epxand_dims) {
+    phi::ExpandKernel<bool, Context>(
+        dev_ctx, mask, IntArray(expanded_size), &mask_expand);
+  } else {
+    mask_expand = mask;
+  }
+
+  if (x.dims() != epxand_dims) {
+    phi::ExpandKernel<T, Context>(
+        dev_ctx, x, IntArray(expanded_size), &x_expand);
+  } else {
+    x_expand = x;
+  }
+
+  auto input_dim = x_expand.dims();
+  auto mask_dim = mask_expand.dims();
   PADDLE_ENFORCE_EQ(input_dim,
                     mask_dim,
                     phi::errors::InvalidArgument(
@@ -61,9 +82,10 @@ void MaskedSelectKernel(const Context& dev_ctx,
                         "value.",
                         input_dim,
                         mask_dim));
+
   using Functor = MaskedSelectFunctor<bool, T, T>;
   phi::funcs::SelectKernel<bool, T, T, 1, Functor>(
-      dev_ctx, mask, x, out, Functor());
+      dev_ctx, mask_expand, x_expand, out, Functor());
 }
 
 }  // namespace phi
@@ -75,6 +97,8 @@ PD_REGISTER_KERNEL(masked_select,
                    float,
                    double,
                    int,
-                   int64_t) {
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(1).SetDataType(phi::DataType::BOOL);
 }

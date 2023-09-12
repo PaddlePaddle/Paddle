@@ -82,8 +82,22 @@ void KthvalueKernel(const Context& dev_ctx,
                     DenseTensor* indices) {
   const auto& in_dims = x.dims();
   if (axis < 0) axis += in_dims.size();
+
   T* output_data = dev_ctx.template Alloc<T>(output);
   int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
+  // For 0D Tensor
+  if (in_dims.size() == 0) {
+    PADDLE_ENFORCE_EQ(k,
+                      1,
+                      phi::errors::InvalidArgument(
+                          "the k in the kthvalue must less equal than the "
+                          "elemenents number of the input X, but received %d .",
+                          k));
+
+    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, output);
+    phi::funcs::set_constant(dev_ctx, indices, 0);
+    return;
+  }
   auto out_dims = output->dims();
   if (axis == in_dims.size() - 1) {
     const int64_t& input_height =
@@ -122,7 +136,7 @@ void KthvalueKernel(const Context& dev_ctx,
     DDim trans_dims(in_dims);
     DDim trans_out_dims(in_dims);
 
-    for (size_t i = 0; i < trans.size(); i++) {
+    for (int i = 0; i < static_cast<int>(trans.size()); i++) {
       trans_dims[i] = in_dims[trans[i]];
       trans_out_dims[i] = in_dims[trans[i]];
     }
@@ -130,7 +144,7 @@ void KthvalueKernel(const Context& dev_ctx,
     DenseTensor trans_inp;
     trans_inp.Resize(trans_dims);
     dev_ctx.template Alloc<T>(&trans_inp);
-    int ndims = trans.size();
+    int ndims = static_cast<int>(trans.size());
     funcs::TransCompute<phi::CPUContext, T>(
         ndims, dev_ctx, x, &trans_inp, trans);
 
@@ -164,4 +178,6 @@ PD_REGISTER_KERNEL(kthvalue,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+}

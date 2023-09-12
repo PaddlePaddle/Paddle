@@ -1,65 +1,62 @@
 cc_library(
-  processgroup
-  SRCS ProcessGroup.cc
-  DEPS phi_api eager_api)
+  process_group
+  SRCS process_group.cc
+  DEPS phi xxhash)
+
 cc_library(
   eager_reducer
   SRCS reducer.cc
-  DEPS eager_api processgroup phi_api string_helper)
+  DEPS eager_api process_group phi string_helper)
 
 if(WITH_DISTRIBUTE)
   cc_library(
-    processgroup_gloo
-    SRCS ProcessGroupGloo.cc
-    DEPS phi_api eager_api gloo_wrapper)
+    process_group_gloo
+    SRCS process_group_gloo.cc gloo_send_recv.cc
+    DEPS phi eager_api gloo_wrapper)
 endif()
 
 if(WITH_NCCL OR WITH_RCCL)
   cc_library(
-    processgroup_nccl
-    SRCS ProcessGroupNCCL.cc NCCLTools.cc Common.cc
-    DEPS place
-         cuda_stream
+    process_group_nccl
+    SRCS process_group_nccl.cc nccl_tools.cc common.cc
+    DEPS process_group
+         phi
+         place
          enforce
          collective_helper
          device_context
-         phi_api
-         eager_api)
-  if(WITH_DISTRIBUTE AND WITH_PSCORE)
-    cc_library(
-      processgroup_heter
-      SRCS ProcessGroupHeter.cc NCCLTools.cc Common.cc
-      DEPS place
-           cuda_stream
-           enforce
-           collective_helper
-           device_context
-           phi_api
-           eager_api)
-  endif()
+         ${DEVICE_EVENT_LIBS})
 endif()
 
-if(WITH_ASCEND_CL)
+if(WITH_XPU_BKCL)
   cc_library(
-    processgroup_hccl
-    SRCS ProcessGroupHCCL.cc HCCLTools.cc Common.cc
-    DEPS place
-         npu_stream
-         enforce
-         collective_helper
-         device_context
-         phi_api
-         eager_api)
-  if(WITH_DISTRIBUTE AND WITH_PSCORE)
-    cc_library(
-      processgroup_heter
-      SRCS ProcessGroupHeter.cc HCCLTools.cc Common.cc
-      DEPS place
-           npu_stream
-           enforce
-           collective_helper
-           device_context
-           phi_api
-           eager_api)
-  endif()
+    process_group_bkcl
+    SRCS process_group_bkcl.cc bkcl_tools.cc common.cc
+    DEPS process_group phi place enforce collective_helper device_context)
 endif()
+
+if(WITH_MPI)
+  cc_library(
+    process_group_mpi
+    SRCS process_group_mpi.cc mpi_tools.cc common.cc
+    DEPS collective_helper device_context)
+endif()
+
+if(WITH_CUSTOM_DEVICE)
+  cc_library(
+    process_group_custom
+    SRCS process_group_custom.cc custom_ccl_tools.cc common.cc
+    DEPS process_group phi place enforce collective_helper device_context)
+endif()
+
+set(COMM_UTILS_DEPS process_group)
+if(WITH_NCCL OR WITH_RCCL)
+  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} process_group_nccl)
+endif()
+if(WITH_CUSTOM_DEVICE)
+  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} process_group_custom)
+endif()
+cc_library(
+  processgroup_comm_utils
+  SRCS processgroup_comm_utils.cc
+  DEPS ${COMM_UTILS_DEPS})

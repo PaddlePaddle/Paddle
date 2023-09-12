@@ -18,8 +18,8 @@
 #include <vector>
 
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/memory/detail/buddy_allocator.h"
-#include "paddle/fluid/memory/detail/system_allocator.h"
+#include "paddle/fluid/memory/allocation/buddy_allocator.h"
+#include "paddle/fluid/memory/allocation/system_allocator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 namespace paddle {

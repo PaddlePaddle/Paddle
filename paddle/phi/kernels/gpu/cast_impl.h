@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename InT, typename OutT>
-struct CastFuctor {
+struct CastFunctor {
   __device__ __forceinline__ OutT operator()(const InT x) const {
     return static_cast<OutT>(x);
   }
@@ -29,14 +29,33 @@ struct CastFuctor {
 template <typename InT, typename OutT>
 void CastCUDAKernelImpl(const GPUContext& dev_ctx,
                         const DenseTensor& x,
+                        DataType out_dtype,
                         DenseTensor* out) {
   std::vector<const DenseTensor*> inputs;
   std::vector<DenseTensor*> outputs;
   inputs.emplace_back(&x);
   outputs.emplace_back(out);
   dev_ctx.Alloc<OutT>(out);
+  out->set_type(out_dtype);
   phi::funcs::ElementwiseKernel<OutT>(
-      dev_ctx, inputs, &outputs, CastFuctor<InT, OutT>());
+      dev_ctx, inputs, &outputs, CastFunctor<InT, OutT>());
+}
+
+template <typename InT, typename OutT>
+void CastInplaceCUDAKernelImpl(const GPUContext& dev_ctx,
+                               const DenseTensor& x,
+                               DataType out_dtype,
+                               DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs;
+  std::vector<DenseTensor*> outputs;
+  // inplace case
+  auto x_origin = x;
+  inputs.emplace_back(&x_origin);
+  outputs.emplace_back(out);
+  dev_ctx.Alloc<OutT>(out);
+  out->set_type(out_dtype);
+  phi::funcs::ElementwiseKernel<OutT>(
+      dev_ctx, inputs, &outputs, CastFunctor<InT, OutT>());
 }
 
 }  // namespace phi

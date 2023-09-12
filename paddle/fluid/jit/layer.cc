@@ -14,34 +14,94 @@
 
 #include "paddle/fluid/jit/layer.h"
 
+#include "paddle/fluid/framework/variable.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/errors.h"
+
+#include "paddle/fluid/jit/compilation_unit.h"
+#include "paddle/fluid/jit/engine/base_engine.h"
+#include "paddle/fluid/jit/function.h"
+#include "paddle/fluid/jit/function_schema.h"
+
 namespace paddle {
 namespace jit {
-// TODO(dev): Make vector<string>, num_slot as in argument
-// Layer(const std::shared_ptr<ClassType>& type) : obj_(type, /*num_slot*/ 0U)
-// {}
-Layer::Layer(
-    const std::vector<std::string>& func_names,
-    const std::vector<framework::ProgramDesc>& program_descs,
-    const std::vector<std::vector<std::string>>& param_names_for_each_program,
-    const VariableNameMap& params_dict) {
-  VLOG(3) << "program size: " << program_descs.size();
-  // Layer manage the life time of all parameter.
-  for (size_t i = 0; i < func_names.size(); ++i) {
-    // TODO(dev): choose exector or pe by flag
-    function_dict[func_names[i]] = std::make_shared<ExectorFunction>(
-        program_descs[i], param_names_for_each_program[i], params_dict);
+
+Layer::Layer(const std::shared_ptr<VariableMap>& params_map,
+             const std::shared_ptr<VariableMap>& attrs_map,
+             const FunctionInfoMap& info_map,
+             const phi::Place& place)
+    : params_map_(params_map),
+      attrs_map_(attrs_map),
+      info_map_(info_map),
+      place_(place) {
+  unit_.reset(new CompilationUnit());
+}
+
+jit::Function Layer::Function(const std::string& name) const {
+  return jit::Function(unit_->GetEngine(name).get());
+}
+
+std::vector<Tensor> Layer::forward(const std::vector<Tensor>& inputs) {
+  auto func = this->Function("forward");
+  return func(inputs);
+}
+
+std::vector<DenseTensor> Layer::forward(
+    const std::vector<DenseTensor>& inputs) {
+  auto func = this->Function("forward");
+  return func(inputs);
+}
+
+void Layer::to(const phi::Place& place) {}
+
+void Layer::SetEngine(const std::string& name,
+                      const std::shared_ptr<BaseEngine>& engine) {
+  unit_->SetEngine(name, engine);
+}
+
+const std::shared_ptr<jit::FunctionInfo>& Layer::FunctionInfo(
+    const std::string& name) const {
+  PADDLE_ENFORCE_EQ(
+      info_map_.count(name),
+      1,
+      phi::errors::InvalidArgument(
+          "FuncitonInfo named %s is not existed in info_map_.", name));
+  return info_map_.at(name);
+}
+
+std::vector<std::string> Layer::FunctionNames() const {
+  std::vector<std::string> names;
+  for (const auto& info : info_map_) {
+    names.emplace_back(info.first);
   }
+  return names;
 }
 
-// TODO(dev): make it as const function
-std::shared_ptr<BaseFunction> Layer::GetFunction(const std::string& name) {
-  VLOG(3) << "funcs_ size: " << function_dict.size();
-  return function_dict[name];
-}
+#define PD_SPECIALZE_ATTRIBUTE_TYPE(T)                                \
+  template <>                                                         \
+  T Layer::Attribute<T>(const std::string& name) const {              \
+    if (attrs_map_->find(name) == attrs_map_->end()) {                \
+      PADDLE_THROW(phi::errors::NotFound(                             \
+          "Attribute can not found %s, please check if it exists.")); \
+      return T();                                                     \
+    }                                                                 \
+    auto var = attrs_map_->at(name);                                  \
+    T ret = var->Get<T>();                                            \
+    return ret;                                                       \
+  }
 
-std::vector<Variable> Layer::forward(const VariableNameMap& inputs) {
-  auto func = GetFunction("forward");
-  return (*func)(inputs);
+PD_SPECIALZE_ATTRIBUTE_TYPE(int)
+PD_SPECIALZE_ATTRIBUTE_TYPE(float)
+PD_SPECIALZE_ATTRIBUTE_TYPE(framework::String)
+PD_SPECIALZE_ATTRIBUTE_TYPE(std::vector<int>)
+PD_SPECIALZE_ATTRIBUTE_TYPE(std::vector<float>)
+PD_SPECIALZE_ATTRIBUTE_TYPE(std::vector<std::string>)
+
+std::shared_ptr<Layer> Layer::Clone(void* stream) {
+  std::shared_ptr<Layer> x =
+      std::make_shared<Layer>(params_map_, attrs_map_, info_map_, place_);
+  x->unit_ = unit_->Clone(stream);
+  return x;
 }
 
 }  // namespace jit

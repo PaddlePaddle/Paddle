@@ -22,14 +22,14 @@ XpuStreamResourcePool::XpuStreamResourcePool() {
   pool_.reserve(dev_cnt);
   for (int dev_idx = 0; dev_idx < dev_cnt; ++dev_idx) {
     auto creator = [dev_idx] {
-      platform::XPUDeviceGuard gurad(dev_idx);
+      platform::XPUDeviceGuard guard(dev_idx);
       xpuStream stream;
       xpu_stream_create(&stream);
       return stream;
     };
 
     auto deleter = [dev_idx](xpuStream stream) {
-      platform::XPUDeviceGuard gurad(dev_idx);
+      platform::XPUDeviceGuard guard(dev_idx);
       xpu_stream_destroy(stream);
     };
 
@@ -44,14 +44,17 @@ XpuStreamResourcePool& XpuStreamResourcePool::Instance() {
 
 std::shared_ptr<XpuStreamObject> XpuStreamResourcePool::New(int dev_idx) {
   PADDLE_ENFORCE_GE(
-      dev_idx, 0,
+      dev_idx,
+      0,
       platform::errors::InvalidArgument(
           "The dev_idx should be not less than 0, but got %d.", dev_idx));
   PADDLE_ENFORCE_LT(
-      dev_idx, pool_.size(),
+      dev_idx,
+      pool_.size(),
       platform::errors::OutOfRange(
           "The dev_idx should be less than device count %d, but got %d.",
-          pool_.size(), dev_idx));
+          pool_.size(),
+          dev_idx));
   return pool_[dev_idx]->New();
 }
 
@@ -60,14 +63,14 @@ XpuEventResourcePool::XpuEventResourcePool() {
   pool_.reserve(dev_cnt);
   for (int dev_idx = 0; dev_idx < dev_cnt; ++dev_idx) {
     auto creator = [dev_idx] {
-      platform::XPUDeviceGuard gurad(dev_idx);
+      platform::XPUDeviceGuard guard(dev_idx);
       xpuEventHandle event;
       xpu_event_create(&event);
       return event;
     };
 
     auto deleter = [dev_idx](xpuEventHandle event) {
-      platform::XPUDeviceGuard gurad(dev_idx);
+      platform::XPUDeviceGuard guard(dev_idx);
       xpu_event_destroy(event);
     };
 
@@ -82,14 +85,17 @@ XpuEventResourcePool& XpuEventResourcePool::Instance() {
 
 std::shared_ptr<XpuEventObject> XpuEventResourcePool::New(int dev_idx) {
   PADDLE_ENFORCE_GE(
-      dev_idx, 0,
+      dev_idx,
+      0,
       platform::errors::InvalidArgument(
           "The dev_idx should be not less than 0, but got %d.", dev_idx));
   PADDLE_ENFORCE_LT(
-      dev_idx, pool_.size(),
+      dev_idx,
+      pool_.size(),
       platform::errors::OutOfRange(
           "The dev_idx should be less than device count %d, but got %d.",
-          pool_.size(), dev_idx));
+          pool_.size(),
+          dev_idx));
   return pool_[dev_idx]->New();
 }
 

@@ -18,11 +18,11 @@
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
+template <typename T, typename DeviceContext>
 class GPUSeedKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *out = context.Output<Tensor>("Out");
+    auto *out = context.Output<phi::DenseTensor>("Out");
     int seed = get_seed(context);
 
     auto force_cpu = context.Attr<bool>("force_cpu");
@@ -32,15 +32,20 @@ class GPUSeedKernel : public framework::OpKernel<T> {
           platform::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(platform::CPUPlace());
       out->mutable_data<T>(platform::CPUPlace());
-      phi::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
-      functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
-              out, static_cast<T>(seed));
+      phi::funcs::SetConstant<phi::CPUContext, T> functor;
+      functor(reinterpret_cast<const phi::CPUContext &>(dev_ctx),
+              out,
+              static_cast<T>(seed));
     } else {
       auto *out_data = out->mutable_data<T>(context.GetPlace());
       auto target_gpu_place = context.GetPlace();
       auto stream = context.cuda_device_context().stream();
-      memory::Copy(target_gpu_place, out_data, platform::CPUPlace(), &seed,
-                   sizeof(int), stream);
+      memory::Copy(target_gpu_place,
+                   out_data,
+                   platform::CPUPlace(),
+                   &seed,
+                   sizeof(int),
+                   stream);
     }
   }
 };
@@ -48,6 +53,5 @@ class GPUSeedKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(
-    seed,
-    paddle::operators::GPUSeedKernel<paddle::platform::CUDADeviceContext, int>);
+PD_REGISTER_STRUCT_KERNEL(
+    seed, GPU, ALL_LAYOUT, paddle::operators::GPUSeedKernel, int) {}

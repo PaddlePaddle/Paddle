@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/stream.h"
 
@@ -33,15 +34,14 @@ extern std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
 
 extern AllocationPtr Alloc(const platform::Place& place, size_t size);
 
-extern AllocationPtr Alloc(const phi::DeviceContext& dev_ctx, size_t size);
-
 extern uint64_t Release(const platform::Place& place);
 
 extern std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                                size_t size,
                                                const phi::Stream& stream);
 
-extern AllocationPtr Alloc(const platform::CUDAPlace& place, size_t size,
+extern AllocationPtr Alloc(const platform::CUDAPlace& place,
+                           size_t size,
                            const phi::Stream& stream);
 
 extern bool InSameStream(const std::shared_ptr<Allocation>& allocation,
@@ -55,6 +55,10 @@ extern uint64_t Release(const platform::CUDAPlace& place, gpuStream_t stream);
 void RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 
 gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation);
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+void RecordStream(std::shared_ptr<Allocation> allocation,
+                  phi::stream::stream_t stream);
 #endif
 }  // namespace memory
 }  // namespace paddle

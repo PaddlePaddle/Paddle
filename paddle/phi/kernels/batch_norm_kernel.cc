@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/batch_norm_kernel.h"
 
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
@@ -22,10 +23,10 @@ namespace phi {
 template <typename T, typename Context>
 void BatchNormInferKernel(const Context& dev_ctx,
                           const DenseTensor& x,
-                          const DenseTensor& scale,
-                          const DenseTensor& bias,
                           const DenseTensor& mean,
                           const DenseTensor& variance,
+                          const DenseTensor& scale,
+                          const DenseTensor& bias,
                           float momentum,
                           float epsilon,
                           const std::string& data_layout,
@@ -39,17 +40,16 @@ void BatchNormInferKernel(const Context& dev_ctx,
   auto saved_variance = phi::EmptyLike<T, Context>(dev_ctx, *variance_out);
   BatchNormKernel<T, Context>(dev_ctx,
                               x,
-                              scale,
-                              bias,
                               mean,
                               variance,
+                              scale,
+                              bias,
+                              /*is_test=*/true,
                               momentum,
                               epsilon,
                               data_layout,
-                              /*is_test=*/true,
                               /*use_global_stats=*/false,
                               /*trainable_statistics=*/false,
-                              /*fuse_with_relu=*/false,
                               y,
                               mean_out,
                               variance_out,
@@ -67,6 +67,22 @@ PD_REGISTER_KERNEL(batch_norm_infer,
                    float,
                    double) {}
 #ifdef PADDLE_WITH_CUDA
+#if CUDNN_VERSION_MIN(8, 1, 0)
+PD_REGISTER_KERNEL(batch_norm_infer,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::BatchNormInferKernel,
+                   float,
+                   double,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
+      kernel_key.dtype() == phi::DataType::BFLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  }
+}
+#else
 PD_REGISTER_KERNEL(batch_norm_infer,
                    GPU,
                    ALL_LAYOUT,
@@ -80,9 +96,18 @@ PD_REGISTER_KERNEL(batch_norm_infer,
   }
 }
 #endif
+#endif
 #ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(batch_norm_infer,
                    GPU,
+                   ALL_LAYOUT,
+                   phi::BatchNormInferKernel,
+                   float,
+                   phi::dtype::float16) {}
+#endif
+#ifdef PADDLE_WITH_XPU
+PD_REGISTER_KERNEL(batch_norm_infer,
+                   XPU,
                    ALL_LAYOUT,
                    phi::BatchNormInferKernel,
                    float,

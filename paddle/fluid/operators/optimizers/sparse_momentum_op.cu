@@ -12,14 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/optimizers/sparse_momentum_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    sparse_momentum,
-    ops::SparseMomentumOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SparseMomentumOpKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SparseMomentumOpKernel<paddle::platform::CUDADeviceContext,
-                                paddle::platform::float16>);
+namespace plat = paddle::platform;
+PD_REGISTER_STRUCT_KERNEL(sparse_momentum,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SparseMomentumOpKernel,
+                          float,
+                          double,
+                          plat::float16) {}

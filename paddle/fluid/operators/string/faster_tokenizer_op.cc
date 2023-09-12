@@ -14,7 +14,6 @@ limitations under the License. */
 #include <utf8proc.h>
 
 #include <algorithm>
-#include <boost/algorithm/string.hpp>
 #include <chrono>
 #include <codecvt>
 #include <fstream>
@@ -30,15 +29,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using std::bad_cast;
-using std::codecvt_utf8;
-using std::endl;
-using std::exception;
 using std::ifstream;
 using std::int64_t;
-using std::min;
-using std::runtime_error;
-using std::shared_ptr;
 using std::size_t;
 using std::string;
 using std::unordered_map;
@@ -101,7 +93,7 @@ void BasicTokenizer::Tokenize(const string& text, vector<wstring>* res) const {
   }
   std::wstring cache_text = L"";
   auto PushCacheText = [&]() {
-    if (cache_text != L"") {
+    if (!cache_text.empty()) {
       res->emplace_back(cache_text);
       cache_text = L"";
     }
@@ -126,7 +118,8 @@ void BasicTokenizer::Tokenize(const string& text, vector<wstring>* res) const {
 }
 
 WordPieceTokenizer::WordPieceTokenizer(
-    const framework::Vocab* vocab, const wstring& unk_token /* = L"[UNK]"*/,
+    const framework::Vocab* vocab,
+    const wstring& unk_token /* = L"[UNK]"*/,
     const size_t max_input_chars_per_word /* = 100 */)
     : vocab_(vocab),
       unk_token_(unk_token),
@@ -157,7 +150,7 @@ void WordPieceTokenizer::Tokenize(const wstring& text,
     while (start < end) {
       std::wstring sub = text.substr(start, end - start);
       if (start > 0) {
-        sub = L"##" + sub;
+        sub.insert(0, L"##");
       }
       auto it = vocab_->find(sub);
       if (it != vocab_->end()) {
@@ -207,9 +200,11 @@ BertTokenizer::BertTokenizer(const framework::Vocab* vocab,
 
   all_special_tokens_ = vector<wstring>(
       {unk_token_, pad_token_, cls_token_, mask_token_, sep_token_});
-  all_special_token_ids_ =
-      unordered_set<int64_t>({unk_token_id_, pad_token_id_, cls_token_id_,
-                              mask_token_id_, sep_token_id_});
+  all_special_token_ids_ = unordered_set<int64_t>({unk_token_id_,
+                                                   pad_token_id_,
+                                                   cls_token_id_,
+                                                   mask_token_id_,
+                                                   sep_token_id_});
 }
 
 void BertTokenizer::Tokenize(const string& text,
@@ -240,9 +235,10 @@ void BertTokenizer::Tokenize(const string& text,
 }
 
 void BertTokenizer::BuildInputsWithSpecialTokens(
-    vector<int64_t>* inputs, const vector<int64_t>& token_ids_0,
+    vector<int64_t>* inputs,
+    const vector<int64_t>& token_ids_0,
     const vector<int64_t>& token_ids_1 /* = vector<int64_t>() */) const {
-  if (token_ids_1.size() == 0) {
+  if (token_ids_1.empty()) {
     inputs->clear();
     inputs->resize(token_ids_0.size() + 2);
     inputs->at(0) = std::move(cls_token_id_);
@@ -280,9 +276,10 @@ int64_t BertTokenizer::GetNumSpecialTokensToAdd(const bool pair) const {
 }
 
 void BertTokenizer::CreateTokenTypeIdsFromSequences(
-    vector<int64_t>* token_type_ids, const vector<int64_t>& token_ids_0,
+    vector<int64_t>* token_type_ids,
+    const vector<int64_t>& token_ids_0,
     const vector<int64_t>& token_ids_1 /* = vector<int64_t>() */) const {
-  if (token_ids_1.size() == 0) {
+  if (token_ids_1.empty()) {
     vector<int64_t> tmp(token_ids_0.size() + 2, 0);
     token_type_ids->swap(tmp);
   } else {
@@ -295,11 +292,12 @@ void BertTokenizer::CreateTokenTypeIdsFromSequences(
 }
 
 void BertTokenizer::TruncateSequence(
-    vector<int64_t>* ids, vector<int64_t>* pair_ids,
+    vector<int64_t>* ids,
+    vector<int64_t>* pair_ids,
     const size_t num_tokens_to_remove /* = 0 */,
     const size_t stride /* = 0 */) const {
   for (size_t i = 0; i < num_tokens_to_remove; i++) {
-    if ((pair_ids->size() == 0) || (ids->size() > pair_ids->size())) {
+    if ((pair_ids->empty()) || (ids->size() > pair_ids->size())) {
       ids->pop_back();
     } else {
       pair_ids->pop_back();
@@ -310,8 +308,10 @@ void BertTokenizer::TruncateSequence(
 int64_t BertTokenizer::GetPadTokenID() const { return pad_token_id_; }
 
 int BertTokenizer::Encode(
-    unordered_map<string, vector<int64_t>>* encoded_inputs, const string& text,
-    const string& text_pair /* = "" */, bool is_split_into_words /* = false */,
+    unordered_map<string, vector<int64_t>>* encoded_inputs,
+    const string& text,
+    const string& text_pair /* = "" */,
+    bool is_split_into_words /* = false */,
     const size_t max_seq_len /* = 0 */,
     bool pad_to_max_seq_len /* = false */) const {
   vector<int64_t> ids;
@@ -319,7 +319,7 @@ int BertTokenizer::Encode(
   if (!is_split_into_words) {
     Tokenize(text, &ids);
     if (ids.empty()) return 0;
-    if (text_pair != "") {
+    if (!text_pair.empty()) {
       Tokenize(text_pair, &pair_ids);
       if (pair_ids.empty()) return 0;
     }
@@ -341,7 +341,7 @@ int BertTokenizer::Encode(
   }
 
   bool pair = false;
-  if (pair_ids.size() != 0) {
+  if (!pair_ids.empty()) {
     pair = true;
   }
 
@@ -400,9 +400,10 @@ int BertTokenizer::Encode(
 
 void BertTokenizer::BatchEncode(
     vector<unordered_map<string, vector<int64_t>>>* batch_encode_inputs,
-    const vector<string>& batch_text,
-    const vector<string>& batch_text_pair /* = vector<string>() */,
-    bool is_split_into_words /* = false */, const size_t max_seq_len /* = 0 */,
+    const framework::Strings& batch_text,
+    const framework::Strings& batch_text_pair /* = vector<string>() */,
+    bool is_split_into_words /* = false */,
+    const size_t max_seq_len /* = 0 */,
     bool pad_to_max_seq_len /* = false */) const {
   bool has_text_pair = false;
   if (batch_text_pair.size() != 0) {
@@ -416,17 +417,24 @@ void BertTokenizer::BatchEncode(
   for (size_t i = 0; i < batch_size; i++) {
     unordered_map<string, vector<int64_t>> res;
     if (has_text_pair) {
-      auto status =
-          Encode(&res, batch_text[i], batch_text_pair[i], is_split_into_words,
-                 max_seq_len, pad_to_max_seq_len);
+      auto status = Encode(&res,
+                           batch_text[i],
+                           batch_text_pair[i],
+                           is_split_into_words,
+                           max_seq_len,
+                           pad_to_max_seq_len);
       if (!status) {
         res["input_ids"] =
             std::vector<int64_t>{cls_token_id_, sep_token_id_, cls_token_id_};
         res["token_type_ids"] = std::vector<int64_t>{0, 0, 1};
       }
     } else {
-      auto status = Encode(&res, batch_text[i], {}, is_split_into_words,
-                           max_seq_len, pad_to_max_seq_len);
+      auto status = Encode(&res,
+                           batch_text[i],
+                           {},
+                           is_split_into_words,
+                           max_seq_len,
+                           pad_to_max_seq_len);
 
       if (!status) {
         res["input_ids"] = std::vector<int64_t>{cls_token_id_, sep_token_id_};
@@ -444,28 +452,29 @@ class FasterTokenizerOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Text"), "Input", "Text", "Tokenizer");
     OP_INOUT_CHECK(ctx->HasInput("Vocab"), "Input", "Vocab", "Tokenizer");
-    OP_INOUT_CHECK(ctx->HasOutput("InputIds"), "Output", "InputIds",
-                   "Tokenizer");
-    OP_INOUT_CHECK(ctx->HasOutput("SegmentIds"), "Output", "SegmentIds",
-                   "Tokenizer");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("InputIds"), "Output", "InputIds", "Tokenizer");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("SegmentIds"), "Output", "SegmentIds", "Tokenizer");
 
     ctx->SetOutputDim("InputIds", {-1, -1});
     ctx->SetOutputDim("SegmentIds", {-1, -1});
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::INT64,
-                                   paddle::platform::CPUPlace());
+    return phi::KernelKey(framework::proto::VarType::INT64,
+                          paddle::platform::CPUPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   expected_kernel_type.place_,
-                                   tensor.layout());
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          tensor.layout(),
+                          expected_kernel_type.dtype());
   }
 };
 
@@ -521,7 +530,9 @@ class FasterTokenizerOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(faster_tokenizer, ops::FasterTokenizerOp,
+REGISTER_OPERATOR(faster_tokenizer,
+                  ops::FasterTokenizerOp,
                   ops::FasterTokenizerOpMaker);
 
-REGISTER_OP_CPU_KERNEL(faster_tokenizer, ops::FasterTokenizerKernel<int64_t>);
+PD_REGISTER_STRUCT_KERNEL(
+    faster_tokenizer, CPU, ALL_LAYOUT, ops::FasterTokenizerKernel, int64_t) {}

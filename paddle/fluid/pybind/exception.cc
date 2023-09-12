@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/pybind/exception.h"
 
+#include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/phi/api/ext/exception.h"
 namespace paddle {
 namespace pybind {
@@ -41,6 +42,8 @@ void BindException(pybind11::module* m) {
       if (p) std::rethrow_exception(p);
     } catch (const platform::EOFException& e) {
       eof(e.what());
+    } catch (const memory::allocation::BadAlloc& e) {
+      PyErr_SetString(PyExc_MemoryError, e.what());
     } catch (const platform::EnforceNotMet& e) {
       switch (e.code()) {
         case paddle::platform::error::INVALID_ARGUMENT:
@@ -84,13 +87,15 @@ void BindException(pybind11::module* m) {
 
 void ThrowExceptionToPython(std::exception_ptr p) {
   static PyObject* EOFExceptionException =
-      PyErr_NewException("paddle.EOFException", PyExc_Exception, NULL);
+      PyErr_NewException("paddle.EOFException", PyExc_Exception, nullptr);
   static PyObject* EnforceNotMetException =
-      PyErr_NewException("paddle.EnforceNotMet", PyExc_Exception, NULL);
+      PyErr_NewException("paddle.EnforceNotMet", PyExc_Exception, nullptr);
   try {
     if (p) std::rethrow_exception(p);
   } catch (const platform::EOFException& e) {
     PyErr_SetString(EOFExceptionException, e.what());
+  } catch (const memory::allocation::BadAlloc& e) {
+    PyErr_SetString(PyExc_MemoryError, e.what());
   } catch (const platform::EnforceNotMet& e) {
     switch (e.code()) {
       case paddle::platform::error::INVALID_ARGUMENT:

@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/dropout_kernel.h"
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -25,7 +25,7 @@ namespace phi {
 template <typename T, typename Context>
 void ComputeDropoutInference(const Context& ctx,
                              const DenseTensor& x,
-                             float dropout_prob,
+                             const Scalar& dropout_prob,
                              bool upscale_in_train,
                              DenseTensor* y) {
   if (upscale_in_train) {
@@ -41,7 +41,7 @@ void ComputeDropoutInference(const Context& ctx,
     auto X = EigenMatrix<T>::Reshape(x, 1);
     auto Y = EigenMatrix<T>::Reshape(*y, 1);
     auto& place = *ctx.eigen_device();
-    Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);
+    Y.device(place) = X * static_cast<T>(1.0f - dropout_prob.to<float>());
   }
 }
 
@@ -49,7 +49,7 @@ template <typename T, typename Context>
 void DropoutRawKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const paddle::optional<DenseTensor>& seed_tensor,
-                      float p,
+                      const Scalar& p,
                       bool is_test,
                       const std::string& mode,
                       int seed,
@@ -59,11 +59,11 @@ void DropoutRawKernel(const Context& dev_ctx,
   auto* y = out;
   const auto* x_data = x.data<T>();
   T* y_data = dev_ctx.template Alloc<T>(y);
-  float dropout_prob = p;
+  float dropout_prob = p.to<float>();
 
   auto& dropout_implementation = mode;
   bool upscale_in_train = (dropout_implementation == "upscale_in_train");
-  if (!is_test) {
+  if (!is_test && mask) {
     auto* mask_data = dev_ctx.template Alloc<uint8_t>(mask);
     size_t size = phi::product(mask->dims());
 
@@ -82,7 +82,13 @@ void DropoutRawKernel(const Context& dev_ctx,
     } else {
       seed_data = fix_seed ? seed : 0;
     }
-    auto engine = paddle::framework::GetCPURandomEngine(seed_data);
+    std::shared_ptr<std::mt19937_64> engine;
+    if (seed_data) {
+      engine = std::make_shared<std::mt19937_64>();
+      engine->seed(seed_data);
+    } else {
+      engine = dev_ctx.GetGenerator()->GetCPUEngine();
+    }
 
     std::uniform_real_distribution<float> dist(0, 1);
 
@@ -109,7 +115,7 @@ template <typename T, typename Context>
 void DropoutNdKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const paddle::optional<DenseTensor>& seed_tensor,
-                     float p,
+                     const Scalar& p,
                      bool is_test,
                      const std::string& mode,
                      int seed,
@@ -120,11 +126,11 @@ void DropoutNdKernel(const Context& dev_ctx,
   auto* y = out;
   const auto* x_data = x.data<T>();
   T* y_data = dev_ctx.template Alloc<T>(y);
-  float dropout_prob = p;
+  float dropout_prob = p.to<float>();
 
   auto& dropout_implementation = mode;
   bool upscale_in_train = (dropout_implementation == "upscale_in_train");
-  if (!is_test) {
+  if (!is_test && mask) {
     DenseTensor t_mask;
     t_mask.Resize(mask->dims());
     T* t_mask_data = dev_ctx.template Alloc<T>(&t_mask);
@@ -147,7 +153,13 @@ void DropoutNdKernel(const Context& dev_ctx,
     } else {
       seed_data = fix_seed ? seed : 0;
     }
-    auto engine = paddle::framework::GetCPURandomEngine(seed_data);
+    std::shared_ptr<std::mt19937_64> engine;
+    if (seed_data) {
+      engine = std::make_shared<std::mt19937_64>();
+      engine->seed(seed_data);
+    } else {
+      engine = dev_ctx.GetGenerator()->GetCPUEngine();
+    }
 
     std::uniform_real_distribution<float> dist(0, 1);
 
@@ -197,7 +209,11 @@ PD_REGISTER_KERNEL(dropout,
                    phi::DropoutRawKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
+}
 
 PD_REGISTER_KERNEL(
-    dropout_nd, CPU, ALL_LAYOUT, phi::DropoutNdKernel, float, double) {}
+    dropout_nd, CPU, ALL_LAYOUT, phi::DropoutNdKernel, float, double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
+}

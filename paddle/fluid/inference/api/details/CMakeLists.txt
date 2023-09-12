@@ -25,16 +25,25 @@ if(WITH_ONNXRUNTIME)
   cc_library(
     zero_copy_tensor_dummy
     SRCS zero_copy_tensor_dummy.cc
-    DEPS onnxruntime)
+    DEPS onnxruntime phi)
 else()
   cc_library(
     zero_copy_tensor
     SRCS zero_copy_tensor.cc
     DEPS scope lod_tensor enforce)
-  cc_library(zero_copy_tensor_dummy SRCS zero_copy_tensor_dummy.cc)
+  cc_library(
+    zero_copy_tensor_dummy
+    SRCS zero_copy_tensor_dummy.cc
+    DEPS phi)
 endif()
 
 cc_test(
   zero_copy_tensor_test
   SRCS zero_copy_tensor_test.cc
   DEPS paddle_inference_api)
+
+if(WITH_ONNXRUNTIME AND WIN32)
+  # Copy onnxruntime for some c++ test in Windows, since the test will
+  # be build only in CI, so suppose the generator in Windows is Ninja.
+  copy_onnx(zero_copy_tensor_test)
+endif()

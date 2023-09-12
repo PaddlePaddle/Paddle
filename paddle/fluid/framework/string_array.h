@@ -20,13 +20,97 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/framework/phi_tensor_base_vector.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/extended_tensor.h"
 
 namespace paddle {
 namespace framework {
 
+// Note(YuanRisheng): Vocab is mainly used for faster_tokenizer_op and we don't
+// recommend widely use it. Because faster_tokenizer_op may be deleted in the
+// future and this class will be deleted.
+
+class Vocab : public phi::ExtendedTensor,
+              public phi::TypeInfoTraits<phi::TensorBase, Vocab> {
+ public:
+  Vocab() = default;
+
+  Vocab(Vocab&& other) = default;
+
+  Vocab(const Vocab& other) = default;
+
+  Vocab& operator=(const Vocab& other) = default;
+
+  Vocab& operator=(Vocab&& other) = default;
+
+  Vocab& operator=(
+      const std::unordered_map<std::wstring, std::int32_t>& other) {
+    this->data_ = other;
+    return *this;
+  }
+
+  /// \brief Destroy the Vocab and release exclusive resources.
+  virtual ~Vocab() = default;
+
+ public:
+  /// \brief Returns the name of the class for type traits.
+  /// \return The name of the class.
+  static const char* name() { return "Vocab"; }
+
+  size_t size() const { return data_.size(); }
+
+  void clear() { data_.clear(); }
+
+  void emplace(const std::wstring& key, std::int32_t value) {
+    data_.emplace(key, value);
+  }
+
+  std::int32_t at(const std::wstring& key) { return data_.at(key); }
+
+  std::int32_t at(const std::wstring& key) const { return data_.at(key); }
+
+  std::unordered_map<std::wstring, std::int32_t>::iterator find(
+      const std::wstring& key) {
+    return data_.find(key);
+  }
+
+  std::unordered_map<std::wstring, std::int32_t>::const_iterator find(
+      const std::wstring& key) const {
+    return data_.find(key);
+  }
+
+  std::unordered_map<std::wstring, std::int32_t>::iterator begin() {
+    return data_.begin();
+  }
+
+  std::unordered_map<std::wstring, std::int32_t>::const_iterator begin() const {
+    return data_.begin();
+  }
+
+  std::unordered_map<std::wstring, std::int32_t>::iterator end() {
+    return data_.end();
+  }
+
+  std::unordered_map<std::wstring, std::int32_t>::const_iterator end() const {
+    return data_.end();
+  }
+
+ private:
+  std::unordered_map<std::wstring, std::int32_t> data_;
+};
+
+// Note(YuanRisheng): PhiVector is essentially a vector that only used for PHI
+// Kernel. It can be used when you define a non-tensor type that needs to be
+// stored in a vector as PHI kernel argument.
+
+template <>
+struct PhiVectorType<std::string> {
+  const char* type_name = "PhiVectorString";
+};
+
 using String = std::string;
-using Strings = std::vector<std::string>;
-using Vocab = std::unordered_map<std::wstring, std::int32_t>;
+using Strings = PhiVector<std::string>;
 
 // Convert the std::string type to the std::string type.
 bool ConvertStrToWstr(const std::string& src, std::wstring* res);

@@ -17,7 +17,7 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature GraphSampleNeighborsOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("graph_sample_neighbors",
                          {"Row", "Col_Ptr", "X", "Eids", "Perm_Buffer"},
                          {"sample_size", "return_eids", "flag_perm_buffer"},

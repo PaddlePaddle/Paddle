@@ -16,7 +16,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -49,12 +49,20 @@ void KthvalueGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& indices,
                         const DenseTensor& d_out,
-                        int k,
+                        int k UNUSED,
                         int axis,
                         bool keepdim,
                         DenseTensor* d_x) {
   auto in_dims = x.dims();
   auto out_dims = indices.dims();
+  T* x_grad_data = dev_ctx.template Alloc<T>(d_x);
+
+  // For 0D Tensor
+  if (in_dims.size() == 0) {
+    phi::funcs::set_constant(dev_ctx, d_x, 1.0);
+    return;
+  }
+
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
   if (!keepdim) {
     std::vector<int> tmp_out_shape;
@@ -67,7 +75,7 @@ void KthvalueGradKernel(const Context& dev_ctx,
     }
     out_dims = phi::make_ddim(tmp_out_shape);
   }
-  T* x_grad_data = dev_ctx.template Alloc<T>(d_x);
+
   if (axis == in_dims.size() - 1) {
     const int64_t input_height =
         phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
@@ -109,7 +117,7 @@ void KthvalueGradKernel(const Context& dev_ctx,
     trans.emplace_back(axis);
     DDim trans_dims(out_dims);
     DDim trans_in_dims(in_dims);
-    for (size_t i = 0; i < trans.size(); i++) {
+    for (int i = 0; i < static_cast<int>(trans.size()); i++) {
       trans_dims[i] = out_dims[trans[i]];
       trans_in_dims[i] = in_dims[trans[i]];
     }
@@ -118,7 +126,7 @@ void KthvalueGradKernel(const Context& dev_ctx,
     trans_ind.Resize(trans_dims);
     dev_ctx.template Alloc<T>(&trans_dO);
     dev_ctx.template Alloc<int64_t>(&trans_ind);
-    int ndims = trans.size();
+    int ndims = static_cast<int>(trans.size());
     if (keepdim) {
       funcs::TransCompute<phi::CPUContext, T>(
           ndims, dev_ctx, d_out, &trans_dO, trans);

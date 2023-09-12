@@ -14,10 +14,18 @@ limitations under the License. */
 
 #pragma once
 
+#include <vector>
+
 #include "paddle/phi/api/ext/exception.h"
-#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/tensor_ref.h"
+
+namespace phi {
+class DDim;
+}  // namespace phi
 
 namespace paddle {
+class Tensor;
 namespace experimental {
 
 template <typename T>
@@ -35,17 +43,19 @@ class IntArrayBase {
   IntArrayBase(std::initializer_list<int64_t> array_list)
       : array_(array_list) {}
 
-  IntArrayBase(const int64_t* date_value, int64_t n) {
-    AssignData(date_value, n);
+  IntArrayBase(const int64_t* data_value, int64_t n) {
+    AssignData(data_value, n);
   }
 
-  IntArrayBase(const int32_t* date_value, int64_t n) {
-    AssignData(date_value, n);
+  IntArrayBase(const int32_t* data_value, int64_t n) {
+    AssignData(data_value, n);
   }
 
   bool FromTensor() const { return is_from_tensor_; }
 
   void SetFromTensor(bool val) { is_from_tensor_ = val; }
+
+  explicit IntArrayBase(const phi::DDim& dims);
 
   // The Tensor must have one dim
   IntArrayBase(const T& tensor);  // NOLINT
@@ -53,10 +63,14 @@ class IntArrayBase {
   // The Tensor in vec must have only one element
   IntArrayBase(const std::vector<T>& tensor_list);  // NOLINT
 
+  explicit IntArrayBase(const std::vector<phi::TensorRef>& tensor_ref_list);
+
   template <typename OtherT>
   IntArrayBase(const IntArrayBase<OtherT>& other) : array_(other.GetData()) {}
 
   size_t size() const { return array_.size(); }
+
+  int64_t operator[](int64_t i) const { return array_[i]; }
 
   const std::vector<int64_t>& GetData() const { return array_; }
 
@@ -76,6 +90,7 @@ class IntArrayBase {
 
   void AssignDataFromTensor(const T& tensor) {
     size_t n = tensor.numel();
+
     array_.reserve(n);
     switch (tensor.dtype()) {
       case DataType::INT32:
@@ -101,8 +116,7 @@ class IntArrayBase {
   bool is_from_tensor_{false};
 };
 
-using IntArray =
-    paddle::experimental::IntArrayBase<paddle::experimental::Tensor>;
+using IntArray = paddle::experimental::IntArrayBase<paddle::Tensor>;
 
 }  // namespace experimental
 }  // namespace paddle

@@ -15,133 +15,78 @@
 #pragma once
 
 #include <algorithm>
-#include <mutex>
 #include <numeric>
-#include <unordered_map>
-#include <vector>
 
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
-
-inline void HashCombine(std::size_t* seed) {}
-
-// combine hash value
-// https://stackoverflow.com/questions/2590677/how-do-i-combine-hash-values-in-c0x
-template <typename T, typename... Rest>
-inline void HashCombine(std::size_t* seed, const T& v, Rest... rest) {
-  std::hash<T> hasher;
-  *seed ^= hasher(v) + 0x9e3779b9 + (*seed << 6) + (*seed >> 2);
-  HashCombine(seed, rest...);
-}
-
-// custom specialization of std::hash can be injected in namespace std
-// ref: https://en.cppreference.com/w/cpp/utility/hash
-namespace std {
-template <typename T>
-struct hash<std::vector<T>> {
-  std::size_t operator()(std::vector<T> const& vec) const noexcept {
-    std::size_t seed = 0;
-    for (auto val : vec) {
-      HashCombine(&seed, val);
-    }
-    return seed;
-  }
-};
-}  // namespace std
-
+#include "paddle/phi/kernels/autotune/cache_base.h"
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+#include "paddle/phi/kernels/autotune/cache_cudnn_frontend.h"
+#endif
 namespace phi {
 namespace autotune {
 
-template <typename... Args>
-size_t GetKey(Args&&... args) {
-  size_t seed = 0;
-  HashCombine(&seed, std::forward<Args>(args)...);
-  return seed;
-}
+struct ConvAutoTuneResult {
+  ConvAutoTuneResult() {}
+  ConvAutoTuneResult(int64_t a, size_t size, bool search)
+      : algo(a), workspace_size(size), exhaustive_search(search) {}
 
-// Define the cache key of operator
-size_t ConvKey(const std::vector<int64_t>& x_dims,
-               const std::vector<int64_t>& w_dims,
-               const std::vector<int>& strides,
-               const std::vector<int>& paddings,
-               const std::vector<int>& dilations,
-               phi::DataType dtype);
-
-template <typename AlgorithmT>
-class AlgorithmsCache {
- public:
-  AlgorithmsCache() : cache_mutex_(new std::mutex()) { hash_.clear(); }
-
-  AlgorithmT Get(size_t key) {
-    std::lock_guard<std::mutex> lock(*cache_mutex_);
-    PADDLE_ENFORCE_NE(
-        hash_.find(key),
-        hash_.end(),
-        phi::errors::PreconditionNotMet("The key does not exist."));
-    return hash_[key];
-  }
-
-  bool Find(size_t key) {
-    bool ret = false;
-    std::lock_guard<std::mutex> lock(*cache_mutex_);
-    if (hash_.find(key) != hash_.end()) {
-      cache_hits_++;
-      ret = true;
-    } else {
-      cache_misses_++;
-    }
-    return ret;
-  }
-
-  void Clean() {
-    std::lock_guard<std::mutex> lock(*cache_mutex_);
-    hash_.clear();
-    cache_hits_ = 0;
-    cache_misses_ = 0;
-  }
-
-  void Set(size_t key, AlgorithmT algo) {
-    std::lock_guard<std::mutex> lock(*cache_mutex_);
-    hash_[key] = algo;
-  }
-
-  int64_t CacheMisses() const { return cache_misses_; }
-
-  int64_t CacheHits() const { return cache_hits_; }
-
-  float CacheHitRate() const {
-    int64_t num_accesses = cache_hits_ + cache_misses_;
-    float cache_hit_rate = 0.;
-    if (num_accesses != 0) {
-      cache_hit_rate =
-          static_cast<float>(cache_hits_) / static_cast<float>(num_accesses);
-    }
-    return cache_hit_rate;
-  }
-
-  int64_t Size() const { return hash_.size(); }
-
- private:
-  std::unordered_map<size_t, AlgorithmT> hash_;
-  std::shared_ptr<std::mutex> cache_mutex_;
-
-  int64_t cache_hits_{0};
-  int64_t cache_misses_{0};
+  int64_t algo;
+  size_t workspace_size = 0;
+  bool exhaustive_search = false;
 };
+
+size_t TransposeKey(const std::vector<int64_t>& x_dims,
+                    const std::vector<int32_t>& perm,
+                    phi::DataType dtype);
 
 enum class AlgorithmType {
   kConvForward = 1,
   kConvBackwardData = 2,
   kConvBackwardFilter = 3,
   kTranspose = 4,
-  kAlgorithmCount = 5
+  kMatmul = 5,
+  kGatherGemmScatterFP16NN = 6,
+  kGatherGemmScatterFP32NN = 7,
+  kGatherGemmScatterFP32TN = 8,
+  kGatherGemmScatterFP32NT = 9,
+#if !defined(PADDLE_WITH_CUDNN_FRONTEND)
+  kAlgorithmCount = 10
+#else
+  kConvForwardV8 = 10,
+  kConvBackwardDataV8 = 11,
+  kConvBackwardFilterV8 = 12,
+  kScaleBiasReluConvBNstats = 13,
+  kBNFinalize = 14,
+  kAlgorithmCount = 15
+#endif
 };
 
 // AlgorithmsConfigKey -> AlgorithmsID
-using AlgorithmsCacheMap = AlgorithmsCache<int64_t>;
 // AlgorithmType -> AlgorithmsCache
+using AlgorithmsCacheMap = AlgorithmsCache<size_t, int64_t>;
 using AlgorithmsTypeMap = std::unordered_map<int64_t, AlgorithmsCacheMap>;
+
+// (todo. hong) use cudnnConvolutionFwdAlgo_t
+using ConvAlgorithmsCacheMap = ConvAlgorithmsCache<ConvAutoTuneResult>;
+using ConvAlgorithmsTypeMap =
+    std::unordered_map<int64_t, ConvAlgorithmsCacheMap>;
+
+using MatmulAlgorithmsCacheMap = MatmulAlgorithmsCache<size_t, int64_t>;
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+using CudnnV8AlgorithmsTypeMap =
+    std::unordered_map<int64_t, CudnnFrontendPlanCache>;
+#endif
+
+#define DEFINE_GET_GATHER_GEMM_SCATTER(                    \
+    dtype, transpose_a, transpose_b, algo_type)            \
+  template <typename T, bool TransposeA, bool TransposeB>  \
+  typename std::enable_if<std::is_same<T, dtype>::value && \
+                              TransposeA == transpose_a && \
+                              TransposeB == transpose_b,   \
+                          AlgorithmsCacheMap&>::type       \
+  GetGatherGemmScatter() {                                 \
+    return Get(algo_type);                                 \
+  }
 
 class AutoTuneCache {
  public:
@@ -154,24 +99,48 @@ class AutoTuneCache {
     return auto_tune_map_[static_cast<int64_t>(algo_type)];
   }
 
-  AlgorithmsCacheMap& GetConvForward() {
-    return Get(AlgorithmType::kConvForward);
-  }
+  MatmulAlgorithmsCacheMap& GetMatmul() { return matmul_auto_tune_map_; }
 
-  AlgorithmsCacheMap& GetConvBackwardData() {
-    return Get(AlgorithmType::kConvBackwardData);
+  ConvAlgorithmsCacheMap& GetConv(const AlgorithmType& algo_type) {
+    return conv_auto_tune_map_[static_cast<int64_t>(algo_type)];
   }
+  DEFINE_GET_GATHER_GEMM_SCATTER(phi::dtype::float16,
+                                 false,
+                                 false,
+                                 AlgorithmType::kGatherGemmScatterFP16NN);
+  DEFINE_GET_GATHER_GEMM_SCATTER(float,
+                                 false,
+                                 false,
+                                 AlgorithmType::kGatherGemmScatterFP32NN);
+  DEFINE_GET_GATHER_GEMM_SCATTER(float,
+                                 true,
+                                 false,
+                                 AlgorithmType::kGatherGemmScatterFP32TN);
+  DEFINE_GET_GATHER_GEMM_SCATTER(float,
+                                 false,
+                                 true,
+                                 AlgorithmType::kGatherGemmScatterFP32NT);
 
-  AlgorithmsCacheMap& GetConvBackwardFilter() {
-    return Get(AlgorithmType::kConvBackwardFilter);
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+  CudnnFrontendPlanCache& GetConvV8(const AlgorithmType& algo_type) {
+    return cudnn_v8_auto_tune_map_[static_cast<int64_t>(algo_type)];
   }
-
-  AlgorithmsCacheMap& GetTranspose() { return Get(AlgorithmType::kTranspose); }
+#endif
 
   void Clean() {
     for (auto& v : auto_tune_map_) {
       v.second.Clean();
     }
+
+    for (auto& v : conv_auto_tune_map_) {
+      v.second.Clean();
+    }
+
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+    for (auto& v : cudnn_v8_auto_tune_map_) {
+      v.second.Clean();
+    }
+#endif
   }
 
   void UpdateStatus();
@@ -202,14 +171,38 @@ class AutoTuneCache {
 
   void Register(const AlgorithmType& algo_type) {
     std::lock_guard<std::mutex> lock(*autotune_cache_mutex_);
-    int64_t key = static_cast<int64_t>(algo_type);
-    if (auto_tune_map_.find(key) == auto_tune_map_.end()) {
-      AlgorithmsCacheMap cache;
-      auto_tune_map_[key] = cache;
+    if (algo_type == AlgorithmType::kConvForward ||
+        algo_type == AlgorithmType::kConvBackwardData ||
+        algo_type == AlgorithmType::kConvBackwardFilter) {
+      int64_t key = static_cast<int64_t>(algo_type);
+      if (auto_tune_map_.find(key) == auto_tune_map_.end()) {
+        ConvAlgorithmsCacheMap cache;
+        conv_auto_tune_map_[key] = cache;
+      }
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+    } else if (algo_type >= AlgorithmType::kConvForwardV8 &&
+               algo_type <= AlgorithmType::kBNFinalize) {
+      int64_t key = static_cast<int64_t>(algo_type);
+      if (cudnn_v8_auto_tune_map_.find(key) == cudnn_v8_auto_tune_map_.end()) {
+        CudnnFrontendPlanCache cache;
+        cudnn_v8_auto_tune_map_[key] = cache;
+      }
+#endif
+    } else {
+      int64_t key = static_cast<int64_t>(algo_type);
+      if (auto_tune_map_.find(key) == auto_tune_map_.end()) {
+        AlgorithmsCacheMap cache;
+        auto_tune_map_[key] = cache;
+      }
     }
   }
 
   AlgorithmsTypeMap auto_tune_map_;
+  ConvAlgorithmsTypeMap conv_auto_tune_map_;
+  MatmulAlgorithmsCacheMap matmul_auto_tune_map_;
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+  CudnnV8AlgorithmsTypeMap cudnn_v8_auto_tune_map_;
+#endif
   std::shared_ptr<std::mutex> autotune_cache_mutex_;
   int64_t total_cache_hits_{0};
   int64_t total_cache_misses_{0};

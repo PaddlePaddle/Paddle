@@ -14,9 +14,9 @@
 
 #include "paddle/fluid/framework/paddle2cinn/transform_type.h"
 
-#include "cinn/common/type.h"
-#include "cinn/runtime/cinn_runtime.h"
 #include "gtest/gtest.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle::framework::paddle2cinn {
@@ -39,6 +39,8 @@ TEST(TransToPaddleDataType, common_type) {
             TransToPaddleDataType(::cinn::common::UI32()));
   ASSERT_EQ(::phi::DataType::UINT64,
             TransToPaddleDataType(::cinn::common::UI64()));
+  ASSERT_EQ(::phi::DataType::BFLOAT16,
+            TransToPaddleDataType(::cinn::common::BF16()));
   ASSERT_EQ(::phi::DataType::FLOAT16,
             TransToPaddleDataType(::cinn::common::F16()));
   ASSERT_EQ(::phi::DataType::FLOAT32,
@@ -60,6 +62,42 @@ TEST(TransToPaddleDataType, runtime_type) {
   ASSERT_EQ(::phi::DataType::FLOAT64, TransToPaddleDataType(cinn_float64_t()));
   ASSERT_THROW(TransToPaddleDataType(cinn_type_t()),
                paddle::platform::EnforceNotMet);
+}
+
+TEST(HelperFunction, PaddleAttributeToStringPODValue) {
+  paddle::framework::Attribute attr1 = 1;
+  ASSERT_EQ(PaddleAttributeToString(attr1), std::string("1"));
+
+  paddle::framework::Attribute attr2 = 0.2f;
+  ASSERT_EQ(PaddleAttributeToString(attr2), std::string("0.2"));
+
+  paddle::framework::Attribute attr3 = true;
+  ASSERT_EQ(PaddleAttributeToString(attr3), std::string("true"));
+
+  paddle::framework::Attribute attr4 = std::string("string_attribute");
+  ASSERT_EQ(PaddleAttributeToString(attr4), std::string("string_attribute"));
+}
+
+TEST(HelperFunction, PaddleAttributeToStringVectorValue) {
+  paddle::framework::Attribute attr1 = std::vector<int>();
+  ASSERT_EQ(PaddleAttributeToString(attr1), std::string(""));
+
+  paddle::framework::Attribute attr2 = std::vector<int>{1, 2, 3, 4, 5};
+  ASSERT_EQ(PaddleAttributeToString(attr2), std::string("[1, 2, 3, 4, 5]"));
+
+  paddle::framework::Attribute attr3 =
+      std::vector<float>{0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
+  ASSERT_EQ(PaddleAttributeToString(attr3),
+            std::string("[0.1, 0.2, 0.3, 0.4, 0.5]"));
+
+  paddle::framework::Attribute attr4 =
+      std::vector<bool>{true, false, true, false, false};
+  ASSERT_EQ(PaddleAttributeToString(attr4),
+            std::string("[true, false, true, false, false]"));
+
+  paddle::framework::Attribute attr5 =
+      std::vector<std::string>{"a", "b", "c", "d", "e"};
+  ASSERT_EQ(PaddleAttributeToString(attr5), std::string("[a, b, c, d, e]"));
 }
 
 }  // namespace paddle::framework::paddle2cinn

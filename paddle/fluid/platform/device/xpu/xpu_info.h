@@ -49,12 +49,18 @@ std::vector<int> GetXPUSelectedDevices();
 /***** Memory Management *****/
 
 //! Copy memory from address src to dst synchronously.
-void MemcpySyncH2D(void *dst, const void *src, size_t count,
+void MemcpySyncH2D(void *dst,
+                   const void *src,
+                   size_t count,
                    const platform::XPUPlace &dst_place);
-void MemcpySyncD2H(void *dst, const void *src, size_t count,
+void MemcpySyncD2H(void *dst,
+                   const void *src,
+                   size_t count,
                    const platform::XPUPlace &src_place);
-void MemcpySyncD2D(void *dst, const platform::XPUPlace &dst_place,
-                   const void *src, const platform::XPUPlace &src_place,
+void MemcpySyncD2D(void *dst,
+                   const platform::XPUPlace &dst_place,
+                   const void *src,
+                   const platform::XPUPlace &src_place,
                    size_t count);
 
 //! Blocks until stream has completed all operations.
@@ -63,6 +69,22 @@ void XPUStreamSync(xpuStream stream);
 using XPUDeviceGuard = phi::backends::xpu::XPUDeviceGuard;
 
 phi::backends::xpu::XPUVersion get_xpu_version(int dev_id);
+
+//! Get the minimum chunk size for XPU allocator.
+size_t XPUMinChunkSize();
+
+//! xpu_malloc with recorded info
+int RecordedXPUMalloc(void **ptr, size_t size, int dev_id);
+
+//! xpu_free with recorded info
+void RecordedXPUFree(void *p, size_t size, int dev_id);
+
+//! Get recorded actrtMalloc size. If record is disabled, return 0.
+uint64_t RecordedXPUMallocSize(int dev_id);
+
+uint64_t RecordedXPULimitSize(int dev_id);
+
+bool IsXPUMallocRecorded(int dev_id);
 
 }  // namespace platform
 }  // namespace paddle

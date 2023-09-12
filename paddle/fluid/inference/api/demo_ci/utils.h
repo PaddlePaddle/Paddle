@@ -21,7 +21,8 @@
 #include <string>
 #include <vector>
 
-#include "paddle/include/paddle_inference_api.h"
+#include "paddle/extension.h"      // For pr test!
+#include "paddle_inference_api.h"  // NOLINT
 
 namespace paddle {
 namespace demo {
@@ -31,7 +32,8 @@ struct Record {
   std::vector<int32_t> shape;
 };
 
-static void split(const std::string& str, char sep,
+static void split(const std::string& str,
+                  char sep,
                   std::vector<std::string>* pieces) {
   pieces->clear();
   if (str.empty()) {
@@ -73,13 +75,16 @@ Record ProcessALine(const std::string& line) {
   return record;
 }
 
-void CheckOutput(const std::string& referfile, const PaddleTensor& output,
+void CheckOutput(const std::string& referfile,
+                 const PaddleTensor& output,
                  float threshold = 1e-5) {
   std::string line;
   std::ifstream file(referfile);
   std::getline(file, line);
   auto refer = ProcessALine(line);
   file.close();
+
+  paddle::Tensor dummy;
 
   size_t numel = output.data.length() / PaddleDtypeSize(output.dtype);
   VLOG(3) << "predictor output numel " << numel;

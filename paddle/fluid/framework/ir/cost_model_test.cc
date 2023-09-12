@@ -27,7 +27,7 @@ namespace framework {
 // Register test op
 class FakeTestOpMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "").AsDuplicable();
     AddInput("Y", "").AsDuplicable();
     AddOutput("Out", "").AsDuplicable();
@@ -37,8 +37,10 @@ class FakeTestOpMaker : public OpProtoAndCheckerMaker {
 
 class FakeTestOp : public OperatorBase {
  public:
-  FakeTestOp(const std::string &type, const VariableNameMap &inputs,
-             const VariableNameMap &outputs, const AttributeMap &attrs)
+  FakeTestOp(const std::string &type,
+             const VariableNameMap &inputs,
+             const VariableNameMap &outputs,
+             const AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
  private:
@@ -47,7 +49,7 @@ class FakeTestOp : public OperatorBase {
     // Fake RunImpl, for test only
     Variable *var = scope.FindVar("X");
     if (var != nullptr) {
-      LoDTensor *tensor = var->GetMutable<LoDTensor>();
+      phi::DenseTensor *tensor = var->GetMutable<phi::DenseTensor>();
       tensor->mutable_data<float>(place);
     }
     int count = 0;
@@ -60,7 +62,8 @@ class FakeTestOp : public OperatorBase {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_OPERATOR(fake_test_op, paddle::framework::FakeTestOp,
+REGISTER_OPERATOR(fake_test_op,
+                  paddle::framework::FakeTestOp,
                   paddle::framework::FakeTestOpMaker);
 
 namespace paddle {
@@ -137,8 +140,8 @@ TEST(CostModelTest, TestProfileMeasure_UnsupportedDevice) {
   ProgramDesc program = CreateTestProgram();
   ProgramDesc empty_program;
 
-  EXPECT_THROW(cost_model.ProfileMeasure(program, empty_program, "wrong_device",
-                                         {"time"}),
+  EXPECT_THROW(cost_model.ProfileMeasure(
+                   program, empty_program, "wrong_device", {"time"}),
                paddle::platform::EnforceNotMet);
 }
 

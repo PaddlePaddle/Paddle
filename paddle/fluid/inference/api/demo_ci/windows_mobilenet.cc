@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "gflags/gflags.h"
-#include "paddle/include/paddle_inference_api.h"
+#include "paddle_inference_api.h"  // NOLINT
 
 DEFINE_string(modeldir, "", "Directory of the inference model.");
 DEFINE_bool(use_gpu, false, "Whether use gpu.");
@@ -73,8 +73,8 @@ void RunAnalysis() {
   auto output_names = predictor->GetOutputNames();
   auto output_t = predictor->GetOutputTensor(output_names[0]);
   std::vector<int> output_shape = output_t->shape();
-  int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                                std::multiplies<int>());
+  int out_num = std::accumulate(
+      output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
 
   out_data.resize(out_num);
   output_t->copy_to_cpu(out_data.data());
@@ -85,7 +85,7 @@ void RunAnalysis() {
 }  // namespace paddle
 
 int main(int argc, char** argv) {
-  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   paddle::demo::RunAnalysis();
   std::cout << "=========================Runs successfully===================="
             << std::endl;

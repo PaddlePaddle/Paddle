@@ -14,19 +14,16 @@
 
 #pragma once
 
-// The headers cant be sorted by clang-format or compilint error occurs.
-// clang-format off
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 
-#include "cinn/frontend/paddle/cpp/block_desc.h"
-#include "cinn/frontend/paddle/cpp/desc_api.h"
-#include "cinn/frontend/paddle/cpp/op_desc.h"
-#include "cinn/frontend/paddle/cpp/program_desc.h"
-#include "cinn/frontend/paddle/cpp/var_desc.h"
-// clang-format on
+#include "paddle/cinn/frontend/paddle/cpp/block_desc.h"
+#include "paddle/cinn/frontend/paddle/cpp/desc_api.h"
+#include "paddle/cinn/frontend/paddle/cpp/op_desc.h"
+#include "paddle/cinn/frontend/paddle/cpp/program_desc.h"
+#include "paddle/cinn/frontend/paddle/cpp/var_desc.h"
 
 namespace paddle {
 namespace framework {
@@ -76,6 +73,10 @@ void TransformProgramDescToCinn(
 void TransformProgramDescFromCinn(
     const ::cinn::frontend::paddle::cpp::ProgramDesc& cpp_desc,
     framework::ProgramDesc* pb_desc);
+
+// debug function
+std::string VarDataTypeToString(
+    const ::paddle::framework::proto::VarType::Type& type);
 
 }  // namespace paddle2cinn
 }  // namespace framework

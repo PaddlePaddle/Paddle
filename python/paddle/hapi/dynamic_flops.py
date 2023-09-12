@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import warnings
-import paddle.nn as nn
+
 import numpy as np
-from .static_flops import static_flops, Table
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import unwrap_decorators
+
+import paddle
+from paddle import nn
+from paddle.jit.dy2static.program_translator import unwrap_decorators
+
+from .static_flops import Table, static_flops
 
 __all__ = []
 
@@ -26,11 +29,11 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
     """Print a table about the FLOPs of network.
 
     Args:
-        net (paddle.nn.Layer||paddle.static.Program): The network which could be a instance of paddle.nn.Layer in 
+        net (paddle.nn.Layer||paddle.static.Program): The network which could be a instance of paddle.nn.Layer in
                     dygraph or paddle.static.Program in static graph.
         input_size (list): size of input tensor. Note that the batch_size in argument ``input_size`` only support 1.
-        custom_ops (A dict of function, optional): A dictionary which key is the class of specific operation such as 
-                    paddle.nn.Conv2D and the value is the function used to count the FLOPs of this operation. This 
+        custom_ops (A dict of function, optional): A dictionary which key is the class of specific operation such as
+                    paddle.nn.Conv2D and the value is the function used to count the FLOPs of this operation. This
                     argument only work when argument ``net`` is an instance of paddle.nn.Layer. The details could be found
                     in following example code. Default is None.
         print_detail (bool, optional): Whether to print the detail information, like FLOPs per layer, about the net FLOPs.
@@ -42,63 +45,68 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-            class LeNet(nn.Layer):
-                def __init__(self, num_classes=10):
-                    super(LeNet, self).__init__()
-                    self.num_classes = num_classes
-                    self.features = nn.Sequential(
-                        nn.Conv2D(
-                            1, 6, 3, stride=1, padding=1),
-                        nn.ReLU(),
-                        nn.MaxPool2D(2, 2),
-                        nn.Conv2D(
-                            6, 16, 5, stride=1, padding=0),
-                        nn.ReLU(),
-                        nn.MaxPool2D(2, 2))
-
-                    if num_classes > 0:
-                        self.fc = nn.Sequential(
-                            nn.Linear(400, 120),
-                            nn.Linear(120, 84),
-                            nn.Linear(
-                                84, 10))
-
-                def forward(self, inputs):
-                    x = self.features(inputs)
-
-                    if self.num_classes > 0:
-                        x = paddle.flatten(x, 1)
-                        x = self.fc(x)
-                    return x
-
-            lenet = LeNet()
-            # m is the instance of nn.Layer, x is the intput of layer, y is the output of layer.
-            def count_leaky_relu(m, x, y):
-                x = x[0]
-                nelements = x.numel()
-                m.total_ops += int(nelements)
-
-            FLOPs = paddle.flops(lenet, [1, 1, 28, 28], custom_ops= {nn.LeakyReLU: count_leaky_relu},
-                                print_detail=True)
-            print(FLOPs)
-
-            #+--------------+-----------------+-----------------+--------+--------+
-            #|  Layer Name  |   Input Shape   |   Output Shape  | Params | Flops  |
-            #+--------------+-----------------+-----------------+--------+--------+
-            #|   conv2d_2   |  [1, 1, 28, 28] |  [1, 6, 28, 28] |   60   | 47040  |
-            #|   re_lu_2    |  [1, 6, 28, 28] |  [1, 6, 28, 28] |   0    |   0    |
-            #| max_pool2d_2 |  [1, 6, 28, 28] |  [1, 6, 14, 14] |   0    |   0    |
-            #|   conv2d_3   |  [1, 6, 14, 14] | [1, 16, 10, 10] |  2416  | 241600 |
-            #|   re_lu_3    | [1, 16, 10, 10] | [1, 16, 10, 10] |   0    |   0    |
-            #| max_pool2d_3 | [1, 16, 10, 10] |  [1, 16, 5, 5]  |   0    |   0    |
-            #|   linear_0   |     [1, 400]    |     [1, 120]    | 48120  | 48000  |
-            #|   linear_1   |     [1, 120]    |     [1, 84]     | 10164  | 10080  |
-            #|   linear_2   |     [1, 84]     |     [1, 10]     |  850   |  840   |
-            #+--------------+-----------------+-----------------+--------+--------+
-            #Total Flops: 347560     Total Params: 61610
+            >>> class LeNet(nn.Layer):
+            ...     def __init__(self, num_classes=10):
+            ...         super().__init__()
+            ...         self.num_classes = num_classes
+            ...         self.features = nn.Sequential(
+            ...             nn.Conv2D(1, 6, 3, stride=1, padding=1),
+            ...             nn.ReLU(),
+            ...             nn.MaxPool2D(2, 2),
+            ...             nn.Conv2D(6, 16, 5, stride=1, padding=0),
+            ...             nn.ReLU(),
+            ...             nn.MaxPool2D(2, 2))
+            ...
+            ...         if num_classes > 0:
+            ...             self.fc = nn.Sequential(
+            ...                 nn.Linear(400, 120),
+            ...                 nn.Linear(120, 84),
+            ...                 nn.Linear(84, 10))
+            ...
+            ...     def forward(self, inputs):
+            ...         x = self.features(inputs)
+            ...
+            ...         if self.num_classes > 0:
+            ...             x = paddle.flatten(x, 1)
+            ...             x = self.fc(x)
+            ...         return x
+            ...
+            >>> lenet = LeNet()
+            >>> # m is the instance of nn.Layer, x is the intput of layer, y is the output of layer.
+            >>> def count_leaky_relu(m, x, y):
+            ...     x = x[0]
+            ...     nelements = x.numel()
+            ...     m.total_ops += int(nelements)
+            ...
+            >>> FLOPs = paddle.flops(lenet,
+            ...                      [1, 1, 28, 28],
+            ...                      custom_ops= {nn.LeakyReLU: count_leaky_relu},
+            ...                      print_detail=True)
+            >>> # doctest: +SKIP
+            >>> print(FLOPs)
+            <class 'paddle.nn.layer.conv.Conv2D'>'s flops has been counted
+            <class 'paddle.nn.layer.activation.ReLU'>'s flops has been counted
+            Cannot find suitable count function for <class 'paddle.nn.layer.pooling.MaxPool2D'>. Treat it as zero FLOPs.
+            <class 'paddle.nn.layer.common.Linear'>'s flops has been counted
+            +--------------+-----------------+-----------------+--------+--------+
+            |  Layer Name  |   Input Shape   |   Output Shape  | Params | Flops  |
+            +--------------+-----------------+-----------------+--------+--------+
+            |   conv2d_0   |  [1, 1, 28, 28] |  [1, 6, 28, 28] |   60   | 47040  |
+            |   re_lu_0    |  [1, 6, 28, 28] |  [1, 6, 28, 28] |   0    |   0    |
+            | max_pool2d_0 |  [1, 6, 28, 28] |  [1, 6, 14, 14] |   0    |   0    |
+            |   conv2d_1   |  [1, 6, 14, 14] | [1, 16, 10, 10] |  2416  | 241600 |
+            |   re_lu_1    | [1, 16, 10, 10] | [1, 16, 10, 10] |   0    |   0    |
+            | max_pool2d_1 | [1, 16, 10, 10] |  [1, 16, 5, 5]  |   0    |   0    |
+            |   linear_0   |     [1, 400]    |     [1, 120]    | 48120  | 48000  |
+            |   linear_1   |     [1, 120]    |     [1, 84]     | 10164  | 10080  |
+            |   linear_2   |     [1, 84]     |     [1, 10]     |  850   |  840   |
+            +--------------+-----------------+-----------------+--------+--------+
+            Total Flops: 347560     Total Params: 61610
+            347560
+            >>> # doctest: -SKIP
     """
     if isinstance(net, nn.Layer):
         # If net is a dy2stat model, net.forward is StaticFunction instance,
@@ -106,10 +114,9 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
         _, net.forward = unwrap_decorators(net.forward)
 
         inputs = paddle.randn(input_size)
-        return dynamic_flops(net,
-                             inputs=inputs,
-                             custom_ops=custom_ops,
-                             print_detail=print_detail)
+        return dynamic_flops(
+            net, inputs=inputs, custom_ops=custom_ops, print_detail=print_detail
+        )
     elif isinstance(net, paddle.static.Program):
         return static_flops(net, print_detail=print_detail)
     else:
@@ -123,8 +130,9 @@ def count_convNd(m, x, y):
     x = x[0]
     kernel_ops = np.product(m.weight.shape[2:])
     bias_ops = 1 if m.bias is not None else 0
-    total_ops = int(
-        y.numel()) * (x.shape[1] / m._groups * kernel_ops + bias_ops)
+    total_ops = int(y.numel()) * (
+        x.shape[1] / m._groups * kernel_ops + bias_ops
+    )
     m.total_ops += abs(int(total_ops))
 
 
@@ -205,7 +213,7 @@ register_hooks = {
     nn.AvgPool3D: count_avgpool,
     nn.AdaptiveAvgPool1D: count_adap_avgpool,
     nn.AdaptiveAvgPool2D: count_adap_avgpool,
-    nn.AdaptiveAvgPool3D: count_adap_avgpool
+    nn.AdaptiveAvgPool3D: count_adap_avgpool,
 }
 
 
@@ -226,17 +234,18 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
         if m_type in custom_ops:
             flops_fn = custom_ops[m_type]
             if m_type not in types_collection:
-                print(
-                    "Customize Function has been applied to {}".format(m_type))
+                print(f"Customize Function has been applied to {m_type}")
         elif m_type in register_hooks:
             flops_fn = register_hooks[m_type]
             if m_type not in types_collection:
-                print("{}'s flops has been counted".format(m_type))
+                print(f"{m_type}'s flops has been counted")
         else:
             if m_type not in types_collection:
                 print(
-                    "Cannot find suitable count function for {}. Treat it as zero FLOPs."
-                    .format(m_type))
+                    "Cannot find suitable count function for {}. Treat it as zero FLOPs.".format(
+                        m_type
+                    )
+                )
 
         if flops_fn is not None:
             flops_handler = m.register_forward_post_hook(flops_fn)
@@ -260,8 +269,12 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
     for m in model.sublayers():
         if len(list(m.children())) > 0:
             continue
-        if {'total_ops', 'total_params', 'input_shape',
-                'output_shape'}.issubset(set(list(m._buffers.keys()))):
+        if {
+            'total_ops',
+            'total_params',
+            'input_shape',
+            'output_shape',
+        }.issubset(set(m._buffers.keys())):
             total_ops += m.total_ops
             total_params += m.total_params
 
@@ -271,26 +284,36 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
         handler.remove()
 
     table = Table(
-        ["Layer Name", "Input Shape", "Output Shape", "Params", "Flops"])
+        ["Layer Name", "Input Shape", "Output Shape", "Params", "Flops"]
+    )
 
     for n, m in model.named_sublayers():
         if len(list(m.children())) > 0:
             continue
-        if {'total_ops', 'total_params', 'input_shape',
-                'output_shape'}.issubset(set(list(m._buffers.keys()))):
-            table.add_row([
-                m.full_name(),
-                list(m.input_shape.numpy()),
-                list(m.output_shape.numpy()),
-                int(m.total_params),
-                int(m.total_ops)
-            ])
+        if {
+            'total_ops',
+            'total_params',
+            'input_shape',
+            'output_shape',
+        }.issubset(set(m._buffers.keys())):
+            table.add_row(
+                [
+                    m.full_name(),
+                    list(m.input_shape.numpy()),
+                    list(m.output_shape.numpy()),
+                    int(m.total_params),
+                    int(m.total_ops),
+                ]
+            )
             m._buffers.pop("total_ops")
             m._buffers.pop("total_params")
             m._buffers.pop('input_shape')
             m._buffers.pop('output_shape')
     if print_detail:
         table.print_table()
-    print('Total Flops: {}     Total Params: {}'.format(int(total_ops),
-                                                        int(total_params)))
+    print(
+        'Total Flops: {}     Total Params: {}'.format(
+            int(total_ops), int(total_params)
+        )
+    )
     return int(total_ops)
