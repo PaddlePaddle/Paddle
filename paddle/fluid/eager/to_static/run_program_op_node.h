@@ -184,7 +184,7 @@ static auto GetNameFromValue(const ::pir::Block *block,
   std::unordered_map<::pir::Value, std::string> value2name;
   for (auto *op : *block) {
     std::string name;
-    if (op->name() == "pd.data") {
+    if (op->name() == "pd_op.data") {
       name =
           op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
       value2name[op->results()[0].value_impl()] = name;
