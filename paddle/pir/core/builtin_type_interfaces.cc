@@ -12,19 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/pir/core/builtin_type_interfaces.h"
+#include "paddle/pir/core/type_id.h"
 
-#include <vector>
-
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/pir/core/value.h"
-
-namespace paddle {
-namespace dialect {
-pir::OpResult get_parameter(const std::string& name,
-                            phi::DataType dtype,
-                            const std::vector<int64_t>& shape);
-void set_parameter(pir::OpResult parameter, const std::string& name);
-}  // namespace dialect
-}  // namespace paddle
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::ShapedTypeInterface)
