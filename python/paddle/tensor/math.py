@@ -499,7 +499,7 @@ def pow(x, y, name=None):
 
     """
     # in dynamic graph mode
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(y, (int, float)):
             return _C_ops.pow(x, y)
         elif isinstance(y, (paddle.Tensor, Variable)):

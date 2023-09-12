@@ -46,6 +46,26 @@ class TestElementwisePowOp(OpTest):
         else:
             self.check_output()
 
+    def test_check_new_ir_output(self):
+        if hasattr(self, 'attrs'):
+            self.check_output(check_dygraph=False, check_new_ir=True)
+        else:
+            self.check_output(check_new_ir=True)
+
+    def test_check_new_ir_grad_normal(self):
+        if hasattr(self, 'attrs'):
+            self.check_grad(
+                ['X', 'Y'],
+                'Out',
+                check_prim=True,
+                check_dygraph=False,
+                check_new_ir=True,
+            )
+        else:
+            self.check_grad(
+                ['X', 'Y'], 'Out', check_prim=True, check_new_ir=True
+            )
+
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
             self.check_grad(

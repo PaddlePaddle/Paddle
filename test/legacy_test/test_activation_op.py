@@ -3404,6 +3404,14 @@ class TestPow(TestActivation):
     def test_check_output(self):
         self.check_output(check_prim=True)
 
+    def test_check_new_ir_output(self):
+        self.check_output(check_prim=True, check_new_ir=True)
+
+    def test_check_new_ir_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
