@@ -83,7 +83,7 @@ void CommTaskManager::CommTaskLoop() {
         std::chrono::milliseconds(loop_thread_sleep_millis),
         [&]() -> bool {
           return terminated_.load() &&
-                 check_timeout_count < FLAGS_async_trace_count;
+                 check_timeout_count <= FLAGS_async_trace_count;
         });
     for (auto task = comm_task_list_.begin(); task != comm_task_list_.end();) {
       (*task)->CheckAndSetException();
@@ -141,8 +141,11 @@ void CommTaskManager::CommTaskLoop() {
         ++task;
       }
     }
+    if (comm_task_list_.empty()) {
+        done = true;
+		check_timeout_count = 0;
+    }
   }
-  done = comm_task_list_.empty();
 }
 
 }  // namespace distributed
