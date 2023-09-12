@@ -502,11 +502,11 @@ void range_block_do(const Block *block, std::vector<int> range, F fn) {
   }
 }
 
-std::vector<pir::Value> AnalysisMiddleVariable(
-    const Program &program,
-    const std::vector<pir::Value> &forward_inputs,
-    const std::vector<int> &forward_range,
-    const std::vector<int> &backward_range) {
+std::pair<std::vector<pir::Value>, std::unordered_set<pir::Value>>
+AnalysisMiddleVariable(const Program &program,
+                       const std::vector<pir::Value> &forward_inputs,
+                       const std::vector<int> &forward_range,
+                       const std::vector<int> &backward_range) {
   std::vector<pir::Value> middle_values;
 
   std::unordered_set<pir::Value> backward_inputs;
@@ -529,7 +529,7 @@ std::vector<pir::Value> AnalysisMiddleVariable(
             middle_values.push_back(v);
         }
       });
-  return middle_values;
+  return std::make_pair(middle_values, backward_inputs);
 }
 
 void mapping_value(const std::vector<pir::Value> &origin,
@@ -540,6 +540,11 @@ void mapping_value(const std::vector<pir::Value> &origin,
                  std::back_inserter(out),
                  [&value_map](const pir::Value &v) {
                    if (v.impl() == nullptr) return Value(nullptr);
+                   if (!value_map.count(v)) {
+                     VLOG(2) << "mapping value found v is not exist. may not "
+                                "used by backward program.";
+                     return Value(nullptr);
+                   }
                    return value_map.at(v);
                  });
 }
@@ -599,7 +604,7 @@ SplitedResult ForwardBackwardSplit(
   pir::IrContext *ctx = pir::IrContext::Instance();
   auto forward_program = std::make_shared<Program>(ctx);
   auto backward_program = std::make_shared<Program>(ctx);
-  auto middle_values = AnalysisMiddleVariable(
+  auto [middle_values, backward_inputs] = AnalysisMiddleVariable(
       program, forward_in_out_values, forward_range, backward_range);
   std::unordered_map<pir::Value, pir::Value> forward_value_map;
   std::unordered_map<pir::Value, pir::Value> backward_value_map;
@@ -618,9 +623,11 @@ SplitedResult ForwardBackwardSplit(
   // backward program construc.
   // Step1. insert data op for inputs_values and middle_values
   int counter = 0;
-  auto create_data_fn = [&backward_builder, &backward_value_map, &counter](
-                            const pir::Value &v) {
-    if (v.impl() == nullptr) {
+  auto create_data_fn = [&backward_builder,
+                         &backward_inputs,
+                         &backward_value_map,
+                         &counter](const pir::Value &v) {
+    if (v.impl() == nullptr || !backward_inputs.count(v)) {
       return;
     }
     auto value_type = v.type().dyn_cast<DenseTensorType>();
