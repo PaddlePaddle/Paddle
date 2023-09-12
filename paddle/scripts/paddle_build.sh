@@ -2479,7 +2479,7 @@ set +x
         noparallel_ut_startTime_s=`date +%s`
         while read line
         do
-            card_test "$line" -1 2
+            card_test "$line" -1 4
         done < $PADDLE_ROOT/tools/no_parallel_case_file
         noparallel_ut_endTime_s=`date +%s`
         echo "ipipe_log_param_noparallel_TestCases_Total_Time: $[ $noparallel_ut_endTime_s - $noparallel_ut_startTime_s ]s"

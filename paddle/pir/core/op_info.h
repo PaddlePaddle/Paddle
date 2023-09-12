@@ -61,15 +61,15 @@ class IR_API OpInfo {
 
   bool HasTrait(TypeId trait_id) const;
 
-  template <typename Interface>
+  template <typename InterfaceT>
   bool HasInterface() const {
-    return HasInterface(TypeId::get<Interface>());
+    return HasInterface(TypeId::get<InterfaceT>());
   }
 
   bool HasInterface(TypeId interface_id) const;
 
-  template <typename Interface>
-  typename Interface::Concept *GetInterfaceImpl() const;
+  template <typename InterfaceT>
+  typename InterfaceT::Concept *GetInterfaceImpl() const;
 
   void *AsOpaquePointer() const { return impl_; }
   static OpInfo RecoverFromOpaquePointer(void *pointer) {
@@ -84,13 +84,19 @@ class IR_API OpInfo {
   void *GetInterfaceImpl(TypeId interface_id) const;
 
  private:
-  OpInfoImpl *impl_{nullptr};  // not owned
+  /// The internal implementation of the operation name.
+  /// Not owned.
+  OpInfoImpl *impl_{nullptr};
 };
 
-template <typename Interface>
-typename Interface::Concept *OpInfo::GetInterfaceImpl() const {
-  void *model = GetInterfaceImpl(TypeId::get<Interface>());
-  return reinterpret_cast<typename Interface::Concept *>(model);
+///
+/// \brief Returns an instance of the concept object for the given interface if
+/// it was registered to this operation, null otherwise.
+///
+template <typename InterfaceT>
+typename InterfaceT::Concept *OpInfo::GetInterfaceImpl() const {
+  void *model = GetInterfaceImpl(TypeId::get<InterfaceT>());
+  return reinterpret_cast<typename InterfaceT::Concept *>(model);
 }
 
 }  // namespace pir
