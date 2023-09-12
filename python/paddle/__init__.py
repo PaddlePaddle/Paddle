@@ -123,7 +123,9 @@ from .tensor.creation import tril_indices  # noqa: F401
 from .tensor.creation import triu_indices  # noqa: F401
 from .tensor.creation import polar  # noqa: F401
 from .tensor.creation import geometric_  # noqa: F401
+from .tensor.creation import geometric  # noqa: F401
 from .tensor.creation import cauchy_  # noqa: F401
+from .tensor.creation import cauchy  # noqa: F401
 from .tensor.linalg import matmul  # noqa: F401
 from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
@@ -743,7 +745,9 @@ __all__ = [  # noqa
     'transpose',
     'transpose_',
     'cauchy_',
+    'cauchy',
     'geometric_',
+    'geometric',
     'randn',
     'strided_slice',
     'unique',
