@@ -982,9 +982,6 @@ class DistributedContext:
                     ):
                         dims_mapping[i] = -1
                 dist_attr.set_output_dims_mapping(arg_name, dims_mapping)
-            if len(process_mesh_processes) == 1:
-                dist_op.dist_attr.impl_type = "default"
-                dist_op.dist_attr.impl_idx = 0
 
     def validate_dist_attr_for_program(self):
         if not self._is_initialized:
