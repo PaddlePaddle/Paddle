@@ -656,7 +656,7 @@ void ReshardKernelOutputToApiOutput(
       phi::errors::InvalidArgument("The output tensor is nullptr."));
   phi::distributed::DistTensor* dist_tensor =
       static_cast<phi::distributed::DistTensor*>(tensor_out.get());
-  dist_tensor->set_dims(src_tensor->dims());
+  dist_tensor->unsafe_set_dims(src_tensor->dims());
   if (src_tensor->dist_attr() != dist_tensor->dist_attr()) {
     VLOG(6) << "BwdAPI KernelOut to ApiOut - "
             << ReshardDebugInfo(*src_tensor, dist_tensor->dist_attr());
