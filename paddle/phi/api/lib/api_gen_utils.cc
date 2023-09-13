@@ -22,6 +22,7 @@ PHI_DECLARE_bool(use_stride_kernel);
 #include "glog/logging.h"
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
 namespace paddle {
@@ -530,13 +531,18 @@ void TransStride(phi::DeviceContext* dev_ctx,
 
 /* ------------------ for auto parallel ----------------------- */
 
-phi::distributed::DistTensor* SetKernelDistOutput(Tensor* out) {
+phi::distributed::DistMetaTensor MakeDistMetaTensor(
+    const phi::TensorBase& tensor) {
+  return phi::distributed::DistMetaTensor(tensor);
+}
+
+phi::distributed::DistTensor* SetKernelDistOutput(
+    Tensor* out, const phi::distributed::TensorDistAttr& dist_attr) {
   if (out) {
     // TODO(chenweihang): now all dist case are nullptr
     if (out->impl() == nullptr) {
-      // TODO(chenweihang): polish code, dist_attr is null now
-      auto dist_t = std::make_shared<phi::distributed::DistTensor>(
-          phi::DDim(), phi::distributed::TensorDistAttr());
+      auto dist_t = std::make_shared<phi::distributed::DistTensor>(phi::DDim(),
+                                                                   dist_attr);
       out->set_impl(dist_t);
     }
     return static_cast<phi::distributed::DistTensor*>(out->impl().get());
@@ -580,6 +586,29 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
     results[i] = dist_t.get();
     out->emplace_back();
     out->back().set_impl(dist_t);
+  }
+  return results;
+}
+
+std::vector<phi::distributed::DistTensor*> SetKernelDistInplaceOutput(
+    size_t out_size, std::vector<Tensor>* out) {
+  std::vector<phi::distributed::DistTensor*> results(out->size(), nullptr);
+  for (size_t i = 0; i < out->size(); ++i) {
+    results[i] =
+        static_cast<phi::distributed::DistTensor*>(out->at(i).impl().get());
+  }
+  return results;
+}
+
+std::vector<phi::distributed::DistTensor*> SetKernelDistInplaceOptionalOutput(
+    size_t out_size, paddle::optional<std::vector<Tensor>> out) {
+  std::vector<phi::distributed::DistTensor*> results;
+  if (out) {
+    results = std::vector<phi::distributed::DistTensor*>(out->size(), nullptr);
+    for (size_t i = 0; i < out->size(); ++i) {
+      results[i] =
+          static_cast<phi::distributed::DistTensor*>(out->at(i).impl().get());
+    }
   }
   return results;
 }

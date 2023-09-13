@@ -17,16 +17,12 @@ from functools import reduce
 from operator import mul
 
 import numpy as np
-from eager_op_test import (
-    OpTest,
-    _set_use_system_allocator,
-    convert_float_to_uint16,
-)
+from op_test import OpTest, _set_use_system_allocator, convert_float_to_uint16
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 from paddle.static.amp.fp16_utils import _keep_layer_norm_scale_bias_to_fp32
 
 paddle.enable_static()
@@ -584,8 +580,8 @@ class TestLayerNormOp(unittest.TestCase):
                 var_names += ['bias']
             ground_truth = {name: var_dict[name] for name in var_names}
 
-            program = fluid.Program()
-            with fluid.program_guard(program):
+            program = base.Program()
+            with base.program_guard(program):
                 block = program.global_block()
                 for name in ground_truth:
                     block.create_var(
@@ -638,13 +634,16 @@ class TestLayerNormOp(unittest.TestCase):
                     grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
                 program._sync_with_cpp()
-                exe = fluid.Executor(place)
+                exe = base.Executor(place)
+                name_list = ['x', 'y@GRAD']
+                if has_scale:
+                    name_list += ['scale']
+                if has_bias:
+                    name_list += ['bias']
+
                 out = exe.run(
                     program,
-                    feed={
-                        name: var_dict[name]
-                        for name in ['x', 'scale', 'bias', 'y@GRAD']
-                    },
+                    feed={name: var_dict[name] for name in name_list},
                     fetch_list=fetch_list,
                 )
                 # print(y)
@@ -859,7 +858,7 @@ class TestBF16ScaleBiasLayerNorm(unittest.TestCase):
         bias = paddle.to_tensor(bias_np)
 
         if dtype == "bfloat16":
-            x = x.cast(paddle.fluid.core.VarDesc.VarType.BF16)
+            x = x.cast(paddle.base.core.VarDesc.VarType.BF16)
 
         x.stop_gradient = False
         weight.stop_gradient = False
@@ -919,7 +918,7 @@ class TestFastMathLayerNormOp(unittest.TestCase):
 
         x = paddle.to_tensor(x_np)
         if dtype == "bfloat16":
-            x = x.cast(paddle.fluid.core.VarDesc.VarType.BF16)
+            x = x.cast(paddle.base.core.VarDesc.VarType.BF16)
 
         x.stop_gradient = True
         bias = paddle.to_tensor(bias_np) if has_scale else None

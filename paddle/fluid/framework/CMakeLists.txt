@@ -600,8 +600,8 @@ if(WITH_PYTHON)
       TARGET framework_py_proto
       POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory
-              ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
-      COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
+              ${PADDLE_BINARY_DIR}/python/paddle/base/proto
+      COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/base/proto/
       COMMAND cp distributed_strategy_*.py
               ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
@@ -620,7 +620,7 @@ if(WITH_PYTHON)
     endif()
   else()
     string(REPLACE "/" "\\" proto_dstpath
-                   "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/")
+                   "${PADDLE_BINARY_DIR}/python/paddle/base/proto/")
     string(
       REPLACE "/" "\\" fleet_proto_dstpath
               "${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/")
@@ -628,7 +628,7 @@ if(WITH_PYTHON)
       TARGET framework_py_proto
       POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory
-              ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
+              ${PADDLE_BINARY_DIR}/python/paddle/base/proto
       COMMAND copy /Y *.py ${proto_dstpath}
       COMMAND copy /Y distributed_strategy_*.py ${fleet_proto_dstpath}
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
@@ -696,6 +696,7 @@ cc_library(
   DEPS while_op_helper
        recurrent_op_helper
        conditional_block_op_helper
+       pylayer_op_helper
        scope
        proto_desc
        operator
@@ -1014,8 +1015,9 @@ else()
          monitor)
 endif()
 
-target_link_libraries(executor while_op_helper executor_gc_helper
-                      recurrent_op_helper conditional_block_op_helper)
+target_link_libraries(
+  executor while_op_helper executor_gc_helper recurrent_op_helper
+  conditional_block_op_helper pylayer_op_helper)
 
 cc_library(
   parallel_executor
@@ -1034,8 +1036,8 @@ cc_library(
 cc_library(
   executor_cache
   SRCS executor_cache.cc
-  DEPS parallel_executor standalone_executor phi_kernel_adaptor
-       pd_op_to_kernel_pass ir)
+  DEPS parallel_executor standalone_executor phi_kernel_adaptor pd_inplace_pass
+       pd_op_to_kernel_pass pir)
 if(WITH_PSCORE)
   get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
   if(WITH_HETERPS)

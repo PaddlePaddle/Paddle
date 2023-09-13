@@ -89,23 +89,24 @@ void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({
   "trt_support_nhwc_pass",
-      "adaptive_pool2d_convert_global_pass",          //
-      "trt_map_ops_to_matrix_multiply_pass",          //
-      "shuffle_channel_detect_pass",                  //
-      "quant_conv2d_dequant_fuse_pass",               //
-      "delete_quant_dequant_op_pass",                 //
-      "delete_quant_dequant_filter_op_pass",          //
-      "trt_delete_weight_dequant_linear_op_pass",     //
-      "delete_quant_dequant_linear_op_pass",          //
-      "identity_op_clean_pass",                       //
-      "add_support_int8_pass",                        //
-      "simplify_with_basic_ops_pass",                 //
-      "trt_embedding_eltwise_layernorm_fuse_pass",    //
-      "preln_embedding_eltwise_layernorm_fuse_pass",  //
-      "trt_multihead_matmul_fuse_pass_v2",            //
-      "trt_multihead_matmul_fuse_pass_v3",            //
-      "multihead_matmul_roformer_fuse_pass",          //
-      "constant_folding_pass",                        //
+      "adaptive_pool2d_convert_global_pass",                      //
+      "trt_map_ops_to_matrix_multiply_pass",                      //
+      "shuffle_channel_detect_pass",                              //
+      "quant_conv2d_dequant_fuse_pass",                           //
+      "delete_quant_dequant_op_pass",                             //
+      "delete_quant_dequant_filter_op_pass",                      //
+      "trt_delete_weight_dequant_linear_op_pass",                 //
+      "delete_quant_dequant_linear_op_pass",                      //
+      "identity_op_clean_pass",                                   //
+      "add_support_int8_pass",                                    //
+      "simplify_with_basic_ops_pass",                             //
+      "trt_prompt_tuning_embedding_eltwise_layernorm_fuse_pass",  //
+      "trt_embedding_eltwise_layernorm_fuse_pass",                //
+      "preln_embedding_eltwise_layernorm_fuse_pass",              //
+      "trt_multihead_matmul_fuse_pass_v2",                        //
+      "trt_multihead_matmul_fuse_pass_v3",                        //
+      "multihead_matmul_roformer_fuse_pass",                      //
+      "constant_folding_pass",                                    //
 #ifdef PADDLE_WITH_TENSORRT
 #if !IS_TRT_VERSION_GE(8610)
       "trt_flash_multihead_matmul_fuse_pass",  //
@@ -527,8 +528,9 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "one_beam_size_fuse_pass",
       "fold_interp_outsize_fuse_pass",
       "fold_two_squeeze2_fuse_pass",
-      "conv1d_xpu_fuse_pass",
+      // "conv1d_xpu_fuse_pass",
       "duplicated_transpose_fuse_pass",
+      "conv2d_bias_fuse_pass",
       "redundant_unsqueeze_squeeze_elimination_pass",
       "reduce_ops_fuse_pass",
       "delete_cast_op_pass",
@@ -547,6 +549,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "fc_xpu_fuse_pass",
       "conv2d_xpu_fuse_pass",
       "conv2d_transpose_xpu_fuse_pass",
+      "squeeze_excitation_fuse_pass",
       "add_activation_xpu_fuse_pass",
       "add_layernorm_xpu_fuse_pass",
       "fast_layernorm_xpu_fuse_pass",

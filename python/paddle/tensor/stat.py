@@ -16,10 +16,10 @@
 
 import paddle
 from paddle import _C_ops
-from paddle.framework import in_dynamic_mode, in_dynamic_or_new_ir_mode
+from paddle.framework import in_dynamic_mode, in_dynamic_or_pir_mode
 
+from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
-from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..framework import LayerHelper, core
 from .math import _get_reduce_axis_with_tensor
 from .search import where
@@ -83,7 +83,7 @@ def mean(x, axis=None, keepdim=False, name=None):
             >>> print(out4.numpy())
             [ 8.5 12.5 16.5]
     """
-    if in_dynamic_or_new_ir_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.mean(x, axis, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
