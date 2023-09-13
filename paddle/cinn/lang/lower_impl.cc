@@ -342,7 +342,8 @@ std::vector<ir::Argument> LowerImpl::GenerateFunctionArgumentList(
   CheckArgsUnique();
 
   std::vector<ir::Argument> args;
-  auto teller = ir::CollectTensorNeedsWrite(&fn_body);
+  optim::TensorWriteTeller teller;
+  teller.Collect(&fn_body);
 
   std::set<std::string> arg_names;
 
@@ -357,7 +358,7 @@ std::vector<ir::Argument> LowerImpl::GenerateFunctionArgumentList(
 
   for (auto& tensor : tensor_args_) {
     auto* tensor_node = tensor.As<ir::_Tensor_>();
-    bool is_output = teller.count(tensor->name);
+    bool is_output = teller.IsWrite(tensor->name);
     VLOG(1) << "tensor argument " << tensor->name << " buffer "
             << tensor->buffer->name;
 
@@ -395,7 +396,8 @@ std::vector<ir::Argument> LowerImpl::GenFuncArgForSplitKernel(
 
   std::vector<ir::Argument> in_args;
   std::vector<ir::Argument> out_args;
-  auto teller = ir::CollectTensorNeedsWrite(&func_iterator);
+  optim::TensorWriteTeller teller;
+  teller.Collect(&func_iterator);
   std::set<std::string> arg_names;
   std::set<std::string> all_tensor_names;
 
@@ -446,7 +448,7 @@ std::vector<ir::Argument> LowerImpl::GenFuncArgForSplitKernel(
     VLOG(3) << "In tensor_args_, it has : " << tensor->name;
     if (temp_tensor_names.count(tensor->name) > 0) continue;
     if (all_tensor_names.count(tensor->name) == 0) continue;
-    bool is_output = teller.count(tensor->name);
+    bool is_output = teller.IsWrite(tensor->name);
     VLOG(3) << "tensor argument " << tensor->name << " buffer "
             << tensor->buffer->name;
 
@@ -483,7 +485,7 @@ std::vector<ir::Argument> LowerImpl::GenFuncArgForSplitKernel(
       VLOG(3) << "Tensor " << tensor->name;
       if (tensor->buffer.defined() && !arg_names.count(tensor->buffer->name)) {
         bool is_output =
-            teller.count(tensor->name) && teller.count(tensor->name);
+            teller.IsWrite(tensor->name) && teller.IsWrite(tensor->name);
         if (is_output)
           out_args.emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
       }

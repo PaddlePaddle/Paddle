@@ -65,7 +65,5 @@ std::map<std::string, Expr> CollectTensorMap(
       return true;
     });
 
-std::set<std::string> CollectTensorNeedsWrite(const Expr* e);
-
 }  // namespace ir
 }  // namespace cinn
