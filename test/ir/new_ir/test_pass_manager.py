@@ -46,7 +46,7 @@ class TestShadowOutputSlice(unittest.TestCase):
                 )
 
         new_program = ir.translate_to_new_ir(main_program.desc)
-        op_names = [op.name() for op in new_program.block().ops]
+        op_names = [op.name() for op in new_program.global_block().ops]
         # print(op_names)
         self.assertTrue('pd_op.uniform' in op_names)
         pm = ir.PassManager()
@@ -54,7 +54,7 @@ class TestShadowOutputSlice(unittest.TestCase):
             'dead_code_elimination'
         )  # apply pass to elimitate dead code
         pm.run(new_program)
-        op_names = [op.name() for op in new_program.block().ops]
+        op_names = [op.name() for op in new_program.global_block().ops]
         # print(op_names)
         self.assertEqual(pm.passes(), ['dead_code_elimination'])
         self.assertFalse(pm.empty())
