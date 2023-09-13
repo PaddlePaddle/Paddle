@@ -526,7 +526,7 @@ def load_inference_model_distributed(
             >>> path = "./infer_model"
             >>> base.io.save_inference_model(dirname=path, feeded_var_names=['img'],
             ...                 target_vars=[hidden_b], executor=exe, main_program=main_prog)
-            ... 
+            ...
             >>> # Demo one. Not need to set the distributed look up table, because the
             >>> # training doesn't use a distributed look up table.
             >>> [inference_program, feed_target_names, fetch_targets] = (
@@ -535,7 +535,7 @@ def load_inference_model_distributed(
             >>> results = exe.run(inference_program,
             ...                 feed={feed_target_names[0]: tensor_img},
             ...                 fetch_list=fetch_targets)
-            ... 
+            ...
             >>> # Demo two. If the training uses a distributed look up table, the pserver
             >>> # endpoints list should be supported when loading the inference model.
             >>> # The below is just an example.
@@ -544,7 +544,7 @@ def load_inference_model_distributed(
             ...     paddle.distributed.io.load_inference_model_distributed(dirname=path,
             ...                                     executor=exe,
             ...                                     pserver_endpoints=endpoints))
-            ... 
+            ...
             >>> # In this example, the inference program was saved in the file
             >>> # "./infer_model/__model__" and parameters were saved in
             >>> # separate files under the directory "./infer_model".
