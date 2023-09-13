@@ -179,17 +179,7 @@ void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
       }
     }
     pir::Operation* operation = fn(ctx_, &param_map_, *op, program_);
-
-    const auto& call_stack_attr_name =
-        framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName();
-    if (op->HasAttr(call_stack_attr_name)) {
-      auto& attribute_translator = AttributeTranslator::instance();
-      paddle::framework::Attribute legacy_attr =
-          op->GetAttr(call_stack_attr_name);
-      pir::Attribute new_attr =
-          attribute_translator(call_stack_attr_name, legacy_attr);
-      operation->set_attribute(call_stack_attr_name, new_attr);
-    }
+    VLOG(10) << "[op translated][special]" << operation;
   }
 }
 
