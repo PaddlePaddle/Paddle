@@ -583,7 +583,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
               << " to CustomOpKernelContext. Add Tensor for general case.";
     }
   }
-
+  // Parse op_type and inputs first, so that use 1 + inputs.size() + i
   int attr_start_idx = static_cast<int>(1 + inputs.size());
   for (size_t i = 0; i < attrs.size(); ++i) {
     const auto& attr = attrs.at(i);
