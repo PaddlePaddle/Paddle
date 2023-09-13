@@ -100,7 +100,7 @@ bool OpInfoImpl::HasInterface(TypeId interface_id) const {
 }
 
 void *OpInfoImpl::GetInterfaceImpl(TypeId interface_id) const {
-  return pir::details::LookUp<OpInfoImpl>(
+  return pir::detail::LookUp<OpInfoImpl>(
       interface_id, num_interfaces_, num_traits_, this);
 }
 

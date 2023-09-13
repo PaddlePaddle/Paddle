@@ -29,9 +29,9 @@ class Program;
 class OpOperand;
 class OpResult;
 
-namespace detial {
+namespace detail {
 class BlockOperandImpl;
-}  // namespace detial
+}  // namespace detail
 
 class IR_API alignas(8) Operation final {
  public:

@@ -38,7 +38,8 @@ void BuiltinDialect::initialize() {
                 BoolType,
                 Complex64Type,
                 Complex128Type,
-                VectorType>();
+                VectorType,
+                DenseTensorType>();
 
   RegisterAttributes<StrAttribute,
                      BoolAttribute,
