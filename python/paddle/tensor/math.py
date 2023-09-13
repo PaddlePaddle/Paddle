@@ -1081,7 +1081,7 @@ def multiply(x, y, name=None):
               [2, 4, 6]]])
 
     """
-    if in_dynamic_or_new_ir_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.multiply(x, y)
     else:
         if x.dtype != y.dtype:
