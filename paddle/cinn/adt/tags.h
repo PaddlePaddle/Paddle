@@ -34,4 +34,9 @@ DEFINE_ADT_TAG(tStride);
 DEFINE_ADT_TAG(tInMsgBox);
 DEFINE_ADT_TAG(tOutMsgBox);
 
+DEFINE_ADT_TAG(tBreak);
+
+DEFINE_ADT_TAG(tHasNoConflictValue);
+
+
 }  // namespace cinn::adt

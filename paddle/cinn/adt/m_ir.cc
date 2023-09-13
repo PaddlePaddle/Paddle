@@ -517,30 +517,57 @@ void VisitEachTensorList(const List<m_expr::Tensor>& tensors,
   }
 }
 
-std::vector<std::size_t> GenerateWriteBroadcastTensors(
+namespace {
+
+std::unordered_map<const equation::Variable, equation::Value>
+MakeAnchorIndex2Ok(const equation::Index& anchor_index) {
+  return {{anchor_index, Ok{}}};
+}
+
+}
+
+bool LocalEquationsSolvable(
+    const equation::GraphView& graph_view,
+    const equation::Index& anchor_index,
+    const equation::FakeOpPlaceHolder& fake_op_placeholder) {
+  const auto& init_var2value = MakeAnchorIndex2Ok(anchor_index);
+  equation::IndexExprInferContext ctx{init_var2value};
+  bool has_no_conflict_value =
+      equation::value::TrySolveEquations(graph_view, anchor_index, &ctx).value();
+  return has_no_conflict_value && ctx.HasValue(fake_op_placeholder);
+}
+
+std::vector<equation::Index> GenerateWriteBroadcastTensorIndexs(
     equation::config::NativeOpEquationContext* ctx) {
-  ADT_TODO();
+  const auto& graph_view = equation::Graph{ctx->equations()}.GetGraphView();
+  std::vector<equation::Index> ret{};
+  const auto& fake_op_placeholder = ctx->fake_op_placeholder();
+  ctx->VisitEachOutputTensorIndex([&](const auto& out_index){
+    if (!LocalEquationsSolvable(graph_view, out_index, fake_op_placeholder)) {
+      ret.emplace_back(out_index);
+    }
+  });
+  return ret;
 }
 
 using EquationCtx4OpStmtT =
     std::function<std::shared_ptr<equation::config::NativeOpEquationContext>(
         const m_expr::OpStmt&)>;
 
-void TruncateWriteBroadcastOutMsgBox4OpStmt(
-    const std::vector<std::size_t>& truncated_output_tensor_idxes,
+void EraseWriteBroadcastOutMsgBox(
+    const std::vector<equation::Index>& truncated_output_tensor_indexes,
     equation::config::NativeOpEquationContext* ctx) {
-  ADT_TODO();
+  ctx->EraseOutMsgBoxIndexes(truncated_output_tensor_indexes);
 }
 
-void TruncateWriteBroadcastOutMsgBoxes(
+void EraseWriteBroadcastOutMsgBoxes(
     const List<m_expr::OpStmt>& op_stmts,
     const EquationCtx4OpStmtT& EquationCtx4OpStmt) {
   VisitEachOpStmt(op_stmts, [&](const auto& op_stmt) {
     auto* ctx = EquationCtx4OpStmt(op_stmt).get();
     const auto& truncated_output_tensor_idxes =
-        GenerateWriteBroadcastTensors(ctx);
-
-    TruncateWriteBroadcastOutMsgBox4OpStmt(truncated_output_tensor_idxes, ctx);
+        GenerateWriteBroadcastTensorIndexs(ctx);
+    EraseWriteBroadcastOutMsgBox(truncated_output_tensor_idxes, ctx);
   });
 }
 
@@ -558,7 +585,7 @@ MapIRList GenerateMapIRListForLoopFuse(
         GetTensorIndexes) {
   const auto& EquationCtx4OpStmt =
       equation::config::GenerateContext4LocalOpStmt(op_stmts);
-  TruncateWriteBroadcastOutMsgBoxes(op_stmts, EquationCtx4OpStmt);
+  EraseWriteBroadcastOutMsgBoxes(op_stmts, EquationCtx4OpStmt);
 
   const auto& partitioned_anchor_groups =
       partition::PartitionOpStmts(EquationCtx4OpStmt, op_stmts);

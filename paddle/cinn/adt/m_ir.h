@@ -26,8 +26,6 @@ using ScheduleIterators = List<equation::IterVar>;
 
 namespace cinn::adt::m_ir {
 
-DEFINE_ADT_TAG(tBreak);
-
 class MapIR final {
  public:
   MapIR(const m_expr::OpStmt& op_stmt, const ScheduleIterators& sd_iters)
