@@ -173,10 +173,10 @@ class TestExp_Complex64(OpTest):
         self.convert_input_output()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.006)
+        self.check_grad(['X'], 'Out', max_relative_error=0.006, check_new_ir=True)
 
     def init_dtype(self):
         self.dtype = np.complex64
