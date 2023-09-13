@@ -412,6 +412,114 @@ void AddNWithKernelOp::InferMeta(phi::InferMetaContext *infer_meta) {
   fn(infer_meta);
 }
 
+OpInfoTuple AddNGradOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {OpInputInfo(
+      "input", "paddle::dialect::DenseTensorType", false, false, false, true)};
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      OpOutputInfo("outputs",
+                   "pir::VectorType<paddle::dialect::DenseTensorType>",
+                   false,
+                   false)};
+  paddle::dialect::OpRunTimeInfo run_time_info =
+      OpRunTimeInfo("", {}, {}, {}, {}, {}, {}, {});
+
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "add_n_grad");
+}
+
+void AddNGradOp::Verify() {
+  VLOG(4) << "Start Verifying inputs, outputs and attributes for: AddNGradOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto input_size = num_operands();
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        2u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of inputs must be equal to 2.", input_size));
+    if (auto vec_type =
+            (*this)->operand(0).type().dyn_cast<pir::VectorType>()) {
+      for (size_t i = 0; i < vec_type.size(); ++i) {
+        PADDLE_ENFORCE(vec_type[i].isa<paddle::dialect::DenseTensorType>() ||
+                           vec_type[i].isa<paddle::dialect::SelectedRowsType>(),
+                       phi::errors::PreconditionNotMet(
+                           "Type validation failed for the 0th input."));
+      }
+    } else {
+      PADDLE_ENFORCE(
+          (*this)->operand(0).type().isa<paddle::dialect::DenseTensorType>() ||
+              (*this)
+                  ->operand(0)
+                  .type()
+                  .isa<paddle::dialect::SelectedRowsType>(),
+          phi::errors::PreconditionNotMet(
+              "Type validation failed for the 0th input."));
+    }
+    PADDLE_ENFORCE((*this)
+                       ->operand_source(1)
+                       .type()
+                       .isa<paddle::dialect::DenseTensorType>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type validation failed for the 1th input."));
+  }
+  VLOG(4) << "Verifying attributes:";
+  {
+    // Attributes num is 0, not need to check attributes type.
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto output_size = num_results();
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        1u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of outputs must be equal to 2.", output_size));
+
+    auto output_0_type = (*this)->result(0).type();
+    if (auto vec_type = output_0_type.dyn_cast<pir::VectorType>()) {
+      for (size_t i = 0; i < vec_type.size(); i++) {
+        PADDLE_ENFORCE(vec_type[i].isa<paddle::dialect::DenseTensorType>(),
+                       phi::errors::PreconditionNotMet(
+                           "Type validation failed for the 0th output."));
+      }
+    } else {
+      PADDLE_ENFORCE(output_0_type.isa<paddle::dialect::DenseTensorType>(),
+                     phi::errors::PreconditionNotMet(
+                         "Type validation failed for the 0th output."));
+    }
+  }
+  VLOG(4) << "End Verifying for: AddNGradOp.";
+}
+
+void AddNGradOp::Build(pir::Builder &builder,             // NOLINT
+                       pir::OperationArgument &argument,  // NOLINT
+                       pir::OpResult inputs,
+                       pir::OpResult output_grad) {
+  VLOG(4) << "Builder construction inputs";
+  std::vector<pir::OpResult> argument_inputs = {inputs, output_grad};
+  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+
+  VLOG(4) << "Builder construction attributes";
+
+  VLOG(4) << "Builder construction outputs";
+  pir::VectorType x = inputs.type().dyn_cast<pir::VectorType>();
+  (void)x;
+
+  std::vector<pir::OpResult> vec_x;
+  for (size_t i = 0; i < x.size(); i++) {
+    paddle::dialect::ScaleOp scale_op =
+        builder.Build<paddle::dialect::ScaleOp>(output_grad, 1.0, 0.0, true);
+    vec_x.push_back(scale_op.result(0));
+  }
+  pir::CombineOp combine_op = builder.Build<pir::CombineOp>(vec_x);
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = combine_op.out().type();
+  argument_outputs.push_back(out_dense_tensor_type);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+}
+
 const char *FusedGemmEpilogueOp::attributes_name[3] = {
     "trans_x", "trans_y", "activation"};
 
@@ -1111,6 +1219,7 @@ void IfOp::Verify() {}
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNGradOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)

@@ -346,8 +346,31 @@ def append_backward_ops(
         output_grads = []
         for i, value in enumerate(op.results()):
             if (
+                value in state.value_to_valuegrad
+                and len(state.value_to_valuegrad[value])
+            ) > 1:
+                # one value is input of more than one fwd_op,
+                # so more than one bwd_op create input_grad,
+                # need add sum op to accumulate gradient
+                paddle.add_n(
+                    [item[0] for item in state.value_to_valuegrad[value]]
+                )
+                combineop = block.ops[len(block.ops) - 2]
+                sumop = block.ops[len(block.ops) - 1]
+                update_bwdop_structure(
+                    backward_ops, state.op_to_opgrad[op], combineop
+                )
+                update_bwdop_structure(
+                    backward_ops, state.op_to_opgrad[op], sumop
+                )
+                state.value_to_valuegrad[value] = [[sumop.result(0)]]
+                state.value_to_sumvaluegrad[value] = state.value_to_valuegrad[
+                    value
+                ]
+
+            if (
                 value not in state.value_to_valuegrad
-                or state.value_to_valuegrad[value] is None
+                or state.value_to_valuegrad[value] == []
             ):
                 if (
                     not value.use_empty()
@@ -360,7 +383,8 @@ def append_backward_ops(
                         value.first_use().owner()
                     )
                     zero_flag[i] = all(split_zero_flag)
-                    state.value_to_valuegrad[value] = [split_output_grad]
+                    grad_values = [value[0] for value in split_output_grad]
+                    state.value_to_valuegrad[value] = [grad_values]
                 else:
                     # first case:
                     # this fwd_op's output didn't used by other fwd_op,
@@ -383,28 +407,8 @@ def append_backward_ops(
 
                     state.value_to_valuegrad[value] = [[grad_value]]
 
-            if len(state.value_to_valuegrad[value]) > 1:
-                # one value is input of more than one fwd_op,
-                # so more than one bwd_op create input_grad,
-                # need add sum op to accumulate gradient
+            output_grads.append(state.value_to_valuegrad[value][0])
 
-                paddle.add_n(
-                    [item[0] for item in state.value_to_valuegrad[value]]
-                )
-                combineop = block.ops[len(block.ops) - 2]
-                sumop = block.ops[len(block.ops) - 1]
-                update_bwdop_structure(
-                    backward_ops, state.op_to_opgrad[op], combineop
-                )
-                update_bwdop_structure(
-                    backward_ops, state.op_to_opgrad[op], sumop
-                )
-                state.value_to_valuegrad[value] = [[sumop.result(0)]]
-                state.value_to_sumvaluegrad[value] = state.value_to_valuegrad[
-                    value
-                ]
-
-            output_grads.append(state.value_to_valuegrad[value][0][0])
         return zero_flag, output_grads
 
     def make_input_stopgradient(op):
@@ -467,9 +471,7 @@ def append_backward_ops(
     for op in clear_effective_forward_ops:
         if paddle.framework.core.has_vjp(op):
             # prepare output_grad
-            output_grads = []  # (opresult)
-            zero_flag, output_grad = make_output_grad(op)
-            output_grads.append(output_grad)
+            zero_flag, output_grads = make_output_grad(op)
 
             # all(zero_flag) support this op has no contribution for grad
             # should be delete (prune sub_graph)

@@ -14,7 +14,8 @@
 
 #ifdef GET_MANUAL_OP_LIST
 #undef GET_MANUAL_OP_LIST
-paddle::dialect::AddNOp, paddle::dialect::SplitGradOp, paddle::dialect::IfOp
+paddle::dialect::AddNOp, paddle::dialect::SplitGradOp, paddle::dialect::IfOp,
+    paddle::dialect::AddNGradOp
 
 #else
 
@@ -36,7 +37,10 @@ paddle::dialect::AddNOp, paddle::dialect::SplitGradOp, paddle::dialect::IfOp
 namespace paddle {
 namespace dialect {
 
-class AddNOp : public pir::Op<AddNOp, OpYamlInfoInterface, InferMetaInterface> {
+class AddNOp : public pir::Op<AddNOp,
+                              paddle::dialect::OpYamlInfoInterface,
+                              paddle::dialect::InferMetaInterface,
+                              paddle::dialect::VjpInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.add_n"; }
@@ -51,6 +55,10 @@ class AddNOp : public pir::Op<AddNOp, OpYamlInfoInterface, InferMetaInterface> {
   pir::Value inputs() { return operand_source(0); }
   pir::OpResult out() { return result(0); }
   static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<std::vector<pir::OpResult>> Vjp(
+      pir::Operation *op,
+      const std::vector<std::vector<pir::OpResult>> &out_grads,
+      const std::vector<std::vector<bool>> &stop_gradients);
 };
 
 class AddN_Op : public pir::Op<AddN_Op,
@@ -92,6 +100,24 @@ class AddNWithKernelOp : public pir::Op<AddNWithKernelOp,
   pir::OpResult out() { return result(0); }
 
   static void InferMeta(phi::InferMetaContext *infer_meta);
+};
+
+class AddNGradOp : public pir::Op<AddNGradOp, OpYamlInfoInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.add_n_grad"; }
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+  static OpInfoTuple GetOpInfo();
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::OpResult inputs,
+                    pir::OpResult output_grad);
+
+  void Verify();
+  pir::Value inputs() { return operand_source(0); }
+  pir::Value output_grad() { return operand_source(1); }
+  pir::OpResult outputs() { return result(0); }
 };
 
 class FusedGemmEpilogueOp
@@ -197,6 +223,7 @@ class IfOp : public pir::Op<IfOp> {
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)

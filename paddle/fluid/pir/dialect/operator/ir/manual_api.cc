@@ -27,6 +27,15 @@ pir::OpResult builtin_combine(std::vector<pir::OpResult> x) {
   return combine_op.out();
 }
 
+std::vector<pir::OpResult> add_n_grad(std::vector<pir::OpResult> inputs,
+                                      pir::OpResult out_grad) {
+  std::vector<pir::OpResult> inputs_grad;
+  for (size_t i = 0; i < inputs.size(); i++) {
+    inputs_grad.push_back(out_grad);
+  }
+  return inputs_grad;
+}
+
 pir::OpResult get_parameter(const std::string& name,
                             phi::DataType dtype,
                             const std::vector<int64_t>& shape) {

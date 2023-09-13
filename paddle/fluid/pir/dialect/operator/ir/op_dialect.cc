@@ -52,6 +52,7 @@ void OperatorDialect::initialize() {
   RegisterOps<paddle::dialect::AddNOp,
               paddle::dialect::AddN_Op,
               paddle::dialect::AddNWithKernelOp,
+              paddle::dialect::AddNGradOp,
               paddle::dialect::FusedGemmEpilogueOp,
               paddle::dialect::FusedGemmEpilogueGradOp,
               paddle::dialect::SplitGradOp,

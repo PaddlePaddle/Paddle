@@ -2071,15 +2071,22 @@ class OpTest(unittest.TestCase):
                 if self.op_test.is_compared_with_fp32():
                     expect, expect_np = self.find_expect_value(name)
                 else:
+                    actual_np = (
+                        actual_np[0]
+                        if isinstance(expect, (tuple, list))
+                        else expect
+                    )
                     expect_np = (
-                        expect[0] if isinstance(expect, tuple) else expect
+                        expect[0]
+                        if isinstance(expect, (tuple, list))
+                        else expect
                     )
                 actual_np, expect_np = self.convert_uint16_to_float_ifneed(
                     actual_np, expect_np
                 )
                 # modify there for fp32 check
                 self._compare_numpy(name, actual_np, expect_np)
-                if isinstance(expect, tuple):
+                if isinstance(expect, (tuple, list)):
                     self._compare_list(name, actual, expect)
 
             def compare_outputs_with_expects(self):
@@ -3515,6 +3522,7 @@ class OpTest(unittest.TestCase):
                     inputs=paddle.utils.flatten(loss_inputs),
                     grad_outputs=None,
                 )
+                print("program = ", paddle.ir.core.default_main_program())
             else:
                 grad_inputs = ir_grad(
                     outputs=paddle.utils.flatten(outputs),
