@@ -17,7 +17,7 @@ from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from .. import _C_ops
 from ..base.data_feeder import check_variable_and_dtype
-from ..framework import LayerHelper, in_dynamic_mode, in_dynamic_or_new_ir_mode
+from ..framework import LayerHelper, in_dynamic_mode, in_dynamic_or_pir_mode
 from .layer_function_generator import (
     add_sample_code,
     generate_activation_fn,
@@ -584,7 +584,7 @@ def exp(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.67032003, 0.81873077, 1.10517097, 1.34985888])
     """
-    if in_dynamic_or_new_ir_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.exp(x)
     else:
         check_variable_and_dtype(
@@ -634,7 +634,7 @@ def expm1(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.32967997, -0.18126924,  0.10517092,  0.34985882])
     """
-    if in_dynamic_or_new_ir_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.expm1(x)
     else:
         check_variable_and_dtype(
