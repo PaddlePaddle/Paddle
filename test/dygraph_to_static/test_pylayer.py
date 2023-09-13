@@ -17,10 +17,13 @@ Only test simple cases here."""
 
 import unittest
 
+import os
 import numpy as np
+import tempfile
 
 import paddle
 from paddle.autograd.py_layer import PyLayer
+from legacy_test.test_jit_save_load import train
 
 SEED = 2023
 np.random.seed(SEED)
@@ -53,7 +56,7 @@ class scaled_layer_1(PyLayer):
 class scaled_layer_2(PyLayer):
     @staticmethod
     def forward(ctx, x1, x2):
-        y = x1 * x2
+        y = 3 * x1 +  x2 / 5
         return y
 
     @staticmethod
@@ -77,6 +80,20 @@ class cus_tanh_1(PyLayer):
         return grad
 
 
+class cus_tanh_2(PyLayer):
+    @staticmethod
+    def forward(ctx, x, func1, func2=paddle.square):
+        ctx.func = func2
+        y = func1(x)
+        ctx.save_for_backward(y)
+        return y
+
+    @staticmethod
+    def backward(ctx, dy):
+        y, = ctx.saved_tensor()
+        grad = dy * (1 - ctx.func(y))
+        return grad
+
 class nested_layer(PyLayer):
     @staticmethod
     def forward(ctx, x1, x2):
@@ -94,9 +111,9 @@ class nested_layer(PyLayer):
 
 
 class SimpleNet_1(paddle.nn.Layer):
-    def __init__(self):
+    def __init__(self, in_size, out_size):
         super().__init__()
-        self.linear = paddle.nn.Linear(4, 8)
+        self.linear = paddle.nn.Linear(in_size, out_size)
 
     @paddle.jit.to_static
     def forward(self, data):
@@ -116,6 +133,17 @@ class SimpleNetInplace(paddle.nn.Layer):
         z = cus_tanh_1.apply(z)
         return z
 
+class SimplePyLayerNet(paddle.nn.Layer):
+    def __init__(self, in_size, out_size):
+        super().__init__()
+        self.linear = paddle.nn.Linear(in_size, out_size)
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        y = self.linear(x)
+        out = cus_tanh_2.apply(y, func1=paddle.tanh)
+        out = paddle.mean(out)
+        return out
 
 class TestPyLayerBase(unittest.TestCase):
     def setUp(self):
@@ -271,10 +299,38 @@ class TestPyLayerWithContext(TestPyLayerBase):
 
         self._run_and_compare(input1, input2)
 
+    def test_apply_kwargs_pylayer(self):
+        @paddle.jit.to_static
+        def test_func(x1, x2):
+            y = scaled_layer_2.apply(x1=x2, x2=x1)
+            return y
+        
+        self.dygraph_func = test_func
+        
+        input1 = paddle.randn([2, 3]).astype("float32")
+        input2 = paddle.randn([2, 3]).astype("float32")
+        input1.stop_gradient = False
+        input2.stop_gradient = False
 
+        self._run_and_compare(input1, input2)
+    
+    def test_non_variable_inputs(self):
+        @paddle.jit.to_static
+        def test_func(x):
+            y = cus_tanh_2.apply(x, func1=paddle.tanh)
+            return y
+        
+        self.dygraph_func = test_func
+
+        input1 = paddle.randn([2, 3]).astype("float32")
+        input1.stop_gradient = False
+
+        self._run_and_compare(input1)
+        
+        
 class TestPyLayerInsideNet(TestPyLayerBase):
     def test_single_in_single_out(self):
-        simple_net = SimpleNet_1()
+        simple_net = SimpleNet_1(in_size=4, out_size=8)
         self.dygraph_func = simple_net
 
         input1 = paddle.randn([3, 4]).astype("float32")
@@ -288,7 +344,15 @@ class TestPyLayerInsideNet(TestPyLayerBase):
         input1 = paddle.randn([3, 4]).astype("float32")
         input1.stop_gradient = False
         self._run_and_compare(input1)
-
-
+        
+    def test_non_variable_args_pylayernet(self):
+        simple_net = SimplePyLayerNet(in_size=4, out_size=8)
+        self.dygraph_func = simple_net
+        
+        input1 = paddle.randn([3, 4]).astype("float32")
+        input1.stop_gradient = False
+        self._run_and_compare(input1) 
+        
+        
 if __name__ == "__main__":
     unittest.main()

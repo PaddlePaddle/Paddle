@@ -45,11 +45,10 @@ class StaticPyLayerBlockGuard(BlockGuard):
 
 class StaticPyLayerBlock:
     def __init__(self, inputs, name=None, pylayer_context=None):
-        for each_input in inputs:
-            check_type(each_input, "input", Variable, "StaticPyLayerBlock")
+        
+        # used to specify the Variable type `Input` to `pylayer` op
+        self.fwd_inputs = [each_input for each_input in inputs if isinstance(each_input, Variable)]     # filter non-Variable inputs
 
-        # used to specify the `Input` to `pylayer` op
-        self.fwd_inputs = inputs
         # used to specify the `Out` to `pylayer` op
         self.fwd_outputs = []
 
