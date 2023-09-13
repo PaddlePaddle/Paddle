@@ -850,7 +850,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return bool Whether to show TensorRT inspector information.
   ///
-  void EnableTensorRtInspector(bool serialize_engine_info = false);
+  void EnableTensorRtInspector(bool inspector_serialize = false);
   bool tensorrt_inspector_enabled() { return trt_use_inspector_; }
 
   ///
@@ -1253,7 +1253,7 @@ struct PD_INFER_DECL AnalysisConfig {
   // tune to get dynamic_shape info.
   bool trt_tuned_dynamic_shape_{false};
   bool trt_use_inspector_{false};
-  bool trt_serialize_engine_info_{false};
+  bool trt_inspector_serialize_{false};
   bool trt_use_explicit_quantization_{false};
 
   // In CollectShapeInfo mode, we will collect the shape information of

@@ -478,7 +478,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(collect_shape_range_info_);
   CP_MEMBER(shape_range_info_path_);
   CP_MEMBER(trt_use_inspector_);
-  CP_MEMBER(trt_serialize_engine_info_);
+  CP_MEMBER(trt_inspector_serialize_);
   CP_MEMBER(trt_use_explicit_quantization_);
   CP_MEMBER(trt_engine_memory_sharing_);
   CP_MEMBER(trt_engine_memory_sharing_identifier_);
@@ -842,9 +842,9 @@ void AnalysisConfig::EnableTensorRtDLA(int dla_core) {
   trt_dla_core_ = dla_core;
 }
 
-void AnalysisConfig::EnableTensorRtInspector(bool serialize_engine_info) {
+void AnalysisConfig::EnableTensorRtInspector(bool inspector_serialize) {
   trt_use_inspector_ = true;
-  trt_serialize_engine_info_ = serialize_engine_info;
+  trt_inspector_serialize_ = inspector_serialize;
 }
 
 void AnalysisConfig::EnableTensorRtExplicitQuantization() {

@@ -569,7 +569,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   auto use_dla = Get<bool>("trt_use_dla");
   auto dla_core = Get<int>("trt_dla_core");
   auto use_inspector = Get<bool>("use_inspector");
-  auto serialize_engine_info = Get<bool>("serialize_engine_info");
+  auto inspector_serialize = Get<bool>("inspector_serialize");
   auto disable_trt_plugin_fp16 = Get<bool>("disable_trt_plugin_fp16");
   auto context_memory_sharing = Get<bool>("context_memory_sharing");
   auto enable_low_precision_io = Get<bool>("enable_low_precision_io");
@@ -691,11 +691,10 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
 
   // serialization engine info
   std::string engine_info_path;
-  if (serialize_engine_info) {
+  if (inspector_serialize) {
     engine_info_path = Get<std::string>("model_opt_cache_dir") +
                        "engine_info_" + engine_key + ".json";
-  } else {
-    engine_info_path = "";
+    LOG(INFO) << "Serialize engine info to " << engine_info_path;
   }
   op_desc->SetAttr("use_inspector", use_inspector);
   op_desc->SetAttr("engine_info_path", engine_info_path);
