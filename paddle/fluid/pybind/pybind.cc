@@ -2921,7 +2921,7 @@ All parameter, weight, gradient are variables in Paddle.
   GetAllWorkerInfos(&m);
 #endif
 
-  BindNewIR(&m);
+  BindPIR(&m);
   BindVjp(&m);
 }
 }  // namespace pybind
