@@ -21,13 +21,13 @@ import paddle
 import paddle.framework.dtype as dtypes
 from paddle.base import core
 from paddle.base.framework import convert_np_dtype_to_dtype_
-from paddle.framework import in_new_ir_mode
+from paddle.framework import in_pir_mode
 from paddle.static import Program, program_guard
 
 
 def fill_any_like_wrapper(x, value, out_dtype=None, name=None):
     if isinstance(out_dtype, int):
-        if not in_new_ir_mode():
+        if not in_pir_mode():
             tmp_dtype = dtypes.dtype(out_dtype)
         else:
             from paddle.base.libpaddle import DataType
@@ -35,7 +35,7 @@ def fill_any_like_wrapper(x, value, out_dtype=None, name=None):
             tmp_dtype = DataType(paddle.ir.core.vartype_to_datatype[out_dtype])
     else:
         tmp_dtype = out_dtype
-        if in_new_ir_mode() and isinstance(
+        if in_pir_mode() and isinstance(
             out_dtype, paddle.framework.core.VarDesc.VarType
         ):
             tmp_dtype = paddle.ir.core.vartype_to_datatype[tmp_dtype]
@@ -148,7 +148,7 @@ class TestFullLikeOp1(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_new_ir=True)
 
     def if_enable_cinn(self):
         pass

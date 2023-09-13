@@ -12,20 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/core/op_base.h"
+#pragma once
+
+#include "paddle/pir/core/value.h"
 namespace pir {
-InterfaceValue::~InterfaceValue() {
-  if (model_) free(model_);
-}
 
-InterfaceValue::InterfaceValue(InterfaceValue&& val) noexcept {
-  type_id_ = val.type_id_;
-  model_ = val.model_;
-  val.model_ = nullptr;
-}
+namespace detail {
+class OpResultImpl;
+}  // namespace detail
 
-InterfaceValue& InterfaceValue::operator=(InterfaceValue&& val) noexcept {
-  swap(std::move(val));
-  return *this;
-}
+///
+/// \brief OpResult class represents the value defined by a result of operation.
+/// This class only provides interfaces, for specific implementation, see Impl
+/// class.
+///
+class IR_API OpResult : public Value {
+ public:
+  using Value::Value;
+
+  static bool classof(Value value);
+
+  Operation *owner() const;
+
+  uint32_t GetResultIndex() const;
+
+  bool operator==(const OpResult &other) const;
+
+  friend Operation;
+
+  detail::OpResultImpl *impl() const;
+
+ private:
+  static uint32_t GetValidInlineIndex(uint32_t index);
+};
+
 }  // namespace pir

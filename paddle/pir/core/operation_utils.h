@@ -17,6 +17,7 @@
 #include <memory>
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/op_info.h"
+#include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/region.h"
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/value.h"
