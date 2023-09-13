@@ -283,4 +283,8 @@ class NativeOpEquationContext final : public OpEquationContext {
   FakeOpPlaceHolder fake_op_placeholder_;
 };
 
+std::function<std::shared_ptr<equation::config::NativeOpEquationContext>(
+    const m_expr::OpStmt&)>
+GenerateContext4LocalOpStmt(const List<m_expr::OpStmt>& op_stmts);
+
 }  // namespace cinn::adt::equation::config

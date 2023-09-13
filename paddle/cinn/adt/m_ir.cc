@@ -17,6 +17,8 @@
 
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/m_ir.h"
+#include "paddle/cinn/adt/naive_op_equation_context.h"
+#include "paddle/cinn/adt/partition_op_stmts.h"
 
 namespace cinn::adt::m_ir {
 
@@ -474,10 +476,10 @@ MapIRList ReorderAndMergeOpCluster4LoopFuse(
       GenerateOpClusters(op_stmts, SdIters4Op, GetSchedulePolicy);
 
   // Reorder and merge
-  while (MergePrevToNext4LoopFuse(&op_cluster, SdIters4Tensor)) {
+  while (MergePrevToNext4LoopFuse(&map_irs, SdIters4Tensor)) {
   }
   // Merge
-  while (MergeNextOrPrev4LoopFuse(&op_cluster, SdIters4Tensor)) {
+  while (MergeNextOrPrev4LoopFuse(&map_irs, SdIters4Tensor)) {
   }
 
   return map_irs;
@@ -495,6 +497,73 @@ MapIRList GenerateClusterOpsForLoopFuse(
 
   return ReorderAndMergeOpCluster4LoopFuse(
       op_stmts, SdIters4Op, SdIters4Tensor, GetSchedulePolicy);
+}
+
+int CountIteratorsSize(
+    const m_expr::Tensor& tensor,
+    const ScheduleIterators& sd_iters,
+    const std::function<const SchedulePolicy&(const equation::IterVar&)>&
+        GetSchedulePolicy,
+    const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
+        GetTensorIndexes) {
+  return GetTensorIndexIterators(GetTensorIndexes(tensor)).size();
+}
+
+template <typename DoEachT>
+void VisitEachTensorList(const List<m_expr::Tensor>& tensors,
+                         const DoEachT& DoEach) {
+  for (std::size_t i = 0; i < tensors->size(); ++i) {
+    DoEach(tensors->at(i), i);
+  }
+}
+
+std::vector<std::size_t> GenerateWriteBroadcastTensors(
+    equation::config::NativeOpEquationContext* ctx) {
+  ADT_TODO();
+}
+
+using EquationCtx4OpStmtT =
+    std::function<std::shared_ptr<equation::config::NativeOpEquationContext>(
+        const m_expr::OpStmt&)>;
+
+void TruncateWriteBroadcastOutMsgBox4OpStmt(
+    const std::vector<std::size_t>& truncated_output_tensor_idxes,
+    equation::config::NativeOpEquationContext* ctx) {
+  ADT_TODO();
+}
+
+void TruncateWriteBroadcastOutMsgBoxes(
+    const List<m_expr::OpStmt>& op_stmts,
+    const EquationCtx4OpStmtT& EquationCtx4OpStmt) {
+  VisitEachOpStmt(op_stmts, [&](const auto& op_stmt) {
+    auto* ctx = EquationCtx4OpStmt(op_stmt).get();
+    const auto& truncated_output_tensor_idxes =
+        GenerateWriteBroadcastTensors(ctx);
+
+    TruncateWriteBroadcastOutMsgBox4OpStmt(truncated_output_tensor_idxes, ctx);
+  });
+}
+
+MapIRList ConvertAnchorGroups2MapIRList(
+    const std::vector<partition::AnchorGroup>& partitioned_anchor_groups) {
+  ADT_TODO();
+}
+
+MapIRList GenerateMapIRListForLoopFuse(
+    const List<m_expr::OpStmt>& op_stmts,
+    const ScheduleIterators& sd_iters,
+    const std::function<const SchedulePolicy&(const equation::IterVar&)>&
+        GetSchedulePolicy,
+    const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
+        GetTensorIndexes) {
+  const auto& EquationCtx4OpStmt =
+      equation::config::GenerateContext4LocalOpStmt(op_stmts);
+  TruncateWriteBroadcastOutMsgBoxes(op_stmts, EquationCtx4OpStmt);
+
+  const auto& partitioned_anchor_groups =
+      partition::PartitionOpStmts(EquationCtx4OpStmt, op_stmts);
+
+  return ConvertAnchorGroups2MapIRList(partitioned_anchor_groups);
 }
 
 }  // namespace cinn::adt::m_ir

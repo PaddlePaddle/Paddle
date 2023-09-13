@@ -59,6 +59,8 @@ class Graph : public cinn::common::Graph {
   std::vector<std::vector<Node*>> groups;
   struct Group {
     Group() = default;
+    Group(const Group&) = delete;
+    Group(Group&&) = delete;
 
     explicit Group(const Graph* graph) : graph_(graph) {}
 

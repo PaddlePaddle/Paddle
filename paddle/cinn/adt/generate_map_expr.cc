@@ -32,61 +32,6 @@ using SchedulePolicy4IterVarT =
 using AnchorTensor = equation::Variable;
 using FakeOpPlaceHolders = List<equation::FakeOpPlaceHolder>;
 
-std::vector<std::uint64_t> MakeTensorRanks(const List<m_expr::Arg>& arg_lists) {
-  std::vector<std::uint64_t> ret;
-  for (const auto& arg : *arg_lists) {
-    CHECK(arg.Has<adapter::Tensor>());
-    ret.push_back(arg.Get<adapter::Tensor>().GetRank());
-  }
-  return ret;
-}
-
-void GenerateOpEquations(const m_expr::OpStmt& op_stmt,
-                         equation::config::NativeOpEquationContext* ctx) {
-  const auto& [op, inputs, outputs] = op_stmt;
-  CHECK(op.Has<const hlir::framework::Node*>());
-  const hlir::framework::Node* op_node = op.Get<const hlir::framework::Node*>();
-
-  using GenerateEquationFunc =
-      std::function<void(equation::config::NativeOpEquationContext * ctx)>;
-
-  const auto& generate_equations =
-      hlir::framework::Operator::GetAttrs<GenerateEquationFunc>(
-          "generate_equations");
-  const auto& iter = generate_equations.find(op_node->op());
-  CHECK(iter != generate_equations.end());
-  iter->second(ctx);
-}
-
-std::shared_ptr<equation::config::NativeOpEquationContext>
-MakeContextAndGenerateEquations(const m_expr::OpStmt& op_stmt) {
-  const auto& [op, inputs, outputs] = op_stmt;
-  const auto& ctx = std::make_shared<equation::config::NativeOpEquationContext>(
-      MakeTensorRanks(inputs.value()), MakeTensorRanks(outputs.value()));
-
-  GenerateOpEquations(op_stmt, ctx.get());
-
-  return ctx;
-}
-
-std::function<std::shared_ptr<equation::config::NativeOpEquationContext>(
-    const m_expr::OpStmt&)>
-GenerateContext4LocalOpStmt(const List<m_expr::OpStmt>& op_stmts) {
-  using OpStmt2EquationContext = std::unordered_map<
-      m_expr::OpStmt,
-      std::shared_ptr<equation::config::NativeOpEquationContext>>;
-  const auto& op_stmt2equation_ctx = std::make_shared<OpStmt2EquationContext>();
-
-  for (const auto& op_stmt : *op_stmts) {
-    const auto& ctx = MakeContextAndGenerateEquations(op_stmt);
-    CHECK(op_stmt2equation_ctx->emplace(op_stmt, ctx).second);
-  }
-
-  return [op_stmt2equation_ctx](const auto& op_stmt) {
-    return op_stmt2equation_ctx->at(op_stmt);
-  };
-}
-
 m_expr::Op MakeOp(const hlir::framework::Node* op) { return {op}; }
 
 template <typename DoEachT>
@@ -128,17 +73,19 @@ List<m_expr::Arg> MakeOpStmtOutputList(const hlir::framework::Node* op,
 }
 
 template <typename DoEachT>
-void VisitEachOpStmt(const hlir::framework::Graph::Group& group,
-                     const DoEachT& DoEach) {
+void VisitEachOpStmt(
+    const std::shared_ptr<hlir::framework::Graph::Group>& group,
+    const DoEachT& DoEach) {
   for (const auto* op : group.nodes) {
     // Tuple<Op, In<List<Arg>>, Out<List<Arg>>>
     DoEach(m_expr::OpStmt{MakeOp(op),
-                          MakeOpStmtInputList(op, group.graph_),
-                          MakeOpStmtOutputList(op, group.graph_)});
+                          MakeOpStmtInputList(op, group->graph_),
+                          MakeOpStmtOutputList(op, group->graph_)});
   }
 }
 
-List<m_expr::OpStmt> MakeOpStmts(const hlir::framework::Graph::Group& group) {
+List<m_expr::OpStmt> MakeOpStmts(
+    const std::shared_ptr<hlir::framework::Graph::Group>& group) {
   List<m_expr::OpStmt> ret{};
 
   VisitEachOpStmt(group,
@@ -150,7 +97,8 @@ List<m_expr::OpStmt> MakeOpStmts(const hlir::framework::Graph::Group& group) {
 template <typename DoEachT>
 void PartitionIGroupOpStmts(const List<m_expr::OpStmt>& op_stmts,
                             const DoEachT& DoEach) {
-  const auto& EquationCtx4OpStmt = GenerateContext4LocalOpStmt(op_stmts);
+  const auto& EquationCtx4OpStmt =
+      config::GenerateContext4LocalOpStmt(op_stmts);
   const auto& igroup_specs =
       partition::PartitionOpStmts(EquationCtx4OpStmt, op_stmts);
   for (const auto& igroup_spec : igroup_specs) {
@@ -158,15 +106,15 @@ void PartitionIGroupOpStmts(const List<m_expr::OpStmt>& op_stmts,
   }
 }
 
-std::shared_ptr<IGroup> MakeIGroup(const partition::IGroupSpec& igroup_spec) {
+std::shared_ptr<IGroup> MakeIGroup(const partition::AnchorGroup& igroup_spec) {
   CHECK(IsEquationSolvable(igroup_spec));
-  return std::make_shared<IGroup>(igroup_spec.igroup_op_stmts,
+  return std::make_shared<IGroup>(igroup_spec.op_stmts,
                                   igroup_spec.anchor_index,
                                   igroup_spec.EquationCtx4OpStmt);
 }
 
 std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
-    const hlir::framework::Graph::Group& group) {
+    const std::shared_ptr<hlir::framework::Graph::Group>& group) {
   std::vector<std::shared_ptr<IGroup>> ret{};
 
   List<m_expr::OpStmt> op_stmts = MakeOpStmts(group);
@@ -179,18 +127,16 @@ std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
 }
 
 std::shared_ptr<KGroup> GenerateKGroups(
-    const hlir::framework::Graph::Group& group,
+    const std::shared_ptr<hlir::framework::Graph::Group>& group,
     const std::vector<std::shared_ptr<IGroup>>& igroups) {
   CHECK_EQ(igroups.size(), 1);
-  const auto& cinn_group =
-      std::make_shared<hlir::framework::Graph::Group>(group);
-  return std::make_shared<KGroup>(cinn_group, igroups);
+  return std::make_shared<KGroup>(group, igroups);
 }
 
 equation::Equations MakeSdEquations(const std::shared_ptr<IGroup>& igroup,
                                     const ScheduleDescriptor& sd) {
-  equation::config::AnchorSdEquationContext ctx{sd->size()};
-  ctx.GenerateSdEquation(igroup->anchor_index());
+  equation::config::AnchorSdEquationContext ctx{sd->size(),
+                                                igroup->anchor_index()};
   igroup->set_anchor_sd_equation_ctx(ctx);
 
   return igroup->anchor_sd_equation_ctx().value().equations();
@@ -468,7 +414,8 @@ m_expr::MapExpr GenerateMapExpr(const std::shared_ptr<KGroup>& kgroup) {
 
 }  // namespace
 
-m_expr::MapExpr GenerateMapExpr(const hlir::framework::Graph::Group& group) {
+m_expr::MapExpr GenerateMapExpr(
+    const std::shared_ptr<hlir::framework::Graph::Group>& group) {
   const auto& igroups = GenerateIGroups(group);
 
   const auto& kgroup = GenerateKGroups(group, igroups);
