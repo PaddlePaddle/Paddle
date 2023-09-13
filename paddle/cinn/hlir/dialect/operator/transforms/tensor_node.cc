@@ -27,7 +27,7 @@ OpNode TensorNode::producer() const {
 }
 
 OpNode TensorNode::ConsumerOpListView::Iterator::operator*() const {
-  return OpNode(iter_->owner());
+  return OpNode(iter_.owner());
 }
 
 }  // namespace ir

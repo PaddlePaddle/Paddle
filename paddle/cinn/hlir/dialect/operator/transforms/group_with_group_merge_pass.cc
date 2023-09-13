@@ -26,7 +26,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_util.h"
 #include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_bool(enhance_vertical_fusion_with_recompute);
+PD_DECLARE_bool(enhance_vertical_fusion_with_recompute);
 
 namespace cinn {
 namespace dialect {
@@ -464,12 +464,12 @@ struct HorizontalFuseUtil {
     }
 
     size_t size_ele =
-        phi::product(GetValueShape(GetMasterNode(*ele_group).Op()->result(0)));
+        phi::product(GetMasterNode(*ele_group).outputs()[0].shape());
 
     bool can_fuse = false;
     reduce_group->WalkOpNodes([&](const cinn::dialect::ir::OpNode& op) {
       if (op.kind() == OpPatternKind::kReduction) {
-        size_t size_master = phi::product(GetValueShape(op.Op()->result(0)));
+        size_t size_master = phi::product(op.outputs()[0].shape());
         if (size_ele == size_master) {
           can_fuse = true;
         }
@@ -1023,7 +1023,7 @@ class FusionPassRegistrar final : public Registrar {
 // code generation.
 class GeneralFusionMergePassHelper {
  public:
-  explicit GeneralFusionMergePassHelper(const ::ir::Program* graph,
+  explicit GeneralFusionMergePassHelper(const ::pir::Program* graph,
                                         const GroupList& group_list)
       : graph_(graph) {
     fusion_groups_ = group_list;
@@ -1458,7 +1458,7 @@ class GeneralFusionMergePassHelper {
     } else {
       for (auto consumer = consumers.rbegin(); consumer != consumers.rend();
            ++consumer) {
-        ::ir::Operation* master_node = nullptr;
+        ::pir::Operation* master_node = nullptr;
         for (auto& node : (*consumer)->master_nodes) {
           if (GetOpKind(node->name()) != kReduction) {
             master_node = node;
@@ -2099,16 +2099,16 @@ class GeneralFusionMergePassHelper {
     }
   }
 
-  const ::ir::Program* graph_;
+  const ::pir::Program* graph_;
   GroupList fusion_groups_;
   std::unordered_map<GroupPtr, int> fusion_groups_index_;
-  std::unordered_set<const ::ir::Operation*> output_nodes_set_;
-  std::unordered_map<::ir::Value,
+  std::unordered_set<const ::pir::Operation*> output_nodes_set_;
+  std::unordered_map<::pir::Value,
                      std::unordered_set<GroupPtr, Hasher, Comparator>>
       input_to_consumers_;
 };
 
-GroupList GeneralFusionMergePassInternal(const ::ir::Program* graph,
+GroupList GeneralFusionMergePassInternal(const ::pir::Program* graph,
                                          const GroupList& group_list) {
   if (group_list.size() <= 1) {
     VLOG(3) << "Don't do Fusoin Merge Pass...!";

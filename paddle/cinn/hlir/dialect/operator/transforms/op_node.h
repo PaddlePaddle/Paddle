@@ -42,7 +42,7 @@ class OpNode {
 
   class TensorListIterator {
    public:
-    TensorListIterator(size_t index, ::pir::Operation op)
+    TensorListIterator(size_t index, const ::pir::Operation* op)
         : iter_(index), op_(op) {}
 
     TensorListIterator& operator++() {
@@ -65,71 +65,71 @@ class OpNode {
     }
 
     TensorNode operator*() const {
-      return TensorNode(op_.operand_source(iter_));
+      return TensorNode(op_->operand_source(iter_));
     }
 
    private:
     size_t iter_;
-    ::pir::Operation op_;
+    const ::pir::Operation* op_;
   };
 
   using const_iterator = TensorListIterator;
 
   class InputTensorListView {
    public:
-    explicit InputTensorListView(::pir::Operation op) : op_(op) {}
+    explicit InputTensorListView(const ::pir::Operation* op) : op_(op) {}
 
-    InputTensorListView(const InputTensorListView& other) = delete;
-    InputTensorListView(InputTensorListView&& other) = delete;
+    // InputTensorListView(const InputTensorListView& other) = delete;
+    // InputTensorListView(InputTensorListView&& other) = delete;
 
-    InputTensorListView& operator=(const InputTensorListView& other) = delete;
+    // InputTensorListView& operator=(const InputTensorListView& other) =
+    // delete;
 
-    size_t size() const { return op_.num_operands(); }
+    size_t size() const { return op_->num_operands(); }
 
     TensorNode operator[](size_t index) const {
-      return TensorNode(op_.operand_source(index));
+      return TensorNode(op_->operand_source(index));
     }
 
     const_iterator begin() const { return const_iterator(0, op_); }
 
     const_iterator end() const {
-      return const_iterator(op_.num_operands(), op_);
+      return const_iterator(op_->num_operands(), op_);
     }
 
    private:
-    ::pir::Operation op_;
+    const ::pir::Operation* op_;
   };
 
   class OutputTensorListView {
    public:
-    explicit OutputTensorListView(::pir::Operation op) : op_(op) {}
+    explicit OutputTensorListView(const ::pir::Operation* op) : op_(op) {}
 
-    OutputTensorListView(const OutputTensorListView& other) = delete;
-    OutputTensorListView(OutputTensorListView&& other) = delete;
+    // OutputTensorListView(const OutputTensorListView& other) = delete;
+    // OutputTensorListView(OutputTensorListView&& other) = delete;
 
-    OutputTensorListView& operator=(const OutputTensorListView& other) = delete;
+    // OutputTensorListView& operator=(const OutputTensorListView& other) =
+    // delete;
 
-    size_t size() const { return op_.num_results(); }
+    size_t size() const { return op_->num_results(); }
 
     TensorNode operator[](size_t index) const {
-      return TensorNode(op_.result(index));
+      return TensorNode(op_->result(index));
     }
 
     const_iterator begin() const { return const_iterator(0, op_); }
 
     const_iterator end() const {
-      return const_iterator(op_.num_results(), op_);
+      return const_iterator(op_->num_results(), op_);
     }
 
    private:
-    ::pir::Operation op_;
+    const ::pir::Operation* op_;
   };
 
   bool operator==(const OpNode& other) const { return node_ == other.node_; }
 
   bool operator<(const OpNode& other) const { return node_ < other.node_; }
-
-  const ::pir::Operation* Op() const { return node_; }
 
   const InputTensorListView& inputs() const { return input_tensors_; }
 

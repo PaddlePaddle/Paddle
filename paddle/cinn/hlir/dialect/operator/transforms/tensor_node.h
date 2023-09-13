@@ -33,7 +33,9 @@ class TensorNode final {
 
   // Get the shape of tensor.
   const phi::DDim& shape() const {
-    return node_data_.dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    return node_data_.type()
+        .dyn_cast<paddle::dialect::DenseTensorType>()
+        .dims();
   }
 
   // Input data has no producer.

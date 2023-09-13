@@ -44,61 +44,57 @@ static bool IsSameSize(const OpGroupPtr& src, const OpGroupPtr& dst) {
   cinn::dialect::ir::OpNode src_master_node = GetMasterNode(src);
   cinn::dialect::ir::OpNode dst_master_node = GetMasterNode(dst);
 
-  auto size_0 = src_master_node.Op()
-                    ->result(0)
-                    .type()
-                    .dyn_cast<paddle::dialect::DenseTensorType>()
-                    .dims();
-  auto size_1 = dst_master_node.Op()
-                    ->result(0)
-                    .type()
-                    .dyn_cast<paddle::dialect::DenseTensorType>()
-                    .dims();
+  auto size_0 = src_master_node.outputs()[0].shape();
+  auto size_1 = dst_master_node.outputs()[0].shape();
 
   return phi::product(size_0) == phi::product(size_1);
 }
 
 static std::unordered_set<cinn::dialect::ir::OpNode> GetInputOps(
     const OpGroupPtr& op_group) {
-  std::unordered_set<const ::pir::Operation*> ops_set;
+  std::unordered_set<OpNode> ops_set;
   op_group.WalkOpNodes([&ops_set](const cinn::dialect::ir::OpNode& op_node) {
-    ops_set.insert(op_node.Op());
+    ops_set.insert(op_node);
   });
 
   std::unordered_set<cinn::dialect::ir::OpNode> input_ops;
   op_group.WalkOpNodes([&](const cinn::dialect::ir::OpNode& op) {
     // const auto& input_tensors = op.inputs();
-    auto* ir_op = op.Op();
-    for (size_t i = 0; i < ir_op->num_operands(); ++i) {
-      auto in = ir_op->operand_source(i);
-      if (in) {
-        if (!ops_set.count(in.GetDefiningOp())) {
-          input_ops.insert(cinn::dialect::ir::OpNode(in.GetDefiningOp()));
-        }
+    // auto* ir_op = op.Op();
+    const auto& input_tensors = op.inputs();
+    for (size_t i = 0; i < input_tensors.size(); ++i) {
+      if (!ops_set.count(input_tensors[i].producer())) {
+        input_ops.insert(input_tensors[i].producer());
       }
     }
+
+    // for (size_t i = 0; i < ir_op->num_operands(); ++i) {
+    //   auto in = ir_op->operand_source(i);
+    //   if (in) {
+    //     if (!ops_set.count(in.GetDefiningOp())) {
+    //       input_ops.insert(cinn::dialect::ir::OpNode(in.GetDefiningOp()));
+    //     }
+    //   }
+    // }
   });
   return input_ops;
 }
 
 static std::unordered_set<cinn::dialect::ir::OpNode> GetOutputOps(
     const OpGroupPtr& op_group) {
-  std::unordered_set<const ::pir::Operation*> ops_set;
+  std::unordered_set<OpNode> ops_set;
   op_group.WalkOpNodes([&ops_set](const cinn::dialect::ir::OpNode& op_node) {
-    ops_set.insert(op_node.Op());
+    ops_set.insert(op_node);
   });
   std::unordered_set<cinn::dialect::ir::OpNode> output_ops;
   op_group.WalkOpNodes([&](const cinn::dialect::ir::OpNode& op) {
-    auto* ir_op = op.Op();
-    for (size_t i = 0; i < ir_op->num_results(); ++i) {
-      auto out = ir_op->result(i);
-      if (out) {
-        for (auto it = out.use_begin(); it != out.use_end(); ++it) {
-          auto* op = it->owner();
-          if (!ops_set.count(op)) {
-            output_ops.insert(cinn::dialect::ir::OpNode(op));
-            break;
-          }
+    const auto& output_tensors = op.outputs();
+    for (size_t i = 0; i < output_tensors.size(); ++i) {
+      auto& consumers = output_tensors[i].consumers();
+      for (auto it = consumers.begin(); it != consumers.end(); ++it) {
+        if (!ops_set.count(*it)) {
+          output_ops.insert(*it);
+          break;
         }
       }
     }
@@ -146,11 +142,7 @@ bool WithoutLastDimInReduce(const phi::DDim& inshape,
 }
 
 static int GetSharedSize(const cinn::dialect::ir::OpNode& op_node) {
-  const auto& inshape = op_node.Op()
-                            ->operand(0)
-                            .type()
-                            .dyn_cast<paddle::dialect::DenseTensorType>()
-                            .dims();
+  const auto& inshape = op_node.inputs()[0].shape();
   // const auto& axes = op_node.GetAttr<std::vector<int>>("dim");
   // const auto& axes = op_node.Op()->attributes().at("dim").dyn_cast<>
   // TODO(phlrain): get vector from attribute
@@ -221,16 +213,13 @@ static bool ReduceFuseReduce(const OpGroupPtr& first,
   CHECK(reducer_1) << "Can't find reduce op in group " << second.group_id();
 
   // check reduce has same input shape and output shape
-  const auto& reducer_0_input_shape =
-      GetValueShape(reducer_0->Op()->operand_source(0));
-  const auto& reducer_0_output_shape =
-      GetValueShape(reducer_0->Op()->result(0));
+  const auto& reducer_0_input_shape = reducer_0->inputs()[0].shape();
+  const auto& reducer_0_output_shape = reducer_0->outputs()[0].shape();
 
-  const auto& reducer_1_input_shape =
-      GetValueShape(reducer_1->Op()->operand_source(0));
-  const auto& reducer_1_output_shape =
-      GetValueShape(reducer_1->Op()->result(0));
+  const auto& reducer_1_input_shape = reducer_1->inputs()[0].shape();
+  const auto& reducer_1_output_shape = reducer_1->outputs()[0].shape();
 
+  // TODO(phlrain): get attribute from op node
   // auto reducer_0_reduce_dim = reducer_0->GetAttr<std::vector<int>>("dim");
   // auto reducer_1_reduce_dim = reducer_1->GetAttr<std::vector<int>>("dim");
 

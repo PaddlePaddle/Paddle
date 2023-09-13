@@ -167,8 +167,9 @@ struct Group {
     return node_set;
   }
 
-  std::unordered_set<::pir::Value> GetInputNodeDatas() { return {}; }
-  std::unordered_set<::pir::Value> GetOutputNodeDatas() { return {}; }
+  // TODO(phlrain) : impliment GetInputNodeDatas GetOutputNodeDatas func
+  // std::unordered_set<::pir::Value> GetInputNodeDatas() { return {}; }
+  // std::unordered_set<::pir::Value> GetOutputNodeDatas() { return {}; }
 
   std::string GetFuncName() { return "fn_" + group_id + unique_id; }
 
