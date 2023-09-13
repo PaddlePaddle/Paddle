@@ -455,17 +455,20 @@ void FusedGemmEpilogueOp::Build(pir::Builder &builder,
                                 pir::OpResult y_,
                                 pir::OpResult bias_,
                                 pir::AttributeMap attributes) {
-  PADDLE_ENFORCE(attributes.find("trans_x") != attributes.end(),
+  PADDLE_ENFORCE(
+      attributes.find("trans_x") != attributes.end(),
       phi::errors::NotFound(
           "'trans_x' Attribute is expected for FusedGemmEpilogueOp"));
   bool trans_x = attributes.at("trans_x").dyn_cast<pir::BoolAttribute>().data();
 
-  PADDLE_ENFORCE(attributes.find("trans_y") != attributes.end(),
+  PADDLE_ENFORCE(
+      attributes.find("trans_y") != attributes.end(),
       phi::errors::NotFound(
           "'trans_y' Attribute is expected for FusedGemmEpilogueOp"));
   bool trans_y = attributes.at("trans_y").dyn_cast<pir::BoolAttribute>().data();
 
-  PADDLE_ENFORCE(attributes.find("activation") != attributes.end(),
+  PADDLE_ENFORCE(
+      attributes.find("activation") != attributes.end(),
       phi::errors::NotFound(
           "'activation' Attribute is expected for FusedGemmEpilogueOp"));
   std::string activation =
@@ -706,19 +709,21 @@ void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
                                     pir::OpResult reserve_space_,
                                     pir::OpResult out_grad_,
                                     pir::AttributeMap attributes) {
-  PADDLE_ENFORCE(attributes.find("trans_x") != attributes.end(),
+  PADDLE_ENFORCE(
+      attributes.find("trans_x") != attributes.end(),
       phi::errors::NotFound(
           "'trans_x' Attribute is expected for FusedGemmEpilogueGradOp"));
   bool trans_x = attributes.at("trans_x").dyn_cast<pir::BoolAttribute>().data();
 
-  PADDLE_ENFORCE(attributes.find("trans_y") != attributes.end(),
+  PADDLE_ENFORCE(
+      attributes.find("trans_y") != attributes.end(),
       phi::errors::NotFound(
           "'trans_y' Attribute is expected for FusedGemmEpilogueGradOp"));
   bool trans_y = attributes.at("trans_y").dyn_cast<pir::BoolAttribute>().data();
 
-  PADDLE_ENFORCE(attributes.find("activation_grad") != attributes.end(),
-      phi::errors::NotFound(
-          "'activation_grad' Attribute is expected for"
+  PADDLE_ENFORCE(
+      attributes.find("activation_grad") != attributes.end(),
+      phi::errors::NotFound("'activation_grad' Attribute is expected for"
                "FusedGemmEpilogueGradOp"));
   std::string activation_grad =
       attributes.at("activation_grad").dyn_cast<pir::StrAttribute>().AsString();
