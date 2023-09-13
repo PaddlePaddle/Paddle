@@ -245,6 +245,8 @@ paddle_infer::PlaceType ToPaddleInferPlace(
     return paddle_infer::PlaceType::kGPU;
   } else if (allocation_type == phi::AllocationType::XPU) {
     return paddle_infer::PlaceType::kXPU;
+  } else if (allocation_type == phi::AllocationType::CUSTOM) {
+    return paddle_infer::PlaceType::kCUSTOM;
   } else {
     return paddle_infer::PlaceType::kCPU;
   }
@@ -975,19 +977,19 @@ void BindAnalysisConfig(py::module *m) {
       .def("disable_mkldnn_fc_passes",
            &AnalysisConfig::DisableMkldnnFcPasses,
            R"DOC(
-           Disable Mkldnn FC
-           Args:
+            Disable Mkldnn FC
+            Returns:
                 None.
-           Returns:
-                None.
-           Examples:
-               .. code-block:: python
-                from paddle.inference import Config
 
-                config = Config("")
-                config.enable_mkldnn()
-                config.disable_mkldnn_fc_passes()
-           )DOC")
+            Examples:
+                .. code-block:: python
+
+                    >>> from paddle.inference import Config
+
+                    >>> config = Config("")
+                    >>> config.enable_mkldnn()
+                    >>> config.disable_mkldnn_fc_passes()
+            )DOC")
 #endif
       .def("set_mkldnn_op", &AnalysisConfig::SetMKLDNNOp)
       .def("set_model_buffer", &AnalysisConfig::SetModelBuffer)
