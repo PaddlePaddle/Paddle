@@ -64,9 +64,9 @@ static pir::Attribute CreateIrAttribute(const std::any& obj) {
         std::any_cast<phi::DataType>(obj));
   } else if (obj.type() == typeid(phi::Place)) {
     return IrAttrbuteCreator<phi::Place>()(std::any_cast<phi::Place>(obj));
-  } else if (obj.type() == typeid(std::vector<int>)) {
-    return IrAttrbuteCreator<std::vector<int>>()(
-        std::any_cast<std::vector<int>>(obj));
+  } else if (obj.type() == typeid(std::vector<int32_t>)) {
+    return IrAttrbuteCreator<std::vector<int32_t>>()(
+        std::any_cast<std::vector<int32_t>>(obj));
   } else if (obj.type() == typeid(std::vector<int64_t>)) {
     return IrAttrbuteCreator<std::vector<int64_t>>()(
         std::any_cast<std::vector<int64_t>>(obj));
@@ -140,116 +140,154 @@ void BindIrOutputs(const OpCall& op_call,
 void AutoSetInsertionPoint(const std::vector<Value>& ir_values,
                            pir::PatternRewriter& rewriter) {}  // NOLINT
 
+class OperationFactory {
+ public:
+  static OperationFactory& Instance() {
+    static OperationFactory operation_factory;
+    return operation_factory;
+  }
+
+  using operation_create_fn =
+      std::function<pir::Operation*(const std::vector<Value>&,
+                                    const pir::AttributeMap&,
+                                    pir::PatternRewriter&)>;
+
+  void RegisterOperationCreator(const std::string& op_name,
+                                const operation_create_fn& create_fn) {
+    op_creator_map.emplace(op_name, create_fn);
+  }
+
+  pir::Operation* CreateOperation(
+      const std::string& op_name,
+      const std::vector<Value>& inputs,
+      const pir::AttributeMap& attrs,
+      pir::PatternRewriter& rewriter) const {  // NOLINT
+    auto iter = op_creator_map.find(op_name);
+    IR_ENFORCE(iter != op_creator_map.end(),
+               "The create function for op: (%s) is not found.",
+               op_name);
+    return iter->second(inputs, attrs, rewriter);
+  }
+
+ private:
+  OperationFactory() {
+    RegisterGeneratedOpCreator();
+    RegisterManualOpCreator();
+  }
+
+  void RegisterManualOpCreator();
+  void RegisterGeneratedOpCreator() {}
+
+  std::unordered_map<std::string, operation_create_fn> op_creator_map;
+};
+
+void OperationFactory::RegisterManualOpCreator() {
+  RegisterOperationCreator(
+      "pd_op.reshape",
+      [](const std::vector<Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        if (inputs.size() > 1) {
+          return rewriter.Build<paddle::dialect::ReshapeOp>(
+              inputs[0].dyn_cast<pir::OpResult>(),
+              inputs[1].dyn_cast<pir::OpResult>());
+        } else {
+          return rewriter.Build<paddle::dialect::ReshapeOp>(
+              inputs[0].dyn_cast<pir::OpResult>(), attrs);
+        }
+      });
+
+  RegisterOperationCreator(
+      "pd_op.transpose",
+      [](const std::vector<Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        return rewriter.Build<paddle::dialect::TransposeOp>(
+            inputs[0].dyn_cast<pir::OpResult>(), attrs);
+      });
+  RegisterOperationCreator("pd_op.cast",
+                           [](const std::vector<Value>& inputs,
+                              const pir::AttributeMap& attrs,
+                              pir::PatternRewriter& rewriter) {
+                             return rewriter.Build<paddle::dialect::CastOp>(
+                                 inputs[0].dyn_cast<pir::OpResult>(), attrs);
+                           });
+  RegisterOperationCreator(
+      "pd_op.full",
+      [](const std::vector<Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        return rewriter.Build<paddle::dialect::FullOp>(attrs);
+      });
+  RegisterOperationCreator(
+      "pd_op.fused_gemm_epilogue",
+      [](const std::vector<Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        return rewriter.Build<paddle::dialect::FusedGemmEpilogueOp>(
+            inputs[0].dyn_cast<pir::OpResult>(),
+            inputs[1].dyn_cast<pir::OpResult>(),
+            inputs[2].dyn_cast<pir::OpResult>(),
+            attrs);
+      });
+  RegisterOperationCreator(
+      "pd_op.fused_gemm_epilogue_grad",
+      [](const std::vector<Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        return rewriter.Build<paddle::dialect::FusedGemmEpilogueGradOp>(
+            inputs[0].dyn_cast<pir::OpResult>(),
+            inputs[1].dyn_cast<pir::OpResult>(),
+            inputs[2].dyn_cast<pir::OpResult>(),
+            inputs[3].dyn_cast<pir::OpResult>(),
+            attrs);
+      });
+  RegisterOperationCreator(
+      "builtin.combine",
+      [](const std::vector<Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        std::vector<pir::OpResult> ir_results;
+        for (auto value : inputs) {
+          ir_results.push_back(value.dyn_cast<pir::OpResult>());
+        }
+        return rewriter.Build<pir::CombineOp>(ir_results);
+      });
+  RegisterOperationCreator("pd_op.concat",
+                           [](const std::vector<Value>& inputs,
+                              const pir::AttributeMap& attrs,
+                              pir::PatternRewriter& rewriter) {
+                             return rewriter.Build<paddle::dialect::ConcatOp>(
+                                 inputs[0].dyn_cast<pir::OpResult>(), attrs);
+                           });
+  RegisterOperationCreator(
+      "pd_op.multihead_matmul",
+      [](const std::vector<Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        return rewriter.Build<paddle::dialect::MultiheadMatmulOp>(
+            inputs[0].dyn_cast<pir::OpResult>(),
+            inputs[1].dyn_cast<pir::OpResult>(),
+            inputs[2].dyn_cast<pir::OpResult>(),
+            inputs[3].dyn_cast<pir::OpResult>(),
+            attrs);
+      });
+}
+
 pir::Operation* CreateOperation(const OpCall& op_call,
                                 const MatchContextImpl& src_match_ctx,
                                 pir::PatternRewriter& rewriter,  // NOLINT
                                 MatchContextImpl* res_match_ctx) {
   VLOG(6) << "Drr create [" << op_call.name() << "] op...";
-  pir::Operation* op{nullptr};
-  if (op_call.name() == "pd_op.reshape") {
-    const auto& inputs = op_call.inputs();
-    std::vector<Value> ir_values =
-        GetIrValuesByDrrTensors(inputs, *res_match_ctx);
-    // TODO(zyfncg): support attr in build op.
-    if (ir_values.size() > 1) {
-      op = rewriter.Build<paddle::dialect::ReshapeOp>(
-          ir_values[0].dyn_cast<pir::OpResult>(),
-          ir_values[1].dyn_cast<pir::OpResult>());
-    } else {
-      op = rewriter.Build<paddle::dialect::ReshapeOp>(
-          ir_values[0].dyn_cast<pir::OpResult>(),
-          GetAttr<std::vector<int64_t>>("shape", op_call, src_match_ctx));
-    }
-    res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
-                               std::make_shared<IrValue>(op->result(0)));
-    res_match_ctx->BindIrValue(op_call.outputs()[1]->name(),
-                               std::make_shared<IrValue>(op->result(1)));
-  } else if (op_call.name() == "pd_op.transpose") {
-    const auto& inputs = op_call.inputs();
-    std::vector<Value> ir_values =
-        GetIrValuesByDrrTensors(inputs, *res_match_ctx);
-    op = rewriter.Build<paddle::dialect::TransposeOp>(
-        ir_values[0].dyn_cast<pir::OpResult>(),
-        GetAttr<std::vector<int>>("perm", op_call, src_match_ctx));
-    res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
-                               std::make_shared<IrValue>(op->result(0)));
-  } else if (op_call.name() == "pd_op.cast") {
-    const auto& inputs = op_call.inputs();
-    std::vector<Value> ir_values =
-        GetIrValuesByDrrTensors(inputs, *res_match_ctx);
-    op = rewriter.Build<paddle::dialect::CastOp>(
-        ir_values[0].dyn_cast<pir::OpResult>(),
-        GetAttr<phi::DataType>("dtype", op_call, src_match_ctx));
-    res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
-                               std::make_shared<IrValue>(op->result(0)));
-  } else if (op_call.name() == "pd_op.full") {
-    const auto& inputs = op_call.inputs();
-    std::vector<Value> ir_values =
-        GetIrValuesByDrrTensors(inputs, *res_match_ctx);
-    op = rewriter.Build<paddle::dialect::FullOp>(
-        CreateAttributeMap(op_call, src_match_ctx));
-    res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
-                               std::make_shared<IrValue>(op->result(0)));
-  } else if (op_call.name() == "pd_op.fused_gemm_epilogue") {
-    const auto& inputs = op_call.inputs();
-    std::vector<Value> ir_values =
-        GetIrValuesByDrrTensors(inputs, *res_match_ctx);
-    pir::Operation* op = rewriter.Build<paddle::dialect::FusedGemmEpilogueOp>(
-        ir_values[0].dyn_cast<pir::OpResult>(),
-        ir_values[1].dyn_cast<pir::OpResult>(),
-        ir_values[2].dyn_cast<pir::OpResult>(),
-        CreateAttributeMap(op_call, src_match_ctx));
-    BindIrOutputs(op_call, op, res_match_ctx);
-  } else if (op_call.name() == "pd_op.fused_gemm_epilogue_grad") {
-    const auto& inputs = op_call.inputs();
-    std::vector<Value> ir_values =
-        GetIrValuesByDrrTensors(inputs, *res_match_ctx);
-    op = rewriter.Build<paddle::dialect::FusedGemmEpilogueGradOp>(
-        ir_values[0].dyn_cast<pir::OpResult>(),
-        ir_values[1].dyn_cast<pir::OpResult>(),
-        ir_values[2].dyn_cast<pir::OpResult>(),
-        ir_values[3].dyn_cast<pir::OpResult>(),
-        CreateAttributeMap(op_call, src_match_ctx));
-    BindIrOutputs(op_call, op, res_match_ctx);
-  } else if (op_call.name() == "builtin.combine") {
-    const auto& inputs = op_call.inputs();
-    std::vector<Value> ir_values =
-        GetIrValuesByDrrTensors(inputs, *res_match_ctx);
-    std::vector<pir::OpResult> ir_results;
-    for (auto value : ir_values) {
-      ir_results.push_back(value.dyn_cast<pir::OpResult>());
-    }
-    op = rewriter.Build<pir::CombineOp>(ir_results);
-    res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
-                               std::make_shared<IrValue>(op->result(0)));
-  } else if (op_call.name() == "pd_op.concat") {
-    const auto& inputs = op_call.inputs();
-    std::vector<Value> ir_values =
-        GetIrValuesByDrrTensors(inputs, *res_match_ctx);
-    op = rewriter.Build<paddle::dialect::ConcatOp>(
-        ir_values[0].dyn_cast<pir::OpResult>(),
-        GetAttr<int>("axis", op_call, src_match_ctx));
-    res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
-                               std::make_shared<IrValue>(op->result(0)));
-  } else if (op_call.name() == "pd_op.multihead_matmul") {
-    const auto& inputs = op_call.inputs();
-    std::vector<Value> ir_values =
-        GetIrValuesByDrrTensors(inputs, *res_match_ctx);
-    op = rewriter.Build<paddle::dialect::MultiheadMatmulOp>(
-        ir_values[0].dyn_cast<pir::OpResult>(),
-        ir_values[1].dyn_cast<pir::OpResult>(),
-        ir_values[2].dyn_cast<pir::OpResult>(),
-        ir_values[3].dyn_cast<pir::OpResult>(),
-        false,
-        true,
-        false,
-        GetAttr<float>("alpha", op_call, src_match_ctx),
-        GetAttr<int>("head_number", op_call, src_match_ctx));
-    res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
-                               std::make_shared<IrValue>(op->result(0)));
-  } else {
-    PADDLE_THROW(phi::errors::Unavailable("Unknown op : " + op_call.name()));
-  }
+  const auto& inputs = op_call.inputs();
+  std::vector<Value> ir_values =
+      GetIrValuesByDrrTensors(inputs, *res_match_ctx);
+  pir::Operation* op = OperationFactory::Instance().CreateOperation(
+      op_call.name(),
+      ir_values,
+      CreateAttributeMap(op_call, src_match_ctx),
+      rewriter);
+  BindIrOutputs(op_call, op, res_match_ctx);
   VLOG(6) << "Drr create [" << op_call.name() << "] op done.";
   return op;
 }

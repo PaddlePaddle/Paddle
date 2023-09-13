@@ -209,9 +209,19 @@ class MultiHeadMatmulFusePattern
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
           return match_ctx.Attr<float>("full_1_value");
         });
-    const auto &multihead_matmul =
-        res.Op("pd_op.multihead_matmul",
-               {{"head_number", head_number}, {"alpha", alpha}});
+    const auto &multihead_matmul = res.Op(
+        "pd_op.multihead_matmul",
+        {{"transpose_q", res.Attr([](const pir::drr::MatchContext &match_ctx) {
+            return false;
+          })},
+         {"transpose_k", res.Attr([](const pir::drr::MatchContext &match_ctx) {
+            return true;
+          })},
+         {"transpose_v", res.Attr([](const pir::drr::MatchContext &match_ctx) {
+            return false;
+          })},
+         {"head_number", head_number},
+         {"alpha", alpha}});
     multihead_matmul({&res.Tensor("matmul_1_in_1"),
                       &res.Tensor("reshape_5_out"),
                       &res.Tensor("reshape_6_out"),
