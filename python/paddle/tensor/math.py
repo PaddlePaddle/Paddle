@@ -6944,12 +6944,13 @@ def ldexp_(x, y, name=None):
     two = paddle.to_tensor(2, dtype=out_dtype)
     return paddle.multiply_(x, paddle.pow(two, y))
 
+
 def hypot(x, y, name=None):
     """
     Calculate the length of the hypotenuse of a right-angle triangle. The equation is:
 
     .. math::
-        out = {\sqrt{x^2  + y^2} }
+        out = {\\sqrt{x^2 + y^2}}
 
     Args:
         x (Tensor): The input Tensor, the data type is float32, float64, int32 or int64.
@@ -6966,7 +6967,7 @@ def hypot(x, y, name=None):
             >>> import paddle
 
             >>> x = paddle.to_tensor([3], dtype='float32')
-            >>> y = paddle.to_tensor([4], dtype='int32')
+            >>> y = paddle.to_tensor([4], dtype='float32')
             >>> res = paddle.hypot(x, y)
             >>> print(res)
             Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -6978,8 +6979,9 @@ def hypot(x, y, name=None):
     if not isinstance(y, (paddle.Tensor, Variable)):
         raise TypeError(f"y must be tensor type, but got {type(y)}")
 
-    out = (paddle.square(x) + paddle.square(y)).sqrt()
+    out = (paddle.pow(x, 2) + paddle.pow(y, 2)).sqrt()
     return out
+
 
 def hypot_(x, y, name=None):
     r"""
@@ -6993,6 +6995,3 @@ def hypot_(x, y, name=None):
 
     out = x.pow_(2).add_(y.pow(2)).sqrt_()
     return out
-
-
-

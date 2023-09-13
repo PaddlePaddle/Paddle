@@ -375,6 +375,8 @@ from .tensor.math import i1  # noqa: F401
 from .tensor.math import i1e  # noqa: F401
 from .tensor.math import polygamma  # noqa: F401
 from .tensor.math import polygamma_  # noqa: F401
+from .tensor.math import hypot  # noqa: F401
+from .tensor.math import hypot_  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 from .tensor.random import poisson  # noqa: F401
@@ -843,4 +845,6 @@ __all__ = [  # noqa
     'i1e',
     'polygamma',
     'polygamma_',
+    'hypot',
+    'hypot_',
 ]
