@@ -30,15 +30,13 @@ bool compareSymbolicDimNames(const std::string& lhs, const std::string& rhs) {
   return (lhs[0] < rhs[0]) || (lhs[0] == rhs[0] && lhsIdx < rhsIdx);
 }
 
-bool compareSymbolicDimProduct(const SymbolicDimProduct& lhs,
-                               const SymbolicDimProduct& rhs) {
+bool compareSymbolicDimProduct(SymbolicDimProduct& lhs,    // NOLINT
+                               SymbolicDimProduct& rhs) {  // NOLINT
   if (lhs.symbols.size() < rhs.symbols.size()) return true;
   if (lhs.symbols.size() == rhs.symbols.size()) {
     for (size_t idx = 0; idx < lhs.symbols.size(); ++idx) {
-      const std::string lhsName =
-          const_cast<SymbolicDim&>(lhs.symbols[idx]).getSymName();
-      const std::string rhsName =
-          const_cast<SymbolicDim&>(rhs.symbols[idx]).getSymName();
+      const std::string lhsName = lhs.symbols[idx].getSymName();
+      const std::string rhsName = rhs.symbols[idx].getSymName();
       if (compareSymbolicDimNames(lhsName, rhsName)) return true;
       if (lhsName != rhsName) return false;
     }
@@ -673,7 +671,7 @@ bool SymbolicDimShapeAnalysis::isShapeEqual(Value lhs, Value rhs) {
   if (!lhsTy || !rhsTy || !lhsTy.hasRank() || !rhsTy.hasRank()) return false;
 
   if (lhsTy.hasStaticShape() && rhsTy.hasStaticShape()) {
-    return lhsTy.getShape() == rhsTy.getShape();
+    return vectorize(lhsTy.getShape()) == vectorize(rhsTy.getShape());
   }
 
   auto lhsIt = value2SymDims_.find(lhs);

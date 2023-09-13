@@ -26,15 +26,14 @@ const char *SymbolicDim::attributes_name[attributes_num] = {"knownNegativeOne",
                                                             "sym_name",
                                                             "value"};  // NOLINT
 
-void SymbolicDim::Build(
-    Builder &builder,
-    OperationArgument &argument,
-    const std::string &sym_name,
-    int64_t value,  // TODO(zhangbo) value = ShapedType::kDynamic
-    bool knownNonNegative,
-    bool knownNegativeOne,
-    bool knownNonSizeOne,
-    bool knownNonSizeZero) {
+void SymbolicDim::Build(Builder &builder,
+                        OperationArgument &argument,
+                        const std::string &sym_name,
+                        int64_t value,
+                        bool knownNonNegative,
+                        bool knownNegativeOne,
+                        bool knownNonSizeOne,
+                        bool knownNonSizeZero) {
   pir::Attribute attr_sym_name =
       pir::StrAttribute::get(pir::IrContext::Instance(), sym_name);
   argument.AddAttribute("sym_name", attr_sym_name);
