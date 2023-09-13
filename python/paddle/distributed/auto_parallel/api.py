@@ -169,6 +169,7 @@ def shard_layer(
         model:model with DistTensor parameters
     Examples:
         ..code-block:: python
+
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
@@ -200,18 +201,23 @@ def shard_layer(
     def replicate_layer_params_buffers(
         m: nn.Layer, mesh: dist.ProcessMesh
     ) -> None:
-        dist_attr = dist.DistAttr(mesh=mesh)
+        # dist_attr = dist.DistAttr(mesh=mesh)
+        """
+        等待tensor to parameters打通
         for key, param in m._parameters.items():
             if param is not None:
                 m.add_parameter(
                     key,
-                    nn.ParameterList(
-                        shard_tensor(param.data, dist_attr=dist_attr)
-                    ),  # 尚不确定！！！！！！！！！
+                    nn.ParameterList(shard_tensor(param.data, dist_attr=None)),
                 )
+            else:
+                raise ValueError("param cannot be none")
+        """
         for key, buffer in m._buffers.items():
             if buffer is not None:
-                m._buffers[key] = shard_tensor(buffer, dist_attr=dist_attr)
+                m._buffers[key] = shard_tensor(buffer)
+            else:
+                raise ValueError("buffer cannot be none")
 
     if shard_fn is None:
         # if shard_fn not specified, by default replicate
@@ -226,9 +232,9 @@ def shard_layer(
 
     # register input_fn as model forward pre hook
     if input_fn is not None:
-        model.register_forward_pre_hook(input_fn, process_mesh)
+        model.register_forward_pre_hook(input_fn)
     # register input_fn as model forward hook
     if output_fn is not None:
-        model.register_forward_post_hook(output_fn, process_mesh)
+        model.register_forward_post_hook(output_fn)
 
     return model
