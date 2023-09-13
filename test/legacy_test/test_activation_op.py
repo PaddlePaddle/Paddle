@@ -176,7 +176,9 @@ class TestExp_Complex64(OpTest):
         self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.006, check_new_ir=True)
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.006, check_new_ir=True
+        )
 
     def init_dtype(self):
         self.dtype = np.complex64
