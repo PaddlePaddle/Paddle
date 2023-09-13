@@ -34,8 +34,6 @@ class TestDy2staticNewIR(unittest.TestCase):
         x.stop_gradient = False
         y.stop_gradient = False
         ans = func(x)
-        print("Ans: ", ans)
-        print(static_func.get_concrete_program(x)[1].train_program)
         out = static_func(x)
 
         np.testing.assert_allclose(
@@ -67,30 +65,6 @@ class TestDy2staticNewIR(unittest.TestCase):
         np.testing.assert_allclose(
             x_grad_ans, st_grad.numpy(), rtol=1e-05, atol=1e-8
         )
-
-
-# class TestDy2staticNewIR2(unittest.TestCase):
-# def test_basic_layer(self):
-# class SimpleNet(paddle.nn.Layer):
-# def __init__(self):
-# super().__init__()
-# self.linear = paddle.nn.Linear(10, 10)
-
-# def forward(self, x):
-# return self.linear(x)
-
-# net = SimpleNet()
-# x = paddle.randn((10, 10))
-# x.stop_gradient = False
-# ans = net(x)
-# print("Ans: ", ans)
-# net = paddle.jit.to_static(net)
-# print(net.forward.get_concrete_program(x)[1].train_program)
-# out = net(x)
-
-# np.testing.assert_allclose(
-# out.numpy(), ans.numpy(), rtol=1e-05, atol=1e-8
-# )
 
 
 class TestDy2staticNewIR3(unittest.TestCase):

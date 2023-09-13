@@ -565,7 +565,7 @@ Operation *BuildOpFrom(
                  cloned_op->results().begin(),
                  std::back_inserter(tmp),  // NOLINT, just a placeholder.
                  [&value_map](const OpResult &a, const OpResult &b) {  // NOLINT
-                   value_map[a.value_impl()] = b.value_impl();
+                   value_map[a.Value::impl()] = b.Value::impl();
                    return 1;
                  });
   return cloned_op;
@@ -623,7 +623,7 @@ std::vector<pir::Value> AnalysisMiddleVariable(
       forward_range,
       [&middle_values, &backward_inputs, &x_or_param](Operation *op) {
         for (auto &t : op->results()) {
-          auto v = Value(t.value_impl());
+          auto v = Value(t.Value::impl());
           if (backward_inputs.count(v) && !x_or_param.count(v))
             middle_values.push_back(v);
         }
@@ -667,7 +667,7 @@ SplitedResult ForwardBackwardSplit(
 
   auto op_result_to_value = [](const pir::OpResult &r) {
     if (r.impl() == nullptr) return Value(nullptr);
-    return Value(r.value_impl());
+    return Value(r.Value::impl());
   };
 
   std::transform(op_result_forward_inputs.begin(),
@@ -734,7 +734,7 @@ SplitedResult ForwardBackwardSplit(
             dtype,
             place);
     counter += 1;
-    backward_value_map[v] = op->results()[0].value_impl();
+    backward_value_map[v] = op->results()[0].Value::impl();
   };
 
   auto create_output_fn_forward = [&ctx,

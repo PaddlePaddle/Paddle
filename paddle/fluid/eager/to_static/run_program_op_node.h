@@ -187,7 +187,7 @@ static auto GetNameFromValue(const ::pir::Block *block,
     if (op->name() == "pd_op.data") {
       name =
           op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
-      value2name[op->results()[0].value_impl()] = name;
+      value2name[op->results()[0].Value::impl()] = name;
     } else if (op->name() == "builtin.set_parameter") {
       name = op->attributes()
                  .at("parameter_name")
