@@ -25,6 +25,7 @@
 #include "paddle/phi/core/utils/data_type.h"
 
 DECLARE_bool(benchmark);
+DECLARE_bool(benchmark_nccl);
 DECLARE_bool(nccl_blocking_wait);
 DECLARE_bool(use_stream_safe_cuda_allocator);
 
@@ -106,7 +107,7 @@ void ProcessGroupNCCL::GroupEnd() {
   --s_group_call_counter;
   // NOTE: This is to sync the calc stream and comm stream for debug using
   // batch_isend_irecv
-  if (FLAGS_benchmark) {
+  if (FLAGS_benchmark || FLAGS_benchmark_nccl) {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
   }
 }
@@ -885,7 +886,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
     task->Wait();
   }
 
-  if (FLAGS_benchmark) {
+  if (FLAGS_benchmark || FLAGS_benchmark_nccl) {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
   }
 
@@ -951,7 +952,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
     task->Wait();
   }
 
-  if (!is_batch_p2p && FLAGS_benchmark) {
+  if (!is_batch_p2p && (FLAGS_benchmark || FLAGS_benchmark_nccl)) {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
   }
 
