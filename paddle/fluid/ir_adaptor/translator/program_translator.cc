@@ -18,8 +18,11 @@
 
 #include "glog/logging.h"
 
+#include "paddle/fluid/framework/op_call_stack.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/ir_adaptor/translator/attribute_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/op_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/type_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
@@ -180,6 +183,17 @@ void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
     }
     ir::Operation* operation = fn(ctx_, &param_map_, *op, program_);
     VLOG(10) << "[op translated][special]" << operation;
+
+    const auto& call_stack_attr_name =
+        framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName();
+    if (op->HasAttr(call_stack_attr_name)) {
+      auto& attribute_translator = AttributeTranslator::instance();
+      paddle::framework::Attribute legacy_attr =
+          op->GetAttr(call_stack_attr_name);
+      pir::Attribute new_attr =
+          attribute_translator(call_stack_attr_name, legacy_attr);
+      operation->set_attribute(call_stack_attr_name, new_attr);
+    }
   }
 }
 
