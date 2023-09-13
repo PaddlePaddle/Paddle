@@ -247,6 +247,14 @@ if(NOT DEFINED WITH_MKLDNN)
   endif()
 endif()
 
+if(WIN32)
+  if(MSVC)
+    if(MSVC_VERSION EQUAL 1911)
+      set(WITH_MKLDNN OFF)
+    endif()
+  endif()
+endif()
+
 if(WIN32
    OR APPLE
    OR NOT WITH_GPU
