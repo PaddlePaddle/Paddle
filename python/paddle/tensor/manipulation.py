@@ -1969,7 +1969,7 @@ def split(x, num_or_sections, axis=0, name=None):
     """
     input = x
     dim = axis
-    if in_dynamic_or_new_ir_mode():
+    if in_dynamic_or_pir_mode():
         if in_dynamic_mode():
             if isinstance(dim, Variable):
                 dim = dim.item(0)
