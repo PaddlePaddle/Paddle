@@ -10,4 +10,5 @@ cc_test_old(
   pd_trait
   pir
   phi
+  standalone_executor
   gtest)

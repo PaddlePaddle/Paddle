@@ -84,7 +84,7 @@ TEST(CinnJitInstruction, Run) {
   Scope exe_scope;
 
   InterpreterCore executor(
-      place, {}, std::move(ir_runtime_program), &exe_scope);
+      place, {}, std::move(ir_runtime_program)->block(), &exe_scope);
   executor.SetSkipGcVars(out_names);
   executor.Run({});
 
