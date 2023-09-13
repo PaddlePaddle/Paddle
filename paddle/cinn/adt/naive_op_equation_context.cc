@@ -18,6 +18,66 @@
 
 namespace cinn::adt::equation::config {
 
+namespace {
+
+using InBox2OutBox =
+    InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>, tIn<tInMsgBox<OpArgIndexes>>>;
+
+template<typename DoEachEquationT>
+Equations TransformEquations(
+    const Equations& origin_equations,
+    const DoEachEquationT& HandleInMsgBox2OutMsgBox,
+    const DoEachEquationT& HandleOther) {
+  Equations equations{};
+  for (const auto& origin_equation : *origin_equations) {
+    if (origin_equation.Has<InBox2OutBox>()) {
+      equations->emplace_back(HandleInMsgBox2OutMsgBox(origin_equation));
+    } else {
+      equations->emplace_back(HandleOther(origin_equation));
+    }
+  }
+  return equations;
+}
+
+List<Index> GetErasedIndexes(
+    const List<Index>& origin_indexes, const std::vector<equation::Index>& erased_indexes) {
+  List<Index> indexes = {};
+  for (const auto& index : *origin_indexes) {
+    if (std::find(index, erased_indexes.begin(), erased_indexes.end()) != erased_indexes.end()) {
+      indexes.push_back(index);
+    }
+  }
+  return indexes;
+}
+
+Equation EraseOutMsgBoxIndexes(
+    const Equation& equation,
+    const std::vector<equation::Index>& erased_output_tensor_indexes) {
+  const auto& in_msg_box2out_msg_box = equation.Get<InBox2OutBox>();
+  const auto& [op_placeholder, out_box_indexes, in_box_indexes] =
+      in_msg_box2out_msg_box.tuple();
+  const auto& [out_box_in_indexes, out_box_out_indexes] =
+      out_box_indexes.value().value().tuple();
+  truncated_out_box_out_indexes =
+    GetErasedIndexes(out_box_out_indexes.value(), erased_output_tensor_indexes);
+  return InMsgBox2OutMsgBox{
+    op_placeholder,
+    tOutMsgBox{OpArgIndexes{out_box_in_indexes, truncated_out_box_out_indexes}},
+    in_box_indexes
+  };
+}
+
+}
+
+void NativeOpEquationContext::EraseOutMsgBoxIndexes(
+    const std::vector<equation::Index>& erased_output_tensor_indexes) {
+  const auto& Identity = [](const auto& equation) { return equation };
+  const auto& Erase = [&](const auto& equation) {
+    return EraseOutMsgBoxIndexes(equation, erased_output_tensor_indexes);
+  };
+  equations_ = TransformEquations(equations_, Identity, Erase);
+}
+
 std::vector<std::uint64_t> MakeTensorRanks(const List<m_expr::Arg>& arg_lists) {
   std::vector<std::uint64_t> ret;
   for (const auto& arg : *arg_lists) {

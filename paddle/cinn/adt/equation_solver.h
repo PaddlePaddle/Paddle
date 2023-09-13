@@ -30,7 +30,7 @@ void SolveEquations(
     const std::vector<Variable>& starts,
     IndexExprInferContext* ctx);
 
-bool IsEquationsSolvable(
+tHasNoConflictValue<bool> TrySolveEquations(
     const EquationGraphTopoWalker<const Variable, const Function*>& walker,
     const Variable& start,
     IndexExprInferContext* ctx);

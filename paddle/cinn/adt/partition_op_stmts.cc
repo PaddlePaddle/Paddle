@@ -346,15 +346,43 @@ MakeAnchorIndex2Ok(const partition::AnchorGroup& igroup_spec) {
   return {{igroup_spec.anchor_index, Ok{}}};
 }
 
+template<typename DoEachT>
+tBreak<bool> AgregateAnchorGroupOpStmt(
+    const partition::AnchorGroup& igroup_spec,
+    const DoEachT& DoEach) {
+  for (const auto& op_stmt : igroup_spec.op_stmts) {
+    tBreak<bool> ret = DoEach(op_stmt);
+    if (ret.value()) {
+      return ret;
+    }
+  }
+  return tBreak<bool>{false};
+}
+
 bool IsEquationSolvable(const partition::AnchorGroup& igroup_spec) {
   const auto& equation_graph_view = MakeGlobalEquationGraphViewForPartition(
       igroup_spec.EquationCtx4OpStmt, igroup_spec.op_stmts);
 
   const auto& init_var2value = MakeAnchorIndex2Ok(igroup_spec);
-  auto ctx = std::make_shared<equation::IndexExprInferContext>(init_var2value);
+  equation::IndexExprInferContext ctx{init_var2value};
 
-  return equation::value::IsEquationsSolvable(
-      equation_graph_view, igroup_spec.anchor_index, ctx.get());
+  const auto& IsOpSolved = [&](const auto& op_stmt) {
+    const auto& equation_ctx = *igroup_spec.EquationCtx4OpStmt(op_stmt);
+    const auto& fake_op_placeholder = equation_ctx.fake_op_placeholder();
+    return ctx.HasValue(fake_op_placeholder);
+  };
+
+  bool is_solvable = equation::value::TrySolveEquations(
+      equation_graph_view, igroup_spec.anchor_index, &ctx).value();
+  AgregateAnchorGroupOpStmt(igroup_spec, [&](const auto& op_stmt){
+    if (!IsOpSolved(op_stmt)) {
+      is_solvable = false;
+      return tBreak<bool>{true};
+    } else {
+      return tBreak<bool>{false};
+    }
+  });
+  return is_solvable;
 }
 
 std::function<std::size_t(const m_expr::OpStmt&)> MakeGetterOrderValue4OpStmt(

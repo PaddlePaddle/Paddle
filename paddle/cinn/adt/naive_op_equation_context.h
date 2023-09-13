@@ -185,6 +185,9 @@ class NativeOpEquationContext final : public OpEquationContext {
     return out_msg_box_out_indexes()->at(pos.value());
   }
 
+  void EraseOutMsgBoxIndexes(
+      const std::vector<equation::Index>& truncated_output_tensor_indexes);
+
  private:
   template <typename ContainerT>
   void Init(std::vector<ContainerT>* vec,
