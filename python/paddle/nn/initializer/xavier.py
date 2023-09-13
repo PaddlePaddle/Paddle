@@ -152,7 +152,7 @@ class XavierInitializer(Initializer):
         elif in_pir_mode():
             if self._uniform:
                 limit = math.sqrt(6.0 / float(fan_in + fan_out))
-                return paddle._ir_ops.uniform(
+                return paddle._pir_ops.uniform(
                     var.shape,
                     var.dtype,
                     -limit,

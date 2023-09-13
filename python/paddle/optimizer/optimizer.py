@@ -482,7 +482,7 @@ class Optimizer:
                             )
                         self._learning_rate_map[
                             framework.default_main_program()
-                        ] = paddle._ir_ops.full(
+                        ] = paddle._pir_ops.full(
                             [],
                             self._learning_rate,
                             _lr_dtype,

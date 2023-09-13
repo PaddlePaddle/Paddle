@@ -112,7 +112,7 @@ def data(name, shape, dtype=None, lod_level=0):
 
     if paddle.pir.core._use_pir_api():
         ir_dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
-        return paddle._ir_ops.data(name, shape, ir_dtype, core.Place())
+        return paddle._pir_ops.data(name, shape, ir_dtype, core.Place())
 
     out = helper.create_global_variable(
         name=name,

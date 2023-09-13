@@ -911,7 +911,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
                 dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
 
             if out is None:
-                out = paddle._ir_ops.full(shape, float(value), dtype, place)
+                out = paddle._pir_ops.full(shape, float(value), dtype, place)
                 out.stop_gradient = True
                 return out
         attrs = {'force_cpu': force_cpu}

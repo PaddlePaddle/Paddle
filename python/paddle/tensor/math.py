@@ -887,7 +887,7 @@ def divide(x, y, name=None):
         return _C_ops.divide(x, y)
     else:
         if paddle.pir.core._use_pir_api():
-            return paddle._ir_ops.divide(x, y)
+            return paddle._pir_ops.divide(x, y)
         return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
 
