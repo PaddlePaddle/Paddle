@@ -19,8 +19,8 @@
 #include <numeric>
 #include <sstream>
 #include <vector>
-
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 #include "paddle/phi/core/kernel_registry.h"

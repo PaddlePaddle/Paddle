@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/ir.h"
-
 #include <Python.h>
 #include <algorithm>
 #include <memory>
@@ -21,6 +20,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 

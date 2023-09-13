@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/pir/transforms/dead_code_elimination_pass.h"
-
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/pass/pass.h"
