@@ -131,5 +131,60 @@ class TestExplicitQuantizationConv2d(
         ]
 
 
+class TestExplicitQuantizationMatmul(
+    TestExplicitQuantizationLayer, unittest.TestCase
+):
+    def build_program(self):
+        # Define the inference program
+        infer_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(infer_prog, startup_prog):
+            input_data = paddle.static.data(
+                name='input', shape=[-1, 128], dtype='float32'
+            )
+            linear = paddle.static.nn.fc(x=input_data, size=10, bias_attr=False)
+
+        # Insert QDQ nodes by QAT API
+        place = paddle.CUDAPlace(0)
+        scope = global_scope()
+        exe = paddle.static.Executor(place)
+        exe.run(startup_prog)
+        graph = IrGraph(core.Graph(infer_prog.desc), for_test=True)
+        transform_pass = QuantizationTransformPassV2(
+            scope=scope,
+            place=place,
+            activation_quantize_type='moving_average_abs_max',
+            weight_quantize_type='channel_wise_abs_max',
+        )
+        transform_pass.apply(graph)
+        infer_prog = graph.to_program()
+
+        # Manually sets the scale of tensors and weights
+        input_scale = scope.find_var('input@scale').get_tensor()
+        input_scale.set(np.array([1.0]).astype(np.float32), place)
+        conv_weight = scope.find_var('fc_0.w_0').get_tensor()
+        weight_scale = scope.find_var('fc_0.w_0@scale').get_tensor()
+        weight_scale_np = np.max(np.abs(conv_weight), axis=(0)).astype(
+            np.float32
+        )
+        weight_scale.set(weight_scale_np, place)
+
+        self.serialized_program = paddle.static.serialize_program(
+            [input_data], [linear], program=infer_prog
+        )
+        self.serialized_params = paddle.static.serialize_persistables(
+            [input_data], [linear], executor=exe, program=infer_prog
+        )
+
+        self.input_data = np.random.uniform(
+            low=0.0, high=1.0, size=(2, 128)
+        ).astype(np.float32)
+        self.dynamic_shape_info = [
+            {"input": (1, 128)},
+            {"input": (4, 128)},
+            {"input": (2, 128)},
+        ]
+
+
 if __name__ == '__main__':
     unittest.main()
