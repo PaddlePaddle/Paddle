@@ -1330,33 +1330,39 @@ class OpTest(unittest.TestCase):
                 args, len(inputs_sig)
             )
             ret_tuple = self.python_api(*args)
-            result = construct_output_dict_by_kernel_sig(ret_tuple, outputs_sig)
+            fetch_list = getattr(self, "fetch_list", [])
+            # if the fetch_list is customized by user, we use it directly.
+            # if not, fill the fetch_list by the user configured outputs in test.
+
+            if len(fetch_list) == 0:
+                if isinstance(ret_tuple, (tuple, list)):
+                    for var in ret_tuple:
+                        if no_check_set is not None and var in no_check_set:
+                            continue
+                        if isinstance(var, list):
+                            for v in var:
+                                fetch_list.append(v)
+                        else:
+                            fetch_list.append(var)
+                elif isinstance(ret_tuple, paddle.base.libpaddle.ir.OpResult):
+                    fetch_list.append(ret_tuple)
+                else:
+                    raise ValueError(
+                        "output of python api should be OpResult or list of OpResult or tuple of OpResult"
+                    )
+
+            # executor run
+            executor = Executor(place)
+            outs = executor.run(ir_program, feed=feed, fetch_list=[fetch_list])
+
+            result = construct_output_dict_by_kernel_sig(outs, outputs_sig)
             if hasattr(self, "python_out_sig_sub_name"):
                 for key in self.python_out_sig_sub_name.keys():
                     for i in range(len(self.python_out_sig_sub_name[key])):
                         result[key][0][i].name = self.python_out_sig_sub_name[
                             key
                         ][i]
-            fetch_list = getattr(self, "fetch_list", [])
-            # if the fetch_list is customized by user, we use it directly.
-            # if not, fill the fetch_list by the user configured outputs in test.
-
-            if len(fetch_list) == 0:
-                for var in result.items():
-                    if no_check_set is not None and var in no_check_set:
-                        continue
-                    if isinstance(var[1], list):
-                        for v in var[1]:
-                            fetch_list.append(v)
-                    else:
-                        fetch_list.append(var[1])
-
-            # executor run
-            executor = Executor(place)
-            (outs,) = executor.run(
-                ir_program, feed=feed, fetch_list=[fetch_list]
-            )
-        return outs
+        return result
 
     def _check_ir_output(self, place, program, feed_map, fetch_list, outs):
         if os.getenv("FLAGS_NEW_IR_OPTEST") is None:
@@ -2305,6 +2311,7 @@ class OpTest(unittest.TestCase):
                         place, no_check_set=no_check_set
                     )
                 self.outputs = new_ir_outs
+
                 if self.op_test.is_compared_with_fp32():
                     self.op_test.enable_cal_ref_output()
                     self.is_python_api_test = True
@@ -2356,19 +2363,57 @@ class OpTest(unittest.TestCase):
                         expect_np = convert_uint16_to_float(expect_np)
                 return actual_np, expect_np
 
+            def find_imperative_actual(target_name, new_ir_outs, place):
+                for name in new_ir_outs:
+                    if name == target_name:
+                        return new_ir_outs[name][0]
+
+                    var_list = new_ir_outs[name]
+                    for i, var in enumerate(var_list):
+                        if isinstance(var, list):
+                            for tensor in var:
+                                if tensor.name == target_name:
+                                    return tensor
+                        elif (
+                            isinstance(var, paddle.Tensor)
+                            and var.name == target_name
+                        ):
+                            return new_ir_outs[name][i]
+                    self.assertTrue(
+                        False,
+                        f"Found failed {new_ir_outs.keys()} {target_name}",
+                    )
+
+            def find_imperative_expect(target_name, new_ir_outs, place):
+                for name in new_ir_outs:
+                    if name == target_name:
+                        return new_ir_outs[name][0]
+                    var_list = new_ir_outs[name]
+                    for i, var in enumerate(var_list):
+                        if var.name == target_name:
+                            return new_ir_outs[name][i]
+                self.assertTrue(
+                    False,
+                    f"Found failed {new_ir_outs.keys()} {target_name}",
+                )
+
             def find_actual_value(self, target_name):
                 with paddle.ir.core.program_guard(
                     paddle.ir.core.default_main_program()
                 ):
-                    actual = self.outputs
+                    actual = find_imperative_actual(
+                        target_name, self.outputs, place
+                    )
                     actual_t = np.array(actual)
                     return actual, actual_t
 
-            def find_expect_value(self, name):
+            def find_expect_value(self, target_name):
                 with paddle.ir.core.program_guard(
                     paddle.ir.core.default_main_program()
                 ):
-                    expect = self.ref_outputs
+                    expect = find_imperative_expect(
+                        target_name, self.ref_outputs, place
+                    )
                     expect_t = np.array(expect)
                     return expect, expect_t
 
@@ -2465,9 +2510,12 @@ class OpTest(unittest.TestCase):
                 type(place) is paddle.base.libpaddle.CPUPlace
                 or type(place) is paddle.base.libpaddle.CUDAPlace
             ):
+                print("New IR checker begins...........")
                 with paddle.new_ir_utils.IrGuard():
                     new_ir_checker = NewIRChecker(self, self.outputs)
                     new_ir_checker.check()
+
+                print("New IR checker ends...........")
 
         # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
         # computational consistency.
@@ -3016,6 +3064,7 @@ class OpTest(unittest.TestCase):
                 type(place) is paddle.base.libpaddle.CPUPlace
                 or type(place) is paddle.base.libpaddle.CUDAPlace
             ):
+                print("New IR gradient begins...........")
                 with paddle.new_ir_utils.IrGuard():
                     new_ir_grad = self._get_ir_gradient(
                         inputs_to_check,
@@ -3024,6 +3073,7 @@ class OpTest(unittest.TestCase):
                         user_defined_grad_outputs,
                         no_grad_set,
                     )
+                print("New IR gradient ends...........")
                 fp32_analytic_grads = []
                 for grad in new_ir_grad:
                     if grad.dtype == np.uint16:
