@@ -278,6 +278,7 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
       meta.SetPlace(fwd_in.place());
       // Set DistAttr
       meta.SetDistAttr(dist_tensor->dist_attr());
+      SetIsRunSemiAutoParallel(true);
     } else {
       VLOG(7)
           << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "

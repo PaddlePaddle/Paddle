@@ -91,16 +91,16 @@ class SetGradOutputDistAttrIter : public IterHelper<paddle::Tensor*> {
  public:
   explicit SetGradOutputDistAttrIter(
       const paddle::small_vector<std::vector<GradSlotMeta>,
-                                 kSlotSmallVectorSize>& out_meta)
-      : out_meta_(out_meta) {}
+                                 kSlotSmallVectorSize>& out_meta,
+      const paddle::small_vector<size_t, kSlotSmallVectorSize>& out_indexes)
+      : out_meta_(out_meta), out_indexes_{out_indexes} {}
 
  private:
-  void visit(paddle::Tensor* element) override {
+  void visit_element(paddle::Tensor* element, const GradSlotMeta& meta) {
     if (element == nullptr) {
       return;
     }
-    auto& cur_meta = out_meta_[cur_pos_][cur_sub_pos_];
-    if (cur_meta.DistAttr().empty()) {
+    if (meta.DistAttr().empty()) {
       return;
     }
     if (element->defined()) {
@@ -108,38 +108,39 @@ class SetGradOutputDistAttrIter : public IterHelper<paddle::Tensor*> {
         PADDLE_THROW(phi::errors::Unimplemented(
             "Unsupport set defined dist tensor now."));
       } else {
-        // Only deal with dist tensor
+        // Only deal with dist tensor here
         return;
       }
     } else {
       element->set_impl(std::make_shared<phi::distributed::DistTensor>(
-          phi::DDim(), cur_meta.DistAttr()));
+          phi::DDim(), meta.DistAttr()));
+    }
+  }
+  void visit(paddle::Tensor* element) override {
+    if (!out_meta_[out_indexes_[cur_pos_]].empty()) {
+      visit_element(element, out_meta_[out_indexes_[cur_pos_]][0]);
     }
     cur_pos_++;
   }
 
   void visit(std::vector<paddle::Tensor*>* elements) override {
-    for (auto element : *elements) {
-      visit(element);
-      cur_sub_pos_++;
+    if (!out_meta_[out_indexes_[cur_pos_]].empty()) {
+      for (size_t i = 0; i < elements->size(); ++i) {
+        visit_element(elements->at(i), out_meta_[out_indexes_[cur_pos_]][i]);
+      }
     }
     cur_pos_++;
-    cur_sub_pos_ = 0;
   }
 
   void visit(std::vector<paddle::Tensor*>& elements) override {
-    for (auto element : elements) {
-      visit(element);
-      cur_sub_pos_++;
-    }
-    cur_pos_++;
-    cur_sub_pos_ = 0;
+    visit(&elements);
   }
 
-  size_t cur_pos_ = 0;
-  size_t cur_sub_pos_ = 0;
   const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
       out_meta_;
+  const paddle::small_vector<size_t, kSlotSmallVectorSize>& out_indexes_;
+
+  int cur_pos_{0};
 };
 
 class EagerUtils {
@@ -288,11 +289,13 @@ class EagerUtils {
    * Set DistAttr
    */
   template <typename... Args>
-  static void SetGradOutputDistAttrIfNeeded(
+  static void SetGradOutputDistAttr(
       const paddle::small_vector<std::vector<GradSlotMeta>,
                                  kSlotSmallVectorSize>& out_metas,
+      const paddle::small_vector<size_t, kSlotSmallVectorSize>& out_indexes,
       Args&&... args) {
-    SetGradOutputDistAttrIter(out_metas).apply(std::forward<Args>(args)...);
+    SetGradOutputDistAttrIter(out_metas, out_indexes)
+        .apply(std::forward<Args>(args)...);
   }
 
   /**

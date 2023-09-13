@@ -311,6 +311,14 @@ class GradNodeBase {
 
   std::string GetForwardTrace() { return forward_trace_; }
 
+  /**
+   * The following interfaces are designed for auto parallel
+   * **/
+  bool IsRunSemiAutoParallel() const { return is_run_semi_auto_parallel_; }
+  void SetIsRunSemiAutoParallel(bool is_run_semi_auto_parallel) {
+    is_run_semi_auto_parallel_ = is_run_semi_auto_parallel;
+  }
+
  private:
   // bwd_out_meta_ is used to record Grad output info for backward
   paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
@@ -338,6 +346,10 @@ class GradNodeBase {
   bool is_tensor_wrappers_cleared_ = false;
   // The trace of forward function
   std::string forward_trace_ = "";
+
+  // With this flag, short-circuit the backward traversal of Tensor and
+  // set the DistAttr to reduce the impact on scheduling performance
+  bool is_run_semi_auto_parallel_{false};
 };
 
 }  // namespace egr

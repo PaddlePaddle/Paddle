@@ -532,7 +532,9 @@ CREATE_RECOVER_OPTIONAL_VECTOR_TENSOR_TEMPLATE = """
 """
 
 SET_GRAD_OUT_DIST_ATTR_TEMPLATE = """
-  egr::EagerUtils::SetGradOutputDistAttrIfNeeded(out_metas, {});
+  if (IsRunSemiAutoParallel()) {{
+    egr::EagerUtils::SetGradOutputDistAttr(out_metas, {}, {});
+  }}
 """
 
 CHECK_BACKWARD_INPLACE_TEMPLATE = """
@@ -2188,6 +2190,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         grad_api_args = ["" for i in range(grad_api_args_len)]
         get_grad_in_args_list = []
         grad_api_out_args_list = []
+        fwd_positions_list = []
 
         # Fill Grad Ins with Zero
         fill_zero_str = ""
@@ -2396,6 +2399,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             else:
                 grad_api_args.append(f"api_output_{out_index}")
                 grad_api_out_args_list.append(f"api_output_{out_index}")
+                fwd_positions_list.append(f"{fwd_position}")
             if inplace_grad_input_str in optional_inplace_var_name:
                 optional_inplace_str = "VLOG(6) << \"No Inplace should happend for wrappered input: {inplace_grad_input_str}\";"
             else:
@@ -2444,9 +2448,11 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         # Set DistAttr Func Construct
         set_out_dist_attr_str = ""
         if not is_invoke_forward_api:
+            fwd_positions_str = "{" + ", ".join(fwd_positions_list) + "}"
             grad_api_out_args_str = ", ".join(grad_api_out_args_list)
             set_out_dist_attr_str = SET_GRAD_OUT_DIST_ATTR_TEMPLATE.format(
-                grad_api_out_args_str
+                fwd_positions_str,
+                grad_api_out_args_str,
             )
 
         if is_invoke_forward_api:
