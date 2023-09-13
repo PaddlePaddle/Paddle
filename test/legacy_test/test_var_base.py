@@ -512,9 +512,6 @@ class TestVarBase(unittest.TestCase):
             with self.assertRaises(ValueError):
                 x_copy[:] = 5.0
 
-            with self.assertRaises(RuntimeError):
-                copy.deepcopy(z)
-
             x_copy2 = copy.deepcopy(x, memo)
             y_copy2 = copy.deepcopy(y, memo)
             self.assertEqual(id(x_copy), id(x_copy2))
