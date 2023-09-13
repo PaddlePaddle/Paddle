@@ -592,13 +592,25 @@ void FakeInitializeOutputsForFunctionKernel(
         phi::Backend backend = tensor_arg_def.backend;
         if (backend == phi::Backend::UNDEFINED) {
           if (op_type == "adam" || op_type == "adamw" ||
-              op_type == "merged_adam" || op_type == "lamb") {
+              op_type == "merged_adam") {
             phi::TensorBase* beta1_pow = GetTensorFormVar(
                 runtime_ctx.inputs.find("Beta1Pow")->second.at(0));
             phi::TensorBase* beta2_pow = GetTensorFormVar(
                 runtime_ctx.inputs.find("Beta2Pow")->second.at(0));
             if (beta1_pow->place() == beta2_pow->place()) {
               backend = phi::TransToPhiBackend(beta1_pow->place());
+            }
+          } else if (op_type == "lamb") {
+            phi::TensorBase* beta1_pow = GetTensorFormVar(
+                runtime_ctx.inputs.find("Beta1Pow")->second.at(0));
+            phi::TensorBase* beta2_pow = GetTensorFormVar(
+                runtime_ctx.inputs.find("Beta2Pow")->second.at(0));
+            if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU &&
+                beta1_pow.place() == AllocationType::CPU &&
+                beta2_pow.place() == AllocationType::CPU) {
+              backend = phi::Backend::CPU;
+            } else {
+              backend = phi::TransToPhiBackend(dev_ctx.GetPlace().GetType());
             }
           } else if (op_type == "reshape2") {
             phi::TensorBase* x =
