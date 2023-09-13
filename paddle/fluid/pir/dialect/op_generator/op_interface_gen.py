@@ -34,6 +34,12 @@ OP_VJP_FORWARD_MULTI_INPUT_TEMPLATE = """
             std::make_shared<primitive::LazyTensor>(combine_op_obj.inputs()[idx]));
     }}"""
 
+OP_VJP_FORWARD_OPTIONAL_INPUT_TEMPLATE = """
+    paddle::optional<Tensor> {input_name};
+    if (op_obj.{input_name}().type().storage()){{
+        {input_name} = paddle::make_optional<Tensor>(Tensor(std::make_shared<primitive::LazyTensor>(op_obj.{input_name}())));
+    }}"""
+
 OP_VJP_FORWARD_OUTPUT_GRAD_TEMPLATE = """
     Tensor {output_grad_name}(std::make_shared<primitive::LazyTensor>(out_grads[{idx1}][{idx2}]));"""
 
@@ -111,41 +117,48 @@ def gen_op_vjp_str(
     grad_idx = -1
     for idx in range(len(bw_input_list)):
         build_args_str += bw_input_list[idx] + ", "
-        if (
-            bw_input_list[idx] in op_info.input_name_list
-            or bw_input_list[idx] in op_info.output_name_list
-        ):
-            input_type = input_types_map[op_grad_info.input_type_list[idx]]
-            if input_type == 'Tensor':
-                forward_input_output_code += (
-                    OP_VJP_FORWARD_INPUT_OR_OUTPUT_TEMPLATE.format(
-                        input_type=input_type,
-                        input_name=bw_input_list[idx],
-                    )
+        if op_grad_info.input_optional_list[idx] == 'true':
+            forward_input_output_code += (
+                OP_VJP_FORWARD_OPTIONAL_INPUT_TEMPLATE.format(
+                    input_name=bw_input_list[idx],
                 )
-            else:
-                forward_input_output_code += (
-                    OP_VJP_FORWARD_MULTI_INPUT_TEMPLATE.format(
-                        input_name=bw_input_list[idx],
-                    )
-                )
+            )
         else:
-            grad_idx += 1
-            input_type = input_types_map[op_grad_info.input_type_list[idx]]
-            if input_type == 'Tensor':
-                forward_output_grad_code += (
-                    OP_VJP_FORWARD_OUTPUT_GRAD_TEMPLATE.format(
-                        output_grad_name=bw_input_list[idx],
-                        idx1=grad_idx,
-                        idx2=0,
+            if (
+                bw_input_list[idx] in op_info.input_name_list
+                or bw_input_list[idx] in op_info.output_name_list
+            ):
+                input_type = input_types_map[op_grad_info.input_type_list[idx]]
+                if input_type == 'Tensor':
+                    forward_input_output_code += (
+                        OP_VJP_FORWARD_INPUT_OR_OUTPUT_TEMPLATE.format(
+                            input_type=input_type,
+                            input_name=bw_input_list[idx],
+                        )
                     )
-                )
+                else:
+                    forward_input_output_code += (
+                        OP_VJP_FORWARD_MULTI_INPUT_TEMPLATE.format(
+                            input_name=bw_input_list[idx],
+                        )
+                    )
             else:
-                forward_input_output_code += (
-                    OP_VJP_FORWARD_OUTPUT_GRAD_LIST_TEMPLATE.format(
-                        output_grad_name=bw_input_list[idx], index=grad_idx
+                grad_idx += 1
+                input_type = input_types_map[op_grad_info.input_type_list[idx]]
+                if input_type == 'Tensor':
+                    forward_output_grad_code += (
+                        OP_VJP_FORWARD_OUTPUT_GRAD_TEMPLATE.format(
+                            output_grad_name=bw_input_list[idx],
+                            idx1=grad_idx,
+                            idx2=0,
+                        )
                     )
-                )
+                else:
+                    forward_input_output_code += (
+                        OP_VJP_FORWARD_OUTPUT_GRAD_LIST_TEMPLATE.format(
+                            output_grad_name=bw_input_list[idx], index=grad_idx
+                        )
+                    )
     op_attribute_list = op_grad_info.attribute_name_list
     attribute_code = ''
     for idx in range(len(op_attribute_list)):
