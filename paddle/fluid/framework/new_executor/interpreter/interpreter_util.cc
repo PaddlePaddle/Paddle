@@ -1234,13 +1234,13 @@ void BuildId2VarName(const std::map<std::string, int>& var_name_2_id,
   }
 }
 
-const paddle::framework::Variable* GetVariableByName(
+const paddle::framework::Variable GetVariableByName(
     const std::string& var_name,
     const std::unordered_map<const paddle::framework::Variable*, std::string>&
         variable_2_var_name) {
   for (auto kv : variable_2_var_name) {
     if (kv.second == var_name) {
-      return kv.first;
+      return *kv.first;
     }
   }
   return nullptr;
@@ -1261,23 +1261,24 @@ void PrintValuesAndVariables (
     if (!op->results().empty()) {
       for (auto& out_value : op->results()) {
         auto& var_name = (*value_2_var_name).at(out_value);
-        const paddle::framework::Variable* out_variable =
+        const paddle::framework::Variable out_variable =
             GetVariableByName(var_name, *variable_2_var_name);
-        ret_value_str += (var_name + "[" + (&out_value) + "], ");
-        ret_variable_str += (var_name + "[" + (&out_variable) + "], ");
+        ret_value_str += (var_name + "[" + std::to_string(&out_value) + "], ");
+        ret_variable_str +=
+            (var_name + "[" + std::to_string(&out_variable) + "], ");
       }
       ret_value_str = ret_value_str.substr(0, ret_value_str.size() - 2);
-      ret_variable_str = ret_variable_str.substr(
-          0, ret_variable_str.size() - 2);
+      ret_variable_str =
+          ret_variable_str.substr(0, ret_variable_str.size() - 2);
     }
     ret_value_str += ") = ";
     ret_variable_str += ") = ";
 
     // 2. op name
     auto op_name = op->attributes()
-        .at("op_name")
-        .dyn_cast<::pir::StrAttribute>()
-        .AsString();
+                       .at("op_name")
+                       .dyn_cast<::pir::StrAttribute>()
+                       .AsString();
     ret_value_str += op_name;
     ret_variable_str += op_name;
 
@@ -1287,14 +1288,15 @@ void PrintValuesAndVariables (
       for (auto& input : op->operands()) {
         ::pir::Value in_value = input.source();
         auto& var_name = (*value_2_var_name).at(in_value);
-        const paddle::framework::Variable* in_variable =
+        const paddle::framework::Variable in_variable =
             GetVariableByName(var_name, *variable_2_var_name);
-        ret_value_str += (var_name + "[" + (&in_value) + "], ");
-        ret_variable_str += (var_name + "[" + (&in_variable) + "], ");
+        ret_value_str += (var_name + "[" + std::to_string(&in_value) + "], ");
+        ret_variable_str +=
+            (var_name + "[" + std::to_string(&in_variable) + "], ");
       }
       ret_value_str = ret_value_str.substr(0, ret_value_str.size() - 2);
-      ret_variable_str = ret_variable_str.substr(
-          0, ret_variable_str.size() - 2);
+      ret_variable_str =
+          ret_variable_str.substr(0, ret_variable_str.size() - 2);
     }
     ret_value_str += ")";
     ret_variable_str += ")";

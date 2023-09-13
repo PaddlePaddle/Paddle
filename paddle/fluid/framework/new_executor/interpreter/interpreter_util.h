@@ -129,12 +129,13 @@ void SetDeviceCommContext(::pir::Operation* op,
 
 std::unordered_set<std::string> GetSpecialOpNames();
 
-const paddle::framework::Variable* GetVariableByName(
-  const std::string& var_name,
-  const std::unordered_map<const paddle::framework::Variable*, std::string>&
-      variable_2_var_name);
+const paddle::framework::Variable GetVariableByName(
+    const std::string& var_name,
+    const std::unordered_map<const paddle::framework::Variable*, std::string>&
+        variable_2_var_name);
 
-void PrintValuesAndVariables(const pir::Block& block,
+void PrintValuesAndVariables(
+    const pir::Block& block,
     const std::unordered_map<pir::Value, std::string>* value_2_var_name,
     const std::unordered_map<const paddle::framework::Variable*, std::string>*
         variable_2_var_name);
