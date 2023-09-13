@@ -71,9 +71,9 @@ inline std::size_t GetHashValue(const TempStorage& temp_storage) {
 }
 
 // SSAShadowTensor = (tSSAShadow Name, const Graph::NodeData*)
-class SSAShadowTensor final : public Tuple<tSSAShadow<Name>, Tensor> {
+class SSAShadowTensor final : public Tuple<tSSAShadow<Name>, adapter::Tensor> {
  public:
-  using Tuple<tSSAShadow<Name>, Tensor>::Tuple;
+  using Tuple<tSSAShadow<Name>, adapter::Tensor>::Tuple;
 };
 
 OVERLOAD_OPERATOR_EQ_NE(tSSAShadow<Name>, TagEqual);
