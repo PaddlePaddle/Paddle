@@ -2465,12 +2465,9 @@ class OpTest(unittest.TestCase):
                 type(place) is paddle.base.libpaddle.CPUPlace
                 or type(place) is paddle.base.libpaddle.CUDAPlace
             ):
-                print("New IR checker begins...........")
                 with paddle.pir_utils.IrGuard():
                     new_ir_checker = NewIRChecker(self, self.outputs)
                     new_ir_checker.check()
-
-                print("New IR checker ends...........")
 
         # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
         # computational consistency.
@@ -3019,7 +3016,6 @@ class OpTest(unittest.TestCase):
                 type(place) is paddle.base.libpaddle.CPUPlace
                 or type(place) is paddle.base.libpaddle.CUDAPlace
             ):
-                print("New IR gradient begins...........")
                 with paddle.pir_utils.IrGuard():
                     new_ir_grad = self._get_ir_gradient(
                         inputs_to_check,
@@ -3028,7 +3024,6 @@ class OpTest(unittest.TestCase):
                         user_defined_grad_outputs,
                         no_grad_set,
                     )
-                print("New IR gradient ends...........")
                 fp32_analytic_grads = []
                 for grad in new_ir_grad:
                     if grad.dtype == np.uint16:
