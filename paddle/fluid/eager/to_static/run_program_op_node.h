@@ -563,7 +563,8 @@ inline void RunProgramGradAPI(
                                                         out_grad,
                                                         x_grad,
                                                         params_grad,
-                                                        global_inner_scope);
+                                                        global_inner_scope,
+                                                        place);
 
       interpreter_core =
           paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
