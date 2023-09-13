@@ -29,16 +29,14 @@ using phi::distributed::auto_parallel::str_join;
 ////////////////// Utils Functions //////////////////
 std::string GetOutputNotation(int input_ndim,
                               const std::string& input_axes,
-                              const std::vector<int>& axis,
+                              std::vector<int> reduce_dims,
                               bool keep_dim) {
   // convert the negative dim value to normal dim value
-  std::vector<int> reduce_dims(axis);
   for (auto& reduce_dim : reduce_dims) {
     if (reduce_dim < 0) {
       reduce_dim = input_ndim + reduce_dim;
     }
   }
-  VLOG(4) << "reduce_dim: " << str_join(reduce_dims);
 
   std::string output_axes = "";
   for (int i = 0; i < input_ndim; i++) {
@@ -112,8 +110,8 @@ SpmdInfo ReductionInferSpmd(const DistMetaTensor& x,
   // the input to be partial. Otherwise, the input cannot be partial
   // on reduced axes, we should reshard the input when the reduced
   // axes are parital.
-  VLOG(4) << "ReductionInferSpmd: axis: " << str_join(axis)
-          << "keep_dim: " << keep_dim;
+  VLOG(4) << "ReductionInferSpmd:";
+  VLOG(4) << "axis: " << str_join(axis) << ", keep_dim: " << keep_dim;
   VLOG(4) << "Einsum Notation: " << x_axes << " --> " << out_axes;
   VLOG(4) << "Input0 shape: [" << str_join(x_shape) << "] "
           << "dims_mapping: [" << str_join(x_dims_mapping) << "]";
@@ -170,8 +168,8 @@ SpmdInfo ReductionInferSpmdReverse(const DistMetaTensor& x,
   VLOG(4) << "Output shape:[" << str_join(out_shape) << "] dims_mapping: ["
           << str_join(out_dims_mapping) << "]";
   VLOG(4) << "Input0: "
-          << " shape: [" << str_join(x_shape) << "] "
-          << "dims_mapping: [" << str_join(x_dims_mapping) << "]";
+          << "shape: [" << str_join(x_shape) << "] "
+          << "dims_mapping: [" << str_join(x_dims_mapping) << "]\n\n";
 
   return {{x_dist_attr_dst}, {out_dist_attr_src}};
 }
