@@ -142,7 +142,16 @@ void InitGeneratePattern(const proto::PassDesc& pass_desc, PDPattern* pattern) {
                 if (iter->second.end() != std::find(iter->second.begin(),
                                                     iter->second.end(),
                                                     x->Name())) {
-                  return true;
+                  OpDesc* op_desc = out->Op();
+                  if (std::all_of(op.attrs().begin(),
+                                  op.attrs().end(),
+                                  [&](const proto::OpDesc::Attr& attr) {
+                                    return op_desc->HasAttr(attr.name()) &&
+                                           GetAttrValue(attr) ==
+                                               op_desc->GetAttr(attr.name());
+                                  })) {
+                    return true;
+                  }
                 }
               }
             }
@@ -170,7 +179,16 @@ void InitGeneratePattern(const proto::PassDesc& pass_desc, PDPattern* pattern) {
                   if (iter->second.end() != std::find(iter->second.begin(),
                                                       iter->second.end(),
                                                       x->Name())) {
-                    return true;
+                    OpDesc* op_desc = input->Op();
+                    if (std::all_of(op.attrs().begin(),
+                                    op.attrs().end(),
+                                    [&](const proto::OpDesc::Attr& attr) {
+                                      return op_desc->HasAttr(attr.name()) &&
+                                             GetAttrValue(attr) ==
+                                                 op_desc->GetAttr(attr.name());
+                                    })) {
+                      return true;
+                    }
                   }
                 }
               }
