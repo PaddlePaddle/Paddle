@@ -2,8 +2,6 @@
 select = C,E,W
 exclude =
     ./build,
-    # Exclude fluid directory
-    ./python/paddle/base/**,
     # Exclude third-party libraries
     ./third_party/**,
     ./python/paddle/utils/gast/**,
@@ -27,3 +25,14 @@ ignore =
 per-file-ignores =
     # These files need tabs for testing.
     test/dygraph_to_static/test_error.py:E101,W191
+
+    # tmp ignore
+    python/paddle/base/backward.py:E713,E712
+    python/paddle/base/device_worker.py:E712
+    python/paddle/base/dygraph/base.py:E712
+    python/paddle/base/executor.py:E266,E712,E714,E266
+    python/paddle/base/framework.py:E712
+    python/paddle/base/reader.py:E266
+    python/paddle/base/trainer_desc.py:E266
+    python/paddle/base/trainer_factory.py:E712
+    python/paddle/base/variable_index.py:E712
