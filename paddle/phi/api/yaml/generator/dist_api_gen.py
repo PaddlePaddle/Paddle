@@ -94,19 +94,23 @@ MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
 VECTOR_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput({}, &api_output);
     std::vector<phi::DenseTensor*> dense_out(dist_out.size());
-    for (size_t i = 0; i < dist_out.size(); i++) {{
+    for (size_t i = 0; i < dist_out.size(); ++i) {{
         dense_out[i] = const_cast<phi::DenseTensor*>(&dist_out[i]->value());
     }}
 """
 MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
     auto dist_out_{out_name} = SetKernelDistOutput({size}, {in_name});
     std::vector<phi::DenseTensor*> dense_out_{out_name}(dist_out_{out_name}.size());
-    for (size_t i = 0; i < dist_out_{out_name}.size(); i++) {{
+    for (size_t i = 0; i < dist_out_{out_name}.size(); ++i) {{
         dense_out_{out_name}[i] = const_cast<phi::DenseTensor*>(&dist_out_{out_name}[i]->value());
     }}
 """
-# TODO(GhostScreaming): support tuple output later
-TUPLE_OUT_CREATION_TEMPLATE = """
+MULTI_VECTOR_INPLACE_AND_OPTIONAL_OUT_CREATION_TEMPLATE = """
+    auto dist_out_{out_name} = {out_func}({size}, {in_name});
+    std::vector<phi::DenseTensor*> dense_out_{out_name}(dist_out_{out_name}.size());
+    for (size_t i = 0; i < dist_out_{out_name}.size(); ++i) {{
+        dense_out_{out_name}[i] = dist_out_{out_name}[i] ? const_cast<phi::DenseTensor*>(&dist_out_{out_name}[i]->value()) : nullptr;
+    }}
 """
 
 # 3. Infer Global Shape
@@ -120,12 +124,28 @@ VECTOR_GLOBAL_META_IN_DECL_TEMPLATE = """
       {name}_meta_vec.emplace_back(MakeMetaTensor(*tmp.impl()));
     }}
     std::vector<const phi::MetaTensor*> {name}_meta_ptr_vec({name}_meta_vec.size());
-    for (size_t i=0; i<{name}_meta_ptr_vec.size(); i++) {{
+    for (size_t i=0; i < {name}_meta_ptr_vec.size(); ++i) {{
       {name}_meta_ptr_vec[i] = &{name}_meta_vec[i];
     }}
 """
-# TODO(GhostScreaming): support optional args later
-OPTIONAL_GLOBAL_VECTOR_META_IN_TEMPLATE = """
+OPTIONAL_GLOBAL_SINGLE_META_IN_TEMPLATE = """meta_dist_{}, """
+OPTIONAL_GLOBAL_SINGLE_META_IN_DECL_TEMPLATE = """
+    phi::MetaTensor meta_dist_{name} = {name} ? MakeMetaTensor(*(*{name}).impl()) : phi::MetaTensor();
+"""
+OPTIONAL_GLOBAL_VECTOR_META_IN_TEMPLATE = """{}_meta_ptr_vec, """
+OPTIONAL_GLOBAL_VECTOR_META_IN_DECL_TEMPLATE = """
+    std::vector<phi::MetaTensor> {name}_meta_vec_tmp;
+    if ({name}) {{
+      for (auto tmp : *{name}) {{
+        {name}_meta_vec_tmp.emplace_back(MakeMetaTensor(*tmp.impl()));
+      }}
+    }}
+    std::vector<const phi::MetaTensor*> {name}_meta_ptr_vec_tmp({name}_meta_vec_tmp.size());
+    for (size_t i = 0; i < {name}_meta_ptr_vec_tmp.size(); ++i) {{
+      {name}_meta_ptr_vec_tmp[i] = &{name}_meta_vec_tmp[i];
+    }}
+    paddle::optional<std::vector<const phi::MetaTensor*>> {name}_meta_ptr_vec =
+        {name} ? paddle::make_optional<std::vector<const phi::MetaTensor*>>({name}_meta_ptr_vec_tmp) : paddle::none;
 """
 SINGLE_GLOBAL_META_OUT_DECL_TEMPLATE = """
     phi::MetaTensor meta_{}({});"""
@@ -135,7 +155,7 @@ VECTOR_GLOBAL_META_OUT_DECL_TEMPLATE = """
       {name}_meta_vec.emplace_back(phi::MetaTensor(tmp));
     }}
     std::vector<phi::MetaTensor*> {name}_meta_ptr_vec({name}.size());
-    for (size_t i=0; i<{name}_meta_vec.size(); i++) {{
+    for (size_t i = 0; i < {name}_meta_vec.size(); ++i) {{
       {name}_meta_ptr_vec[i] = &{name}_meta_vec[i];
     }}
 """
@@ -174,9 +194,30 @@ VECTOR_PREPARE_DATA_TEMPLATE = """
     }}
     std::vector<phi::MetaTensor> dense_input_{name}_meta_vec = MakeMetaTensor(dense_input_{name}_vec);
     std::vector<const phi::MetaTensor*> dense_input_{name}_meta_ptr_vec(dense_input_{name}_meta_vec.size());
-    for (size_t i=0; i<dense_input_{name}_meta_vec.size(); i++) {{
+    for (size_t i = 0; i < dense_input_{name}_meta_ptr_vec.size(); ++i) {{
       dense_input_{name}_meta_ptr_vec[i] = &dense_input_{name}_meta_vec[i];
     }}
+"""
+OPTIONAL_SINGLE_PREPARE_DATA_TEMPLATE = """
+    auto dist_input_{name} = PrepareDataForDistTensor({name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
+    paddle::optional<phi::DenseTensor> input_{name} = dist_input_{name} ? paddle::make_optional<phi::DenseTensor>(dist_input_{name}->value()) : paddle::none;
+"""
+OPTIONAL_VECTOR_PREPARE_DATA_TEMPLATE = """
+    auto dist_input_{name}_vec = PrepareDataForDistTensor({name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
+    std::vector<const phi::DenseTensor*> dense_input_{name}_vec;
+    if ({name}) {{
+      for (auto tmp : *dist_input_{name}_vec) {{
+        dense_input_{name}_vec.emplace_back(&tmp->value());
+      }}
+    }}
+    paddle::optional<std::vector<const phi::DenseTensor*>> input_{name}(dense_input_{name}_vec);
+    std::vector<phi::MetaTensor> dense_input_{name}_meta_vec = MakeMetaTensor(dense_input_{name}_vec);
+    std::vector<const phi::MetaTensor*> dense_input_{name}_meta_ptr_vec_tmp(dense_input_{name}_meta_vec.size());
+    for (size_t i = 0; i < dense_input_{name}_meta_ptr_vec_tmp.size(); ++i) {{
+      dense_input_{name}_meta_ptr_vec_tmp[i] = &dense_input_{name}_meta_vec[i];
+    }}
+    paddle::optional<std::vector<const phi::MetaTensor*>> dense_input_{name}_meta_ptr_vec =
+            {name} ? paddle::make_optional<std::vector<const phi::MetaTensor*>>(dense_input_{name}_meta_ptr_vec_tmp) : paddle::none;
 """
 INFER_META_SINGLE_INPUT_TEMPLATE = """
     auto dist_input_{} = {}.impl();
@@ -192,16 +233,15 @@ INFER_META_VECTOR_INPUT_TEMPLATE = """
 
 # 7. Infer Local DenseTensor Meta
 SINGLE_META_IN_TEMPLATE = """MakeMetaTensor(*input_{}), """
-# TODO(GhostScreaming): support optional args later
 VECTOR_META_IN_TEMPLATE = """dense_input_{}_meta_ptr_vec, """
-OPTIONAL_VECTOR_META_IN_TEMPLATE = """
-"""
+OPTIONAL_SINGLE_META_IN_TEMPLATE = """MakeMetaTensor(input_{}), """
+OPTIONAL_VECTOR_META_IN_TEMPLATE = """dense_input_{}_meta_ptr_vec, """
 SINGLE_META_OUT_DECL_TEMPLATE = """
     phi::MetaTensor meta_{}({});"""
 VECTOR_META_OUT_DECL_TEMPLATE = """
     std::vector<phi::MetaTensor> {name}_meta_vec = MakeMetaTensor({name});
     std::vector<phi::MetaTensor*> {name}_meta_ptr_vec({name}_meta_vec.size());
-    for (size_t i=0; i<{name}_meta_vec.size(); i++) {{
+    for (size_t i = 0; i < {name}_meta_vec.size(); ++i) {{
       {name}_meta_ptr_vec[i] = &{name}_meta_vec[i];
     }}
 """
@@ -222,6 +262,22 @@ KERNEL_CALL_TEMPLATE = """
     auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
     (*kernel_fn)({}, {});
 """
+# TODO(GhostScreaming): Some operators generate shape info in runtime,
+# bincount. As a result, dist_output's global shape is set uncorrectly,
+# because it's generated in InferMeta function. A temporally solution is
+# use black op list to set DistTensor shape extra.
+SINGLE_SET_DIST_OUT_DIMS = """
+    dist_out->unsafe_set_dims(dense_out->dims());
+"""
+MULTI_SINGLE_SET_DIST_OUT_DIMS = """
+    dist_out_{}->unsafe_set_dims(dense_out_{}->dims());
+"""
+VECTOR_SET_DIST_OUT_DIMS = """
+    for (size_t i = 0; i < dist_out.size(); ++i) {{
+        dist_out[i]->unsafe_set_dims(dense_out[i]->dims());
+    }}
+"""
+
 PREFIX_VECTOR_TENSOR_NAME = "dense_input_"
 SUFFIX_VECTOR_TENSOR_NAME = "_vec"
 
@@ -243,13 +299,15 @@ RESHARD_P2R_MULTI_SINGLE_OUTPUT_TEMPLATE = """
 #     types : [], list of output types
 #     out_size_expr : [], expression for getting size of vector<Tensor>
 
-# TODO(GhostScreaming): Support std::tuple<...> type of input and output later.
-skip_op_lists = [
-    "check_finite_and_unscale",  # std::vector<Tensor>&, const Tensor& -> std::tuple<std::vector<Tensor>&, Tensor>
-    "coalesce_tensor",  # const std::vector<Tensor>&, DataType, bool, bool, bool, float, bool, int, int, const std::vector<int64_t>&, const std::vector<int64_t>& -> std::tuple<std::vector<Tensor>, Tensor>
-    "update_loss_scaling",  # std::vector<Tensor>, const Tensor, ... -> std::tuple<std::vector<Tensor>, Tensor, Tensor, Tensor>
-    "einsum",
-    "einsum_grad",  # const std::vector<Tensor>&, const std::string& -> std::tuple<Tensor, std::vector<Tensor>, std::vector<Tensor>>
+
+# TODO(GhostScreaming): Black list for operators which infer shape in runtime.
+ops_infer_shape_in_runtime = [
+    "bincount",
+    "bicubic_interp",
+    "bilinear_interp",
+    "linear_interp",
+    "nearest_interp",
+    "trilinear_interp",
 ]
 
 
@@ -263,11 +321,14 @@ class DistForwardAPI(ForwardAPI):
             "const Tensor&": {
                 "dense": self.generate_single_dense_input,
             },
-            "const paddle::optional<Tensor>&": {
-                "dense": self.generate_single_dense_input,
-            },
             "const std::vector<Tensor>&": {
                 "dense": self.generate_vector_dense_input,
+            },
+            "const paddle::optional<Tensor>&": {
+                "dense": self.generate_optional_single_dense_input,
+            },
+            "const paddle::optional<std::vector<Tensor>>&": {
+                "dense": self.generate_optional_vector_dense_input,
             },
         }
 
@@ -423,25 +484,28 @@ class DistForwardAPI(ForwardAPI):
                 get_out_code = f"&std::get<{i}>(api_output)"
                 if self.is_inplace_and_optional_output(i):
                     get_out_code = f"std::get<{i}>(api_output).get_ptr()"
-
                 if out_type == 'std::vector<Tensor>':
                     self.vector_output_size_assertion_check()
                     # Special case for inplace vector and inplace optional<vector>
-                    # TODO(chenweihang): support this branch later
                     if self.is_inplace_output(i):
-                        set_out_func = "SetInplaceVectorKernelOutput"
+                        set_out_func = "SetKernelDistInplaceOutput"
                         if self.is_inplace_and_optional_output(i):
-                            set_out_func = (
-                                "SetInplaceOptionalVectorKernelOutput"
-                            )
+                            set_out_func = "SetKernelDistInplaceOptionalOutput"
                             get_out_code = f"std::get<{i}>(api_output)"
-                    output_creation_code += (
-                        MULTI_VECTOR_OUT_CREATION_TEMPLATE.format(
+                        output_creation_code += MULTI_VECTOR_INPLACE_AND_OPTIONAL_OUT_CREATION_TEMPLATE.format(
+                            out_func=set_out_func,
                             out_name=i,
                             size=self.outputs['out_size_expr'][i],
                             in_name=get_out_code,
                         )
-                    )
+                    else:
+                        output_creation_code += (
+                            MULTI_VECTOR_OUT_CREATION_TEMPLATE.format(
+                                out_name=i,
+                                size=self.outputs['out_size_expr'][i],
+                                in_name=get_out_code,
+                            )
+                        )
                 else:
                     if self.infer_meta['spmd_rule'] is not None:
                         output_creation_code += (
@@ -496,6 +560,31 @@ class DistForwardAPI(ForwardAPI):
                     input_meta_code += (
                         VECTOR_GLOBAL_META_IN_DECL_TEMPLATE.format(name=param)
                     )
+                elif (
+                    self.inputs['input_info'][param]
+                    == "const paddle::optional<Tensor>&"
+                ):
+                    input_args_code += (
+                        OPTIONAL_GLOBAL_SINGLE_META_IN_TEMPLATE.format(param)
+                    )
+                    input_meta_code += (
+                        OPTIONAL_GLOBAL_SINGLE_META_IN_DECL_TEMPLATE.format(
+                            name=param
+                        )
+                    )
+                elif (
+                    self.inputs['input_info'][param]
+                    == "const paddle::optional<std::vector<Tensor>>&"
+                ):
+                    input_args_code += (
+                        OPTIONAL_GLOBAL_VECTOR_META_IN_TEMPLATE.format(param)
+                    )
+                    input_meta_code += (
+                        OPTIONAL_GLOBAL_VECTOR_META_IN_DECL_TEMPLATE.format(
+                            name=param
+                        )
+                    )
+
                 else:
                     raise ValueError(
                         f"{self.api} : Param of infer_spmd error : {self.inputs['input_info'][param]} type is not supported."
@@ -517,12 +606,7 @@ class DistForwardAPI(ForwardAPI):
                 output_decl_code += VECTOR_GLOBAL_META_OUT_DECL_TEMPLATE.format(
                     name=out_name
                 )
-                if len(self.dense_output_args) == 1:
-                    output_args_code += f"{out_name}_meta_ptr_vec, "
-                else:
-                    output_args_code += (
-                        f"{out_name} ? {out_name}_meta_ptr_vec : nullptr, "
-                    )
+                output_args_code += f"{out_name}_meta_ptr_vec, "
             else:
                 output_decl_code += SINGLE_GLOBAL_META_OUT_DECL_TEMPLATE.format(
                     out_name, out_name
@@ -625,6 +709,46 @@ class DistForwardAPI(ForwardAPI):
 
         return input_tensor_code
 
+    def generate_optional_single_dense_input(
+        self,
+        input_name,
+    ):
+        input_tensor_code = ""
+        trans_flag = self.gene_trans_flag(input_name)
+        input_names = self.inputs['names']
+        attr_names = self.attrs['names']
+        kernel_param = self.kernel['param']
+        if kernel_param is None:
+            kernel_param = input_names + attr_names
+
+        input_tensor_code += OPTIONAL_SINGLE_PREPARE_DATA_TEMPLATE.format(
+            name=input_name,
+            index=kernel_param.index(input_name),
+            trans_flag=trans_flag,
+        )
+
+        return input_tensor_code
+
+    def generate_optional_vector_dense_input(
+        self,
+        input_name,
+    ):
+        input_tensor_code = ""
+        trans_flag = self.gene_trans_flag(input_name)
+        input_names = self.inputs['names']
+        attr_names = self.attrs['names']
+        kernel_param = self.kernel['param']
+        if kernel_param is None:
+            kernel_param = input_names + attr_names
+
+        input_tensor_code += OPTIONAL_VECTOR_PREPARE_DATA_TEMPLATE.format(
+            name=input_name,
+            index=kernel_param.index(input_name),
+            trans_flag=trans_flag,
+        )
+
+        return input_tensor_code
+
     def generate_prepare_data_code(self) -> str:
         input_names = self.inputs['names']
         attr_names = self.attrs['names']
@@ -700,6 +824,20 @@ class DistForwardAPI(ForwardAPI):
                     == "const std::vector<Tensor>&"
                 ):
                     input_args_code += VECTOR_META_IN_TEMPLATE.format(param)
+                elif (
+                    self.inputs['input_info'][param]
+                    == "const paddle::optional<Tensor>&"
+                ):
+                    input_args_code += OPTIONAL_SINGLE_META_IN_TEMPLATE.format(
+                        param
+                    )
+                elif (
+                    self.inputs['input_info'][param]
+                    == "const paddle::optional<std::vector<Tensor>>&"
+                ):
+                    input_args_code += OPTIONAL_VECTOR_META_IN_TEMPLATE.format(
+                        param
+                    )
                 else:
                     raise ValueError(
                         f"{self.api} : Param of infer_meta error : {self.inputs['input_info'][param]} type is not supported."
@@ -721,12 +859,7 @@ class DistForwardAPI(ForwardAPI):
                 output_decl_code += VECTOR_META_OUT_DECL_TEMPLATE.format(
                     name=out_name
                 )
-                if len(self.dense_output_args) == 1:
-                    output_args_code += f"{out_name}_meta_ptr_vec, "
-                else:
-                    output_args_code += (
-                        f"{out_name} ? {out_name}_meta_ptr_vec : nullptr, "
-                    )
+                output_args_code += f"{out_name}_meta_ptr_vec, "
             else:
                 output_decl_code += SINGLE_META_OUT_DECL_TEMPLATE.format(
                     out_name, out_name
@@ -815,11 +948,22 @@ class DistForwardAPI(ForwardAPI):
             kernel_args_type_list.append(dense_output_trans_map[out_type])
         kernel_signature = "void(*)(" + ", ".join(kernel_args_type_list) + ")"
 
-        return KERNEL_CALL_TEMPLATE.format(
+        result = KERNEL_CALL_TEMPLATE.format(
             kernel_signature,
             ", ".join(input_args),
             ", ".join(self.dense_output_args),
         )
+        global ops_infer_shape_in_runtime
+        if self.kernel['func'][0] in ops_infer_shape_in_runtime:
+            if len(self.outputs['types']) == 1:
+                if self.outputs['types'][0] == 'Tensor':
+                    result += SINGLE_SET_DIST_OUT_DIMS
+                elif self.outputs['types'][0] == 'std::vector<Tensor>':
+                    result += VECTOR_SET_DIST_OUT_DIMS
+            else:
+                for i in range(len(self.outputs['types'])):
+                    result += MULTI_SINGLE_SET_DIST_OUT_DIMS.format(i, i)
+        return result
 
     def generate_reshard_partial_out_to_replicated_code(self) -> str:
         reshard_p2r_code = ""
@@ -872,19 +1016,17 @@ class DistForwardAPI(ForwardAPI):
         )
 
     def check_argument_whether_support_auto_parallel(self):
-        global skip_op_lists
         for name in self.inputs['names']:
             if self.inputs['input_info'][name] not in [
                 "const Tensor&",
                 "const std::vector<Tensor>&",
+                "const paddle::optional<Tensor>&",
+                "const paddle::optional<std::vector<Tensor>>&",
             ]:
                 return False
         for out_type in self.outputs['types']:
             if out_type not in ["Tensor", "std::vector<Tensor>"]:
                 return False
-
-        if self.kernel['func'][0] in skip_op_lists:
-            return False
         return True
 
     # override BaseAPI's method

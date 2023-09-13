@@ -57,6 +57,13 @@ VECTOR_OUT_CREATION_TEMPLATE = """
         dense_out[i] = const_cast<phi::DenseTensor*>(&dist_out[i]->value());
     }}
 """
+VECTOR_OUT_CREATION_TEMPLATE = """
+    auto dist_out = SetKernelDistOutput({name});
+    std::vector<phi::DenseTensor*> dense_out(dist_out.size());
+    for (size_t i = 0; i < dist_out.size(); i++) {{
+        dense_out[i] = const_cast<phi::DenseTensor*>(&dist_out[i]->value());
+    }}
+"""
 INPLACE_OUT_CREATION_TEMPLATE = """
     *{} = {};
 """
@@ -69,6 +76,19 @@ MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
         CreateKernelDistOutput(spmd_info.second[{idx}]);
     phi::distributed::DistTensor* dist_out_{idx} = shared_dist_out_{idx}.get();
     phi::DenseTensor* dense_out_{idx} = dist_out_{idx}->unsafe_mutable_value();
+"""
+
+# 4. PrepareData (DataTransform & Prepare Dist and Dense Input)
+SINGLE_PREPARE_DATA_TEMPLATE = """
+    auto dist_input_{arg} = PrepareDataForDistTensor({arg}, GetKernelInputArgDef(kernel.InputAt({idx}), kernel_backend), {flag}, kernel_result.is_stride_kernel);
+    auto input_{arg} = &dist_input_{}->value();
+"""
+MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
+    auto dist_out_{i} = SetKernelDistOutput({name});
+    std::vector<phi::DenseTensor*> dense_out_{i}(dist_out_{i}.size());
+    for (size_t i = 0; i < dist_out_{i}.size(); i++) {{
+        dense_out_{i}[i] = const_cast<phi::DenseTensor*>(&dist_out_{i}[i]->value());
+    }}
 """
 
 # 9. Reshard Output
@@ -125,6 +145,12 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                                 name=self.outputs['names'][i], idx=i
                             )
                         )
+                elif out_type == 'std::vector<Tensor>':
+                    output_creation_code += (
+                        MULTI_VECTOR_OUT_CREATION_TEMPLATE.format(
+                            i=i, name=self.outputs['names'][i]
+                        )
+                    )
                 else:
                     self.vector_output_size_assertion_check()
         else:

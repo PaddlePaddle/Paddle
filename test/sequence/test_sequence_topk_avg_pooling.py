@@ -17,7 +17,7 @@ import unittest
 from copy import deepcopy
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 
 class TestSequenceTopkAvgPoolingOp(OpTest):
