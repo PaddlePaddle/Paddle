@@ -724,7 +724,7 @@ void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
   PADDLE_ENFORCE(
       attributes.find("activation_grad") != attributes.end(),
       phi::errors::NotFound("'activation_grad' Attribute is expected for"
-               "FusedGemmEpilogueGradOp"));
+                            "FusedGemmEpilogueGradOp"));
   std::string activation_grad =
       attributes.at("activation_grad").dyn_cast<pir::StrAttribute>().AsString();
 
