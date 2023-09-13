@@ -18,7 +18,7 @@ import warnings
 from contextlib import contextmanager
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 from scipy.special import erf, expit
 
 import paddle
