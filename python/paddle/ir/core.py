@@ -302,3 +302,51 @@ def create_parameter(
         set_parameter(init_result, op_result_name)
 
     return param
+
+
+def _convert_into_opresult(tensor):
+    """
+    Convert Tensor into OpResult.
+    """
+    from paddle import framework
+    from paddle.base import core
+    from paddle.base.dygraph.base import NON_PERSISTABLE_VAR_NAME_SUFFIX
+
+    if isinstance(tensor, core.eager.Tensor):
+        # Check whether has been created before.
+        new_var = tensor.block._find_var_recursive(tensor.name)
+        if new_var is not None:
+            assert isinstance(new_var, framework.Variable)
+        # Convert EagerParamBase into Parameter with same attributes in dy2stat.
+        elif isinstance(tensor, framework.EagerParamBase):
+            new_var = create_parameter(
+                dtype=tensor.dtype, shape=tensor.shape, type=tensor.type
+            )
+        else:
+            # Note(Aurelius84): Convert Tensor in self._buffers into Variable with
+            # same attributes and set persistable=True to allow saving this var.
+            # Because users can create a Tensor in `__init__`  like a
+            # `mask` Tensor or `hidden_0` in RNN layers, which is equivalent to a Parameter
+            # and necessary for inferring. It will be pruned if it's not necessary for inferring.
+
+            # But if its shape is empty while created from `create_variable()`, we consider this buffer
+            # non-persistable. See case of `dropout_state` in lstm api.
+            is_persistable = True
+            if tensor.name.endswith(NON_PERSISTABLE_VAR_NAME_SUFFIX):
+                is_persistable = False
+
+            new_var = tensor._to_static_var(
+                to_parameter=False, persistable=is_persistable
+            )
+        # add param into parameter recorder to collect all the params used in this program.
+        if new_var.persistable is True:
+            from paddle.jit.dy2static.program_translator import (
+                ProgramTranslator,
+            )
+
+            ProgramTranslator.get_instance()._params_recorder.add(
+                tensor.block.program, tensor
+            )
+        return new_var
+    else:
+        return tensor

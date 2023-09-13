@@ -106,14 +106,20 @@ def program_desc_tracing_guard(enable):
 @signature_safe_contextmanager
 def param_guard(parameters):
     # Note: parameters is a reference of self._parameters or self._buffers
+    if paddle.ir.core._use_new_ir_api():
+        _convert_into_static_var = paddle.ir.core._convert_into_opresult
+    else:
+        _convert_into_static_var = _convert_into_variable
     if in_to_static_mode() and not paddle.in_dynamic_mode() and parameters:
         try:
             origin_parameters = parameters.copy()
             for name, var_base in parameters.items():
                 if isinstance(var_base, list):
-                    new_var = [_convert_into_variable(var) for var in var_base]
+                    new_var = [
+                        _convert_into_static_var(var) for var in var_base
+                    ]
                 else:
-                    new_var = _convert_into_variable(var_base)
+                    new_var = _convert_into_static_var(var_base)
                 parameters[name] = new_var
             yield
         finally:
