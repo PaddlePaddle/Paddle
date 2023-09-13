@@ -76,9 +76,6 @@ class TestActivation(OpTest):
         self.convert_input_output()
 
     def test_check_output(self):
-        self.check_output()
-
-    def test_check_output_new_ir(self):
         self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
@@ -205,9 +202,6 @@ class TestExpm1(TestActivation):
         self.check_grad(['X'], 'Out')
 
     def test_check_output(self):
-        self.check_output()
-
-    def test_check_output_new_ir(self):
         self.check_output(check_new_ir=True)
 
 
