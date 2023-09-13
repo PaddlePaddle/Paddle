@@ -721,6 +721,7 @@ def gen_build_func_str(
                     data_name = "AsString"
                 get_attributes_str += (
                     GET_ARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE.format(
+                        op_name=op_class_name,
                         attr_type=attr_type,
                         attribute_name=op_attribute_name_list[idx],
                         inner_type=inner_type,
@@ -733,6 +734,7 @@ def gen_build_func_str(
             ):
                 get_attributes_str += (
                     GET_INTARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE.format(
+                        op_name=op_class_name,
                         attr_type=attr_type,
                         attribute_name=op_attribute_name_list[idx],
                     )
@@ -743,6 +745,7 @@ def gen_build_func_str(
             ):
                 get_attributes_str += (
                     GET_SCALAR_ATTRIBUTE_FROM_MAP_TEMPLATE.format(
+                        op_name=op_class_name,
                         attr_type=attr_type,
                         attribute_name=op_attribute_name_list[idx],
                     )
@@ -750,6 +753,7 @@ def gen_build_func_str(
             elif "pir::StrAttribute" in op_attribute_type_list[idx]:
                 get_attributes_str += (
                     GET_STR_ATTRIBUTES_FROM_MAP_TEMPLATE.format(
+                        op_name=op_class_name,
                         attr_type=attr_type,
                         attribute_name=op_attribute_name_list[idx],
                         attr_ir_type=op_attribute_type_list[idx],
@@ -757,6 +761,7 @@ def gen_build_func_str(
                 )
             else:
                 get_attributes_str += GET_ATTRIBUTES_FROM_MAP_TEMPLATE.format(
+                    op_name=op_class_name,
                     attr_type=attr_type,
                     attribute_name=op_attribute_name_list[idx],
                     attr_ir_type=op_attribute_type_list[idx],
