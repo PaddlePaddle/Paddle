@@ -2010,12 +2010,9 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     }
   } else if (platform::is_custom_place(place_)) {
     auto custom_place = place_;
-    auto paddleplace = static_cast<PaddlePlace>(
-        static_cast<size_t>(PaddlePlace::kCUSTOM) +
-        phi::CustomRegisteredDeviceMap::Instance()
-            .GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
-    res->SetPlace(
-        paddleplace, custom_place.GetDeviceId(), place_.GetDeviceType());
+    res->SetPlace(PaddlePlace::kCUSTOM,
+                  custom_place.GetDeviceId(),
+                  custom_place.GetDeviceType());
   } else {
     auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
@@ -2064,12 +2061,9 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
     }
   } else if (platform::is_custom_place(place_)) {
     auto custom_place = place_;
-    auto paddleplace = static_cast<PaddlePlace>(
-        static_cast<size_t>(PaddlePlace::kCUSTOM) +
-        phi::CustomRegisteredDeviceMap::Instance()
-            .GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
-    res->SetPlace(
-        paddleplace, custom_place.GetDeviceId(), place_.GetDeviceType());
+    res->SetPlace(PaddlePlace::kCUSTOM,
+                  custom_place.GetDeviceId(),
+                  custom_place.GetDeviceType());
   } else {
     auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
