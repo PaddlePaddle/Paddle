@@ -1234,6 +1234,52 @@ void BuildId2VarName(const std::map<std::string, int>& var_name_2_id,
   }
 }
 
+const paddle::framework::Variable* GetVariableByName(
+    const std::string& var_name,
+    const std::unordered_map<const paddle::framework::Variable*, std::string>&
+        variable_2_var_name) {
+  for (auto kv : variable_2_var_name) {
+    if (kv.second == var_name) {
+      return kv.first;
+    }
+  }
+  return nullptr;
+}
+
+void PrintValuesAndVariables (
+    const pir::Block& block,
+    const std::unordered_map<pir::Value, std::string>* value_2_var_name,
+    const std::unordered_map<const paddle::framework::Variable*, std::string>*
+        variable_2_var_name) {
+  for (const auto& op : block) {
+    VLOG(6) << "====== Variables and values in " << op->name() << " =======";
+    if (!op->operands().empty()) {
+      VLOG(6) << "{Inputs: ";
+      for (auto& input : op->operands()) {
+        ::pir::Value in_value = input.source();
+        auto& var_name = (*value_2_var_name).at(in_value);
+        const paddle::framework::Variable* in_variable =
+            GetVariableByName(var_name, *variable_2_var_name);
+        VLOG(6) << "Varname: " << var_name << ", Value at "
+            << (&in_value) << ", Variable at " << in_variable;
+      }
+      VLOG(6) << "}";
+    }
+    if (!op->results().empty()) {
+      VLOG(6) << "{Outputs: ";
+      for (auto& out_value : op->results()) {
+        auto& var_name = (*value_2_var_name).at(out_value);
+        const paddle::framework::Variable* out_variable =
+            GetVariableByName(var_name, *variable_2_var_name);
+        VLOG(6) << "Varname: " << var_name << ", Value at "
+            << (&out_value) << ", Variable at " << out_variable;
+      }
+      VLOG(6) << "}";
+    }
+    VLOG(6) << "================";
+  }
+}
+
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle

@@ -927,6 +927,13 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                       &var_name_2_id_,
                       &variable_list_);
 
+    if (VLOG_IS_ON(6)) {
+      std::stringstream ss1;
+      ir_program_->Print(ss1);
+      interpreter::PrintValuesAndVariables(
+          *ir_program_->block(), &value_2_var_name_, &variable_2_var_name_);
+    }
+
     interpreter::BuildId2VarName(var_name_2_id_, &id_2_var_name_);
 
     VLOG(4) << "Done BuildScope";
