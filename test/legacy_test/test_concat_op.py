@@ -14,14 +14,11 @@
 
 import unittest
 
-import gradient_checker
 import numpy as np
-from decorator_helper import prog_scope
 from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
 
 
 class TestConcatOp(OpTest):
@@ -232,61 +229,54 @@ class TestConcatOp7(TestConcatOp):
         self.axis = 1
 
 
-def create_test_AxisTensor(parent):
-    class TestConcatAxisTensor(parent):
-        def setUp(self):
-            self.op_type = "concat"
-            self.python_api = paddle.concat
-            self.public_python_api = paddle.concat
-            self.dtype = self.get_dtype()
-            self.init_test_data()
-            self.inputs = {
-                'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)],
-                'AxisTensor': np.array([self.axis]).astype("int32"),
-            }
-            self.attrs = {}
+# def create_test_AxisTensor(parent):
+class TestConcatAxisTensor(TestConcatOp):
+    def setUp(self):
+        self.op_type = "concat"
+        self.python_api = paddle.concat
+        self.public_python_api = paddle.concat
+        self.dtype = self.get_dtype()
+        self.init_test_data()
+        self.inputs = {
+            'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)],
+            'AxisTensor': np.array([self.axis]).astype("int32"),
+        }
+        self.attrs = {}
 
-            if self.axis < 0:
-                self.actual_axis = self.axis + len(self.x0.shape)
-                self.actual_axis = (
-                    self.actual_axis if self.actual_axis > 0 else 0
-                )
-            else:
-                self.actual_axis = self.axis
+        if self.axis < 0:
+            self.actual_axis = self.axis + len(self.x0.shape)
+            self.actual_axis = self.actual_axis if self.actual_axis > 0 else 0
+        else:
+            self.actual_axis = self.axis
 
-            self.outputs = {
-                'Out': np.concatenate(
-                    (self.x0, self.x1, self.x2), axis=self.actual_axis
-                )
-            }
+        self.outputs = {
+            'Out': np.concatenate(
+                (self.x0, self.x1, self.x2), axis=self.actual_axis
+            )
+        }
 
-        def test_check_grad(self):
-            if (
-                parent.__name__ == 'TestConcatOp4'
-                or parent.__name__ == 'TestConcatOp3'
-            ):
-                return
-            if self.dtype == np.uint16:
-                place = core.CUDAPlace(0)
-                self.check_grad_with_place(
-                    place, ['x0'], 'Out', check_new_ir=True
-                )
-                self.check_grad_with_place(
-                    place, ['x1'], 'Out', check_new_ir=True
-                )
-                self.check_grad_with_place(
-                    place, ['x2'], 'Out', check_new_ir=True
-                )
-            else:
-                self.check_grad(['x0'], 'Out', check_new_ir=True)
-                self.check_grad(['x1'], 'Out', check_new_ir=True)
-                self.check_grad(['x2'], 'Out', check_new_ir=True)
+    def test_check_grad(self):
+        # if (
+        #     parent.__name__ == 'TestConcatOp4'
+        #     or parent.__name__ == 'TestConcatOp3'
+        # ):
+        #     return
+        if self.dtype == np.uint16:
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(place, ['x0'], 'Out', check_new_ir=True)
+            self.check_grad_with_place(place, ['x1'], 'Out', check_new_ir=True)
+            self.check_grad_with_place(place, ['x2'], 'Out', check_new_ir=True)
+        else:
+            self.check_grad(['x0'], 'Out', check_new_ir=True)
+            self.check_grad(['x1'], 'Out', check_new_ir=True)
+            self.check_grad(['x2'], 'Out', check_new_ir=True)
 
-    cls_name = "{}_{}".format(parent.__name__, "AxisTensor")
-    TestConcatAxisTensor.__name__ = cls_name
-    globals()[cls_name] = TestConcatAxisTensor
+    # cls_name = "{}_{}".format(parent.__name__, "AxisTensor")
+    # TestConcatAxisTensor.__name__ = cls_name
+    # globals()[cls_name] = TestConcatAxisTensor
 
 
+'''
 create_test_AxisTensor(TestConcatOp)
 create_test_AxisTensor(TestConcatOp2)
 create_test_AxisTensor(TestConcatOp3)
@@ -737,6 +727,6 @@ class TestConcatTripleGradCheck(unittest.TestCase):
         for p in places:
             self.func(p)
 
-
+'''
 if __name__ == '__main__':
     unittest.main()

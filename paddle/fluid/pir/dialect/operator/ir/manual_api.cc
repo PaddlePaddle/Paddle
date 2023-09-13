@@ -27,27 +27,6 @@ pir::OpResult builtin_combine(std::vector<pir::OpResult> x) {
   return combine_op.out();
 }
 
-pir::OpResult split_grad(std::vector<pir::OpResult> out_grads,
-                         pir::OpResult axis) {
-  auto combine_op =
-      APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(out_grads);
-  paddle::dialect::SplitGradOp split_grad_op =
-      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::SplitGradOp>(
-          combine_op.out(), axis);
-
-  return split_grad_op.x_grad();
-}
-
-pir::OpResult split_grad(std::vector<pir::OpResult> out_grads, int axis) {
-  auto combine_op =
-      APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(out_grads);
-  paddle::dialect::SplitGradOp split_grad_op =
-      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::SplitGradOp>(
-          combine_op.out(), axis);
-
-  return split_grad_op.x_grad();
-}
-
 pir::OpResult get_parameter(const std::string& name,
                             phi::DataType dtype,
                             const std::vector<int64_t>& shape) {
