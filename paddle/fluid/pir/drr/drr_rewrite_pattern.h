@@ -124,6 +124,16 @@ class DrrRewritePattern : public pir::RewritePattern {
         source_pattern_match_ctx->BindIrValue(
             drr_input_tensors[i]->name(),
             std::make_shared<IrValue>(ir_input_value));
+        // Input tensor is optional(or none)
+        if (!ir_input_value) {
+          if (drr_brother_ops.size() != 1) {  // Only used by current op
+            matched = false;
+            VLOG(6) << " --- match false: drr_brother_ops is "
+                    << drr_brother_ops.size()
+                    << ", but ir_input_value is null ";
+          }
+          continue;
+        }
         if (drr_brother_ops.size() != ir_input_value.use_count()) {
           matched = false;
           VLOG(6) << " --- match false: " << drr_brother_ops.size()
@@ -538,20 +548,25 @@ class DrrRewritePattern : public pir::RewritePattern {
   void PatternGraphRewrite(const MatchContextImpl& source_pattern_match_ctx,
                            pir::PatternRewriter& rewriter) const {  // NOLINT
     VLOG(6) << "Create Operations in result_pattern_graph";
-    MatchContextImpl res_match_ctx = CreateOperations(
-        *result_pattern_graph_, source_pattern_match_ctx, rewriter);
+    MatchContextImpl res_match_ctx = CreateOperations(*source_pattern_graph_,
+                                                      *result_pattern_graph_,
+                                                      source_pattern_match_ctx,
+                                                      rewriter);
     VLOG(6) << "Process Assign Tensor";
     RebindIrTensorForAssignTensor(*result_pattern_graph_, &res_match_ctx);
     VLOG(6) << "Replace Output Values in source_pattern_graph by Output Values "
                "in result_pattern_graph";
     ReplaceOutputTensor(source_pattern_match_ctx, res_match_ctx, rewriter);
     VLOG(6) << "Delete Operations in source_pattern_graph";
-    DeleteSourcePatternOp(
-        *source_pattern_graph_, source_pattern_match_ctx, rewriter);
+    DeleteSourcePatternOp(*source_pattern_graph_,
+                          *result_pattern_graph_,
+                          source_pattern_match_ctx,
+                          rewriter);
   }
 
  private:
   MatchContextImpl CreateOperations(
+      const SourcePatternGraph& source_pattern_graph,
       const ResultPatternGraph& result_pattern_graph,
       const MatchContextImpl& src_match_ctx,
       pir::PatternRewriter& rewriter) const {  // NOLINT
@@ -567,13 +582,21 @@ class DrrRewritePattern : public pir::RewritePattern {
             std::make_shared<IrValue>(src_match_ctx.GetIrValue(in_tensor)));
       }
     }
-
+    // set insert point
+    for (const auto& output : result_pattern_graph.output_tensors()) {
+      if (source_pattern_graph.id2owend_tensor().count(output)) {
+        auto ir_value = src_match_ctx.GetIrValue(output);
+        if (ir_value.get()) {
+          rewriter.SetInsertionPointAfter(ir_value.get().GetDefiningOp());
+          break;
+        }
+      }
+    }
     // topo order visit result_pattern_graph
     GraphTopo graph_topo_visit(&result_pattern_graph);
-    graph_topo_visit.WalkGraphNodesTopoOrder(
-        [&src_match_ctx, &rewriter, &res_match_ctx](const OpCall& op_call) {
-          CreateOperation(op_call, src_match_ctx, rewriter, &res_match_ctx);
-        });
+    graph_topo_visit.WalkGraphNodesTopoOrder([&](const OpCall& op_call) {
+      CreateOperation(op_call, src_match_ctx, rewriter, &res_match_ctx);
+    });
 
     return res_match_ctx;
   }
@@ -595,20 +618,21 @@ class DrrRewritePattern : public pir::RewritePattern {
   void ReplaceOutputTensor(const MatchContextImpl& src_match_ctx,
                            const MatchContextImpl& res_match_ctx,
                            pir::PatternRewriter& rewriter) const {  // NOLINT
-    for (const auto& output_name : source_pattern_graph_->output_tensors()) {
-      if (result_pattern_graph_->output_tensors().count(output_name)) {
+    for (const auto& output_name : result_pattern_graph_->output_tensors()) {
+      if (source_pattern_graph_->output_tensors().count(output_name)) {
         const auto& src_ir_tensor = src_match_ctx.GetIrValue(output_name);
         const auto& res_ir_tensor = res_match_ctx.GetIrValue(output_name);
         rewriter.ReplaceAllUsesWith(src_ir_tensor.get(), res_ir_tensor.get());
       } else {
         LOG(WARNING) << "The output tensor (" << output_name
-                     << ") in the source_pattern_graph is not the output "
-                        "tensor in result_pattern_graph.";
+                     << ") in the result_pattern_graph is not the tensor"
+                        " in source_pattern_graph.";
       }
     }
   }
 
   void DeleteSourcePatternOp(const SourcePatternGraph& source_pattern_graph,
+                             const ResultPatternGraph& result_pattern_graph,
                              const MatchContextImpl& src_match_ctx,
                              pir::PatternRewriter& rewriter) const {  // NOLINT
     std::vector<const OpCall*> topo_order_ops;
