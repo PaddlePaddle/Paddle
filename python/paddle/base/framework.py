@@ -236,7 +236,7 @@ def in_pir_mode():
             True
 
     """
-    return pir.core._use_new_ir_api() and not in_dygraph_mode()
+    return pir.core._use_pir_api() and not in_dygraph_mode()
 
 
 def in_dynamic_or_pir_mode():
