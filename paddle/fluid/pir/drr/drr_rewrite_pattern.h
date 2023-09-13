@@ -20,16 +20,16 @@
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/fluid/ir/drr/api/drr_pattern_context.h"
-#include "paddle/fluid/ir/drr/api/match_context.h"
-#include "paddle/fluid/ir/drr/ir_operation.h"
-#include "paddle/fluid/ir/drr/ir_operation_creator.h"
-#include "paddle/fluid/ir/drr/match_context_impl.h"
-#include "paddle/fluid/ir/drr/pattern_graph.h"
-#include "paddle/ir/core/enforce.h"
-#include "paddle/ir/core/operation.h"
-#include "paddle/ir/core/type_name.h"
-#include "paddle/ir/pattern_rewrite/pattern_match.h"
+#include "paddle/fluid/pir/drr/api/drr_pattern_context.h"
+#include "paddle/fluid/pir/drr/api/match_context.h"
+#include "paddle/fluid/pir/drr/ir_operation.h"
+#include "paddle/fluid/pir/drr/ir_operation_creator.h"
+#include "paddle/fluid/pir/drr/match_context_impl.h"
+#include "paddle/fluid/pir/drr/pattern_graph.h"
+#include "paddle/pir/core/enforce.h"
+#include "paddle/pir/core/operation.h"
+#include "paddle/pir/core/type_name.h"
+#include "paddle/pir/pattern_rewrite/pattern_match.h"
 
 namespace ir {
 namespace drr {
@@ -386,7 +386,7 @@ class DrrRewritePattern : public ir::RewritePattern {
 
     dfs(dfs, anchor, op);
 
-    // TODO: source_pattern 的outputop是否都找到了对应的ir_op
+    // TODO(gst): source_pattern 的outputop是否都找到了对应的ir_op
     if (output_op_bind_map.size() != drr_output_op.size()) {
       VLOG(6) << "未匹配到source pattern中所有的output op";
       return nullptr;
