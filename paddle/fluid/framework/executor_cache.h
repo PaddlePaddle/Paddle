@@ -255,7 +255,8 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     const paddle::framework::BlockDesc* backward_global_block,
     const std::vector<std::string> output_names,
     const std::vector<paddle::Tensor>& x,
-    const std::vector<paddle::Tensor>& params);
+    const std::vector<paddle::Tensor>& params,
+    const phi::Place& place);
 
 std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
     const paddle::framework::BlockDesc* backward_global_block,
