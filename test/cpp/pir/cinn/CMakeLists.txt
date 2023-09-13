@@ -28,11 +28,10 @@ if(WITH_TESTING AND WITH_CINN)
     SRCS
     ir_op_fusion_test.cc
     DEPS
-    group_with_group_merge_pass
     op_with_group_merge_pass
-    pd_dialect
-    cinn_dialect
-    ir
+    pd_op_dialect
+    cinn_op_dialect
+    pir
     gtest
     glog)
 endif()

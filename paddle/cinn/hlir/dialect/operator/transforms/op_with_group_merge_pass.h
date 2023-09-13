@@ -1,4 +1,4 @@
-// Copyright (c) 2023 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,35 +14,20 @@
 
 #pragma once
 
-#include <memory>
-
-#include "paddle/fluid/ir/dialect/pd_type.h"
-#include "paddle/ir/core/operation.h"
-#include "paddle/ir/core/value.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_util.h"
+#include "paddle/pir/core/program.h"
 
 namespace cinn {
 namespace dialect {
 namespace ir {
 
-class OpNode;
+using GroupPtr = std::shared_ptr<Group>;
+using GroupList = std::vector<GroupPtr>;
 
-class TensorNode final {
- public:
-  TensorNode(::ir::Value node_data) : node_data_(node_data) {}
+GroupList OpFusionPassInternal(const ::pir::Program& program);
 
-  // Get the shape of tensor.
-  const phi::DDim& shape() const {
-    return node_data_.dyn_cast<paddle::dialect::DenseTensorType>().dims();
-  }
-
-  // Input data has no producer.
-  bool HasProducer() const { return node_data_.begin() != node_data_.end(); }
-
-  OpNode producer() const { return OpNode(node_data_.GetDefiningOp()); }
-
- private:
-  ::ir::Value node_data_;
-};
+GroupList GeneralFusionMergePassInternal(const ::pir::Program* graph,
+                                         const GroupList& group_list);
 
 }  // namespace ir
 }  // namespace dialect

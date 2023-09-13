@@ -16,19 +16,18 @@
 #include <gtest/gtest.h>
 #include <sstream>
 
-#include "paddle/cinn/hlir/dialect/cinn_dialect/ir/cinn_dialect.h"
-#include "paddle/cinn/hlir/dialect/cinn_dialect/ir/cinn_op.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"
-#include "paddle/ir/core/ir_context.h"
-#include "paddle/ir/core/program.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_pass.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/core/program.h"
 
-#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/op_with_group_merge_pass.h"
-
-std::vector<ir::OpResult> BuildInput(
-    ::ir::Builder* builder,
+std::vector<pir::OpResult> BuildInput(
+    ::pir::Builder* builder,
     const std::vector<std::vector<int64_t>>& vec_shapes) {
-  std::vector<ir::OpResult> vec_res;
+  std::vector<pir::OpResult> vec_res;
   for (size_t i = 0; i < vec_shapes.size(); ++i) {
     auto op = builder->Build<paddle::dialect::FullOp>(
         vec_shapes[i], 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
@@ -40,15 +39,15 @@ std::vector<ir::OpResult> BuildInput(
 }
 
 TEST(IROpFusionPass, demo) {
-  ::ir::IrContext* ctx = ::ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ::ir::Program program_base(ctx);
-  ::ir::Builder builder_base = ::ir::Builder(ctx, program_base.block());
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ::pir::Program program_base(ctx);
+  ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
 
   auto inputs = BuildInput(&builder_base, {{10, 10}, {10, 10}});
 
-  ::ir::Program program(ctx);
-  ::ir::Builder builder = ::ir::Builder(ctx, program.block());
+  ::pir::Program program(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program.block());
 
   auto add = builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]);
   builder.Build<paddle::dialect::ReluOp>(add.result(0));
@@ -59,17 +58,17 @@ TEST(IROpFusionPass, demo) {
 }
 
 TEST(IROpFusionPass, ElementWise_Fusion_0) {
-  ::ir::IrContext* ctx = ::ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ctx->GetOrRegisterDialect<cinn::dialect::CinnDialect>();
-  ::ir::Program program_base(ctx);
-  ::ir::Builder builder_base = ::ir::Builder(ctx, program_base.block());
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  ::pir::Program program_base(ctx);
+  ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
 
   int h = 32, w = 32;
   auto inputs = BuildInput(&builder_base, {{h, w}, {h, w}, {h, w}, {h, w}});
 
-  ::ir::Program program(ctx);
-  ::ir::Builder builder = ::ir::Builder(ctx, program.block());
+  ::pir::Program program(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program.block());
 
   auto e =
       builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
@@ -86,17 +85,17 @@ TEST(IROpFusionPass, ElementWise_Fusion_0) {
 
 // Real test 0
 TEST(IROpFusionPass, Broadcast_Test_0) {
-  ::ir::IrContext* ctx = ::ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ctx->GetOrRegisterDialect<cinn::dialect::CinnDialect>();
-  ::ir::Program program_base(ctx);
-  ::ir::Builder builder_base = ::ir::Builder(ctx, program_base.block());
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  ::pir::Program program_base(ctx);
+  ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
 
   int h = 32, w = 32;
   auto inputs = BuildInput(&builder_base, {{w}, {w}, {h, w}, {h, w}});
 
-  ::ir::Program program(ctx);
-  ::ir::Builder builder = ::ir::Builder(ctx, program.block());
+  ::pir::Program program(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program.block());
 
   auto e =
       builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
@@ -118,17 +117,17 @@ TEST(IROpFusionPass, Broadcast_Test_0) {
 
 // Real test 1
 TEST(IROpFusionPass, Broadcast_Test_1) {
-  ::ir::IrContext* ctx = ::ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ctx->GetOrRegisterDialect<cinn::dialect::CinnDialect>();
-  ::ir::Program program_base(ctx);
-  ::ir::Builder builder_base = ::ir::Builder(ctx, program_base.block());
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  ::pir::Program program_base(ctx);
+  ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
 
   int h = 32, w = 32;
   auto inputs = BuildInput(&builder_base, {{w}, {w}, {w}, {h, w}});
 
-  ::ir::Program program(ctx);
-  ::ir::Builder builder = ::ir::Builder(ctx, program.block());
+  ::pir::Program program(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program.block());
 
   auto e =
       builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
@@ -149,17 +148,17 @@ TEST(IROpFusionPass, Broadcast_Test_1) {
 
 // Real test 2
 TEST(IROpFusionPass, Broadcast_Test_2) {
-  ::ir::IrContext* ctx = ::ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ctx->GetOrRegisterDialect<cinn::dialect::CinnDialect>();
-  ::ir::Program program_base(ctx);
-  ::ir::Builder builder_base = ::ir::Builder(ctx, program_base.block());
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  ::pir::Program program_base(ctx);
+  ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
 
   int h = 32, w = 32;
   auto inputs = BuildInput(&builder_base, {{w}, {w}, {w}, {h, w}, {h, w}});
 
-  ::ir::Program program(ctx);
-  ::ir::Builder builder = ::ir::Builder(ctx, program.block());
+  ::pir::Program program(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program.block());
 
   auto f =
       builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
@@ -181,17 +180,17 @@ TEST(IROpFusionPass, Broadcast_Test_2) {
 
 // Real reduce 0
 TEST(IROpFusionPass, reduce_test_0) {
-  ::ir::IrContext* ctx = ::ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ctx->GetOrRegisterDialect<cinn::dialect::CinnDialect>();
-  ::ir::Program program_base(ctx);
-  ::ir::Builder builder_base = ::ir::Builder(ctx, program_base.block());
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  ::pir::Program program_base(ctx);
+  ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
 
   int h = 32, w = 32;
   auto inputs = BuildInput(&builder_base, {{h, w}, {h, w}});
 
-  ::ir::Program program(ctx);
-  ::ir::Builder builder = ::ir::Builder(ctx, program.block());
+  ::pir::Program program(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program.block());
 
   std::vector<int64_t> axes{0};
   auto c =
@@ -210,17 +209,17 @@ TEST(IROpFusionPass, reduce_test_0) {
 
 // Real reduce 1
 TEST(IROpFusionPass, reduce_test_1) {
-  ::ir::IrContext* ctx = ::ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ctx->GetOrRegisterDialect<cinn::dialect::CinnDialect>();
-  ::ir::Program program_base(ctx);
-  ::ir::Builder builder_base = ::ir::Builder(ctx, program_base.block());
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  ::pir::Program program_base(ctx);
+  ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
 
   int h = 32, w = 32;
   auto inputs = BuildInput(&builder_base, {{h, w}, {h, w}});
 
-  ::ir::Program program(ctx);
-  ::ir::Builder builder = ::ir::Builder(ctx, program.block());
+  ::pir::Program program(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program.block());
 
   std::vector<int64_t> axes{0};
   std::vector<int64_t> axes1{1};
@@ -239,17 +238,17 @@ TEST(IROpFusionPass, reduce_test_1) {
 
 // Real reduce 2
 TEST(IROpFusionPass, reduce_test_2) {
-  ::ir::IrContext* ctx = ::ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ctx->GetOrRegisterDialect<cinn::dialect::CinnDialect>();
-  ::ir::Program program_base(ctx);
-  ::ir::Builder builder_base = ::ir::Builder(ctx, program_base.block());
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  ::pir::Program program_base(ctx);
+  ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
 
   int h = 32, w = 32;
   auto inputs = BuildInput(&builder_base, {{h, w}, {h, w}, {w}});
 
-  ::ir::Program program(ctx);
-  ::ir::Builder builder = ::ir::Builder(ctx, program.block());
+  ::pir::Program program(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program.block());
 
   std::vector<int64_t> axes{0};
   std::vector<int64_t> axes1{1};
@@ -270,17 +269,17 @@ TEST(IROpFusionPass, reduce_test_2) {
 
 // Real reduce 3
 TEST(IROpFusionPass, reduce_test_3) {
-  ::ir::IrContext* ctx = ::ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ctx->GetOrRegisterDialect<cinn::dialect::CinnDialect>();
-  ::ir::Program program_base(ctx);
-  ::ir::Builder builder_base = ::ir::Builder(ctx, program_base.block());
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  ::pir::Program program_base(ctx);
+  ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
 
   int h = 32, w = 32;
   auto inputs = BuildInput(&builder_base, {{h, w}, {h, w}, {w}, {h, w}});
 
-  ::ir::Program program(ctx);
-  ::ir::Builder builder = ::ir::Builder(ctx, program.block());
+  ::pir::Program program(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program.block());
 
   std::vector<int64_t> axes{0};
   std::vector<int64_t> axes1{1};
@@ -305,17 +304,17 @@ TEST(IROpFusionPass, reduce_test_3) {
 
 // Real reduce 4
 TEST(IROpFusionPass, reduce_test_4) {
-  ::ir::IrContext* ctx = ::ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ctx->GetOrRegisterDialect<cinn::dialect::CinnDialect>();
-  ::ir::Program program_base(ctx);
-  ::ir::Builder builder_base = ::ir::Builder(ctx, program_base.block());
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  ::pir::Program program_base(ctx);
+  ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
 
   int h = 32, w = 32;
   auto inputs = BuildInput(&builder_base, {{h, w}, {h, w}, {w}, {h, w}});
 
-  ::ir::Program program(ctx);
-  ::ir::Builder builder = ::ir::Builder(ctx, program.block());
+  ::pir::Program program(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program.block());
 
   std::vector<int64_t> axes{0};
   std::vector<int64_t> axes1{1};
@@ -343,17 +342,17 @@ TEST(IROpFusionPass, reduce_test_4) {
 
 // Real reduce 5
 TEST(IROpFusionPass, reduce_test_5) {
-  ::ir::IrContext* ctx = ::ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ctx->GetOrRegisterDialect<cinn::dialect::CinnDialect>();
-  ::ir::Program program_base(ctx);
-  ::ir::Builder builder_base = ::ir::Builder(ctx, program_base.block());
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  ::pir::Program program_base(ctx);
+  ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
 
   int h = 32, w = 32;
   auto inputs = BuildInput(&builder_base, {{h, w}, {h, w}});
 
-  ::ir::Program program(ctx);
-  ::ir::Builder builder = ::ir::Builder(ctx, program.block());
+  ::pir::Program program(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program.block());
 
   std::vector<int64_t> axes{1};
 
@@ -372,16 +371,16 @@ TEST(IROpFusionPass, reduce_test_5) {
 }
 
 TEST(IROpFusionPass, layer_norm) {
-  ::ir::IrContext* ctx = ::ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ctx->GetOrRegisterDialect<cinn::dialect::CinnDialect>();
-  ::ir::Program program_base(ctx);
-  ::ir::Builder builder_base = ::ir::Builder(ctx, program_base.block());
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  ::pir::Program program_base(ctx);
+  ::pir::Builder builder_base = ::pir::Builder(ctx, program_base.block());
 
   auto inputs = BuildInput(&builder_base, {{128, 128, 768}, {768}, {768}});
 
-  ::ir::Program program(ctx);
-  ::ir::Builder builder = ::ir::Builder(ctx, program.block());
+  ::pir::Program program(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program.block());
 
   std::vector<int64_t> axes{-1};
 

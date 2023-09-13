@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/op_group.h"
-#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/op_with_group_merge_util.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/op_group.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_util.h"
 
 namespace cinn {
 namespace dialect {
@@ -60,7 +60,7 @@ static bool IsSameSize(const OpGroupPtr& src, const OpGroupPtr& dst) {
 
 static std::unordered_set<cinn::dialect::ir::OpNode> GetInputOps(
     const OpGroupPtr& op_group) {
-  std::unordered_set<const ::ir::Operation*> ops_set;
+  std::unordered_set<const ::pir::Operation*> ops_set;
   op_group.WalkOpNodes([&ops_set](const cinn::dialect::ir::OpNode& op_node) {
     ops_set.insert(op_node.Op());
   });
@@ -83,7 +83,7 @@ static std::unordered_set<cinn::dialect::ir::OpNode> GetInputOps(
 
 static std::unordered_set<cinn::dialect::ir::OpNode> GetOutputOps(
     const OpGroupPtr& op_group) {
-  std::unordered_set<const ::ir::Operation*> ops_set;
+  std::unordered_set<const ::pir::Operation*> ops_set;
   op_group.WalkOpNodes([&ops_set](const cinn::dialect::ir::OpNode& op_node) {
     ops_set.insert(op_node.Op());
   });

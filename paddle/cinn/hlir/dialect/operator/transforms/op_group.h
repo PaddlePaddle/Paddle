@@ -16,8 +16,8 @@
 
 #include <memory>
 
-#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/op_node.h"
-#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/op_with_group_merge_util.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/op_node.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_util.h"
 
 namespace cinn {
 namespace dialect {
@@ -154,7 +154,7 @@ class OpGroup {
   void WalkOpNodes(
       const std::function<void(const OpNode&)>& VisitOpNode) const {
     group_.lock()->WalkNodes(
-        [&](const ::ir::Operation* node) { VisitOpNode(OpNode(node)); });
+        [&](const ::pir::Operation* node) { VisitOpNode(OpNode(node)); });
   }
 
   ProducerOpGroupListView producers() const {

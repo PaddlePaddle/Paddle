@@ -19,31 +19,31 @@
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/op_with_group_merge_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_pass.h"
 
-#include "paddle/ir/core/builtin_attribute.h"
-#include "paddle/ir/core/operation.h"
-#include "paddle/ir/core/program.h"
-#include "paddle/ir/core/value.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/operation.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
 
 namespace cinn {
 namespace dialect {
 namespace ir {
 
 std::unordered_map<std::string, OpPatternKind> OpKindMap = {
-    {"pd.add", OpPatternKind::kElementWise},
-    {"pd.subtract", OpPatternKind::kElementWise},
-    {"pd.multiply", OpPatternKind::kElementWise},
-    {"pd.divide", OpPatternKind::kElementWise},
-    {"pd.sqrt", OpPatternKind::kElementWise},
-    {"pd.full", OpPatternKind::kElementWise},
-    {"pd.relu", OpPatternKind::kElementWise},
-    {"pd.exp", OpPatternKind::kElementWise},
-    {"pd.sum", OpPatternKind::kReduction},
-    {"cinn.reduce_sum", OpPatternKind::kReduction},
-    {"cinn.reduce_max", OpPatternKind::kReduction},
-    {"cinn.broadcast", OpPatternKind::kBroadcast},
+    {"pd_op.add", OpPatternKind::kElementWise},
+    {"pd_op.subtract", OpPatternKind::kElementWise},
+    {"pd_op.multiply", OpPatternKind::kElementWise},
+    {"pd_op.divide", OpPatternKind::kElementWise},
+    {"pd_op.sqrt", OpPatternKind::kElementWise},
+    {"pd_op.full", OpPatternKind::kElementWise},
+    {"pd_op.relu", OpPatternKind::kElementWise},
+    {"pd_op.exp", OpPatternKind::kElementWise},
+    {"pd_op.sum", OpPatternKind::kReduction},
+    {"cinn_op.reduce_sum", OpPatternKind::kReduction},
+    {"cinn_op.reduce_max", OpPatternKind::kReduction},
+    {"cinn_op.broadcast", OpPatternKind::kBroadcast},
 };
 
 OpPatternKind GetOpKind(const std::string& op_name) {
@@ -55,13 +55,13 @@ OpPatternKind GetOpKind(const std::string& op_name) {
   return found_it->second;
 }
 
-phi::DDim GetFirstInputShape(const ::ir::Operation* op) {
+phi::DDim GetFirstInputShape(const ::pir::Operation* op) {
   auto in = op->operand(0);
 
   return in.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
 }
 
-phi::DDim GetValueShape(const ::ir::Value value) {
+phi::DDim GetValueShape(const ::pir::Value value) {
   return value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
 }
 
@@ -85,7 +85,7 @@ bool WithoutLastDimInReduce(const std::vector<int64_t>& inshape,
   }
 }
 
-int GetSharedSize(const ::ir::Operation* node) {
+int GetSharedSize(const ::pir::Operation* node) {
   auto inshape = phi::vectorize<int64_t>(GetValueShape(node->result(0)));
 
   auto axes = GetVectorAttr(node, "axis");
@@ -135,7 +135,7 @@ int GetSharedSize(const ::ir::Operation* node) {
 }
 
 using ConditionFunction =
-    std::function<bool(const ::ir::Operation*, const GroupPtr&)>;
+    std::function<bool(const ::pir::Operation*, const GroupPtr&)>;
 
 // Op Fusion Pass which performs Ops fusion, Ops are fused
 // "vertically", meaning producing Ops are fused into their consumers
@@ -143,7 +143,7 @@ using ConditionFunction =
 // code generation.
 class OpFusionPassHelper {
  public:
-  explicit OpFusionPassHelper(const ::ir::Program& graph) {
+  explicit OpFusionPassHelper(const ::pir::Program& graph) {
     // init fusion relation
     InitFusionRelation();
     // filter node data, create group for each node
@@ -351,7 +351,7 @@ class OpFusionPassHelper {
           // must be horizontal, as Elementwise + Broadcast is left to fusion
           // merge pass.
           {kBroadcast,
-           [](const ::ir::Operation* producer,
+           [](const ::pir::Operation* producer,
               const GroupPtr& consumer) -> bool {
              // NOTE, producer and consumer NEVER be same size
              if (is_same_size(producer, consumer)) {
@@ -459,8 +459,8 @@ class OpFusionPassHelper {
     }
   }
 
-  bool CanFuse(const ::ir::Operation* producer,
-               const ::ir::Operation* consumer) {
+  bool CanFuse(const ::pir::Operation* producer,
+               const ::pir::Operation* consumer) {
     auto& relation = fusion_relation_map_[GetOpKind(producer->name())];
     // first step: check producer can be fused into consumer
     if (relation.op_kind.count(GetOpKind(consumer->name()))) {
@@ -475,13 +475,13 @@ class OpFusionPassHelper {
 
     return false;
   }
-  std::vector<::ir::Operation*> nodes_;
-  std::unordered_map<const ::ir::Operation*, GroupPtr> fusion_groups_;
-  std::unordered_set<const ::ir::Operation*> output_nodes_set_;
+  std::vector<::pir::Operation*> nodes_;
+  std::unordered_map<const ::pir::Operation*, GroupPtr> fusion_groups_;
+  std::unordered_set<const ::pir::Operation*> output_nodes_set_;
 
   std::vector<std::shared_ptr<Group>> groups_;
 
-  std::unordered_set<const ::ir::Operation*> local_ops_;
+  std::unordered_set<const ::pir::Operation*> local_ops_;
 
   struct FusionRelation {
     // producer -> consumer
@@ -492,7 +492,7 @@ class OpFusionPassHelper {
   std::unordered_map<OpPatternKind, FusionRelation> fusion_relation_map_;
 };
 
-GroupList OpFusionPassInternal(const ::ir::Program& program) {
+GroupList OpFusionPassInternal(const ::pir::Program& program) {
   VLOG(3) << "OpFusionPass...!";
   auto op_fusion_helper = OpFusionPassHelper(program);
   auto res = op_fusion_helper();

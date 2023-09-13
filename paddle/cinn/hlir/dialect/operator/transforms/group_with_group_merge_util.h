@@ -21,12 +21,12 @@
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
-#include "paddle/ir/core/operation.h"
-#include "paddle/ir/core/value.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/pir/core/operation.h"
+#include "paddle/pir/core/value.h"
 
-#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/op_with_group_merge_util.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_util.h"
 
 namespace cinn {
 namespace dialect {
@@ -38,7 +38,7 @@ const std::set<std::string> ConstantOps = {
 // limit the group args number to less equal 512, as args stack size is 4K.
 inline bool limit_args(const std::shared_ptr<ir::Group>& first,
                        const std::shared_ptr<ir::Group>& second) {
-  std::unordered_set<const ::ir::Operation*> args;
+  std::unordered_set<const ::pir::Operation*> args;
   for (auto& group : {first, second}) {
     for (auto node : group->input_nodes) {
       args.insert(node.first);
@@ -168,19 +168,19 @@ inline bool elementwise_fuse_reduce(const std::shared_ptr<ir::Group>& first,
   }
 
   // if reduce nodes not in consumers of first group
-  std::queue<::ir::Operation*> candidates;
-  std::unordered_set<::ir::Operation*> first_node_set = first->NodeSet();
-  std::unordered_set<::ir::Operation*> second_node_set = second->NodeSet();
+  std::queue<::pir::Operation*> candidates;
+  std::unordered_set<::pir::Operation*> first_node_set = first->NodeSet();
+  std::unordered_set<::pir::Operation*> second_node_set = second->NodeSet();
   for (const auto& pair : second->input_nodes) {
     if (first_node_set.find(pair.first) != first_node_set.end()) {
       candidates.push(pair.first);
     }
   }
-  std::unordered_set<::ir::Operation*> visited;
-  std::unordered_set<::ir::Operation*> masters_in_consumers;
+  std::unordered_set<::pir::Operation*> visited;
+  std::unordered_set<::pir::Operation*> masters_in_consumers;
 
   while (!candidates.empty()) {
-    ::ir::Operation* candidate = candidates.front();
+    ::pir::Operation* candidate = candidates.front();
     candidates.pop();
 
     // TODO(phlrain) : why only deal with first output
@@ -206,7 +206,7 @@ inline bool elementwise_fuse_reduce(const std::shared_ptr<ir::Group>& first,
         GetValueShape((*first->master_nodes.begin())->result(0));
     int32_t size_first = phi::product(first_node_shape);
 
-    for (::ir::Operation* master : masters_in_consumers) {
+    for (::pir::Operation* master : masters_in_consumers) {
       auto second_node_shape = GetValueShape(master->result(0));
       int32_t size_second = phi::product(second_node_shape);
       if (size_first != size_second) {
@@ -220,7 +220,7 @@ inline bool elementwise_fuse_reduce(const std::shared_ptr<ir::Group>& first,
   }
 
   // if reduce using block_reduce, can't fuse producer.
-  ::ir::Operation* reducer = nullptr;
+  ::pir::Operation* reducer = nullptr;
   for (auto& node : second->master_nodes) {
     if (GetOpKind(node->name()) == kReduction) {
       reducer = node;
@@ -288,7 +288,7 @@ inline bool broadcast_fuse_reduce(const std::shared_ptr<ir::Group>& first,
   if (is_same_size(first, second)) {
     return true;
   }
-  ::ir::Operation* reducer = nullptr;
+  ::pir::Operation* reducer = nullptr;
   for (auto& node : second->master_nodes) {
     if (GetOpKind(node->name()) == kReduction) {
       reducer = node;
@@ -325,7 +325,7 @@ inline bool horizontal_relation(const std::shared_ptr<ir::Group>& first,
                                 const OpPatternKind op_pattern_kind) {
   // merge injective
   auto merge_nodes_set = [](const std::shared_ptr<ir::Group>& group) {
-    std::unordered_set<::ir::Operation*> nodes_set = group->nodes_set;
+    std::unordered_set<::pir::Operation*> nodes_set = group->nodes_set;
     for (auto& sub_group : group->fused_sub_groups) {
       nodes_set.insert(sub_group->nodes_set.begin(),
                        sub_group->nodes_set.end());
@@ -335,9 +335,9 @@ inline bool horizontal_relation(const std::shared_ptr<ir::Group>& first,
   auto first_set = merge_nodes_set(first);
   auto second_set = merge_nodes_set(second);
 
-  auto select_node_set = [](const std::unordered_set<::ir::Operation*>& nodes,
+  auto select_node_set = [](const std::unordered_set<::pir::Operation*>& nodes,
                             OpPatternKind kind) {
-    std::unordered_set<::ir::Operation*> selected;
+    std::unordered_set<::pir::Operation*> selected;
     for (auto node : nodes) {
       if (GetOpKind(node->name()) == kind) {
         selected.insert(node);
@@ -347,9 +347,9 @@ inline bool horizontal_relation(const std::shared_ptr<ir::Group>& first,
   };
   auto selected_nodes = select_node_set(second_set, op_pattern_kind);
 
-  auto check_depency = [&](const ::ir::Operation* node) {
-    std::queue<const ::ir::Operation*> candidates;
-    std::unordered_set<const ::ir::Operation*> visited_set;
+  auto check_depency = [&](const ::pir::Operation* node) {
+    std::queue<const ::pir::Operation*> candidates;
+    std::unordered_set<const ::pir::Operation*> visited_set;
     candidates.push(node);
 
     while (!candidates.empty()) {
@@ -427,7 +427,7 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<ir::Group>& first,
     if (GetOpKind(node_in_master->name()) != kReduction) {
       continue;
     }
-    ::ir::Operation* reducer = node_in_master;
+    ::pir::Operation* reducer = node_in_master;
     // First type conditions
     // Get some reduce information
     auto reducer_input_shape =
@@ -459,11 +459,12 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<ir::Group>& first,
     // Second type conditions
     // Find directly or indirectly consumers with type of Broadcast in the
     // second group
-    auto find_broadcasters_in_descendants = [&](const ::ir::Operation* producer)
-        -> std::unordered_set<const ::ir::Operation*> {
-      std::queue<const ::ir::Operation*> candidates;
-      std::unordered_set<const ::ir::Operation*> visited_set;
-      std::unordered_set<const ::ir::Operation*> broadcasters;
+    auto find_broadcasters_in_descendants =
+        [&](const ::pir::Operation* producer)
+        -> std::unordered_set<const ::pir::Operation*> {
+      std::queue<const ::pir::Operation*> candidates;
+      std::unordered_set<const ::pir::Operation*> visited_set;
+      std::unordered_set<const ::pir::Operation*> broadcasters;
       candidates.push(producer);
 
       while (!candidates.empty()) {
@@ -490,7 +491,7 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<ir::Group>& first,
     };
 
     // Check if each broadcast node meets the conditions
-    std::unordered_set<const ::ir::Operation*> broadcasters_in_consumers =
+    std::unordered_set<const ::pir::Operation*> broadcasters_in_consumers =
         find_broadcasters_in_descendants(reducer);
     for (auto broadcaster : broadcasters_in_consumers) {
       // auto  = absl::get<std::vector<int>>(
@@ -541,7 +542,7 @@ inline bool reduce_fuse_reduce(const std::shared_ptr<ir::Group>& first,
   if (!limit_args(first, second)) {
     return false;
   }
-  ::ir::Operation* reducer_0 = nullptr;
+  ::pir::Operation* reducer_0 = nullptr;
   for (auto& reducer : first->master_nodes) {
     if (GetOpKind(reducer->name()) == kReduction) {
       reducer_0 = reducer;
@@ -550,7 +551,7 @@ inline bool reduce_fuse_reduce(const std::shared_ptr<ir::Group>& first,
   }
   // CHECK(reducer_0) << "Can't find reduce op in group " << first->group_id;
 
-  ::ir::Operation* reducer_1 = nullptr;
+  ::pir::Operation* reducer_1 = nullptr;
   for (auto& reducer : second->master_nodes) {
     if (GetOpKind(reducer->name()) == kReduction) {
       reducer_1 = reducer;
