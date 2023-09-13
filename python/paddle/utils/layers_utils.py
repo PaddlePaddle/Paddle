@@ -407,7 +407,7 @@ def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
                     dim = paddle.cast(x=dim, dtype='int32')
                 shape_tensor_list.append(dim)
             else:
-                temp_out = fill_constant([1], 'int32', dim, force_cpu=True)
+                temp_out = fill_constant([], 'int32', dim, force_cpu=True)
                 shape_tensor_list.append(temp_out)
         return shape_tensor_list
 
