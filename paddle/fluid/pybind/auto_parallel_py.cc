@@ -32,11 +32,15 @@
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
+#include "paddle/phi/api/lib/data_transform.h"
+#include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/p_to_r_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/r_to_p_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/r_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/s_to_r_reshard_function.h"
+#include "paddle/phi/core/enforce.h"
 
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
@@ -622,6 +626,25 @@ void BindAutoParallel(py::module *m) {
       [](const std::string op_type) {
         return phi::distributed::SpmdRuleFactory::Instance().GetSpmdRule(
             op_type);
+      },
+      py::return_value_policy::reference);
+
+  m->def(
+      "reshard",
+      [](py::handle py_tensor, const TensorDistAttr &dist_attr) {
+        auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+        auto dev_ctx = phi::DeviceContextPool::Instance().Get(tensor.place());
+        if (phi::distributed::DistTensor::classof(tensor.impl().get())) {
+          auto dist_out_ptr = paddle::experimental::ReshardDistTensor(
+              dev_ctx, tensor, dist_attr);
+          return paddle::Tensor(dist_out_ptr);
+        } else {
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "The input tensor of shard function should be "
+              "``phi::distributed::DistTensor``. "
+              "However it's %s",
+              typeid(*tensor.impl().get()).name()));
+        }
       },
       py::return_value_policy::reference);
 
