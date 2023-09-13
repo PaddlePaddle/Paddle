@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from test_conv2d_transpose_op import TestConv2DTransposeOp
 
 from paddle import enable_static
@@ -71,7 +71,7 @@ class TestConv2DTransposeMKLDNNOp(TestConv2DTransposeOp):
             output = conv2d_bias_naive(output, bias)
             output = output.astype(self.dtype)
             self.attrs['fuse_bias'] = self.fuse_bias
-            self.inputs['Bias'] = OpTest.np_dtype_to_fluid_dtype(bias)
+            self.inputs['Bias'] = OpTest.np_dtype_to_base_dtype(bias)
 
         if self.fuse_activation == "relu":
             output = np.maximum(output, 0).astype(self.dtype)

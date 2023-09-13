@@ -20,7 +20,7 @@ import threading
 import numpy as np
 
 import paddle
-from paddle.fluid.log_helper import get_logger
+from paddle.base.log_helper import get_logger
 from paddle.incubate import asp
 
 __all__ = []

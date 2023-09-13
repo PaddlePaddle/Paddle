@@ -275,7 +275,7 @@ std::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph) {
   // build in_degree
   for (auto *node : graph.Nodes()) {
     if (node->IsOp()) {
-      in_degree[node] += node->inputs.size();
+      in_degree[node] += static_cast<int>(node->inputs.size());
     } else if (node->IsVar() && node->inputs.empty()) {
       // put all the inputs of the whole graph ready.
       set_out_ops_ready(node);
@@ -291,7 +291,7 @@ std::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph) {
   }
 
   // traverse the graph
-  int num_ops = op_queue.size();
+  int num_ops = static_cast<int>(op_queue.size());
   while (num_ops) {
     for (auto cur_op : op_queue) {
       if (!cur_op || in_degree[cur_op] > 0) continue;
@@ -636,7 +636,7 @@ void UpdateControlOpSkipEagerDeletionVars(const Node &node,
     auto origin_program = graph.OriginProgram();
     auto &block = origin_program.Block(graph_idx);
     for (size_t j = 0; j < block.OpSize(); ++j) {
-      auto *op = block.Op(j);
+      auto *op = block.Op(static_cast<int>(j));
       if (op->Type() == control_type &&
           op->HasAttr("skip_eager_deletion_vars")) {
         if (op->InputArgumentNames() == node.Op()->InputArgumentNames() &&
@@ -704,10 +704,18 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
         ops->emplace_back(depend_desc);
         VLOG(4) << "add depend op";
       }
-      if (n->Name() == "while" || n->Name() == "while_grad" ||
-          n->Name() == "conditional_block" ||
-          n->Name() == "conditional_block_grad" || n->Name() == "recurrent" ||
-          n->Name() == "recurrent_grad") {
+
+      const std::unordered_set<std::string> control_flow_ops = {
+          "while",
+          "while_grad",
+          "conditional_block",
+          "conditional_block_grad",
+          "recurrent",
+          "recurrent_grad",
+          "pylayer",
+          "pylayer_grad"};
+
+      if (control_flow_ops.count(n->Name())) {
         VLOG(1) << "Update control op attr: skip_eager_deletion_vars";
         UpdateControlOpSkipEagerDeletionVars(*n, graph, graph_idx, n->Name());
       }
@@ -815,10 +823,10 @@ void GraphToProgram(const Graph &graph,
       if (idx == kRootBlockIndex) continue;
 
       if (static_cast<int>(idx) < program_pb.blocks_size()) {
-        block = program_pb.mutable_blocks(idx);
+        block = program_pb.mutable_blocks(idx);  // NOLINT
       } else {
         block = program_pb.add_blocks();
-        block->set_idx(idx);
+        block->set_idx(idx);  // NOLINT
         block->set_parent_idx(kRootBlockIndex);
       }
 

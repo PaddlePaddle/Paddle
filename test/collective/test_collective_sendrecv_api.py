@@ -26,7 +26,7 @@ class TestCollectiveSendRecvAPI(TestDistBase):
         pass
 
     # def test_sendrecv_nccl(self):
-    #    if paddle.fluid.core.is_compiled_with_cuda():
+    #    if paddle.base.core.is_compiled_with_cuda():
     #        self.check_with_place("collective_sendrecv_api.py", "sendrecv",
     #                              "nccl")
 
@@ -44,7 +44,7 @@ class TestCollectiveSendRecvAPI(TestDistBase):
         if self._nccl_version >= 21000:
             dtypes_to_test.append("bfloat16")
         for dtype in dtypes_to_test:
-            if paddle.fluid.core.is_compiled_with_cuda():
+            if paddle.base.core.is_compiled_with_cuda():
                 self.check_with_place(
                     "collective_sendrecv_api.py",
                     "sendrecv",

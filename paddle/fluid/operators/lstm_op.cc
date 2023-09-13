@@ -66,7 +66,7 @@ class LSTMOp : public framework::OperatorWithKernel {
                             c_dims));
     }
 
-    int frame_size = in_dims[1] / 4;
+    int frame_size = static_cast<int>(in_dims[1] / 4);
     auto w_dims = ctx->GetInputDim("Weight");
     PADDLE_ENFORCE_EQ(
         w_dims.size(),
