@@ -29,7 +29,13 @@
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/pir/phi_kernel_adaptor/phi_kernel_util.h"
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
+#endif
 
 namespace paddle {
 namespace framework {
@@ -113,9 +119,19 @@ platform::DeviceContext* ParseDeviceContext(
                                                 .data() == false) {
       int ring_id =
           op_attributes.at("ring_id").dyn_cast<pir::Int32Attribute>().data();
-      return platform::NCCLCommContext::Instance()
-          .Get(ring_id, place)
-          ->dev_context();
+      if (FLAGS_dynamic_static_unified_comm) {
+        const auto& comm_context_manager =
+            phi::distributed::CommContextManager::GetInstance();
+        dev_ctx = static_cast<platform::DeviceContext*>(
+            static_cast<phi::distributed::NCCLCommContext*>(
+                comm_context_manager.Get(std::to_string(ring_id)))
+                ->GetDevContext());
+      } else {
+        dev_ctx = platform::NCCLCommContext::Instance()
+                      .Get(ring_id, place)
+                      ->dev_context();
+      }
+      return dev_ctx;
     }
 #endif
   }
