@@ -173,9 +173,8 @@ TEST(kernel_dialect, legacy_op_test) {
             op->dyn_cast<paddle::dialect::LegacyKernelOp>().kernel_key());
 }
 
-TEST(kernel_dialect, legacy_op_test) {
+TEST(kernel_dialect, cond_op_test) {
   // (1) Init environment.
-  std::cout << "start_test_end!" << std::endl;
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<pir::ControlFlowDialect>();
@@ -206,11 +205,5 @@ TEST(kernel_dialect, legacy_op_test) {
       std::vector<int64_t>{3}, true, phi::DataType::BOOL);
   builder.Build<pir::YieldOp>(std::vector<pir::OpResult>{full_op_2.out()});
 
-  program.Print(std::cout);
-
-  std::cout << "test_end!" << std::endl;
-
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
-
-  kernel_program->Print(std::cout);
 }
