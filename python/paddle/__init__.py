@@ -223,6 +223,8 @@ from .tensor.manipulation import as_strided  # noqa: F401
 from .tensor.manipulation import view  # noqa: F401
 from .tensor.manipulation import view_as  # noqa: F401
 from .tensor.manipulation import unfold  # noqa: F401
+from .tensor.manipulation import masked_fill  # noqa: F401
+from .tensor.manipulation import masked_fill_  # noqa: F401
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import abs_  # noqa: F401
 from .tensor.math import acos  # noqa: F401
@@ -843,4 +845,6 @@ __all__ = [  # noqa
     'i1e',
     'polygamma',
     'polygamma_',
+    'masked_fill',
+    'masked_fill_',
 ]

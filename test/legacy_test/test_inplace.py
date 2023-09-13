@@ -310,6 +310,18 @@ class TestDygraphInplaceUnsqueeze(TestDygraphInplace):
         return paddle.unsqueeze_(var, -1)
 
 
+class TestDygraphInplaceMaskedFill(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        self.value = np.random.uniform((-5), 5)
+        self.mask = np.random.randint(2, var.shape).astype('bool')
+        return paddle.masked_fill(var, self.mask, self.value)
+
+    def inplace_api_processing(self, var):
+        self.value = np.random.uniform((-5), 5)
+        self.mask = np.random.randint(2, var.shape).astype('bool')
+        return paddle.masked_fill_(var, self.mask, self.value)
+
+
 class TestDygraphInplaceReshape(TestDygraphInplace):
     def non_inplace_api_processing(self, var):
         return paddle.reshape(var, [-1])

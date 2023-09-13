@@ -4430,6 +4430,73 @@ def repeat_interleave(x, repeats, axis=None, name=None):
     return out
 
 
+def masked_fill(x, mask, value, name=None):
+    """
+    Fills elements of the input tensor with value where mask is True. The mask's shape must be broadcastable with shape of the input tensor.
+
+    Args:
+        x (Tensor) : The Destination Tensor. Supported data types are int32, int64, float32, float64.
+        mask (Tensor): The boolean tensor indicate the position to be filled.
+            The data type of ``mask`` must be bool.
+        value (Scaler or 0-D Tensor): The value used to fill the target tensor.
+        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor, same dimention and dtype with x.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> input_tensor = paddle.ones((3, 3), dtype="float32")
+            >>> mask_tensor = paddle.to_tensor([[True, False, True],
+            ... [False, True, False],
+            ... [True, False, True]])
+            >>> outplace_res = paddle.masked_fill(input_tensor, mask_tensor, 0)
+            >>> print(outplace_res)
+
+    """
+    value = value.item(0) if isinstance(value, core.eager.Tensor) else value
+    helper = LayerHelper("masked_fill", **locals())
+    check_variable_and_dtype(
+        x,
+        'x',
+        ['float32', 'float64', 'int32', 'int64'],
+        'paddle.tensor.manipulation.masked_fill',
+    )
+    check_variable_and_dtype(
+        mask,
+        'mask',
+        ['bool'],
+        'paddle.tensor.manipulation.masked_fill',
+    )
+    y = paddle.full_like(x, value)
+    return paddle.where(mask, y, x)
+
+
+@inplace_apis_in_dygraph_only
+def masked_fill_(x, mask, value, name=None):
+    """
+    Inplace version of ``masked_fill`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_masked_fill`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> input_tensor = paddle.ones((3, 3), dtype="float32")
+            >>> mask_tensor = paddle.to_tensor([[True, False, True],
+            ... [False, True, False],
+            ... [True, False, True]])
+            >>> inplace_res = paddle.masked_fill_(input_tensor, mask_tensor, 0)
+            >>> print(inplace_res)
+
+    """
+    y = paddle.full_like(x, value)
+    x = paddle.where(mask, y, x)
+    return x
+
+
 def moveaxis(x, source, destination, name=None):
     """
     Move the axis of tensor from ``source`` position to ``destination`` position.
