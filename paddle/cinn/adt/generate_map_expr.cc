@@ -202,19 +202,19 @@ LoopDescriptor4IterVarT MakeGetterLoopDescriptor4IterVar(
 }
 
 template <typename DoEachT>
-void VisitEachMapIR(const m_ir::MapIRList& map_irs, const DoEachT& DoEach) {
+void VisitEachMapIr(const m_ir::MapIrList& map_irs, const DoEachT& DoEach) {
   for (const auto& map_ir : map_irs) {
     DoEach(map_ir);
   }
 }
 
-m_expr::OpStmt MakeOpStmt(const m_ir::MapIR& map_ir) {
+m_expr::OpStmt MakeOpStmt(const m_ir::MapIr& map_ir) {
   CHECK_EQ(map_ir.op_stmts().size(), 1);
   return *map_ir.op_stmts().begin();
 }
 
 ScheduleDescriptor MakeInnerScheduleDescriptor(
-    const m_ir::MapIR& map_ir,
+    const m_ir::MapIr& map_ir,
     std::size_t outter_layer_sd_size,
     const LoopDescriptor4IterVarT& LoopDescriptor4IterVar) {
   CHECK_LT(outter_layer_sd_size, map_ir.sd_iters()->size());
@@ -227,17 +227,17 @@ ScheduleDescriptor MakeInnerScheduleDescriptor(
 }
 
 template <typename DoEachT>
-void VisitEachMapIROpStmt(const m_ir::MapIR& map_ir, const DoEachT& DoEach) {
+void VisitEachMapIrOpStmt(const m_ir::MapIr& map_ir, const DoEachT& DoEach) {
   for (const auto& op_stmt : map_ir.op_stmts()) {
     DoEach(op_stmt);
   }
 }
 
 List<m_expr::Stmt> MakeInnerLayerStmts(const std::shared_ptr<IGroup>& igroup,
-                                       const m_ir::MapIR& map_ir) {
+                                       const m_ir::MapIr& map_ir) {
   List<m_expr::Stmt> ret;
 
-  VisitEachMapIROpStmt(
+  VisitEachMapIrOpStmt(
       map_ir, [&](const auto& op_stmt) { ret->emplace_back(op_stmt); });
 
   return ret;
@@ -245,7 +245,7 @@ List<m_expr::Stmt> MakeInnerLayerStmts(const std::shared_ptr<IGroup>& igroup,
 
 m_expr::MapStmt<m_expr::Stmt> MakeInnerLayerMapStmt(
     const std::shared_ptr<IGroup>& igroup,
-    const m_ir::MapIR& map_ir,
+    const m_ir::MapIr& map_ir,
     std::size_t outter_layer_sd_size,
     const LoopDescriptor4IterVarT& LoopDescriptor4IterVar) {
   const auto& inner_schedule_descriptor = MakeInnerScheduleDescriptor(
@@ -256,7 +256,7 @@ m_expr::MapStmt<m_expr::Stmt> MakeInnerLayerMapStmt(
 
 m_expr::Stmt MakeOutterLayerStmt(
     const std::shared_ptr<IGroup>& igroup,
-    const m_ir::MapIR& map_ir,
+    const m_ir::MapIr& map_ir,
     std::size_t outter_layer_sd_size,
     const LoopDescriptor4IterVarT& LoopDescriptor4IterVar) {
   if (map_ir.op_stmts().size() == 1) {
@@ -271,12 +271,12 @@ m_expr::Stmt MakeOutterLayerStmt(
 
 List<m_expr::Stmt> MakeOutterLayerStmts(
     const std::shared_ptr<IGroup>& igroup,
-    const m_ir::MapIRList& map_irs,
+    const m_ir::MapIrList& map_irs,
     std::size_t outter_layer_sd_size,
     const LoopDescriptor4IterVarT& LoopDescriptor4IterVar) {
   List<m_expr::Stmt> ret;
 
-  VisitEachMapIR(map_irs, [&](const auto& map_ir) {
+  VisitEachMapIr(map_irs, [&](const auto& map_ir) {
     ret->emplace_back(MakeOutterLayerStmt(
         igroup, map_ir, outter_layer_sd_size, LoopDescriptor4IterVar));
   });
@@ -284,7 +284,7 @@ List<m_expr::Stmt> MakeOutterLayerStmts(
   return ret;
 }
 
-std::optional<std::size_t> GetSdItersMinSize(const m_ir::MapIRList& map_irs) {
+std::optional<std::size_t> GetSdItersMinSize(const m_ir::MapIrList& map_irs) {
   if (map_irs.empty()) {
     return std::nullopt;
   }
@@ -296,7 +296,7 @@ std::optional<std::size_t> GetSdItersMinSize(const m_ir::MapIRList& map_irs) {
 }
 
 List<LoopDescriptor> MakeOutterScheduleDescriptor(
-    const m_ir::MapIRList& map_irs,
+    const m_ir::MapIrList& map_irs,
     const LoopDescriptor4IterVarT& LoopDescriptor4IterVar) {
   std::optional<std::size_t> opt_min_size = GetSdItersMinSize(map_irs);
   CHECK(opt_min_size.has_value());
@@ -309,7 +309,7 @@ List<LoopDescriptor> MakeOutterScheduleDescriptor(
 
 m_expr::MapStmt<m_expr::Stmt> MakeMapStmt(
     const std::shared_ptr<IGroup>& igroup,
-    const m_ir::MapIRList& map_irs,
+    const m_ir::MapIrList& map_irs,
     const LoopDescriptor4IterVarT& LoopDescriptor4IterVar) {
   const auto& outter_schedule_descriptor =
       MakeOutterScheduleDescriptor(map_irs, LoopDescriptor4IterVar);

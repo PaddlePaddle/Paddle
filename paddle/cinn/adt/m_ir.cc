@@ -16,6 +16,7 @@
 #include <unordered_map>
 
 #include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/m_ir.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
 #include "paddle/cinn/adt/partition_op_stmts.h"
@@ -23,7 +24,7 @@
 namespace cinn::adt::m_ir {
 
 template <typename DoEachT>
-void MapIR::VisitEachTensor(const DoEachT& DoEach) const {
+void MapIr::VisitEachTensor(const DoEachT& DoEach) const {
   ForEachTensor([&](const auto& tensor, const auto& as_output) {
     DoEach(tensor, as_output);
     return tBreak{false};
@@ -31,7 +32,7 @@ void MapIR::VisitEachTensor(const DoEachT& DoEach) const {
 }
 
 template <typename DoEachT>
-tBreak<bool> MapIR::ForEachTensor(const DoEachT& DoEach) const {
+tBreak<bool> MapIr::ForEachTensor(const DoEachT& DoEach) const {
   for (const auto& op_node : ops_) {
     const auto& [op, inputs, outputs] = op_node.tuple();
     for (const auto& input : inputs.value()) {
@@ -50,7 +51,7 @@ tBreak<bool> MapIR::ForEachTensor(const DoEachT& DoEach) const {
   return tBreak<bool>{false};
 }
 
-std::unordered_map<m_expr::Tensor, tAsOutput<bool>> MapIR::GetTensor2AsOutput()
+std::unordered_map<m_expr::Tensor, tAsOutput<bool>> MapIr::GetTensor2AsOutput()
     const {
   std::unordered_map<m_expr::Tensor, tAsOutput<bool>> ret{};
 
@@ -62,7 +63,7 @@ std::unordered_map<m_expr::Tensor, tAsOutput<bool>> MapIR::GetTensor2AsOutput()
 }
 
 template <typename DoEachT>
-tBreak<bool> MapIR::AggregateTensorPair(const MapIR& that,
+tBreak<bool> MapIr::AggregateTensorPair(const MapIr& that,
                                         const DoEachT& DoEach) const {
   auto that_tensor2as_output = that.GetTensor2AsOutput();
 
@@ -80,8 +81,8 @@ tBreak<bool> MapIR::AggregateTensorPair(const MapIR& that,
   });
 }
 
-bool MapIR::IsMergableTo(
-    const MapIR& that,
+bool MapIr::IsMergableTo(
+    const MapIr& that,
     const std::function<const ScheduleIterators&(const m_expr::Tensor&)>&
         SdIterators4Tensor) const {
   // TODO(Hongyu Jia): Refact to support complicated cases
@@ -112,7 +113,7 @@ bool MapIR::IsMergableTo(
   return mergable;
 }
 
-bool MapIR::HasReadWriteDependence(const MapIR& that) const {
+bool MapIr::HasReadWriteDependence(const MapIr& that) const {
   const auto& CheckWrite = [&](const auto& this_as_output,
                                const auto& that_as_output) {
     return this_as_output.value() || that_as_output.value();
@@ -135,7 +136,7 @@ bool MapIR::HasReadWriteDependence(const MapIR& that) const {
   return has_read_write_dependence;
 }
 
-void MapIR::MergeThisToThat(const MapIR& that) {
+void MapIr::MergeThisToThat(const MapIr& that) {
   CHECK_GE(that.sd_iters()->size(), this->sd_iters()->size());
   that.op_stmts_.splice(that.op_stmts_.begin(), std::move(this->op_stmts_));
 }
@@ -243,14 +244,14 @@ std::unordered_set<equation::IterVar> GetTensorIndexIterators(
 ScheduleIterators GetLeftAlignedSdIterators(
     const std::unordered_set<equation::IterVar>& tensor_index_sd_iters,
     const ScheduleIterators& sd_iters,
-    const std::function<const SchedulePolicy&(const equation::IterVar&)>&
-        GetSchedulePolicy) {
+    const std::function<const LoopDescriptor&(const equation::IterVar&)>&
+        GetLoopDescriptor) {
   const auto& Used = [&](const equation::IterVar& iter_var) {
     return tensor_index_sd_iters.count(iter_var) != 0;
   };
 
   const auto& IsSpatial = [&](const equation::IterVar& iter_var) {
-    return IsSpatial(GetSchedulePolicy(iter_var).GetScheduleType());
+    return IsSpatial(GetLoopDescriptor(iter_var).GetScheduleType());
   };
 
   ScheduleIterators ret{sd_iters->begin(), sd_iters->end()};
@@ -267,15 +268,15 @@ ScheduleIterators GetLeftAlignedSdIterators(
 ScheduleIterators GetTensorScheduleIterators(
     const m_expr::Tensor& tensor,
     const ScheduleIterators& sd_iters,
-    const std::function<const SchedulePolicy&(const equation::IterVar&)>&
-        GetSchedulePolicy,
+    const std::function<const LoopDescriptor&(const equation::IterVar&)>&
+        GetLoopDescriptor,
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
         GetTensorIndexes) {
   const auto& tensor_index_sd_iters =
       GetTensorIndexIterators(GetTensorIndexes(tensor));
 
   return GetLeftAlignedSdIterators(
-      tensor_index_sd_iters, sd_iters, GetSchedulePolicy);
+      tensor_index_sd_iters, sd_iters, GetLoopDescriptor);
 }
 
 // Schedule Iterator always be aligned
@@ -290,15 +291,15 @@ ScheduleIterators MergeScheduleIterators(
 ScheduleIterators GenerateScheduleIterators(
     const m_expr::OpStmt& op,
     const ScheduleIterators& sd_iters,
-    const std::function<const SchedulePolicy&(const equation::IterVar&)>&
-        GetSchedulePolicy,
+    const std::function<const LoopDescriptor&(const equation::IterVar&)>&
+        GetLoopDescriptor,
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
         GetTensorIndexes,
     std::unordered_map<m_expr::Tensor, ScheduleIterators>* tensor2sd_iters) {
   ScheduleIterators op_schedule_iterators;
   VisitEachTensor(op, [&](const m_expr::Tensor& tensor) {
     ScheduleIterators tensor_schedule_iterators = GetTensorScheduleIterators(
-        tensor, sd_iters, GetSchedulePolicy, GetTensorIndexes);
+        tensor, sd_iters, GetLoopDescriptor, GetTensorIndexes);
     const auto& iter =
         tensor2sd_iters->emplace(tensor, tensor_schedule_iterators).first;
     CHECK(*iter == tensor_schedule_iterators);
@@ -314,8 +315,8 @@ std::pair<std::function<const ScheduleIterators&(const m_expr::OpStmt&)>,
 MakeGetterSdIters(
     const List<m_expr::OpStmt>& op_stmts,
     const ScheduleIterators& sd_iters,
-    const std::function<const SchedulePolicy&(const equation::IterVar&)>&
-        GetSchedulePolicy,
+    const std::function<const LoopDescriptor&(const equation::IterVar&)>&
+        GetLoopDescriptor,
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
         GetTensorIndexes) {
   using Op2ItersCache =
@@ -328,7 +329,7 @@ MakeGetterSdIters(
   VisitEachOpStmt(op_stmts, [&](const m_expr::OpStmt& op) {
     const auto& value = GenerateScheduleIterators(op,
                                                   sd_iters,
-                                                  GetSchedulePolicy,
+                                                  GetLoopDescriptor,
                                                   GetTensorIndexes,
                                                   tensor2sd_iters.get());
     CHECK(op2sd_iters->emplace(op, value).second);
@@ -341,16 +342,16 @@ MakeGetterSdIters(
       }};
 }
 
-MapIRList GenerateOpClusters(
+MapIrList GenerateOpClusters(
     const List<m_expr::OpStmt>& op_stmts,
     const std::function<const ScheduleIterators&(const m_expr::OpStmt&)>&
         SdIters4Op,
-    const std::function<const SchedulePolicy&(const equation::IterVar&)>&
-        GetSchedulePolicy) {
-  MapIRList map_irs{};
+    const std::function<const LoopDescriptor&(const equation::IterVar&)>&
+        GetLoopDescriptor) {
+  MapIrList map_irs{};
 
   VisitEachOpStmt(op_stmts, [&](const auto& op_stmt_node) {
-    map_irs.emplace_back(MapIR{op_stmt_node, SdIters4Op(op_stmt_node)});
+    map_irs.emplace_back(MapIr{op_stmt_node, SdIters4Op(op_stmt_node)});
   });
 
   return map_irs;
@@ -358,7 +359,7 @@ MapIRList GenerateOpClusters(
 
 // Reorder and merge
 bool MergePrevToNext4LoopFuse(
-    MapIRList* map_irs,
+    MapIrList* map_irs,
     const std::function<const ScheduleIterators&(const m_expr::Tensor&)>&
         SdIterators4Tensor) {
   std::size_t merge_count = 0;
@@ -408,7 +409,7 @@ bool MergePrevToNext4LoopFuse(
 }
 
 bool MergeNextOrPrev4LoopFuse(
-    MapIRList* map_irs,
+    MapIrList* map_irs,
     const std::function<const ScheduleIterators&(const m_expr::Tensor&)>&
         SdIterators4Tensor) {
   std::size_t merge_count = 0;
@@ -464,16 +465,16 @@ bool MergeNextOrPrev4LoopFuse(
   return merge_count > 0;
 }
 
-MapIRList ReorderAndMergeOpCluster4LoopFuse(
+MapIrList ReorderAndMergeOpCluster4LoopFuse(
     const List<m_expr::OpStmt>& op_stmts,
     const std::function<const ScheduleIterators&(const m_expr::OpStmt&)>&
         SdIters4Op,
     const std::function<const ScheduleIterators&(const m_expr::Tensor&)>&
         SdIters4Tensor,
-    const std::function<const SchedulePolicy&(const equation::IterVar&)>&
-        GetSchedulePolicy) {
-  MapIRList map_irs =
-      GenerateOpClusters(op_stmts, SdIters4Op, GetSchedulePolicy);
+    const std::function<const LoopDescriptor&(const equation::IterVar&)>&
+        GetLoopDescriptor) {
+  MapIrList map_irs =
+      GenerateOpClusters(op_stmts, SdIters4Op, GetLoopDescriptor);
 
   // Reorder and merge
   while (MergePrevToNext4LoopFuse(&map_irs, SdIters4Tensor)) {
@@ -485,25 +486,25 @@ MapIRList ReorderAndMergeOpCluster4LoopFuse(
   return map_irs;
 }
 
-MapIRList GenerateClusterOpsForLoopFuse(
+MapIrList GenerateClusterOpsForLoopFuse(
     const List<m_expr::OpStmt>& op_stmts,
     const ScheduleIterators& sd_iters,
-    const std::function<const SchedulePolicy&(const equation::IterVar&)>&
-        GetSchedulePolicy,
+    const std::function<const LoopDescriptor&(const equation::IterVar&)>&
+        GetLoopDescriptor,
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
         GetTensorIndexes) {
   const auto& [SdIters4Op, SdIters4Tensor] = MakeGetterSdIters(
-      op_stmts, sd_iters, GetSchedulePolicy, GetTensorIndexes);
+      op_stmts, sd_iters, GetLoopDescriptor, GetTensorIndexes);
 
   return ReorderAndMergeOpCluster4LoopFuse(
-      op_stmts, SdIters4Op, SdIters4Tensor, GetSchedulePolicy);
+      op_stmts, SdIters4Op, SdIters4Tensor, GetLoopDescriptor);
 }
 
 int CountIteratorsSize(
     const m_expr::Tensor& tensor,
     const ScheduleIterators& sd_iters,
-    const std::function<const SchedulePolicy&(const equation::IterVar&)>&
-        GetSchedulePolicy,
+    const std::function<const LoopDescriptor&(const equation::IterVar&)>&
+        GetLoopDescriptor,
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
         GetTensorIndexes) {
   return GetTensorIndexIterators(GetTensorIndexes(tensor)).size();
@@ -524,7 +525,7 @@ MakeAnchorIndex2Ok(const equation::Index& anchor_index) {
   return {{anchor_index, Ok{}}};
 }
 
-}
+}  // namespace
 
 bool LocalEquationsSolvable(
     const equation::GraphView& graph_view,
@@ -533,7 +534,8 @@ bool LocalEquationsSolvable(
   const auto& init_var2value = MakeAnchorIndex2Ok(anchor_index);
   equation::IndexExprInferContext ctx{init_var2value};
   bool has_no_conflict_value =
-      equation::value::TrySolveEquations(graph_view, anchor_index, &ctx).value();
+      equation::value::TrySolveEquations(graph_view, anchor_index, &ctx)
+          .value();
   return has_no_conflict_value && ctx.HasValue(fake_op_placeholder);
 }
 
@@ -542,7 +544,7 @@ std::vector<equation::Index> GenerateWriteBroadcastTensorIndexs(
   const auto& graph_view = equation::Graph{ctx->equations()}.GetGraphView();
   std::vector<equation::Index> ret{};
   const auto& fake_op_placeholder = ctx->fake_op_placeholder();
-  ctx->VisitEachOutputTensorIndex([&](const auto& out_index){
+  ctx->VisitEachOutputTensorIndex([&](const auto& out_index) {
     if (!LocalEquationsSolvable(graph_view, out_index, fake_op_placeholder)) {
       ret.emplace_back(out_index);
     }
@@ -571,16 +573,16 @@ void EraseWriteBroadcastOutMsgBoxes(
   });
 }
 
-MapIRList ConvertAnchorGroups2MapIRList(
+MapIrList ConvertAnchorGroups2MapIrList(
     const std::vector<partition::AnchorGroup>& partitioned_anchor_groups) {
   ADT_TODO();
 }
 
-MapIRList GenerateMapIRListForLoopFuse(
+MapIrList GenerateMapIrListForLoopFuse(
     const List<m_expr::OpStmt>& op_stmts,
     const ScheduleIterators& sd_iters,
-    const std::function<const SchedulePolicy&(const equation::IterVar&)>&
-        GetSchedulePolicy,
+    const std::function<const LoopDescriptor&(const equation::IterVar&)>&
+        GetLoopDescriptor,
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
         GetTensorIndexes) {
   const auto& EquationCtx4OpStmt =
@@ -590,7 +592,7 @@ MapIRList GenerateMapIRListForLoopFuse(
   const auto& partitioned_anchor_groups =
       partition::PartitionOpStmts(EquationCtx4OpStmt, op_stmts);
 
-  return ConvertAnchorGroups2MapIRList(partitioned_anchor_groups);
+  return ConvertAnchorGroups2MapIrList(partitioned_anchor_groups);
 }
 
 }  // namespace cinn::adt::m_ir
