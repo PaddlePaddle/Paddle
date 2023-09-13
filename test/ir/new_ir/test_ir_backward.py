@@ -71,7 +71,7 @@ class TesBackward_1(unittest.TestCase):
             input_grad = grad(out, input)
 
         self.assertEqual(
-            newir_program.global_block().ops[-3].name(), "pd_op.full"
+            newir_program.block().ops[-3].name(), "pd_op.full_like"
         )
         self.assertEqual(
             input_grad[0].get_defining_op().name(), "pd_op.tanh_grad"
@@ -97,9 +97,8 @@ class TesBackward_1(unittest.TestCase):
             out = paddle.mean(tanh_out)
             input_grad = grad(out, input, no_grad_vars=[input])
 
-        self.assertEqual(
-            newir_program.global_block().ops[-1].name(), "pd_op.mean"
-        )
+        self.assertEqual(newir_program.block().ops[-1].name(), "pd_op.full")
+        self.assertEqual(newir_program.block().ops[-2].name(), "pd_op.mean")
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
     def test_split(self):
@@ -111,7 +110,6 @@ class TesBackward_1(unittest.TestCase):
         with paddle.ir.core.program_guard(newir_program):
             out = paddle.split(tanh_out, [2, 2], 0)
             input_grad = grad(out, input)
-
         ops_name = [
             "pd_op.data",
             "pd_op.tanh",
@@ -119,6 +117,8 @@ class TesBackward_1(unittest.TestCase):
             "pd_op.full",
             "pd_op.split",
             "builtin.split",
+            "pd_op.full",
+            "pd_op.full_like",
             "pd_op.full",
             "builtin.combine",
             "pd_op.concat",
@@ -179,7 +179,6 @@ class TesBackward_2(unittest.TestCase):
         with paddle.ir.core.program_guard(newir_program):
             out = paddle.concat([add_out, add_out])
             input_grad = grad(out, input_x)
-
         ops_name = [
             "pd_op.data",
             "pd_op.data",
@@ -190,6 +189,7 @@ class TesBackward_2(unittest.TestCase):
             "builtin.combine",
             "pd_op.concat",
             "pd_op.full",
+            "pd_op.full_like",
             "builtin.combine",
             "pd_op.concat_grad",
             "builtin.split",
