@@ -27,8 +27,7 @@ using phi::distributed::auto_parallel::str_join;
 ////////////////// Utils Functions //////////////////
 std::string GetTransposeOutputNotation(int input_ndim,
                                        const std::string& x_axes,
-                                       const std::vector<int>& perm) {
-  std::vector<int> perm_dims(perm);
+                                       std::vector<int> perm_dims) {
   // convert the negative dim value to normal dim value
   for (int i = 0, n = perm_dims.size(); i < n; ++i) {
     if (perm_dims[i] < 0) {
@@ -86,7 +85,7 @@ SpmdInfo TransposeInferSpmd(const DistMetaTensor& x,
   // Step3  Handle Partial (TODO)
 
   VLOG(4) << "TransposeInferSpmd:";
-  VLOG(4) << "Input0: shape: [" << str_join(x_shape) << "] "
+  VLOG(4) << "Input: shape: [" << str_join(x_shape) << "] "
           << "src_dims_mapping: [" << str_join(x_dims_mapping) << "] "
           << "dst_dims_mapping: [" << str_join(x_dims_mapping) << "]";
   VLOG(4) << "Perm: [" << str_join(perm) << "]";
@@ -143,7 +142,7 @@ SpmdInfo TransposeInferSpmdReverse(const DistMetaTensor& x,
   VLOG(4) << "Output shape: [" << str_join(out_shape) << "] "
           << "dims_mapping: [" << str_join(out_dims_mapping) << "]";
   VLOG(4) << "Perm: [" << str_join(perm) << "]";
-  VLOG(4) << "Input0 shape: [" << str_join(x_shape) << "] "
+  VLOG(4) << "Input shape: [" << str_join(x_shape) << "] "
           << "dims_mapping: [" << str_join(x_dims_mapping) << "]\n\n";
 
   return {{x_dist_attr}, {out_dist_attr_src}};
