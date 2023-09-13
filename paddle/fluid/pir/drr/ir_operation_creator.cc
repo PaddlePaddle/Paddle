@@ -146,7 +146,7 @@ pir::Operation* CreateOperation(const OpCall& op_call,
                                 MatchContextImpl* res_match_ctx) {
   VLOG(6) << "Drr create [" << op_call.name() << "] op...";
   pir::Operation* op{nullptr};
-  if (op_call.name() == "pd.reshape") {
+  if (op_call.name() == "pd_op.reshape") {
     const auto& inputs = op_call.inputs();
     std::vector<Value> ir_values =
         GetIrValuesByDrrTensors(inputs, *res_match_ctx);
@@ -164,7 +164,7 @@ pir::Operation* CreateOperation(const OpCall& op_call,
                                std::make_shared<IrValue>(op->result(0)));
     res_match_ctx->BindIrValue(op_call.outputs()[1]->name(),
                                std::make_shared<IrValue>(op->result(1)));
-  } else if (op_call.name() == "pd.transpose") {
+  } else if (op_call.name() == "pd_op.transpose") {
     const auto& inputs = op_call.inputs();
     std::vector<Value> ir_values =
         GetIrValuesByDrrTensors(inputs, *res_match_ctx);
@@ -173,7 +173,7 @@ pir::Operation* CreateOperation(const OpCall& op_call,
         GetAttr<std::vector<int>>("perm", op_call, src_match_ctx));
     res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
                                std::make_shared<IrValue>(op->result(0)));
-  } else if (op_call.name() == "pd.cast") {
+  } else if (op_call.name() == "pd_op.cast") {
     const auto& inputs = op_call.inputs();
     std::vector<Value> ir_values =
         GetIrValuesByDrrTensors(inputs, *res_match_ctx);
@@ -182,7 +182,7 @@ pir::Operation* CreateOperation(const OpCall& op_call,
         GetAttr<phi::DataType>("dtype", op_call, src_match_ctx));
     res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
                                std::make_shared<IrValue>(op->result(0)));
-  } else if (op_call.name() == "pd.full") {
+  } else if (op_call.name() == "pd_op.full") {
     const auto& inputs = op_call.inputs();
     std::vector<Value> ir_values =
         GetIrValuesByDrrTensors(inputs, *res_match_ctx);
@@ -190,7 +190,7 @@ pir::Operation* CreateOperation(const OpCall& op_call,
         CreateAttributeMap(op_call, src_match_ctx));
     res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
                                std::make_shared<IrValue>(op->result(0)));
-  } else if (op_call.name() == "pd.fused_gemm_epilogue") {
+  } else if (op_call.name() == "pd_op.fused_gemm_epilogue") {
     const auto& inputs = op_call.inputs();
     std::vector<Value> ir_values =
         GetIrValuesByDrrTensors(inputs, *res_match_ctx);
@@ -200,7 +200,7 @@ pir::Operation* CreateOperation(const OpCall& op_call,
         ir_values[2].dyn_cast<pir::OpResult>(),
         CreateAttributeMap(op_call, src_match_ctx));
     BindIrOutputs(op_call, op, res_match_ctx);
-  } else if (op_call.name() == "pd.fused_gemm_epilogue_grad") {
+  } else if (op_call.name() == "pd_op.fused_gemm_epilogue_grad") {
     const auto& inputs = op_call.inputs();
     std::vector<Value> ir_values =
         GetIrValuesByDrrTensors(inputs, *res_match_ctx);
@@ -222,7 +222,7 @@ pir::Operation* CreateOperation(const OpCall& op_call,
     op = rewriter.Build<pir::CombineOp>(ir_results);
     res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
                                std::make_shared<IrValue>(op->result(0)));
-  } else if (op_call.name() == "pd.concat") {
+  } else if (op_call.name() == "pd_op.concat") {
     const auto& inputs = op_call.inputs();
     std::vector<Value> ir_values =
         GetIrValuesByDrrTensors(inputs, *res_match_ctx);
@@ -231,7 +231,7 @@ pir::Operation* CreateOperation(const OpCall& op_call,
         GetAttr<int>("axis", op_call, src_match_ctx));
     res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
                                std::make_shared<IrValue>(op->result(0)));
-  } else if (op_call.name() == "pd.multihead_matmul") {
+  } else if (op_call.name() == "pd_op.multihead_matmul") {
     const auto& inputs = op_call.inputs();
     std::vector<Value> ir_values =
         GetIrValuesByDrrTensors(inputs, *res_match_ctx);

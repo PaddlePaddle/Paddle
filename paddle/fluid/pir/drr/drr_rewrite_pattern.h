@@ -574,6 +574,7 @@ class DrrRewritePattern : public ir::RewritePattern {
         [&src_match_ctx, &rewriter, &res_match_ctx](const OpCall& op_call) {
           CreateOperation(op_call, src_match_ctx, rewriter, &res_match_ctx);
         });
+
     return res_match_ctx;
   }
 
@@ -616,20 +617,78 @@ class DrrRewritePattern : public ir::RewritePattern {
         [&topo_order_ops](const OpCall& op_call) {
           topo_order_ops.push_back(&op_call);
         });
-    // Delete Operation with topo order from output tensors.
-    std::for_each(topo_order_ops.rbegin(),
-                  topo_order_ops.rend(),
-                  [&src_match_ctx, &rewriter](const OpCall* op_call) {
-                    IR_ENFORCE(src_match_ctx.operation_map().count(op_call),
-                               "Drr OpCall [%s] must exists in match context.",
-                               op_call->name());
-                    auto* op = src_match_ctx.operation_map().at(op_call)->get();
-                    VLOG(6) << "Delete (" << op_call->name() << " @" << op_call
-                            << " :@" << op << ") in source_pattern_graph ";
-                    rewriter.EraseOp(op);
-                  });
-  }
 
+    // Filter the operations which are replaced by result pattern
+    // 1. Filter operations by forward walk
+    std::unordered_set<std::string> forward_visited_tensor_set(
+        result_pattern_graph.input_tensors());
+    std::unordered_set<const OpCall*> forward_deleted_ops;
+    std::for_each(topo_order_ops.begin(),
+                  topo_order_ops.end(),
+                  [&forward_deleted_ops,
+                   &forward_visited_tensor_set](const OpCall* op_call) {
+                    if (op_call->inputs().empty()) {
+                      forward_deleted_ops.insert(op_call);
+                      for (const auto* output : op_call->outputs()) {
+                        forward_visited_tensor_set.insert(output->name());
+                      }
+                    }
+                    for (const auto* input : op_call->inputs()) {
+                      if (forward_visited_tensor_set.count(input->name())) {
+                        forward_deleted_ops.insert(op_call);
+                        for (const auto* output : op_call->outputs()) {
+                          forward_visited_tensor_set.insert(output->name());
+                        }
+                        break;
+                      }
+                    }
+                  });
+    // 2. Filter operations by backward walk and merge the forward result
+    std::unordered_set<std::string> backward_visited_tensor_set(
+        result_pattern_graph.output_tensors());
+    std::vector<const OpCall*> deleted_ops;
+    std::unordered_set<const OpCall*> deleted_ops_set;
+    std::for_each(
+        topo_order_ops.rbegin(),
+        topo_order_ops.rend(),
+        [&deleted_ops,
+         &deleted_ops_set,
+         &backward_visited_tensor_set,
+         &forward_deleted_ops](const OpCall* op_call) {
+          bool all_comsumer_deleted = true;
+          for (const auto* output : op_call->outputs()) {
+            if (backward_visited_tensor_set.count(output->name())) {
+              for (const auto* consumer : output->consumers()) {
+                if (!deleted_ops_set.count(consumer)) {
+                  all_comsumer_deleted = false;
+                }
+              }
+            } else if (output->consumers().empty()) {
+              continue;
+            } else {
+              all_comsumer_deleted = false;
+            }
+          }
+          if (all_comsumer_deleted && forward_deleted_ops.count(op_call)) {
+            deleted_ops_set.insert(op_call);
+            deleted_ops.push_back(op_call);
+            for (const auto* input : op_call->inputs()) {
+              backward_visited_tensor_set.insert(input->name());
+            }
+          }
+        });
+
+    // Delete Operation with topo order from output tensors.
+    for (const auto* op_call : deleted_ops) {
+      IR_ENFORCE(src_match_ctx.operation_map().count(op_call),
+                 "Drr OpCall [%s] must exists in match context.",
+                 op_call->name());
+      auto* op = src_match_ctx.operation_map().at(op_call)->get();
+      VLOG(6) << "Delete (" << op_call->name() << " @" << op_call << " :@" << op
+              << ") in source_pattern_graph ";
+      rewriter.EraseOp(op);
+    }
+  }
   const std::shared_ptr<SourcePatternGraph> source_pattern_graph_;
   const std::vector<Constraint> constraints_;
   const std::shared_ptr<ResultPatternGraph> result_pattern_graph_;

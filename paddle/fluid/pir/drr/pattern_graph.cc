@@ -122,8 +122,16 @@ void PatternGraph::Print() const {
   std::cout << std::endl;
 }
 
-const OpCall *SourcePatternGraph::AnchorNode() const {
+OpCall *SourcePatternGraph::AnchorNode() const {
   return id2owned_tensor_.at(*output_tensors_.begin())->producer();
+}
+
+std::vector<OpCall *> SourcePatternGraph::OutputNodes() const {
+  std::vector<OpCall *> output_nodes;
+  for (const auto &output_tensor : output_tensors_) {
+    output_nodes.push_back(id2owned_tensor_.at(output_tensor)->producer());
+  }
+  return output_nodes;
 }
 
 void ResultPatternGraph::AssignTensor(const Tensor &from, const Tensor &to) {
