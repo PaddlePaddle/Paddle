@@ -1234,13 +1234,13 @@ void BuildId2VarName(const std::map<std::string, int>& var_name_2_id,
   }
 }
 
-const paddle::framework::Variable GetVariableByName(
+const paddle::framework::Variable* GetVariableByName(
     const std::string& var_name,
     const std::unordered_map<const paddle::framework::Variable*, std::string>&
         variable_2_var_name) {
   for (auto kv : variable_2_var_name) {
     if (kv.second == var_name) {
-      return *kv.first;
+      return kv.first;
     }
   }
   return nullptr;
@@ -1261,11 +1261,14 @@ void PrintValuesAndVariables (
     if (!op->results().empty()) {
       for (auto& out_value : op->results()) {
         auto& var_name = (*value_2_var_name).at(out_value);
-        const paddle::framework::Variable out_variable =
+        const paddle::framework::Variable* out_variable =
             GetVariableByName(var_name, *variable_2_var_name);
-        ret_value_str += (var_name + "[" + std::to_string(&out_value) + "], ");
-        ret_variable_str +=
-            (var_name + "[" + std::to_string(&out_variable) + "], ");
+        ss.str("");
+        ss << &out_value;
+        ret_value_str += (var_name + "[" + ss.str() + "], ");
+        ss.str("");
+        ss << out_variable;
+        ret_variable_str += (var_name + "[" + ss.str() + "], ");
       }
       ret_value_str = ret_value_str.substr(0, ret_value_str.size() - 2);
       ret_variable_str =
@@ -1283,16 +1286,20 @@ void PrintValuesAndVariables (
     ret_variable_str += op_name;
 
     // 3. input string
-    ret_str += "(";
+    ret_value_str += "(";
+    ret_variable_str += "(";
     if (!op->operands().empty()) {
       for (auto& input : op->operands()) {
         ::pir::Value in_value = input.source();
         auto& var_name = (*value_2_var_name).at(in_value);
-        const paddle::framework::Variable in_variable =
+        const paddle::framework::Variable* in_variable =
             GetVariableByName(var_name, *variable_2_var_name);
-        ret_value_str += (var_name + "[" + std::to_string(&in_value) + "], ");
-        ret_variable_str +=
-            (var_name + "[" + std::to_string(&in_variable) + "], ");
+        ss.str("");
+        ss << &in_value;
+        ret_value_str += (var_name + "[" + ss.str() + "], ");
+        ss.str("");
+        ss << in_variable;
+        ret_variable_str += (var_name + "[" + ss.str() + "], ");
       }
       ret_value_str = ret_value_str.substr(0, ret_value_str.size() - 2);
       ret_variable_str =
@@ -1300,9 +1307,10 @@ void PrintValuesAndVariables (
     }
     ret_value_str += ")";
     ret_variable_str += ")";
+    VLOG(8) << ret_value_str;
+    VLOG(8) << ret_variable_str;
   }
-  VLOG(8) << ret_value_str;
-  VLOG(8) << ret_variable_str;
+  return;
 }
 
 }  // namespace interpreter
