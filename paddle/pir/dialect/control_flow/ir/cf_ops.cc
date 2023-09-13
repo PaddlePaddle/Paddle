@@ -16,11 +16,11 @@
 
 namespace pir {
 
-// void YieldOp::Build(Builder &builder,
-//                     OperationArgument &argument,
-//                     std::vector<OpResult> &&inputs) {
-//   argument.AddOperands(inputs.begin(), inputs.end());
-// }
+void YieldOp::Build(Builder &builder,
+                    OperationArgument &argument,
+                    std::vector<OpResult> &&inputs) {
+  argument.AddOperands(inputs.begin(), inputs.end());
+}
 }  // namespace pir
 
-// IR_DEFINE_EXPLICIT_TYPE_ID(pir::YieldOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::YieldOp)
