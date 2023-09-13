@@ -39,7 +39,6 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
 #endif
-#include "paddle/fluid/framework/new_executor/instruction/cond_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
@@ -520,7 +519,6 @@ void NewIRInterpreter::BuildInstruction() {
   size_t op_idx = 0;
   for (auto& op : *ir_block_) {
     VLOG(6) << "Build Instruction for op: " << op_idx;
-    std::cerr << "op->dialect()->name() " << op->dialect()->name() << std::endl;
     if (op->dialect()->name() == "builtin") {
       if (interpreter::GetSpecialOpNames().count(op->name())) {
         VLOG(6) << "skip process " << op->name();
@@ -528,17 +526,6 @@ void NewIRInterpreter::BuildInstruction() {
       }
     } else if (op->dialect()->name() == "cf") {
       continue;
-    } else if (op->dialect()->name() == "pd_op") {
-      vec_instruction_base_.emplace_back(
-          std::make_unique<CondInstruction>(op_idx++,
-                                            place_,
-                                            op,
-                                            scope_,
-                                            local_scope_,
-                                            value_2_var_name_,
-                                            var_name_2_id_,
-                                            variable_2_var_name_,
-                                            sub_blocks_));
     } else if (op->dialect()->name() == "pd_kernel") {
       auto op_name = op->attributes()
                          .at("op_name")
@@ -990,11 +977,9 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
     }
   }
 
-  std::cerr << "begin clear" << std::endl;
   if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
   }
-  std::cerr << "after clear" << std::endl;
   // return Fetch Tensors
   Scope* inner_scope = InnerScope();
   if (FLAGS_enable_new_ir_in_executor) {
