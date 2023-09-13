@@ -109,14 +109,13 @@ class TestRMSNormOp(unittest.TestCase):
 
     def check_rmsnorm(self, x_np, gamma_np, beta_np, dtype):
         paddle.disable_static()
-        with paddle.new_ir_utils.IrGuard():
-            x = paddle.to_tensor(x_np.astype(dtype))
-            gamma = paddle.to_tensor(gamma_np.astype(dtype))
-            beta = paddle.to_tensor(beta_np.astype(dtype))
+        x = paddle.to_tensor(x_np.astype(dtype))
+        gamma = paddle.to_tensor(gamma_np.astype(dtype))
+        beta = paddle.to_tensor(beta_np.astype(dtype))
 
-            paddle_rmsnorm_out = paddle.incubate.nn.functional.fused_rms_norm(
-                x, gamma, beta, self.epsilon, begin_norm_axis=1
-            )
+        paddle_rmsnorm_out = paddle.incubate.nn.functional.fused_rms_norm(
+            x, gamma, beta, self.epsilon, begin_norm_axis=1
+        )
         paddle_naive_rmsnorm_out = naive_rms_norm(x, gamma, beta, self.epsilon)
         paddle.enable_static()
         return paddle_rmsnorm_out, paddle_naive_rmsnorm_out
@@ -216,6 +215,25 @@ class TestRMSNormOp(unittest.TestCase):
         )
         paddle.enable_static()
         return paddle_rmsnorm_out, paddle_naive_rmsnorm_out
+
+    def test_rmsnorm_newir(self):
+        with paddle.new_ir_utils.IrGuard():
+            x = paddle.to_tensor(self.x_np.astype("float32"))
+            gamma = paddle.to_tensor(self.norm_weight_np.astype("float32"))
+            beta = paddle.to_tensor(self.norm_bias_np.astype("float32"))
+
+            paddle_rmsnorm_out = paddle.incubate.nn.functional.fused_rms_norm(
+                x, gamma, beta, self.epsilon, begin_norm_axis=1
+            )
+
+        paddle_naive_rmsnorm_out = naive_rms_norm(x, gamma, beta, self.epsilon)
+
+        np.testing.assert_allclose(
+            paddle_rmsnorm_out[0].numpy(),
+            paddle_naive_rmsnorm_out.numpy(),
+            rtol=1e-3,
+            atol=1e-3,
+        )
 
     def test_rmsnorm_fp16(self):
         if not paddle.is_compiled_with_cuda():
