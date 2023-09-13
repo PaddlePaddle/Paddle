@@ -543,7 +543,6 @@ class TrtConvertFlashMultiHeadMatmulWeightInputTest(TrtLayerAutoScanTest):
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            # The last dim of input1 and input2 should be static.
             self.dynamic_shape.min_input_shape = {
                 "input_data1": [1, 4096, 320],
                 "weight_query": [320, 320],
