@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/adt/kgroup.h"
 #include "paddle/cinn/adt/igroup.h"
-#include "paddle/cinn/adt/schedule_policy.h"
+#include "paddle/cinn/adt/schedule_descriptor.h"
 #include "paddle/cinn/hlir/framework/graph.h"
 
 namespace cinn::adt {

@@ -67,8 +67,8 @@ using MapIRList = std::list<MapIR>;
 MapIRList GenerateClusterOpsForLoopFuse(
     const List<m_expr::OpStmt>& op_stmts,
     const ScheduleIterators& sd_iters,
-    const std::function<const cinn::adt::SchedulePolicy&(
-        const equation::IterVar&)>& GetSchedulePolicy,
+    const std::function<const cinn::adt::LoopDescriptor&(
+        const equation::IterVar&)>& GetLoopDescriptor,
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
         GetTensorIndexes);
 

@@ -83,8 +83,8 @@ class Unroll final {
 DEFINE_ADT_UNION(
     ScheduleType, S0x, S0y, S0z, S1x, S1y, S1z, Temporal, Vectorize, Unroll);
 
-// SchedulePolicy = (ScheduleType, ScheduleSize)
-class SchedulePolicy final : public Tuple<ScheduleType, ScheduleSize> {
+// LoopDescriptor = (ScheduleType, ScheduleSize)
+class LoopDescriptor final : public Tuple<ScheduleType, ScheduleSize> {
  public:
   using Tuple<ScheduleType, ScheduleSize>::Tuple;
 
@@ -96,13 +96,13 @@ class SchedulePolicy final : public Tuple<ScheduleType, ScheduleSize> {
     return std::get<1>(this->tuple());
   }
 
-  bool operator==(const SchedulePolicy& other) const {
+  bool operator==(const LoopDescriptor& other) const {
     return &this->tuple() == &other.tuple();
   }
 };
 
-// ScheduleDescriptor = [SchedulePolicy]
-using ScheduleDescriptor = List<SchedulePolicy>;
+// ScheduleDescriptor = [LoopDescriptor]
+using ScheduleDescriptor = List<LoopDescriptor>;
 
 inline bool IsSpatial(const ScheduleType& schedule_type) {
   return std::visit([](const auto& impl) { return impl.IsSpatial(); },

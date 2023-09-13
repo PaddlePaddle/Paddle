@@ -19,7 +19,7 @@
 #include "paddle/cinn/adt/adapter.h"
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/equation_value.h"
-#include "paddle/cinn/adt/schedule_policy.h"
+#include "paddle/cinn/adt/schedule_descriptor.h"
 
 namespace cinn {
 namespace hlir {
