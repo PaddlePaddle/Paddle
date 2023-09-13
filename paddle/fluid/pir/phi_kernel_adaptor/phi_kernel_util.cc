@@ -115,7 +115,7 @@ paddle::framework::Variable* CreateVar(
     std::vector<paddle::framework::Variable*>* variable_list) {
   Operation* def_op = value.GetDefiningOp();
   bool is_persisable = false;
-  if (def_op->name() == "builtin.set_parameter") {
+  if (def_op->isa<::pir::SetParameterOp>()) {
     is_persisable = true;
   }
 

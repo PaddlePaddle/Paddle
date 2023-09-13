@@ -442,7 +442,7 @@ void BindOpResult(py::module *m) {
       .def_property_readonly(
           "name",
           [](OpResult &self) {
-            if (self.GetDefiningOp()->name() == "builtin.get_parameter") {
+            if (self.GetDefiningOp()->isa<::pir::GetParameterOp>()) {
               auto param_name = self.GetDefiningOp()
                                     ->attributes()
                                     .at("parameter_name")

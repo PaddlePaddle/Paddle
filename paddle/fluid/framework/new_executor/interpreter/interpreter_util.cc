@@ -192,7 +192,7 @@ bool IsMemcpyH2D(Instruction* instr) {
 }
 
 bool IsMemcpyH2D(paddle::framework::InstructionBase* instr) {
-  return instr->Name() == "pd_op.memcpy_h2d";
+  return instr->isa<paddle::dialect::MemcpyH2dOp>();
 }
 
 bool IsMemcpyOp(const Instruction& instr) {
