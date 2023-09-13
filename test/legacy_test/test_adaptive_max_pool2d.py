@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import check_out_dtype
+from op_test import check_out_dtype
 
 import paddle
 import paddle.nn.functional as F

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard
+from op_test import OpTest, paddle_static_guard
 from test_softmax_op import stable_softmax
 
 import paddle

@@ -677,10 +677,6 @@ def monkey_patch_tensor():
                 Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                 2.)
         """
-        if not self.is_leaf:
-            raise RuntimeError(
-                "Only Leaf Tensor support the deepcopy at the moment, non-Leaf Tensors contains graph information that does't support deepcopy"
-            )
         new_tensor = core.eager.Tensor()
         new_tensor.name = self.name + unique_name.generate("_deepcopy")
         memo[id(self)] = new_tensor
