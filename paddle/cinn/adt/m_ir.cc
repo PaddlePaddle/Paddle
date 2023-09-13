@@ -500,24 +500,6 @@ MapIrList GenerateClusterOpsForLoopFuse(
       op_stmts, SdIters4Op, SdIters4Tensor, GetLoopDescriptor);
 }
 
-int CountIteratorsSize(
-    const m_expr::Tensor& tensor,
-    const ScheduleIterators& sd_iters,
-    const std::function<const LoopDescriptor&(const equation::IterVar&)>&
-        GetLoopDescriptor,
-    const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
-        GetTensorIndexes) {
-  return GetTensorIndexIterators(GetTensorIndexes(tensor)).size();
-}
-
-template <typename DoEachT>
-void VisitEachTensorList(const List<m_expr::Tensor>& tensors,
-                         const DoEachT& DoEach) {
-  for (std::size_t i = 0; i < tensors->size(); ++i) {
-    DoEach(tensors->at(i), i);
-  }
-}
-
 namespace {
 
 std::unordered_map<const equation::Variable, equation::Value>

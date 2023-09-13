@@ -18,6 +18,7 @@
 
 #include "paddle/cinn/adt/equation_value.h"
 #include "paddle/cinn/adt/index_expr_infer_context.h"
+#include "paddle/cinn/adt/tags.h"
 
 namespace cinn::adt::equation {
 

@@ -12,22 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/adt/naive_op_equation_context.h"
+#include <algorithm>
+
 #include "paddle/cinn/adt/adapter.h"
 #include "paddle/cinn/adt/m_expr.h"
+#include "paddle/cinn/adt/naive_op_equation_context.h"
 
 namespace cinn::adt::equation::config {
 
 namespace {
 
-using InBox2OutBox =
-    InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>, tIn<tInMsgBox<OpArgIndexes>>>;
+using InBox2OutBox = InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>,
+                                        tIn<tInMsgBox<OpArgIndexes>>>;
 
-template<typename DoEachEquationT>
-Equations TransformEquations(
-    const Equations& origin_equations,
-    const DoEachEquationT& HandleInMsgBox2OutMsgBox,
-    const DoEachEquationT& HandleOther) {
+template <typename DoEachEquationT>
+Equations TransformEquations(const Equations& origin_equations,
+                             const DoEachEquationT& HandleInMsgBox2OutMsgBox,
+                             const DoEachEquationT& HandleOther) {
   Equations equations{};
   for (const auto& origin_equation : *origin_equations) {
     if (origin_equation.Has<InBox2OutBox>()) {
@@ -39,12 +40,14 @@ Equations TransformEquations(
   return equations;
 }
 
-List<Index> GetErasedIndexes(
-    const List<Index>& origin_indexes, const std::vector<equation::Index>& erased_indexes) {
-  List<Index> indexes = {};
+List<Index> GetNonErasedIndexes(
+    const List<Index>& origin_indexes,
+    const std::vector<equation::Index>& erased_indexes) {
+  List<Index> indexes{};
   for (const auto& index : *origin_indexes) {
-    if (std::find(index, erased_indexes.begin(), erased_indexes.end()) != erased_indexes.end()) {
-      indexes.push_back(index);
+    if (std::find(index, erased_indexes.begin(), erased_indexes.end()) ==
+        erased_indexes.end()) {
+      indexes->emplace_back(index);
     }
   }
   return indexes;
@@ -58,16 +61,15 @@ Equation EraseOutMsgBoxIndexes(
       in_msg_box2out_msg_box.tuple();
   const auto& [out_box_in_indexes, out_box_out_indexes] =
       out_box_indexes.value().value().tuple();
-  truncated_out_box_out_indexes =
-    GetErasedIndexes(out_box_out_indexes.value(), erased_output_tensor_indexes);
-  return InMsgBox2OutMsgBox{
-    op_placeholder,
-    tOutMsgBox{OpArgIndexes{out_box_in_indexes, truncated_out_box_out_indexes}},
-    in_box_indexes
-  };
+  const auto& non_erased_out_box_out_indexes = GetNonErasedIndexes(
+      out_box_out_indexes.value(), erased_output_tensor_indexes);
+  return InBox2OutBox{op_placeholder,
+                      tOut<tOutMsgBox<OpArgIndexes>>{OpArgIndexes{
+                          out_box_in_indexes, non_erased_out_box_out_indexes}},
+                      in_box_indexes};
 }
 
-}
+}  // namespace
 
 void NativeOpEquationContext::EraseOutMsgBoxIndexes(
     const std::vector<equation::Index>& erased_output_tensor_indexes) {
@@ -75,7 +77,7 @@ void NativeOpEquationContext::EraseOutMsgBoxIndexes(
   const auto& Erase = [&](const auto& equation) {
     return EraseOutMsgBoxIndexes(equation, erased_output_tensor_indexes);
   };
-  equations_ = TransformEquations(equations_, Identity, Erase);
+  equations_ = TransformEquations(equations_, Erase, Identity);
 }
 
 std::vector<std::uint64_t> MakeTensorRanks(const List<m_expr::Arg>& arg_lists) {

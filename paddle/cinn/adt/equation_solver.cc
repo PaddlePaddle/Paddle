@@ -152,7 +152,7 @@ tHasNoConflictValue<bool> TrySolveEquations(
       has_no_conflict_value = false;
     }
   });
-  return has_no_conflict_value;
+  return tHasNoConflictValue<bool>{has_no_conflict_value};
 }
 
 }  // namespace cinn::adt::equation::value
