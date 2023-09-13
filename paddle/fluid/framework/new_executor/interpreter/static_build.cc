@@ -606,8 +606,8 @@ void FakeInitializeOutputsForFunctionKernel(
             phi::TensorBase* beta2_pow = GetTensorFormVar(
                 runtime_ctx.inputs.find("Beta2Pow")->second.at(0));
             if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU &&
-                beta1_pow->place() == AllocationType::CPU &&
-                beta2_pow->dtype() == AllocationType::CPU) {
+                beta1_pow->place().GetType() == AllocationType::CPU &&
+                beta2_pow->place().GetType() == AllocationType::CPU) {
               backend = phi::Backend::CPU;
             } else {
               backend = phi::TransToPhiBackend(dev_ctx.GetPlace());
