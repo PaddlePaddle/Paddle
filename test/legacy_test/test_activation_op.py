@@ -356,6 +356,11 @@ class TestSigmoid(TestActivation):
         self.if_enable_cinn()
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
         out = 1 / (1 + np.exp(-x))
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -386,7 +391,7 @@ class TestSigmoid_Complex64(TestSigmoid):
         self.check_grad(
             ['X'],
             'Out',
-            max_relative_error=0.007,
+            max_relative_error=0.006,
             check_prim=False,
         )
 
