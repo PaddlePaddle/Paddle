@@ -48,10 +48,16 @@ void MultiPrecisionAddKernelImpl(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   if (y.dtype() == phi::DataType::BFLOAT16) {
     funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, funcs::AddFunctor<T, phi::bfloat16>());
+        dev_ctx,
+        inputs,
+        &outputs,
+        funcs::MultiPrecisionAddFunctor<T, phi::bfloat16>());
   } else if (y.dtype() == phi::DataType::FLOAT16) {
     funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, funcs::AddFunctor<T, phi::float16>());
+        dev_ctx,
+        inputs,
+        &outputs,
+        funcs::MultiPrecisionAddFunctor<T, phi::float16>());
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Unsupport x dtype:%s, y dtype:%s for add(x, y) operation",

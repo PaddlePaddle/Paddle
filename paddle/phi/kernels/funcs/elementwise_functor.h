@@ -35,14 +35,19 @@ namespace funcs {
 // Note: InverseXxxFunctor is needed when calling ElementwiseComputeEx on CPU.
 
 // Add
-template <typename T, typename Ty = T>
+template <typename T>
 struct AddFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y) const { return x + y; }
+};
+template <typename T>
+using InverseAddFunctor = AddFunctor<T>;
+
+template <typename T, typename Ty = T>
+struct MultiPrecisionAddFunctor {
   inline HOSTDEVICE T operator()(const T x, const Ty y) const {
     return x + static_cast<T>(y);
   }
 };
-template <typename T, typename Ty = T>
-using InverseAddFunctor = AddFunctor<T, Ty>;
 
 // Subtract
 template <typename T>
