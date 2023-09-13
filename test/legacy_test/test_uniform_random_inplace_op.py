@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_uint16_to_float
+from op_test import OpTest, convert_uint16_to_float
 
 import paddle
 from paddle import base

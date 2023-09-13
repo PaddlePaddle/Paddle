@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
+#include "build/paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -20,26 +21,6 @@
 
 namespace paddle {
 namespace dialect {
-pir::OpResult split_grad(std::vector<pir::OpResult> out_grads,
-                         pir::OpResult axis) {
-  auto combine_op =
-      APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(out_grads);
-  paddle::dialect::SplitGradOp split_grad_op =
-      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::SplitGradOp>(
-          combine_op.out(), axis);
-
-  return split_grad_op.x_grad();
-}
-
-pir::OpResult split_grad(std::vector<pir::OpResult> out_grads, int axis) {
-  auto combine_op =
-      APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(out_grads);
-  paddle::dialect::SplitGradOp split_grad_op =
-      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::SplitGradOp>(
-          combine_op.out(), axis);
-
-  return split_grad_op.x_grad();
-}
 pir::OpResult get_parameter(const std::string& name,
                             phi::DataType dtype,
                             const std::vector<int64_t>& shape) {
@@ -61,6 +42,25 @@ pir::OpResult get_parameter(const std::string& name,
 void set_parameter(pir::OpResult parameter, const std::string& name) {
   APIBuilder::Instance().GetBuilder()->Build<pir::SetParameterOp>(parameter,
                                                                   name);
+}
+
+pir::OpResult embedding_grad(pir::OpResult x,
+                             pir::OpResult weight,
+                             pir::OpResult out_grad,
+                             int64_t padding_idx,
+                             bool sparse) {
+  if (weight.type().isa<paddle::dialect::DenseTensorType>()) {
+    if (sparse) {
+      return paddle::dialect::embedding_grad_sparse(
+          x, weight, out_grad, padding_idx, sparse);
+    } else {
+      return paddle::dialect::embedding_grad_dense(
+          x, weight, out_grad, padding_idx, sparse);
+    }
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Now we do not support sparse weight embedding_grad."));
+  }
 }
 
 }  // namespace dialect

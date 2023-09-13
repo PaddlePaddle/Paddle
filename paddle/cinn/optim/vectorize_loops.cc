@@ -31,7 +31,6 @@
 #include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/ir_replace.h"
 #include "paddle/cinn/optim/ir_simplify.h"
-#include "paddle/cinn/optim/tensor_write_tell.h"
 #include "paddle/cinn/optim/unroll_loops.h"
 #include "paddle/cinn/utils/functional.h"
 
@@ -185,7 +184,7 @@ class CudaVectorizer : public IRMutator<Expr *> {
   const Var iter_var_;  // the loop var of the vecotrized loop
   const int factor_;    // the factor for vectorize
 
-  TensorWriteTeller write_teller_;
+  std::set<std::string> write_teller_;
   TensorVectorizeTeller vectorized_teller_;
 
   absl::flat_hash_map<std::string, Var> tensor2vectorized_vars_;
@@ -215,7 +214,7 @@ class CudaVectorizer : public IRMutator<Expr *> {
   }
 
   void Visit(Expr *expr) {
-    write_teller_.Collect(expr);
+    write_teller_ = ir::CollectTensorNeedsWrite(expr);
     vectorized_teller_.Collect(expr);
     IRMutator<Expr *>::Visit(expr, expr);
   }
@@ -289,7 +288,7 @@ class CudaVectorizer : public IRMutator<Expr *> {
                   const std::vector<Expr> &indices,
                   bool is_store) {
     auto *node = tensor.As<ir::_Tensor_>();
-    bool is_const = !write_teller_.IsWrite(node->name);
+    bool is_const = !write_teller_.count(node->name);
 
     // generate the corresponding vector type
     Type scalar_type = tensor->type().ElementOf();
