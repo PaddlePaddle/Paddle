@@ -488,7 +488,7 @@ inline void RunProgramAPI(
         1);
     interpreter_core->Run({});
   }
-
+  VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
   {
     paddle::platform::RecordEvent record_event(
         "fetch_and_gc", paddle::platform::TracerEventType::UserDefined, 1);
@@ -497,8 +497,6 @@ inline void RunProgramAPI(
         out, *forward_global_block, backward_global_block, global_inner_scope);
     details::ShareTensorsFromScopeWithPartialBlock(
         dout, *forward_global_block, backward_global_block, global_inner_scope);
-
-    VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
     if (is_test || !require_any_grad) {
       VLOG(4) << "don't require any grad, set this scope can reused";

@@ -410,8 +410,12 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     input_param_names.insert(name);
   }
 
+  std::set<std::string> set_parameter_names;
+  for (auto &t : output_names) {
+    set_parameter_names.insert(t);
+  }
+
   if (backward_global_block != nullptr) {
-    std::set<std::string> set_parameter_names;
     for (auto op_desc : backward_global_block->Program()->Block(0).AllOps()) {
       for (const auto &n : op_desc->Inputs()) {
         const auto &input_var_names = n.second;
@@ -420,26 +424,22 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
         }
       }
     }
+  }
 
-    for (auto &t : output_names) {
-      set_parameter_names.insert(t);
+  for (auto &name : set_parameter_names) {
+    if (!set_output_names.count(name)) {
+      continue;
     }
 
-    for (auto &name : set_parameter_names) {
-      if (!set_output_names.count(name)) {
-        continue;
-      }
-
-      if (input_param_names.count(name)) {
-        continue;
-      }
-
-      auto op_desc = local_program.MutableBlock(0)->AppendOp();
-      op_desc->SetType("shadow_output");
-      op_desc->SetAttr("name", name);
-      op_desc->SetInput("x", {name});
-      op_desc->SetOutput("out", {"@EMPTY@"});
+    if (input_param_names.count(name)) {
+      continue;
     }
+
+    auto op_desc = local_program.MutableBlock(0)->AppendOp();
+    op_desc->SetType("shadow_output");
+    op_desc->SetAttr("name", name);
+    op_desc->SetInput("x", {name});
+    op_desc->SetOutput("out", {"@EMPTY@"});
   }
   paddle::translator::ProgramTranslator program_translator(&local_program,
                                                            program.get());
