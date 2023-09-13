@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <glog/logging.h>
-
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
 
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
@@ -79,11 +77,8 @@ void DistTensorSpec::set_dist_attr(const TensorDistAttr& dist_attr) {
 
 std::string DistTensorSpec::to_string() const {
   using phi::distributed::auto_parallel::str_join;
-  VLOG(0) << "inside DistTensorSpec::to_string(): ";
   std::string spec_str = "{tensor_shape:[" + str_join(shape_) + "], ";
-  VLOG(0) << "Shape: " << str_join(shape_);
   spec_str += "dist_attr:" + dist_attr_.to_string() + "}";
-  VLOG(0) << "dist_attr: " << dist_attr_.to_string();
   return spec_str;
 }
 

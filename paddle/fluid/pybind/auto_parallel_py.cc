@@ -14,13 +14,11 @@
 
 #include <pybind11/operators.h>
 #include <pybind11/stl.h>
-#include <typeinfo>
 #include <utility>
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/auto_parallel_py.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/op_function_common.h"
@@ -379,119 +377,6 @@ void BindAutoParallel(py::module *m) {
                &SPMDRuleBase::InferBackward));
   // .def("infer_backward", &SPMDRuleBase::InferBackward) [revert in future]
 
-  // py::class_<phi::distributed::SpmdRule>(*m, "SpmdRule")
-  //     .def("infer_forward",
-  //          [](const phi::distributed::SpmdRule &self,
-  //             const std::vector<DistTensorSpec> &input_specs,
-  //             const std::vector<phi::Attribute> &attrs) {
-  //            phi::distributed::InferSpmdContext ctx;
-  //            for (auto &spec : input_specs) {
-  //              ctx->EmplaceBackInput(phi::distributed::DistMetaTensor(
-  //                  phi::make_ddim(spec.shape()), spec.dist_attr()));
-  //            }
-  //            for (auto &attr : attrs) {
-  //              ctx->EmplaceBackAttr(attr);
-  //            }
-  //            return self.InferForward(ctx);
-  //          })
-  //     .def("infer_forward",  // for op that have vector argument
-  //          [](const phi::distributed::SpmdRule &self,
-  //             const std::vector<std::pair<int, int>> &input_ranges,
-  //             const std::vector<DistTensorSpec> &input_specs,
-  //             const std::vector<phi::Attribute> &attrs) {
-  //            /*
-  //            to distingish between single tensor argument and vector argument
-  //            of one tensor: start - end == 0: single tensor start - end == 1:
-  //            vector containing one tensor input_ranges: [(0, 0), (1, 3), (3,
-  //            4)]
-  //            + input_specs: [t0, t1, t2, t3]  --> t0, [t1, t2], [t3]
-  //            */
-  //            phi::distributed::InferSpmdContext ctx;
-  //            paddle::small_vector<phi::distributed::DistMetaTensor,
-  //                                 phi::kInputSmallVectorSize>
-  //                ins;
-  //            for (auto &range : input_ranges) {
-  //              if (range.second - range.first == 0) {
-  //                auto &in = input_specs.at(range.first);
-  //                ctx->EmplaceBackInput(phi::distributed::DistMetaTensor(
-  //                    phi::make_ddim(in.shape()), in.dist_attr()));
-  //              } else {
-  //                int start = range.first;
-  //                int end = range.second;
-  //                ins.reserve(end - start);
-  //                for (int i = start; i < end; ++i) {
-  //                  auto &in = input_specs.at(i);
-  //                  ins.emplace_back(phi::distributed::DistMetaTensor(
-  //                      phi::make_ddim(in.shape()), in.dist_attr()));
-  //                }
-  //                ctx->EmplaceBackInputs(ins);
-  //                ins.clear();
-  //              }
-  //            }
-  //            for (auto &attr : attrs) {
-  //              ctx->EmplaceBackAttr(attr);
-  //            }
-  //            return self.InferForward(ctx);
-  //          })
-  //     .def("infer_backward",
-  //          [](const phi::distributed::SpmdRule &self,
-  //             const std::vector<DistTensorSpec> &input_specs,
-  //             const std::vector<DistTensorSpec> &output_specs,
-  //             const std::vector<phi::Attribute> &attrs) {
-  //            phi::distributed::InferSpmdContext ctx;
-  //            for (auto &spec : input_specs) {
-  //              ctx->EmplaceBackInput(phi::distributed::DistMetaTensor(
-  //                  phi::make_ddim(spec.shape()), spec.dist_attr()));
-  //            }
-  //            for (auto &spec : output_specs) {
-  //              ctx->EmplaceBackInput(phi::distributed::DistMetaTensor(
-  //                  phi::make_ddim(spec.shape()), spec.dist_attr()));
-  //            }
-  //            for (auto &attr : attrs) {
-  //              ctx->EmplaceBackAttr(attr);
-  //            }
-  //            return self.InferBackward(ctx);
-  //          })
-  //     .def("infer_backward",  // for op that have vector argument
-  //          [](const phi::distributed::SpmdRule &self,
-  //             const std::vector<std::pair<int, int>> &input_ranges,
-  //             const std::vector<DistTensorSpec> &input_specs,
-  //             const std::vector<phi::Attribute> &attrs) {
-  //            /*
-  //            to distingish between single tensor argument and vector argument
-  //            of one tensor: start - end == 0: single tensor start - end == 1:
-  //            vector containing one tensor input_ranges: [(0, 0), (1, 3), (3,
-  //            4)]
-  //            + input_specs: [t0, t1, t2, t3]  --> t0, [t1, t2], [t3]
-  //            */
-  //            phi::distributed::InferSpmdContext ctx;
-  //            paddle::small_vector<phi::distributed::DistMetaTensor,
-  //                                 phi::kInputSmallVectorSize>
-  //                ins;
-  //            for (auto &range : input_ranges) {
-  //              if (range.second - range.first == 0) {
-  //                auto &in = input_specs.at(range.first);
-  //                ctx->EmplaceBackInput(phi::distributed::DistMetaTensor(
-  //                    phi::make_ddim(in.shape()), in.dist_attr()));
-  //              } else {
-  //                int start = range.first;
-  //                int end = range.second;
-  //                ins.reserve(end - start);
-  //                for (int i = start; i < end; ++i) {
-  //                  auto &in = input_specs.at(i);
-  //                  ins.emplace_back(phi::distributed::DistMetaTensor(
-  //                      phi::make_ddim(in.shape()), in.dist_attr()));
-  //                }
-  //                ctx->EmplaceBackInputs(ins);
-  //                ins.clear();
-  //              }
-  //            }
-  //            for (auto &attr : attrs) {
-  //              ctx->EmplaceBackAttr(attr);
-  //            }
-  //            return self.InferBackward(ctx);
-  //          });
-
   py::class_<phi::distributed::SpmdRule>(*m, "SpmdRule")
       .def("infer_forward", &infer_forward)
       .def("infer_backward", &infer_backward);
@@ -655,91 +540,119 @@ void BindAutoParallel(py::module *m) {
   });
 }
 
-static void parse_single_object(PyObject *obj,
-                                phi::distributed::InferSpmdContext *ctx,
-                                const size_t arg_pos) {
+static void parse_tensors(PyObject *obj,
+                          phi::distributed::InferSpmdContext *ctx,
+                          const size_t arg_pos) {
+  Py_ssize_t len = PyList_Size(obj);
+  VLOG(6) << "args indx: [" << arg_pos << "] input vector of ["
+          << static_cast<size_t>(len) << "] tensors.";
+  paddle::small_vector<phi::distributed::DistMetaTensor,
+                       phi::kInputSmallVectorSize>
+      ins;
+  ins.reserve(static_cast<size_t>(len));
+  for (Py_ssize_t i = 0; i < len; i++) {
+    DistTensorSpec in = py::cast<DistTensorSpec>(PyList_GetItem(obj, i));
+    VLOG(6) << "Vector emplace_back DistTensorSpec: " << in.to_string();
+    ins.emplace_back(phi::distributed::DistMetaTensor(
+        phi::make_ddim(in.shape()), in.dist_attr()));
+  }
+  ctx->EmplaceBackInputs(ins);
+}
+
+static void parse_tensor(PyObject *obj,
+                         phi::distributed::InferSpmdContext *ctx,
+                         const size_t arg_pos) {
+  VLOG(6) << "args indx: [" << arg_pos << "] input one tensor.";
+  DistTensorSpec in = py::cast<DistTensorSpec>(obj);
+  VLOG(6) << "DistTensorSpec: " << in.to_string();
+  ctx->EmplaceBackInput(phi::distributed::DistMetaTensor(
+      phi::make_ddim(in.shape()), in.dist_attr()));
+}
+
+// TODO(ljz) support other types
+static void parse_attrs(PyObject *obj,
+                        PyObject *first_item,
+                        phi::distributed::InferSpmdContext *ctx,
+                        const size_t arg_pos) {
+  if (PyBool_Check(first_item)) {
+    auto attrs = CastPyArg2Booleans(obj, infer_spmd_string, arg_pos);
+    ctx->EmplaceBackAttr(attrs);
+  } else if (PyCheckInteger(first_item)) {
+    auto attrs = CastPyArg2Ints(obj, infer_spmd_string, arg_pos);
+    ctx->EmplaceBackAttr(attrs);
+  } else if (PyLong_Check(first_item)) {
+    auto attrs = CastPyArg2Longs(obj, infer_spmd_string, arg_pos);
+    ctx->EmplaceBackAttr(attrs);
+  } else if (PyFloat_Check(first_item)) {
+    auto attrs = CastPyArg2Floats(obj, infer_spmd_string, arg_pos);
+    ctx->EmplaceBackAttr(attrs);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "list of int, float, bool or Tensor, but got %s",
+        infer_spmd_string,
+        arg_pos,
+        ((PyTypeObject *)first_item->ob_type)->tp_name));  // NOLINT
+  }
+}
+
+// TODO(ljz) support other types
+static void parse_attr(PyObject *obj,
+                       phi::distributed::InferSpmdContext *ctx,
+                       const size_t arg_pos) {
+  if (PyBool_Check(obj)) {
+    auto attr = CastPyArg2Boolean(obj, infer_spmd_string, arg_pos);
+    ctx->EmplaceBackAttr(attr);
+  } else if (PyCheckInteger(obj)) {
+    auto attr = CastPyArg2Int(obj, infer_spmd_string, arg_pos);
+    ctx->EmplaceBackAttr(attr);
+  } else if (PyLong_Check(obj)) {
+    auto attr = CastPyArg2Long(obj, infer_spmd_string, arg_pos);
+    ctx->EmplaceBackAttr(attr);
+  } else if (PyFloat_Check(obj)) {
+    auto attr = CastPyArg2Float(obj, infer_spmd_string, arg_pos);
+    ctx->EmplaceBackAttr(attr);
+  } else {  // TODO(ljz) support other types
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "int, float, bool or Tensor, but got %s",
+        infer_spmd_string,
+        arg_pos,
+        ((PyTypeObject *)obj->ob_type)->tp_name));  // NOLINT
+  }
+}
+
+static void parse_single_pyobject(PyObject *obj,
+                                  phi::distributed::InferSpmdContext *ctx,
+                                  const size_t arg_pos) {
   if (PyList_Check(obj)) {  // list inputs, spmd not allow tuple inputs
     PyObject *first_item = PyList_GetItem(obj, 0);
     if (PyObject_TypeCheck(first_item, g_dist_tensor_spec_pytype)) {
-      Py_ssize_t len = PyList_Size(obj);
-      VLOG(0) << "list input size:" << static_cast<size_t>(len)
-              << " pos:" << arg_pos;
-      paddle::small_vector<phi::distributed::DistMetaTensor,
-                           phi::kInputSmallVectorSize>
-          ins;
-      ins.reserve(static_cast<size_t>(len));
-      for (Py_ssize_t i = 0; i < len; i++) {
-        DistTensorSpec in = py::cast<DistTensorSpec>(PyList_GetItem(obj, i));
-        VLOG(0) << "Vector emplace_back DistTensorSpec: " << in.to_string();
-        ins.emplace_back(phi::distributed::DistMetaTensor(
-            phi::make_ddim(in.shape()), in.dist_attr()));
-      }
-      ctx->EmplaceBackInputs(ins);
+      parse_tensors(obj, ctx, arg_pos);
     } else {
-      if (PyBool_Check(first_item)) {
-        auto attrs = CastPyArg2Booleans(obj, infer_spmd_string, arg_pos);
-        ctx->EmplaceBackAttr(attrs);
-      } else if (PyCheckInteger(first_item)) {
-        auto attrs = CastPyArg2Ints(obj, infer_spmd_string, arg_pos);
-        ctx->EmplaceBackAttr(attrs);
-      } else if (PyLong_Check(first_item)) {
-        auto attrs = CastPyArg2Longs(obj, infer_spmd_string, arg_pos);
-        ctx->EmplaceBackAttr(attrs);
-      } else if (PyFloat_Check(first_item)) {
-        auto attrs = CastPyArg2Floats(obj, infer_spmd_string, arg_pos);
-        ctx->EmplaceBackAttr(attrs);
-      } else {  // TODO(ljz) support other types
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "%s(): argument (position %d) must be "
-            "list of int, float, bool or Tensor, but got %s",
-            infer_spmd_string,
-            arg_pos,
-            ((PyTypeObject *)first_item->ob_type)->tp_name));  // NOLINT
-      }
+      parse_attrs(obj, first_item, ctx, arg_pos);
     }
   } else {
     if (PyObject_TypeCheck(obj, g_dist_tensor_spec_pytype)) {
-      DistTensorSpec in = py::cast<DistTensorSpec>(obj);
-      VLOG(0) << "DistTensorSpec: " << in.to_string();
-      ctx->EmplaceBackInput(phi::distributed::DistMetaTensor(
-          phi::make_ddim(in.shape()), in.dist_attr()));
+      parse_tensor(obj, ctx, arg_pos);
     } else {
-      if (PyBool_Check(obj)) {
-        auto attr = CastPyArg2Boolean(obj, infer_spmd_string, arg_pos);
-        ctx->EmplaceBackAttr(attr);
-      } else if (PyCheckInteger(obj)) {
-        auto attr = CastPyArg2Int(obj, infer_spmd_string, arg_pos);
-        ctx->EmplaceBackAttr(attr);
-      } else if (PyLong_Check(obj)) {
-        auto attr = CastPyArg2Long(obj, infer_spmd_string, arg_pos);
-        ctx->EmplaceBackAttr(attr);
-      } else if (PyFloat_Check(obj)) {
-        auto attr = CastPyArg2Float(obj, infer_spmd_string, arg_pos);
-        ctx->EmplaceBackAttr(attr);
-      } else {  // TODO(ljz) support other types
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "%s(): argument (position %d) must be "
-            "int, float, bool or Tensor, but got %s",
-            infer_spmd_string,
-            arg_pos,
-            ((PyTypeObject *)obj->ob_type)->tp_name));  // NOLINT
-      }
+      parse_attr(obj, ctx, arg_pos);
     }
   }
 }
 
 static void prepare_ctx(phi::distributed::InferSpmdContext *ctx,
                         const py::args &args) {
-  VLOG(0) << "prepare_ctx ";
+  VLOG(6) << "prepare_ctx ";
   size_t inputs_size = args.size();
   for (size_t i = 0; i < inputs_size; ++i) {
     PyObject *obj = args[i].ptr();
-    parse_single_object(obj, &ctx, i);
+    parse_single_pyobject(obj, ctx, i);
   }
 }
 static std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
 infer_forward(const phi::distributed::SpmdRule &self, const py::args &args) {
-  VLOG(0) << "infer_forward ";
+  VLOG(6) << "infer_forward ";
   phi::distributed::InferSpmdContext ctx;
   prepare_ctx(&ctx, args);
   return self.InferForward(ctx);
@@ -747,6 +660,7 @@ infer_forward(const phi::distributed::SpmdRule &self, const py::args &args) {
 
 static std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
 infer_backward(const phi::distributed::SpmdRule &self, const py::args &args) {
+  VLOG(6) << "infer_backward ";
   phi::distributed::InferSpmdContext ctx;
   prepare_ctx(&ctx, args);
   return self.InferBackward(ctx);
