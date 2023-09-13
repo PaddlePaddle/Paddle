@@ -216,25 +216,6 @@ class TestRMSNormOp(unittest.TestCase):
         paddle.enable_static()
         return paddle_rmsnorm_out, paddle_naive_rmsnorm_out
 
-    def test_rmsnorm_newir(self):
-        with paddle.new_ir_utils.IrGuard():
-            x = paddle.to_tensor(self.x_np.astype("float32"))
-            gamma = paddle.to_tensor(self.norm_weight_np.astype("float32"))
-            beta = paddle.to_tensor(self.norm_bias_np.astype("float32"))
-
-            paddle_rmsnorm_out = paddle.incubate.nn.functional.fused_rms_norm(
-                x, gamma, beta, self.epsilon, begin_norm_axis=1
-            )
-
-        paddle_naive_rmsnorm_out = naive_rms_norm(x, gamma, beta, self.epsilon)
-
-        np.testing.assert_allclose(
-            paddle_rmsnorm_out[0].numpy(),
-            paddle_naive_rmsnorm_out.numpy(),
-            rtol=1e-3,
-            atol=1e-3,
-        )
-
     def test_rmsnorm_fp16(self):
         if not paddle.is_compiled_with_cuda():
             return
@@ -360,6 +341,49 @@ class TestRMSNormStaticOp(unittest.TestCase):
                 fetch_list=[outs],
             )
         return out_s[0], paddle_naive_rmsnorm_out
+
+    def test_rmsnorm_newir(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_np.astype("float32"))
+        gamma = paddle.to_tensor(self.norm_weight_np.astype("float32"))
+        beta = paddle.to_tensor(self.norm_bias_np.astype("float32"))
+
+        paddle_naive_rmsnorm_out = naive_rms_norm(x, gamma, beta, self.epsilon)
+        paddle.enable_static()
+
+        with paddle.new_ir_utils.IrGuard():
+            x_static = paddle.static.data(
+                name="x_static", shape=[self.batch, self.cols], dtype="float32"
+            )
+            gamma_static = paddle.static.data(
+                name="gamma_static", shape=[self.cols], dtype="float32"
+            )
+            beta_static = paddle.static.data(
+                name="beta_static", shape=[self.cols], dtype="float32"
+            )
+            outs = paddle.incubate.nn.functional.fused_rms_norm(
+                x_static,
+                gamma_static,
+                beta_static,
+                self.epsilon,
+                begin_norm_axis=1,
+            )
+            exe = base.Executor(self.place)
+            out_s = exe.run(
+                feed={
+                    "x_static": self.x_np.astype("float32"),
+                    "gamma_static": self.norm_weight_np.astype("float32"),
+                    "beta_static": self.norm_bias_np.astype("float32"),
+                },
+                fetch_list=[outs],
+            )
+
+        np.testing.assert_allclose(
+            out_s[0].numpy(),
+            paddle_naive_rmsnorm_out.numpy(),
+            rtol=1e-3,
+            atol=1e-3,
+        )
 
     def check_rmsnorm_int8(self, x_np, gamma_np, beta_np, dtype):
         paddle.disable_static()
