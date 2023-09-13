@@ -12,16 +12,112 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include <limits>
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/reduce_all_kernel.h"
+#include "paddle/phi/kernels/reduce_amin_kernel.h"
+#include "paddle/phi/kernels/reduce_any_kernel.h"
+#include "paddle/phi/kernels/reduce_max_kernel.h"
+#include "paddle/phi/kernels/reduce_mean_kernel.h"
+#include "paddle/phi/kernels/reduce_min_kernel.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 #ifndef PADDLE_WITH_XPU_KP
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #endif
 
 namespace phi {
+
+template <typename T, typename Context>
+void AllRawKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const std::vector<int64_t>& dims,
+                  bool keep_dim,
+                  bool reduce_all,
+                  DenseTensor* out) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  auto out_dtype = phi::DataType::BOOL;
+  phi::Reduce<T, kps::LogicalAndFunctor, kps::IdentityFunctor>(
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+}
+
+template <typename T, typename Context>
+void AMaxRawKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const std::vector<int64_t>& dims,
+                   bool keep_dim,
+                   bool reduce_all,
+                   DenseTensor* out) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  auto out_dtype = x.dtype();
+  phi::Reduce<T, kps::MaxFunctor, kps::IdentityFunctor>(
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+}
+
+template <typename T, typename Context>
+void AMinRawKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const std::vector<int64_t>& dims,
+                   bool keep_dim,
+                   bool reduce_all,
+                   DenseTensor* out) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  auto out_dtype = x.dtype();
+  phi::Reduce<T, kps::MinFunctor, kps::IdentityFunctor>(
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+}
+
+template <typename T, typename Context>
+void AnyRawKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const std::vector<int64_t>& dims,
+                  bool keep_dim,
+                  bool reduce_all,
+                  DenseTensor* out) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  auto out_dtype = phi::DataType::BOOL;
+  phi::Reduce<T, kps::LogicalOrFunctor, kps::IdentityFunctor>(
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+}
+
+template <typename T, typename Context>
+void MaxKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               const IntArray& dims,
+               bool keep_dim,
+               DenseTensor* out) {
+  bool reduce_all = recompute_reduce_all(x, dims);
+  auto out_dtype = x.dtype();
+  phi::Reduce<T, kps::MaxFunctor, kps::IdentityFunctor>(
+      dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
+}
+
+template <typename T, typename Context>
+void MeanRawKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const IntArray& dims,
+                   bool keep_dim,
+                   bool reduce_all,
+                   DenseTensor* out) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  auto out_dtype = x.dtype();
+  phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
+      dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out, true);
+}
+
+template <typename T, typename Context>
+void MinRawKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const IntArray& dims,
+                  bool keep_dim,
+                  bool reduce_all,
+                  DenseTensor* out) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  auto out_dtype = x.dtype();
+  phi::Reduce<T, kps::MinFunctor, kps::IdentityFunctor>(
+      dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
+}
 
 #ifndef PADDLE_WITH_XPU_KP
 template <typename T,
@@ -146,6 +242,22 @@ void SumRawKernel(const Context& dev_ctx,
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU_KP
+PD_REGISTER_KERNEL(all_raw, KPS, ALL_LAYOUT, phi::AllRawKernel, bool) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
+
+PD_REGISTER_KERNEL(amax_raw, KPS, ALL_LAYOUT, phi::AMaxRawKernel, float) {}
+
+PD_REGISTER_KERNEL(amin_raw, KPS, ALL_LAYOUT, phi::AMinRawKernel, float) {}
+
+PD_REGISTER_KERNEL(any_raw, KPS, ALL_LAYOUT, phi::AnyRawKernel, bool) {}
+
+PD_REGISTER_KERNEL(max, KPS, ALL_LAYOUT, phi::MaxKernel, float) {}
+
+PD_REGISTER_KERNEL(mean_raw, KPS, ALL_LAYOUT, phi::MeanRawKernel, float) {}
+
+PD_REGISTER_KERNEL(min_raw, KPS, ALL_LAYOUT, phi::MinRawKernel, float) {}
+
 PD_REGISTER_KERNEL(sum_raw, KPS, ALL_LAYOUT, phi::SumRawKernel, float) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
@@ -154,6 +266,84 @@ using float16 = phi::dtype::float16;
 using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
+
+PD_REGISTER_KERNEL(all_raw,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::AllRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
+
+PD_REGISTER_KERNEL(amax_raw,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::AMaxRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(amin_raw,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::AMinRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(any_raw,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::AnyRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
+
+PD_REGISTER_KERNEL(max,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::MaxKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(mean_raw,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::MeanRawKernel,
+                   float,
+                   double,
+                   bool,
+                   phi::dtype::bfloat16,
+                   float16,
+                   int,
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(min_raw,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::MinRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(sum_raw,
                    KPS,
