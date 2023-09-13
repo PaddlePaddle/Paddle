@@ -249,7 +249,7 @@ endif()
 
 if(WIN32)
   if(MSVC)
-    if(MSVC_VERSION EQUAL 1911)
+    if(MSVC_VERSION EQUAL 1916)
       set(WITH_MKLDNN OFF)
     endif()
   endif()
