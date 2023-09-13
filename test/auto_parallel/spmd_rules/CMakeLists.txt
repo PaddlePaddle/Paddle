@@ -15,6 +15,8 @@ if(WITH_DISTRIBUTE)
                   test_cross_entropy_with_softmax_rule)
   py_test_modules(test_reduction_rule MODULES test_reduction_rule)
   py_test_modules(test_reshape_rule MODULES test_reshape_rule)
+  py_test_modules(test_default_data_parallel_rule MODULES
+                  test_default_data_parallel_rule)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()

@@ -35,8 +35,8 @@ from ..framework import (
     convert_np_dtype_to_dtype_,
     core,
     in_dynamic_mode,
-    in_dynamic_or_new_ir_mode,
-    in_new_ir_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
 )
 from .creation import _complex_to_real_dtype
 from .layer_function_generator import generate_layer_fn, templatedoc
@@ -267,7 +267,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
             return _C_ops.scale(x, scale, float(bias), bias_after_scale)
         out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
         return dygraph_utils._append_activation_in_dygraph(out, act)
-    elif in_new_ir_mode():
+    elif in_pir_mode():
         if act is None:
             return _C_ops.scale(x, scale, float(bias), bias_after_scale)
         raise ValueError("act is not implement in new ir of scale api.")
@@ -685,7 +685,7 @@ def add(x, y, name=None):
             [3., 8., 6.])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.add(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_add', **locals()))
@@ -825,7 +825,7 @@ def subtract(x, y, name=None):
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [ 4.  ,  inf., -inf.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.subtract(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
@@ -1520,7 +1520,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         dtype_flag = True
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_or_new_ir_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sum(x, axis, dtype, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
@@ -1958,7 +1958,7 @@ def add_n(inputs, name=None):
             [[8. , 10., 12.],
              [14., 16., 18.]])
     """
-    if in_dynamic_or_new_ir_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(inputs, Variable):
             inputs = [inputs]
         return _C_ops.add_n(inputs)

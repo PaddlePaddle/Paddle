@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,22 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/**
- * This file implements the strategy to remove the unnecessary nested block.
- */
-#pragma once
-#include <vector>
+#include "paddle/pir/core/interface_support.h"
 
-#include "paddle/cinn/common/common.h"
-#include "paddle/cinn/ir/ir.h"
+namespace pir {
+details::InterfaceValue::~InterfaceValue() {
+  if (model_) free(model_);
+}
 
-namespace cinn {
-namespace optim {
+details::InterfaceValue::InterfaceValue(InterfaceValue&& val) noexcept {
+  type_id_ = val.type_id_;
+  model_ = val.model_;
+  val.model_ = nullptr;
+}
 
-/**
- * Remove the unecessary nested block.
- */
-void RemoveNestedBlock(Expr* e);
-
-}  // namespace optim
-}  // namespace cinn
+details::InterfaceValue& details::InterfaceValue::operator=(
+    InterfaceValue&& val) noexcept {
+  swap(std::move(val));
+  return *this;
+}
+}  // namespace pir
