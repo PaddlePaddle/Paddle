@@ -637,7 +637,7 @@ void BindPassManager(pybind11::module *m) {
 }
 
 void BindNewIR(pybind11::module *module) {
-  auto ir_module = module->def_submodule("ir");
+  auto ir_module = module->def_submodule("pir");
   BindProgram(&ir_module);
   BindBlock(&ir_module);
   BindOperation(&ir_module);
