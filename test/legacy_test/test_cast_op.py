@@ -29,7 +29,12 @@ from paddle.base import Program, core, program_guard
 
 
 def cast_wrapper(x, out_dtype=None):
-    return paddle.cast(x, paddle.dtype(out_dtype))
+    paddle_dtype = paddle.dtype(out_dtype)
+    # unify dtype to numpy_type for pir and dygraph
+    numpy_dtype = paddle.base.data_feeder._PADDLE_DTYPE_2_NUMPY_DTYPE[
+        paddle_dtype
+    ]
+    return paddle.cast(x, numpy_dtype)
 
 
 class TestCastOpFp32ToFp64(OpTest):
