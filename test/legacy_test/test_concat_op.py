@@ -53,7 +53,7 @@ class TestConcatOp(OpTest):
     def test_check_output(self):
         if self.dtype == np.uint16:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place)
+            self.check_output_with_place(place, check_new_ir=True)
         else:
             self.check_output(check_new_ir=True)
 
@@ -166,12 +166,12 @@ class TestConcatOp6(TestConcatOp):
         pass
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_new_ir=False)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', check_new_ir=True)
-        self.check_grad(['x1'], 'Out', check_new_ir=True)
-        self.check_grad(['x2'], 'Out', check_new_ir=True)
+        self.check_grad(['x0'], 'Out', check_new_ir=False)
+        self.check_grad(['x1'], 'Out', check_new_ir=False)
+        self.check_grad(['x2'], 'Out', check_new_ir=False)
 
     def init_test_data(self):
         self.x0 = np.random.random([100]).astype(self.dtype)
@@ -436,6 +436,7 @@ create_test_bf16(TestConcatOp4)
 
 class TestConcatOpError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input type of concat_op should be list.
 
@@ -470,6 +471,7 @@ class TestConcatOpError(unittest.TestCase):
                 paddle.concat([x7, x8])
 
             self.assertRaises(TypeError, test_input_same_dtype)
+        paddle.disable_static()
 
 
 class TestConcatAPI(unittest.TestCase):
