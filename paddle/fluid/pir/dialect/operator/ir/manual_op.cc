@@ -455,10 +455,19 @@ void FusedGemmEpilogueOp::Build(pir::Builder &builder,
                                 pir::OpResult y_,
                                 pir::OpResult bias_,
                                 pir::AttributeMap attributes) {
+  PADDLE_ENFORCE(attributes.find("trans_x") != attributes.end(),
+      phi::errors::NotFound(
+          "FusedGemmEpilogueOp is expected for 'trans_x' Attribute"));
   bool trans_x = attributes.at("trans_x").dyn_cast<pir::BoolAttribute>().data();
 
+  PADDLE_ENFORCE(attributes.find("trans_y") != attributes.end(),
+      phi::errors::NotFound(
+          "FusedGemmEpilogueOp is expected for 'trans_y' Attribute"));
   bool trans_y = attributes.at("trans_y").dyn_cast<pir::BoolAttribute>().data();
 
+  PADDLE_ENFORCE(attributes.find("activation") != attributes.end(),
+      phi::errors::NotFound(
+          "FusedGemmEpilogueOp is expected for 'activation' Attribute"));
   std::string activation =
       attributes.at("activation").dyn_cast<pir::StrAttribute>().AsString();
 
@@ -697,10 +706,19 @@ void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
                                     pir::OpResult reserve_space_,
                                     pir::OpResult out_grad_,
                                     pir::AttributeMap attributes) {
+  PADDLE_ENFORCE(attributes.find("trans_x") != attributes.end(),
+      phi::errors::NotFound(
+          "FusedGemmEpilogueGradOp is expected for 'trans_x' Attribute"));
   bool trans_x = attributes.at("trans_x").dyn_cast<pir::BoolAttribute>().data();
 
+  PADDLE_ENFORCE(attributes.find("trans_y") != attributes.end(),
+      phi::errors::NotFound(
+          "FusedGemmEpilogueGradOp is expected for 'trans_y' Attribute"));
   bool trans_y = attributes.at("trans_y").dyn_cast<pir::BoolAttribute>().data();
 
+  PADDLE_ENFORCE(attributes.find("activation_grad") != attributes.end(),
+      phi::errors::NotFound(
+          "FusedGemmEpilogueGradOp is expected for 'activation_grad' Attribute"));
   std::string activation_grad =
       attributes.at("activation_grad").dyn_cast<pir::StrAttribute>().AsString();
 
