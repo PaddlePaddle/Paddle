@@ -606,11 +606,11 @@ void FakeInitializeOutputsForFunctionKernel(
             phi::TensorBase* beta2_pow = GetTensorFormVar(
                 runtime_ctx.inputs.find("Beta2Pow")->second.at(0));
             if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU &&
-                beta1_pow.place() == AllocationType::CPU &&
-                beta2_pow.place() == AllocationType::CPU) {
+                beta1_pow->place() == AllocationType::CPU &&
+                beta2_pow->dtype() == AllocationType::CPU) {
               backend = phi::Backend::CPU;
             } else {
-              backend = phi::TransToPhiBackend(dev_ctx.GetPlace().GetType());
+              backend = phi::TransToPhiBackend(dev_ctx.GetPlace());
             }
           } else if (op_type == "reshape2") {
             phi::TensorBase* x =
