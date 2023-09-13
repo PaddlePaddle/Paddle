@@ -93,6 +93,20 @@ class cus_tanh_2(PyLayer):
         y, = ctx.saved_tensor()
         grad = dy * (1 - ctx.func(y))
         return grad
+    
+class cus_sigmoid(PyLayer):
+    @staticmethod
+    def forward(ctx, x, func1, func2):
+        ctx.func = func2
+        y = 1 / (1 + func1(-x))
+        ctx.save_for_backward(x)
+        return y
+    
+    @staticmethod
+    def backward(ctx, dy):
+        x, = ctx.saved_tensor()
+        grad = dy * ctx.func(x) * (1 - ctx.func(x))
+        return grad
 
 class nested_layer(PyLayer):
     @staticmethod
@@ -120,6 +134,26 @@ class SimpleNet_1(paddle.nn.Layer):
         hidden = self.linear(data)
         z = cus_tanh_1.apply(hidden)
         return z
+
+class SimpleNet_2(paddle.nn.Layer):
+    def __init__(self, in_size, out_size):
+        super().__init__()
+        self.linear = paddle.nn.Linear(in_size, out_size)
+
+    def forward(self, x):
+        y = self.linear(x)
+        out = cus_tanh_2.apply(y, func1=paddle.tanh)
+        return out
+
+class SimpleNet_3(paddle.nn.Layer):
+    def __init__(self, in_size, out_size):
+        super().__init__()
+        self.linear = paddle.nn.Linear(in_size, out_size)
+
+    def forward(self, x):
+        y = self.linear(x)
+        out = cus_sigmoid.apply(y, func1=paddle.exp, func2=paddle.nn.functional.sigmoid)
+        return out
 
 
 class SimpleNetInplace(paddle.nn.Layer):
@@ -352,6 +386,64 @@ class TestPyLayerInsideNet(TestPyLayerBase):
         input1 = paddle.randn([3, 4]).astype("float32")
         input1.stop_gradient = False
         self._run_and_compare(input1) 
+
+class PyLayerTrainHelper(unittest.TestCase):
+    def setUp(self):
+        self.place = "gpu" if paddle.is_compiled_with_cuda() else "cpu"
+    
+    def _run_train(self, to_static, layer_builder, build_strategy=None):
+        """
+        Tests model decorated by `dygraph_to_static_output` in static graph mode. For users, the model is defined in dygraph mode and trained in static graph mode.
+        """
+        paddle.jit.enable_to_static(to_static)
+        
+        paddle.set_device(self.place)
+        np.random.seed(SEED)
+        paddle.seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
+        
+        # net = self.build_layer()
+        net = layer_builder()
+        if to_static:
+            net = paddle.jit.to_static(
+                net, build_strategy=build_strategy
+            )
+        
+        _, _, avg_loss = train(net)
+        return avg_loss.numpy()
+        
+    
+class TestTrainingPyLayer(PyLayerTrainHelper):    
+    def test_tanh_pylayer(self):
+        
+        build_layer = lambda : SimpleNet_2(784, 20)
+        
+        static_loss = self._run_train(to_static=True, layer_builder=build_layer)
+        dygraph_loss = self._run_train(to_static=False, layer_builder=build_layer)
+        
+        np.testing.assert_allclose(
+            static_loss,
+            dygraph_loss,
+            rtol=1e-05,
+            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
+                static_loss, dygraph_loss
+            ),
+        )
+        
+    def test_sigmoid_pylayer(self):
+        build_layer = lambda : SimpleNet_3(784, 20)
+
+        static_loss = self._run_train(to_static=True, layer_builder=build_layer)
+        dygraph_loss = self._run_train(to_static=False, layer_builder=build_layer)
+        
+        np.testing.assert_allclose(
+            static_loss,
+            dygraph_loss,
+            rtol=1e-05,
+            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
+                static_loss, dygraph_loss
+            ),
+        )
         
         
 if __name__ == "__main__":
