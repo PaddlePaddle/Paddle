@@ -15,60 +15,16 @@
 #pragma once
 
 #include "paddle/pir/core/cast_utils.h"
+#include "paddle/pir/core/op_operand.h"
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/use_iterator.h"
 
 namespace pir {
 class Operation;
-class Value;
 
 namespace detail {
-class OpOperandImpl;
 class ValueImpl;
-class OpResultImpl;
 }  // namespace detail
-
-///
-/// \brief OpOperand class represents the op_operand of operation. This class
-/// only provides interfaces, for specific implementation, see Impl class.
-///
-class IR_API OpOperand {
- public:
-  OpOperand() = default;
-
-  OpOperand(const OpOperand &other) = default;
-
-  OpOperand(const detail::OpOperandImpl *impl);  // NOLINT
-
-  OpOperand &operator=(const OpOperand &rhs);
-
-  OpOperand &operator=(const detail::OpOperandImpl *impl);
-
-  bool operator==(const OpOperand &other) const { return impl_ == other.impl_; }
-
-  bool operator!=(const OpOperand &other) const { return !operator==(other); }
-
-  bool operator!() const { return impl_ == nullptr; }
-
-  operator bool() const;
-
-  OpOperand next_use() const;
-
-  Value source() const;
-
-  Type type() const;
-
-  void set_source(Value value);
-
-  Operation *owner() const;
-
-  void RemoveFromUdChain();
-
-  friend Operation;
-
- private:
-  detail::OpOperandImpl *impl_{nullptr};
-};
 
 ///
 /// \brief Value class represents the SSA value in the IR system. This class
@@ -137,32 +93,6 @@ class IR_API Value {
 
  protected:
   detail::ValueImpl *impl_{nullptr};
-};
-
-///
-/// \brief OpResult class represents the value defined by a result of operation.
-/// This class only provides interfaces, for specific implementation, see Impl
-/// class.
-///
-class IR_API OpResult : public Value {
- public:
-  using Value::Value;
-
-  static bool classof(Value value);
-
-  Operation *owner() const;
-
-  uint32_t GetResultIndex() const;
-
-  bool operator==(const OpResult &other) const;
-
-  friend Operation;
-
-  detail::ValueImpl *value_impl() const;
-  detail::OpResultImpl *impl() const;
-
- private:
-  static uint32_t GetValidInlineIndex(uint32_t index);
 };
 
 }  // namespace pir
