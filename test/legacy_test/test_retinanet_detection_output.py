@@ -16,7 +16,7 @@ import math
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from test_anchor_generator_op import anchor_generator_in_python
 from test_multiclass_nms_op import nms
 
