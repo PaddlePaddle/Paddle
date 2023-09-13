@@ -56,14 +56,14 @@ def get_multiply_program_new_ir():
 class TestOpInputGradSemantic(unittest.TestCase):
     def test_gather_op_input_grad_semantic(self):
         newir_program = get_gather_program_new_ir()
-        gather_op = newir_program.block().ops[-1]
+        gather_op = newir_program.global_block().ops[-1]
         self.assertEqual(
             gather_op.get_input_grad_semantics(), [True, False, False]
         )
 
     def test_multiply_op_input_grad_semantic(self):
         newir_program = get_multiply_program_new_ir()
-        multiply_op = newir_program.block().ops[-1]
+        multiply_op = newir_program.global_block().ops[-1]
         self.assertEqual(multiply_op.get_input_grad_semantics(), [True, True])
 
 

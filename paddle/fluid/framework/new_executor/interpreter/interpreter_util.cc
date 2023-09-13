@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
+#include "paddle/fluid/operators/controlflow/pylayer_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
@@ -597,6 +598,8 @@ void BuildOpFuncList(const platform::Place& place,
     const ProgramDesc& main_program = *block.Program();
     operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
         main_program, block.ID(), ops_unique);
+    operators::PrepareSafeEagerDeletionOnPyLayerOpAndPyLayerGradOp(
+        main_program, block.ID(), ops_unique);
     operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
         main_program, block.ID(), ops_unique);
     operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
@@ -637,6 +640,8 @@ void BuildOpFuncList(const platform::Place& place,
     const std::set<std::string> ops_with_var_not_in_scope = {
         "conditional_block",
         "conditional_block_grad",
+        "pylayer",
+        "pylayer_grad"
         "recurrent_grad",
         "rnn_memory_helper",
         "rnn_memory_helper_grad",
