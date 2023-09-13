@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import subprocess
 import sys
 import unittest
@@ -29,8 +30,9 @@ class TestCSoftmaxWithCrossEntropy(unittest.TestCase):
             "0,1",
             "c_softmax_with_cross_entropy_op.py",
         ]
-
-        proc = subprocess.Popen(cmd, env=need_envs)
+        envs = os.environ.copy()
+        envs.update(need_envs)
+        proc = subprocess.Popen(cmd, env=envs)
         return proc
 
     def test_c_softmax_with_cross_entropy_op(self):
