@@ -27,8 +27,6 @@ class PToRReshardFunction final : public ReshardFunction {
   bool IsSuitable(const DistTensor& in,
                   const TensorDistAttr& out_dist_attr) override;
 
- private:
-  void initialize();
   void Eval(DeviceContext* dev_ctx,
             const DistTensor& in,
             const TensorDistAttr& out_dist_attr,
