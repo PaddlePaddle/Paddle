@@ -2465,7 +2465,7 @@ class OpTest(unittest.TestCase):
                 type(place) is paddle.base.libpaddle.CPUPlace
                 or type(place) is paddle.base.libpaddle.CUDAPlace
             ):
-                with paddle.new_ir_utils.IrGuard():
+                with paddle.pir_utils.IrGuard():
                     new_ir_checker = NewIRChecker(self, self.outputs)
                     new_ir_checker.check()
 
@@ -3016,7 +3016,7 @@ class OpTest(unittest.TestCase):
                 type(place) is paddle.base.libpaddle.CPUPlace
                 or type(place) is paddle.base.libpaddle.CUDAPlace
             ):
-                with paddle.new_ir_utils.IrGuard():
+                with paddle.pir_utils.IrGuard():
                     new_ir_grad = self._get_ir_gradient(
                         inputs_to_check,
                         place,
