@@ -685,7 +685,7 @@ def add(x, y, name=None):
             [3., 8., 6.])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.add(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_add', **locals()))
