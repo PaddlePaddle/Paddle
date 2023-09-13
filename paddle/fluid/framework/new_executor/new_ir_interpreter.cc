@@ -633,7 +633,7 @@ void NewIRInterpreter::BuildInstructionDependences() {
 
 void NewIRInterpreter::RecordMemcpyD2H(InstructionBase* instr_node) {
   // NOTE(zhiqiu): hot fix for jit input var
-  if (instr_node->isa<paddle::dialect::MemcpyD2hOp>()) {
+  if (instr_node->Name() == "pd_op.memcpy_d2h") {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto* default_dev_ctx = pool.Get(place_);
     for (auto& event : instr_node->EventsToWait()) {
@@ -878,7 +878,7 @@ void NewIRInterpreter::ConstructEventForJitInput() {
   for (size_t i = 0; i < dependecy_count_->size(); ++i) {
     if ((*dependecy_count_)[i] == 0) {
       InstructionBase* inst = vec_instruction_base_[i].get();
-      if (inst->isa<paddle::dialect::MemcpyD2hOp>() &&
+      if (inst->Name() == "pd_op.memcpy_d2h" &&
           platform::is_gpu_place(place_)) {
         for (auto& item : inst->Inputs()) {
           for (auto var_id : item.second) {

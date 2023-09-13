@@ -125,8 +125,8 @@ bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
                                 const phi::KernelKey kernel_key) {
   // NOTE(phlrain): keep the same kernel select strategy with
   // GetExepectKernelKey
-  if (op->isa<paddle::Dialect::Pool2dOp>() ||
-      op->isa<paddle::Dialect::Pool2dGradOp>()) {
+  if (op->isa<paddle::dialect::Pool2dOp>() ||
+      op->isa<paddle::dialect::Pool2dGradOp>()) {
     if (kernel_key.backend() == phi::Backend::GPUDNN &&
         (op->attributes()
              .at("adaptive")
@@ -480,7 +480,7 @@ phi::KernelKey GetKernelKey(
                 op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
   }
 
-  if (op->abs<paddle::dialect::DataOp>()) {
+  if (op->isa<paddle::dialect::DataOp>()) {
     // NOTE, for now feed op don't need a kernel, so the data type from Op
     // Result the next op use base program datatype
     auto data_place =
@@ -509,7 +509,7 @@ phi::KernelKey GetKernelKey(
         GetKernelBackendByYamlInfo(op, map_value_pair, op_info_parser);
 
     // parse all the input tensor
-    if (tensor_input_number == 0 || op->abs<paddle::dialect::Full_Op>()) {
+    if (tensor_input_number == 0 || op->isa<paddle::dialect::Full_Op>()) {
       // all the information have to get from attribute and context
 
       if (op->isa<paddle::dialect::UniformOp>()) {
