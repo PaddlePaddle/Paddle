@@ -48,6 +48,13 @@ VECTOR_OUT_CREATION_TEMPLATE = """
         dense_out[i] = const_cast<phi::DenseTensor*>(&dist_out[i]->value());
     }}
 """
+VECTOR_OUT_CREATION_TEMPLATE = """
+    auto dist_out = SetKernelDistOutput({name});
+    std::vector<phi::DenseTensor*> dense_out(dist_out.size());
+    for (size_t i = 0; i < dist_out.size(); i++) {{
+        dense_out[i] = const_cast<phi::DenseTensor*>(&dist_out[i]->value());
+    }}
+"""
 INPLACE_OUT_CREATION_TEMPLATE = """
     *{} = {};
 """
@@ -68,6 +75,13 @@ INFER_GLOBAL_SHAPE_TEMPLATE = """
 SINGLE_PREPARE_DATA_TEMPLATE = """
     auto dist_input_{arg} = PrepareDataForDistTensor({arg}, GetKernelInputArgDef(kernel.InputAt({idx}), kernel_backend), {flag}, kernel_result.is_stride_kernel);
     auto input_{arg} = &dist_input_{}->value();
+"""
+MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
+    auto dist_out_{i} = SetKernelDistOutput({name});
+    std::vector<phi::DenseTensor*> dense_out_{i}(dist_out_{i}.size());
+    for (size_t i = 0; i < dist_out_{i}.size(); i++) {{
+        dense_out_{i}[i] = const_cast<phi::DenseTensor*>(&dist_out_{i}[i]->value());
+    }}
 """
 
 
@@ -102,6 +116,12 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                     output_creation_code += (
                         MULTI_SINGLE_OUT_CREATION_TEMPLATE.format(
                             i, self.outputs['names'][i], i, i
+                        )
+                    )
+                elif out_type == 'std::vector<Tensor>':
+                    output_creation_code += (
+                        MULTI_VECTOR_OUT_CREATION_TEMPLATE.format(
+                            i=i, name=self.outputs['names'][i]
                         )
                     )
                 else:

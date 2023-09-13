@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
+#include "build/paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -41,6 +42,25 @@ pir::OpResult get_parameter(const std::string& name,
 void set_parameter(pir::OpResult parameter, const std::string& name) {
   APIBuilder::Instance().GetBuilder()->Build<pir::SetParameterOp>(parameter,
                                                                   name);
+}
+
+pir::OpResult embedding_grad(pir::OpResult x,
+                             pir::OpResult weight,
+                             pir::OpResult out_grad,
+                             int64_t padding_idx,
+                             bool sparse) {
+  if (weight.type().isa<paddle::dialect::DenseTensorType>()) {
+    if (sparse) {
+      return paddle::dialect::embedding_grad_sparse(
+          x, weight, out_grad, padding_idx, sparse);
+    } else {
+      return paddle::dialect::embedding_grad_dense(
+          x, weight, out_grad, padding_idx, sparse);
+    }
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Now we do not support sparse weight embedding_grad."));
+  }
 }
 
 }  // namespace dialect

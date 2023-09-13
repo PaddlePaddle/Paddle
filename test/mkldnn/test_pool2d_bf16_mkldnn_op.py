@@ -16,7 +16,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, OpTestTool, convert_float_to_uint16
+from op_test import OpTest, OpTestTool, convert_float_to_uint16
 from test_pool2d_op import (
     TestPool2D_Op_Mixin,
     adaptive_end_index,
