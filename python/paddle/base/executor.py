@@ -1259,7 +1259,7 @@ class Executor:
                 new_ir_check_feed_shape_type(
                     cur_feed, feed_target_name, var_shape, var_type
                 )
-                # the last arg of set_feed_variable has no effect in new pir, we pass 0 by default.
+                # the last arg of set_feed_variable has no effect in pir, we pass 0 by default.
                 core.set_feed_variable(scope, cur_feed, feed_target_name, 0)
             else:
                 break
