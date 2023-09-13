@@ -16,7 +16,7 @@ import unittest
 from math import log
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 
 def cvm_compute(X, item_width, use_cvm):

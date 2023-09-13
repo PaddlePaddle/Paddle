@@ -196,6 +196,7 @@ limitations under the License. */
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
+#include "paddle/fluid/pir/dialect/operator/trait/custom_vjp.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
 #include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -751,6 +752,21 @@ void BindVjp(pybind11::module *m) {
     if (vjp_interface_impl == nullptr) return false;
     return true;
   });
+
+  m->def(
+      "has_custom_vjp",
+      [](pir::Operation &op) -> py::bool_ {
+        return op.info().HasTrait<paddle::dialect::CustomVjpTrait>();
+      },
+      R"DOC(
+           Return whether an op has custom vjp rules.
+
+           Args:
+               op (pir::Operation): op to be checked
+
+           Returns:
+               out (bool): True means that the op has custom vjp rules, False means it does not.
+           )DOC");
 }
 PYBIND11_MODULE(libpaddle, m) {
   BindImperative(&m);
@@ -1239,11 +1255,15 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
-          # create tensor from a scope and set value to it.
-          param = scope.var('Param').get_tensor()
-          param_array = np.full((height, row_numel), 5.0).astype("float32")
-          param.set(param_array, place)
+            >>> import paddle
+            >>> import numpy as np
 
+            >>> scope = paddle.static.global_scope()
+            >>> place = paddle.CPUPlace()
+            >>> # create tensor from a scope and set value to it.
+            >>> param = scope.var('Param').get_tensor()
+            >>> param_array = np.full((10, 12), 5.0).astype("float32")
+            >>> param.set(param_array, place)
         )DOC");
   g_framework_scope_pytype = reinterpret_cast<PyTypeObject *>(_Scope.ptr());
   _Scope
@@ -2150,9 +2170,8 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
-          import paddle.base as base
-
-          arr = base.LoDTensorArray()
+            >>> import paddle
+            >>> arr = paddle.framework.core.LoDTensorArray()
 )DOC");
   g_framework_lodtensorarray_pytype =
       reinterpret_cast<PyTypeObject *>(pylodtensorarray.ptr());
@@ -2192,15 +2211,15 @@ All parameter, weight, gradient are variables in Paddle.
                    None.
 
              Examples:
-                 .. code-block:: python
+                    .. code-block:: python
 
-                   import paddle.base as base
-                   import numpy as np
+                        >>> import paddle
+                        >>> import numpy as np
 
-                   arr = base.LoDTensorArray()
-                   t = base.LoDTensor()
-                   t.set(np.ndarray([5, 30]), base.CPUPlace())
-                   arr.append(t)
+                        >>> arr = paddle.framework.core.LoDTensorArray()
+                        >>> t = paddle.framework.core.LoDTensor()
+                        >>> t.set(np.ndarray([5, 30]), paddle.CPUPlace())
+                        >>> arr.append(t)
            )DOC")
       .def(
           "_move_to_list",

@@ -2465,12 +2465,9 @@ class OpTest(unittest.TestCase):
                 type(place) is paddle.base.libpaddle.CPUPlace
                 or type(place) is paddle.base.libpaddle.CUDAPlace
             ):
-                print("New IR checker begins...........")
                 with paddle.new_ir_utils.IrGuard():
                     new_ir_checker = NewIRChecker(self, self.outputs)
                     new_ir_checker.check()
-
-                print("New IR checker ends...........")
 
         # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
         # computational consistency.
@@ -3019,7 +3016,6 @@ class OpTest(unittest.TestCase):
                 type(place) is paddle.base.libpaddle.CPUPlace
                 or type(place) is paddle.base.libpaddle.CUDAPlace
             ):
-                print("New IR gradient begins...........")
                 with paddle.new_ir_utils.IrGuard():
                     new_ir_grad = self._get_ir_gradient(
                         inputs_to_check,
@@ -3028,7 +3024,23 @@ class OpTest(unittest.TestCase):
                         user_defined_grad_outputs,
                         no_grad_set,
                     )
-                print("New IR gradient ends...........")
+                fp32_analytic_grads = []
+                for grad in new_ir_grad:
+                    if grad.dtype == np.uint16:
+                        grad = convert_uint16_to_float(grad)
+                        max_relative_error = (
+                            0.01
+                            if max_relative_error < 0.01
+                            else max_relative_error
+                        )
+                    fp32_analytic_grads.append(grad)
+                new_ir_grad = fp32_analytic_grads
+                if self.is_float16_op():
+                    max_relative_error = (
+                        0.01
+                        if max_relative_error < 0.01
+                        else max_relative_error
+                    )
                 self._assert_is_close(
                     numeric_grads,
                     new_ir_grad,
@@ -3467,6 +3479,14 @@ class OpTest(unittest.TestCase):
                             key
                         ][i]
             fetch_list = getattr(self, "fetch_list", [])
+
+            # cast outputs
+            if self.dtype == np.uint16:
+                for output in outputs:
+                    outputs[output][0] = paddle.cast(
+                        outputs[output][0],
+                        paddle.base.core.DataType.FLOAT32,
+                    )
 
             outputs_valid = outputs
             loss_inputs = []

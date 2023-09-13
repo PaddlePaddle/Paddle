@@ -17,7 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest, OpTestTool, convert_float_to_uint16
+from op_test import OpTest, OpTestTool, convert_float_to_uint16
 from test_sum_op import TestReduceOPTensorAxisBase
 
 import paddle
@@ -78,6 +78,7 @@ class TestMeanOpError(unittest.TestCase):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input type of mean_op must be Variable.
+
             input1 = 12
             self.assertRaises(TypeError, paddle.mean, input1)
             # The input dtype of mean_op must be float16, float32, float64.

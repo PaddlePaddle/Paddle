@@ -16,13 +16,13 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import (
+from op import Operator
+from op_test import (
     OpTest,
     _set_use_system_allocator,
     convert_float_to_uint16,
     convert_uint16_to_float,
 )
-from op import Operator
 
 import paddle
 from paddle import base

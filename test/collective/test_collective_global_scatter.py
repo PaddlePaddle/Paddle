@@ -38,6 +38,14 @@ class TestCollectiveSelectScatterAPI(TestDistBase):
             eager_mode=True,
         )
 
+    def test_global_scatter_nccl_new_comm(self):
+        self.check_with_place(
+            "collective_global_scatter.py",
+            "global_scatter",
+            "nccl",
+            need_envs={"FLAGS_dynamic_static_unified_comm": "1"},
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
