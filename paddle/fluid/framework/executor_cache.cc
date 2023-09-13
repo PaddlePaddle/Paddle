@@ -344,11 +344,12 @@ std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
   std::shared_ptr<InterpreterCore> core = nullptr;
 
   core.reset(new InterpreterCore(
-      place, {}, std::move(ir_program), scope, execution_config));
+      place, {}, ir_program->block(), scope, execution_config));
 
   auto &cached_value =
       interpretercore_info_cache.GetMutable(program_id, scope, is_grad);
   cached_value.core_ = core;
+  cached_value.ir_prog_ = std::move(ir_program);
   return core;
 }
 

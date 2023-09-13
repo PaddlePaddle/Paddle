@@ -72,7 +72,7 @@ TEST(VJP, TanhBackwardTest) {
   Scope scope;
 
   ProgramDesc prog_desc;
-  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
+  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
   os << reinterpret_cast<NewIRInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
@@ -127,7 +127,7 @@ TEST(VJP, Tanh_BackwardTest) {
   Scope scope;
 
   ProgramDesc prog_desc;
-  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
+  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
   os << reinterpret_cast<NewIRInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
@@ -182,7 +182,7 @@ TEST(VJP, MeanBackwardTest) {
   Scope scope;
 
   ProgramDesc prog_desc;
-  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
+  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
   os << reinterpret_cast<NewIRInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
@@ -238,7 +238,7 @@ TEST(VJP, ConcatBackwardTest) {
   Scope scope;
 
   ProgramDesc prog_desc;
-  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
+  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
   os << reinterpret_cast<NewIRInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
@@ -304,7 +304,7 @@ TEST(VJP, AddBackwardTest) {
   Scope scope;
 
   ProgramDesc prog_desc;
-  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
+  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
   os << reinterpret_cast<NewIRInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
@@ -370,7 +370,7 @@ TEST(VJP, Add_BackwardTest) {
   Scope scope;
 
   ProgramDesc prog_desc;
-  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
+  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
   os << reinterpret_cast<NewIRInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
@@ -434,7 +434,7 @@ TEST(VJP, SplitBackwardTest) {
   auto place = platform::CPUPlace();
   Scope scope;
   ProgramDesc prog_desc;
-  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
+  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
   os << reinterpret_cast<NewIRInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));

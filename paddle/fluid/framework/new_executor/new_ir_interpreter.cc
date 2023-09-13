@@ -39,6 +39,7 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
 #endif
+#include "paddle/fluid/framework/new_executor/instruction/cond_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
@@ -58,14 +59,14 @@ namespace framework {
 NewIRInterpreter::NewIRInterpreter(
     const platform::Place& place,
     const std::vector<std::string>& fetch_var_names,
-    std::unique_ptr<::pir::Program> ir_prog,
+    const ::pir::Block* ir_block,
     framework::Scope* scope,
     const ExecutionConfig& execution_config)
     : place_(place),
       execution_config_(execution_config),
       var_scope_(scope),
       scope_(scope),
-      ir_program_(std::move(ir_prog)),
+      ir_block_(ir_block),
       ir_stream_analyzer_(place),
       fetch_var_names_(fetch_var_names) {
   VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
@@ -92,8 +93,7 @@ NewIRInterpreter::NewIRInterpreter(
   // TODO(zhangbo): delete var_scope
   var_scope_.SetLocalScope(local_scope_);
 
-  execution_config_.AnalyzeThreadPoolConfig(place,
-                                            ir_program_->block()->size());
+  execution_config_.AnalyzeThreadPoolConfig(place, 1);
   execution_config_.Log(/*log_level=*/8);
 
   ir_instruction_scheduling_priority_less = [this](size_t lhs, size_t rhs) {
@@ -108,6 +108,19 @@ NewIRInterpreter::NewIRInterpreter(
   };
 
   PrepareForCUDAGraphCapture();
+
+  std::stringstream ss;
+  ss << this;
+  ::pir::BuildScope(*ir_block_,
+                    InnerScope(),
+                    ss.str(),
+                    &value_2_var_name_,
+                    &variable_2_var_name_,
+                    &var_name_2_id_,
+                    &variable_list_,
+                    &sub_blocks_);
+
+  interpreter::BuildId2VarName(var_name_2_id_, &id_2_var_name_);
 }
 
 NewIRInterpreter::~NewIRInterpreter() {
@@ -334,6 +347,10 @@ Scope* NewIRInterpreter::InnerScope() {
   return local_scope_ != nullptr ? local_scope_ : scope_;
 }
 
+std::string NewIRInterpreter::GetNameByValue(::pir::Value value) const {
+  return value_2_var_name_.at(value);
+}
+
 void NewIRInterpreter::UpdateSyncOpNum() {
   int64_t sync_op_num = 0;
   for (auto& ins : vec_instruction_base_) {
@@ -501,13 +518,27 @@ void NewIRInterpreter::BuildInstruction() {
   VLOG(6) << "Build Instructions for new ir ... ";
   vec_instruction_base_.clear();
   size_t op_idx = 0;
-  for (auto& op : *ir_program_->block()) {
+  for (auto& op : *ir_block_) {
     VLOG(6) << "Build Instruction for op: " << op_idx;
+    std::cerr << "op->dialect()->name() " << op->dialect()->name() << std::endl;
     if (op->dialect()->name() == "builtin") {
       if (interpreter::GetSpecialOpNames().count(op->name())) {
         VLOG(6) << "skip process " << op->name();
         continue;
       }
+    } else if (op->dialect()->name() == "cf") {
+      continue;
+    } else if (op->dialect()->name() == "pd_op") {
+      vec_instruction_base_.emplace_back(
+          std::make_unique<CondInstruction>(op_idx++,
+                                            place_,
+                                            op,
+                                            scope_,
+                                            local_scope_,
+                                            value_2_var_name_,
+                                            var_name_2_id_,
+                                            variable_2_var_name_,
+                                            sub_blocks_));
     } else if (op->dialect()->name() == "pd_kernel") {
       auto op_name = op->attributes()
                          .at("op_name")
@@ -917,17 +948,6 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is BetaRunning.";
     // Build
-    std::stringstream ss;
-    ss << this;
-    ::pir::BuildScope(*ir_program_->block(),
-                      InnerScope(),
-                      ss.str(),
-                      &value_2_var_name_,
-                      &variable_2_var_name_,
-                      &var_name_2_id_,
-                      &variable_list_);
-
-    interpreter::BuildId2VarName(var_name_2_id_, &id_2_var_name_);
 
     VLOG(4) << "Done BuildScope";
     VLOG(4) << DebugValueInfo();
@@ -970,10 +990,11 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
     }
   }
 
+  std::cerr << "begin clear" << std::endl;
   if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
   }
-
+  std::cerr << "after clear" << std::endl;
   // return Fetch Tensors
   Scope* inner_scope = InnerScope();
   if (FLAGS_enable_new_ir_in_executor) {

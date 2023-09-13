@@ -50,12 +50,12 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
 InterpreterCore::InterpreterCore(
     const platform::Place& place,
     const std::vector<std::string>& fetch_var_names,
-    std::unique_ptr<::pir::Program> ir_prog,
+    const ::pir::Block* ir_block,
     framework::Scope* scope,
     const ExecutionConfig& execution_config) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place;
   impl_ = std::make_unique<NewIRInterpreter>(
-      place, fetch_var_names, std::move(ir_prog), scope, execution_config);
+      place, fetch_var_names, ir_block, scope, execution_config);
 }
 
 InterpreterCore::~InterpreterCore() {
