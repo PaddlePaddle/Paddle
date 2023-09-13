@@ -1252,32 +1252,55 @@ void PrintValuesAndVariables (
     const std::unordered_map<const paddle::framework::Variable*, std::string>*
         variable_2_var_name) {
   for (const auto& op : block) {
-    VLOG(6) << "====== Variables and values in " << op->name() << " =======";
+    std::stringstream ss;
+    op->Print(ss);
+
+    // 1. output string
+    std::string ret_value_str = "Value: (";
+    std::string ret_variable_str = "Variable: (";
+    if (!op->results().empty()) {
+      for (auto& out_value : op->results()) {
+        auto& var_name = (*value_2_var_name).at(out_value);
+        const paddle::framework::Variable* out_variable =
+            GetVariableByName(var_name, *variable_2_var_name);
+        ret_value_str += (var_name + "[" + (&out_value) + "], ");
+        ret_variable_str += (var_name + "[" + (&out_variable) + "], ");
+      }
+      ret_value_str = ret_value_str.substr(0, ret_value_str.size() - 2);
+      ret_variable_str = ret_variable_str.substr(
+          0, ret_variable_str.size() - 2);
+    }
+    ret_value_str += ") = ";
+    ret_variable_str += ") = ";
+
+    // 2. op name
+    auto op_name = op->attributes()
+        .at("op_name")
+        .dyn_cast<::pir::StrAttribute>()
+        .AsString();
+    ret_value_str += op_name;
+    ret_variable_str += op_name;
+
+    // 3. input string
+    ret_str += "(";
     if (!op->operands().empty()) {
-      VLOG(6) << "{Inputs: ";
       for (auto& input : op->operands()) {
         ::pir::Value in_value = input.source();
         auto& var_name = (*value_2_var_name).at(in_value);
         const paddle::framework::Variable* in_variable =
             GetVariableByName(var_name, *variable_2_var_name);
-        VLOG(6) << "Varname: " << var_name << ", Value at "
-            << (&in_value) << ", Variable at " << in_variable;
+        ret_value_str += (var_name + "[" + (&in_value) + "], ");
+        ret_variable_str += (var_name + "[" + (&in_variable) + "], ");
       }
-      VLOG(6) << "}";
+      ret_value_str = ret_value_str.substr(0, ret_value_str.size() - 2);
+      ret_variable_str = ret_variable_str.substr(
+          0, ret_variable_str.size() - 2);
     }
-    if (!op->results().empty()) {
-      VLOG(6) << "{Outputs: ";
-      for (auto& out_value : op->results()) {
-        auto& var_name = (*value_2_var_name).at(out_value);
-        const paddle::framework::Variable* out_variable =
-            GetVariableByName(var_name, *variable_2_var_name);
-        VLOG(6) << "Varname: " << var_name << ", Value at "
-            << (&out_value) << ", Variable at " << out_variable;
-      }
-      VLOG(6) << "}";
-    }
-    VLOG(6) << "================";
+    ret_value_str += ")";
+    ret_variable_str += ")";
   }
+  VLOG(8) << ret_value_str;
+  VLOG(8) << ret_variable_str;
 }
 
 }  // namespace interpreter
