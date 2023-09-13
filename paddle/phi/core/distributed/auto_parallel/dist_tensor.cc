@@ -14,6 +14,7 @@
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
+#include "glog/logging.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
@@ -54,14 +55,11 @@ DistTensor::DistTensor(const phi::DenseTensor& global_value,
 DistTensor::DistTensor(const DDim& dims, const TensorDistAttr& dist_attr)
     : dims_(dims), dist_attr_(dist_attr) {}
 
-void DistTensor::set_dims(const DDim& dims) {
-  PADDLE_ENFORCE_EQ(
-      this->initialized(),
-      false,
-      phi::errors::Unimplemented(
-          "DistTensor's set_dims method can only be used when the `value` "
-          "is not initialized (generally used in the InferMeta and "
-          "InferSPMD stages)."));
+void DistTensor::unsafe_set_dims(const DDim& dims) {
+  if (this->initialized()) {
+    VLOG(3) << "You try to set an initialized DistTensor's global dims. "
+               "Make sure you are aware of where you change its dims.";
+  }
   dims_ = dims;
 }
 

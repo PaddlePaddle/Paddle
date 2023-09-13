@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, OpTestTool, skip_check_grad_ci
+from op_test import OpTest, OpTestTool, skip_check_grad_ci
 
 import paddle
 

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 from paddle.base.framework import convert_np_dtype_to_dtype_
 
