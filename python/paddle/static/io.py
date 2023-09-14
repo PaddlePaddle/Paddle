@@ -198,7 +198,7 @@ def normalize_program(program, feed_vars, fetch_vars):
     #                                name="save_infer_model/scale_{}".format(i))
     #         uniq_fetch_vars.append(var)
     #     fetch_vars = uniq_fetch_vars
-    # TODO(vivienfanghuagood) maybe these codes is not needed 
+    # TODO(vivienfanghuagood) maybe these codes is not needed
 
     # serialize program
     copy_program = program.clone()
