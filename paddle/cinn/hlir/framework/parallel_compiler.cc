@@ -32,7 +32,7 @@
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/runtime/flags.h"
 
-DECLARE_int32(cinn_parallel_compile_thread);
+PD_DECLARE_int32(cinn_parallel_compile_thread);
 
 namespace cinn {
 namespace hlir {

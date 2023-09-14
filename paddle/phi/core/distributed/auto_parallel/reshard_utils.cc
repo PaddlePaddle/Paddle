@@ -40,18 +40,6 @@ std::string GenUniqueCommKey(const std::vector<int64_t>& process_ids) {
 }
 }  // namespace
 
-bool IsDimsMappingShard(const std::vector<int64_t>& dims_mapping) {
-  return std::any_of(dims_mapping.begin(),
-                     dims_mapping.end(),
-                     [](int64_t value) { return value != -1; });
-}
-
-bool IsDimsMappingReplicated(const std::vector<int64_t>& dims_mapping) {
-  return std::all_of(dims_mapping.begin(),
-                     dims_mapping.end(),
-                     [](int64_t value) { return value == -1; });
-}
-
 std::vector<int64_t> GetCurRankCoordInMesh(const ProcessMesh& process_mesh) {
   const auto& process_shape = process_mesh.shape();
   const auto& process_ids = process_mesh.process_ids();

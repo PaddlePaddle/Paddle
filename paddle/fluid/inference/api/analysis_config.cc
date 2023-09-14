@@ -461,6 +461,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_min_subgraph_size_);
   CP_MEMBER(tensorrt_precision_mode_);
   CP_MEMBER(trt_mark_output_);
+  CP_MEMBER(trt_mark_output_with_id_);
   CP_MEMBER(trt_output_tensor_names_);
   CP_MEMBER(trt_disabled_ops_);
   CP_MEMBER(trt_use_dla_);
@@ -762,8 +763,10 @@ void AnalysisConfig::EnableTensorRtEngine(int64_t workspace_size,
 }
 
 void AnalysisConfig::MarkTrtEngineOutputs(
-    const std::vector<std::string> &output_tensor_names) {
+    const std::vector<std::string> &output_tensor_names,
+    const bool mark_output_with_id) {
   trt_mark_output_ = true;
+  trt_mark_output_with_id_ = mark_output_with_id;
   trt_output_tensor_names_ = output_tensor_names;
 }
 

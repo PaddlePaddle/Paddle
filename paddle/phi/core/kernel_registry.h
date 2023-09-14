@@ -14,19 +14,11 @@
 
 #pragma once
 
-#include <cstring>
-#include <string>
-#include <type_traits>
 #include <typeindex>
 #include <typeinfo>
-#include <vector>
 
 #include "paddle/phi/core/custom_kernel.h"
-#include "paddle/phi/core/extended_tensor.h"
-#include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/kernel_utils.h"
-#include "paddle/phi/core/macros.h"
-#include "paddle/phi/core/type_defs.h"
 
 namespace phi {
 
@@ -252,11 +244,10 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
         args_def->AppendAttribute(AttributeType::DATA_LAYOUT);
       } else if (arg_type == std::type_index(typeid(Place))) {
         args_def->AppendAttribute(AttributeType::PLACE);
+      } else {
+        PADDLE_THROW(phi::errors::Unavailable(
+            "Unsupported kernel argument type `%s`.", arg_type.name()));
       }
-      // else {
-      //   PADDLE_THROW(phi::errors::Unavailable(
-      //       "Unsupported kernel argument type `%s`.", arg_type.name()));
-      // }
     }
   }
 

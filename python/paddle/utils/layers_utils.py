@@ -20,8 +20,8 @@ from weakref import WeakKeyDictionary
 
 import paddle
 
-from ..fluid.data_feeder import check_dtype, convert_dtype
-from ..fluid.framework import Block, Variable, in_dygraph_mode
+from ..base.data_feeder import check_dtype, convert_dtype
+from ..base.framework import Block, Variable, in_dygraph_mode
 
 
 def convert_to_list(value, n, name, dtype=int):
@@ -175,7 +175,7 @@ def flatten(nest):
     """
         :alias_main: paddle.flatten
         :alias: paddle.flatten,paddle.tensor.flatten,paddle.tensor.manipulation.flatten
-        :old_api: paddle.fluid.layers.flatten
+        :old_api: paddle.base.layers.flatten
 
     Traverse all entries in the nested structure and put them into an list.
     """
@@ -407,7 +407,7 @@ def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
                     dim = paddle.cast(x=dim, dtype='int32')
                 shape_tensor_list.append(dim)
             else:
-                temp_out = fill_constant([1], 'int32', dim, force_cpu=True)
+                temp_out = fill_constant([], 'int32', dim, force_cpu=True)
                 shape_tensor_list.append(temp_out)
         return shape_tensor_list
 
