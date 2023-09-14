@@ -924,83 +924,84 @@ static void LaunchReduceKernel(const Tx* x_data,
   }
 }
 
-#if !defined(PADDLE_WITH_XPU_KP)
-template <typename Tx,
-          typename Ty,
-          template <typename>
-          class ReduceOp,
-          typename TransformOp>
-static
-    typename std::enable_if<!std::is_same<Tx, phi::dtype::float16>::value &&
-                                !std::is_same<Tx, phi::dtype::bfloat16>::value,
-                            void>::type
-    CubTensorReduceImpl(const Tx* x_data,
-                        Ty* y_data,
-                        const TransformOp& transform,
-                        int reduce_num,
-                        const KPDevice& dev_ctx,
-                        KPStream stream) {
-  auto reducer = ReduceOp<Ty>();
-  cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(x_data,
-                                                                  transform);
-  size_t temp_storage_bytes = 0;
-  cub::DeviceReduce::Reduce(nullptr,
-                            temp_storage_bytes,
-                            trans_x,
-                            y_data,
-                            reduce_num,
-                            reducer,
-                            reducer.initial(),
-                            stream);
-  phi::DenseTensor tmp = phi::Empty<uint8_t, phi::GPUContext>(
-      dev_ctx, {static_cast<int64_t>(temp_storage_bytes)});
+// #if !defined(PADDLE_WITH_XPU_KP)
+// template <typename Tx,
+//           typename Ty,
+//           template <typename>
+//           class ReduceOp,
+//           typename TransformOp>
+// static
+//     typename std::enable_if<!std::is_same<Tx, phi::dtype::float16>::value &&
+//                                 !std::is_same<Tx,
+//                                 phi::dtype::bfloat16>::value,
+//                             void>::type
+//     CubTensorReduceImpl(const Tx* x_data,
+//                         Ty* y_data,
+//                         const TransformOp& transform,
+//                         int reduce_num,
+//                         const KPDevice& dev_ctx,
+//                         KPStream stream) {
+//   auto reducer = ReduceOp<Ty>();
+//   cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(x_data,
+//                                                                   transform);
+//   size_t temp_storage_bytes = 0;
+//   cub::DeviceReduce::Reduce(nullptr,
+//                             temp_storage_bytes,
+//                             trans_x,
+//                             y_data,
+//                             reduce_num,
+//                             reducer,
+//                             reducer.initial(),
+//                             stream);
+//   phi::DenseTensor tmp = phi::Empty<uint8_t, phi::GPUContext>(
+//       dev_ctx, {static_cast<int64_t>(temp_storage_bytes)});
 
-  auto* temp_storage = dev_ctx.Alloc<uint8_t>(&tmp);
+//   auto* temp_storage = dev_ctx.Alloc<uint8_t>(&tmp);
 
-  cub::DeviceReduce::Reduce(temp_storage,
-                            temp_storage_bytes,
-                            trans_x,
-                            y_data,
-                            reduce_num,
-                            reducer,
-                            reducer.initial(),
-                            stream);
-}
+//   cub::DeviceReduce::Reduce(temp_storage,
+//                             temp_storage_bytes,
+//                             trans_x,
+//                             y_data,
+//                             reduce_num,
+//                             reducer,
+//                             reducer.initial(),
+//                             stream);
+// }
 
-template <typename Tx,
-          typename Ty,
-          template <typename>
-          class ReduceOp,
-          typename TransformOp>
-static typename std::enable_if<std::is_same<Tx, phi::dtype::float16>::value,
-                               void>::type
-CubTensorReduceImpl(const Tx* x_data,
-                    Ty* y_data,
-                    const TransformOp& transform,
-                    int reduce_num,
-                    const KPDevice& dev_ctx,
-                    KPStream stream) {
-  PADDLE_THROW(phi::errors::InvalidArgument(
-      "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
-}
+// template <typename Tx,
+//           typename Ty,
+//           template <typename>
+//           class ReduceOp,
+//           typename TransformOp>
+// static typename std::enable_if<std::is_same<Tx, phi::dtype::float16>::value,
+//                                void>::type
+// CubTensorReduceImpl(const Tx* x_data,
+//                     Ty* y_data,
+//                     const TransformOp& transform,
+//                     int reduce_num,
+//                     const KPDevice& dev_ctx,
+//                     KPStream stream) {
+//   PADDLE_THROW(phi::errors::InvalidArgument(
+//       "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
+// }
 
-template <typename Tx,
-          typename Ty,
-          template <typename>
-          class ReduceOp,
-          typename TransformOp>
-static typename std::enable_if<std::is_same<Tx, phi::dtype::bfloat16>::value,
-                               void>::type
-CubTensorReduceImpl(const Tx* x_data,
-                    Ty* y_data,
-                    const TransformOp& transform,
-                    int reduce_num,
-                    const KPDevice& dev_ctx,
-                    KPStream stream) {
-  PADDLE_THROW(phi::errors::InvalidArgument(
-      "Tx should not be bfloat16 when using cub::DeviceReduce::Reduce()."));
-}
-#endif  // PADDLE_WITH_XPU_KP
+// template <typename Tx,
+//           typename Ty,
+//           template <typename>
+//           class ReduceOp,
+//           typename TransformOp>
+// static typename std::enable_if<std::is_same<Tx, phi::dtype::bfloat16>::value,
+//                                void>::type
+// CubTensorReduceImpl(const Tx* x_data,
+//                     Ty* y_data,
+//                     const TransformOp& transform,
+//                     int reduce_num,
+//                     const KPDevice& dev_ctx,
+//                     KPStream stream) {
+//   PADDLE_THROW(phi::errors::InvalidArgument(
+//       "Tx should not be bfloat16 when using cub::DeviceReduce::Reduce()."));
+// }
+// #endif  // PADDLE_WITH_XPU_KP
 
 template <typename Tx,
           typename Ty,
@@ -1059,23 +1060,23 @@ void ReduceKernel(const KPDevice& dev_ctx,
   constexpr bool kIsTxFP16 = std::is_same<Tx, phi::dtype::float16>::value;
   constexpr bool kIsTxBF16 = std::is_same<Tx, phi::dtype::bfloat16>::value;
   bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16 && !kIsTxBF16;
-#ifndef PADDLE_WITH_XPU_KP
-  if (use_cub_reduce) {
-    if (is_mean) {
-      using Div = kps::DivideFunctor<Tx>;
-      CubTensorReduceImpl<Tx, Ty, ReduceOp, Div>(x_data,
-                                                 y_data,
-                                                 Div(config.reduce_num),
-                                                 config.reduce_num,
-                                                 dev_ctx,
-                                                 stream);
-    } else {
-      CubTensorReduceImpl<Tx, Ty, ReduceOp, TransformOp>(
-          x_data, y_data, transform, config.reduce_num, dev_ctx, stream);
-    }
-    return;
-  }
-#endif
+  // #ifndef PADDLE_WITH_XPU_KP
+  //   if (use_cub_reduce) {
+  //     if (is_mean) {
+  //       using Div = kps::DivideFunctor<Tx>;
+  //       CubTensorReduceImpl<Tx, Ty, ReduceOp, Div>(x_data,
+  //                                                  y_data,
+  //                                                  Div(config.reduce_num),
+  //                                                  config.reduce_num,
+  //                                                  dev_ctx,
+  //                                                  stream);
+  //     } else {
+  //       CubTensorReduceImpl<Tx, Ty, ReduceOp, TransformOp>(
+  //           x_data, y_data, transform, config.reduce_num, dev_ctx, stream);
+  //     }
+  //     return;
+  //   }
+  // #endif
 
   auto reducer = ReduceOp<MPType>();
   // launch ReduceHigherDimKernel

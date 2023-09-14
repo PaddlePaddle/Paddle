@@ -54,11 +54,12 @@ HOSTDEVICE inline void Store(const AlignedVector<T, Size>& vec, T* addr) {
 template <typename T>
 int GetVectorizedSize(const T* pointer) {
   constexpr int max_load_bits = 128;
-  constexpr int valid_vec_size = max_load_bits / CHAR_BIT / sizeof(T);
   uint64_t address = reinterpret_cast<uint64_t>(pointer);
-  constexpr int vec8 = std::alignment_of<AlignedVector<T, 8>>::value;  // NOLINT
-  constexpr int vec4 = std::alignment_of<AlignedVector<T, 4>>::value;  // NOLINT
-  constexpr int vec2 = std::alignment_of<AlignedVector<T, 2>>::value;  // NOLINT
+  constexpr int valid_vec_size = max_load_bits / CHAR_BIT / sizeof(T);
+  constexpr int vec4 =
+      std::alignment_of<aligned_vector<T, 4>>::value;  // NOLINT
+  constexpr int vec2 =
+      std::alignment_of<aligned_vector<T, 2>>::value;  // NOLINT
   /*
     * Currently, decide to deal with no more than 4 data once while adopting
     * vectorization load/store, if performance test shows that dealing with

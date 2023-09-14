@@ -114,6 +114,10 @@ void AbsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   std::cerr << "out ptr" << out->data() << std::endl;
   std::cerr << "out ptr 12 " << ten_con.out_->data() << std::endl;
   funcs::test_func(ctx.stream(), ten_con, t);
+
+  // funcs::test_func(ctx.stream(), ten_con, []__device__(T a) -> T {
+  //       return a;
+  //     });
 }
 
 }  // namespace phi

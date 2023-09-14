@@ -42,16 +42,33 @@ void ActivationGPUImpl(const Context& dev_ctx,
   // funcs::abs<T>(x, out, t);
 
   funcs::TensorContainer ten_con(&x, out);
-  funcs::test_func(dev_ctx.stream(), ten_con, functor);
+  // funcs::test_func(dev_ctx.stream(), ten_con, functor);
 }
+
+// #define DEFINE_GPU_ACTIVATION_KERNEL(name, functor_class)               \
+//   template <typename T, typename Context>                               \
+//   void name##Kernel(                                                    \
+//       const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) { \
+//     funcs::functor_class<T> functor;                                    \
+//     ActivationGPUImpl<T, Context, funcs::functor_class<T>>(             \
+//         dev_ctx, x, out, functor);                                      \
+//   }
 
 #define DEFINE_GPU_ACTIVATION_KERNEL(name, functor_class)               \
   template <typename T, typename Context>                               \
   void name##Kernel(                                                    \
       const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) { \
     funcs::functor_class<T> functor;                                    \
-    ActivationGPUImpl<T, Context, funcs::functor_class<T>>(             \
-        dev_ctx, x, out, functor);                                      \
+    dev_ctx.template Alloc<T>(out);                                     \
+    funcs::TensorContainer ten_con(&x, out);                            \
+  }
+
+#define DEFINE_GPU_ACTIVATION_KERNEL_LMB(name, functor_lmb)             \
+  template <typename T, typename Context>                               \
+  void name##Kernel(                                                    \
+      const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) { \
+    dev_ctx.template Alloc<T>(out);                                     \
+    funcs::TensorContainer ten_con(&x, out);                            \
   }
 
 #define DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(name,           \
@@ -168,8 +185,18 @@ void HardSwishKernel(const Context& dev_ctx,
   *(attrs[0].second) = threshold;
   *(attrs[1].second) = scale;
   *(attrs[2].second) = offset;
-  ActivationGPUImpl<T, Context, funcs::CudaHardSwishFunctor<T>>(
-      dev_ctx, x, out, functor);
+  // ActivationGPUImpl<T, Context, funcs::CudaHardSwishFunctor<T>>(
+  //     dev_ctx, x, out, functor);
+  dev_ctx.template Alloc<T>(out);
+  // std::vector<const DenseTensor*> ins = {&x};
+  // std::vector<DenseTensor*> outs = {out};
+  // funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
+  // funcs::abs<T>( x, out);
+  // auto t = funcs::UnaryFunctor<T, Functor >( functor );
+  // funcs::abs<T>(x, out, t);
+
+  funcs::TensorContainer ten_con(&x, out);
+  funcs::test_func(dev_ctx.stream(), ten_con, functor);
 }
 
 template <typename T, typename Context>
@@ -190,8 +217,24 @@ void Relu6Kernel(const Context& dev_ctx,
   funcs::CudaRelu6Functor<T> functor;
   auto attrs = functor.GetAttrs();
   *(attrs[0].second) = 6.0;
-  ActivationGPUImpl<T, Context, funcs::CudaRelu6Functor<T>>(
-      dev_ctx, x, out, functor);
+  // ActivationGPUImpl<T, Context, funcs::CudaRelu6Functor<T>>(
+  //     dev_ctx, x, out, functor);
+
+  dev_ctx.template Alloc<T>(out);
+  // std::vector<const DenseTensor*> ins = {&x};
+  // std::vector<DenseTensor*> outs = {out};
+  // funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
+  // funcs::abs<T>( x, out);
+  // auto t = funcs::UnaryFunctor<T, Functor >( functor );
+  // funcs::abs<T>(x, out, t);
+
+  funcs::TensorContainer ten_con(&x, out);
+  // funcs::test_func(dev_ctx.stream(), ten_con, functor);
+
+  // funcs::test_func(dev_ctx.stream(), ten_con,  []__device__(T x) -> T {
+
+  //   return x < T(0.0) ? x : T(0.0);
+  //     });
 }
 }  // namespace phi
 
