@@ -62,7 +62,6 @@ class TensorRTInspectorTest1(InferencePassTest):
                 stderr=subprocess.PIPE,
             )
             engine_info = build_engine.stderr.decode('ascii')
-            print(engine_info)
             trt_compile_version = paddle.inference.get_trt_compile_version()
             trt_runtime_version = paddle.inference.get_trt_runtime_version()
             valid_version = (8, 2, 0)
@@ -125,7 +124,6 @@ class TensorRTInspectorTest2(InferencePassTest):
                 stderr=subprocess.PIPE,
             )
             engine_info = build_engine.stderr.decode('ascii')
-            print(engine_info)
             trt_compile_version = paddle.inference.get_trt_compile_version()
             trt_runtime_version = paddle.inference.get_trt_runtime_version()
             valid_version = (8, 2, 0)
