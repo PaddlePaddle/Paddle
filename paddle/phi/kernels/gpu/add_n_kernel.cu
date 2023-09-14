@@ -59,13 +59,27 @@ void AddNKernel(const Context &dev_ctx,
                 DenseTensor *out) {
   const size_t in_num = x.size();
   for (int i = 0; i < in_num; ++i) {
-    PADDLE_ENFORCE_EQ(
-        x[i]->initialized(),
-        true,
-        phi::errors::InvalidArgument(
-            "This argument is invalid, %d-th tensor is uninitialized.", i));
+    if (!x[i]->initialized() && x[i]->dims().size() > 0 &&
+        DenseTensor::classof(x[i])) {
+      auto &in_0_tensor = *(static_cast<const DenseTensor *>(x[i]));
+      in_place = (in_0_tensor.data<T>() == out_ptr);
+      PADDLE_ENFORCE_EQ(x[i]->dims(),
+                        x[0]->dims(),
+                        phi::errors::InvalidArgument(
+                            "The input tensor X of SumOp must"
+                            " have same shape. But received X[0]'s shape = "
+                            "[%s], X[%d]'s shape = [%s].",
+                            x[i],
+                            i,
+                            x[0]));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          x[i]->initialized(),
+          true,
+          phi::errors::InvalidArgument(
+              "This argument is invalid, %d-th tensor is uninitialized.", i));
+    }
   }
-
   constexpr size_t theory_sm_threads = 1024;
   auto stream = dev_ctx.stream();
 
