@@ -1010,15 +1010,15 @@ void AddShadowFeed(
     pir::IrContext* ctx,
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
     std::unordered_map<pir::Value, pir::OpResult>* map_value_pair) {
-  bool feed_op_add_shadow_feed = (op_item->isa<paddle::dialect::FeedOp>()) &&
-                                 platform::is_gpu_place(place);
-  bool data_op_add_shadow_feed = (op_item->isa<paddle::dialect::DataOp>()) &&
-                                 platform::is_gpu_place(place) &&
-                                 (kernel_op->attributes()
-                                      .at("place")
-                                      .dyn_cast<dialect::PlaceAttribute>()
-                                      .data()
-                                      .GetType() != phi::AllocationType::GPU);
+  bool feed_op_add_shadow_feed =
+      (op_item->isa<paddle::dialect::FeedOp>()) && platform::is_gpu_place(place);
+  bool data_op_add_shadow_feed =
+      (op_item->isa<paddle::dialect::DataOp>()) && platform::is_gpu_place(place) &&
+      (kernel_op->attributes()
+           .at("place")
+           .dyn_cast<dialect::PlaceAttribute>()
+           .data()
+           .GetType() == phi::AllocationType::UNDEFINED);
   bool add_shadow_feed = feed_op_add_shadow_feed || data_op_add_shadow_feed;
   if (add_shadow_feed) {
     // if shadow data op place not gpu,add shadow feed op

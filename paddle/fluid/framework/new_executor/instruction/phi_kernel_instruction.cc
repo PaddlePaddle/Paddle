@@ -52,7 +52,7 @@ PhiKernelInstruction::PhiKernelInstruction(
       op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
   pir::OpInfo op_info =
       pir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
-
+  op_ = op;
   phi_op_name_ = op_name;
   VLOG(6) << "construct phi kernel instruction for: " << phi_op_name_;
 
@@ -166,6 +166,12 @@ PhiKernelInstruction::PhiKernelInstruction(
   }
   SetNoNeedBuffer(no_need_buffer_values);
   VLOG(6) << "finish process no need buffer";
+}
+
+PhiKernelInstruction::~PhiKernelInstruction() {
+  if (phi_kernel_ != nullptr) {
+    delete phi_kernel_;
+  }
 }
 
 void PhiKernelInstruction::Run() {
