@@ -23,13 +23,13 @@ gather_srcs(
   accuracy_checker.cc
   visualize_helper.cc)
 
-# TODO(Aurelius84): new_ir_compiler depends on pd_dialect and could
+# TODO(Aurelius84): new_ir_compiler depends on pd_op_dialect and could
 # not found under CINN_ONLY mode
 if(NOT CINN_ONLY)
   cinn_cc_library(new_ir_compiler SRCS new_ir_compiler.cc DEPS cinnapi
-                  pd_dialect)
+                  pd_op_dialect)
   cinn_cc_library(convert_to_dialect SRCS convert_to_dialect.cc DEPS cinnapi
-                  cinn_dialect)
+                  cinn_op_dialect)
 endif()
 
 if(WITH_CUDA)

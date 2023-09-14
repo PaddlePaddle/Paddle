@@ -83,6 +83,8 @@ void RecvV2InferMeta(const int ring_id,
                      DataType dtype,
                      MetaTensor* out);
 
+void SeedInferMeta(int seed, MetaTensor* out);
+
 void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
                                       float mean,
                                       float std,

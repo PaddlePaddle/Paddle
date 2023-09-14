@@ -198,5 +198,17 @@ PrepareDataForDistTensor(const std::vector<Tensor>& input,
                          const TransformFlag& transform_flag,
                          bool is_stride_kernel);
 
+paddle::optional<phi::distributed::DistTensor> PrepareDataForDistTensor(
+    const paddle::optional<Tensor>& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel);
+
+paddle::optional<std::vector<std::shared_ptr<phi::distributed::DistTensor>>>
+PrepareDataForDistTensor(const paddle::optional<std::vector<Tensor>>& input,
+                         const phi::TensorArgDef& target_args_def,
+                         const TransformFlag& transform_flag,
+                         bool is_stride_kernel);
+
 }  // namespace experimental
 }  // namespace paddle

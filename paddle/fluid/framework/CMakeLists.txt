@@ -696,6 +696,7 @@ cc_library(
   DEPS while_op_helper
        recurrent_op_helper
        conditional_block_op_helper
+       pylayer_op_helper
        scope
        proto_desc
        operator
@@ -1014,8 +1015,9 @@ else()
          monitor)
 endif()
 
-target_link_libraries(executor while_op_helper executor_gc_helper
-                      recurrent_op_helper conditional_block_op_helper)
+target_link_libraries(
+  executor while_op_helper executor_gc_helper recurrent_op_helper
+  conditional_block_op_helper pylayer_op_helper)
 
 cc_library(
   parallel_executor
@@ -1035,7 +1037,7 @@ cc_library(
   executor_cache
   SRCS executor_cache.cc
   DEPS parallel_executor standalone_executor phi_kernel_adaptor pd_inplace_pass
-       pd_op_to_kernel_pass ir)
+       pd_op_to_kernel_pass pir)
 if(WITH_PSCORE)
   get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
   if(WITH_HETERPS)

@@ -16,7 +16,7 @@ import math
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard
+from op_test import OpTest, paddle_static_guard
 
 import paddle
 from paddle.incubate.layers.nn import bilateral_slice
