@@ -27,15 +27,14 @@ const char *SymbolicDim::attributes_name[attributes_num] = {"knownNegativeOne",
                                                             "sym_name",
                                                             "value"};  // NOLINT
 
-void SymbolicDim::Build(
-    Builder &builder,
-    OperationArgument &argument,
-    const std::string &sym_name,
-    int64_t value,  // TODO(zhangbo) value = ShapedType::kDynamic
-    bool knownNonNegative,
-    bool knownNegativeOne,
-    bool knownNonSizeOne,
-    bool knownNonSizeZero) {
+void SymbolicDim::Build(Builder &builder,
+                        OperationArgument &argument,
+                        const std::string &sym_name,
+                        int64_t value,
+                        bool knownNonNegative,
+                        bool knownNegativeOne,
+                        bool knownNonSizeOne,
+                        bool knownNonSizeZero) {
   pir::Attribute attr_sym_name =
       pir::StrAttribute::get(pir::IrContext::Instance(), sym_name);
   argument.AddAttribute("sym_name", attr_sym_name);
@@ -107,8 +106,8 @@ void SymbolicDim::updateKnownNonSizeZero(bool attrValue) {
 }
 
 bool SymbolicDim::isDynamic() {
-  return getValue() == -100000;
-}  // TODO(zhangbo): getValue() == ShapedType::kDynamic;
+  return getValue() == ShapedTypeInterface::kDynamic;
+}
 
 bool SymbolicDim::merge(SymbolicDim other) {
   if (!isDynamic() && !other.isDynamic() && getValue() != other.getValue())
@@ -172,6 +171,21 @@ void TieProductEqualOp::Build(Builder &builder,
       pir::Int64Attribute::get(pir::IrContext::Instance(), rhs_len);
   argument.AddAttribute("rhs_len", attr_rhs_len);
   argument.inputs = inputs;
+}
+
+void TieProductEqualOp::Build(Builder &builder,
+                              OperationArgument &argument,
+                              const std::vector<pir::OpResult> &lhs,
+                              const std::vector<pir::OpResult> &rhs) {
+  pir::Attribute attr_lhs_len =
+      pir::Int64Attribute::get(pir::IrContext::Instance(), lhs.size());
+  argument.AddAttribute("lhs_len", attr_lhs_len);
+  pir::Attribute attr_rhs_len =
+      pir::Int64Attribute::get(pir::IrContext::Instance(), rhs.size());
+  argument.AddAttribute("rhs_len", attr_rhs_len);
+
+  argument.inputs = lhs;
+  argument.inputs.insert(argument.inputs.end(), rhs.begin(), rhs.end());
 }
 
 std::vector<pir::Value> TieProductEqualOp::getLhs() {
