@@ -319,6 +319,14 @@ class FP16State:
             if op.type in __amp_skip_ops__:
                 idx += 1
                 continue
+            # The "dtype" attr "values" attr of assign_value should correspond.
+            # But origin program only has "fp32_values", so here we should set
+            # "fp16_values" attr.
+            elif op.type == "assign_value":
+                dtype = op.attr("dtype")
+                # 4 means fp16
+                if dtype == 4:
+                    op._set_attr("fp16_values", op.attr("fp32_values"))
             elif is_forward_op(op):
                 if self._is_fp16_op(op.desc.original_id()) is False:
                     num_cast_ops = self._insert_forward_cast_ops(
