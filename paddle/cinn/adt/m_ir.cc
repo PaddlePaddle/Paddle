@@ -555,30 +555,27 @@ void EraseWriteBroadcastOutMsgBoxes(
 
 namespace {
 
-m_expr::Tensor GetTensor(
-    const config::NaiveOpEquationContext& ctx,
-    const m_expr::OpStmt& op_stmt,
-    const equation::Index& index) {
+m_expr::Tensor GetTensor(const equation::config::NativeOpEquationContext& ctx,
+                         const m_expr::OpStmt& op_stmt,
+                         const equation::Index& index) {
   const auto& op_arg_pos = ctx.GetOpArgPos(index);
   const auto& [op, in_args, out_args] = op_stmt.tuple();
-  return op_arg_pos >> match{
-    [&](const Undefined&) -> m_expr::Tensor {
-      LOG(FATAL) << "position not found";
-    },
-    [&](const tIn<std::size_t>& pos) -> m_expr::Tensor {
-      return in_args.value()->at(pos.value());
-    }, 
-    [&](const tOut<std::size_t>& pos) -> m_expr::Tensor {
-      return out_args.value()->at(pos.value());
-    }
-  };
+  return op_arg_pos >>
+         match{[&](const Undefined&) -> m_expr::Tensor {
+                 LOG(FATAL) << "position not found";
+               },
+               [&](const tIn<std::size_t>& pos) -> m_expr::Tensor {
+                 return in_args.value()->at(pos.value());
+               },
+               [&](const tOut<std::size_t>& pos) -> m_expr::Tensor {
+                 return out_args.value()->at(pos.value());
+               }};
 }
 
 const auto& GetAnchorTensor(const partition::AnchorGroup& anchor_group) {
   const auto& ctx = *anchor_group.EquationCtx4OpStmt(anchor_group.op_stmt);
   return GetTensor(ctx, anchor_group.op_stmt, anchor_group.anchor_index);
 }
-
 
 std::unordered_map<equation::Index, LoopIterators>
 GenerateAnchorIndex2LoopIterators(
@@ -589,12 +586,13 @@ GenerateAnchorIndex2LoopIterators(
     const std::function<const LoopDescriptor&(const equation::IterVar&)>&
         GetLoopDescriptor) {
   std::unordered_map<equation::Index, LoopIterators> anchor_index2loop_iters{};
-  for (const auto& anchor_group: partitioned_anchor_groups) {
+  for (const auto& anchor_group : partitioned_anchor_groups) {
     const auto& anchor_index = anchor_group.anchor_index;
     const auto& anchor_tensor = GetAnchorTensor(anchor_group);
-    const auto& loop_iters = GetTensorLoopIterators(
+    const auto& anchor_loop_iters = GetTensorLoopIterators(
         anchor_tensor, loop_iters, GetLoopDescriptor, TensorIndexExpr4Tensor);
-    CHECK(anchor_index2loop_iters.emplace(anchor_index, loop_iters).second);
+    CHECK(anchor_index2loop_iters.emplace(anchor_index, anchor_loop_iters)
+              .second);
   }
   return anchor_index2loop_iters;
 }
@@ -605,23 +603,26 @@ struct IteratorsSlice {
 };
 
 std::set<std::size_t> GetLoopIteratorSizes(
-    const std::unordered_map<equation::Index, LoopIterators>& index2loop_iters) {
+    const std::unordered_map<equation::Index, LoopIterators>&
+        index2loop_iters) {
   const auto& VisitLoopIteratorsSize = [&](const auto& DoEach) {
     for (const auto& [_, loop_iters] : index2loop_iters) {
       DoEach(loop_iters->size());
     }
   };
   std::set<std::size_t> ret{};
-  VisitLoopIteratorsSize([&](std::size_t size){ ret.emplace(size); });
+  VisitLoopIteratorsSize([&](std::size_t size) { ret.emplace(size); });
   return ret;
 }
 
 std::vector<IteratorsSlice> GetLoopIteratorSlices(
-    const std::unordered_map<equation::Index, LoopIterators>& index2loop_iters) {
-  std::set<std::size_t> loop_iter_sizes = GetLoopIteratorSizes(index2loop_iters);
+    const std::unordered_map<equation::Index, LoopIterators>&
+        index2loop_iters) {
+  std::set<std::size_t> loop_iter_sizes =
+      GetLoopIteratorSizes(index2loop_iters);
   std::vector<IteratorsSlice> ret{};
   ret.reserve(index2loop_iters.size());
-  std::size_t pos = 0; 
+  std::size_t pos = 0;
   for (std::size_t size : loop_iter_sizes) {
     ret.push_back(IteratorsSlice{pos, size});
     pos = size;
@@ -629,9 +630,9 @@ std::vector<IteratorsSlice> GetLoopIteratorSlices(
   return ret;
 }
 
-
 List<LoopIterators> MakeLoopItersList(
-    const LoopIterators& loop_iters, const std::vector<IteratorsSlice>& slices) {
+    const LoopIterators& loop_iters,
+    const std::vector<IteratorsSlice>& slices) {
   List<LoopIterators> ret{};
   for (const auto& slice : slices) {
     const auto& begin = std::next(loop_iters->begin(), slice.start);
@@ -652,17 +653,20 @@ MapIrList ConvertAnchorGroups2MapIrList(
     const LoopIterators& loop_iters,
     const std::function<const LoopDescriptor&(const equation::IterVar&)>&
         GetLoopDescriptor) {
-  const auto& anchor_index2loop_iters = GenerateAnchorIndex2LoopIterators(
-        partitioned_anchor_groups, TensorIndexExpr4Tensor,
-        loop_iters, GetLoopDescriptor);
+  const auto& anchor_index2loop_iters =
+      GenerateAnchorIndex2LoopIterators(partitioned_anchor_groups,
+                                        TensorIndexExpr4Tensor,
+                                        loop_iters,
+                                        GetLoopDescriptor);
   std::vector<IteratorsSlice> loop_iter_slices =
       GetLoopIteratorSlices(anchor_index2loop_iters);
   MapIrList ret{};
-  for (const auto& anchor_group: partitioned_anchor_groups) {
+  for (const auto& anchor_group : partitioned_anchor_groups) {
     const auto& anchor_index = anchor_group.anchor_index;
     const auto& anchor_loop_iters = anchor_index2loop_iters.at(anchor_index);
-    const auto& loop_iters_list = MakeLoopItersList(anchor_loop_iters, loop_iter_slices);
-    ret->emplace_back(MaprIr{anchor_group.op_stmts, loop_iters_list});
+    const auto& loop_iters_list =
+        MakeLoopItersList(anchor_loop_iters, loop_iter_slices);
+    ret->emplace_back(MapIr{anchor_group.op_stmts, loop_iters_list});
   }
   return ret;
 }
@@ -681,8 +685,10 @@ MapIrList GenerateMapIrListForLoopFuse(
   const auto& partitioned_anchor_groups =
       partition::PartitionOpStmts(EquationCtx4OpStmt, op_stmts);
 
-  return ConvertAnchorGroups2MapIrList(
-    partitioned_anchor_groups, TensorIndexExpr4Tensor, loop_iters, GetLoopDescriptor);
+  return ConvertAnchorGroups2MapIrList(partitioned_anchor_groups,
+                                       TensorIndexExpr4Tensor,
+                                       loop_iters,
+                                       GetLoopDescriptor);
 }
 
 }  // namespace cinn::adt::m_ir
