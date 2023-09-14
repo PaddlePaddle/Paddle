@@ -116,7 +116,7 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
     proto::VarType::Type data_type = fc_input->Var()->GetDataType();
     if (data_type == proto::VarType::INT8 ||
         data_type == proto::VarType::UINT8) {
-      VLOG(4) << "Skip fusion fc + elementwise_add with int8 data type";
+      LOG(INFO) << "Skip fusion fc + elementwise_add with int8 data type";
       return;
     }
 
