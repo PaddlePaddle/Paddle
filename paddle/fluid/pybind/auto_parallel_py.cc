@@ -634,16 +634,31 @@ void BindAutoParallel(py::module *m) {
       [](py::handle py_tensor, const TensorDistAttr &dist_attr) {
         auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
         auto dev_ctx = phi::DeviceContextPool::Instance().Get(tensor.place());
+        std::shared_ptr<phi::distributed::DistTensor> dist_out_ptr = nullptr;
         if (phi::distributed::DistTensor::classof(tensor.impl().get())) {
-          auto dist_out_ptr = paddle::experimental::ReshardDistTensor(
-              dev_ctx, tensor, dist_attr);
+          auto tensor_in = tensor.impl();
+          if (tensor_in) {
+            phi::distributed::DistTensor *dist_tensor =
+                static_cast<phi::distributed::DistTensor *>(tensor_in.get());
+            if (dist_tensor->dist_attr() != dist_attr) {
+              VLOG(6) << "reshard func, reshard tensor from "
+                      << dist_tensor->dist_attr() << " to " << dist_attr;
+              auto *func = phi::distributed::ChooseProperReshardFunction(
+                  *dist_tensor, dist_attr);
+              dist_out_ptr = func->Eval(dev_ctx, *dist_tensor, dist_attr);
+            } else {
+              dist_out_ptr =
+                  std::static_pointer_cast<phi::distributed::DistTensor>(
+                      tensor_in);
+            }
+          }
           return paddle::Tensor(dist_out_ptr);
         } else {
           PADDLE_THROW(phi::errors::InvalidArgument(
               "The input tensor of shard function should be "
               "``phi::distributed::DistTensor``. "
               "However it's %s",
-              typeid(*tensor.impl().get()).name()));
+              typeid(tensor.impl().get()).name()));
         }
       },
       py::return_value_policy::reference);

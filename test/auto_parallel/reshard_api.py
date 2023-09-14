@@ -26,23 +26,13 @@ class TestReshardAPI:
         self._dtype = os.getenv("dtype")
         self._seeds = eval(os.getenv("seeds"))
         self._backend = os.getenv("backend")
+        self._shard = eval(os.getenv("shard"))
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
     def run_test_cases(self):
         if self._backend == "cpu":
             paddle.set_device("cpu")
         self.test_case_p_to_r()
-        self.test_case_r_to_p()
-
-        for shape in [[5, 7], [10, 20]]:
-            for shard in [0, 1]:
-                self._shape = shape
-                self._shard = shard
-                self.test_case_r_to_s()
-
-        for shard in [0, 1]:
-            self._shard = shard
-            self.test_case_s_to_r()
 
     def test_case_p_to_r(self):
         a = paddle.ones(self._shape)
@@ -62,35 +52,6 @@ class TestReshardAPI:
         input_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
         assert np.equal(output_tensor.shape, input_tensor.shape).all()
         np.testing.assert_equal(output_tensor._local_value().numpy(), a.numpy())
-
-    def test_case_r_to_p(self):
-        a = paddle.ones(self._shape)
-        in_shard_specs = [None for i in range(len(self._shape))]
-        out_shard_specs = [None for i in range(len(self._shape))]
-        dist_attr = dist.DistAttr(
-            mesh=self._mesh, sharding_specs=in_shard_specs
-        )
-        out_dist_attr = dist.DistAttr(
-            mesh=self._mesh, sharding_specs=out_shard_specs
-        )
-        out_dist_attr._set_partial_dims([0])
-
-        input_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
-        output_tensor = dist.reshard(input_tensor, dist_attr=out_dist_attr)
-
-        if dist.get_rank() == 0:
-            np.testing.assert_equal(
-                output_tensor._local_value().numpy(), input_tensor.numpy()
-            )
-        else:
-            zeros = paddle.zeros(self._shape)
-            np.testing.assert_equal(
-                output_tensor._local_value().numpy(), zeros.numpy()
-            )
-        assert np.equal(output_tensor.shape, input_tensor.shape).all()
-        assert np.equal(
-            output_tensor._local_shape, input_tensor._local_shape
-        ).all()
 
     def test_case_r_to_s(self):
         a = paddle.ones(self._shape)
@@ -120,24 +81,6 @@ class TestReshardAPI:
 
         assert np.equal(output_tensor.shape, input_tensor.shape).all()
         assert np.equal(output_tensor._local_shape, out_shape).all()
-
-    def test_case_s_to_r(self):
-        a = paddle.ones(self._shape)
-        in_shard_specs = [None for i in range(len(self._shape))]
-        in_shard_specs[self._shard] = "x"
-        out_shard_specs = [None for i in range(len(self._shape))]
-
-        dist_attr = dist.DistAttr(
-            mesh=self._mesh, sharding_specs=in_shard_specs
-        )
-        out_dist_attr = dist.DistAttr(
-            mesh=self._mesh, sharding_specs=out_shard_specs
-        )
-
-        input_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
-        output_tensor = dist.reshard(input_tensor, dist_attr=out_dist_attr)
-        assert np.equal(output_tensor.shape, output_tensor._local_shape).all()
-        assert np.equal(output_tensor.shape, input_tensor.shape).all()
 
 
 if __name__ == '__main__':

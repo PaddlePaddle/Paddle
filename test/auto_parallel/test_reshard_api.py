@@ -24,6 +24,7 @@ class TestReshardAPI(test_base.CommunicationTestDistBase):
             "shape": "(10, 20)",
             "dtype": "float32",
             "seeds": str(self._seeds),
+            "shard": "0",
         }
         self._changeable_envs = {
             "backend": ["cpu", "gpu"],

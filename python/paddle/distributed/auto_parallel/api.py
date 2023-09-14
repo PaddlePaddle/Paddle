@@ -178,7 +178,7 @@ def reshard(dist_tensor, dist_attr):
     Reshard a distributed ``paddle.Tensor`` with given distributed attributes.
 
     Args:
-        data(Tensor): the distributed tensor to be resharded.
+        dist_tensor(Tensor): the distributed tensor to be resharded.
         dist_attr(paddle.distributed.DistAttr): Specify how tensors are distributed or sliced on ProcessMesh.
 
     Returns:
@@ -209,4 +209,10 @@ def reshard(dist_tensor, dist_attr):
         print(out_d_tensor)
     """
 
-    return paddle.base.core.reshard(dist_tensor, dist_attr)
+    if paddle.framework.in_dynamic_mode:
+        return paddle.base.core.reshard(dist_tensor, dist_attr)
+    else:
+        # TODO(GhostScreaming): Support static DistTensor later.
+        raise RuntimeError(
+            "paddle.dist.reshard only support dynamic graph now. It will be supported for static graph later."
+        )
