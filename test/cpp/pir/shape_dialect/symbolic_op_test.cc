@@ -346,7 +346,7 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
   std::tie(newLhs, newRhs) = symDimMgr.SimplifySymbolicDimProductPair(
       symDimProductPairLhs, symDimProductPairRhs);
 
-  // For check symbolicDimProductDivide, {S4 * S1 * C20} / {S1 * C10} => {factor
+  // For check SymbolicDimProductDivide, {S4 * S1 * C20} / {S1 * C10} => {factor
   // = 2 Sym = {S4}}
   pir::SymbolicDimProduct symDimProductDivLhs;
   pir::SymbolicDimProduct symDimProductDivRhs;
@@ -356,7 +356,7 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
   symDimProductDivRhs.symbols.push_back(symDimS1);
   symDimProductDivRhs.symbols.push_back(symDimC10);
 
-  pir::SymbolicDimProduct *divRes = symDimMgr.symbolicDimProductDivide(
+  pir::SymbolicDimProduct *divRes = symDimMgr.SymbolicDimProductDivide(
       symDimProductDivLhs, symDimProductDivRhs);
 
   EXPECT_TRUE(symDimMgr.IsSymbolicDimEqual(symDimS1, symDimS2));
