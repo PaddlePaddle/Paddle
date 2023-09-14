@@ -17,7 +17,7 @@ from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from .. import _C_ops
 from ..base.data_feeder import check_variable_and_dtype
-from ..framework import LayerHelper, in_dynamic_mode, in_dynamic_or_new_ir_mode
+from ..framework import LayerHelper, in_dynamic_mode, in_dynamic_or_pir_mode
 from .layer_function_generator import (
     add_sample_code,
     generate_activation_fn,
@@ -878,7 +878,7 @@ def rsqrt(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [3.16227770, 2.23606801, 1.82574177, 1.58113885])
     """
-    if in_dynamic_or_new_ir_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.rsqrt(x)
     else:
         check_variable_and_dtype(
