@@ -33,7 +33,7 @@ class Lexer {
   std::unique_ptr<Token> LexEndTagOrNullVal();
   std::unique_ptr<Token> LexValueId();
   std::unique_ptr<Token> LexEOF();
-  std::unique_ptr<Token> LexOpName();
+  std::unique_ptr<Token> LexString();
   char GetChar();
   void SkipWhitespace();
   bool IsEndTag(char);

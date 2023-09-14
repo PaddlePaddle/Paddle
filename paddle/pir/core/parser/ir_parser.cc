@@ -134,6 +134,14 @@ Attribute IrParser::ParseAttribute() {
     ConsumeAToken("String");
     ConsumeAToken(")");
     std::string val = ConsumeToken().val_;
+    val = val.substr(1, val.size() - 2);
+    std::string replacement = "\"";
+    std::string search = "\\\"";
+    size_t found = val.find(search);
+    while (found != std::string::npos) {
+      val.replace(found, search.length(), replacement);
+      found = val.find(search, found + replacement.length());
+    }
     return builder->str_attr(val);
   } else if (attribute_type == "Float") {
     ConsumeAToken("Float");
@@ -216,7 +224,7 @@ Operation* IrParser::ParseOperation() {
 
   OpInfo opinfo = ParseOpInfo();
 
-  std::vector<OpResult> inputs = ParseOprandList();
+  std::vector<OpResult> inputs = ParseOperandList();
 
   pir::AttributeMap attributeMap = ParseAttributeMap();
 
@@ -269,7 +277,7 @@ OpInfo IrParser::ParseOpInfo() {
 
 // OprandList := ValueList
 // ValueList := ValueId(,ValueId)*
-std::vector<OpResult> IrParser::ParseOprandList() {
+std::vector<OpResult> IrParser::ParseOperandList() {
   ConsumeAToken("(");
   std::vector<OpResult> inputs{};
   Token ind_token = ConsumeToken();

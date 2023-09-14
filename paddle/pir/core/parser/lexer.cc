@@ -24,7 +24,7 @@ Token Lexer::ConsumeToken() {
     return *token;
   } else if (auto token = LexValueId()) {
     return *token;
-  } else if (auto token = LexOpName()) {
+  } else if (auto token = LexString()) {
     return *token;
   } else if (auto token = LexEOF()) {
     return *token;
@@ -160,19 +160,23 @@ std::unique_ptr<Token> Lexer::LexEOF() {
   }
 }
 
-std::unique_ptr<Token> Lexer::LexOpName() {
+std::unique_ptr<Token> Lexer::LexString() {
   if (is.peek() != '"') {
     return nullptr;
   }
   GetChar();
-  std::string token_opname = "";
+  std::string token_val = "";
   while (is.peek() != '"') {
-    token_opname += GetChar();
+    char c = GetChar();
+    if (c == '\\') {
+      c = GetChar();
+    }
+    token_val += c;
   }
   GetChar();
-  std::unique_ptr<Token> opname_token(
-      new Token{"\"" + token_opname + "\"", OPNAME});
-  return opname_token;
+  std::unique_ptr<Token> string_token(
+      new Token{"\"" + token_val + "\"", STRING});
+  return string_token;
 }
 
 bool Lexer::IsSpace(char c) {
