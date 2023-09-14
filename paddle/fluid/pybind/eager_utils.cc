@@ -152,6 +152,7 @@ bool PyObject_CheckIRVectorOfOpResult(PyObject* obj) {
         return false;
       }
     }
+    return true;
   } else if (PyTuple_Check(obj)) {
     Py_ssize_t len = PyTuple_Size(obj);
     PyObject* item = nullptr;
@@ -164,11 +165,10 @@ bool PyObject_CheckIRVectorOfOpResult(PyObject* obj) {
         return false;
       }
     }
-
+    return true;
   } else {
     return false;
   }
-  return True;
 }
 bool CastPyArg2AttrBoolean(PyObject* obj, ssize_t arg_pos) {
   if (obj == Py_None) {

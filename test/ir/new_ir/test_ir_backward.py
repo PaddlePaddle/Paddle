@@ -22,7 +22,6 @@ paddle.enable_static()
 
 
 def get_ir_program_0():
-    paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
     x = paddle.randn([4, 4])
     main_program, start_program = (
         paddle.static.Program(),
@@ -135,7 +134,6 @@ class TesBackward_1(unittest.TestCase):
 
 
 def get_ir_program_1():
-    paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
     x = paddle.randn([2, 2])
     main_program, start_program = (
         paddle.static.Program(),
@@ -214,7 +212,6 @@ class TesBackward_2(unittest.TestCase):
 
 
 def get_ir_program_2():
-    paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
     x = paddle.randn([2, 2])
     main_program, start_program = (
         paddle.static.Program(),
