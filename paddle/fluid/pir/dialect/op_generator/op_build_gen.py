@@ -13,7 +13,13 @@
 # limitations under the License.
 
 # generator build function
-_INFERMETA_NEED_META_CONFIG = {'SplitInferMeta'}
+_INFERMETA_NEED_META_CONFIG = {
+    'SplitInferMeta',
+    'SumInferMeta',
+    'SplitWithNumInferMeta',
+    'ConcatInferMeta',
+    'ReduceIntArrayAxisInferMeta',
+}
 
 _PREPARE_DATA_WITH_VECTOR_INT64_MTTABLE_ATTRIBUTE = {'FrobeniusNormOp'}
 
