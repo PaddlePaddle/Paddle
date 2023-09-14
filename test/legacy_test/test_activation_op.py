@@ -1578,7 +1578,7 @@ class TestRsqrt(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_new_ir=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -1588,6 +1588,7 @@ class TestRsqrt(TestActivation):
             'Out',
             max_relative_error=0.0005,
             check_prim=True,
+            check_new_ir=True,
         )
 
 
@@ -4507,7 +4508,9 @@ create_test_act_fp16_class(
     TestLeakyReluAlpha3, check_prim=True, enable_cinn=True
 )
 create_test_act_fp16_class(TestLeakyRelu_ZeroDim, check_prim=True)
-create_test_act_fp16_class(TestRsqrt, check_prim=True, enable_cinn=True)
+create_test_act_fp16_class(
+    TestRsqrt, check_prim=True, enable_cinn=True, check_new_ir=True
+)
 
 
 def create_test_act_bf16_class(
@@ -4629,7 +4632,7 @@ create_test_act_bf16_class(TestLeakyReluAlpha1, check_prim=True)
 create_test_act_bf16_class(TestLeakyReluAlpha2, check_prim=True)
 create_test_act_bf16_class(TestLeakyReluAlpha3, check_prim=True)
 create_test_act_bf16_class(TestLeakyRelu_ZeroDim, check_prim=True)
-create_test_act_bf16_class(TestRsqrt, check_prim=True)
+create_test_act_bf16_class(TestRsqrt, check_prim=True, check_new_ir=True)
 
 if __name__ == "__main__":
     unittest.main()
