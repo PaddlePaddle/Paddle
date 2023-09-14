@@ -349,7 +349,7 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
     # input: phi::Tensor
     # output: inplace paddle::optional<phi::Tensor>
     def test_adamax_for_dist_tensor(self):
-        dtype = np.float16
+        dtype = np.float32
         mp_dtype = np.float32
         shape = [123, 321]
 
@@ -424,6 +424,62 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
         self.check_tensor_eq(local_param_out, dist_param_out)
         self.check_tensor_eq(local_moment_out, dist_moment_out)
         self.check_tensor_eq(local_inf_norm_out, dist_inf_norm_out)
+        self.check_tensor_eq(local_master_param_out, dist_master_param_out)
+
+    # multi kernel functions
+    def test_adagrad_for_dist_tensor(self):
+        dtype = np.float16
+        mp_dtype = np.float32
+        shape = [123, 321]
+
+        param = np.random.random(shape).astype(dtype)
+        grad = np.random.random(shape).astype(dtype)
+        moment = np.random.random(shape).astype(dtype)
+        master_param = param.astype(mp_dtype)
+
+        lr = np.array([0.002]).astype("float32")
+        epsilon = 1e-8
+
+        local_param, dist_param = self.create_local_and_dist_tensor_pair(param)
+        local_grad, dist_grad = self.create_local_and_dist_tensor_pair(grad)
+        local_lr, dist_lr = self.create_local_and_dist_tensor_pair(lr)
+        local_moment, dist_moment = self.create_local_and_dist_tensor_pair(
+            moment
+        )
+        (
+            local_master_param,
+            dist_master_param,
+        ) = self.create_local_and_dist_tensor_pair(master_param)
+        (
+            local_param_out,
+            local_moment_out,
+            local_master_param_out,
+        ) = paddle._C_ops.adagrad_(
+            local_param,
+            local_grad,
+            local_moment,
+            local_lr,
+            local_master_param,
+            epsilon,
+            True,
+        )
+
+        (
+            dist_param_out,
+            dist_moment_out,
+            dist_master_param_out,
+        ) = paddle._C_ops.adagrad_(
+            dist_param,
+            dist_grad,
+            dist_moment,
+            dist_lr,
+            dist_master_param,
+            epsilon,
+            True,
+        )
+
+        self.check_tensor_eq(local_param_out, dist_param_out)
+        self.check_tensor_eq(local_moment_out, dist_moment_out)
         self.check_tensor_eq(local_master_param_out, dist_master_param_out)
 
     # input: std::vector<phi::Tensor>, phi::Tensor
