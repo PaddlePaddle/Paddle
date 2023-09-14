@@ -22,8 +22,8 @@
 
 namespace paddle {
 namespace dialect {
-pir::OpResult builtin_combine(std::vector<pir::OpResult> x);
 
+pir::OpResult builtin_combine(std::vector<pir::OpResult> x);
 
 pir::OpResult zeros_like(pir::OpResult x,
                          phi::DataType dtype = phi::DataType::UNDEFINED,
