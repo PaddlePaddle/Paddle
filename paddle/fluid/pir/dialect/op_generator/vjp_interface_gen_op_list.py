@@ -22,7 +22,32 @@
 # remove this file and support Vjp methods
 # code gen.
 
+
 vjp_interface_declare_gen_op_list = [
+    "tanh",
+    "mean",
+    "divide",
+    "sum",
+    "add",
+    "concat",
+    "split",
+    "gelu",
+    "matmul",
+    "erf",
+    "multiply",
+    "pow",
+    "rsqrt",
+    "subtract",
+    "square",
+    "dropout",
+    'exp',
+    'expand',
+    'layer_norm',
+    'reshape',
+    'cast',
+    'silu',
+]
+vjp_interface_implementation_gen_op_list = [
     "tanh",
     "mean",
     "divide",
@@ -37,21 +62,12 @@ vjp_interface_declare_gen_op_list = [
     "subtract",
     "pow",
     "rsqrt",
+    "square",
     "dropout",
-]
-vjp_interface_implementation_gen_op_list = [
-    "tanh",
-    "mean",
-    "divide",
-    "add",
-    "concat",
-    "split",
-    "gelu",
-    "matmul",
-    "erf",
-    "multiply",
-    "subtract",
-    "pow",
-    "rsqrt",
-    "dropout",
+    'exp',
+    'expand',
+    'layer_norm',
+    'reshape',
+    'cast',
+    'silu',
 ]

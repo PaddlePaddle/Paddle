@@ -15,6 +15,8 @@
 import argparse
 import logging
 import os
+import pathlib
+import sys
 
 import yaml
 from op_build_gen import gen_build_func_str
@@ -29,6 +31,12 @@ from vjp_interface_gen_op_list import (
     vjp_interface_declare_gen_op_list,
     vjp_interface_implementation_gen_op_list,
 )
+
+# import from paddle/fluid/primitive/code_gen/gen.py
+sys.path.append(
+    str(pathlib.Path(__file__).resolve().parents[3] / 'primitive/codegen')
+)
+import gen as vjp_gen
 
 # =====================================
 # String Template for h file code gen
@@ -54,6 +62,7 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
+#include "paddle/fluid/pir/dialect/operator/trait/custom_vjp.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
@@ -173,7 +182,7 @@ scalar_type_maps = {
     'bool': 'pir::BoolAttribute',
 }
 
-_NO_NEED_GEN_OPS = {'add_n', 'add_n_', 'add_n_with_kernel', 'split_grad'}
+PD_MANUAL_OP_LIST = {'add_n', 'add_n_', 'add_n_with_kernel', 'split_grad'}
 
 
 def to_phi_and_fluid_op_name(op_item):
@@ -818,6 +827,12 @@ def OpGenerator(
     ops_declare_list = []  # all op class declare store in this list
     ops_defined_list = []  # all op class defined store in this list
     ops_vjp_defined_list = []  # all op vjp static interface defination
+
+    # (4) parse name of ops which have custom vjp rules
+    custom_vjp_op_name_list = []
+    for custom_vjp in vjp_gen.CUSTOM_VJP:
+        custom_vjp_op_name_list.append(custom_vjp[:-5])  # cut _grad
+
     for key, op_info in op_info_items.items():
         # get op inputs info
         op_input_name_list = op_info.input_name_list
@@ -873,6 +888,10 @@ def OpGenerator(
             op_interfaces += ["paddle::dialect::VjpInterface"]
         exclusive_interface_str = gen_exclusive_interface_str(op_info)
 
+        # if op has custom vjp rule, then append a CustomVjpTrait to it
+        if op_info.op_phi_name[0] in custom_vjp_op_name_list:
+            op_traits += ["paddle::dialect::CustomVjpTrait"]
+
         # check op inputs and mutable_attributes grad semantics
         input_grad_semantics = get_input_grad_semantic(op_info, op_info_items)
         mutable_attribute_grad_semantics = get_mutable_attribute_grad_semantic(
@@ -881,7 +900,7 @@ def OpGenerator(
 
         # If op has inplace info, we will generate inplace op and non-inplace op.
         for op_name in op_info.op_phi_name:
-            if op_name in _NO_NEED_GEN_OPS:
+            if op_name in PD_MANUAL_OP_LIST:
                 continue
             op_class_name = to_pascal_case(op_name) + "Op"
             op_dialect_name = dialect_name + "." + op_name
@@ -927,6 +946,7 @@ def OpGenerator(
                     op_class_name,
                     op_input_name_list,
                     op_input_type_list,
+                    op_input_optional_list,
                     op_attribute_name_list,
                     op_attribute_type_list,
                     op_attribute_build_arg_type_list,
@@ -940,7 +960,9 @@ def OpGenerator(
                     op_output_name_list,
                     op_output_type_list,
                     op_output_size_list,
+                    op_output_optional_list,
                     op_infer_meta_map,
+                    op_inplace_map,
                     muta_attr_is_input=False,
                 )
                 if len(op_attribute_name_list) > 0:
@@ -951,6 +973,7 @@ def OpGenerator(
                         op_class_name,
                         op_input_name_list,
                         op_input_type_list,
+                        op_input_optional_list,
                         op_attribute_name_list,
                         op_attribute_type_list,
                         op_attribute_build_arg_type_list,
@@ -964,7 +987,9 @@ def OpGenerator(
                         op_output_name_list,
                         op_output_type_list,
                         op_output_size_list,
+                        op_output_optional_list,
                         op_infer_meta_map,
+                        op_inplace_map,
                         muta_attr_is_input=False,
                         attr_args_is_map=True,
                     )
@@ -982,6 +1007,7 @@ def OpGenerator(
                         op_class_name,
                         op_input_name_list,
                         op_input_type_list,
+                        op_input_optional_list,
                         op_attribute_name_list,
                         op_attribute_type_list,
                         op_attribute_build_arg_type_list,
@@ -995,7 +1021,9 @@ def OpGenerator(
                         op_output_name_list,
                         op_output_type_list,
                         op_output_size_list,
+                        op_output_optional_list,
                         op_infer_meta_map,
+                        op_inplace_map,
                         muta_attr_is_input=True,
                     )
 
@@ -1188,7 +1216,6 @@ def OpGenerator(
             if dialect_name == "cinn":
                 logging.warning("cinn is currently not support Vjp function")
             else:
-                # TODO(chenzhiyang) add vjp gen code
                 if (
                     op_info.backward_name
                     and op_info.op_phi_name[0]

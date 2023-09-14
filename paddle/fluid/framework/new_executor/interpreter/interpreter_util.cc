@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
+#include "paddle/fluid/operators/controlflow/pylayer_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
@@ -571,6 +572,8 @@ void BuildOpFuncList(const platform::Place& place,
     const ProgramDesc& main_program = *block.Program();
     operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
         main_program, block.ID(), ops_unique);
+    operators::PrepareSafeEagerDeletionOnPyLayerOpAndPyLayerGradOp(
+        main_program, block.ID(), ops_unique);
     operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
         main_program, block.ID(), ops_unique);
     operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
@@ -611,6 +614,8 @@ void BuildOpFuncList(const platform::Place& place,
     const std::set<std::string> ops_with_var_not_in_scope = {
         "conditional_block",
         "conditional_block_grad",
+        "pylayer",
+        "pylayer_grad"
         "recurrent_grad",
         "rnn_memory_helper",
         "rnn_memory_helper_grad",
@@ -1227,6 +1232,32 @@ void BuildId2VarName(const std::map<std::string, int>& var_name_2_id,
   for (auto [var_name, id] : var_name_2_id) {
     id_2_var_name->insert({id, var_name});
   }
+}
+
+const std::vector<std::string> GetInstructionCallStack(
+    const std::string& type, const pir::AttributeMap& attrs) {
+  std::vector<std::string> vec_str;
+  if (attrs.count("sub_block") != 0) {
+    return vec_str;
+  }
+  auto iter = attrs.find(OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+  if (iter != attrs.end()) {
+    auto attr = iter->second;
+    PADDLE_ENFORCE(
+        attr.isa<pir::ArrayAttribute>(),
+        paddle::platform::errors::InvalidArgument(
+            "%s: Callstack attributes of %s is not ArrayAttribute type", type));
+    pir::ArrayAttribute array_attribute = attr.dyn_cast<pir::ArrayAttribute>();
+    std::vector<pir::Attribute> vec_attr = array_attribute.AsVector();
+    for (auto value : vec_attr) {
+      PADDLE_ENFORCE(
+          value.isa<pir::StrAttribute>(),
+          paddle::platform::errors::InvalidArgument(
+              "%s: Callstack attributes of %s is not StrAttribute type", type));
+      vec_str.emplace_back(value.dyn_cast<pir::StrAttribute>().AsString());
+    }
+  }
+  return vec_str;
 }
 
 }  // namespace interpreter

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from test_conv2d_transpose_op import TestConv2DTransposeOp
 
 from paddle import enable_static
