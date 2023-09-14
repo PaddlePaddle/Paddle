@@ -343,7 +343,7 @@ void BindValue(py::module *m) {
       .def("__eq__", &Value::operator==)
       .def("__eq__",
            [](Value &self, OpResult &other) {
-             return self.impl() == other.value_impl();
+             return self.impl() == other.Value::impl();
            })
       .def("__hash__",
            [](const Value &self) { return std::hash<pir::Value>{}(self); });
@@ -414,7 +414,7 @@ void BindOpResult(py::module *m) {
   op_result.def("__eq__", &OpResult::operator==)
       .def("__eq__",
            [](OpResult &self, Value &other) {
-             return self.value_impl() == other.impl();
+             return self.Value::impl() == other.impl();
            })
       .def("__neg__",
            [](OpResult &self) {
@@ -435,6 +435,22 @@ void BindOpResult(py::module *m) {
       .def("__truediv__",
            [](OpResult &self, OpResult &other) {
              return paddle::dialect::divide(self, other);
+           })
+      .def("__lt__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::less_than(self, other);
+           })
+      .def("__le__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::less_equal(self, other);
+           })
+      .def("__gt__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::greater_than(self, other);
+           })
+      .def("__ge__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::greater_equal(self, other);
            })
       .def("__hash__",
            [](OpResult &self) {
@@ -574,7 +590,7 @@ Operation *BuildOpFrom(
                  cloned_op->results().begin(),
                  std::back_inserter(tmp),  // NOLINT, just a placeholder.
                  [&value_map](const OpResult &a, const OpResult &b) {  // NOLINT
-                   value_map[a.value_impl()] = b.value_impl();
+                   value_map[a.Value::impl()] = b.Value::impl();
                    return 1;
                  });
   return cloned_op;
@@ -632,7 +648,7 @@ AnalysisMiddleVariable(const Program &program,
       forward_range,
       [&middle_values, &backward_inputs, &x_or_param](Operation *op) {
         for (auto &t : op->results()) {
-          auto v = Value(t.value_impl());
+          auto v = Value(t.Value::impl());
           if (backward_inputs.count(v) && !x_or_param.count(v))
             middle_values.push_back(v);
         }
@@ -687,7 +703,7 @@ SplitedResult ForwardBackwardSplit(
 
   auto op_result_to_value = [](const pir::OpResult &r) {
     if (r.impl() == nullptr) return Value(nullptr);
-    return Value(r.value_impl());
+    return Value(r.Value::impl());
   };
 
   std::transform(op_result_forward_inputs.begin(),
@@ -740,7 +756,6 @@ SplitedResult ForwardBackwardSplit(
                    auto *cloned_op = BuildOpFrom(op, forward_value_map);
                    forward_program->block()->push_back(cloned_op);
                  });
-
   // backward program construc.
   // Step1. insert data op for inputs_values and middle_values
   int counter = 0;
@@ -763,7 +778,7 @@ SplitedResult ForwardBackwardSplit(
             dtype,
             place);
     counter += 1;
-    backward_value_map[v] = op->results()[0].value_impl();
+    backward_value_map[v] = op->results()[0].Value::impl();
   };
 
   auto create_output_fn_forward = [&ctx,

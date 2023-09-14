@@ -187,7 +187,7 @@ static auto GetNameFromValue(const ::pir::Block *block,
     if (op->name() == "pd_op.data") {
       name =
           op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
-      value2name[op->results()[0].value_impl()] = name;
+      value2name[op->results()[0].Value::impl()] = name;
     } else if (op->name() == "builtin.set_parameter") {
       name = op->attributes()
                  .at("parameter_name")
@@ -266,6 +266,52 @@ static void ShareTensorsIntoScopeByValue(
       VLOG(4) << "ShareTensorIntoScopeByValue name: " << s;
     }
   }
+  ShareTensorsIntoScopeWithName(tensors, names, scope);
+}
+
+static void ShareTensorsFromScopeByValue(
+    const ::pir::Block *block,
+    const std::vector<Tensor *> &tensors,
+    const std::vector<::pir::Value> &values,
+    paddle::framework::Scope *scope) {
+  auto names = GetNameFromValue(block, values);
+  for (size_t i = 0; i < tensors.size(); ++i) {
+    auto &name = names[i];
+    auto &value = values[i];
+    if (value.impl() == nullptr) {
+      // skip stop_gradient.
+      continue;
+    }
+    auto *var = scope->FindVar(name);
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        paddle::platform::errors::NotFound("The output tensor %s is not in "
+                                           "RunProgram(Grad)Op'"
+                                           "s internal scope.",
+                                           name));
+    CheckOutputVarStatus(*var, *tensors[i]);
+    // share tensor
+    if (var->IsType<phi::DenseTensor>()) {
+      auto &src_tensor = var->Get<phi::DenseTensor>();
+      auto *dst_tensor = const_cast<phi::DenseTensor *>(
+          dynamic_cast<const phi::DenseTensor *>(tensors[i]->impl().get()));
+      VLOG(2) << "share " << name << " from scope";
+      *dst_tensor = src_tensor;
+    } else if (var->IsType<phi::SelectedRows>()) {
+      auto &src_tensor = var->Get<phi::SelectedRows>();
+      auto *dst_tensor = const_cast<phi::SelectedRows *>(
+          dynamic_cast<const phi::SelectedRows *>(tensors[i]->impl().get()));
+      *dst_tensor = src_tensor;
+    }
+  }
+}
+
+static void ShareTensorsIntoScopeByValue(
+    const ::pir::Block *block,
+    const std::vector<Tensor> &tensors,
+    const std::vector<::pir::Value> &values,
+    paddle::framework::Scope *scope) {
+  auto names = GetNameFromValue(block, values);
   ShareTensorsIntoScopeWithName(tensors, names, scope);
 }
 
@@ -679,8 +725,13 @@ inline void RunProgramAPI(
 
     if (FLAGS_enable_new_ir_in_executor) {
       // build new ir program
-      auto ir_program = paddle::framework::ConstructFowardIrProgram(
-          forward_global_block, backward_global_block, output_names, x, params);
+      auto ir_program =
+          paddle::framework::ConstructFowardIrProgram(forward_global_block,
+                                                      backward_global_block,
+                                                      output_names,
+                                                      x,
+                                                      params,
+                                                      place);
       interpreter_core =
           paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
               std::move(ir_program),

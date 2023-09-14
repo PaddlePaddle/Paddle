@@ -132,7 +132,7 @@ class ProgramInfo:
         if key not in self.programs:
             infer_prog = prog_creator(is_infer_mode=True)
             self.programs[key] = infer_prog
-            self.op_size[key] = infer_prog.desc.block(0).op_size()
+            self.op_size[key] = infer_prog.desc.global_block().op_size()
 
         return self.programs[key], self.op_size[key]
 
@@ -545,7 +545,7 @@ class PartialProgramLayer:
             whenever we call this method, a tmp Program() object is created and is gc immediatly
             after executed the following line in PartialProgramLayer.__call__.
 
-            >>> self.backward_program.desc.block(0),
+            >>> self.backward_program.desc.global_block(),
 
             When we access RunProgramAPI, it's possible to get an invalid backward_program address.
             """
@@ -666,7 +666,6 @@ class PartialProgramLayer:
                     grad_info_map = grad(
                         inputs=combined_inputs, outputs=targets
                     )
-
                 forward_outputs_grads = []
                 not_stop_gradient_num = 0
                 for out_op_result in self._outputs.tolist():
@@ -721,15 +720,21 @@ class PartialProgramLayer:
         `run_program_op`.
         """
         required_params = []
-        required_param_values = []
-        block = program.global_block()
-        for param, param_value in zip(self._params, self._param_values):
-            if param_value.has_one_use():
-                required_params.append(param)
-                required_param_values.append(param_value)
+        for param in self._params:
+            found_param = False
+            for block in program.blocks:
+                for op in block.ops:
+                    if (
+                        param.name in op.input_arg_names
+                        or param.name in op.output_arg_names
+                    ):
+                        required_params.append(param)
+                        found_param = True
+                        break
+                if found_param:
+                    break
 
         self._params = required_params
-        self._param_values = required_param_values
 
     def _cast_fp16_if_pure_fp16(self, in_vars):
         if _in_pure_fp16_guard():
@@ -815,7 +820,6 @@ class PartialProgramLayer:
         # whole_program
         # ) + self._grad_var_names.get('param', [])
 
-        breakpoint()
         (
             forward_program,
             backward_program,
@@ -1147,12 +1151,3 @@ def add_build_strategy_for(
     program, start_op_index, end_op_index, build_strategy=None, skip_vars=None
 ):
     raise NotImplementedError("Not implemented yet.")
-    paddle.base.libpaddle.ir.program_split(
-        program,
-    )
-    if start_op_index < end_op_index:
-        pass
-    else:
-        # can't just create a new program, we need copy the vardesc.
-        builded_program = ir_static.Program()
-    return builded_program

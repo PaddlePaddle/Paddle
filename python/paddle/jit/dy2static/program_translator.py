@@ -1240,7 +1240,6 @@ class ConcreteProgram:
                     _global_parameter_recorder,
                 )
 
-                print("Pop Parameters in", main_program)
                 all_parameters_and_buffers = _global_parameter_recorder.pop(
                     main_program
                 )

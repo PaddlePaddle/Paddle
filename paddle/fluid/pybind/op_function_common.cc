@@ -864,7 +864,7 @@ void CastPyArg2AttrValues(PyObject* obj,
       if (opresult->impl() == nullptr) {
         results.emplace_back(pir::Value(nullptr));
       } else {
-        results.emplace_back(pir::Value(opresult->value_impl()));
+        results.emplace_back(pir::Value(opresult->Value::impl()));
       }
     }
   } else {
