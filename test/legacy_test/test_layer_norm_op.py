@@ -142,6 +142,7 @@ class TestLayerNormOpByOpTest(OpTest):
             atol=self.ori_atol,
             rtol=self.ori_rtol,
             check_prim=True,
+            check_new_ir=True,
         )
 
     def test_check_grad(self):
@@ -150,6 +151,7 @@ class TestLayerNormOpByOpTest(OpTest):
             ['Y'],
             max_relative_error=self.max_relative_error,
             check_prim=True,
+            check_new_ir=True,
         )
 
     def initConfig(self):
