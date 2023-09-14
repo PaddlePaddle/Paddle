@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,12 +25,13 @@ paddle.enable_static()
 
 class TestHypotAPI(unittest.TestCase):
     def setUp(self):
-        self.x_np = [12]
-        self.y_np = [20]
-        self.x_shape = [1]
-        self.y_shape = [1]
+        self.x_shape = [10, 10]
+        self.y_shape = [10, 1]
+        self.x_np = np.random.uniform(-10, 10, self.x_shape).astype(np.float32)
+        self.y_np = np.random.uniform(-10, 10, self.y_shape).astype(np.float32)
 
     def test_static_graph(self):
+        paddle.enable_static()
         startup_program = base.Program()
         train_program = base.Program()
         with base.program_guard(startup_program, train_program):
@@ -53,9 +54,9 @@ class TestHypotAPI(unittest.TestCase):
                 feed={'input1': self.x_np, 'input2': self.y_np},
                 fetch_list=[out],
             )
-            self.assertTrue(
-                (np.array(res[0]) == np.hypot(self.x_np, self.y_np)).all()
-            )
+            np_out = np.hypot(self.x_np, self.y_np)
+            np.testing.assert_allclose(res[0], np_out, atol=1e-5, rtol=1e-5)
+            paddle.disable_static()
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -69,7 +70,7 @@ class TestHypotAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestHypotAPI2(TestHypotAPI):
+class TestHypotAPIBroadCast(TestHypotAPI):
     def setUp(self):
         self.x_np = np.arange(6).astype(np.float32)
         self.y_np = np.array([20]).astype(np.float32)
@@ -79,23 +80,19 @@ class TestHypotAPI2(TestHypotAPI):
 
 class TestHypotAPI3(TestHypotAPI):
     def setUp(self):
-        self.x_np = 0
-        self.y_np = 20
         self.x_shape = []
         self.y_shape = []
+        self.x_np = np.random.uniform(-10, 10, self.x_shape).astype(np.float32)
+        self.y_np = np.random.uniform(-10, 10, self.y_shape).astype(np.float32)
 
 
 class TestHypotAPI4(TestHypotAPI):
     def setUp(self):
-        self.x_np = [0]
-        self.y_np = [0]
         self.x_shape = [1]
         self.y_shape = [1]
+        self.x_np = np.random.uniform(-10, 10, self.x_shape).astype(np.float32)
+        self.y_np = np.random.uniform(-10, 10, self.y_shape).astype(np.float32)
 
 
-class TestHypotAPI5(TestHypotAPI):
-    def setUp(self):
-        self.x_np = 12
-        self.y_np = -20
-        self.x_shape = []
-        self.y_shape = []
+if __name__ == "__main__":
+    unittest.main()
