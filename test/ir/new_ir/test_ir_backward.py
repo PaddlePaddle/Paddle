@@ -113,7 +113,6 @@ class TesBackward_1(unittest.TestCase):
         with paddle.ir.core.program_guard(newir_program):
             out = paddle.split(tanh_out, [2, 2], 0)
             input_grad = grad(out, input)
-
         ops_name = [
             "pd_op.data",
             "pd_op.tanh",
@@ -121,6 +120,7 @@ class TesBackward_1(unittest.TestCase):
             "pd_op.full",
             "pd_op.split",
             "builtin.split",
+            "pd_op.full",
             "pd_op.full",
             "builtin.combine",
             "pd_op.concat",
@@ -183,15 +183,14 @@ class TesBackward_2(unittest.TestCase):
         with paddle.ir.core.program_guard(newir_program):
             out = paddle.concat([add_out, add_out])
             input_grad = grad(out, input_x)
-
         ops_name = [
             "pd_op.data",
             "pd_op.data",
             "pd_op.tanh",
             "pd_op.tanh",
             "pd_op.add",
-            "pd_op.full",
             "builtin.combine",
+            "pd_op.full",
             "pd_op.concat",
             "pd_op.full",
             "builtin.combine",
