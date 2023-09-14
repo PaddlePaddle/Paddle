@@ -554,7 +554,7 @@ void BindUtils(pybind11::module *m) {
             .. code-block:: python
 
                 import paddle
-                from paddle import ir
+                from paddle import pir
                 paddle.enable_static()
 
                 x = paddle.randn([4, 4])

@@ -1187,7 +1187,7 @@ def reduce_sum_wrapper2(x, axis=[0], dtype=None, keepdim=False):
     if paddle.in_dynamic_mode():
         return paddle._C_ops.sum(x, axis, dtype, keepdim)
     else:
-        if paddle.ir.core._use_pir_api():
+        if paddle.pir.core._use_pir_api():
             return paddle._pir_ops.sum(x, axis, dtype, keepdim)
 
 

@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle import ir
+from paddle import pir
 
 paddle.enable_static()
 
@@ -32,7 +32,7 @@ def get_gather_program_new_ir():
         index = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=1.0)
         axis = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=2.0)
         out = paddle.gather(x, index, axis)
-    newir_program = ir.translate_to_new_ir(main_program.desc)
+    newir_program = pir.translate_to_new_ir(main_program.desc)
     return newir_program
 
 
@@ -49,7 +49,7 @@ def get_multiply_program_new_ir():
             shape=[3, 4], dtype='float32', value=3.0
         )
         out = paddle.multiply(x, y)
-    newir_program = ir.translate_to_new_ir(main_program.desc)
+    newir_program = pir.translate_to_new_ir(main_program.desc)
     return newir_program
 
 

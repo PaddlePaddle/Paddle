@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle import ir
+from paddle import pir
 from paddle.autograd.ir_backward import grad
 
 paddle.enable_static()
@@ -31,7 +31,7 @@ def get_ir_program_0():
         x_s = paddle.static.data('x', [4, 4], x.dtype)
         x_s.stop_gradient = False
         k_s = paddle.tanh(x_s)
-    newir_program = ir.translate_to_new_ir(main_program.desc)
+    newir_program = pir.translate_to_new_ir(main_program.desc)
     return newir_program
 
 
@@ -41,7 +41,7 @@ class TesBackward_1(unittest.TestCase):
         input = newir_program.global_block().ops[-1].operand(0).source()
         tanh_out = newir_program.global_block().ops[-1].result(0)
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-        with paddle.ir.core.program_guard(newir_program):
+        with paddle.pir.core.program_guard(newir_program):
             out = paddle.mean(tanh_out)
             out2 = paddle.mean(tanh_out)
             input_grad = grad(out, input, out2)
@@ -66,7 +66,7 @@ class TesBackward_1(unittest.TestCase):
         input = newir_program.global_block().ops[-1].operand(0).source()
         tanh_out = newir_program.global_block().ops[-1].result(0)
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-        with paddle.ir.core.program_guard(newir_program):
+        with paddle.pir.core.program_guard(newir_program):
             out = paddle.mean(tanh_out)
             input_grad = grad(out, input)
 
@@ -93,7 +93,7 @@ class TesBackward_1(unittest.TestCase):
         input = newir_program.global_block().ops[-1].operand(0).source()
         tanh_out = newir_program.global_block().ops[-1].result(0)
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-        with paddle.ir.core.program_guard(newir_program):
+        with paddle.pir.core.program_guard(newir_program):
             out = paddle.mean(tanh_out)
             input_grad = grad(out, input, no_grad_vars=[input])
 
@@ -108,7 +108,7 @@ class TesBackward_1(unittest.TestCase):
         input = newir_program.global_block().ops[-1].operand(0).source()
         tanh_out = newir_program.global_block().ops[-1].result(0)
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-        with paddle.ir.core.program_guard(newir_program):
+        with paddle.pir.core.program_guard(newir_program):
             out = paddle.split(tanh_out, [2, 2], 0)
             input_grad = grad(out, input)
 
@@ -144,7 +144,7 @@ def get_ir_program_1():
         k_s = paddle.tanh(x_s)
         z_x = paddle.tanh(x_s)
         out = paddle.add(z_x, k_s)
-    newir_program = ir.translate_to_new_ir(main_program.desc)
+    newir_program = pir.translate_to_new_ir(main_program.desc)
     return newir_program
 
 
@@ -155,7 +155,7 @@ class TesBackward_2(unittest.TestCase):
 
         add_out = newir_program.global_block().ops[-1].result(0)
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-        with paddle.ir.core.program_guard(newir_program):
+        with paddle.pir.core.program_guard(newir_program):
             out = paddle.mean(add_out)
             input_grad = grad(out, input_x)
 
@@ -176,7 +176,7 @@ class TesBackward_2(unittest.TestCase):
 
         add_out = newir_program.global_block().ops[-1].result(0)
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-        with paddle.ir.core.program_guard(newir_program):
+        with paddle.pir.core.program_guard(newir_program):
             out = paddle.concat([add_out, add_out])
             input_grad = grad(out, input_x)
 
@@ -217,7 +217,7 @@ def get_ir_program_2():
         x_s = paddle.static.data('x', [4, 4], x.dtype)
         x_s.stop_gradient = False
         k_s = paddle.sum(x_s, axis=(-1,), keepdim=False)
-    newir_program = ir.translate_to_new_ir(main_program.desc)
+    newir_program = pir.translate_to_new_ir(main_program.desc)
     return newir_program
 
 
@@ -227,7 +227,7 @@ class TestBackward_3(unittest.TestCase):
         x = newir_program.global_block().ops[-1].operand(0).source()
         sum_x = newir_program.global_block().ops[-1].result(0)
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-        with paddle.ir.core.program_guard(newir_program):
+        with paddle.pir.core.program_guard(newir_program):
             norm = paddle.tensor.fill_constant(
                 shape=[],
                 value=1.0,

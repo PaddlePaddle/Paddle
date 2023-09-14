@@ -1134,7 +1134,7 @@ def concat(x, axis=0, name=None):
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
     elif in_pir_mode():
-        if not isinstance(input, paddle.ir.Value):
+        if not isinstance(input, paddle.pir.Value):
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
     else:

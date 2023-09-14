@@ -470,7 +470,7 @@ class Optimizer:
                 # only create global lr_var once
                 lr = self._global_learning_rate()
                 if in_pir_mode():
-                    if isinstance(lr, paddle.ir.OpResult):
+                    if isinstance(lr, paddle.pir.OpResult):
                         return
                     else:
                         place = _current_expected_place()
