@@ -866,13 +866,14 @@ class _ExecutorCache:
         def __hash__(self):
             return self.key
 
-    def __init__(self):
+    def __init__(self, feed_fn):
         # NOTE(Ruibiao): Wrap the lru_cache in constructor so that the cache is local to
         # the _ExecutorCache instance, otherwise a global cache may not be released after
         # the Executor instance deleted
         self._get_cached_program_and_executor = lru_cache(maxsize=8)(
             self._get_program_and_executor
         )
+        self.feed_fn = feed_fn
 
     def clear(self):
         self._get_cached_program_and_executor.cache_clear()
@@ -963,6 +964,7 @@ class _ExecutorCache:
             use_fetch_v2=True,
         )
 
+        self.feed_fn(program, feed, feed_var_name, scope)
         # standalone executor will apply buffer_shared_inplace_pass and
         # inplace_addto_op_pass to program according to build_strategy
         enable_inplace = (
@@ -1120,7 +1122,7 @@ class Executor:
             "__auto_checkpoint_executor__"
         )
 
-        self._executor_cache = _ExecutorCache()
+        self._executor_cache = _ExecutorCache(self._feed_data)
 
         self._fleet_executor = None
         # TODO(liyurui): This option will be removed and always true when the functionality
@@ -1813,8 +1815,6 @@ class Executor:
                 scope,
             )
 
-            self._feed_data(program, feed, feed_var_name, scope)
-
             if hasattr(program, 'lr_scheduler'):
                 from paddle.optimizer.lr import LRScheduler
 
@@ -1931,6 +1931,7 @@ class Executor:
                 % (type(feed))
             )
 
+        self._new_ir_feed_data(program, feed, scope)
         program, new_exe = self._executor_cache.get_new_ir_program_and_executor(
             program,
             feed,
@@ -1940,8 +1941,6 @@ class Executor:
             self.place,
             scope,
         )
-
-        self._new_ir_feed_data(program, feed, scope)
 
         ret = new_exe.run(list(feed.keys()), return_numpy)
         return ret
