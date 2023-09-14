@@ -111,7 +111,7 @@ class FCMKLDNNHandler
                                    dnnl::memory::format_tag::a);
     }
 
-    const auto attrs = CreateFCAttrs(ctx);
+    const auto attrs = CreateFCAttrs(ctx, dst_md);
 
     this->AcquireForwardPrimitiveDescriptor(attrs,
                                             dnnl::prop_kind::forward_inference,
@@ -122,7 +122,8 @@ class FCMKLDNNHandler
   }
 
  private:
-  dnnl::primitive_attr CreateFCAttrs(const ExecutionContext& ctx) {
+  dnnl::primitive_attr CreateFCAttrs(const ExecutionContext& ctx,
+                                     const dnnl::memory::desc& dst_md) {
     dnnl::primitive_attr attributes;
     dnnl::post_ops post_operations;
 
@@ -168,7 +169,8 @@ class FCMKLDNNHandler
       }
     }
 
-    if (ctx.HasAttr("fuse_residual_connection") &&
+    if (!phi::funcs::is_int8<T_in>() &&
+        ctx.HasAttr("fuse_residual_connection") &&
         ctx.Attr<bool>("fuse_residual_connection")) {
       auto* residual_data = ctx.Input<phi::DenseTensor>("ResidualData");
       if (residual_data) {
@@ -347,7 +349,8 @@ class FCMKLDNNHandler
 
   std::shared_ptr<dnnl::memory> AcquireCustomDstMemory(
       const ExecutionContext& ctx, phi::DenseTensor* out) {
-    if (ctx.HasAttr("fuse_residual_connection") &&
+    if (!phi::funcs::is_int8<T_in>() &&
+        ctx.HasAttr("fuse_residual_connection") &&
         ctx.Attr<bool>("fuse_residual_connection")) {
       auto* residual_param = ctx.Input<phi::DenseTensor>("ResidualData");
 
@@ -478,7 +481,8 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
       dst_memory_p =
           std::make_shared<dnnl::memory>(inner_product_cache->dst_mem);
 
-      if (ctx.HasAttr("fuse_residual_connection") &&
+      if (!phi::funcs::is_int8<T_in>() &&
+          ctx.HasAttr("fuse_residual_connection") &&
           ctx.Attr<bool>("fuse_residual_connection")) {
         residual_data_cache = std::make_shared<phi::DenseTensor>(
             inner_product_cache->residual_data);
@@ -544,7 +548,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
         handler.SetScalesIfNeeded(&fc_args);
       }
 
-      if (residual_data) {
+      if (!phi::funcs::is_int8<T_in>() && residual_data) {
         residual_data_memory_p = handler.AcquireSrcMemory(residual_data);
         fc_args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
                         *residual_data_memory_p});
