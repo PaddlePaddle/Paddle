@@ -1181,7 +1181,7 @@ def dropout(
         dtype = x.dtype
         keep_prob = 1 - p
         if training:
-            if in_dynamic_mode() and p == 1.0:
+            if in_dynamic_or_pir_mode() and p == 1.0:
                 return paddle.scale(x, scale=0.0)
 
             scale_input = (
@@ -1192,7 +1192,7 @@ def dropout(
 
             # get mask shape
             input_shape = x.shape
-            if not in_dynamic_mode():
+            if not in_dynamic_or_pir_mode():
                 input_shape_tensor = paddle.shape(x)
             drop_axes = [axis] if isinstance(axis, int) else list(axis)
             if min(drop_axes) < 0 or max(drop_axes) > len(input_shape) - 1:
@@ -1208,7 +1208,7 @@ def dropout(
                     )
                 )
             mask_shape = [1] * len(input_shape)
-            if not in_dynamic_mode():
+            if not in_dynamic_or_pir_mode():
                 for i in drop_axes:
                     mask_shape[i] = input_shape_tensor[i]
             else:
