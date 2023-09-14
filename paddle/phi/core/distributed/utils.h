@@ -36,5 +36,63 @@ inline phi::DenseTensor GetPartialTensor(const phi::DenseTensor& tensor,
     }                       \
   } while (0)
 
+enum class CommType : std::uint8_t {
+  BROADCAST = 0,
+  ALLREDUCE = 1,
+  ALLREDUCE_SPARSE = 2,  // TODO(shenliang03): to support sparse in allreduce
+  REDUCE = 3,
+  ALLGATHER = 4,
+  GATHER = 5,
+  SCATTER = 6,
+  REDUCE_SCATTER = 7,
+  ALLTOALL = 8,
+  SEND = 9,
+  RECV = 10,
+  BARRIER = 11,
+  UNKNOWN = 100,
+};
+
+inline bool IsP2POP(CommType comm_type, bool is_batch_p2p = false) {
+  if (is_batch_p2p) {
+    return false;
+  } else {
+    return comm_type == CommType::SEND || comm_type == CommType::RECV;
+  }
+}
+
+inline std::string CommTypeToString(CommType CommType) {
+  switch (CommType) {
+    case CommType::BROADCAST:
+      return "BROADCAST";
+    case CommType::ALLREDUCE:
+      return "ALLREDUCE";
+    case CommType::ALLREDUCE_SPARSE:
+      return "ALLREDUCE_SPARSE";
+    case CommType::REDUCE:
+      return "REDUCE";
+    case CommType::ALLGATHER:
+      return "ALLGATHER";
+    case CommType::GATHER:
+      return "GATHER";
+    case CommType::SCATTER:
+      return "SCATTER";
+    case CommType::REDUCE_SCATTER:
+      return "REDUCE_SCATTER";
+    case CommType::ALLTOALL:
+      return "ALLTOALL";
+    case CommType::SEND:
+      return "SEND";
+    case CommType::RECV:
+      return "RECV";
+    case CommType::BARRIER:
+      return "BARRIER";
+    case CommType::UNKNOWN:
+      return "UNKNOWN";
+    default:
+      return "UNKNOWN";
+  }
+  return "UNKNOWN";
+}
+
 }  //  namespace distributed
 }  // namespace phi
