@@ -885,11 +885,9 @@ def divide(x, y, name=None):
             [2.        , 0.60000000, 2.        ])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.divide(x, y)
     else:
-        if paddle.ir.core._use_new_ir_api():
-            return paddle._ir_ops.divide(x, y)
         return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
 
