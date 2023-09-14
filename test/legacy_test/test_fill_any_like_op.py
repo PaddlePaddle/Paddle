@@ -20,12 +20,12 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.framework.dtype as dtypes
 from paddle.base import core
-from paddle.framework import in_new_ir_mode
+from paddle.framework import in_pir_mode
 
 
 def fill_any_like_wrapper(x, value, out_dtype=None, name=None):
     if isinstance(out_dtype, int):
-        if not in_new_ir_mode():
+        if not in_pir_mode():
             tmp_dtype = dtypes.dtype(out_dtype)
         else:
             from paddle.base.libpaddle import DataType
@@ -33,7 +33,7 @@ def fill_any_like_wrapper(x, value, out_dtype=None, name=None):
             tmp_dtype = DataType(paddle.ir.core.vartype_to_datatype[out_dtype])
     else:
         tmp_dtype = out_dtype
-        if in_new_ir_mode() and isinstance(
+        if in_pir_mode() and isinstance(
             out_dtype, paddle.framework.core.VarDesc.VarType
         ):
             tmp_dtype = paddle.ir.core.vartype_to_datatype[tmp_dtype]
