@@ -15,8 +15,8 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
+from op_test import OpTest, convert_float_to_uint16
 from test_activation_op import (
     TestAbs,
     TestAbs_ZeroDim,

@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 import scipy
 import scipy.linalg
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 from paddle import base

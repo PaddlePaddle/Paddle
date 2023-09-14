@@ -18,7 +18,7 @@ from functools import reduce
 from operator import mul
 
 import numpy as np
-from eager_op_test import _set_use_system_allocator, convert_float_to_uint16
+from op_test import _set_use_system_allocator, convert_float_to_uint16
 from test_layer_norm_mkldnn_op import (
     TestLayerNormMKLDNNOp,
     _reference_layer_norm_naive,
