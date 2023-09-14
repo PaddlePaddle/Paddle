@@ -1,4 +1,4 @@
-#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,19 +30,19 @@ def output_hist(out):
     return hist, prob
 
 
-class TestUniformRandomInplaceOpDtype(unittest.TestCase):
+class TestGaussionRandomInplaceOpDtype(unittest.TestCase):
     def setUp(self):
         self.shape = (1000, 784)
 
-    def test_uniform_random_inplace_op_dtype(self):
+    def test_gaussion_inplace_op_dtype(self):
         def test_fp32():
             tensor_fp32 = paddle.ones(self.shape, dtype=paddle.float32)
-            tensor_fp32.uniform_()
+            tensor_fp32.gaussion_()
             self.assertEqual(tensor_fp32.dtype, paddle.float32)
 
         def test_fp64():
             tensor_fp64 = paddle.ones(self.shape, paddle.float64)
-            tensor_fp64.uniform_()
+            tensor_fp64.gaussion_()
             self.assertEqual(tensor_fp64.dtype, paddle.float64)
 
         places = ['cpu']
@@ -54,9 +54,9 @@ class TestUniformRandomInplaceOpDtype(unittest.TestCase):
             test_fp64()
 
 
-class TestUniformRandomInplaceFP16Op(OpTest):
+class TestGaussionRandomInplaceFP16Op(OpTest):
     def setUp(self):
-        self.op_type = "uniform_random_inplace"
+        self.op_type = "gaussion_inplace"
         self.dtype = np.float16
         self.shape = (1000, 784)
         x = np.random.random(self.shape).astype(self.dtype)
@@ -75,7 +75,7 @@ class TestUniformRandomInplaceFP16Op(OpTest):
         hist, prob = self.output_hist(np.array(outs[0]))
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.001)
 
-    # TODO: Due to the lack of the self.python_api=paddle.uniform_random_inplace setting, the dynamic graph is temporarily turned off, set check_dygraph=False
+    # TODO: Due to the lack of the self.python_api=paddle.gaussion_inplace setting, the dynamic graph is temporarily turned off, set check_dygraph=False
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_dygraph=False)
 
@@ -85,9 +85,9 @@ class TestUniformRandomInplaceFP16Op(OpTest):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support bfloat16",
 )
-class TestUniformRandomInplaceBF16Op(OpTest):
+class TestGaussionRandomInplaceBF16Op(OpTest):
     def setUp(self):
-        self.op_type = "uniform_random_inplace"
+        self.op_type = "gaussion_inplace"
         self.dtype = np.uint16
         self.shape = (1000, 784)
         x = np.random.random(self.shape).astype(self.dtype)
@@ -108,7 +108,7 @@ class TestUniformRandomInplaceBF16Op(OpTest):
         hist, prob = self.output_hist(result)
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.002)
 
-    # TODO: Due to the lack of the self.python_api=paddle.uniform_random_inplace setting, the dynamic graph is temporarily turned off, set check_dygraph=False
+    # TODO: Due to the lack of the self.python_api=paddle.gaussion_inplace setting, the dynamic graph is temporarily turned off, set check_dygraph=False
     def test_check_grad(self):
         grads = [paddle.zeros(self.shape, dtype=self.dtype)]
         self.check_grad_with_place(
@@ -120,73 +120,73 @@ class TestUniformRandomInplaceBF16Op(OpTest):
         )
 
 
-class TestUniformRandomInplaceOpIsInplace(unittest.TestCase):
+class TestGaussionRandomInplaceOpIsInplace(unittest.TestCase):
     def setUp(self):
         self.shape = (1000, 784)
 
-    def test_uniform_random_inplace_op_is_inplace(self):
+    def test_gaussion_inplace_op_is_inplace(self):
         tensor_a = paddle.ones(self.shape)
-        tensor_b = tensor_a.uniform_()
+        tensor_b = tensor_a.gaussion_()
         self.assertTrue(tensor_a is tensor_b)
 
 
-class TestUniformRandomInplaceOpSeedIsZero(unittest.TestCase):
+class TestGaussionRandomInplaceOpSeedIsZero(unittest.TestCase):
     def setUp(self):
         self.shape = (1000, 784)
         self.seed = 0
 
-    def test_uniform_random_inplace_op_seed_is_zero(self):
+    def test_gaussion_inplace_op_seed_is_zero(self):
         tensor = paddle.ones(self.shape)
-        tensor.uniform_(seed=self.seed)
+        tensor.gaussion_(seed=self.seed)
         tensor_data_first = tensor.numpy()
-        tensor.uniform_(seed=self.seed)
+        tensor.gaussion_(seed=self.seed)
         tensor_data_second = tensor.numpy()
         self.assertFalse((tensor_data_first == tensor_data_second).all())
 
 
-class TestUniformRandomInplaceOpSeedIsNotZero(unittest.TestCase):
+class TestGaussionRandomInplaceOpSeedIsNotZero(unittest.TestCase):
     def setUp(self):
         self.shape = (1000, 784)
         self.seed = 10
 
-    def test_uniform_random_inplace_op_seed_is_not_zero(self):
+    def test_gaussion_inplace_op_seed_is_not_zero(self):
         tensor = paddle.ones(self.shape)
-        tensor.uniform_(seed=self.seed)
+        tensor.gaussion_(seed=self.seed)
         tensor_data_first = tensor.numpy()
-        tensor.uniform_(seed=self.seed)
+        tensor.gaussion_(seed=self.seed)
         tensor_data_second = tensor.numpy()
         self.assertTrue((tensor_data_first == tensor_data_second).all())
 
 
-class TestUniformRandomInplaceOpWithinRange(unittest.TestCase):
+class TestGaussionRandomInplaceOpWithinRange(unittest.TestCase):
     def setUp(self):
         self.shape = (1000, 784)
         self.min = -2
         self.max = 1
         self.seed = 10
 
-    def test_uniform_random_inplace_op_within_range(self):
+    def test_gaussion_inplace_op_within_range(self):
         tensor = paddle.ones(self.shape)
-        tensor.uniform_(min=self.min, max=self.max, seed=self.seed)
+        tensor.gaussion_(min=self.min, max=self.max, seed=self.seed)
         tensor_data = tensor.numpy()
         self.assertTrue(
             (tensor_data > self.min).all() and (tensor_data < self.max).all()
         )
 
 
-class TestUniformRandomInplaceOpShape(unittest.TestCase):
+class TestGaussionRandomInplaceOpShape(unittest.TestCase):
     def setUp(self):
         self.shape = (1000, 784)
 
-    def test_uniform_random_inplace_op_shape(self):
+    def test_gaussion_inplace_op_shape(self):
         tensor = paddle.ones(self.shape)
-        tensor.uniform_()
+        tensor.gaussion_()
         tensor_shape_np = np.array(tensor.shape)
         origin_shape = np.array(self.shape)
         self.assertTrue((tensor_shape_np == origin_shape).all())
 
 
-class TestUniformRandomInplaceOpDistribution(unittest.TestCase):
+class TestGaussionRandomInplaceOpDistribution(unittest.TestCase):
     def setUp(self):
         self.shape = (1000, 784)
         self.min = -3
@@ -194,9 +194,9 @@ class TestUniformRandomInplaceOpDistribution(unittest.TestCase):
         self.seed = 10
         self.bins = 100
 
-    def test_uniform_random_inplace_op_distribution(self):
+    def test_gaussion_inplace_op_distribution(self):
         tensor = paddle.ones(self.shape)
-        tensor.uniform_(self.min, self.max, self.seed)
+        tensor.gaussion_(self.min, self.max, self.seed)
 
         hist, _ = np.histogram(tensor.numpy()[0], bins=self.bins)
         prob = hist / float(self.shape[0])
@@ -204,20 +204,20 @@ class TestUniformRandomInplaceOpDistribution(unittest.TestCase):
         np.testing.assert_allclose(prob, prob_expect, rtol=0, atol=0.01)
 
 
-class TestUniformRandomInplaceOpError(unittest.TestCase):
+class TestGaussionRandomInplaceOpError(unittest.TestCase):
     def setUp(self):
         self.shape = (1000, 784)
 
-    def test_uniform_random_inplace_op_error(self):
+    def test_gaussion_inplace_op_error(self):
         def test_attr_error():
             tensor = paddle.ones(self.shape)
-            tensor.uniform_(shape=self.shape, min=-2, max=2)
+            tensor.gaussion_(shape=self.shape, min=-2, max=2)
 
         self.assertRaises(TypeError, test_attr_error)
 
 
-class TestUniformRandomInplaceOpEmptyTensor(unittest.TestCase):
-    def test_uniform_random_inplace_op_empty_tensor(self):
+class TestGaussionRandomInplaceOpEmptyTensor(unittest.TestCase):
+    def test_gaussion_inplace_op_empty_tensor(self):
         places = ['cpu']
         if base.core.is_compiled_with_cuda():
             places.append('gpu')
@@ -226,13 +226,13 @@ class TestUniformRandomInplaceOpEmptyTensor(unittest.TestCase):
             paddle.set_device(place)
             for test_shape in test_shapes:
                 tensor = paddle.empty(shape=test_shape)
-                tensor.uniform_()
+                tensor.gaussion_()
                 tensor_shape_np = np.array(tensor.shape)
                 origin_shape = np.array(test_shape)
                 self.assertTrue((tensor_shape_np == origin_shape).all())
 
 
-class TestUniformRandomInplaceGrad(unittest.TestCase):
+class TestGaussionRandomInplaceGrad(unittest.TestCase):
     def setUp(self):
         self.shape = (1000, 784)
 
@@ -242,11 +242,11 @@ class TestUniformRandomInplaceGrad(unittest.TestCase):
             tensor_a.stop_gradient = False
             tensor_b = tensor_a * 0.5
             tensor_b.retain_grads()
-            tensor_b.uniform_(min=-2, max=2)
+            tensor_b.gaussion_(min=-2, max=2)
             loss = tensor_b.sum()
             loss.backward()
-            uniform_grad = tensor_b.grad.numpy()
-            self.assertTrue((uniform_grad == 0).all())
+            gaussion_grad = tensor_b.grad.numpy()
+            self.assertTrue((gaussion_grad == 0).all())
 
         places = ['cpu']
         if base.core.is_compiled_with_cuda():
@@ -255,7 +255,7 @@ class TestUniformRandomInplaceGrad(unittest.TestCase):
             paddle.set_device(place)
             test_grad()
 
-    def test_uniform_random_inplace_grad(self):
+    def test_gaussion_inplace_grad(self):
         self.run_()
 
 

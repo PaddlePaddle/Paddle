@@ -29,4 +29,12 @@ void GaussianKernel(const Context& ctx,
                     DataType dtype,
                     DenseTensor* out);
 
+template <typename T, typename Context>
+void GaussianInplaceKernel(const Context& ctx,
+                           const DenseTensor& x,
+                           float mean,
+                           float std,
+                           int seed,
+                           DenseTensor* out);
+
 }  // namespace phi
