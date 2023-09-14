@@ -521,8 +521,8 @@ class LayerList(Layer):
         Parameters:
             sublayers (iterable of Layer): iterable of sublayers to append
 
-         Returns:
-             None
+        Returns:
+            None
 
         Examples:
             .. code-block:: python
