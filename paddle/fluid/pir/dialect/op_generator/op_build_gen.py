@@ -411,30 +411,15 @@ def GenBuildOutputs(
             attr_dtype = op_mutable_attribute_type_list[idx]
             # int_array
             if attr_dtype[0] == "paddle::dialect::IntArrayAttribute":
-                if op_class_name in _PREPARE_DATA_WITH_UNKNOW_ATTRIBUTE:
-                    build_output_str += CREATE_INTARRAY_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE.format(
-                        name=op_mutable_attribute_name_list[idx]
-                    )
-                else:
-                    build_output_str += (
-                        CREATE_INTARRAY_MUTABLE_ATTRIBUE_TEMPLATE.format(
-                            name=op_mutable_attribute_name_list[idx]
-                        )
-                    )
+                build_output_str += CREATE_INTARRAY_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE.format(
+                    name=op_mutable_attribute_name_list[idx]
+                )
             # scalar
             elif attr_dtype[0] == "paddle::dialect::ScalarAttribute":
-                if op_class_name in _PREPARE_DATA_WITH_UNKNOW_ATTRIBUTE:
-                    build_output_str += CREATE_SCALAR_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE.format(
-                        name=op_mutable_attribute_name_list[idx],
-                        dtype=attr_dtype[1],
-                    )
-                else:
-                    build_output_str += (
-                        CREATE_SCALAR_MUTABLE_ATTRIBUE_TEMPLATE.format(
-                            name=op_mutable_attribute_name_list[idx],
-                            dtype=attr_dtype[1],
-                        )
-                    )
+                build_output_str += CREATE_SCALAR_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE.format(
+                    name=op_mutable_attribute_name_list[idx],
+                    dtype=attr_dtype[1],
+                )
             # string
             elif attr_dtype[0] == "pir::StrAttribute":
                 build_output_str += ""
