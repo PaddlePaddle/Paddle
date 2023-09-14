@@ -22,6 +22,7 @@
 # remove this file and support Vjp methods
 # code gen.
 
+
 vjp_interface_declare_gen_op_list = [
     "tanh",
     "mean",
@@ -44,6 +45,7 @@ vjp_interface_declare_gen_op_list = [
     'layer_norm',
     'reshape',
     'cast',
+    'silu',
 ]
 vjp_interface_implementation_gen_op_list = [
     "tanh",
@@ -67,4 +69,5 @@ vjp_interface_implementation_gen_op_list = [
     'layer_norm',
     'reshape',
     'cast',
+    'silu',
 ]
