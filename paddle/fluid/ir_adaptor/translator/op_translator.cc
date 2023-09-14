@@ -1190,14 +1190,6 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
              paddle::dialect::VarTypeToDataType(
                  static_cast<paddle::framework::proto::VarType_Type>(dtype)))}};
 
-    if (op_desc.HasAttr("force_cpu")) {
-      bool force_cpu = PADDLE_GET_CONST(bool, op_desc.GetAttr("force_cpu"));
-      if (force_cpu) {
-        attribute_map["place"] =
-            paddle::dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
-      }
-    }
-
     int place_type = PADDLE_GET_CONST(int, op_desc.GetAttr("place_type"));
     switch (place_type) {
       case -1:
@@ -1221,6 +1213,15 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
             paddle::dialect::PlaceAttribute::get(ctx, phi::XPUPlace());
         break;
     }
+
+    if (op_desc.HasAttr("force_cpu")) {
+      bool force_cpu = PADDLE_GET_CONST(bool, op_desc.GetAttr("force_cpu"));
+      if (force_cpu) {
+        attribute_map["place"] =
+            paddle::dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
+      }
+    }
+
     return attribute_map;
   }
 };
