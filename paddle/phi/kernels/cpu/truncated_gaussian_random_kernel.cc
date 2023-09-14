@@ -27,8 +27,8 @@ namespace phi {
 template <typename T, typename Context>
 void TruncatedGaussianRandomKernel(const Context& dev_ctx,
                                    const std::vector<int>& shape,
-                                   float mean,
-                                   float std,
+                                   T mean,
+                                   T std,
                                    int seed,
                                    DataType dtype,
                                    DenseTensor* out) {
@@ -59,4 +59,5 @@ PD_REGISTER_KERNEL(truncated_gaussian_random,
                    CPU,
                    ALL_LAYOUT,
                    phi::TruncatedGaussianRandomKernel,
-                   float) {}
+                   float,
+                   double) {}

@@ -190,6 +190,7 @@ void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
   auto out_dims = phi::make_ddim(shape);
   out->set_dims(out_dims);
   out->set_dtype(dtype);
+  std::cout << "dtype" << dtype << std::endl;
   out->set_layout(DataLayout::NCHW);
 }
 

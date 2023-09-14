@@ -86,8 +86,8 @@ struct TruncatedNormalOffset {
 template <typename T, typename Context>
 void TruncatedGaussianRandomKernel(const Context& dev_ctx,
                                    const std::vector<int>& shape,
-                                   float mean,
-                                   float std,
+                                   T mean,
+                                   T std,
                                    int seed,
                                    DataType dtype,
                                    DenseTensor* out) {
@@ -98,6 +98,7 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
 
   auto gen_cuda = dev_ctx.GetGenerator();
   if (seed == 0) {
+    std::cout << "seed" << 0 << std::endl;
     // use global Generator seed
     auto seed_offset = gen_cuda->IncrementOffset(1);
     uint64_t seed = seed_offset.first;
@@ -110,6 +111,7 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
             mean, std, std::numeric_limits<T>::min(), seed, size * offset));
   } else {
     // use OP seed
+    std::cout << "op seed" << std::endl;
     thrust::transform(
         index_sequence_begin,
         index_sequence_begin + size,
@@ -124,4 +126,5 @@ PD_REGISTER_KERNEL(truncated_gaussian_random,
                    GPU,
                    ALL_LAYOUT,
                    phi::TruncatedGaussianRandomKernel,
-                   float) {}
+                   float,
+                   double) {}
