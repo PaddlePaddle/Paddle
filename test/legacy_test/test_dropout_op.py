@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 import parameterized as param
-from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 from paddle import _C_ops, base, static

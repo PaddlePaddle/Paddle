@@ -19,11 +19,11 @@
 #include "paddle/pir/core/dialect.h"
 #include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/op_info.h"
+#include "paddle/pir/core/op_result_impl.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/region.h"
 #include "paddle/pir/core/utils.h"
-#include "paddle/pir/core/value_impl.h"
 
 namespace pir {
 Operation *Operation::Create(OperationArgument &&argument) {
