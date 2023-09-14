@@ -47,6 +47,6 @@ bool OpResult::operator==(const OpResult &other) const {
   return impl_ == other.impl_;
 }
 
-OpResult::OpResult(const detail::OpResultImpl *impl) : Value(impl) {}
+OpResult::OpResult(detail::OpResultImpl *impl) : Value(impl) {}
 
 }  // namespace pir
