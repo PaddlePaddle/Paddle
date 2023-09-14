@@ -188,7 +188,7 @@ inline bool operator==(const FakeOpPlaceHolder& lhs,
 using Function = Equation;
 
 using Equations = List<Equation>;
-using GraphView = EquationGraphTopoWalker<const Variable, const Equation*>;
+using GraphView = EquationGraphTopoWalker<Variable, Equation*>;
 
 }  // namespace cinn::adt::equation
 

@@ -112,9 +112,9 @@ class Graph final : public std::enable_shared_from_this<Graph> {
     };
   }
 
-  static EquationGraphTopoWalker<const Variable, const Function*>
-  GetMergedWalker(const Graph& lhs, const Graph& rhs) {
-    return EquationGraphTopoWalker<const Variable, const Function*>(
+  static EquationGraphTopoWalker<Variable, Function*> GetMergedWalker(
+      const Graph& lhs, const Graph& rhs) {
+    return EquationGraphTopoWalker<Variable, Function*>(
         /*NextFunctionsVisitor=*/Merge(lhs.GetNextFunctionsVisitor(),
                                        rhs.GetNextFunctionsVisitor()),
         /*InputVariablesVisitor=*/
@@ -124,9 +124,8 @@ class Graph final : public std::enable_shared_from_this<Graph> {
               rhs.GetOutputVariablesVisitor()));
   }
 
-  EquationGraphTopoWalker<const Variable, const Function*> GetGraphView()
-      const {
-    return EquationGraphTopoWalker<const Variable, const Function*>(
+  EquationGraphTopoWalker<Variable, Function*> GetGraphView() const {
+    return EquationGraphTopoWalker<Variable, Function*>(
         /*NextFunctionsVisitor=*/GetNextFunctionsVisitor(),
         /*InputVariablesVisitor=*/GetInputVariablesVisitor(),
         /*OutputVariablesVisitor=*/GetOutputVariablesVisitor());
