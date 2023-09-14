@@ -22,9 +22,12 @@
 
 namespace paddle {
 namespace dialect {
+pir::OpResult builtin_combine(std::vector<pir::OpResult> x);
+
 pir::OpResult get_parameter(const std::string& name,
                             phi::DataType dtype,
                             const std::vector<int64_t>& shape);
+
 void set_parameter(pir::OpResult parameter, const std::string& name);
 
 pir::OpResult embedding_grad(pir::OpResult x,
