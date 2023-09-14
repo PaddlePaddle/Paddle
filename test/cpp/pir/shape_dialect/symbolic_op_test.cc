@@ -325,14 +325,14 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
   symDimProductRhs_.symbols.push_back(symDimS11);
   symDimProductRhs_.symbols.push_back(symDimS12);
 
-  // For check simplifySymbolicDimProduct, {factor = 1, Sym = {S7}} => {factor =
+  // For check SimplifySymbolicDimProduct, {factor = 1, Sym = {S7}} => {factor =
   // 10}
   pir::SymbolicDimProduct symDimProductS7;
   symDimProductS7.symbols.push_back(symDimS7);
   pir::SymbolicDimProduct simplifiedProductS7 =
-      symDimMgr.simplifySymbolicDimProduct(symDimProductS7);
+      symDimMgr.SimplifySymbolicDimProduct(symDimProductS7);
 
-  // For check simplifySymbolicDimProductPair, X * Y * Y, Y * Y * Z => X, Z
+  // For check SimplifySymbolicDimProductPair, X * Y * Y, Y * Y * Z => X, Z
   pir::SymbolicDimProduct symDimProductPairLhs;
   pir::SymbolicDimProduct symDimProductPairRhs;
   pir::SymbolicDimProduct newLhs, newRhs;
@@ -343,7 +343,7 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
   symDimProductPairRhs.symbols.push_back(symDimS2);
   symDimProductPairRhs.symbols.push_back(symDimS3);
 
-  std::tie(newLhs, newRhs) = symDimMgr.simplifySymbolicDimProductPair(
+  std::tie(newLhs, newRhs) = symDimMgr.SimplifySymbolicDimProductPair(
       symDimProductPairLhs, symDimProductPairRhs);
 
   // For check symbolicDimProductDivide, {S4 * S1 * C20} / {S1 * C10} => {factor
