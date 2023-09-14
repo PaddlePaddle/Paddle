@@ -107,19 +107,6 @@ NewIRInterpreter::NewIRInterpreter(
   };
 
   PrepareForCUDAGraphCapture();
-
-  std::stringstream ss;
-  ss << this;
-  ::pir::BuildScope(*ir_block_,
-                    InnerScope(),
-                    ss.str(),
-                    &value_2_var_name_,
-                    &variable_2_var_name_,
-                    &var_name_2_id_,
-                    &variable_list_,
-                    &sub_blocks_);
-
-  interpreter::BuildId2VarName(var_name_2_id_, &id_2_var_name_);
 }
 
 NewIRInterpreter::~NewIRInterpreter() {
@@ -935,6 +922,18 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is BetaRunning.";
     // Build
+    std::stringstream ss;
+    ss << this;
+    ::pir::BuildScope(*ir_block_,
+                      InnerScope(),
+                      ss.str(),
+                      &value_2_var_name_,
+                      &variable_2_var_name_,
+                      &var_name_2_id_,
+                      &variable_list_,
+                      &sub_blocks_);
+
+    interpreter::BuildId2VarName(var_name_2_id_, &id_2_var_name_);
 
     VLOG(4) << "Done BuildScope";
     VLOG(4) << DebugValueInfo();

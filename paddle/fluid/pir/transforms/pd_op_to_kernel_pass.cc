@@ -648,7 +648,6 @@ void HandleForIfOp(
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
     std::unordered_map<pir::Value, pir::OpResult>* map_value_pair) {
   auto cur_in = op_item->operand_source(0);
-
   PADDLE_ENFORCE_EQ(
       map_value_pair->count(cur_in),
       true,
@@ -666,7 +665,6 @@ void HandleForIfOp(
           base_if_op.result(0).type().dyn_cast<dialect::DenseTensorType>());
   auto new_if_op = builder.Build<paddle::dialect::IfOp>(
       new_in, std::vector<pir::Type>{allocated_dense_tensor_dtype});
-
   // process true block
   pir::Block* true_block = new_if_op.true_block();
   ProcessBlock(place,
@@ -792,13 +790,7 @@ void HandleForSpecialOp(
           vec_inputs.emplace_back();
           continue;
         }
-        PADDLE_ENFORCE_EQ(map_value_pair->count(cur_in),
-                          true,
-                          phi::errors::PreconditionNotMet(
-                              "[%d]'s input of [%s] op MUST in map pair",
-                              i,
-                              op_item->name()));
-        auto new_in = map_value_pair->at(cur_in);
+        auto new_in = GetNewInput(cur_in, *map_value_pair, i, op_item->name());
         vec_inputs.push_back(new_in);
       }
     }
