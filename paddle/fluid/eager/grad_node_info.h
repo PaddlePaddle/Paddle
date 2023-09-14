@@ -314,9 +314,9 @@ class GradNodeBase {
   /**
    * The following interfaces are designed for auto parallel
    * **/
-  bool IsRunSemiAutoParallel() const { return is_run_semi_auto_parallel_; }
-  void SetIsRunSemiAutoParallel(bool is_run_semi_auto_parallel) {
-    is_run_semi_auto_parallel_ = is_run_semi_auto_parallel;
+  bool IsRunAutoParallel() const { return is_run_auto_parallel_; }
+  void SetIsRunAutoParallel(bool is_run_auto_parallel) {
+    is_run_auto_parallel_ = is_run_auto_parallel;
   }
 
  private:
@@ -349,7 +349,7 @@ class GradNodeBase {
 
   // With this flag, short-circuit the backward traversal of Tensor and
   // set the DistAttr to reduce the impact on scheduling performance
-  bool is_run_semi_auto_parallel_{false};
+  bool is_run_auto_parallel_{false};
 };
 
 }  // namespace egr

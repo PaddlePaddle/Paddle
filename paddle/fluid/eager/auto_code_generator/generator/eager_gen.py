@@ -532,7 +532,7 @@ CREATE_RECOVER_OPTIONAL_VECTOR_TENSOR_TEMPLATE = """
 """
 
 SET_GRAD_OUT_DIST_ATTR_TEMPLATE = """
-  if (IsRunSemiAutoParallel()) {{
+  if (IsRunAutoParallel()) {{
     egr::EagerUtils::SetGradOutputDistAttr(out_metas, {}, {});
   }}
 """
