@@ -16,8 +16,8 @@ import unittest
 
 import numpy
 import numpy as np
-from eager_op_test import OpTest
 from op import Operator
+from op_test import OpTest
 
 import paddle
 from paddle import base

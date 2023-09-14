@@ -216,7 +216,7 @@ Operation* IrParser::ParseOperation() {
 
   OpInfo opinfo = ParseOpInfo();
 
-  std::vector<OpResult> inputs = ParseOpRandList();
+  std::vector<OpResult> inputs = ParseOprandList();
 
   pir::AttributeMap attributeMap = ParseAttributeMap();
 
@@ -269,7 +269,7 @@ OpInfo IrParser::ParseOpInfo() {
 
 // OprandList := ValueList
 // ValueList := ValueId(,ValueId)*
-std::vector<OpResult> IrParser::ParseOpRandList() {
+std::vector<OpResult> IrParser::ParseOprandList() {
   ConsumeAToken("(");
   std::vector<OpResult> inputs{};
   Token ind_token = ConsumeToken();

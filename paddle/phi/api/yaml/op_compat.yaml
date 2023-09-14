@@ -2638,6 +2638,7 @@
     out : Out
 
 - op : split
+  backward : split_grad
   inputs:
     x : X
   outputs:
