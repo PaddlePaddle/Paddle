@@ -123,6 +123,12 @@ class ShapedTypeInterface : public pir::TypeInterfaceBase<ShapedTypeInterface> {
                              [](int64_t dSize) { return isDynamic(dSize); });
   }
 
+  /// Check whether shape has any size indicating a dynamic dimension.
+  bool hasStaticShape() const {
+    return (*this).hasRank() &&
+           !pir::ShapedTypeInterface::isDynamicShape((*this).getShape());
+  }
+
   /// Check whether the given dimension has a dynamic size.
   /// Aborts for unranked types.
   bool isDynamicDim(unsigned idx) const {
