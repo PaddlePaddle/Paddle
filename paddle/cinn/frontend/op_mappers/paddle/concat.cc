@@ -101,7 +101,7 @@ void StackOpMapper(const paddle::cpp::OpDesc& op_desc,
       << "The axis of stack should >= 0 and < rank(x) + 1! Please check.";
 
   // N * [A, B] with axis=0 --> [N, A, B]; N * [A, B] with axis=1 --> [A, N, B];
-  cinn::utils::ShapeType new_shape(concat_out->shape);
+  cinn::utils::ShapeType new_shape(xs.front()->shape);
   new_shape.insert(new_shape.begin() + axis, xs.size());
 
   auto out = ctx.Builder()->Reshape(concat_out, new_shape);
