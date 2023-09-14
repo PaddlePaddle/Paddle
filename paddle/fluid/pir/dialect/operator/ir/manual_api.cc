@@ -22,6 +22,13 @@
 namespace paddle {
 namespace dialect {
 
+pir::OpResult builtin_combine(std::vector<pir::OpResult> x) {
+  auto combine_op =
+      APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(x);
+  return combine_op.out();
+}
+
+
 pir::OpResult zeros_like(pir::OpResult x,
                          phi::DataType dtype,
                          const Place& place) {
