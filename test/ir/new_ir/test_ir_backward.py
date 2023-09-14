@@ -37,15 +37,19 @@ def get_ir_program_0():
 
 
 class TesBackward_1(unittest.TestCase):
+    def tearDown(self) -> None:
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+
     def test_grad(self):
         newir_program = get_ir_program_0()
         input = newir_program.global_block().ops[-1].operand(0).source()
         tanh_out = newir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard():
-            with paddle.ir.core.program_guard(newir_program):
-                out = paddle.mean(tanh_out)
-                out2 = paddle.mean(tanh_out)
-                input_grad = grad(out, input, out2)
+        with paddle.pir_utils.IrGuard(), paddle.ir.core.program_guard(
+            newir_program
+        ):
+            out = paddle.mean(tanh_out)
+            out2 = paddle.mean(tanh_out)
+            input_grad = grad(out, input, out2)
 
             self.assertEqual(out.get_defining_op().name(), "pd_op.mean")
             self.assertEqual(
@@ -147,15 +151,19 @@ def get_ir_program_1():
 
 
 class TesBackward_2(unittest.TestCase):
+    def tearDown(self) -> None:
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+
     def test_add_n(self):
         newir_program = get_ir_program_1()
         input_x = newir_program.global_block().ops[-3].operand(0).source()
 
         add_out = newir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard():
-            with paddle.ir.core.program_guard(newir_program):
-                out = paddle.mean(add_out)
-                input_grad = grad(out, input_x)
+        with paddle.pir_utils.IrGuard(), paddle.ir.core.program_guard(
+            newir_program
+        ):
+            out = paddle.mean(add_out)
+            input_grad = grad(out, input_x)
 
             self.assertEqual(
                 newir_program.global_block().ops[-1].name(), "pd_op.add_n"
@@ -172,10 +180,11 @@ class TesBackward_2(unittest.TestCase):
         input_x = newir_program.global_block().ops[-3].operand(0).source()
 
         add_out = newir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard():
-            with paddle.ir.core.program_guard(newir_program):
-                out = paddle.concat([add_out, add_out])
-                input_grad = grad(out, input_x)
+        with paddle.pir_utils.IrGuard(), paddle.ir.core.program_guard(
+            newir_program
+        ):
+            out = paddle.concat([add_out, add_out])
+            input_grad = grad(out, input_x)
 
             ops_name = [
                 "pd_op.data",
@@ -218,19 +227,23 @@ def get_ir_program_2():
 
 
 class TestBackward_3(unittest.TestCase):
+    def tearDown(self) -> None:
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+
     def test_basic_network(self):
         newir_program = get_ir_program_2()
         x = newir_program.global_block().ops[-1].operand(0).source()
         sum_x = newir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard():
-            with paddle.ir.core.program_guard(newir_program):
-                norm = paddle.tensor.fill_constant(
-                    shape=[],
-                    value=1.0,
-                    dtype=sum_x.dtype,
-                )
-                res = paddle.divide(sum_x, norm)
-                input_grad = grad(res, x)
+        with paddle.pir_utils.IrGuard(), paddle.ir.core.program_guard(
+            newir_program
+        ):
+            norm = paddle.tensor.fill_constant(
+                shape=[],
+                value=1.0,
+                dtype=sum_x.dtype,
+            )
+            res = paddle.divide(sum_x, norm)
+            input_grad = grad(res, x)
 
 
 if __name__ == "__main__":
