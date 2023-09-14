@@ -32,7 +32,7 @@ class IrGuard:
             )
         else:
             raise RuntimeError(
-                "IrChange only init when paddle.framework.in_new_ir_mode(): is false, \
+                "IrChange only init when paddle.framework.in_pir_mode(): is false, \
                 please set FLAGS_enable_new_ir_api = false"
             )
         paddle.base.framework.set_flags(old_flag)
@@ -88,6 +88,6 @@ class IrGuard:
             )
         else:
             raise RuntimeError(
-                "IrChange._switch_to_old_ir only work when paddle.framework.in_new_ir_mode() is false, \
+                "IrChange._switch_to_old_ir only work when paddle.framework.in_pir_mode() is false, \
                 please set FLAGS_enable_new_ir_api = false"
             )

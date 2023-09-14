@@ -296,28 +296,23 @@ def in_dygraph_mode():
 def in_pir_mode():
     """
 
-        This API checks whether paddle runs in static graph mode and use new ir api.
+    This API checks whether paddle runs in static graph mode and use new ir api.
 
-        Returns:
-            bool: Whether paddle runs in static graph mode and use new ir api.
+    Returns:
+        bool: Whether paddle runs in static graph mode and use new ir api.
 
-        Examples:
-            .. code-block:: python
+    Examples:
+        .. code-block:: python
 
-                >>> import paddle
+            >>> import paddle
 
-                >>> print(paddle.framework.in_pir_mode())
-                False
+            >>> print(paddle.framework.in_pir_mode())
+            False
 
-                >>> paddle.enable_static()
-    <<<<<<< Updated upstream
-                >>> paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-                >>> print(paddle.framework.in_pir_mode())
-    =======
-                >>> with paddle.pir_utils.IrGuard():
-                >>>     print(paddle.framework.in_new_ir_mode())
-    >>>>>>> Stashed changes
-                True
+            >>> paddle.enable_static()
+            >>> with paddle.pir_utils.IrGuard():
+            >>>     print(paddle.framework.in_pir_mode())
+            True
 
     """
     return global_var._use_pir_api_ and not in_dygraph_mode()

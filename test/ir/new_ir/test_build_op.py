@@ -41,9 +41,10 @@ class TestBuildOp(unittest.TestCase):
     def test_build_mean_op(self):
         newir_program = get_ir_program()
         tanh_out = newir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard():
-            with paddle.ir.core.program_guard(newir_program):
-                out = paddle.mean(tanh_out)
+        with paddle.pir_utils.IrGuard(), paddle.ir.core.program_guard(
+            newir_program
+        ):
+            out = paddle.mean(tanh_out)
             self.assertEqual(out.get_defining_op().name(), "pd_op.mean")
             self.assertEqual(
                 out.get_defining_op()
@@ -59,11 +60,12 @@ class TestBuildOp2(unittest.TestCase):
     def test_build_add_n_op(self):
         newir_program = get_ir_program()
         tanh_out = newir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard():
-            with paddle.ir.core.program_guard(newir_program):
-                out1 = paddle.mean(tanh_out)
-                out2 = paddle.mean(tanh_out)
-                out = paddle.add_n([out1, out2])
+        with paddle.pir_utils.IrGuard(), paddle.ir.core.program_guard(
+            newir_program
+        ):
+            out1 = paddle.mean(tanh_out)
+            out2 = paddle.mean(tanh_out)
+            out = paddle.add_n([out1, out2])
             self.assertEqual(out.get_defining_op().name(), "pd_op.add_n")
             self.assertEqual(
                 out.get_defining_op()
@@ -104,9 +106,10 @@ class TestBuildOp4(unittest.TestCase):
     def test_build_concat_op(self):
         newir_program = get_ir_program()
         tanh_out = newir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard():
-            with paddle.ir.core.program_guard(newir_program):
-                out = paddle.concat([tanh_out, tanh_out], 0)
+        with paddle.pir_utils.IrGuard(), paddle.ir.core.program_guard(
+            newir_program
+        ):
+            out = paddle.concat([tanh_out, tanh_out], 0)
             self.assertEqual(out.get_defining_op().name(), "pd_op.concat")
             self.assertEqual(
                 out.get_defining_op()
@@ -122,9 +125,10 @@ class TestBuildOp5(unittest.TestCase):
     def test_build_split_op(self):
         newir_program = get_ir_program()
         tanh_out = newir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard():
-            with paddle.ir.core.program_guard(newir_program):
-                out = paddle.split(tanh_out, [2, 2], 0)
+        with paddle.pir_utils.IrGuard(), paddle.ir.core.program_guard(
+            newir_program
+        ):
+            out = paddle.split(tanh_out, [2, 2], 0)
             self.assertEqual(out[0].get_defining_op().name(), "builtin.split")
             self.assertEqual(
                 out[0]
