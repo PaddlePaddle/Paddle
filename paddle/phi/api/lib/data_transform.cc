@@ -632,7 +632,7 @@ std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
   return nullptr;
 }
 
-void ReshardPartialOutputToReplicated(
+void ReshardOutputPartialAxisToReplicated(
     phi::DeviceContext* dev_ctx, phi::distributed::DistTensor* out_tensor) {
   if (out_tensor->dist_attr().is_partial()) {
     auto dist_attr = out_tensor->dist_attr();
@@ -664,6 +664,8 @@ void ReshardKernelOutputToApiOutput(
         *src_tensor, dist_tensor->dist_attr());
     func->Eval(dev_ctx, *src_tensor, dist_tensor->dist_attr(), dist_tensor);
   } else {
+    // TODO(chenweihang): add dist attr compare and default copy rule to
+    // avoid add branch here
     // shallow copy dense tensor
     *dist_tensor->unsafe_mutable_value() = src_tensor->value();
   }

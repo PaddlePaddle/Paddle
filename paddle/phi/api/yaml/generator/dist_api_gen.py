@@ -283,9 +283,9 @@ SUFFIX_VECTOR_TENSOR_NAME = "_vec"
 
 # 9. Reshard Partial Output to Replicated
 RESHARD_P2R_SINGLE_OUTPUT_TEMPLATE = """
-    ReshardPartialOutputToReplicated(dev_ctx, dist_out);"""
+    ReshardOutputPartialAxisToReplicated(dev_ctx, dist_out);"""
 RESHARD_P2R_MULTI_SINGLE_OUTPUT_TEMPLATE = """
-    ReshardPartialOutputToReplicated(dev_ctx, dist_out_{});"""
+    ReshardOutputPartialAxisToReplicated(dev_ctx, dist_out_{});"""
 
 # BaseAPI members:
 # inputs:

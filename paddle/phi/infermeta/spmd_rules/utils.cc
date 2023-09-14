@@ -161,7 +161,6 @@ TensorDistAttr GetReplicatedDistAttr(const TensorDistAttr& dist_attr) {
   TensorDistAttr dst_dist_attr = CopyTensorDistAttrForOutput(dist_attr);
   std::vector<int64_t> dims_mapping(dist_attr.dims_mapping().size(), -1);
   dst_dist_attr.set_dims_mapping(dims_mapping);
-  dst_dist_attr.clean_partial_status();
   return dst_dist_attr;
 }
 

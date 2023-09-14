@@ -180,8 +180,8 @@ std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
     const Tensor& tensor,
     const phi::distributed::TensorDistAttr& dist_attr);
 
-void ReshardPartialOutputToReplicated(phi::DeviceContext* dev_ctx,
-                                      phi::distributed::DistTensor* out_tensor);
+void ReshardOutputPartialAxisToReplicated(
+    phi::DeviceContext* dev_ctx, phi::distributed::DistTensor* out_tensor);
 
 void ReshardKernelOutputToApiOutput(
     phi::DeviceContext* dev_ctx,
