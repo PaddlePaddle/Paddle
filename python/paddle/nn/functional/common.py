@@ -18,7 +18,7 @@ import paddle
 from paddle import _C_ops
 from paddle.base.layer_helper import LayerHelper
 from paddle.common_ops_import import Variable, default_main_program
-from paddle.framework import core, in_dynamic_mode
+from paddle.framework import core, in_dynamic_mode, in_dynamic_or_new_ir_mode
 from paddle.tensor.creation import full
 
 from ...base.data_feeder import (
@@ -1655,7 +1655,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
         paddings = pad
         pad_value = value
 
-        if in_dynamic_mode():
+        if in_dynamic_or_new_ir_mode():
             out = _C_ops.pad(x, paddings, float(pad_value))
             return out
 
