@@ -969,7 +969,7 @@ void BroadcastKernelApply(const KPDevice &ctx,
                                 (*outs)[0]->numel() >= compute_size &&
                                 (!loader_classifier.all_elementwise);
 
-  if (use_int64_index_kernel) {  // use_int64_index_kernel) {
+  if (use_int64_index_kernel) {  // use_int64_index_kernel
     const auto dims_simplifier =
         BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
     if (VLOG_IS_ON(6)) {
