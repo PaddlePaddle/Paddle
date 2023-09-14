@@ -23,7 +23,6 @@ gather_srcs(
   replace_const_param_to_integer.cc
   lower_intrin.cc
   cast_bool_to_int8.cc
-  collect_undefined_vars.cc
   var_mod_simplify.cc
   remove_schedule_block.cc)
 
