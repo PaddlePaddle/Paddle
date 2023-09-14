@@ -169,6 +169,13 @@ static std::unordered_map<
                    vec_element.dyn_cast<pir::DoubleAttribute>().data());
              }
              return VariantType{vec_double};
+           } else if (element_type == AttrType::STRING) {
+             std::vector<std::string> vec_string;
+             for (auto vec_element : attr_vec) {
+               vec_string.push_back(
+                   vec_element.dyn_cast<pir::StrAttribute>().AsString());
+             }
+             return VariantType{vec_string};
            } else {
              PADDLE_THROW(phi::errors::Unimplemented(
                  "Unsupported ir Attribute type when casting it into "

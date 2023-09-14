@@ -304,7 +304,7 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     framework::Scope *scope) {
   auto &interpretercore_info_cache =
       framework::InterpreterCoreInfoCache::Instance();
-  if (interpretercore_info_cache.Size() > 10u /* max_cached_size*/) {
+  if (interpretercore_info_cache.Size() > 256u /* max_cached_size*/) {
     VLOG(2) << "The cached info size has exceeded max_cached_size: 4, clear "
                "all cache!";
     interpretercore_info_cache.Finalize();
@@ -332,7 +332,7 @@ std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
     framework::Scope *scope) {
   auto &interpretercore_info_cache =
       framework::InterpreterCoreInfoCache::Instance();
-  if (interpretercore_info_cache.Size() > 10u /* max_cached_size*/) {
+  if (interpretercore_info_cache.Size() > 256u /* max_cached_size*/) {
     VLOG(2) << "The cached info size has exceeded max_cached_size: 4, clear "
                "all cache!";
     interpretercore_info_cache.Finalize();
