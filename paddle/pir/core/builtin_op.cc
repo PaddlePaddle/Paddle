@@ -303,12 +303,18 @@ void SplitOp::PassStopGradients(OperationArgument &argument) {
   if (input.Value::impl() != nullptr) {
     auto *defining_op = input.owner();
     if (defining_op && defining_op->isa<CombineOp>()) {
+      IR_ENFORCE(argument.output_types.size(),
+                 defining_op->num_operands(),
+                 "Required SplitOp.output.size() == CombineOp.input.size(), "
+                 "but received %d != %d",
+                 argument.output_types.size(),
+                 defining_op->num_operands());
       for (auto i = 0; i < defining_op->num_operands(); ++i) {
         auto value = defining_op->operand_source(i);
         if (!value) continue;
         auto *oprand_defining_op = value.GetDefiningOp();
-        if (defining_op->HasAttribute(kStopGradientAttrName)) {
-          auto attrs = defining_op->attribute(kStopGradientAttrName)
+        if (oprand_defining_op->HasAttribute(kStopGradientAttrName)) {
+          auto attrs = oprand_defining_op->attribute(kStopGradientAttrName)
                            .dyn_cast<pir::ArrayAttribute>()
                            .AsVector();
           defaut_stop_gradients[i] =
