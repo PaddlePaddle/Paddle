@@ -14,11 +14,14 @@
 
 import unittest
 
+import gradient_checker
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from decorator_helper import prog_scope
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-from paddle.base import core
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 class TestConcatOp(OpTest):
@@ -229,7 +232,6 @@ class TestConcatOp7(TestConcatOp):
         self.axis = 1
 
 
-'''
 def create_test_AxisTensor(parent):
     class TestConcatAxisTensor(parent):
         def setUp(self):
@@ -246,7 +248,9 @@ def create_test_AxisTensor(parent):
 
             if self.axis < 0:
                 self.actual_axis = self.axis + len(self.x0.shape)
-                self.actual_axis = self.actual_axis if self.actual_axis > 0 else 0
+                self.actual_axis = (
+                    self.actual_axis if self.actual_axis > 0 else 0
+                )
             else:
                 self.actual_axis = self.axis
 
@@ -264,9 +268,15 @@ def create_test_AxisTensor(parent):
                 return
             if self.dtype == np.uint16:
                 place = core.CUDAPlace(0)
-                self.check_grad_with_place(place, ['x0'], 'Out', check_new_ir=True)
-                self.check_grad_with_place(place, ['x1'], 'Out', check_new_ir=True)
-                self.check_grad_with_place(place, ['x2'], 'Out', check_new_ir=True)
+                self.check_grad_with_place(
+                    place, ['x0'], 'Out', check_new_ir=True
+                )
+                self.check_grad_with_place(
+                    place, ['x1'], 'Out', check_new_ir=True
+                )
+                self.check_grad_with_place(
+                    place, ['x2'], 'Out', check_new_ir=True
+                )
             else:
                 self.check_grad(['x0'], 'Out', check_new_ir=True)
                 self.check_grad(['x1'], 'Out', check_new_ir=True)
@@ -354,6 +364,8 @@ create_test_fp16(TestConcatOp5)
 create_test_fp16(TestConcatOp6)
 
 '''
+
+
 # ----------------Concat Bf16----------------
 def create_test_bf16(parent):
     @unittest.skipIf(
@@ -729,7 +741,7 @@ class TestConcatTripleGradCheck(unittest.TestCase):
             places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
-'''
+
 
 if __name__ == '__main__':
     unittest.main()
