@@ -50,7 +50,7 @@ std::function<const m_expr::OpStmt&(const equation::FakeOpPlaceHolder&)>
 MakeGetterOpStmt4OpPlaceHolder(const EquationCtx4OpStmtT& EquationCtx4OpStmt,
                                const List<m_expr::OpStmt>& op_stmts) {
   using FakeOpPlaceHolder2OpStmt =
-      std::unordered_map<const equation::FakeOpPlaceHolder, m_expr::OpStmt>;
+      std::unordered_map<equation::FakeOpPlaceHolder, m_expr::OpStmt>;
   const auto& fake_op_placeholder2op_stmt =
       std::make_shared<FakeOpPlaceHolder2OpStmt>();
 
@@ -138,12 +138,10 @@ void MakeGetters4Indexes(
     std::function<tOut<bool>(const equation::Index&)>* AsOutput4Index,
     std::function<equation::Index(const equation::Index&)>*
         OutMsgBoxIndex4InMsgBoxIndex) {
-  using Index2AsOutput =
-      std::unordered_map<const equation::Index, tOut<bool>>;
+  using Index2AsOutput = std::unordered_map<equation::Index, tAsOutput<bool>>;
   const auto& index2as_output = std::make_shared<Index2AsOutput>();
 
-  using Index2OwnerOpStmt =
-      std::unordered_map<const equation::Index, m_expr::OpStmt>;
+  using Index2OwnerOpStmt = std::unordered_map<equation::Index, m_expr::OpStmt>;
   const auto& index2owner_op_stmt = std::make_shared<Index2OwnerOpStmt>();
 
   const auto& UpdateCaches =
@@ -357,15 +355,14 @@ std::unordered_map<AnchorIndex, AnchorGroup> PartitionOpStmtsIntoAnchorGroups(
   return anchor_index2igroup_spec;
 }
 
-std::unordered_map<const equation::Variable, equation::Value>
-MakeAnchorIndex2Ok(const partition::AnchorGroup& igroup_spec) {
+std::unordered_map<equation::Variable, equation::Value> MakeAnchorIndex2Ok(
+    const partition::AnchorGroup& igroup_spec) {
   return {{igroup_spec.anchor_index, Ok{}}};
 }
 
-template<typename DoEachT>
+template <typename DoEachT>
 tBreak<bool> AgregateAnchorGroupOpStmt(
-    const partition::AnchorGroup& igroup_spec,
-    const DoEachT& DoEach) {
+    const partition::AnchorGroup& igroup_spec, const DoEachT& DoEach) {
   for (const auto& op_stmt : igroup_spec.op_stmts) {
     tBreak<bool> ret = DoEach(op_stmt);
     if (ret.value()) {
@@ -389,8 +386,9 @@ bool IsEquationSolvable(const partition::AnchorGroup& igroup_spec) {
   };
 
   bool is_solvable = equation::value::TrySolveEquations(
-      equation_graph_view, igroup_spec.anchor_index, &ctx).value();
-  AgregateAnchorGroupOpStmt(igroup_spec, [&](const auto& op_stmt){
+                         equation_graph_view, igroup_spec.anchor_index, &ctx)
+                         .value();
+  AgregateAnchorGroupOpStmt(igroup_spec, [&](const auto& op_stmt) {
     if (!IsOpSolved(op_stmt)) {
       is_solvable = false;
       return tBreak<bool>{true};
@@ -403,8 +401,7 @@ bool IsEquationSolvable(const partition::AnchorGroup& igroup_spec) {
 
 std::function<std::size_t(const m_expr::OpStmt&)> MakeGetterOrderValue4OpStmt(
     const List<m_expr::OpStmt>& op_stmts) {
-  using OpStmt2OrderValue =
-      std::unordered_map<const m_expr::OpStmt, std::size_t>;
+  using OpStmt2OrderValue = std::unordered_map<m_expr::OpStmt, std::size_t>;
   const auto& op_stmt2order_value = std::make_shared<OpStmt2OrderValue>();
   for (std::size_t idx = 0; idx < op_stmts->size(); ++idx) {
     CHECK(op_stmt2order_value->emplace(op_stmts->at(idx), idx).second);

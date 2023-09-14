@@ -318,7 +318,7 @@ MakeGetterSdIters(
         GetLoopDescriptor,
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
         TensorIndexExpr4Tensor) {
-  using Op2ItersCache = std::unordered_map<const m_expr::OpStmt, LoopIterators>;
+  using Op2ItersCache = std::unordered_map<m_expr::OpStmt, LoopIterators>;
   const auto& op2loop_iters = std::make_shared<Op2ItersCache>();
   using Tensor2ItersCache = std::unordered_map<m_expr::Tensor, LoopIterators>;
   const auto& tensor2loop_iters = std::make_shared<Tensor2ItersCache>();
@@ -500,8 +500,8 @@ MapIrList GenerateClusterOpsForLoopFuse(
 
 namespace {
 
-std::unordered_map<const equation::Variable, equation::Value>
-MakeAnchorIndex2Ok(const equation::Index& anchor_index) {
+std::unordered_map<equation::Variable, equation::Value> MakeAnchorIndex2Ok(
+    const equation::Index& anchor_index) {
   return {{anchor_index, Ok{}}};
 }
 

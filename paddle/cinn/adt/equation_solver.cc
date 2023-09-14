@@ -124,7 +124,7 @@ tHasUniqueInferedValue<bool> MergeInferedValuesIntoCtx(
 }
 
 void SolveEquations(
-    const EquationGraphTopoWalker<const Variable, const Function*>& walker,
+    const EquationGraphTopoWalker<Variable, const Function*>& walker,
     const std::vector<Variable>& starts,
     IndexExprInferContext* ctx) {
   walker.WalkFunction(
@@ -136,7 +136,7 @@ void SolveEquations(
 }
 
 tHasNoConflictValue<bool> TrySolveEquations(
-    const EquationGraphTopoWalker<const Variable, const Function*>& walker,
+    const EquationGraphTopoWalker<Variable, const Function*>& walker,
     const Variable& start,
     IndexExprInferContext* ctx) {
   bool has_no_conflict_value = true;

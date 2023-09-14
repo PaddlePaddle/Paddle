@@ -27,12 +27,12 @@ class IndexExprInferContext;
 namespace value {
 
 void SolveEquations(
-    const EquationGraphTopoWalker<const Variable, const Function*>& walker,
+    const EquationGraphTopoWalker<Variable, const Function*>& walker,
     const std::vector<Variable>& starts,
     IndexExprInferContext* ctx);
 
 tHasNoConflictValue<bool> TrySolveEquations(
-    const EquationGraphTopoWalker<const Variable, const Function*>& walker,
+    const EquationGraphTopoWalker<Variable, const Function*>& walker,
     const Variable& start,
     IndexExprInferContext* ctx);
 }  // namespace value
