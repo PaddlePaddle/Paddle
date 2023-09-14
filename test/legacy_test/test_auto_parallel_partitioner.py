@@ -471,7 +471,6 @@ class TestMLPAutoPartitioner(unittest.TestCase):
         dist_ops = [op.type for op in dist_ops]
         ref_ops = [
             'layer_norm',
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
             'gelu',
@@ -565,7 +564,6 @@ class TestMLPAutoPartitioner(unittest.TestCase):
         dist_ops = [op.type for op in dist_ops]
         ref_ops = [
             'layer_norm',
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
             'gelu',
@@ -849,15 +847,12 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         dist_ops = dist_main_prog.global_block().ops
         dist_ops = [op.type for op in dist_ops]
         ref_ops = [
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
             'reshape2',
             'transpose2',
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
             'reshape2',
@@ -958,15 +953,12 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         dist_ops = dist_main_prog.global_block().ops
         dist_ops = [op.type for op in dist_ops]
         ref_ops = [
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
             'reshape2',
             'transpose2',
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
             'reshape2',
@@ -1329,15 +1321,12 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
             'elementwise_add',
             'dropout',
             'layer_norm',
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
             'reshape2',
             'transpose2',
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
             'reshape2',
@@ -1357,7 +1346,6 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
             'dropout',
             'elementwise_add',
             'layer_norm',
-            'c_identity',
             'matmul_v2',
             'elementwise_add',
             'gelu',
