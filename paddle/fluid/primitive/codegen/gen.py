@@ -67,8 +67,8 @@ VJPS = [
     'cast_grad',
     'slice_double_grad',
     'layer_norm_grad',
+    'embedding_grad',
     'scale_grad',
-    'add_n_grad',
 ]
 
 
@@ -146,7 +146,9 @@ BACKENDS = [
     'dropout_grad',
     'slice',
     'layer_norm_grad',
-    'add_n_grad',
+    'embedding_grad',
+    'sqrt',
+    'uniform',
 ]
 
 
