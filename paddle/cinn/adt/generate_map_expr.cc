@@ -206,8 +206,8 @@ LoopDescriptor4IterVarT MakeGetterLoopDescriptor4IterVar(
 
 using LoopIteratorsAndMapIrList = std::pair<LoopIterators, m_ir::MapIrList>;
 
-List < LoopIteratorsAndMapIrList >>
-    GroupByFirstLoopIterators(const m_ir::MapIrList& map_irs) {
+List<LoopIteratorsAndMapIrList> GroupByFirstLoopIterators(
+    const m_ir::MapIrList& map_irs) {
   CHECK(!map_irs->empty());
 
   const auto& VisitSkipPosition = [&](const auto& DoEach) {
@@ -247,7 +247,7 @@ List < LoopIteratorsAndMapIrList >>
                                      MakeMapIrList(begin, end)};
   };
 
-  List < m_ir::MapIrList >> ret{};
+  List<m_ir::MapIrList> ret{};
   VisitRangeWithSameFirstLoopIterators([&](std::size_t begin, std::size_t end) {
     ret->emplace_back(MakeLoopIteratorsAndMapIrList(begin, end));
   });
