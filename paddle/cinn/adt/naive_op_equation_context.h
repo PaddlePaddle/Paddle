@@ -188,6 +188,14 @@ class NativeOpEquationContext final : public OpEquationContext {
   void EraseOutMsgBoxIndexes(
       const std::vector<equation::Index>& truncated_output_tensor_indexes);
 
+  OpArgPos GetOpArgPos(const Index& index) const {
+    const auto& input_pos = FindPos(in_msg_box_in_indexes_, index);
+    if (input_pos.has_value()) { return tIn{input_pos.value()}; }
+    const auto& output_pos = FindPos(in_msg_box_out_indexes_, index);
+    if (output_pos.has_value()) { return tOut{output_pos.value()}; }
+    return Undefined{};
+  }
+
  private:
   template <typename ContainerT>
   void Init(std::vector<ContainerT>* vec,

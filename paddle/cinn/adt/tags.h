@@ -20,7 +20,6 @@ namespace cinn::adt {
 
 DEFINE_ADT_TAG(tIn);
 DEFINE_ADT_TAG(tOut);
-DEFINE_ADT_TAG(tAsOutput);
 
 DEFINE_ADT_TAG(tVar);
 DEFINE_ADT_TAG(tSSAShadow);
