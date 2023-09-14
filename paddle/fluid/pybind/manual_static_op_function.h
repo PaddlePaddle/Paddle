@@ -92,6 +92,10 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
 
     if (PyObject_CheckIROpResult(shape_obj)) {
       shape = CastPyArg2OpResult(shape_obj, "full", 0);
+    } else if (PyObject_CheckIRVectorOfOpResult(shape_obj)) {
+      std::vector<pir::OpResult> shape_tmp =
+          CastPyArg2VectorOfOpResult(shape_obj, "full", 0);
+      shape = paddle::dialect::builtin_combine(shape_tmp);
     } else {
       std::vector<int64_t> shape_tmp = CastPyArg2Longs(shape_obj, "full", 0);
       shape = paddle::dialect::full_int_array(
