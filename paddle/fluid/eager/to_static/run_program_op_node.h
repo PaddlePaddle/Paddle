@@ -194,6 +194,12 @@ static auto GetNameFromValue(const ::pir::Block *block,
                  .dyn_cast<pir::StrAttribute>()
                  .AsString();
       value2name[op->operand(0).source()] = name;
+    } else if (op->name() == "builtin.get_parameter") {
+      name = op->attributes()
+                 .at("parameter_name")
+                 .dyn_cast<pir::StrAttribute>()
+                 .AsString();
+      value2name[op->result(0).Value::impl()] = name;
     }
   }
   std::vector<std::string> names;
@@ -238,7 +244,7 @@ static void ShareTensorsFromScope(
       auto &src_tensor = var->Get<phi::DenseTensor>();
       auto *dst_tensor = const_cast<phi::DenseTensor *>(
           dynamic_cast<const phi::DenseTensor *>(tensors[i]->impl().get()));
-      VLOG(2) << "share " << name << " from scope";
+      VLOG(4) << "share " << name << " from scope";
       *dst_tensor = src_tensor;
     } else if (var->IsType<phi::SelectedRows>()) {
       auto &src_tensor = var->Get<phi::SelectedRows>();
@@ -255,6 +261,11 @@ static void ShareTensorsIntoScopeByValue(
     const std::vector<::pir::Value> &values,
     paddle::framework::Scope *scope) {
   auto names = GetNameFromValue(block, values);
+  if (VLOG_IS_ON(4)) {
+    for (auto &s : names) {
+      VLOG(4) << "ShareTensorIntoScopeByValue name: " << s;
+    }
+  }
   ShareTensorsIntoScopeWithName(tensors, names, scope);
 }
 
@@ -964,12 +975,28 @@ inline void NewIRRunProgramGradAPI(
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bx"));
   auto forward_middle_values =
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bm"));
+  auto parameter_values =
+      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bp"));
   auto forward_output_values =
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bo"));
   auto x_grad_values =
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bx_g"));
   auto p_grad_values =
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("bp_g"));
+
+  // share x, param, middles, output_grads, out into scope.
+  details::ShareTensorsIntoScopeByValue(
+      backward_global_block, out_grad, output_grad_values, global_inner_scope);
+  details::ShareTensorsIntoScopeByValue(
+      backward_global_block, x, forward_input_values, global_inner_scope);
+  details::ShareTensorsIntoScopeByValue(backward_global_block,
+                                        middles,
+                                        forward_middle_values,
+                                        global_inner_scope);
+  details::ShareTensorsIntoScopeByValue(
+      backward_global_block, out, forward_output_values, global_inner_scope);
+  details::ShareTensorsIntoScopeByValue(
+      backward_global_block, params, parameter_values, global_inner_scope);
 
   auto &interpretercore_info_cache =
       paddle::framework::InterpreterCoreInfoCache::Instance();
@@ -983,19 +1010,6 @@ inline void NewIRRunProgramGradAPI(
         1);
     VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
     // Step 1. share input_vars & parameters into scope
-    // x, param, middles, output_grads
-    details::ShareTensorsIntoScopeByValue(backward_global_block,
-                                          out_grad,
-                                          output_grad_values,
-                                          global_inner_scope);
-    details::ShareTensorsIntoScopeByValue(
-        backward_global_block, x, forward_input_values, global_inner_scope);
-    details::ShareTensorsIntoScopeByValue(backward_global_block,
-                                          middles,
-                                          forward_middle_values,
-                                          global_inner_scope);
-    details::ShareTensorsIntoScopeByValue(
-        backward_global_block, out, forward_output_values, global_inner_scope);
     auto kernel_backward_program =
         paddle::dialect::PdOpLowerToKernelPass(backward_program, place);
     interpreter_core = paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
@@ -1043,14 +1057,13 @@ inline void NewIRRunProgramGradAPI(
         program_id, global_inner_scope, /*is_grad=*/true);
     interpreter_core = cached_value.core_;
 
-    // update scope (TODO: why share again)
-    // details::ShareTensorsIntoScope(out_grad, global_inner_scope);
-    // if (interpreter_core->GetVariableScope()->GetMutableScope() !=
-    // global_inner_scope) {
-    // details::BuildScopeByBlock(
-    // *interpreter_core.get(), *backward_global_block, global_inner_scope);
-    // interpreter_core->reset_scope(global_inner_scope);
-    //}
+    if (interpreter_core->GetVariableScope()->GetMutableScope() !=
+        global_inner_scope) {
+      // update scope (TODO(xiongkun): do we need this??)
+      // details::BuildScopeByBlock(
+      // *interpreter_core.get(), *backward_global_block, global_inner_scope);
+      interpreter_core->reset_scope(global_inner_scope);
+    }
   }
 
   if (!backward_global_block->empty()) {
@@ -1315,7 +1328,6 @@ class NewIRGradNodeRunProgram : public egr::GradNodeBase {
                           "The hooked_grads[0].size() and "
                           "out_grad_values.size() should be equal."));
 
-    VLOG(1) << "Run Program Grad API start.";
     NewIRRunProgramGradAPI(x_,
                            params_,
                            hooked_grads[0],
@@ -1325,7 +1337,6 @@ class NewIRGradNodeRunProgram : public egr::GradNodeBase {
                            attrs_,
                            x_grad_ptr,
                            params_grad_ptr);
-    VLOG(1) << "Run Program Grad API end.";
     VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
 
     executed_ = true;

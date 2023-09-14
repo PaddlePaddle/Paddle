@@ -50,6 +50,7 @@
 namespace py = pybind11;
 using paddle::dialect::APIBuilder;
 using paddle::dialect::DenseTensorType;
+using paddle::dialect::SelectedRowsType;
 using pir::Block;
 using pir::Operation;
 using pir::OpOperand;
@@ -474,6 +475,14 @@ void BindOpResult(py::module *m) {
                return false;
              }
            })
+      .def("is_selected_row_type",
+           [](OpResult &self) {
+             if (self.type().isa<SelectedRowsType>()) {
+               return true;
+             } else {
+               return false;
+             }
+           })
       .def_property(
           "stop_gradient",
           [](OpResult &self) {
@@ -657,18 +666,24 @@ pir::OpResult FakeOpResult() {
   return pir::OpResult(nullptr);
 }
 
+bool IsFakeOpResult(const pir::OpResult &result) {
+  // create a fake opresults to simplify `ForwardBackwardSplit`.
+  return result.Value::impl() == nullptr;
+}
+
 SplitedResult ForwardBackwardSplit(
     const Program &program,
     const std::vector<pir::OpResult> &op_result_forward_inputs,
+    const std::vector<pir::OpResult> &op_result_forward_params,
     const std::vector<pir::OpResult> &op_result_forward_outputs,
     const std::vector<pir::OpResult> &op_result_forward_inputs_grads,
+    const std::vector<pir::OpResult> &op_result_forward_params_grads,
     const std::vector<pir::OpResult> &op_result_forward_outputs_grads,
     const std::vector<int> &forward_range,
     const std::vector<int> &backward_range) {
   // transform opresult -> value
-  VLOG(1) << "Start Prepare data structures.";
   std::vector<pir::Value> forward_inputs, forward_outputs, forward_inputs_grads,
-      forward_outputs_grads;
+      forward_outputs_grads, forward_params, forward_params_grads;
 
   auto op_result_to_value = [](const pir::OpResult &r) {
     if (r.impl() == nullptr) return Value(nullptr);
@@ -691,10 +706,18 @@ SplitedResult ForwardBackwardSplit(
                  op_result_forward_outputs_grads.end(),
                  std::back_inserter(forward_outputs_grads),
                  op_result_to_value);
+  std::transform(op_result_forward_params.begin(),
+                 op_result_forward_params.end(),
+                 std::back_inserter(forward_params),
+                 op_result_to_value);
+  std::transform(op_result_forward_params_grads.begin(),
+                 op_result_forward_params_grads.end(),
+                 std::back_inserter(forward_params_grads),
+                 op_result_to_value);
 
   std::vector<pir::Value> forward_in_out_values;
   for (auto &v : std::vector<std::vector<pir::Value> *>(
-           {&forward_inputs, &forward_outputs})) {
+           {&forward_inputs, &forward_outputs, &forward_params})) {
     forward_in_out_values.insert(
         forward_in_out_values.end(), v->begin(), v->end());
   }
@@ -710,14 +733,13 @@ SplitedResult ForwardBackwardSplit(
   pir::Builder backward_builder = pir::Builder(ctx, backward_program->block());
 
   // forward program construct.
-  VLOG(1) << "Before Forward Construct.";
+  VLOG(4) << "start create forward program.";
   range_block_do(program.block(),
                  forward_range,
                  [&forward_value_map, &forward_program](Operation *op) {
                    auto *cloned_op = BuildOpFrom(op, forward_value_map);
                    forward_program->block()->push_back(cloned_op);
                  });
-  VLOG(1) << "After Forward Construct.";
 
   // backward program construc.
   // Step1. insert data op for inputs_values and middle_values
@@ -786,13 +808,23 @@ SplitedResult ForwardBackwardSplit(
   };
 
   counter = 0;
+  VLOG(4) << "Create pd.data for backward program: fo, start with input_"
+          << counter;
   std::for_each(forward_outputs.begin(), forward_outputs.end(), create_data_fn);
+  VLOG(4) << "Create pd.data for backward program: fx, start with input_"
+          << counter;
   std::for_each(forward_inputs.begin(), forward_inputs.end(), create_data_fn);
+  VLOG(4) << "Create pd.data for backward program: fp, start with input_"
+          << counter;
+  std::for_each(forward_params.begin(), forward_params.end(), create_data_fn);
+  VLOG(4) << "Create pd.data for backward program: fm, start with input_"
+          << counter;
   std::for_each(middle_values.begin(), middle_values.end(), create_data_fn);
+  VLOG(4) << "Create pd.data for backward program: fo_g, start with input_"
+          << counter;
   std::for_each(forward_outputs_grads.begin(),
                 forward_outputs_grads.end(),
                 create_data_fn);
-  VLOG(1) << "After create pd.data for backward program.";
 
   counter = 0;
   std::for_each(
@@ -800,7 +832,6 @@ SplitedResult ForwardBackwardSplit(
   std::for_each(
       forward_outputs.begin(), forward_outputs.end(), create_output_fn_forward);
 
-  VLOG(1) << "After call create_output_fn";
   // Step2. copy backward ops .
   range_block_do(program.block(),
                  backward_range,
@@ -808,21 +839,22 @@ SplitedResult ForwardBackwardSplit(
                    auto *cloned_op = BuildOpFrom(op, backward_value_map);
                    backward_program->block()->push_back(cloned_op);
                  });
-  VLOG(1) << "After call backward copy";
   counter = 0;
   std::for_each(forward_inputs_grads.begin(),
                 forward_inputs_grads.end(),
                 create_output_fn_backward);
-  // TODO(xiongkun): add forward parameter grads.
+  std::for_each(forward_params_grads.begin(),
+                forward_params_grads.end(),
+                create_output_fn_backward);
 
-  VLOG(1) << "forward_value_map.size() is " << forward_value_map.size();
-  VLOG(1) << "backward_value_map.size() is " << backward_value_map.size();
+  VLOG(4) << "forward_value_map.size() is " << forward_value_map.size();
+  VLOG(4) << "backward_value_map.size() is " << backward_value_map.size();
   std::ostringstream print_stream;
   print_stream << "ForwardProgram is :\n";
   forward_program->Print(print_stream);
   print_stream << "BackwardProgram is:\n";
   backward_program->Print(print_stream);
-  VLOG(1) << "Splited Program (fwd | bwd): \n" << print_stream.str();
+  VLOG(4) << "Splited Program (fwd | bwd): \n" << print_stream.str();
 
   // construct all attributes we needed.
 
@@ -830,9 +862,13 @@ SplitedResult ForwardBackwardSplit(
   mapping_value(middle_values, backward_value_map, bm);   // write 'bm'
   mapping_value(forward_inputs, forward_value_map, fx);   // write 'fx'
   mapping_value(forward_inputs, backward_value_map, bx);  // write 'bx'
+  mapping_value(forward_params, forward_value_map, fp);   // write 'fp'
+  mapping_value(forward_params, backward_value_map, bp);  // write 'bp'
   mapping_value(forward_outputs, forward_value_map, fo);  // write 'fo'
   mapping_value(
-      forward_inputs_grads, backward_value_map, bx_g);  // write 'fx_g'
+      forward_inputs_grads, backward_value_map, bx_g);  // write 'bx_g'
+  mapping_value(
+      forward_params_grads, backward_value_map, bp_g);  // write 'bp_g'
   mapping_value(
       forward_outputs_grads, backward_value_map, bo_g);    // write 'bo_g'
   mapping_value(forward_outputs, backward_value_map, bo);  // write 'bo'
@@ -857,6 +893,7 @@ void BindUtils(pybind11::module *m) {
   m->def("program_clone", ProgramClone);
   m->def("program_split", ForwardBackwardSplit);
   m->def("fake_op_result", FakeOpResult);
+  m->def("is_fake_op_result", IsFakeOpResult);
   m->def("set_global_program",
          [](Program *program) { APIBuilder::Instance().SetProgram(program); });
   m->def("set_insertion_point",

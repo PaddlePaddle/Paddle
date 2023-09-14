@@ -308,45 +308,27 @@ def _convert_into_opresult(tensor):
     """
     Convert Tensor into OpResult.
     """
-    from paddle import framework
-    from paddle.base import core
-    from paddle.base.dygraph.base import NON_PERSISTABLE_VAR_NAME_SUFFIX
+    import paddle
+    from paddle.base import core, framework
+    from paddle.jit.newir_dy2static.parameter_recorder import (
+        _global_parameter_recorder,
+    )
 
     if isinstance(tensor, core.eager.Tensor):
         # Check whether has been created before.
         new_var = tensor.block._find_var_recursive(tensor.name)
+        is_persistable = True
         if new_var is not None:
             assert isinstance(new_var, framework.Variable)
-        # Convert EagerParamBase into Parameter with same attributes in dy2stat.
         elif isinstance(tensor, framework.EagerParamBase):
-            new_var = create_parameter(
-                dtype=tensor.dtype, shape=tensor.shape, type=tensor.type
+            # Convert EagerParamBase into Parameter with same attributes in dy2stat.
+            new_var = _global_parameter_recorder.get(
+                paddle.ir.core.default_main_program(), tensor
             )
         else:
-            # Note(Aurelius84): Convert Tensor in self._buffers into Variable with
-            # same attributes and set persistable=True to allow saving this var.
-            # Because users can create a Tensor in `__init__`  like a
-            # `mask` Tensor or `hidden_0` in RNN layers, which is equivalent to a Parameter
-            # and necessary for inferring. It will be pruned if it's not necessary for inferring.
-
-            # But if its shape is empty while created from `create_variable()`, we consider this buffer
-            # non-persistable. See case of `dropout_state` in lstm api.
-            is_persistable = True
-            if tensor.name.endswith(NON_PERSISTABLE_VAR_NAME_SUFFIX):
-                is_persistable = False
-
-            new_var = tensor._to_static_var(
-                to_parameter=False, persistable=is_persistable
-            )
+            # TODO(xiongkun): add this logic, we should call paddle.data() to create a non-parameter variable.
+            raise NotImplementedError("Not implemented, for buffers.")
         # add param into parameter recorder to collect all the params used in this program.
-        if new_var.persistable is True:
-            from paddle.jit.dy2static.program_translator import (
-                ProgramTranslator,
-            )
-
-            ProgramTranslator.get_instance()._params_recorder.add(
-                tensor.block.program, tensor
-            )
         return new_var
     else:
         return tensor
