@@ -155,15 +155,15 @@ class FusedLinearGeluGradPattern
                {{{"trans_x", pat.Attr("trans_x2")},
                  {"trans_y", pat.Attr("trans_y2")},
                  {"activation_grad", pat.Attr("act2")}}});
-
+    // TODO(gst): don't have reserve_space
     fused_gemm_epilogue(
         {&pat.Tensor("x"), &pat.Tensor("w"), &pat.Tensor("bias")},
-        {&pat.Tensor("fuse_out")});
+        {&pat.Tensor("fuse_out"), &pat.Tensor("reserve_space")});
     pat.Tensor("out") = pat.Op("pd_op.gelu")(pat.Tensor("fuse_out"));
 
     fused_gemm_epilogue_grad1({&pat.Tensor("x1"),
                                &pat.Tensor("w1"),
-                               &pat.Tensor("reserve_space"),
+                               &pat.Tensor("reserve_space1"),
                                &pat.Tensor("out_grad")},
                               {&pat.Tensor("x1_grad"),
                                &pat.Tensor("w1_grad"),
@@ -198,10 +198,10 @@ class FusedLinearGeluGradPattern
                  {"activation_grad", act_grad_attr}}});
     fused_gemm_epilogue_new(
         {&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
-        {&res.Tensor("out"), &res.Tensor("reserve_space")});
+        {&res.Tensor("out"), &res.Tensor("reserve_space2")});
     fused_gemm_epilogue_grad_new({&res.Tensor("x"),
                                   &res.Tensor("w"),
-                                  &res.Tensor("reserve_space"),
+                                  &res.Tensor("reserve_space2"),
                                   &res.Tensor("out_grad")},
                                  {&res.Tensor("x_grad"),
                                   &res.Tensor("w_grad"),
