@@ -109,11 +109,11 @@ class TesBackward_1(unittest.TestCase):
         newir_program = get_ir_program_0()
         input = newir_program.global_block().ops[-1].operand(0).source()
         tanh_out = newir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard():
-            with paddle.ir.core.program_guard(newir_program):
-                out = paddle.split(tanh_out, [2, 2], 0)
-                input_grad = grad(out, input)
-
+        with paddle.pir_utils.IrGuard(), paddle.ir.core.program_guard(
+            newir_program
+        ):
+            out = paddle.split(tanh_out, [2, 2], 0)
+            input_grad = grad(out, input)
             ops_name = [
                 "pd_op.data",
                 "pd_op.tanh",
@@ -121,6 +121,7 @@ class TesBackward_1(unittest.TestCase):
                 "pd_op.full",
                 "pd_op.split",
                 "builtin.split",
+                "pd_op.full",
                 "pd_op.full",
                 "builtin.combine",
                 "pd_op.concat",
@@ -185,30 +186,29 @@ class TesBackward_2(unittest.TestCase):
         ):
             out = paddle.concat([add_out, add_out])
             input_grad = grad(out, input_x)
-
-            ops_name = [
-                "pd_op.data",
-                "pd_op.data",
-                "pd_op.tanh",
-                "pd_op.tanh",
-                "pd_op.add",
-                "pd_op.full",
-                "builtin.combine",
-                "pd_op.concat",
-                "pd_op.full",
-                "builtin.combine",
-                "pd_op.concat_grad",
-                "builtin.split",
-                "builtin.combine",
-                "pd_op.add_n",
-                "pd_op.add_grad",
-                "pd_op.tanh_grad",
-                "pd_op.tanh_grad",
-                "builtin.combine",
-                "pd_op.add_n",
-            ]
-            for i, op in enumerate(newir_program.global_block().ops):
-                self.assertEqual(op.name(), ops_name[i])
+        ops_name = [
+            "pd_op.data",
+            "pd_op.data",
+            "pd_op.tanh",
+            "pd_op.tanh",
+            "pd_op.add",
+            "pd_op.full",
+            "builtin.combine",
+            "pd_op.concat",
+            "pd_op.full",
+            "builtin.combine",
+            "pd_op.concat_grad",
+            "builtin.split",
+            "builtin.combine",
+            "pd_op.add_n",
+            "pd_op.add_grad",
+            "pd_op.tanh_grad",
+            "pd_op.tanh_grad",
+            "builtin.combine",
+            "pd_op.add_n",
+        ]
+        for i, op in enumerate(newir_program.global_block().ops):
+            self.assertEqual(op.name(), ops_name[i])
 
 
 def get_ir_program_2():

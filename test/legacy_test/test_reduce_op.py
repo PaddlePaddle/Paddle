@@ -278,7 +278,7 @@ class TestMaxOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
@@ -312,7 +312,7 @@ class TestMaxOp_ZeroDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
@@ -365,7 +365,7 @@ class TestMaxFP32Op(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
@@ -399,7 +399,7 @@ class TestMaxBF16Op(TestMaxFP32Op):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output_with_place(core.CUDAPlace(0), check_new_ir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
@@ -1298,7 +1298,7 @@ class TestReduceMaxOpMultiAxises(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
