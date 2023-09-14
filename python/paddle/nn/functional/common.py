@@ -18,9 +18,13 @@ import paddle
 from paddle import _C_ops, ir
 from paddle.base.layer_helper import LayerHelper
 from paddle.common_ops_import import Variable, default_main_program
-from paddle.framework import core, in_dynamic_mode, in_pir_mode
+from paddle.framework import (
+    core,
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 from paddle.tensor.creation import full
-from python.paddle.base.framework import in_dynamic_or_pir_mode
 
 from ...base.data_feeder import (
     check_dtype,
