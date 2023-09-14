@@ -204,114 +204,6 @@ LoopDescriptor4IterVarT MakeGetterLoopDescriptor4IterVar(
   return [sd_iter2sd](const auto& sd_iter) { return sd_iter2sd->at(sd_iter); };
 }
 
-template <typename DoEachT>
-void VisitEachMapIr(const m_ir::MapIrList& map_irs, const DoEachT& DoEach) {
-  for (const auto& map_ir : map_irs) {
-    DoEach(map_ir);
-  }
-}
-
-m_expr::OpStmt MakeOpStmt(const m_ir::MapIr& map_ir) {
-  CHECK_EQ(map_ir.op_stmts().size(), 1);
-  return *map_ir.op_stmts().begin();
-}
-
-ScheduleDescriptor MakeInnerScheduleDescriptor(
-    const m_ir::MapIr& map_ir,
-    std::size_t outter_layer_loop_size,
-    const LoopDescriptor4IterVarT& LoopDescriptor4IterVar) {
-  CHECK_LT(outter_layer_loop_size, map_ir.loop_iters()->size());
-  ScheduleDescriptor ret{};
-  for (std::size_t i = outter_layer_loop_size; i < map_ir.loop_iters()->size();
-       ++i) {
-    ret->push_back(LoopDescriptor4IterVar(map_ir.loop_iters()->at(i)));
-  }
-  return ret;
-}
-
-template <typename DoEachT>
-void VisitEachMapIrOpStmt(const m_ir::MapIr& map_ir, const DoEachT& DoEach) {
-  for (const auto& op_stmt : map_ir.op_stmts()) {
-    DoEach(op_stmt);
-  }
-}
-
-List<m_expr::Stmt> MakeInnerLayerStmts(const std::shared_ptr<IGroup>& igroup,
-                                       const m_ir::MapIr& map_ir) {
-  List<m_expr::Stmt> ret;
-
-  VisitEachMapIrOpStmt(
-      map_ir, [&](const auto& op_stmt) { ret->emplace_back(op_stmt); });
-
-  return ret;
-}
-
-m_expr::MapStmt<m_expr::Stmt> MakeInnerLayerMapStmt(
-    const std::shared_ptr<IGroup>& igroup,
-    const m_ir::MapIr& map_ir,
-    std::size_t outter_layer_loop_size,
-    const LoopDescriptor4IterVarT& LoopDescriptor4IterVar) {
-  const auto& inner_schedule_descriptor = MakeInnerScheduleDescriptor(
-      map_ir, outter_layer_loop_size, LoopDescriptor4IterVar);
-
-  return m_expr::MapStmt<m_expr::Stmt>{inner_schedule_descriptor,
-                                       MakeInnerLayerStmts(igroup, map_ir)};
-}
-
-m_expr::Stmt MakeOutterLayerStmt(
-    const std::shared_ptr<IGroup>& igroup,
-    const m_ir::MapIr& map_ir,
-    std::size_t outter_layer_loop_size,
-    const LoopDescriptor4IterVarT& LoopDescriptor4IterVar) {
-  if (map_ir.op_stmts().size() == 1) {
-    return MakeOpStmt(map_ir);
-  } else if (map_ir.op_stmts().size() > 1) {
-    return MakeInnerLayerMapStmt(
-        igroup, map_ir, outter_layer_loop_size, LoopDescriptor4IterVar);
-  } else {
-    LOG(FATAL) << "Not Supported";
-  }
-}
-
-List<m_expr::Stmt> MakeOutterLayerStmts(
-    const std::shared_ptr<IGroup>& igroup,
-    const m_ir::MapIrList& map_irs,
-    std::size_t outter_layer_loop_size,
-    const LoopDescriptor4IterVarT& LoopDescriptor4IterVar) {
-  List<m_expr::Stmt> ret;
-
-  VisitEachMapIr(map_irs, [&](const auto& map_ir) {
-    ret->emplace_back(MakeOutterLayerStmt(
-        igroup, map_ir, outter_layer_loop_size, LoopDescriptor4IterVar));
-  });
-
-  return ret;
-}
-
-std::optional<std::size_t> GetSdItersMinSize(const m_ir::MapIrList& map_irs) {
-  if (map_irs.empty()) {
-    return std::nullopt;
-  }
-  std::size_t min_size = INT_MAX;
-  for (const auto& map_ir : map_irs) {
-    min_size = std::min(min_size, map_ir.loop_iters()->size());
-  }
-  return min_size;
-}
-
-List<LoopDescriptor> MakeOutterScheduleDescriptor(
-    const m_ir::MapIrList& map_irs,
-    const LoopDescriptor4IterVarT& LoopDescriptor4IterVar) {
-  std::optional<std::size_t> opt_min_size = GetSdItersMinSize(map_irs);
-  CHECK(opt_min_size.has_value());
-  List<LoopDescriptor> ret;
-  for (std::size_t i = 0; i < opt_min_size.value(); ++i) {
-    ret->push_back(
-        LoopDescriptor4IterVar(map_irs.begin()->loop_iters()->at(i)));
-  }
-  return ret;
-}
-
 using LoopIteratorsAndMapIrList = std::pair<LoopIterators, m_ir::MapIrList>;
 
 List < LoopIteratorsAndMapIrList >>
@@ -513,7 +405,7 @@ m_expr::MapExpr GenerateMapExpr(const std::shared_ptr<KGroup>& kgroup) {
   // MapExpr = Kernel;
   // Kernel = ([AnchoredMapStmt], In [Tensor], Out [Tensor])
   return m_expr::MapExpr{MakeAnchoredMapStmts(kgroup),
-                         MakeOutputTensors(kgroup),
+                         MakeInputTensors(kgroup),
                          MakeOutputTensors(kgroup)};
 }
 
