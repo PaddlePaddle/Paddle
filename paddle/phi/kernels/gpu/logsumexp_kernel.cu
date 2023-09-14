@@ -85,8 +85,6 @@ void LogsumexpFallbackKernel(const Context& dev_ctx,
   max_x.Resize(outdim);
   dev_ctx.template Alloc<T>(&max_x);
 
-  // phi::funcs::ReduceKernel<T, T, kps::MaxFunctor, kps::IdentityFunctor<T>>(
-  //     dev_ctx, *in_x, &max_x, kps::IdentityFunctor<T>(), axis_vec);
   phi::MaxKernel<T, Context>(dev_ctx, *in_x, axis_vec, false, &max_x);
 
   max_x.Resize(keeped_outdim);

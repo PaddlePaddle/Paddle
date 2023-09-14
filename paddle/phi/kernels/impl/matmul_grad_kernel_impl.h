@@ -61,8 +61,6 @@ struct ReduceSumForMatmulGrad<GPUContext, T> {
                   const DenseTensor& input,
                   DenseTensor* output,
                   const std::vector<int>& reduce_dims) {
-    // funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-    //     dev_ctx, input, output, kps::IdentityFunctor<T>(), reduce_dims);
     phi::SumKernel<T, GPUContext>(
         dev_ctx, input, reduce_dims, input.dtype(), false, output);
   }
