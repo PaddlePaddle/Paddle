@@ -20,11 +20,11 @@ namespace cinn::adt {
 
 class AutoSize final {};
 
-// ScheduleSize = Int64 | AutoSize
-DEFINE_ADT_UNION(ScheduleSize, std::int64_t, AutoSize);
+// LoopSize = Int64 | AutoSize
+DEFINE_ADT_UNION(LoopSize, std::int64_t, AutoSize);
 
 // S(Spatial): S0 = BlockIdx; S1 = ThreadIdx
-// ScheduleType = S0x | S0y | S0z | S1x | S1y | S1z | Temporal | Vectorize |
+// LoopType = S0x | S0y | S0z | S1x | S1y | S1z | Temporal | Vectorize |
 // Unroll
 class S0x final {
  public:
@@ -81,32 +81,28 @@ class Unroll final {
 };
 
 DEFINE_ADT_UNION(
-    ScheduleType, S0x, S0y, S0z, S1x, S1y, S1z, Temporal, Vectorize, Unroll);
+    LoopType, S0x, S0y, S0z, S1x, S1y, S1z, Temporal, Vectorize, Unroll);
 
-// SchedulePolicy = (ScheduleType, ScheduleSize)
-class SchedulePolicy final : public Tuple<ScheduleType, ScheduleSize> {
+// LoopDescriptor = (LoopType, LoopSize)
+class LoopDescriptor final : public Tuple<LoopType, LoopSize> {
  public:
-  using Tuple<ScheduleType, ScheduleSize>::Tuple;
+  using Tuple<LoopType, LoopSize>::Tuple;
 
-  const ScheduleType& GetScheduleType() const {
-    return std::get<0>(this->tuple());
-  }
+  const LoopType& GetLoopType() const { return std::get<0>(this->tuple()); }
 
-  const ScheduleSize& GetScheduleSize() const {
-    return std::get<1>(this->tuple());
-  }
+  const LoopSize& GetLoopSize() const { return std::get<1>(this->tuple()); }
 
-  bool operator==(const SchedulePolicy& other) const {
+  bool operator==(const LoopDescriptor& other) const {
     return &this->tuple() == &other.tuple();
   }
 };
 
-// ScheduleDescriptor = [SchedulePolicy]
-using ScheduleDescriptor = List<SchedulePolicy>;
+// ScheduleDescriptor = [LoopDescriptor]
+using ScheduleDescriptor = List<LoopDescriptor>;
 
-inline bool IsSpatial(const ScheduleType& schedule_type) {
+inline bool IsSpatial(const LoopType& loop_type) {
   return std::visit([](const auto& impl) { return impl.IsSpatial(); },
-                    schedule_type.variant());
+                    loop_type.variant());
 }
 
 }  // namespace cinn::adt

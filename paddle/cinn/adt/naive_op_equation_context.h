@@ -187,6 +187,21 @@ class NativeOpEquationContext final : public OpEquationContext {
     return out_msg_box_out_indexes().value()->at(pos.value());
   }
 
+  void EraseOutMsgBoxIndexes(
+      const std::vector<equation::Index>& truncated_output_tensor_indexes);
+
+  OpArgPos GetOpArgPos(const Index& index) const {
+    const auto& input_pos = FindPos(in_msg_box_in_indexes_.value(), index);
+    if (input_pos.has_value()) {
+      return tIn<std::size_t>{input_pos.value()};
+    }
+    const auto& output_pos = FindPos(in_msg_box_out_indexes_.value(), index);
+    if (output_pos.has_value()) {
+      return tOut<std::size_t>{output_pos.value()};
+    }
+    return Undefined{};
+  }
+
  private:
   template <typename ContainerT>
   void Init(std::vector<ContainerT>* vec,
@@ -284,5 +299,9 @@ class NativeOpEquationContext final : public OpEquationContext {
 
   FakeOpPlaceHolder fake_op_placeholder_;
 };
+
+std::function<std::shared_ptr<equation::config::NativeOpEquationContext>(
+    const m_expr::OpStmt&)>
+GenerateContext4LocalOpStmt(const List<m_expr::OpStmt>& op_stmts);
 
 }  // namespace cinn::adt::equation::config

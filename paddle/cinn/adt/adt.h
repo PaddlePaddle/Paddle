@@ -274,6 +274,8 @@ struct Ok final {
   bool operator!=(const Ok&) const { return false; }
 };
 
+DEFINE_ADT_UNION(OpArgPos, Undefined, tIn<std::size_t>, tOut<std::size_t>);
+
 #define ADT_TODO() LOG(FATAL) << "TODO"
 
 inline std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {

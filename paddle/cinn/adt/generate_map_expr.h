@@ -24,6 +24,6 @@ class IGroup;
 class KGroup;
 
 m_expr::MapExpr GenerateMapExpr(
-    const cinn::hlir::framework::Graph::Group& group);
+    const std::shared_ptr<cinn::hlir::framework::Graph::Group>& group);
 
 }  // namespace cinn::adt

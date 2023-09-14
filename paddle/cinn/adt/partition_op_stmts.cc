@@ -68,20 +68,31 @@ MakeGetterOpStmt4OpPlaceHolder(const EquationCtx4OpStmtT& EquationCtx4OpStmt,
   };
 }
 
-List<m_expr::OpStmt> FindVisitedOpStmts(
+std::pair<std::optional<m_expr::OpStmt>, List<m_expr::OpStmt>>
+FindVisitedOpStmts(
     const AnchorIndex& anchor_index,
     const equation::GraphView& equation_graph,
     const std::function<const m_expr::OpStmt&(
-        const equation::FakeOpPlaceHolder&)>& OpStmt4OpPlaceHolder) {
-  List<m_expr::OpStmt> ret{};
-  equation_graph.WalkVariable(
-      anchor_index, [&](const equation::Variable variable) {
-        if (variable.Has<equation::FakeOpPlaceHolder>()) {
-          ret->emplace_back(OpStmt4OpPlaceHolder(
-              variable.Get<equation::FakeOpPlaceHolder>()));
-        }
-      });
-  return ret;
+        const equation::FakeOpPlaceHolder&)>& OpStmt4OpPlaceHolder,
+    const EquationCtx4OpStmtT& EquationCtx4OpStmt) {
+  std::optional<m_expr::OpStmt> opt_anchor_op_stmt{std::nullopt};
+  List<m_expr::OpStmt> visited_op_stmts{};
+  const auto& TrySetAnchorOpStmt = [&](const auto& op_stmt) {
+    if (!EquationCtx4OpStmt(op_stmt)->GetOpArgPos(anchor_index)->Has<Undefined>) {
+      CHECK(!opt_anchor_op_stmt.has_value()); 
+      opt_anchor_op_stmt = op_stmt;
+    }
+  };
+  const DoEach = [&](const equation::Variable variable) {
+    if (variable.Has<equation::FakeOpPlaceHolder>()) {
+      const auto& fake_op_placeholder = variable.Get<equation::FakeOpPlaceHolder>();
+      const auto& op_stmt = OpStmt4OpPlaceHolder(fake_op_placeholder);
+      visited_op_stmts->emplace_back(op_stmt);
+      TrySetAnchorOpStmt(op_stmt);
+    }
+  };
+  equation_graph.WalkVariable(anchor_index, DoEach);
+  return std::pair{opt_anchor_op_stmt, visited_op_stmts};
 }
 
 template <typename DoEachT>
@@ -113,10 +124,10 @@ void VisitEachIndexAndAsOutput(const List<m_expr::OpStmt>& op_stmts,
   for (const auto& op_stmt : op_stmts) {
     const auto* ctx = EquationCtx4OpStmt(op_stmt);
     ctx->VisitEachInputTensorIndex([&](const auto& index) {
-      DoEach(op_stmt, index, tAsOutput<bool>{false});
+      DoEach(op_stmt, index, tOut<bool>{false});
     });
     ctx->VisitEachOutputTensorIndex([&](const auto& index) {
-      DoEach(op_stmt, index, tAsOutput<bool>{true});
+      DoEach(op_stmt, index, tOut<bool>{true});
     });
   }
 }
@@ -124,11 +135,11 @@ void VisitEachIndexAndAsOutput(const List<m_expr::OpStmt>& op_stmts,
 void MakeGetters4Indexes(
     const List<m_expr::OpStmt>& op_stmts,
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
-    std::function<tAsOutput<bool>(const equation::Index&)>* AsOutput4Index,
+    std::function<tOut<bool>(const equation::Index&)>* AsOutput4Index,
     std::function<equation::Index(const equation::Index&)>*
         OutMsgBoxIndex4InMsgBoxIndex) {
   using Index2AsOutput =
-      std::unordered_map<const equation::Index, tAsOutput<bool>>;
+      std::unordered_map<const equation::Index, tOut<bool>>;
   const auto& index2as_output = std::make_shared<Index2AsOutput>();
 
   using Index2OwnerOpStmt =
@@ -242,7 +253,7 @@ equation::GraphView MakeParametersGraphViewForPartition(
     const List<m_expr::OpStmt>& op_stmts) {
   equation::Equations equations{};
 
-  std::function<tAsOutput<bool>(const equation::Index&)> AsOutput4Index{};
+  std::function<tOut<bool>(const equation::Index&)> AsOutput4Index{};
   std::function<equation::Index(const equation::Index&)>
       OutMsgBoxIndex4InMsgBoxIndex{};
   MakeGetters4Indexes(op_stmts,
@@ -278,45 +289,45 @@ equation::GraphView MakeGlobalEquationGraphViewForPartition(
 }
 
 template <typename DoEachT>
-void VisitTensorIndex(const IGroupSpec& igroup_spec, const DoEachT& DoEach) {
-  const auto& igroup_op_stmts = igroup_spec.igroup_op_stmts;
+void VisitTensorIndex(const AnchorGroup& igroup_spec, const DoEachT& DoEach) {
+  const auto& op_stmts = igroup_spec.op_stmts;
   const auto& EquationCtx4OpStmt = igroup_spec.EquationCtx4OpStmt;
-  for (const auto& igroup_op_stmt : *igroup_op_stmts) {
+  for (const auto& igroup_op_stmt : *op_stmts) {
     const auto* ctx = EquationCtx4OpStmt(igroup_op_stmt);
     ctx->VisitEachTensorIndex(DoEach);
   }
 }
 
-void CleanSmallIGroupSpecs(
-    const IGroupSpec& igroup_spec,
-    std::unordered_map<AnchorIndex, IGroupSpec>* anchor_index2igroup_spec) {
+void CleanSmallAnchorGroups(
+    const AnchorGroup& igroup_spec,
+    std::unordered_map<AnchorIndex, AnchorGroup>* anchor_index2igroup_spec) {
   VisitTensorIndex(igroup_spec, [&](const auto& tensor_index) {
     anchor_index2igroup_spec->erase(tensor_index);
   });
 }
 
-void UpdataAnchorIndex2IGroupSpec(
-    const IGroupSpec& igroup_spec,
-    std::unordered_map<AnchorIndex, IGroupSpec>* anchor_index2igroup_spec) {
-  CleanSmallIGroupSpecs(igroup_spec, anchor_index2igroup_spec);
+void UpdataAnchorIndex2AnchorGroup(
+    const AnchorGroup& igroup_spec,
+    std::unordered_map<AnchorIndex, AnchorGroup>* anchor_index2igroup_spec) {
+  CleanSmallAnchorGroups(igroup_spec, anchor_index2igroup_spec);
 
   CHECK(anchor_index2igroup_spec->emplace(igroup_spec.anchor_index, igroup_spec)
             .second);
 }
 
 void EraseCandidateAnchorIndexes(
-    const IGroupSpec& igroup_spec,
+    const AnchorGroup& igroup_spec,
     std::unordered_set<AnchorIndex>* candidate_anchor_indexes) {
   VisitTensorIndex(igroup_spec, [&](const auto& tensor_index) {
     candidate_anchor_indexes->erase(tensor_index);
   });
 }
 
-std::unordered_map<AnchorIndex, IGroupSpec> PartitionOpStmtsIntoIGroupSpecs(
+std::unordered_map<AnchorIndex, AnchorGroup> PartitionOpStmtsIntoAnchorGroups(
     std::unordered_set<AnchorIndex>* candidate_anchor_indexes,
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
     const List<m_expr::OpStmt>& op_stmts) {
-  std::unordered_map<AnchorIndex, IGroupSpec> anchor_index2igroup_spec{};
+  std::unordered_map<AnchorIndex, AnchorGroup> anchor_index2igroup_spec{};
 
   const auto& OpStmt4OpPlaceHolder =
       MakeGetterOpStmt4OpPlaceHolder(EquationCtx4OpStmt, op_stmts);
@@ -324,36 +335,70 @@ std::unordered_map<AnchorIndex, IGroupSpec> PartitionOpStmtsIntoIGroupSpecs(
   const auto& equation_graph_view =
       MakeGlobalEquationGraphViewForPartition(EquationCtx4OpStmt, op_stmts);
 
+  std::unordered_set<m_expr::OpStmt> all_visited_op_stmts{};
+
   while (!candidate_anchor_indexes->empty()) {
     AnchorIndex anchor_tensor =
         PickThenEraseAnchorIndex(candidate_anchor_indexes);
 
-    const auto& visited_op_stmts = FindVisitedOpStmts(
-        anchor_tensor, equation_graph_view, OpStmt4OpPlaceHolder);
-    CHECK(!visited_op_stmts->empty());
+    const auto& [opt_anchor_op_stmt, visited_op_stmts] =
+      FindVisitedOpStmts(
+          anchor_tensor, equation_graph_view, OpStmt4OpPlaceHolder, EquationCtx4OpStmt);
+    if (visited_op_stmts->empty()) { continue; }
+    CHECK(opt_anchor_op_stmt.has_value());
+    all_visited_op_stmts.insert(visited_op_stmts->begin(), visited_op_stmts->end());
 
-    IGroupSpec igroup_spec{anchor_tensor, visited_op_stmts, EquationCtx4OpStmt};
-    UpdataAnchorIndex2IGroupSpec(igroup_spec, &anchor_index2igroup_spec);
+    AnchorGroup igroup_spec{
+        anchor_tensor, opt_anchor_op_stmt.value(), visited_op_stmts, EquationCtx4OpStmt};
+    UpdataAnchorIndex2AnchorGroup(igroup_spec, &anchor_index2igroup_spec);
     EraseCandidateAnchorIndexes(igroup_spec, candidate_anchor_indexes);
   }
-
+  CHECK_EQ(all_visited_op_stmts.size(), op_stmts->size()) << "Some fake_op_placeholders are not visited";
   return anchor_index2igroup_spec;
 }
 
 std::unordered_map<const equation::Variable, equation::Value>
-MakeAnchorIndex2Ok(const partition::IGroupSpec& igroup_spec) {
+MakeAnchorIndex2Ok(const partition::AnchorGroup& igroup_spec) {
   return {{igroup_spec.anchor_index, Ok{}}};
 }
 
-bool IsEquationSolvable(const partition::IGroupSpec& igroup_spec) {
+template<typename DoEachT>
+tBreak<bool> AgregateAnchorGroupOpStmt(
+    const partition::AnchorGroup& igroup_spec,
+    const DoEachT& DoEach) {
+  for (const auto& op_stmt : igroup_spec.op_stmts) {
+    tBreak<bool> ret = DoEach(op_stmt);
+    if (ret.value()) {
+      return ret;
+    }
+  }
+  return tBreak<bool>{false};
+}
+
+bool IsEquationSolvable(const partition::AnchorGroup& igroup_spec) {
   const auto& equation_graph_view = MakeGlobalEquationGraphViewForPartition(
-      igroup_spec.EquationCtx4OpStmt, igroup_spec.igroup_op_stmts);
+      igroup_spec.EquationCtx4OpStmt, igroup_spec.op_stmts);
 
   const auto& init_var2value = MakeAnchorIndex2Ok(igroup_spec);
-  auto ctx = std::make_shared<equation::IndexExprInferContext>(init_var2value);
+  equation::IndexExprInferContext ctx{init_var2value};
 
-  return equation::value::IsEquationsSolvable(
-      equation_graph_view, igroup_spec.anchor_index, ctx.get());
+  const auto& IsOpSolved = [&](const auto& op_stmt) {
+    const auto& equation_ctx = *igroup_spec.EquationCtx4OpStmt(op_stmt);
+    const auto& fake_op_placeholder = equation_ctx.fake_op_placeholder();
+    return ctx.HasValue(fake_op_placeholder);
+  };
+
+  bool is_solvable = equation::value::TrySolveEquations(
+      equation_graph_view, igroup_spec.anchor_index, &ctx).value();
+  AgregateAnchorGroupOpStmt(igroup_spec, [&](const auto& op_stmt){
+    if (!IsOpSolved(op_stmt)) {
+      is_solvable = false;
+      return tBreak<bool>{true};
+    } else {
+      return tBreak<bool>{false};
+    }
+  });
+  return is_solvable;
 }
 
 std::function<std::size_t(const m_expr::OpStmt&)> MakeGetterOrderValue4OpStmt(
@@ -370,8 +415,8 @@ std::function<std::size_t(const m_expr::OpStmt&)> MakeGetterOrderValue4OpStmt(
 }
 
 template <typename DoEachT>
-void VisitEachIGroupSpec(
-    std::unordered_map<AnchorIndex, IGroupSpec>* anchor_index2igroup_spec,
+void VisitEachAnchorGroup(
+    std::unordered_map<AnchorIndex, AnchorGroup>* anchor_index2igroup_spec,
     const DoEachT& DoEach) {
   for (auto& [anchor_index, igroup_spec] : *anchor_index2igroup_spec) {
     DoEach(&igroup_spec);
@@ -379,70 +424,71 @@ void VisitEachIGroupSpec(
 }
 
 template <typename DoEachT>
-void VisitEachIGroupSpec(
-    const std::unordered_map<AnchorIndex, IGroupSpec>& anchor_index2igroup_spec,
-    const DoEachT& DoEach) {
+void VisitEachAnchorGroup(const std::unordered_map<AnchorIndex, AnchorGroup>&
+                              anchor_index2igroup_spec,
+                          const DoEachT& DoEach) {
   for (const auto& [anchor_index, igroup_spec] : anchor_index2igroup_spec) {
     DoEach(igroup_spec);
   }
 }
 
-void SortIGroupSpecOpStmts(
-    std::unordered_map<AnchorIndex, IGroupSpec>* anchor_index2igroup_spec,
+void SortAnchorGroupOpStmts(
+    std::unordered_map<AnchorIndex, AnchorGroup>* anchor_index2igroup_spec,
     const std::function<std::size_t(const m_expr::OpStmt&)>&
         OrderValue4OpStmt) {
   const auto& CompareOpStmt = [&](const auto& lhs, const auto& rhs) {
     return OrderValue4OpStmt(lhs) < OrderValue4OpStmt(rhs);
   };
 
-  VisitEachIGroupSpec(anchor_index2igroup_spec, [&](auto* igroup_spec) {
-    std::sort(igroup_spec->igroup_op_stmts->begin(),
-              igroup_spec->igroup_op_stmts->end(),
+  VisitEachAnchorGroup(anchor_index2igroup_spec, [&](auto* igroup_spec) {
+    std::sort(igroup_spec->op_stmts->begin(),
+              igroup_spec->op_stmts->end(),
               CompareOpStmt);
   });
 }
 
-std::vector<IGroupSpec> SortedIGroupSpecs(
-    const std::unordered_map<AnchorIndex, IGroupSpec>& anchor_index2igroup_spec,
+std::vector<AnchorGroup> SortedAnchorGroups(
+    const std::unordered_map<AnchorIndex, AnchorGroup>&
+        anchor_index2igroup_spec,
     const std::function<std::size_t(const m_expr::OpStmt&)>&
         OrderValue4OpStmt) {
-  std::vector<IGroupSpec> ret{};
+  std::vector<AnchorGroup> ret{};
 
-  VisitEachIGroupSpec(anchor_index2igroup_spec, [&](const auto& igroup_spec) {
+  VisitEachAnchorGroup(anchor_index2igroup_spec, [&](const auto& igroup_spec) {
     ret.emplace_back(igroup_spec);
   });
 
-  const auto& OrderValue4IGroupSpec = [&](const IGroupSpec& igroup_spec) {
-    return OrderValue4OpStmt(igroup_spec.igroup_op_stmts->back());
+  const auto& OrderValue4AnchorGroup = [&](const AnchorGroup& igroup_spec) {
+    return OrderValue4OpStmt(igroup_spec.op_stmts->back());
   };
   std::sort(ret.begin(), ret.end(), [&](const auto& lhs, const auto& rhs) {
-    return OrderValue4IGroupSpec(lhs) < OrderValue4IGroupSpec(rhs);
+    return OrderValue4AnchorGroup(lhs) < OrderValue4AnchorGroup(rhs);
   });
 
   return ret;
 }
 
-std::vector<IGroupSpec> SortedIGroupSpecs(
-    std::unordered_map<AnchorIndex, IGroupSpec>* anchor_index2igroup_spec,
+std::vector<AnchorGroup> SortedAnchorGroups(
+    std::unordered_map<AnchorIndex, AnchorGroup>* anchor_index2igroup_spec,
     const List<m_expr::OpStmt>& op_stmts) {
   const auto& OrderValue4OpStmt = MakeGetterOrderValue4OpStmt(op_stmts);
 
-  SortIGroupSpecOpStmts(anchor_index2igroup_spec, OrderValue4OpStmt);
+  SortAnchorGroupOpStmts(anchor_index2igroup_spec, OrderValue4OpStmt);
 
-  return SortedIGroupSpecs(*anchor_index2igroup_spec, OrderValue4OpStmt);
+  return SortedAnchorGroups(*anchor_index2igroup_spec, OrderValue4OpStmt);
 }
 
-std::vector<IGroupSpec> PartitionOpStmts(
+std::vector<AnchorGroup> PartitionOpStmts(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
     const List<m_expr::OpStmt>& op_stmts) {
   std::unordered_set<AnchorIndex> candidate_anchor_indexes =
       InitCandidateAnchorIndex(EquationCtx4OpStmt, op_stmts);
 
-  std::unordered_map<AnchorIndex, IGroupSpec> anchor_index2igroup_spec =
-      PartitionOpStmtsIntoIGroupSpecs(
+  std::unordered_map<AnchorIndex, AnchorGroup> anchor_index2igroup_spec =
+      PartitionOpStmtsIntoAnchorGroups(
           &candidate_anchor_indexes, EquationCtx4OpStmt, op_stmts);
 
-  return SortedIGroupSpecs(&anchor_index2igroup_spec, op_stmts);
+  return SortedAnchorGroups(&anchor_index2igroup_spec, op_stmts);
 }
 
 }  // namespace cinn::adt::partition

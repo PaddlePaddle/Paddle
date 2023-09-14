@@ -20,35 +20,35 @@
 
 namespace cinn::adt {
 
-using ScheduleIterators = List<equation::IterVar>;
+using LoopIterators = List<equation::IterVar>;
 
 }
 
 namespace cinn::adt::m_ir {
 
-DEFINE_ADT_TAG(tBreak);
-
-class MapIR final {
+class MapIr final {
  public:
-  MapIR(const m_expr::OpStmt& op_stmt, const ScheduleIterators& sd_iters)
-      : op_stmts_{op_stmt}, sd_iters_(sd_iters) {}
+  MapIr(const List<m_expr::OpStmt>& op_stmts, const List<LoopIterators>& loop_iters_list)
+      : op_stmts_{op_stmts}, loop_iters_list_(loop_iters_list) {}
+  MapIr(const MapIr&) = default;
+  MapIr(MapIr&&) = default;
 
-  const std::list<m_expr::OpStmt>& op_stmts() const { return op_stmts_; }
+  const List<m_expr::OpStmt>& op_stmts() const { return op_stmts_; }
 
-  const cinn::adt::ScheduleIterators& sd_iters() const { return sd_iters_; }
+  const List<LoopIterators>& loop_iters_list() const { return loop_iters_list_; }
 
   bool IsMergableTo(
-      const MapIR& that,
-      const std::function<const ScheduleIterators&(const m_expr::Tensor&)>&
+      const MapIr& that,
+      const std::function<const LoopIterators&(const m_expr::Tensor&)>&
           SdIterators4Tensor) const;
 
-  bool HasReadWriteDependence(const MapIR& that) const;
+  bool HasReadWriteDependence(const MapIr& that) const;
 
-  void MergeThisToThat(const MapIR& that);
+  void MergeThisToThat(const MapIr& that);
 
  private:
   template <typename DoEachT>
-  tBreak<bool> AggregateTensorPair(const MapIR& that,
+  tBreak<bool> AggregateTensorPair(const MapIr& that,
                                    const DoEachT& DoEach) const;
 
   template <typename DoEachT>
@@ -57,20 +57,20 @@ class MapIR final {
   template <typename DoEachT>
   tBreak<bool> ForEachTensor(const DoEachT& DoEach) const;
 
-  std::unordered_map<m_expr::Tensor, tAsOutput<bool>> GetTensor2AsOutput()
+  std::unordered_map<m_expr::Tensor, tOut<bool>> GetTensor2AsOutput()
       const;
 
-  std::list<m_expr::OpStmt> op_stmts_;
-  ScheduleIterators sd_iters_;
+  List<m_expr::OpStmt> op_stmts_;
+  List<LoopIterators> loop_iters_list_;
 };
 
-using MapIRList = std::list<MapIR>;
+using MapIrList = List<MapIr>;
 
-MapIRList GenerateClusterOpsForLoopFuse(
+MapIrList GenerateClusterOpsForLoopFuse(
     const List<m_expr::OpStmt>& op_stmts,
-    const ScheduleIterators& sd_iters,
-    const std::function<const cinn::adt::SchedulePolicy&(
-        const equation::IterVar&)>& GetSchedulePolicy,
+    const LoopIterators& loop_iters,
+    const std::function<const cinn::adt::LoopDescriptor&(
+        const equation::IterVar&)>& GetLoopDescriptor,
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
         GetTensorIndexes);
 

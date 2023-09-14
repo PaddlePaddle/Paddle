@@ -28,17 +28,18 @@ using EquationCtx4OpStmtT =
 using TensorIndex = equation::Variable;
 using AnchorIndex = TensorIndex;
 
-struct IGroupSpec {
+struct AnchorGroup {
   AnchorIndex anchor_index;
-  List<m_expr::OpStmt> igroup_op_stmts;
+  m_expr::OpStmt op_stmt;
+  List<m_expr::OpStmt> op_stmts;
   EquationCtx4OpStmtT EquationCtx4OpStmt;
 };
 
-std::vector<IGroupSpec> PartitionOpStmts(
+std::vector<AnchorGroup> PartitionOpStmts(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
     const List<m_expr::OpStmt>& op_stmts);
 
-bool IsEquationSolvable(const partition::IGroupSpec& igroup_spec);
+bool IsEquationSolvable(const partition::AnchorGroup& igroup_spec);
 
 equation::GraphView MakeGlobalEquationGraphViewForPartition(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,

@@ -20,7 +20,6 @@ namespace cinn::adt {
 
 DEFINE_ADT_TAG(tIn);
 DEFINE_ADT_TAG(tOut);
-DEFINE_ADT_TAG(tAsOutput);
 
 DEFINE_ADT_TAG(tVar);
 DEFINE_ADT_TAG(tSSAShadow);
@@ -33,5 +32,10 @@ DEFINE_ADT_TAG(tStride);
 
 DEFINE_ADT_TAG(tInMsgBox);
 DEFINE_ADT_TAG(tOutMsgBox);
+
+DEFINE_ADT_TAG(tBreak);
+
+DEFINE_ADT_TAG(tHasNoConflictValue);
+
 
 }  // namespace cinn::adt

@@ -135,11 +135,11 @@ void SolveEquations(
       });
 }
 
-bool IsEquationsSolvable(
+tHasNoConflictValue<bool> TrySolveEquations(
     const EquationGraphTopoWalker<const Variable, const Function*>& walker,
     const Variable& start,
     IndexExprInferContext* ctx) {
-  bool is_solvable = true;
+  bool has_no_conflict_value = true;
 
   const auto& HasConflictInferedValue = [&](const Function* function) {
     tHasUniqueInferedValue<bool> has_unique_value =
@@ -148,11 +148,11 @@ bool IsEquationsSolvable(
   };
 
   walker.WalkFunction(start, [&](const Function* function) {
-    if (is_solvable && HasConflictInferedValue(function)) {
-      is_solvable = false;
+    if (has_no_conflict_value && HasConflictInferedValue(function)) {
+      has_no_conflict_value = false;
     }
   });
-  return is_solvable;
+  return tHasNoConflictValue<bool>{has_no_conflict_value};
 }
 
 }  // namespace cinn::adt::equation::value
