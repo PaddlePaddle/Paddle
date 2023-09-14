@@ -26,7 +26,7 @@ void CastGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& out_grad,
                     DenseTensor* x_grad) {
-  CastKernel<T, Context>(dev_ctx, out_grad, x->dtype(), x_grad);
+  CastKernel<T, Context>(dev_ctx, out_grad, x.dtype(), x_grad);
 }
 
 }  // namespace phi
