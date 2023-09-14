@@ -27,8 +27,8 @@
 #include "paddle/pir/core/builtin_attribute_storage.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/ir_parser.h"
 #include "paddle/pir/core/ir_printer.h"
+#include "paddle/pir/core/parser/ir_parser.h"
 #include "paddle/pir/core/utils.h"
 
 using OperatorDialect = paddle::dialect::OperatorDialect;
@@ -139,7 +139,12 @@ TEST(IrParserTest, TestParserByFile) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<OperatorDialect>();
   ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
-  std::ifstream is("TestParserText.txt");
+#ifdef _WIN32
+  const std::string file_path = "TestParserText.txt";
+#else
+  const std::string file_path = "./pir/core/TestParserText.txt";
+#endif
+  std::ifstream is(file_path);
   EXPECT_TRUE(is.is_open());
   ParserTest parser_test(is);
   bool is_test = false;

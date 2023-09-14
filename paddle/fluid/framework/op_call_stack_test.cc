@@ -44,6 +44,7 @@ TEST(OpCallStack, InsertCallStackInfo) {
     stack_test_vec.emplace_back(stack_test_str);
     attr_map["op_callstack"] = stack_test_vec;
     paddle::framework::InsertCallStackInfo("test", attr_map, &exception);
+    paddle::framework::InsertCallStackInfo("test", stack_test_vec, &exception);
     std::string ex_msg = exception.what();
     EXPECT_TRUE(ex_msg.find(stack_test_str) != std::string::npos);
     EXPECT_TRUE(ex_msg.find("[operator < test > error]") != std::string::npos);
