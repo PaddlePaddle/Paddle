@@ -32,7 +32,7 @@ class Type;
 class OpResult;
 class Attribute;
 class Operation;
-namespace details {
+namespace detail {
 class InterfaceValue;
 }
 using OpInfoMap = std::unordered_map<std::string, OpInfo>;
@@ -110,7 +110,7 @@ class IR_API IrContext {
   void RegisterOpInfo(Dialect *dialect,
                       TypeId op_id,
                       const char *name,
-                      std::vector<details::InterfaceValue> &&interface_map,
+                      std::vector<detail::InterfaceValue> &&interface_map,
                       const std::vector<TypeId> &trait_set,
                       size_t attributes_num,
                       const char **attributes_name,

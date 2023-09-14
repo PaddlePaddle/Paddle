@@ -18,7 +18,7 @@
 
 namespace pir {
 
-namespace details {
+namespace detail {
 class InterfaceValue {
  public:
   template <typename ConcreteT, typename T>
@@ -63,5 +63,5 @@ class InterfaceValue {
   void *model_{nullptr};
 };
 
-}  // namespace details
+}  // namespace detail
 }  // namespace pir
