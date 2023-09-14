@@ -568,8 +568,6 @@ std::vector<std::shared_ptr<GradNodeBase>> GradNodeBase::NextFunctions() {
     for (const GradSlotMeta& meta : meta_list) {
       const auto& edge = meta.GetEdge();
       std::shared_ptr<GradNodeBase> next_node = edge.GetMutableGradNode();
-      //打印一下 next_node 对象的指针值
-      std::cout << "next_node: " << next_node << std::endl;
       next_nodes.push_back(next_node);
     }
   }

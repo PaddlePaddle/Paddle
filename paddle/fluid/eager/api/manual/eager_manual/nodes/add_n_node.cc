@@ -72,8 +72,7 @@ AddNGradNodeFinal::operator()(
     egr::CheckTensorHasNanOrInf("add_n_grad", returns);
   }
 
-  VLOG(6) << "gradnode_ptr = " << this;
-  if (VLOG_IS_ON(6)) {
+  if (VLOG_IS_ON(4)) {
     const char *INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
     std::string input_str = "";
     std::string output_str = "";
@@ -93,7 +92,8 @@ AddNGradNodeFinal::operator()(
         TENSOR_OUTPUT_TEMPLATE, egr::EagerUtils::TensorStr(returns[0][0]));
     output_str += output_returns_str;
 
-    VLOG(6) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
+    VLOG(4) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
+    VLOG(6) << "gradnode_ptr = " << this << ", " << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
 
   if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);

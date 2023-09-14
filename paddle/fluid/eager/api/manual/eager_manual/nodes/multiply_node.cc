@@ -569,8 +569,7 @@ MultiplyGradNode::operator()(
   VLOG(6) << "Finish AD API GRAD: multiply_grad";
   // LOG IF DEBUG
 
-  VLOG(6) << "gradnode_ptr = " << this;
-  if (VLOG_IS_ON(6)) {
+  if (VLOG_IS_ON(4)) {
     const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
 
     std::string input_str = "";
@@ -596,6 +595,8 @@ MultiplyGradNode::operator()(
         TENSOR_Y_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(y_grad));
     output_str += output_y_grad_str;
     VLOG(4) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, input_str, output_str);
+    VLOG(6) << "gradnode_ptr = " << this << ", " << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
 

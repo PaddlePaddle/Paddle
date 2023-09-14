@@ -138,8 +138,7 @@ GradNodeAccumulation::operator()(
   std::string this_pointer = ss.str();
 
   VLOG(3) << "Finish AD API Grad: GradNodeAccumulation";
-  VLOG(6) << "gradnode_ptr = " << this;
-  if (VLOG_IS_ON(6)) {
+  if (VLOG_IS_ON(4)) {
     const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s], Output: [%s] } ";
 
     std::string input_str = "";
@@ -153,7 +152,9 @@ GradNodeAccumulation::operator()(
     std::string output_x_grad_str = paddle::string::Sprintf(
         TENSOR_X_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(grad_out));
     output_str += output_x_grad_str;
-    VLOG(6) << paddle::string::Sprintf(
+    VLOG(4) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, input_str, output_str);
+    VLOG(6) << "gradnode_ptr = " << this << ", " << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
   return {{grad_out}};

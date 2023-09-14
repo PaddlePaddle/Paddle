@@ -76,7 +76,6 @@ Conv2dGradNodeFinal::operator()(
 
   // Inplace Strategy
 
-
   // Call grad_api function
   VLOG(3) << "Final State Running: Conv2dGradNodeFinal";
 
@@ -163,8 +162,7 @@ Conv2dGradNodeFinal::operator()(
     // Set TensorWrappers for Forward Outputs if needed
   }
 
-    VLOG(6) << "gradnode_ptr = " << this;
-    if (VLOG_IS_ON(6)) {
+    if (VLOG_IS_ON(4)) {
     const char *INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
     std::string input_str = "";
     std::string output_str = "";
@@ -194,7 +192,8 @@ Conv2dGradNodeFinal::operator()(
         TENSOR_GRAD_FILTER_TEMPLATE, egr::EagerUtils::TensorStr(grad_filter));
     output_str += output_grad_filter_str;
 
-    VLOG(6) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
+    VLOG(4) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
+    VLOG(6) << "gradnode_ptr = " << this << ", " << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
 
 
@@ -320,8 +319,7 @@ Conv2dDoubleGradNodeFinal::operator()(
   // Create Grad Node
 
 
-   VLOG(6) << "gradnode_ptr = " << this;
-  if (VLOG_IS_ON(6)) {
+  if (VLOG_IS_ON(4)) {
     const char *INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
     std::string input_str = "";
     std::string output_str = "";
@@ -366,7 +364,8 @@ Conv2dDoubleGradNodeFinal::operator()(
         paddle::string::Sprintf(TENSOR_GRAD_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(grad_out_grad));
     output_str += output_grad_out_grad_str;
 
-    VLOG(6) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
+    VLOG(4) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
+    VLOG(6) << "gradnode_ptr = " << this << ", " << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
 
 
