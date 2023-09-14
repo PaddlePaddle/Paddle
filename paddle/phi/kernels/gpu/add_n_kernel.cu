@@ -58,6 +58,8 @@ void AddNKernel(const Context &dev_ctx,
                 const std::vector<const TensorBase *> &x,
                 DenseTensor *out) {
   const size_t in_num = x.size();
+  bool in_place = false;
+  auto *out_ptr = dev_ctx.template Alloc<T>(out);
   for (int i = 0; i < in_num; ++i) {
     if (!x[i]->initialized() && x[i]->dims().size() > 0 &&
         DenseTensor::classof(x[i])) {
@@ -99,8 +101,6 @@ void AddNKernel(const Context &dev_ctx,
     grids = dim3(CEIL_DIV(length, tile_size), 1, 1);
     blocks = dim3(tile_size, 1, 1);
   };
-  auto *out_ptr = dev_ctx.template Alloc<T>(out);
-  bool in_place = false;
   if (x.size() > 0 && x[0]->initialized() && DenseTensor::classof(x[0])) {
     if ((static_cast<const DenseTensor *>(x[0]))->data() == out->data()) {
       in_place = true;
