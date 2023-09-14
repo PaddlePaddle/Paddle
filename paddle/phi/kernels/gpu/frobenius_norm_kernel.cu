@@ -15,9 +15,9 @@
 #include "paddle/phi/kernels/frobenius_norm_kernel.h"
 
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/activation_kernel.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
-#include "paddle/phi/kernels/activation_kernel.h"
 
 namespace phi {
 
@@ -32,7 +32,7 @@ void FrobeniusNormKernel(const Context& dev_ctx,
   auto out_dtype = x.dtype();
   phi::Reduce<T, kps::AddFunctor, kps::SquareFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
-  
+
   SqrtKernel<T, Context>(dev_ctx, *out, out);
 }
 
