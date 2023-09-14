@@ -198,7 +198,7 @@ class TestElementwisePowOpInt(OpTest):
         if hasattr(self, 'attrs'):
             self.check_output(check_dygraph=False)
         else:
-            self.check_output()
+            self.check_output(check_new_ir=True)
 
 
 class TestElementwisePowGradOpInt(unittest.TestCase):
@@ -254,7 +254,7 @@ class TestElementwisePowOpFP16(OpTest):
         if hasattr(self, 'attrs'):
             self.check_output(check_dygraph=False)
         else:
-            self.check_output()
+            self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -264,6 +264,7 @@ class TestElementwisePowOpFP16(OpTest):
                 self.inputs['X'], self.inputs['Y'], 1 / self.inputs['X'].size
             ),
             check_prim=True,
+            check_new_ir=True,
         )
 
 
@@ -289,10 +290,7 @@ class TestElementwisePowBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        if hasattr(self, 'attrs'):
-            self.check_output()
-        else:
-            self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         self.check_grad(['X', 'Y'], 'Out')
@@ -303,6 +301,7 @@ class TestElementwisePowBF16Op(OpTest):
                 'Out',
                 check_prim=True,
                 only_check_prim=True,
+                check_new_ir=True,
             )
 
 
