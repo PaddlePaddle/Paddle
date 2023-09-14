@@ -374,10 +374,10 @@ m_expr::AnchoredMapStmt GenerateAnchoredMapStmt(
       MakeGetterLoopDescriptor4IterVar(loop_iters, sd);
 
   const auto& map_irs =
-      m_ir::GenerateClusterOpsForLoopFuse(igroup->op_stmts(),
-                                          loop_iters,
-                                          LoopDescriptor4IterVar,
-                                          TensorIndexExpr4Tensor);
+      m_ir::GenerateMapIrListForLoopFuse(igroup->op_stmts(),
+                                         loop_iters,
+                                         LoopDescriptor4IterVar,
+                                         TensorIndexExpr4Tensor);
 
   // AnchoredMapStmt = (MapStmt Stmt, tAnchor Tensor, TensorIndexExpr4TensorT)
   return m_expr::AnchoredMapStmt{
