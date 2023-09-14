@@ -58,11 +58,11 @@ class MapIr final {
   std::unordered_map<m_expr::Tensor, tAsOutput<bool>> GetTensor2AsOutput()
       const;
 
-  std::list<m_expr::OpStmt> op_stmts_;
-  LoopIterators loop_iters_;
+  List<m_expr::OpStmt> op_stmts_;
+  List<LoopIterators> loop_iters_list_;
 };
 
-using MapIrList = std::list<MapIr>;
+using MapIrList = List<MapIr>;
 
 MapIrList GenerateClusterOpsForLoopFuse(
     const List<m_expr::OpStmt>& op_stmts,
