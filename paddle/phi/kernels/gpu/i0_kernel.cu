@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/abs_util.h"
-#include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/impl/bessel_kernel_cuda_impl.h"
 
 namespace phi {
@@ -25,10 +24,7 @@ namespace phi {
 template <typename T, typename Context>
 void I0Kernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   ctx.template Alloc<T>(out);
-  std::vector<const DenseTensor*> ins = {&x};
-  std::vector<DenseTensor*> outs = {out};
   auto functor = CudaI0Functor<T>();
-  // phi::funcs::ElementwiseKernel<T>(ctx, ins, &outs, functor);
   funcs::TensorContainer ten_con(&x, out);
   funcs::test_func(ctx.stream(), ten_con, functor);
 }
