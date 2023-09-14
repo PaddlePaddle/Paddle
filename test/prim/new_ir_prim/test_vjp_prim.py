@@ -129,12 +129,12 @@ class TestVjpPrim(unittest.TestCase):
         with paddle.pir_utils.IrGuard():
             dout = newir_program.global_block().ops[-3].result(0)
             out_grads = [[dout]]
-            stop_gradients = [[False], [True]]
+            stop_gradients = [[False]]
             sum_op = newir_program.global_block().ops[-1]
             with paddle.ir.core.program_guard(newir_program):
                 grad_outs = call_vjp(sum_op, out_grads, stop_gradients)
             expand_op = newir_program.global_block().ops[-1]
-            self.assertEqual(len(grad_outs), 2)
+            self.assertEqual(len(grad_outs), 1)
             self.assertEqual(len(newir_program.global_block().ops), 8)
             self.assertEqual(expand_op.result(0), grad_outs[0][0])
             self.assertEqual(grad_outs[1][0], None)
@@ -157,15 +157,14 @@ class TestVjpPrim(unittest.TestCase):
         paddle.framework.core._set_prim_backward_enabled(False)
         dout = newir_program.global_block().ops[-2].result(0)
         out_grads = [[dout]]
-        stop_gradients = [[False], [True]]
+        stop_gradients = [[False]]
         sum_op = newir_program.global_block().ops[-1]
         with paddle.ir.core.program_guard(newir_program):
             grad_outs = call_vjp(sum_op, out_grads, stop_gradients)
-        self.assertEqual(len(grad_outs), 2)
+        self.assertEqual(len(grad_outs), 1)
         self.assertEqual(
             grad_outs[0][0].get_defining_op().name(), "pd_op.sum_grad"
         )
-        self.assertEqual(grad_outs[1][0], None)
         self.assertEqual(len(newir_program.global_block().ops), 5)
 
 
