@@ -21,6 +21,7 @@ namespace pir {
 
 class Program;
 class Block;
+constexpr char kStopGradientAttrName[] = "stop_gradient";
 ///
 /// \brief ModuleOp
 ///
@@ -56,6 +57,9 @@ class IR_API GetParameterOp : public pir::Op<GetParameterOp> {
                     const std::string &name,
                     Type type);
   void Verify() const;
+
+ private:
+  static void PassStopGradients(OperationArgument &argument);  // NOLINT
 };
 
 ///
@@ -123,6 +127,10 @@ class IR_API SliceOp : public pir::Op<SliceOp> {
 
   void Verify() const;
   pir::Value input() { return operand_source(0); }
+
+ private:
+  static void PassStopGradients(OperationArgument &argument,  // NOLINT
+                                int index);
 };
 
 ///
@@ -151,6 +159,9 @@ class IR_API SplitOp : public pir::Op<SplitOp> {
     }
     return outputs;
   }
+
+ private:
+  static void PassStopGradients(OperationArgument &argument);  // NOLINT
 };
 
 class IR_API ConstantLikeTrait : public OpTraitBase<ConstantLikeTrait> {
@@ -179,6 +190,8 @@ class IR_API ConstantOp : public Op<ConstantOp, ConstantLikeTrait> {
 
   Attribute value() const;
 };
+
+void PassStopGradientsDefaultly(OperationArgument &argument);  // NOLINT
 
 }  // namespace pir
 

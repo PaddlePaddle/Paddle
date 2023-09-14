@@ -63,6 +63,8 @@ class TestOpresultSymbol(unittest.TestCase):
             net = Net()
             x = paddle.static.data('x', self.shape_x, dtype='float32')
             y = paddle.static.data('y', self.shape_y, dtype='float32')
+            x.stop_gradient = False
+            y.stop_gradient = False
 
             res = net(x, y)
             gradients = grad(res, (x, y))
@@ -84,6 +86,8 @@ class TestOpresultSymbol(unittest.TestCase):
             net = SimbolNet()
             x = paddle.static.data('x', self.shape_x, dtype='float32')
             y = paddle.static.data('y', self.shape_y, dtype='float32')
+            x.stop_gradient = False
+            y.stop_gradient = False
 
             res = net(x, y)
             gradients = grad(res, (x, y))

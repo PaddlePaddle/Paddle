@@ -22,6 +22,34 @@ namespace pir {
 
 const char *ModuleOp::attributes_name[attributes_num] = {"program"};  // NOLINT
 
+void PassStopGradientsDefaultly(OperationArgument &argument) {  // NOLINT
+  VLOG(4) << "Builder construction stop gradient for OpResults.";
+  bool stop_gradient = true;
+  for (auto &input : argument.inputs) {
+    if (input.Value::impl() == nullptr) continue;
+
+    auto *defining_op = input.owner();
+    bool input_stop_gradient = true;
+    if (defining_op->HasAttribute(kStopGradientAttrName)) {
+      auto attrs = defining_op->attribute(kStopGradientAttrName)
+                       .dyn_cast<pir::ArrayAttribute>()
+                       .AsVector();
+      input_stop_gradient =
+          attrs[input.GetResultIndex()].dyn_cast<pir::BoolAttribute>().data();
+    }
+    if (!input_stop_gradient) {
+      stop_gradient = false;
+      break;
+    }
+  }
+  std::vector<pir::Attribute> outs_stop_gradient(
+      argument.output_types.size(),
+      pir::BoolAttribute::get(pir::IrContext::Instance(), stop_gradient));
+  argument.AddAttribute(
+      kStopGradientAttrName,
+      pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
+}
+
 Program *ModuleOp::program() {
   const AttributeMap &attr = this->attributes();
   auto iter = attr.find("program");
@@ -79,6 +107,15 @@ void GetParameterOp::Build(Builder &builder,
   argument.attributes[attributes_name[0]] =
       pir::StrAttribute::get(builder.ir_context(), name);
   argument.output_types.emplace_back(type);
+  PassStopGradients(argument);
+}
+
+void GetParameterOp::PassStopGradients(OperationArgument &argument) {
+  std::vector<pir::Attribute> outs_stop_gradient(
+      1, pir::BoolAttribute::get(pir::IrContext::Instance(), false));
+  argument.AddAttribute(
+      kStopGradientAttrName,
+      pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 
 void GetParameterOp::Verify() const {
@@ -136,6 +173,7 @@ void CombineOp::Build(Builder &builder,
     argument.output_types.emplace_back(
         pir::VectorType::get(builder.ir_context(), inputs_type));
   }
+  PassStopGradientsDefaultly(argument);
 }
 
 void CombineOp::Verify() const {
@@ -177,6 +215,28 @@ void SliceOp::Build(Builder &builder,
   argument.output_types.emplace_back(input.type()
                                          .dyn_cast<pir::VectorType>()
                                          .data()[static_cast<size_t>(index)]);
+  PassStopGradients(argument, index);
+}
+
+void SliceOp::PassStopGradients(OperationArgument &argument, int index) {
+  std::vector<pir::Attribute> outs_stop_gradient(
+      1, pir::BoolAttribute::get(pir::IrContext::Instance(), true));
+  auto &input = argument.inputs[0];
+  if (input.Value::impl() != nullptr) {
+    auto *defining_op = input.owner();
+    if (defining_op && defining_op->isa<CombineOp>()) {
+      IR_ENFORCE(defining_op->HasAttribute(kStopGradientAttrName),
+                 "Required CombineOp must have attribute %s",
+                 kStopGradientAttrName);
+      auto attrs = defining_op->attribute(kStopGradientAttrName)
+                       .dyn_cast<pir::ArrayAttribute>()
+                       .AsVector();
+      outs_stop_gradient[0] = attrs[index];
+    }
+  }
+  argument.AddAttribute(
+      kStopGradientAttrName,
+      pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 
 void SliceOp::Verify() const {
@@ -233,6 +293,50 @@ void SplitOp::Build(Builder &builder,
     argument.output_types.emplace_back(
         input.type().dyn_cast<pir::VectorType>().data()[idx]);
   }
+
+  PassStopGradients(argument);
+}
+
+void SplitOp::PassStopGradients(OperationArgument &argument) {
+  std::vector<bool> defaut_stop_gradients(argument.output_types.size(), true);
+  auto &input = argument.inputs[0];
+  if (input.Value::impl() != nullptr) {
+    auto *defining_op = input.owner();
+    if (defining_op && defining_op->isa<CombineOp>()) {
+      for (auto i = 0; i < defining_op->num_operands(); ++i) {
+        auto value = defining_op->operand_source(i);
+        if (!value) continue;
+        auto *oprand_defining_op = value.GetDefiningOp();
+        if (defining_op->HasAttribute(kStopGradientAttrName)) {
+          auto attrs = defining_op->attribute(kStopGradientAttrName)
+                           .dyn_cast<pir::ArrayAttribute>()
+                           .AsVector();
+          defaut_stop_gradients[i] =
+              attrs[value.dyn_cast<OpResult>().GetResultIndex()]
+                  .dyn_cast<pir::BoolAttribute>()
+                  .data();
+        }
+      }
+    } else if (defining_op &&
+               defining_op->HasAttribute(kStopGradientAttrName)) {
+      bool stop_gradient = defining_op->attribute(kStopGradientAttrName)
+                               .dyn_cast<pir::ArrayAttribute>()
+                               .AsVector()[0]
+                               .dyn_cast<pir::BoolAttribute>()
+                               .data();
+      defaut_stop_gradients.assign(defaut_stop_gradients.size(), stop_gradient);
+    }
+  }
+
+  std::vector<pir::Attribute> outs_stop_gradient;
+  outs_stop_gradient.reserve(argument.output_types.size());
+  for (auto stop_gradient : defaut_stop_gradients) {
+    outs_stop_gradient.push_back(
+        pir::BoolAttribute::get(pir::IrContext::Instance(), stop_gradient));
+  }
+  argument.AddAttribute(
+      kStopGradientAttrName,
+      pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 
 void SplitOp::Verify() const {

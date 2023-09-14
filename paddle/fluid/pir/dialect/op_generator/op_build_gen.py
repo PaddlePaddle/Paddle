@@ -27,38 +27,6 @@ void {op_name}::Build({build_args}) {{
 }}
 """
 
-PASS_STOP_GRADIENTS_FUNC = """
-namespace {
-void PassStopGradients(pir::OperationArgument &argument) {
-  VLOG(4) << "Builder construction stop gradient for OpResults.";
-  std::string attr_name = "stop_gradient";
-  bool stop_gradient = true;
-  for (auto &input : argument.inputs) {
-    if(input.Value::impl() == nullptr) continue;
-    auto *defining_op = input.owner();
-    bool input_stop_gradient = true;
-    if (defining_op->HasAttribute(attr_name)) {
-      auto attrs = defining_op->attribute(attr_name)
-                       .dyn_cast<pir::ArrayAttribute>()
-                       .AsVector();
-      input_stop_gradient =
-          attrs[input.GetResultIndex()].dyn_cast<pir::BoolAttribute>().data();
-    }
-    if (!input_stop_gradient) {
-      stop_gradient = false;
-      break;
-    }
-  }
-  std::vector<pir::Attribute> outs_stop_gradient(
-      argument.output_types.size(),
-      pir::BoolAttribute::get(pir::IrContext::Instance(), stop_gradient));
-  argument.AddAttribute(
-      attr_name,
-      pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
-}
-}  // namespace
-"""
-
 
 def GenBuildInputArgsStr(
     op_input_name_list,
@@ -609,7 +577,7 @@ def GenBuildOutputs(
 
     build_output_str += "  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());\n"
     # NOTE(Aurelius84): PassStopGradients must be placed after argument.AddOutputs.
-    build_output_str += "  PassStopGradients(argument);\n"
+    build_output_str += "  ::pir::PassStopGradientsDefaultly(argument);\n"
 
     return build_output_str
 

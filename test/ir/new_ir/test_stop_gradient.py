@@ -18,6 +18,9 @@ import paddle
 
 
 class TestAPI(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+
     def assert_api(self, api_func, stop_gradient):
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
@@ -39,6 +42,9 @@ class TestAPI(unittest.TestCase):
 
 
 class TestParametes(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+
     def test_create_param(self):
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
@@ -54,5 +60,4 @@ class TestParametes(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()
