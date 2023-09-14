@@ -473,7 +473,7 @@ phi::KernelKey GetKernelKey(
     const std::string& kernel_fn_str,
     const std::unordered_map<pir::Value, pir::OpResult>& map_value_pair,
     dialect::OpYamlInfoParser* op_info_parser = nullptr) {
-  if (op->isa<paddle::dialect::FeedOp>) {
+  if (op->isa<paddle::dialect::FeedOp>()) {
     // NOTE, for now feed op don't need a kernel, so the data type from Op
     // Result the next op use base program datatype
     return {phi::Backend::CPU,
