@@ -153,6 +153,19 @@ bool PyObject_CheckIRVectorOfOpResult(PyObject* obj) {
       }
     }
     return true;
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    if (len == 0) {
+      return false;
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GetItem(obj, i);
+      if (!PyObject_CheckIROpResult(item)) {
+        return false;
+      }
+    }
+
   } else {
     return false;
   }
