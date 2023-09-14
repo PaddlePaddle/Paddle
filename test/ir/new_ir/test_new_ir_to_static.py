@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 
-os.environ['FLAGS_enable_new_ir_api'] = 'true'  # don't work, we should
+os.environ['FLAGS_enable_new_ir_api'] = 'true'
 
 
 class TestDy2staticNewIR(unittest.TestCase):
