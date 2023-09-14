@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+from collections import OrderedDict
 
-from paddle.distributed.auto_parallel.static.completion import get_spmd_rule
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     DistTensorSpec,
     TensorDistAttr,
 )
 from paddle.distributed.fleet import auto
+from paddle.framework import core
 
 
 class TestReductionSPMDRule(unittest.TestCase):
@@ -28,7 +29,7 @@ class TestReductionSPMDRule(unittest.TestCase):
     """
 
     def setUp(self):
-        self.rule = get_spmd_rule("split")
+        self.rule = core.get_phi_spmd_rule("split")
 
         x_shape = [64, 32, 48]
         process_mesh = auto.ProcessMesh(mesh=[0, 1, 2, 3])
@@ -38,21 +39,16 @@ class TestReductionSPMDRule(unittest.TestCase):
         x_tensor_dist_attr.process_mesh = process_mesh
         self.x_dist_tensor_spec = DistTensorSpec(x_shape, x_tensor_dist_attr)
 
-        self.attrs = {
-            'num_or_sections': 2,
-            'axis': 1,
-        }
-
     def test_single_mesh_dim(self):
         # num_or_sections = 2, axis = 1
         # [0, -1, -1] --> [0, -1, -1], [0, -1, -1], [0, -1, -1]
-        self.rule = get_spmd_rule("split_with_num")
-        self.attrs = {}
+        self.rule = core.get_phi_spmd_rule("split_with_num")
+        self.attrs = OrderedDict()
         self.attrs['num'] = 2
         self.attrs['axis'] = 1
         self.x_dist_tensor_spec.set_dims_mapping([0, -1, -1])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec], self.attrs
+            [self.x_dist_tensor_spec], list(self.attrs.values())
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -67,13 +63,13 @@ class TestReductionSPMDRule(unittest.TestCase):
 
         # num_or_sections = [15, 16, 17], axis = 2
         # [0, -1, -1] --> [0, -1, -1], [0, -1, -1], [0, -1, -1], [0, -1, -1]
-        self.rule = get_spmd_rule("split")
-        self.attrs = {}
+        self.rule = core.get_phi_spmd_rule("split")
+        self.attrs = OrderedDict()
         self.attrs['sections'] = [15, 16, 17]
         self.attrs['axis'] = 2
         self.x_dist_tensor_spec.set_dims_mapping([0, -1, -1])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec], self.attrs
+            [self.x_dist_tensor_spec], list(self.attrs.values())
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -89,12 +85,12 @@ class TestReductionSPMDRule(unittest.TestCase):
 
         # num_or_sections = [15, 16, 17], axis = 2
         # [-1, -1, 0] --> [-1, -1, -1], [-1, -1, -1], [-1, -1, -1], [-1, -1, -1]
-        self.attrs = {}
+        self.attrs = OrderedDict()
         self.attrs['sections'] = [15, 16, 17]
         self.attrs['axis'] = 2
         self.x_dist_tensor_spec.set_dims_mapping([-1, -1, 0])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec], self.attrs
+            [self.x_dist_tensor_spec], list(self.attrs.values())
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -116,13 +112,13 @@ class TestReductionSPMDRule(unittest.TestCase):
 
         # num_or_sections = 2, axis = -2
         # [0, -1, -1] --> [0, -1, -1], [0, -1, -1], [0, -1, -1]
-        self.rule = get_spmd_rule("split_with_num")
-        self.attrs = {}
+        self.rule = core.get_phi_spmd_rule("split_with_num")
+        self.attrs = OrderedDict()
         self.attrs['num'] = 2
         self.attrs['axis'] = -2
         self.x_dist_tensor_spec.set_dims_mapping([0, -1, -1])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec], self.attrs
+            [self.x_dist_tensor_spec], list(self.attrs.values())
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -142,13 +138,13 @@ class TestReductionSPMDRule(unittest.TestCase):
 
         # num_or_sections = 3, axis = -1
         # [0, 1, -1, -1] --> [0, 1, -1, -1], [0, 1, -1, -1], [0, 1, -1, -1], [0, 1, -1, -1]
-        self.rule = get_spmd_rule("split_with_num")
-        self.attrs = {}
+        self.rule = core.get_phi_spmd_rule("split_with_num")
+        self.attrs = OrderedDict()
         self.attrs['num'] = 3
         self.attrs['axis'] = -1
         self.x_dist_tensor_spec.set_dims_mapping([0, 1, -1, -1])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec], self.attrs
+            [self.x_dist_tensor_spec], list(self.attrs.values())
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -172,13 +168,13 @@ class TestReductionSPMDRule(unittest.TestCase):
 
         # num_or_sections = [32, 32, 32], axis = 0
         # [0, 1, -1, -1] --> [-1, 1, -1, -1], [-1, 1, -1, -1], [-1, 1, -1, -1], [-1, 1, -1, -1]
-        self.rule = get_spmd_rule("split")
-        self.attrs = {}
+        self.rule = core.get_phi_spmd_rule("split")
+        self.attrs = OrderedDict()
         self.attrs['sections'] = [32, 32, 32]
         self.attrs['axis'] = 0
         self.x_dist_tensor_spec.set_dims_mapping([0, 1, -1, -1])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec], self.attrs
+            [self.x_dist_tensor_spec], list(self.attrs.values())
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -206,8 +202,8 @@ class TestReductionSPMDRule(unittest.TestCase):
         # num_or_sections = 2, axis = 1
         # [0, -1, -1], [0, -1, -1] --> [0, -1, -1], [0, -1, -1], [0, -1, -1]
         # (outputs --> input, outputs)
-        self.rule = get_spmd_rule("split_with_num")
-        self.attrs = {}
+        self.rule = core.get_phi_spmd_rule("split_with_num")
+        self.attrs = OrderedDict()
         self.attrs['num'] = 2
         self.attrs['axis'] = 1
         self.out_spec_list = []
@@ -218,7 +214,9 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.out_spec_list[0].set_dims_mapping([0, -1, -1])
         self.out_spec_list[1].set_dims_mapping([0, -1, -1])
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec], self.out_spec_list, self.attrs
+            [self.x_dist_tensor_spec],
+            self.out_spec_list,
+            list(self.attrs.values()),
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -235,8 +233,8 @@ class TestReductionSPMDRule(unittest.TestCase):
         # [0, -1, -1], [0, -1, -1], [0, -1, -1] -->
         # [0, -1, -1], [0, -1, -1], [0, -1, -1], [0, -1, -1]
         # (outputs --> input, outputs)
-        self.rule = get_spmd_rule("split")
-        self.attrs = {}
+        self.rule = core.get_phi_spmd_rule("split")
+        self.attrs = OrderedDict()
         self.attrs['sections'] = [15, 16, 17]
         self.attrs['axis'] = 2
         self.out_spec_list = []
@@ -250,7 +248,9 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.out_spec_list[1].set_dims_mapping([0, -1, -1])
         self.out_spec_list[2].set_dims_mapping([0, -1, -1])
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec], self.out_spec_list, self.attrs
+            [self.x_dist_tensor_spec],
+            self.out_spec_list,
+            list(self.attrs.values()),
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -268,7 +268,7 @@ class TestReductionSPMDRule(unittest.TestCase):
         # [-1, -1, -1], [-1, -1, -1], [-1, -1, -1] -->
         # [-1, -1, -1], [-1, -1, -1], [-1, -1, -1], [-1, -1, -1]
         # (outputs --> input, outputs)
-        self.attrs = {}
+        self.attrs = OrderedDict()
         self.attrs['sections'] = [15, 16, 17]
         self.attrs['axis'] = 2
         self.out_spec_list = []
@@ -282,7 +282,9 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.out_spec_list[1].set_dims_mapping([-1, -1, -1])
         self.out_spec_list[2].set_dims_mapping([-1, -1, -1])
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec], self.out_spec_list, self.attrs
+            [self.x_dist_tensor_spec],
+            self.out_spec_list,
+            list(self.attrs.values()),
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -305,8 +307,8 @@ class TestReductionSPMDRule(unittest.TestCase):
         # num_or_sections = 2, axis = -2
         # [0, -1, -1], [0, -1, -1] --> [0, -1, -1], [0, -1, -1], [0, -1, -1]
         # (outputs --> input, outputs)
-        self.rule = get_spmd_rule("split_with_num")
-        self.attrs = {}
+        self.rule = core.get_phi_spmd_rule("split_with_num")
+        self.attrs = OrderedDict()
         self.attrs['num'] = 2
         self.attrs['axis'] = -2
         self.out_spec_list = []
@@ -317,7 +319,9 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.out_spec_list[0].set_dims_mapping([0, -1, -1])
         self.out_spec_list[1].set_dims_mapping([0, -1, -1])
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec], self.out_spec_list, self.attrs
+            [self.x_dist_tensor_spec],
+            self.out_spec_list,
+            list(self.attrs.values()),
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -333,8 +337,8 @@ class TestReductionSPMDRule(unittest.TestCase):
         # num_or_sections = 2, axis = -2
         # [-1, 0, -1], [-1, -1, -1] --> [-1, -1, -1], [-1, -1, -1], [-1, -1, -1]
         # (outputs --> input, outputs)
-        self.rule = get_spmd_rule("split_with_num")
-        self.attrs = {}
+        self.rule = core.get_phi_spmd_rule("split_with_num")
+        self.attrs = OrderedDict()
         self.attrs['num'] = 2
         self.attrs['axis'] = -2
         self.out_spec_list = []
@@ -345,7 +349,9 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.out_spec_list[0].set_dims_mapping([-1, 0, -1])
         self.out_spec_list[1].set_dims_mapping([-1, -1, -1])
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec], self.out_spec_list, self.attrs
+            [self.x_dist_tensor_spec],
+            self.out_spec_list,
+            list(self.attrs.values()),
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -372,8 +378,8 @@ class TestReductionSPMDRule(unittest.TestCase):
         # [0, 1, -1, -1], [0, 1, -1, -1], [0, 1, -1, -1] -->
         # [0, 1, -1, -1], [0, 1, -1, -1], [0, 1, -1, -1], [0, 1, -1, -1]
         # (outputs --> input, outputs)
-        self.rule = get_spmd_rule("split_with_num")
-        self.attrs = {}
+        self.rule = core.get_phi_spmd_rule("split_with_num")
+        self.attrs = OrderedDict()
         self.attrs['num'] = 3
         self.attrs['axis'] = -1
         self.out_spec_list = []
@@ -402,7 +408,9 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.out_spec_list[1].set_dims_mapping([0, 1, -1, -1])
         self.out_spec_list[2].set_dims_mapping([0, 1, -1, -1])
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec], self.out_spec_list, self.attrs
+            [self.x_dist_tensor_spec],
+            self.out_spec_list,
+            list(self.attrs.values()),
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -428,8 +436,8 @@ class TestReductionSPMDRule(unittest.TestCase):
         # [-1, 1, -1, -1], [-1, 1, -1, -1], [-1, 1, -1, -1] -->
         # [-1, 1, -1, -1], [-1, 1, -1, -1], [-1, 1, -1, -1], [-1, 1, -1, -1]
         # (outputs --> input, outputs)
-        self.rule = get_spmd_rule("split")
-        self.attrs = {}
+        self.rule = core.get_phi_spmd_rule("split")
+        self.attrs = OrderedDict()
         self.attrs['sections'] = [32, 32, 32]
         self.attrs['axis'] = 0
         self.out_spec_list = []
@@ -443,7 +451,9 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.out_spec_list[1].set_dims_mapping([-1, 1, -1, -1])
         self.out_spec_list[2].set_dims_mapping([-1, 1, -1, -1])
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec], self.out_spec_list, self.attrs
+            [self.x_dist_tensor_spec],
+            self.out_spec_list,
+            list(self.attrs.values()),
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -469,8 +479,8 @@ class TestReductionSPMDRule(unittest.TestCase):
         # [0, -1, 1, -1], [-1, 1, -1, -1], [-1, -1, -1, -1] -->
         # [0, -1, -1, -1], [0, -1, -1, -1], [0, -1, -1, -1], [0, -1, -1, -1]
         # (outputs --> input, outputs)
-        self.rule = get_spmd_rule("split")
-        self.attrs = {}
+        self.rule = core.get_phi_spmd_rule("split")
+        self.attrs = OrderedDict()
         self.attrs['sections'] = [32, 32, 32]
         self.attrs['axis'] = 2
         self.out_spec_list = []
@@ -484,7 +494,9 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.out_spec_list[1].set_dims_mapping([-1, 1, -1, -1])
         self.out_spec_list[2].set_dims_mapping([-1, -1, -1, -1])
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec], self.out_spec_list, self.attrs
+            [self.x_dist_tensor_spec],
+            self.out_spec_list,
+            list(self.attrs.values()),
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
