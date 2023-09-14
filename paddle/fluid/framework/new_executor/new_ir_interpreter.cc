@@ -558,7 +558,6 @@ std::string NewIRInterpreter::DebugValueInfo() {
      << "value -> var_name -> id -> variable*"
      << "\n";
 
-
   interpreter::PrintValuesAndVariables(
       *ir_program_->block(), &value_2_var_name_, &variable_2_var_name_);
 
