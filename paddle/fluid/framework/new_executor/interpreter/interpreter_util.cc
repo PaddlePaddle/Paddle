@@ -1262,7 +1262,8 @@ void PrintValuesAndVariables(
     std::string ret_variable_str = "Variable: (";
     if (!op->results().empty()) {
       for (auto& out_value : op->results()) {
-        PADDLE_ENFORCE((*value_2_var_name).count(out_value) > 0,
+        PADDLE_ENFORCE(
+            (*value_2_var_name).count(out_value) > 0,
             platform::errors::PreconditionNotMet(
                 "var(%s) should exist in var_name_2_id_", out_value.impl()));
         auto& var_name = (*value_2_var_name).at(out_value);
@@ -1285,7 +1286,7 @@ void PrintValuesAndVariables(
 
     // 2. op name
     std::string op_name;
-    if(op->attributes().find("op_name") != op->attributes().end()) {
+    if (op->attributes().find("op_name") != op->attributes().end()) {
       op_name = op->attributes()
                     .at("op_name")
                     .dyn_cast<::pir::StrAttribute>()
@@ -1302,7 +1303,8 @@ void PrintValuesAndVariables(
     if (!op->operands().empty()) {
       for (auto& input : op->operands()) {
         ::pir::Value in_value = input.source();
-        PADDLE_ENFORCE((*value_2_var_name).count(in_value) > 0,
+        PADDLE_ENFORCE(
+            (*value_2_var_name).count(in_value) > 0,
             platform::errors::PreconditionNotMet(
                 "var(%s) should exist in var_name_2_id_", in_value.impl()));
         auto& var_name = (*value_2_var_name).at(in_value);
