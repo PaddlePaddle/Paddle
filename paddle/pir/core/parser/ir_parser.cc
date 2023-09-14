@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
+
 #include "paddle/pir/core/parser/ir_parser.h"
 
 #include "paddle/pir/core/builtin_dialect.h"
@@ -36,8 +38,12 @@ std::string IrParser::GetErrorLocationInfo() {
 
 Token IrParser::PeekToken() {
   auto token = lexer->ConsumeToken();
+  size_t len = token.val_.size();
+  if (token.token_type_ == STRING) {
+    len += std::count(token.val_.begin(), token.val_.end(), '\"') - 2;
+  }
   if (token.token_type_ != EOF_) {
-    lexer->Unget(token.val_.size());
+    lexer->Unget(len);
   }
   return token;
 }

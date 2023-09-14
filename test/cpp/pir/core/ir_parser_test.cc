@@ -60,28 +60,43 @@ class ParserTest {
   explicit ParserTest(std::ifstream& test_text) : test_text(test_text) {}
   TestTask* GetTestTask();
   bool ConsumeTestTask(TestTask* test_task, pir::IrContext* ctx);
+  std::string Peek(const size_t len);
+  std::string Get(const size_t len);
 };
 
 TestTask* ParserTest::GetTestTask() {
+  std::string test_info;
+  while (test_text.peek() == '\n' || test_text.peek() == ' ') {
+    test_text.get();
+  }
+
   if (test_text.peek() == EOF) {
     return nullptr;
   }
-  std::string test_info;
-  while (test_text.peek() != '/') {
+
+  while (Peek(7) != "//CHECK") {
     test_text.get();
   }
+
   while (test_text.peek() != ' ') {
     test_text.get();
   }
+
   test_text.get();
+
   std::string test_type_info;
   while (test_text.peek() != '\n') {
     test_type_info += test_text.get();
   }
+
   test_text.get();
-  while (test_text.peek() != '/' && test_text.peek() != EOF) {
+
+  while (Peek(5) != "//END") {
     test_info += test_text.get();
   }
+
+  Get(5);
+
   if (test_type_info == "attribute") {
     return new TestTask(AttributeTest, test_info);
   } else if (test_type_info == "type") {
@@ -89,6 +104,7 @@ TestTask* ParserTest::GetTestTask() {
   } else if (test_type_info == "program") {
     return new TestTask(ProgramTest, test_info);
   }
+
   return nullptr;
 }
 
@@ -133,6 +149,27 @@ bool ParserTest::ConsumeTestTask(TestTask* test_task, pir::IrContext* ctx) {
   }
 
   return true;
+}
+
+std::string ParserTest::Peek(const size_t len) {
+  std::string str;
+  str = Get(len);
+  if (test_text.eof()) {
+    test_text.clear();
+  }
+  test_text.seekg(-str.length(), std::ios::cur);
+  return str;
+}
+
+std::string ParserTest::Get(const size_t len) {
+  std::string str;
+  for (size_t i = 0; i < len; i++) {
+    if (test_text.peek() == EOF) {
+      break;
+    }
+    str += test_text.get();
+  }
+  return str;
 }
 
 TEST(IrParserTest, TestParserByFile) {

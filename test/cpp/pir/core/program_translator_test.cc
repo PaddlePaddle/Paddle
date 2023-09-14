@@ -123,6 +123,7 @@ TEST(IrParserTest, MainProgram) {
   std::unique_ptr<pir::Program> parser_program = pir::Program::Parse(ss, ctx);
   std::stringstream ssp;
   parser_program->Print(ssp);
+
   EXPECT_TRUE(ssp.str() == ss.str());
 }
 
