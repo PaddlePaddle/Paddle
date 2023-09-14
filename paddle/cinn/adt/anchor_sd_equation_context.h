@@ -27,24 +27,25 @@ class AnchorSdEquationContext final {
   AnchorSdEquationContext(std::size_t num_strides,
                           const AnchorIndex& anchor_index)
       : strides_(util::MakeStrides(num_strides)),
-        sd_iterators_(util::MakeIterators(num_strides)) {
+        loop_iterators_(util::MakeIterators(num_strides)) {
     GenerateSdEquation(anchor_index);
   }
 
   const List<Stride>& strides() const { return strides_; }
 
-  const List<Iterator>& sd_iterators() const { return sd_iterators_; }
+  const List<Iterator>& loop_iterators() const { return loop_iterators_; }
 
   const Equations& equations() const { return equations_; }
 
  private:
   void GenerateSdEquation(const Index& tensor_index) {
-    const auto& sd_index = util::MakeDot(sd_iterators_, strides_, &equations_);
+    const auto& sd_index =
+        util::MakeDot(loop_iterators_, strides_, &equations_);
     util::Equal(sd_index, tensor_index, &equations_);
   }
 
   List<Stride> strides_;
-  List<Iterator> sd_iterators_;
+  List<Iterator> loop_iterators_;
   Equations equations_;
 };
 

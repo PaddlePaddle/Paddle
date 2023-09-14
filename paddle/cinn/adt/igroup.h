@@ -81,9 +81,9 @@ class IGroup final {
     anchor_sd_equation_ctx_ = ctx;
   }
 
-  const List<equation::Iterator>& sd_iterators() const {
+  const List<equation::Iterator>& loop_iterators() const {
     CHECK(anchor_sd_equation_ctx_.has_value());
-    return anchor_sd_equation_ctx_.value().sd_iterators();
+    return anchor_sd_equation_ctx_.value().loop_iterators();
   }
 
  private:

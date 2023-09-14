@@ -83,15 +83,15 @@ tBreak<bool> MapIr::AggregateTensorPair(const MapIr& that,
 
 bool MapIr::IsMergableTo(
     const MapIr& that,
-    const std::function<const ScheduleIterators&(const m_expr::Tensor&)>&
+    const std::function<const LoopIterators&(const m_expr::Tensor&)>&
         SdIterators4Tensor) const {
   // TODO(Hongyu Jia): Refact to support complicated cases
-  if (that.sd_iters()->size() < this->sd_iters()->size()) {
+  if (that.loop_iters()->size() < this->loop_iters()->size()) {
     return false;
   }
 
   const auto& CheckBroadcast = [&](const auto& tensor) {
-    return SdIterators4Tensor(tensor).size() < that.sd_iters().size();
+    return SdIterators4Tensor(tensor).size() < that.loop_iters().size();
   };
 
   const auto& CheckWrite = [&](const auto& this_as_output,
@@ -137,7 +137,7 @@ bool MapIr::HasReadWriteDependence(const MapIr& that) const {
 }
 
 void MapIr::MergeThisToThat(const MapIr& that) {
-  CHECK_GE(that.sd_iters()->size(), this->sd_iters()->size());
+  CHECK_GE(that.loop_iters()->size(), this->loop_iters()->size());
   that.op_stmts_.splice(that.op_stmts_.begin(), std::move(this->op_stmts_));
 }
 
@@ -241,20 +241,20 @@ std::unordered_set<equation::IterVar> GetTensorIndexIterators(
   return ret;
 }
 
-ScheduleIterators GetLeftAlignedSdIterators(
-    const std::unordered_set<equation::IterVar>& tensor_index_sd_iters,
-    const ScheduleIterators& sd_iters,
+LoopIterators GetLeftAlignedSdIterators(
+    const std::unordered_set<equation::IterVar>& tensor_index_loop_iters,
+    const LoopIterators& loop_iters,
     const std::function<const LoopDescriptor&(const equation::IterVar&)>&
         GetLoopDescriptor) {
   const auto& Used = [&](const equation::IterVar& iter_var) {
-    return tensor_index_sd_iters.count(iter_var) != 0;
+    return tensor_index_loop_iters.count(iter_var) != 0;
   };
 
   const auto& IsSpatial = [&](const equation::IterVar& iter_var) {
-    return IsSpatial(GetLoopDescriptor(iter_var).GetScheduleType());
+    return IsSpatial(GetLoopDescriptor(iter_var).GetLoopType());
   };
 
-  ScheduleIterators ret{sd_iters->begin(), sd_iters->end()};
+  LoopIterators ret{loop_iters->begin(), loop_iters->end()};
   for (int i = ret->size() - 1; i >= 0; --i) {
     if (Used(ret->at(i)) || IsSpatial(ret->at(i))) {
       break;
@@ -265,86 +265,84 @@ ScheduleIterators GetLeftAlignedSdIterators(
   return ret;
 }
 
-ScheduleIterators GetTensorScheduleIterators(
+LoopIterators GetTensorLoopIterators(
     const m_expr::Tensor& tensor,
-    const ScheduleIterators& sd_iters,
+    const LoopIterators& loop_iters,
     const std::function<const LoopDescriptor&(const equation::IterVar&)>&
         GetLoopDescriptor,
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
         GetTensorIndexes) {
-  const auto& tensor_index_sd_iters =
+  const auto& tensor_index_loop_iters =
       GetTensorIndexIterators(GetTensorIndexes(tensor));
 
   return GetLeftAlignedSdIterators(
-      tensor_index_sd_iters, sd_iters, GetLoopDescriptor);
+      tensor_index_loop_iters, loop_iters, GetLoopDescriptor);
 }
 
 // Schedule Iterator always be aligned
-ScheduleIterators MergeScheduleIterators(
-    const ScheduleIterators& op_schedule_iterators,
-    const ScheduleIterators& tensor_schedule_iterators) {
-  return op_schedule_iterators->size() > tensor_schedule_iterators->size()
-             ? op_schedule_iterators
-             : tensor_schedule_iterators;
+LoopIterators MergeLoopIterators(const LoopIterators& op_loop_iterators,
+                                 const LoopIterators& tensor_loop_iterators) {
+  return op_loop_iterators->size() > tensor_loop_iterators->size()
+             ? op_loop_iterators
+             : tensor_loop_iterators;
 }
 
-ScheduleIterators GenerateScheduleIterators(
+LoopIterators GenerateLoopIterators(
     const m_expr::OpStmt& op,
-    const ScheduleIterators& sd_iters,
+    const LoopIterators& loop_iters,
     const std::function<const LoopDescriptor&(const equation::IterVar&)>&
         GetLoopDescriptor,
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
         GetTensorIndexes,
-    std::unordered_map<m_expr::Tensor, ScheduleIterators>* tensor2sd_iters) {
-  ScheduleIterators op_schedule_iterators;
+    std::unordered_map<m_expr::Tensor, LoopIterators>* tensor2loop_iters) {
+  LoopIterators op_loop_iterators;
   VisitEachTensor(op, [&](const m_expr::Tensor& tensor) {
-    ScheduleIterators tensor_schedule_iterators = GetTensorScheduleIterators(
-        tensor, sd_iters, GetLoopDescriptor, GetTensorIndexes);
+    LoopIterators tensor_loop_iterators = GetTensorLoopIterators(
+        tensor, loop_iters, GetLoopDescriptor, GetTensorIndexes);
     const auto& iter =
-        tensor2sd_iters->emplace(tensor, tensor_schedule_iterators).first;
-    CHECK(*iter == tensor_schedule_iterators);
-    op_schedule_iterators = MergeScheduleIterators(op_schedule_iterators,
-                                                   tensor_schedule_iterators);
+        tensor2loop_iters->emplace(tensor, tensor_loop_iterators).first;
+    CHECK(*iter == tensor_loop_iterators);
+    op_loop_iterators =
+        MergeLoopIterators(op_loop_iterators, tensor_loop_iterators);
   });
 
-  return op_schedule_iterators;
+  return op_loop_iterators;
 }
 
-std::pair<std::function<const ScheduleIterators&(const m_expr::OpStmt&)>,
-          std::function<const ScheduleIterators&(const m_expr::Tensor&)>>
+std::pair<std::function<const LoopIterators&(const m_expr::OpStmt&)>,
+          std::function<const LoopIterators&(const m_expr::Tensor&)>>
 MakeGetterSdIters(
     const List<m_expr::OpStmt>& op_stmts,
-    const ScheduleIterators& sd_iters,
+    const LoopIterators& loop_iters,
     const std::function<const LoopDescriptor&(const equation::IterVar&)>&
         GetLoopDescriptor,
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
         GetTensorIndexes) {
-  using Op2ItersCache =
-      std::unordered_map<const m_expr::OpStmt, ScheduleIterators>;
-  const auto& op2sd_iters = std::make_shared<Op2ItersCache>();
-  using Tensor2ItersCache =
-      std::unordered_map<m_expr::Tensor, ScheduleIterators>;
-  const auto& tensor2sd_iters = std::make_shared<Tensor2ItersCache>();
+  using Op2ItersCache = std::unordered_map<const m_expr::OpStmt, LoopIterators>;
+  const auto& op2loop_iters = std::make_shared<Op2ItersCache>();
+  using Tensor2ItersCache = std::unordered_map<m_expr::Tensor, LoopIterators>;
+  const auto& tensor2loop_iters = std::make_shared<Tensor2ItersCache>();
 
   VisitEachOpStmt(op_stmts, [&](const m_expr::OpStmt& op) {
-    const auto& value = GenerateScheduleIterators(op,
-                                                  sd_iters,
-                                                  GetLoopDescriptor,
-                                                  GetTensorIndexes,
-                                                  tensor2sd_iters.get());
-    CHECK(op2sd_iters->emplace(op, value).second);
+    const auto& value = GenerateLoopIterators(op,
+                                              loop_iters,
+                                              GetLoopDescriptor,
+                                              GetTensorIndexes,
+                                              tensor2loop_iters.get());
+    CHECK(op2loop_iters->emplace(op, value).second);
   });
 
-  return std::pair{
-      [op2sd_iters](const m_expr::OpStmt& op) { return op2sd_iters->at(op); },
-      [tensor2sd_iters](const m_expr::Tensor& tensor) {
-        return tensor2sd_iters->at(tensor);
-      }};
+  return std::pair{[op2loop_iters](const m_expr::OpStmt& op) {
+                     return op2loop_iters->at(op);
+                   },
+                   [tensor2loop_iters](const m_expr::Tensor& tensor) {
+                     return tensor2loop_iters->at(tensor);
+                   }};
 }
 
 MapIrList GenerateOpClusters(
     const List<m_expr::OpStmt>& op_stmts,
-    const std::function<const ScheduleIterators&(const m_expr::OpStmt&)>&
+    const std::function<const LoopIterators&(const m_expr::OpStmt&)>&
         SdIters4Op,
     const std::function<const LoopDescriptor&(const equation::IterVar&)>&
         GetLoopDescriptor) {
@@ -360,7 +358,7 @@ MapIrList GenerateOpClusters(
 // Reorder and merge
 bool MergePrevToNext4LoopFuse(
     MapIrList* map_irs,
-    const std::function<const ScheduleIterators&(const m_expr::Tensor&)>&
+    const std::function<const LoopIterators&(const m_expr::Tensor&)>&
         SdIterators4Tensor) {
   std::size_t merge_count = 0;
 
@@ -410,7 +408,7 @@ bool MergePrevToNext4LoopFuse(
 
 bool MergeNextOrPrev4LoopFuse(
     MapIrList* map_irs,
-    const std::function<const ScheduleIterators&(const m_expr::Tensor&)>&
+    const std::function<const LoopIterators&(const m_expr::Tensor&)>&
         SdIterators4Tensor) {
   std::size_t merge_count = 0;
 
@@ -467,9 +465,9 @@ bool MergeNextOrPrev4LoopFuse(
 
 MapIrList ReorderAndMergeOpCluster4LoopFuse(
     const List<m_expr::OpStmt>& op_stmts,
-    const std::function<const ScheduleIterators&(const m_expr::OpStmt&)>&
+    const std::function<const LoopIterators&(const m_expr::OpStmt&)>&
         SdIters4Op,
-    const std::function<const ScheduleIterators&(const m_expr::Tensor&)>&
+    const std::function<const LoopIterators&(const m_expr::Tensor&)>&
         SdIters4Tensor,
     const std::function<const LoopDescriptor&(const equation::IterVar&)>&
         GetLoopDescriptor) {
@@ -488,13 +486,13 @@ MapIrList ReorderAndMergeOpCluster4LoopFuse(
 
 MapIrList GenerateClusterOpsForLoopFuse(
     const List<m_expr::OpStmt>& op_stmts,
-    const ScheduleIterators& sd_iters,
+    const LoopIterators& loop_iters,
     const std::function<const LoopDescriptor&(const equation::IterVar&)>&
         GetLoopDescriptor,
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
         GetTensorIndexes) {
   const auto& [SdIters4Op, SdIters4Tensor] = MakeGetterSdIters(
-      op_stmts, sd_iters, GetLoopDescriptor, GetTensorIndexes);
+      op_stmts, loop_iters, GetLoopDescriptor, GetTensorIndexes);
 
   return ReorderAndMergeOpCluster4LoopFuse(
       op_stmts, SdIters4Op, SdIters4Tensor, GetLoopDescriptor);
@@ -562,7 +560,7 @@ MapIrList ConvertAnchorGroups2MapIrList(
 
 MapIrList GenerateMapIrListForLoopFuse(
     const List<m_expr::OpStmt>& op_stmts,
-    const ScheduleIterators& sd_iters,
+    const LoopIterators& loop_iters,
     const std::function<const LoopDescriptor&(const equation::IterVar&)>&
         GetLoopDescriptor,
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&

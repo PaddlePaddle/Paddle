@@ -161,10 +161,10 @@ std::unordered_map<const equation::Variable, const equation::Value>
 MakeSdIterator2LoopDescriptor(const IGroup& igroup,
                               const ScheduleDescriptor& sd) {
   std::unordered_map<const equation::Variable, const equation::Value> ret{};
-  CHECK_EQ(igroup->sd_iterators()->size(), sd->size());
+  CHECK_EQ(igroup->loop_iterators()->size(), sd->size());
 
   for (std::size_t i = 0; i < sd->size(); ++i) {
-    CHECK(ret.emplace(igroup->sd_iterators()->at(i), sd->at(i)).second);
+    CHECK(ret.emplace(igroup->loop_iterators()->at(i), sd->at(i)).second);
   }
 
   return ret;
@@ -180,8 +180,8 @@ MakeGetterTensorIndexExpr(const std::shared_ptr<IGroup>& igroup,
   const auto& init_var2value = MakeSdIterator2LoopDescriptor(*igroup, sd);
   auto ctx = std::make_shared<equation::IndexExprInferContext>(init_var2value);
 
-  const std::vector<equation::Variable> starts{igroup->sd_iterators()->begin(),
-                                               igroup->sd_iterators()->end()};
+  const std::vector<equation::Variable> starts{
+      igroup->loop_iterators()->begin(), igroup->loop_iterators()->end()};
   equation::value::SolveEquations(merged_view, starts, ctx.get());
   return [ctx, igroup](const m_expr::Tensor& tensor) {
     // All indexes of same tensor have the same Value.
@@ -191,12 +191,12 @@ MakeGetterTensorIndexExpr(const std::shared_ptr<IGroup>& igroup,
 }
 
 LoopDescriptor4IterVarT MakeGetterLoopDescriptor4IterVar(
-    const ScheduleIterators& sd_iters, const ScheduleDescriptor& sd) {
-  CHECK_EQ(sd_iters->size(), sd->size());
+    const LoopIterators& loop_iters, const ScheduleDescriptor& sd) {
+  CHECK_EQ(loop_iters->size(), sd->size());
   using Cache = std::unordered_map<equation::IterVar, LoopDescriptor>;
   const auto& sd_iter2sd = std::make_shared<Cache>();
-  for (std::size_t i = 0; i < sd_iters->size(); ++i) {
-    CHECK(sd_iter2sd->emplace(sd_iters->at(i), sd->at(i)).second);
+  for (std::size_t i = 0; i < loop_iters->size(); ++i) {
+    CHECK(sd_iter2sd->emplace(loop_iters->at(i), sd->at(i)).second);
   }
   return [sd_iter2sd](const auto& sd_iter) { return sd_iter2sd->at(sd_iter); };
 }
@@ -215,13 +215,13 @@ m_expr::OpStmt MakeOpStmt(const m_ir::MapIr& map_ir) {
 
 ScheduleDescriptor MakeInnerScheduleDescriptor(
     const m_ir::MapIr& map_ir,
-    std::size_t outter_layer_sd_size,
+    std::size_t outter_layer_loop_size,
     const LoopDescriptor4IterVarT& LoopDescriptor4IterVar) {
-  CHECK_LT(outter_layer_sd_size, map_ir.sd_iters()->size());
+  CHECK_LT(outter_layer_loop_size, map_ir.loop_iters()->size());
   ScheduleDescriptor ret{};
-  for (std::size_t i = outter_layer_sd_size; i < map_ir.sd_iters()->size();
+  for (std::size_t i = outter_layer_loop_size; i < map_ir.loop_iters()->size();
        ++i) {
-    ret->push_back(LoopDescriptor4IterVar(map_ir.sd_iters()->at(i)));
+    ret->push_back(LoopDescriptor4IterVar(map_ir.loop_iters()->at(i)));
   }
   return ret;
 }
@@ -246,10 +246,10 @@ List<m_expr::Stmt> MakeInnerLayerStmts(const std::shared_ptr<IGroup>& igroup,
 m_expr::MapStmt<m_expr::Stmt> MakeInnerLayerMapStmt(
     const std::shared_ptr<IGroup>& igroup,
     const m_ir::MapIr& map_ir,
-    std::size_t outter_layer_sd_size,
+    std::size_t outter_layer_loop_size,
     const LoopDescriptor4IterVarT& LoopDescriptor4IterVar) {
   const auto& inner_schedule_descriptor = MakeInnerScheduleDescriptor(
-      map_ir, outter_layer_sd_size, LoopDescriptor4IterVar);
+      map_ir, outter_layer_loop_size, LoopDescriptor4IterVar);
 
   return {inner_schedule_descriptor, MakeInnerLayerStmts(igroup, map_ir)};
 }
@@ -257,13 +257,13 @@ m_expr::MapStmt<m_expr::Stmt> MakeInnerLayerMapStmt(
 m_expr::Stmt MakeOutterLayerStmt(
     const std::shared_ptr<IGroup>& igroup,
     const m_ir::MapIr& map_ir,
-    std::size_t outter_layer_sd_size,
+    std::size_t outter_layer_loop_size,
     const LoopDescriptor4IterVarT& LoopDescriptor4IterVar) {
   if (map_ir.op_stmts().size() == 1) {
     return MakeOpStmt(map_ir);
   } else if (map_ir.op_stmts().size() > 1) {
     return MakeInnerLayerMapStmt(
-        igroup, map_ir, outter_layer_sd_size, LoopDescriptor4IterVar);
+        igroup, map_ir, outter_layer_loop_size, LoopDescriptor4IterVar);
   } else {
     LOG(FATAL) << "Not Supported";
   }
@@ -272,13 +272,13 @@ m_expr::Stmt MakeOutterLayerStmt(
 List<m_expr::Stmt> MakeOutterLayerStmts(
     const std::shared_ptr<IGroup>& igroup,
     const m_ir::MapIrList& map_irs,
-    std::size_t outter_layer_sd_size,
+    std::size_t outter_layer_loop_size,
     const LoopDescriptor4IterVarT& LoopDescriptor4IterVar) {
   List<m_expr::Stmt> ret;
 
   VisitEachMapIr(map_irs, [&](const auto& map_ir) {
     ret->emplace_back(MakeOutterLayerStmt(
-        igroup, map_ir, outter_layer_sd_size, LoopDescriptor4IterVar));
+        igroup, map_ir, outter_layer_loop_size, LoopDescriptor4IterVar));
   });
 
   return ret;
@@ -290,7 +290,7 @@ std::optional<std::size_t> GetSdItersMinSize(const m_ir::MapIrList& map_irs) {
   }
   std::size_t min_size = INT_MAX;
   for (const auto& map_ir : map_irs) {
-    min_size = std::min(min_size, map_ir.sd_iters()->size());
+    min_size = std::min(min_size, map_ir.loop_iters()->size());
   }
   return min_size;
 }
@@ -302,7 +302,8 @@ List<LoopDescriptor> MakeOutterScheduleDescriptor(
   CHECK(opt_min_size.has_value());
   List<LoopDescriptor> ret;
   for (std::size_t i = 0; i < opt_min_size.value(); ++i) {
-    ret->push_back(LoopDescriptor4IterVar(map_irs.begin()->sd_iters()->at(i)));
+    ret->push_back(
+        LoopDescriptor4IterVar(map_irs.begin()->loop_iters()->at(i)));
   }
   return ret;
 }
@@ -361,15 +362,15 @@ List<m_expr::Tensor> MakeOutputTensors(const std::shared_ptr<KGroup>& kgroup) {
 
 m_expr::AnchoredMapStmt GenerateAnchoredMapStmt(
     const std::shared_ptr<IGroup>& igroup,
-    const ScheduleIterators& sd_iters,
+    const LoopIterators& loop_iters,
     const ScheduleDescriptor& sd,
     const m_expr::TensorIndexExpr4TensorT& TensorIndexExpr4Tensor) {
   const auto& LoopDescriptor4IterVar =
-      MakeGetterLoopDescriptor4IterVar(sd_iters, sd);
+      MakeGetterLoopDescriptor4IterVar(loop_iters, sd);
 
   const auto& map_irs =
       m_ir::GenerateClusterOpsForLoopFuse(igroup->op_stmts(),
-                                          sd_iters,
+                                          loop_iters,
                                           LoopDescriptor4IterVar,
                                           TensorIndexExpr4Tensor);
 
@@ -388,7 +389,7 @@ m_expr::AnchoredMapStmt GenerateAnchoredMapStmt(
 
   CHECK(igroup->anchor_sd_equation_ctx().has_value());
   const auto& schedule_iters =
-      igroup->anchor_sd_equation_ctx().value().sd_iterators();
+      igroup->anchor_sd_equation_ctx().value().loop_iterators();
 
   return GenerateAnchoredMapStmt(
       igroup, schedule_iters, sd, TensorIndexExpr4Tensor);
