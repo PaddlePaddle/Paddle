@@ -19,6 +19,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -33,6 +34,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/pir/core/builtin_op.h"
 namespace paddle {
 namespace dialect {
 
@@ -1010,10 +1012,11 @@ void AddShadowFeed(
     pir::IrContext* ctx,
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
     std::unordered_map<pir::Value, pir::OpResult>* map_value_pair) {
-  bool feed_op_add_shadow_feed =
-      (op_item->isa<paddle::dialect::FeedOp>()) && platform::is_gpu_place(place);
+  bool feed_op_add_shadow_feed = (op_item->isa<paddle::dialect::FeedOp>()) &&
+                                 platform::is_gpu_place(place);
   bool data_op_add_shadow_feed =
-      (op_item->isa<paddle::dialect::DataOp>()) && platform::is_gpu_place(place) &&
+      (op_item->isa<paddle::dialect::DataOp>()) &&
+      platform::is_gpu_place(place) &&
       (kernel_op->attributes()
            .at("place")
            .dyn_cast<dialect::PlaceAttribute>()

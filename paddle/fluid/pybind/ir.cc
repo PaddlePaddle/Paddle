@@ -20,9 +20,9 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
+#include "paddle/pir/core/builtin_op.h"
 
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
