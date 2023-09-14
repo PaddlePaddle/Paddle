@@ -1313,6 +1313,31 @@ void PrintValuesAndVariables(
   return;
 }
 
+const std::vector<std::string> GetInstructionCallStack(
+    const std::string& type, const pir::AttributeMap& attrs) {
+  std::vector<std::string> vec_str;
+  if (attrs.count("sub_block") != 0) {
+    return vec_str;
+  }
+  auto iter = attrs.find(OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+  if (iter != attrs.end()) {
+    auto attr = iter->second;
+    PADDLE_ENFORCE(
+        attr.isa<pir::ArrayAttribute>(),
+        paddle::platform::errors::InvalidArgument(
+            "%s: Callstack attributes of %s is not ArrayAttribute type", type));
+    pir::ArrayAttribute array_attribute = attr.dyn_cast<pir::ArrayAttribute>();
+    std::vector<pir::Attribute> vec_attr = array_attribute.AsVector();
+    for (auto value : vec_attr) {
+      PADDLE_ENFORCE(
+          value.isa<pir::StrAttribute>(),
+          paddle::platform::errors::InvalidArgument(
+              "%s: Callstack attributes of %s is not StrAttribute type", type));
+      vec_str.emplace_back(value.dyn_cast<pir::StrAttribute>().AsString());
+    }
+  }
+  return vec_str;
+}
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle

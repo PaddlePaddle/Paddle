@@ -140,6 +140,8 @@ void PrintValuesAndVariables(
     const std::unordered_map<const paddle::framework::Variable*, std::string>*
         variable_2_var_name);
 
+const std::vector<std::string> GetInstructionCallStack(
+    const std::string& type, const pir::AttributeMap& attrs);
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle
