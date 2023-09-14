@@ -20,7 +20,6 @@
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/platform/device_context.h"
-
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
@@ -242,6 +241,7 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
     if (op_type == "c_allreduce_sum" &&
         op->Attr<bool>("use_calc_stream") == false) {
       int ring_id = op->Attr<int>("ring_id");
+
       if (FLAGS_dynamic_static_unified_comm) {
         const auto& comm_context_manager =
             phi::distributed::CommContextManager::GetInstance();
