@@ -36,6 +36,9 @@ def get_ir_program_0():
 
 
 class TesBackward_1(unittest.TestCase):
+    def tearDown(self) -> None:
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+
     def test_grad(self):
         newir_program = get_ir_program_0()
         input = newir_program.global_block().ops[-1].operand(0).source()
@@ -58,7 +61,6 @@ class TesBackward_1(unittest.TestCase):
             .name(),
             "pd_op.tanh",
         )
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
     def test_full(self):
         # test create output_grad in backward use full op
@@ -149,6 +151,9 @@ def get_ir_program_1():
 
 
 class TesBackward_2(unittest.TestCase):
+    def tearDown(self) -> None:
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+
     def test_add_n(self):
         newir_program = get_ir_program_1()
         input_x = newir_program.global_block().ops[-3].operand(0).source()
@@ -168,7 +173,6 @@ class TesBackward_2(unittest.TestCase):
         self.assertEqual(
             newir_program.global_block().ops[-2].name(), "builtin.combine"
         )
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
     def test_concat(self):
         newir_program = get_ir_program_1()
@@ -186,8 +190,8 @@ class TesBackward_2(unittest.TestCase):
             "pd_op.tanh",
             "pd_op.tanh",
             "pd_op.add",
-            "builtin.combine",
             "pd_op.full",
+            "builtin.combine",
             "pd_op.concat",
             "pd_op.full",
             "builtin.combine",
@@ -203,8 +207,6 @@ class TesBackward_2(unittest.TestCase):
         ]
         for i, op in enumerate(newir_program.global_block().ops):
             self.assertEqual(op.name(), ops_name[i])
-
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
 
 def get_ir_program_2():
@@ -222,6 +224,9 @@ def get_ir_program_2():
 
 
 class TestBackward_3(unittest.TestCase):
+    def tearDown(self) -> None:
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+
     def test_basic_network(self):
         newir_program = get_ir_program_2()
         x = newir_program.global_block().ops[-1].operand(0).source()
@@ -235,8 +240,6 @@ class TestBackward_3(unittest.TestCase):
             )
             res = paddle.divide(sum_x, norm)
             input_grad = grad(res, x)
-
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
 
 if __name__ == "__main__":
