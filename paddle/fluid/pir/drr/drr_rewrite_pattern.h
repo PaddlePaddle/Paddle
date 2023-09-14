@@ -292,7 +292,21 @@ class DrrRewritePattern : public pir::RewritePattern {
     std::unordered_set<const OpCall*> drr_output_op_set;
     auto id2tensor = source_pattern_graph.id2owend_tensor();
     for (auto output_tensor_name : source_pattern_graph.output_tensors()) {
-      drr_output_op_set.insert(id2tensor[output_tensor_name].get()->producer());
+      VLOG(6) << "output tensor name : " << output_tensor_name;
+      OpCall* output_op_candidate =
+          id2tensor[output_tensor_name].get()->producer();
+      if (std::all_of(output_op_candidate->outputs().begin(),
+                      output_op_candidate->outputs().end(),
+                      [&source_pattern_graph](const Tensor* output) -> bool {
+                        return source_pattern_graph.output_tensors().count(
+                            output->name());
+                      })) {
+        drr_output_op_set.insert(output_op_candidate);
+      }
+    }
+
+    for (auto output_op : drr_output_op_set) {
+      VLOG(6) << " output op name: " << output_op->name();
     }
     std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>
         output_op_bind_map{{anchor, {op}}};
@@ -310,6 +324,7 @@ class DrrRewritePattern : public pir::RewritePattern {
     // TODO(gst): source_pattern 的outputop是否都找到了对应的ir_op
     if (output_op_bind_map.size() != drr_output_op_set.size()) {
       VLOG(6) << "未匹配到source pattern中所有的output op";
+
       return {};
     }
     return output_op_bind_map;
@@ -319,14 +334,14 @@ class DrrRewritePattern : public pir::RewritePattern {
       const OpCall* drr_op,
       pir::Operation* ir_op,
       const SourcePatternGraph& source_pattern_graph,
-      std::unordered_set<const OpCall*>& drr_output_op_set,
+      const std::unordered_set<const OpCall*>& drr_output_op_set,
       std::unordered_set<const OpCall*>* drr_visited_ops,
       std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>*
-          output_op_bind_map) {
+          output_op_bind_map) const {
     if (drr_op->name() != ir_op->name()) {
       VLOG(6) << "drr_op and ir_op have different op names. "
               << "drr_op name :" << drr_op->name()
-              << "ir_op name :" << ir_op->name();
+              << " ir_op name :" << ir_op->name();
       return false;
     }
     // check input's size
@@ -436,16 +451,20 @@ class DrrRewritePattern : public pir::RewritePattern {
     std::queue<const OpCall*> drr_q;
     std::queue<pir::Operation*> ir_q;
     bool matched = true;
+    size_t step = 0;
     for (size_t i = 0; i < ir_output_sequence.size(); ++i) {
       drr_q.push(drr_output_sequence[i]);
       drr_visited.insert(drr_output_sequence[i]);
       ir_q.push(ir_output_sequence[i]);
       ir_visited.insert(ir_output_sequence[i]);
-      source_pattern_match_ctx->BindIrOperation(
-          drr_output_sequence[i],
-          std::make_shared<IrOperation>(ir_output_sequence[i]));
+      // binding output tensor
+      auto drr_op_output_tensor = drr_output_sequence[i]->outputs();
+      for (size_t j = 0; j < drr_op_output_tensor.size(); j++) {
+        source_pattern_match_ctx->BindIrValue(
+            drr_op_output_tensor[j]->name(),
+            std::make_shared<IrValue>(ir_output_sequence[i]->result(j)));
+      }
     }
-    size_t step = 0;
     while (!drr_q.empty()) {
       if (!matched) break;
       auto* drr_node = drr_q.front();
@@ -453,12 +472,16 @@ class DrrRewritePattern : public pir::RewritePattern {
       drr_q.pop();
       ir_q.pop();
       if (drr_node->name() != ir_node->name()) {
+        VLOG(6) << "drr node and ir node have diff name. "
+                << "drr node name : " << drr_node->name()
+                << "ir node name : " << ir_node->name();
         matched = false;
         break;
       }
       const auto& drr_input_tensors = drr_node->inputs();
       auto ir_input_value_size = ir_node->num_operands();
       // check input size
+      VLOG(6) << "---------------------check input size";
       if (drr_input_tensors.size() != ir_input_value_size) {
         VLOG(6) << "Match False! drr_node input size:"
                 << drr_input_tensors.size()
@@ -474,17 +497,10 @@ class DrrRewritePattern : public pir::RewritePattern {
         matched = false;
         break;
       }
-      // check visited
-      if (drr_visited.count(drr_node) && ir_visited.count(ir_node)) {
-        continue;
-      } else if (!(!drr_visited.count(drr_node) &&
-                   !ir_visited.count(ir_node))) {
-        VLOG(6) << "binding of ir_node and drr_node is not synchronized";
-        matched = false;
-        break;
-      }
+      // binding op
       source_pattern_match_ctx->BindIrOperation(
           drr_node, std::make_shared<IrOperation>(ir_node));
+
       // join the producerOp of input
       for (size_t i = 0; i < drr_input_tensors.size(); ++i) {
         auto* drr_producer_op = drr_input_tensors[i]->producer();
@@ -496,10 +512,17 @@ class DrrRewritePattern : public pir::RewritePattern {
           matched = false;
           break;
         } else {
-          drr_q.push(drr_producer_op);
-          ir_q.push(ir_producer_op);
-          drr_visited.insert(drr_producer_op);
-          ir_visited.insert(ir_producer_op);
+          // binding input tensor
+          source_pattern_match_ctx->BindIrValue(
+              drr_input_tensors[i]->name(),
+              std::make_shared<IrValue>(ir_node->operand(i).source()));
+          // bfs producer op
+          if (!drr_visited.count(drr_producer_op)) {
+            drr_q.push(drr_producer_op);
+            ir_q.push(ir_producer_op);
+            drr_visited.insert(drr_producer_op);
+            ir_visited.insert(ir_producer_op);
+          }
         }
       }
 
@@ -507,6 +530,8 @@ class DrrRewritePattern : public pir::RewritePattern {
     }
 
     if (matched) {
+      VLOG(1) << "step : " << step
+              << "count of op calls :" << source_pattern_graph.CountOfOpCalls();
       IR_ENFORCE(step == source_pattern_graph.CountOfOpCalls());
     } else {
       return matched;
