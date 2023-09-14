@@ -312,19 +312,118 @@ List<LoopDescriptor> MakeOutterScheduleDescriptor(
   return ret;
 }
 
+using LoopIteratorsAndMapIrList = std::pair<LoopIterators, m_ir::MapIrList>;
+
+List < LoopIteratorsAndMapIrList >>
+    GroupByFirstLoopIterators(const m_ir::MapIrList& map_irs) {
+  CHECK(!map_irs->empty());
+
+  const auto& VisitSkipPosition = [&](const auto& DoEach) {
+    for (std::size_t i = 1; i < map_irs->size(); ++i) {
+      const auto& prev_loop_iters = map_irs->at(i - 1).loop_iters_list()->at(0);
+      const auto& next_loop_iters = map_irs->at(i).loop_iters_list()->at(0);
+      if (prev_loop_iters != next_loop_iters) {
+        DoEach(i);
+      }
+    }
+  };
+
+  const auto& VisitRangeWithSameFirstLoopIterators = [&](const auto& DoEach) {
+    std::size_t begin = 0;
+    VisitSkipPosition([&](std::size_t end) {
+      DoEach(begin, end);
+      begin = end;
+    });
+    DoEach(begin, map_irs->size());
+  };
+
+  const auto& GetFirstLoopIterators = [&](std::size_t begin) {
+    return map_irs->at(begin).loop_iters_list()->at(0);
+  };
+
+  const auto& MakeMapIrList = [&](std::size_t begin, std::size_t end) {
+    MapIrList map_ir_list{};
+    for (std::size_t i = begin; i < end; ++i) {
+      map_ir_list->emplace_back(map_irs->at(i));
+    }
+    return map_ir_list;
+  };
+
+  const auto& MakeLoopIteratorsAndMapIrList = [&](std::size_t begin,
+                                                  std::size_t end) {
+    return LoopIteratorsAndMapIrList{GetFirstLoopIterators(begin),
+                                     MakeMapIrList(begin, end)};
+  };
+
+  List < m_ir::MapIrList >> ret{};
+  VisitRangeWithSameFirstLoopIterators([&](std::size_t begin, std::size_t end) {
+    ret->emplace_back(MakeLoopIteratorsAndMapIrList(begin, end));
+  });
+
+  return ret;
+}
+
 m_expr::MapStmt<m_expr::Stmt> MakeMapStmt(
-    const std::shared_ptr<IGroup>& igroup,
+    const m_ir::MapIrList& map_irs,
+    const LoopDescriptor4IterVarT& LoopDescriptor4IterVar);
+
+void CheckFirstLoopAllSame(const m_ir::MapIrList& map_irs) {
+  if (map_irs->empty()) {
+    return;
+  }
+  for (std::size_t i = 1; i < map_irs->size(); ++i) {
+    const auto& prev_loop_iters = map_irs->at(i - 1).loop_iters_list()->at(0);
+    const auto& next_loop_iters = map_irs->at(i).loop_iters_list()->at(0);
+    CHECK(prev_loop_iters == next_loop_iters);
+  }
+}
+
+LoopIteratorsAndMapIrList GetStrippedMapIrs(const m_ir::MapIrList& map_irs) {
+  CheckFirstLoopAllSame(map_irs);
+  m_ir::MapIrList ret_map_irs{};
+  for (const auto& map_ir : *map_irs) {
+    const auto& op_stmts = map_ir.op_stmts();
+    const auto& origin_loops = map_ir.loop_iters_list();
+    List<LoopIterators> loop_iters_list{std::next(origin_loops->begin()),
+                                        origin_loops->end()};
+    ret_map_irs->emplace_back(MapIr{op_stmts, loop_iters_list});
+  }
+  return {map_irs->at(0).loop_iters_list()->at(0), ret_map_irs};
+}
+
+List<m_expr::Stmt> MakeStmtList(const m_ir::MapIrList& map_irs) {
+  const auto& grouped_map_irs = GroupByFirstLoopIterators(map_irs);
+  List<m_expr::Stmt> ret{};
+
+  const auto& CollectOpStmts = [&](const auto& inner_map_irs) {
+    for (const auto& map_ir : inner_map_irs) {
+      CHECK(map_ir.loop_iters_list()->empty());
+      for (const auto& op_stmt : map_ir.op_stmts()) {
+        ret->emplace_back(op_stmt);
+      }
+    }
+  };
+
+  for (const auto& [loop_iters, inner_map_irs] : grouped_map_irs) {
+    if (loop_iters.empty()) {
+      CollectOpStmts(inner_map_irs);
+    } else {
+      ret->emplace_back({MakeMapStmt(inner_map_irs)});
+    }
+  }
+
+  return ret;
+}
+
+m_expr::MapStmt<m_expr::Stmt> MakeMapStmt(
     const m_ir::MapIrList& map_irs,
     const LoopDescriptor4IterVarT& LoopDescriptor4IterVar) {
-  const auto& outter_schedule_descriptor =
-      MakeOutterScheduleDescriptor(map_irs, LoopDescriptor4IterVar);
+  const auto& [first_loop_iters, first_stripped_map_irs] =
+      GetStrippedMapIrs(map_irs);
 
   return m_expr::MapStmt<m_expr::Stmt>{
-      outter_schedule_descriptor,
-      MakeOutterLayerStmts(igroup,
-                           map_irs,
-                           outter_schedule_descriptor->size(),
-                           LoopDescriptor4IterVar)};
+      MakeScheduleDescriptor(first_loop_iters, LoopDescriptor4IterVar),
+      MakeStmtList(first_stripped_map_irs)};
 }
 
 m_expr::Tensor GetAnchorTensor(const std::shared_ptr<IGroup>& igroup) {
@@ -380,10 +479,9 @@ m_expr::AnchoredMapStmt GenerateAnchoredMapStmt(
                                          TensorIndexExpr4Tensor);
 
   // AnchoredMapStmt = (MapStmt Stmt, tAnchor Tensor, TensorIndexExpr4TensorT)
-  return m_expr::AnchoredMapStmt{
-      MakeMapStmt(igroup, map_irs, LoopDescriptor4IterVar),
-      GetAnchorTensor(igroup),
-      TensorIndexExpr4Tensor};
+  return m_expr::AnchoredMapStmt{MakeMapStmt(map_irs, LoopDescriptor4IterVar),
+                                 GetAnchorTensor(igroup),
+                                 TensorIndexExpr4Tensor};
 }
 
 m_expr::AnchoredMapStmt GenerateAnchoredMapStmt(
