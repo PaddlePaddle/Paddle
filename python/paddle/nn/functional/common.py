@@ -15,11 +15,12 @@
 import numpy
 
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, ir
 from paddle.base.layer_helper import LayerHelper
 from paddle.common_ops_import import Variable, default_main_program
 from paddle.framework import core, in_dynamic_mode, in_pir_mode
 from paddle.tensor.creation import full
+from python.paddle.base.framework import in_dynamic_or_pir_mode
 
 from ...base.data_feeder import (
     check_dtype,
@@ -1090,7 +1091,7 @@ def dropout(
             [[0., 0., 6.],
              [0., 0., 0.]])
     """
-    if not isinstance(p, (float, int, Variable)):
+    if not isinstance(p, (float, int, Variable, ir.OpResult)):
         raise TypeError("p argument should be a number or Variable")
 
     if isinstance(p, (int, float)):
@@ -1112,7 +1113,7 @@ def dropout(
             'downgrade_in_infer' if mode == 'downscale_in_infer' else mode
         )  # semantic transfer
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if default_main_program().random_seed != 0:
                 seed = default_main_program().random_seed
 
