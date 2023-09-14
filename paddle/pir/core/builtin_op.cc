@@ -309,7 +309,7 @@ void SplitOp::PassStopGradients(OperationArgument &argument) {
                  "but received %d != %d",
                  argument.output_types.size(),
                  defining_op->num_operands());
-      for (auto i = 0; i < defining_op->num_operands(); ++i) {
+      for (uint32_t i = 0; i < defining_op->num_operands(); ++i) {
         auto value = defining_op->operand_source(i);
         if (!value) continue;
         auto *oprand_defining_op = value.GetDefiningOp();
