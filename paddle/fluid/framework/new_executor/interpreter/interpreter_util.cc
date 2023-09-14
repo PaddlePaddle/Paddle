@@ -1251,20 +1251,24 @@ void PrintValuesAndVariables(
     const std::unordered_map<pir::Value, std::string>* value_2_var_name,
     const std::unordered_map<const paddle::framework::Variable*, std::string>*
         variable_2_var_name) {
+  std::stringstream ss;
   for (const auto& op : block) {
-    std::stringstream ss;
     op->Print(ss);
+    VLOG(6) << ss.str();
 
     // 1. output string
-    std::string ret_value_str = "Value: (";
+    std::string ret_value_str = "Value   : (";
     std::string ret_variable_str = "Variable: (";
     if (!op->results().empty()) {
       for (auto& out_value : op->results()) {
+        PADDLE_ENFORCE((*value_2_var_name).count(out_value) > 0,
+            platform::errors::PreconditionNotMet(
+                "var(%s) should exist in var_name_2_id_", out_value.impl()));
         auto& var_name = (*value_2_var_name).at(out_value);
         const paddle::framework::Variable* out_variable =
             GetVariableByName(var_name, *variable_2_var_name);
         ss.str("");
-        ss << &out_value;
+        ss << out_value.impl();
         ret_value_str += (var_name + "[" + ss.str() + "], ");
         ss.str("");
         ss << out_variable;
@@ -1278,10 +1282,15 @@ void PrintValuesAndVariables(
     ret_variable_str += ") = ";
 
     // 2. op name
-    auto op_name = op->attributes()
-                       .at("op_name")
-                       .dyn_cast<::pir::StrAttribute>()
-                       .AsString();
+    std::string op_name;
+    if(op->attributes().find("op_name") != op->attributes().end()) {
+      op_name = op->attributes()
+                    .at("op_name")
+                    .dyn_cast<::pir::StrAttribute>()
+                    .AsString();
+    } else {
+      op_name = op->name();
+    }
     ret_value_str += op_name;
     ret_variable_str += op_name;
 
@@ -1291,11 +1300,14 @@ void PrintValuesAndVariables(
     if (!op->operands().empty()) {
       for (auto& input : op->operands()) {
         ::pir::Value in_value = input.source();
+        PADDLE_ENFORCE((*value_2_var_name).count(in_value) > 0,
+            platform::errors::PreconditionNotMet(
+                "var(%s) should exist in var_name_2_id_", in_value.impl()));
         auto& var_name = (*value_2_var_name).at(in_value);
         const paddle::framework::Variable* in_variable =
             GetVariableByName(var_name, *variable_2_var_name);
         ss.str("");
-        ss << &in_value;
+        ss << in_value.impl();
         ret_value_str += (var_name + "[" + ss.str() + "], ");
         ss.str("");
         ss << in_variable;
@@ -1307,8 +1319,8 @@ void PrintValuesAndVariables(
     }
     ret_value_str += ")";
     ret_variable_str += ")";
-    VLOG(8) << ret_value_str;
-    VLOG(8) << ret_variable_str;
+    VLOG(6) << ret_value_str;
+    VLOG(6) << ret_variable_str;
   }
   return;
 }

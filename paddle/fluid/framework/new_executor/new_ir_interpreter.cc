@@ -557,6 +557,11 @@ std::string NewIRInterpreter::DebugValueInfo() {
   os << "value info of interpretercore " << this << "\n"
      << "value -> var_name -> id -> variable*"
      << "\n";
+
+
+  interpreter::PrintValuesAndVariables(
+      *ir_program_->block(), &value_2_var_name_, &variable_2_var_name_);
+
   for (auto kv : value_2_var_name_) {
     PADDLE_ENFORCE((bool)kv.first,
                    platform::errors::PreconditionNotMet(
@@ -926,11 +931,6 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                       &variable_2_var_name_,
                       &var_name_2_id_,
                       &variable_list_);
-
-    if (VLOG_IS_ON(8)) {
-      interpreter::PrintValuesAndVariables(
-          *ir_program_->block(), &value_2_var_name_, &variable_2_var_name_);
-    }
 
     interpreter::BuildId2VarName(var_name_2_id_, &id_2_var_name_);
 
