@@ -1253,6 +1253,7 @@ void PrintValuesAndVariables(
         variable_2_var_name) {
   std::stringstream ss;
   for (const auto& op : block) {
+    VLOG(6) << "-----------------------------";
     op->Print(ss);
     VLOG(6) << ss.str();
 
@@ -1269,7 +1270,8 @@ void PrintValuesAndVariables(
             GetVariableByName(var_name, *variable_2_var_name);
         ss.str("");
         ss << out_value.impl();
-        ret_value_str += (var_name + "[" + ss.str() + "], ");
+        ret_value_str +=
+            (std::string(var_name.length(), ' ') + "[" + ss.str() + "], ");
         ss.str("");
         ss << out_variable;
         ret_variable_str += (var_name + "[" + ss.str() + "], ");
@@ -1308,7 +1310,8 @@ void PrintValuesAndVariables(
             GetVariableByName(var_name, *variable_2_var_name);
         ss.str("");
         ss << in_value.impl();
-        ret_value_str += (var_name + "[" + ss.str() + "], ");
+        ret_value_str +=
+            (std::string(var_name.length(), ' ') + "[" + ss.str() + "], ");
         ss.str("");
         ss << in_variable;
         ret_variable_str += (var_name + "[" + ss.str() + "], ");
