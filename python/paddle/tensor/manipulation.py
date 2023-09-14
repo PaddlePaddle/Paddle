@@ -312,7 +312,7 @@ def slice(input, axes, starts, ends):
             sliced_2 = paddle.slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends)
             # sliced_2 is input[1:3, 0:2, 2:4].
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         attrs = ()
         starts_tensor = None
         ends_tensor = None
