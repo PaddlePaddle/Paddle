@@ -17,11 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    convert_uint16_to_float,
-)
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
 from paddle import base
@@ -29,7 +25,12 @@ from paddle.base import Program, core, program_guard
 
 
 def cast_wrapper(x, out_dtype=None):
-    return paddle.cast(x, paddle.dtype(out_dtype))
+    paddle_dtype = paddle.dtype(out_dtype)
+    # unify dtype to numpy_type for pir and dygraph
+    numpy_dtype = paddle.base.data_feeder._PADDLE_DTYPE_2_NUMPY_DTYPE[
+        paddle_dtype
+    ]
+    return paddle.cast(x, numpy_dtype)
 
 
 class TestCastOpFp32ToFp64(OpTest):
@@ -51,10 +52,10 @@ class TestCastOpFp32ToFp64(OpTest):
         self.input_shape = [10, 10]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_grad(self):
-        self.check_grad(['X'], ['Out'], check_prim=True)
+        self.check_grad(['X'], ['Out'], check_prim=True, check_new_ir=True)
 
 
 class TestCastOpFp32ToFp64_ZeroDim(TestCastOpFp32ToFp64):

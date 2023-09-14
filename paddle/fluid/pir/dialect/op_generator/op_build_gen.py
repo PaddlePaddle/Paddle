@@ -683,21 +683,41 @@ def gen_build_func_str(
     )
 
     GET_ATTRIBUTES_FROM_MAP_TEMPLATE = """
+  PADDLE_ENFORCE(
+      attributes.find("{attribute_name}") != attributes.end(),
+      phi::errors::NotFound(
+          "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<{attr_ir_type}>().data();
 """
     GET_STR_ATTRIBUTES_FROM_MAP_TEMPLATE = """
+  PADDLE_ENFORCE(
+      attributes.find("{attribute_name}") != attributes.end(),
+      phi::errors::NotFound(
+          "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<pir::StrAttribute>().AsString();
 """
     GET_ARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE = """
+  PADDLE_ENFORCE(
+      attributes.find("{attribute_name}") != attributes.end(),
+      phi::errors::NotFound(
+          "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name};
   for (size_t i = 0; i < attributes.at("{attribute_name}").dyn_cast<pir::ArrayAttribute>().size(); i++) {{
     {attribute_name}.push_back(attributes.at("{attribute_name}").dyn_cast<pir::ArrayAttribute>().at(i).dyn_cast<{inner_type}>().{data_name}());
   }}
 """
     GET_INTARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE = """
+  PADDLE_ENFORCE(
+      attributes.find("{attribute_name}") != attributes.end(),
+      phi::errors::NotFound(
+          "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
 """
     GET_SCALAR_ATTRIBUTE_FROM_MAP_TEMPLATE = """
+  PADDLE_ENFORCE(
+      attributes.find("{attribute_name}") != attributes.end(),
+      phi::errors::NotFound(
+          "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<paddle::dialect::ScalarAttribute>().data().to<{attr_type}>();
 """
 
@@ -720,6 +740,7 @@ def gen_build_func_str(
                     data_name = "AsString"
                 get_attributes_str += (
                     GET_ARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE.format(
+                        op_name=op_class_name,
                         attr_type=attr_type,
                         attribute_name=op_attribute_name_list[idx],
                         inner_type=inner_type,
@@ -732,6 +753,7 @@ def gen_build_func_str(
             ):
                 get_attributes_str += (
                     GET_INTARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE.format(
+                        op_name=op_class_name,
                         attr_type=attr_type,
                         attribute_name=op_attribute_name_list[idx],
                     )
@@ -742,6 +764,7 @@ def gen_build_func_str(
             ):
                 get_attributes_str += (
                     GET_SCALAR_ATTRIBUTE_FROM_MAP_TEMPLATE.format(
+                        op_name=op_class_name,
                         attr_type=attr_type,
                         attribute_name=op_attribute_name_list[idx],
                     )
@@ -749,6 +772,7 @@ def gen_build_func_str(
             elif "pir::StrAttribute" in op_attribute_type_list[idx]:
                 get_attributes_str += (
                     GET_STR_ATTRIBUTES_FROM_MAP_TEMPLATE.format(
+                        op_name=op_class_name,
                         attr_type=attr_type,
                         attribute_name=op_attribute_name_list[idx],
                         attr_ir_type=op_attribute_type_list[idx],
@@ -756,6 +780,7 @@ def gen_build_func_str(
                 )
             else:
                 get_attributes_str += GET_ATTRIBUTES_FROM_MAP_TEMPLATE.format(
+                    op_name=op_class_name,
                     attr_type=attr_type,
                     attribute_name=op_attribute_name_list[idx],
                     attr_ir_type=op_attribute_type_list[idx],
