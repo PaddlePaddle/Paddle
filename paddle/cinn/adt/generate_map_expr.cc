@@ -217,8 +217,7 @@ using TensorIndexExpr = equation::Value;
 std::unordered_map<const equation::Variable, const equation::Value>
 MakeSdIterator2SchedulePolicy(const IGroup& igroup,
                               const ScheduleDescriptor& sd) {
-  std::unordered_map<const equation::Variable, const equation::Value> ret;
-
+  std::unordered_map<const equation::Variable, const equation::Value> ret{};
   CHECK_EQ(igroup.sd_iterators()->size(), sd->size());
 
   for (std::size_t i = 0; i < sd->size(); ++i) {
