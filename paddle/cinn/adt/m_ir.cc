@@ -27,7 +27,7 @@ template <typename DoEachT>
 void MapIr::VisitEachTensor(const DoEachT& DoEach) const {
   ForEachTensor([&](const auto& tensor, const auto& as_output) {
     DoEach(tensor, as_output);
-    return tBreak{false};
+    return tBreak<bool>{false};
   });
 }
 
@@ -51,11 +51,11 @@ tBreak<bool> MapIr::ForEachTensor(const DoEachT& DoEach) const {
   return tBreak<bool>{false};
 }
 
-std::unordered_map<m_expr::Tensor, tAsOutput<bool>> MapIr::GetTensor2AsOutput()
+std::unordered_map<m_expr::Tensor, tOut<bool>> MapIr::GetTensor2AsOutput()
     const {
-  std::unordered_map<m_expr::Tensor, tAsOutput<bool>> ret{};
+  std::unordered_map<m_expr::Tensor, tOut<bool>> ret{};
 
-  VisitEachTensor([&](const m_expr::Tensor& tensor, tAsOutput<bool> as_output) {
+  VisitEachTensor([&](const m_expr::Tensor& tensor, tOut<bool> as_output) {
     ret[tensor] = ret[tensor].value() || as_output.value();
   });
 
@@ -100,13 +100,13 @@ bool MapIr::IsMergableTo(
   };
   bool mergable = true;
   const auto& UpdataMergable = [&](const auto& tensor,
-                                   tAsOutput<bool> this_as_output,
-                                   tAsOutput<bool> that_as_output) {
+                                   tOut<bool> this_as_output,
+                                   tOut<bool> that_as_output) {
     if (CheckBroadcast(tensor) && CheckWrite(this_as_output, that_as_output)) {
       mergable = false;
-      return tBreak{true};
+      return tBreak<bool>{true};
     } else {
-      return tBreak{false};
+      return tBreak<bool>{false};
     }
   };
   AggregateTensorPair(that, UpdataMergable);
@@ -123,13 +123,13 @@ bool MapIr::HasReadWriteDependence(const MapIr& that) const {
 
   AggregateTensorPair(that,
                       [&](const auto& tensor,
-                          tAsOutput<bool> this_as_output,
-                          tAsOutput<bool> that_as_output) {
+                          tOut<bool> this_as_output,
+                          tOut<bool> that_as_output) {
                         if (CheckWrite(this_as_output, that_as_output)) {
                           has_read_write_dependence = true;
-                          return tBreak{true};
+                          return tBreak<bool>{true};
                         } else {
-                          return tBreak{false};
+                          return tBreak<bool>{false};
                         }
                       });
 
@@ -271,9 +271,9 @@ LoopIterators GetTensorLoopIterators(
     const std::function<const LoopDescriptor&(const equation::IterVar&)>&
         GetLoopDescriptor,
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
-        GetTensorIndexes) {
+        TensorIndexExpr4Tensor) {
   const auto& tensor_index_loop_iters =
-      GetTensorIndexIterators(GetTensorIndexes(tensor));
+      GetTensorIndexIterators(TensorIndexExpr4Tensor(tensor));
 
   return GetLeftAlignedSdIterators(
       tensor_index_loop_iters, loop_iters, GetLoopDescriptor);
@@ -293,12 +293,12 @@ LoopIterators GenerateLoopIterators(
     const std::function<const LoopDescriptor&(const equation::IterVar&)>&
         GetLoopDescriptor,
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
-        GetTensorIndexes,
+        TensorIndexExpr4Tensor,
     std::unordered_map<m_expr::Tensor, LoopIterators>* tensor2loop_iters) {
   LoopIterators op_loop_iterators;
   VisitEachTensor(op, [&](const m_expr::Tensor& tensor) {
     LoopIterators tensor_loop_iterators = GetTensorLoopIterators(
-        tensor, loop_iters, GetLoopDescriptor, GetTensorIndexes);
+        tensor, loop_iters, GetLoopDescriptor, TensorIndexExpr4Tensor);
     const auto& iter =
         tensor2loop_iters->emplace(tensor, tensor_loop_iterators).first;
     CHECK(*iter == tensor_loop_iterators);
@@ -317,7 +317,7 @@ MakeGetterSdIters(
     const std::function<const LoopDescriptor&(const equation::IterVar&)>&
         GetLoopDescriptor,
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
-        GetTensorIndexes) {
+        TensorIndexExpr4Tensor) {
   using Op2ItersCache = std::unordered_map<m_expr::OpStmt, LoopIterators>;
   const auto& op2loop_iters = std::make_shared<Op2ItersCache>();
   using Tensor2ItersCache = std::unordered_map<m_expr::Tensor, LoopIterators>;
@@ -327,7 +327,7 @@ MakeGetterSdIters(
     const auto& value = GenerateLoopIterators(op,
                                               loop_iters,
                                               GetLoopDescriptor,
-                                              GetTensorIndexes,
+                                              TensorIndexExpr4Tensor,
                                               tensor2loop_iters.get());
     CHECK(op2loop_iters->emplace(op, value).second);
   });
@@ -397,7 +397,7 @@ bool MergePrevToNext4LoopFuse(
     if (CouldPrevMergedToNext(iter)) {
       MergePrevToNext(iter);
       --iter;
-      iter = op_cluster->erase(iter);
+      iter = map_irs->erase(iter);
       ++merge_count;
     } else {
       ++iter;
@@ -449,12 +449,12 @@ bool MergeNextOrPrev4LoopFuse(
   for (auto iter = map_irs->begin(); iter != map_irs->end();) {
     if (CouldThisMergedToNext(iter)) {
       MergeThisToNext(iter);
-      iter = op_cluster->erase(iter);
+      iter = map_irs->erase(iter);
       ++merge_count;
     } else if (CouldPrevMergedToThis(iter)) {
       MergePrevToThis(iter);
       --iter;
-      iter = op_cluster->erase(iter);
+      iter = map_irs->erase(iter);
       ++merge_count;
     } else {
       ++iter;
@@ -490,9 +490,9 @@ MapIrList GenerateClusterOpsForLoopFuse(
     const std::function<const LoopDescriptor&(const equation::IterVar&)>&
         GetLoopDescriptor,
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
-        GetTensorIndexes) {
+        TensorIndexExpr4Tensor) {
   const auto& [SdIters4Op, SdIters4Tensor] = MakeGetterSdIters(
-      op_stmts, loop_iters, GetLoopDescriptor, GetTensorIndexes);
+      op_stmts, loop_iters, GetLoopDescriptor, TensorIndexExpr4Tensor);
 
   return ReorderAndMergeOpCluster4LoopFuse(
       op_stmts, SdIters4Op, SdIters4Tensor, GetLoopDescriptor);
@@ -553,9 +553,122 @@ void EraseWriteBroadcastOutMsgBoxes(
   });
 }
 
+namespace {
+
+m_expr::Tensor GetTensor(const equation::config::NativeOpEquationContext& ctx,
+                         const m_expr::OpStmt& op_stmt,
+                         const equation::Index& index) {
+  const auto& op_arg_pos = ctx.GetOpArgPos(index);
+  const auto& [op, in_args, out_args] = op_stmt.tuple();
+  return op_arg_pos >>
+         match{[&](const Undefined&) -> m_expr::Tensor {
+                 LOG(FATAL) << "position not found";
+               },
+               [&](const tIn<std::size_t>& pos) -> m_expr::Tensor {
+                 return in_args.value()->at(pos.value());
+               },
+               [&](const tOut<std::size_t>& pos) -> m_expr::Tensor {
+                 return out_args.value()->at(pos.value());
+               }};
+}
+
+const auto& GetAnchorTensor(const partition::AnchorGroup& anchor_group) {
+  const auto& ctx = *anchor_group.EquationCtx4OpStmt(anchor_group.op_stmt);
+  return GetTensor(ctx, anchor_group.op_stmt, anchor_group.anchor_index);
+}
+
+std::unordered_map<equation::Index, LoopIterators>
+GenerateAnchorIndex2LoopIterators(
+    const std::vector<partition::AnchorGroup>& partitioned_anchor_groups,
+    const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
+        TensorIndexExpr4Tensor,
+    const LoopIterators& loop_iters,
+    const std::function<const LoopDescriptor&(const equation::IterVar&)>&
+        GetLoopDescriptor) {
+  std::unordered_map<equation::Index, LoopIterators> anchor_index2loop_iters{};
+  for (const auto& anchor_group : partitioned_anchor_groups) {
+    const auto& anchor_index = anchor_group.anchor_index;
+    const auto& anchor_tensor = GetAnchorTensor(anchor_group);
+    const auto& anchor_loop_iters = GetTensorLoopIterators(
+        anchor_tensor, loop_iters, GetLoopDescriptor, TensorIndexExpr4Tensor);
+    CHECK(anchor_index2loop_iters.emplace(anchor_index, anchor_loop_iters)
+              .second);
+  }
+  return anchor_index2loop_iters;
+}
+
+struct IteratorsSlice {
+  std::size_t start;
+  std::size_t end;
+};
+
+std::set<std::size_t> GetLoopIteratorSizes(
+    const std::unordered_map<equation::Index, LoopIterators>&
+        index2loop_iters) {
+  const auto& VisitLoopIteratorsSize = [&](const auto& DoEach) {
+    for (const auto& [_, loop_iters] : index2loop_iters) {
+      DoEach(loop_iters->size());
+    }
+  };
+  std::set<std::size_t> ret{};
+  VisitLoopIteratorsSize([&](std::size_t size) { ret.emplace(size); });
+  return ret;
+}
+
+std::vector<IteratorsSlice> GetLoopIteratorSlices(
+    const std::unordered_map<equation::Index, LoopIterators>&
+        index2loop_iters) {
+  std::set<std::size_t> loop_iter_sizes =
+      GetLoopIteratorSizes(index2loop_iters);
+  std::vector<IteratorsSlice> ret{};
+  ret.reserve(index2loop_iters.size());
+  std::size_t pos = 0;
+  for (std::size_t size : loop_iter_sizes) {
+    ret.push_back(IteratorsSlice{pos, size});
+    pos = size;
+  }
+  return ret;
+}
+
+List<LoopIterators> MakeLoopItersList(
+    const LoopIterators& loop_iters,
+    const std::vector<IteratorsSlice>& slices) {
+  List<LoopIterators> ret{};
+  for (const auto& slice : slices) {
+    const auto& begin = std::next(loop_iters->begin(), slice.start);
+    const auto& end = std::next(loop_iters->begin(), slice.end);
+    if (slice.start < loop_iters->size()) {
+      ret->emplace_back(LoopIterators{begin, end});
+    }
+  }
+  return ret;
+}
+
+}  // namespace
+
 MapIrList ConvertAnchorGroups2MapIrList(
-    const std::vector<partition::AnchorGroup>& partitioned_anchor_groups) {
-  ADT_TODO();
+    const std::vector<partition::AnchorGroup>& partitioned_anchor_groups,
+    const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
+        TensorIndexExpr4Tensor,
+    const LoopIterators& loop_iters,
+    const std::function<const LoopDescriptor&(const equation::IterVar&)>&
+        GetLoopDescriptor) {
+  const auto& anchor_index2loop_iters =
+      GenerateAnchorIndex2LoopIterators(partitioned_anchor_groups,
+                                        TensorIndexExpr4Tensor,
+                                        loop_iters,
+                                        GetLoopDescriptor);
+  std::vector<IteratorsSlice> loop_iter_slices =
+      GetLoopIteratorSlices(anchor_index2loop_iters);
+  MapIrList ret{};
+  for (const auto& anchor_group : partitioned_anchor_groups) {
+    const auto& anchor_index = anchor_group.anchor_index;
+    const auto& anchor_loop_iters = anchor_index2loop_iters.at(anchor_index);
+    const auto& loop_iters_list =
+        MakeLoopItersList(anchor_loop_iters, loop_iter_slices);
+    ret->emplace_back(MapIr{anchor_group.op_stmts, loop_iters_list});
+  }
+  return ret;
 }
 
 MapIrList GenerateMapIrListForLoopFuse(
@@ -564,7 +677,7 @@ MapIrList GenerateMapIrListForLoopFuse(
     const std::function<const LoopDescriptor&(const equation::IterVar&)>&
         GetLoopDescriptor,
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
-        GetTensorIndexes) {
+        TensorIndexExpr4Tensor) {
   const auto& EquationCtx4OpStmt =
       equation::config::GenerateContext4LocalOpStmt(op_stmts);
   EraseWriteBroadcastOutMsgBoxes(op_stmts, EquationCtx4OpStmt);
@@ -572,7 +685,10 @@ MapIrList GenerateMapIrListForLoopFuse(
   const auto& partitioned_anchor_groups =
       partition::PartitionOpStmts(EquationCtx4OpStmt, op_stmts);
 
-  return ConvertAnchorGroups2MapIrList(partitioned_anchor_groups);
+  return ConvertAnchorGroups2MapIrList(partitioned_anchor_groups,
+                                       TensorIndexExpr4Tensor,
+                                       loop_iters,
+                                       GetLoopDescriptor);
 }
 
 }  // namespace cinn::adt::m_ir

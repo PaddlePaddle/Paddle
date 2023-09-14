@@ -70,9 +70,9 @@ class NativeOpEquationContext final : public OpEquationContext {
   }
 
   void Equal(const IteratorTuple& lhs, const IteratorTuple& rhs) override {
-    CHECK(lhs.size() == rhs.size());
-    for (std::size_t i = 0; i < lhs.size(); ++i) {
-      this->Equal(lhs.at(i), rhs.at(i));
+    CHECK(lhs->size() == rhs->size());
+    for (std::size_t i = 0; i < lhs->size(); ++i) {
+      this->Equal(lhs->at(i), rhs->at(i));
     }
   }
 
@@ -167,26 +167,40 @@ class NativeOpEquationContext final : public OpEquationContext {
 
   std::optional<equation::Index> OutMsgBoxInIndex4InMsgBoxInIndex(
       const equation::Index& index) const {
-    std::optional<std::size_t> pos = FindPos(in_msg_box_in_indexes_, index);
+    std::optional<std::size_t> pos =
+        FindPos(in_msg_box_in_indexes_.value(), index);
     if (!pos.has_value()) {
       return std::nullopt;
     }
-    CHECK_LT(pos.value(), out_msg_box_in_indexes()->size());
-    return out_msg_box_in_indexes()->at(pos.value());
+    CHECK_LT(pos.value(), out_msg_box_in_indexes().value()->size());
+    return out_msg_box_in_indexes().value()->at(pos.value());
   }
 
   std::optional<equation::Index> OutMsgBoxOutIndex4InMsgBoxOutIndex(
       const equation::Index& index) const {
-    std::optional<std::size_t> pos = FindPos(in_msg_box_out_indexes_, index);
+    std::optional<std::size_t> pos =
+        FindPos(in_msg_box_out_indexes_.value(), index);
     if (!pos.has_value()) {
       return std::nullopt;
     }
-    CHECK_LT(pos.value(), out_msg_box_out_indexes()->size());
-    return out_msg_box_out_indexes()->at(pos.value());
+    CHECK_LT(pos.value(), out_msg_box_out_indexes().value()->size());
+    return out_msg_box_out_indexes().value()->at(pos.value());
   }
 
   void EraseOutMsgBoxIndexes(
       const std::vector<equation::Index>& truncated_output_tensor_indexes);
+
+  OpArgPos GetOpArgPos(const Index& index) const {
+    const auto& input_pos = FindPos(in_msg_box_in_indexes_.value(), index);
+    if (input_pos.has_value()) {
+      return tIn<std::size_t>{input_pos.value()};
+    }
+    const auto& output_pos = FindPos(in_msg_box_out_indexes_.value(), index);
+    if (output_pos.has_value()) {
+      return tOut<std::size_t>{output_pos.value()};
+    }
+    return Undefined{};
+  }
 
  private:
   template <typename ContainerT>

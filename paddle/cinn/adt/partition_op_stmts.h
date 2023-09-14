@@ -30,6 +30,7 @@ using AnchorIndex = TensorIndex;
 
 struct AnchorGroup {
   AnchorIndex anchor_index;
+  m_expr::OpStmt op_stmt;
   List<m_expr::OpStmt> op_stmts;
   EquationCtx4OpStmtT EquationCtx4OpStmt;
 };

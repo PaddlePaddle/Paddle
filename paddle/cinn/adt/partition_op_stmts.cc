@@ -68,20 +68,31 @@ MakeGetterOpStmt4OpPlaceHolder(const EquationCtx4OpStmtT& EquationCtx4OpStmt,
   };
 }
 
-List<m_expr::OpStmt> FindVisitedOpStmts(
+std::pair<std::optional<m_expr::OpStmt>, List<m_expr::OpStmt>>
+FindVisitedOpStmts(
     const AnchorIndex& anchor_index,
     const equation::GraphView& equation_graph,
     const std::function<const m_expr::OpStmt&(
-        const equation::FakeOpPlaceHolder&)>& OpStmt4OpPlaceHolder) {
-  List<m_expr::OpStmt> ret{};
-  equation_graph.WalkVariable(
-      anchor_index, [&](const equation::Variable variable) {
-        if (variable.Has<equation::FakeOpPlaceHolder>()) {
-          ret->emplace_back(OpStmt4OpPlaceHolder(
-              variable.Get<equation::FakeOpPlaceHolder>()));
-        }
-      });
-  return ret;
+        const equation::FakeOpPlaceHolder&)>& OpStmt4OpPlaceHolder,
+    const EquationCtx4OpStmtT& EquationCtx4OpStmt) {
+  std::optional<m_expr::OpStmt> opt_anchor_op_stmt{std::nullopt};
+  List<m_expr::OpStmt> visited_op_stmts{};
+  const auto& TrySetAnchorOpStmt = [&](const auto& op_stmt) {
+    if (!EquationCtx4OpStmt(op_stmt)->GetOpArgPos(anchor_index)->Has<Undefined>) {
+      CHECK(!opt_anchor_op_stmt.has_value()); 
+      opt_anchor_op_stmt = op_stmt;
+    }
+  };
+  const DoEach = [&](const equation::Variable variable) {
+    if (variable.Has<equation::FakeOpPlaceHolder>()) {
+      const auto& fake_op_placeholder = variable.Get<equation::FakeOpPlaceHolder>();
+      const auto& op_stmt = OpStmt4OpPlaceHolder(fake_op_placeholder);
+      visited_op_stmts->emplace_back(op_stmt);
+      TrySetAnchorOpStmt(op_stmt);
+    }
+  };
+  equation_graph.WalkVariable(anchor_index, DoEach);
+  return std::pair{opt_anchor_op_stmt, visited_op_stmts};
 }
 
 template <typename DoEachT>
@@ -113,10 +124,10 @@ void VisitEachIndexAndAsOutput(const List<m_expr::OpStmt>& op_stmts,
   for (const auto& op_stmt : op_stmts) {
     const auto* ctx = EquationCtx4OpStmt(op_stmt);
     ctx->VisitEachInputTensorIndex([&](const auto& index) {
-      DoEach(op_stmt, index, tAsOutput<bool>{false});
+      DoEach(op_stmt, index, tOut<bool>{false});
     });
     ctx->VisitEachOutputTensorIndex([&](const auto& index) {
-      DoEach(op_stmt, index, tAsOutput<bool>{true});
+      DoEach(op_stmt, index, tOut<bool>{true});
     });
   }
 }
@@ -124,7 +135,7 @@ void VisitEachIndexAndAsOutput(const List<m_expr::OpStmt>& op_stmts,
 void MakeGetters4Indexes(
     const List<m_expr::OpStmt>& op_stmts,
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
-    std::function<tAsOutput<bool>(const equation::Index&)>* AsOutput4Index,
+    std::function<tOut<bool>(const equation::Index&)>* AsOutput4Index,
     std::function<equation::Index(const equation::Index&)>*
         OutMsgBoxIndex4InMsgBoxIndex) {
   using Index2AsOutput = std::unordered_map<equation::Index, tAsOutput<bool>>;
@@ -240,7 +251,7 @@ equation::GraphView MakeParametersGraphViewForPartition(
     const List<m_expr::OpStmt>& op_stmts) {
   equation::Equations equations{};
 
-  std::function<tAsOutput<bool>(const equation::Index&)> AsOutput4Index{};
+  std::function<tOut<bool>(const equation::Index&)> AsOutput4Index{};
   std::function<equation::Index(const equation::Index&)>
       OutMsgBoxIndex4InMsgBoxIndex{};
   MakeGetters4Indexes(op_stmts,
@@ -322,20 +333,25 @@ std::unordered_map<AnchorIndex, AnchorGroup> PartitionOpStmtsIntoAnchorGroups(
   const auto& equation_graph_view =
       MakeGlobalEquationGraphViewForPartition(EquationCtx4OpStmt, op_stmts);
 
+  std::unordered_set<m_expr::OpStmt> all_visited_op_stmts{};
+
   while (!candidate_anchor_indexes->empty()) {
     AnchorIndex anchor_tensor =
         PickThenEraseAnchorIndex(candidate_anchor_indexes);
 
-    const auto& visited_op_stmts = FindVisitedOpStmts(
-        anchor_tensor, equation_graph_view, OpStmt4OpPlaceHolder);
-    CHECK(!visited_op_stmts->empty());
+    const auto& [opt_anchor_op_stmt, visited_op_stmts] =
+      FindVisitedOpStmts(
+          anchor_tensor, equation_graph_view, OpStmt4OpPlaceHolder, EquationCtx4OpStmt);
+    if (visited_op_stmts->empty()) { continue; }
+    CHECK(opt_anchor_op_stmt.has_value());
+    all_visited_op_stmts.insert(visited_op_stmts->begin(), visited_op_stmts->end());
 
     AnchorGroup igroup_spec{
-        anchor_tensor, visited_op_stmts, EquationCtx4OpStmt};
+        anchor_tensor, opt_anchor_op_stmt.value(), visited_op_stmts, EquationCtx4OpStmt};
     UpdataAnchorIndex2AnchorGroup(igroup_spec, &anchor_index2igroup_spec);
     EraseCandidateAnchorIndexes(igroup_spec, candidate_anchor_indexes);
   }
-
+  CHECK_EQ(all_visited_op_stmts.size(), op_stmts->size()) << "Some fake_op_placeholders are not visited";
   return anchor_index2igroup_spec;
 }
 
