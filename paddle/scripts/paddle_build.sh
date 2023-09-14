@@ -783,7 +783,7 @@ function run_linux_cpu_test() {
     if [ -d "${PADDLE_ROOT}/dist/" ]; then
         pip install ${PADDLE_ROOT}/dist/*whl
     fi
-    cp ${PADDLE_ROOT}/build/test/legacy_test/eager_op_test.py ${PADDLE_ROOT}/build/python
+    cp ${PADDLE_ROOT}/build/test/legacy_test/op_test.py ${PADDLE_ROOT}/build/python
     cp ${PADDLE_ROOT}/build/test/legacy_test/testsuite.py ${PADDLE_ROOT}/build/python
     cp -r ${PADDLE_ROOT}/build/test/white_list ${PADDLE_ROOT}/build/python
     ut_total_startTime_s=`date +%s`
@@ -1174,9 +1174,9 @@ EOF
 }
 
 function check_diff_file_for_coverage() {
-    diff_h_file=$(git diff --name-status test develop | awk '$1 != "D" {print $2}' | grep '\.h$' | awk -F "/" '{printf "%s,",$NF}')
-    diff_cc_file=$(git diff --name-status test develop | awk '$1 != "D" {print $2}' | grep -E '\.(cc|c)$' | awk -F "/" '{printf "%s,",$NF}')
-    diff_py_file=$(git diff --name-status test develop | grep '\.py$' | awk '$1 != "D" {printf "%s,",$2}')
+    diff_h_file=$(git diff --name-status test -- | awk '$1 != "D" {print $2}' | grep '\.h$' | awk -F "/" '{printf "%s,",$NF}')
+    diff_cc_file=$(git diff --name-status test -- | awk '$1 != "D" {print $2}' | grep -E '\.(cc|c)$' | awk -F "/" '{printf "%s,",$NF}')
+    diff_py_file=$(git diff --name-status test -- | grep '\.py$' | awk '$1 != "D" {printf "%s,",$2}')
     export PADDLE_GIT_DIFF_H_FILE=${diff_h_file%*,}
     export PADDLE_GIT_DIFF_CC_FILE=${diff_cc_file%*,}
     export PADDLE_GIT_DIFF_PY_FILE=${diff_py_file%*,}
