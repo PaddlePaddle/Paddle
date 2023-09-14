@@ -138,6 +138,7 @@ def shard_tensor(
     ), "The length of sharding_specs must be same as the shape of the input tensor."
 
     if paddle.in_dynamic_mode():
+        # here the dist tensor is deep copy constructed
         if isinstance(data, EagerParamBase):
             return EagerParamBase.from_tensor(
                 data, dist_attr=dist_attr, **data.__dict__
