@@ -96,22 +96,14 @@ void StackOpMapper(const paddle::cpp::OpDesc& op_desc,
   auto concat_out = ctx.Builder()->Concat(xs, axis);
 
   int rank = concat_out->shape.size();
-  axis = axis >= 0 ? axis : axis + rank;
-  CHECK(axis >= 0 && axis < rank)
-      << "The axis of stack should >=0 and <rank(x)! Please check.";
+  axis = axis >= 0 ? axis : axis + rank + 1;
+  CHECK(axis >= 0 && axis < rank + 1)
+      << "The axis of stack should >= 0 and < rank(x) + 1! Please check.";
 
   // N * [A, B] with axis=0 --> [N, A, B]; N * [A, B] with axis=1 --> [A, N, B];
-  cinn::utils::ShapeType new_shape;
-  for (int i = 0; i < rank; ++i) {
-    auto dim = concat_out->shape[i];
-    if (i != axis) {
-      new_shape.emplace_back(dim);
-    } else {
-      new_shape.emplace_back(xs.size());
-      // the shape same ensure `dim % xs.size() == 0`
-      new_shape.emplace_back(dim / xs.size());
-    }
-  }
+  cinn::utils::ShapeType new_shape(concat_out->shape);
+  new_shape.insert(new_shape.begin() + axis, xs.size());
+
   auto out = ctx.Builder()->Reshape(concat_out, new_shape);
 
   ctx.AddVar(out_name, out);
