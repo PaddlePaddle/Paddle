@@ -26,7 +26,8 @@ _PREPARE_DATA_WITH_UNKNOW_ATTRIBUTE = {
     'SumOp',
     'SplitWithNumOp',
     'ConcatOp',
-    'ConcatGradOp' 'MeanOp',
+    'ConcatGradOp',
+    'MeanOp',
 }
 
 
