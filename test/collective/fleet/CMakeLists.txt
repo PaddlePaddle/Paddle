@@ -702,7 +702,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21272;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python;FLAGS_new_executor_micro_batching=False"
+    "PADDLE_DIST_UT_PORT=21272;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_ir_pass_pipeline PROPERTIES TIMEOUT "240")
 endif()

@@ -33,7 +33,7 @@ class TestPipeline(TestDistBase):
         self._nccl_comm_num = 1
 
     def need_envs(self):
-        return {}
+        return {'FLAGS_new_executor_micro_batching': '0'}
 
     def test_dist_train(self):
         if fluid.core.is_compiled_with_cuda():
