@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
 import paddle
 from paddle import base
@@ -417,7 +417,7 @@ class TestFillConstantImperative(unittest.TestCase):
 
 class TestFillConstantOpError(unittest.TestCase):
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle_static_guard(), program_guard(Program(), Program()):
             # for ci coverage
             x1 = paddle.static.data(name='x1', shape=[-1, 1], dtype="int16")
             self.assertRaises(
