@@ -17,6 +17,7 @@
 
 #include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/interface_support.h"
+#include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/utils.h"
 

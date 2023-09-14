@@ -134,6 +134,14 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   }
 
   ///
+  /// \brief Check whether shape has any size indicating a dynamic dimension.
+  ///
+  bool hasStaticShape() const {
+    return (*this).hasRank() &&
+           !pir::ShapedTypeInterface::isDynamicShape((*this).getShape());
+  }
+
+  ///
   /// \brief Check whether the given dimension has a dynamic size.Aborts for
   /// unranked types.
   ///

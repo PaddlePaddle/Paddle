@@ -104,13 +104,13 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
         else:
             if output.shape != grad.shape:
                 raise ValueError(
-                    "The shape of grad_output[%d] should be the same as the shape of output[%d]"
-                    % (i, i)
+                    "The shape of grad_output[%d] %s should be the same as the shape of output[%d] %s"
+                    % (i, str(output.shape), i, str(grad.shape))
                 )
             if output.dtype != grad.dtype:
                 raise ValueError(
-                    "The dtype of grad_output[%d] should be the same as the dtype of output[%d]"
-                    % (i, i)
+                    "The dtype of grad_output[%d] %s should be the same as the dtype of output[%d] %s"
+                    % (i, str(output.dtype), i, str(grad.dtype))
                 )
             feedop = grad.get_defining_op()
             update_bwdop_structure(
@@ -346,8 +346,31 @@ def append_backward_ops(
         output_grads = []
         for i, value in enumerate(op.results()):
             if (
+                value in state.value_to_valuegrad
+                and len(state.value_to_valuegrad[value])
+            ) > 1:
+                # one value is input of more than one fwd_op,
+                # so more than one bwd_op create input_grad,
+                # need add sum op to accumulate gradient
+                paddle.add_n(
+                    [item[0] for item in state.value_to_valuegrad[value]]
+                )
+                combineop = block.ops[len(block.ops) - 2]
+                sumop = block.ops[len(block.ops) - 1]
+                update_bwdop_structure(
+                    backward_ops, state.op_to_opgrad[op], combineop
+                )
+                update_bwdop_structure(
+                    backward_ops, state.op_to_opgrad[op], sumop
+                )
+                state.value_to_valuegrad[value] = [[sumop.result(0)]]
+                state.value_to_sumvaluegrad[value] = state.value_to_valuegrad[
+                    value
+                ]
+
+            if (
                 value not in state.value_to_valuegrad
-                or state.value_to_valuegrad[value] is None
+                or state.value_to_valuegrad[value] == []
             ):
                 if (
                     not value.use_empty()
@@ -360,7 +383,8 @@ def append_backward_ops(
                         value.first_use().owner()
                     )
                     zero_flag[i] = all(split_zero_flag)
-                    state.value_to_valuegrad[value] = [split_output_grad]
+                    grad_values = [value[0] for value in split_output_grad]
+                    state.value_to_valuegrad[value] = [grad_values]
                 else:
                     # first case:
                     # this fwd_op's output didn't used by other fwd_op,
@@ -383,33 +407,21 @@ def append_backward_ops(
 
                     state.value_to_valuegrad[value] = [[grad_value]]
 
-            if len(state.value_to_valuegrad[value]) > 1:
-                # one value is input of more than one fwd_op,
-                # so more than one bwd_op create input_grad,
-                # need add sum op to accumulate gradient
+            output_grads.append(state.value_to_valuegrad[value][0])
 
-                paddle.add_n(
-                    [item[0] for item in state.value_to_valuegrad[value]]
-                )
-                combineop = block.ops[len(block.ops) - 2]
-                sumop = block.ops[len(block.ops) - 1]
-                update_bwdop_structure(
-                    backward_ops, state.op_to_opgrad[op], combineop
-                )
-                update_bwdop_structure(
-                    backward_ops, state.op_to_opgrad[op], sumop
-                )
-                state.value_to_valuegrad[value] = [[sumop.result(0)]]
-                state.value_to_sumvaluegrad[value] = state.value_to_valuegrad[
-                    value
-                ]
-
-            output_grads.append(state.value_to_valuegrad[value][0][0])
         return zero_flag, output_grads
 
     def make_input_stopgradient(op):
         input_grad_stopgradients = []
-        for input in op.operands_source():
+        if op.name() == "builtin.combine":
+            grad_semantic_info = [True for _ in range(op.num_operands())]
+        else:
+            grad_semantic_info = op.get_input_grad_semantics()
+        for input, grad_semantic in zip(
+            op.operands_source(), grad_semantic_info
+        ):
+            if not grad_semantic:
+                continue
             if input.get_defining_op().name() == "builtin.combine":
                 stop_gradient = make_input_stopgradient(input.get_defining_op())
                 input_grad_stopgradients.append(
@@ -423,7 +435,16 @@ def append_backward_ops(
         return input_grad_stopgradients
 
     def update_input_grad_map(op, input_grads):
-        for i, input in enumerate(op.operands_source()):
+        i = 0
+        if op.name() == "builtin.combine":
+            grad_semantic_info = [True for _ in range(op.num_operands())]
+        else:
+            grad_semantic_info = op.get_input_grad_semantics()
+        for input, grad_semantic in zip(
+            op.operands_source(), grad_semantic_info
+        ):
+            if not grad_semantic:
+                continue
             if input.get_defining_op().name() == "builtin.combine":
                 update_input_grad_map(input.get_defining_op(), input_grads[i])
             else:
@@ -432,6 +453,7 @@ def append_backward_ops(
                     state.value_to_valuegrad[input].append(input_grad)
                 else:
                     state.value_to_valuegrad[input].append([input_grad])
+            i += 1
 
     # there are four patterns:
     # [builtin.combine , op1] (op1's one input is vectorType, outputs are not vectorType)
@@ -449,9 +471,7 @@ def append_backward_ops(
     for op in clear_effective_forward_ops:
         if paddle.framework.core.has_vjp(op):
             # prepare output_grad
-            output_grads = []  # (opresult)
-            zero_flag, output_grad = make_output_grad(op)
-            output_grads.append(output_grad)
+            zero_flag, output_grads = make_output_grad(op)
 
             # all(zero_flag) support this op has no contribution for grad
             # should be delete (prune sub_graph)
@@ -585,7 +605,6 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         block, inverse_effective_forward_ops, no_grad_set, backward_ops, state
     )
     # now value_to_valuegrad should be value <-> value (add sum op for the same values's gradvalue)
-
     outputs_set, inputs_set, no_gradvar_set = create_backward_prune_set(
         inputs, complete_outputs, no_grad_set, state
     )
