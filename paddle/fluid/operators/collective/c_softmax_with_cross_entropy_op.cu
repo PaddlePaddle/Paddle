@@ -21,6 +21,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/cross_entropy.h"
 #include "paddle/phi/kernels/funcs/math.h"
@@ -169,14 +172,15 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
                         platform::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
-
       stream = comm_ctx->GetStream();
-      VLOG(3) << "new comm_context_manager has ring_id " << rid;
-    } else {  // old comm_context
+      VLOG(3) << "new NCCLCommContext has rid " << rid;
+    } else {
       comm = platform::NCCLCommContext::Instance().Get(rid, place);
-
-      stream = comm->stream();
-      VLOG(3) << "old NCCLCommContext has ring_id " << rid;
+      // use global calculate stream
+      stream = static_cast<phi::GPUContext*>(
+                   platform::DeviceContextPool::Instance().Get(place))
+                   ->stream();
+      VLOG(3) << "old NCCLCommContext has rid " << rid;
     }
 
     // allocate memory on device.
@@ -286,6 +290,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
           comm->comm(),
           stream));
     }
+
+    // step 4, obtain exp(logit)
     eigen_softmax.device(*dev_ctx.eigen_device()) = eigen_softmax.exp();
 
     // step 5, obtain sum_exp_logits
