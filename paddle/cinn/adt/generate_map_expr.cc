@@ -157,10 +157,10 @@ equation::GraphView MakeEquationGraphView(const std::shared_ptr<IGroup>& igroup,
 using TensorIndex = equation::Variable;
 using TensorIndexExpr = equation::Value;
 
-std::unordered_map<equation::Variable, equation::Value>
+std::unordered_map<equation::Variable, const equation::Value>
 MakeSdIterator2LoopDescriptor(const IGroup& igroup,
                               const ScheduleDescriptor& sd) {
-  std::unordered_map<equation::Variable, equation::Value> ret{};
+  std::unordered_map<equation::Variable, const equation::Value> ret{};
   CHECK_EQ(igroup->loop_iterators()->size(), sd->size());
 
   for (std::size_t i = 0; i < sd->size(); ++i) {

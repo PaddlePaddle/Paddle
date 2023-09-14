@@ -35,7 +35,7 @@ Edge T0 T1 = (T0, T1)
 class Graph final : public std::enable_shared_from_this<Graph> {
  public:
   using V2Fs = std::unordered_map<Variable, std::vector<const Function*>>;
-  using F2Vs = std::unordered_map<Function*, std::vector<const Variable>>;
+  using F2Vs = std::unordered_map<const Function*, std::vector<const Variable>>;
 
   explicit Graph(const Functions& equations)
       : functions_(equations),
@@ -112,9 +112,9 @@ class Graph final : public std::enable_shared_from_this<Graph> {
     };
   }
 
-  static EquationGraphTopoWalker<Variable, Function*> GetMergedWalker(
+  static EquationGraphTopoWalker<Variable, const Function*> GetMergedWalker(
       const Graph& lhs, const Graph& rhs) {
-    return EquationGraphTopoWalker<Variable, Function*>(
+    return EquationGraphTopoWalker<Variable, const Function*>(
         /*NextFunctionsVisitor=*/Merge(lhs.GetNextFunctionsVisitor(),
                                        rhs.GetNextFunctionsVisitor()),
         /*InputVariablesVisitor=*/
@@ -124,8 +124,8 @@ class Graph final : public std::enable_shared_from_this<Graph> {
               rhs.GetOutputVariablesVisitor()));
   }
 
-  EquationGraphTopoWalker<Variable, Function*> GetGraphView() const {
-    return EquationGraphTopoWalker<Variable, Function*>(
+  EquationGraphTopoWalker<Variable, const Function*> GetGraphView() const {
+    return EquationGraphTopoWalker<Variable, const Function*>(
         /*NextFunctionsVisitor=*/GetNextFunctionsVisitor(),
         /*InputVariablesVisitor=*/GetInputVariablesVisitor(),
         /*OutputVariablesVisitor=*/GetOutputVariablesVisitor());
