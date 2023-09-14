@@ -239,21 +239,24 @@ def fused_allreduce_gradients_with_group(
 
 
 def fused_allreduce_gradients(parameter_list, hcg):
-    dp_enabled = hcg.get_data_parallel_world_size() > 1
-    sep_enabled = hcg.get_sep_parallel_world_size() > 1
-    assert (
-        dp_enabled or sep_enabled
-    ), f"dp_enabled {dp_enabled}; sep_enabled {sep_enabled}"
     group = None
-    # sep all reduce is not scaled
-    scale = 1.0
-    if dp_enabled:
-        group = hcg.get_data_parallel_group()
-        scale = group.nranks
-    if sep_enabled:
-        sep_group = hcg.get_sep_parallel_group()
-        dp_sep_group = hcg.get_dp_sep_parallel_group()
-        group = sep_group if group is None else dp_sep_group
+    scale = None
+    if hcg is not None:
+        dp_enabled = hcg.get_data_parallel_world_size() > 1
+        sep_enabled = hcg.get_sep_parallel_world_size() > 1
+        assert (
+            dp_enabled or sep_enabled
+        ), f"dp_enabled {dp_enabled}; sep_enabled {sep_enabled}"
+        group = None
+        # sep all reduce is not scaled
+        scale = 1.0
+        if dp_enabled:
+            group = hcg.get_data_parallel_group()
+            scale = group.nranks
+        if sep_enabled:
+            sep_group = hcg.get_sep_parallel_group()
+            dp_sep_group = hcg.get_dp_sep_parallel_group()
+            group = sep_group if group is None else dp_sep_group
 
     logger.debug("dp or sep start fuse allreduce gradients")
     fused_allreduce_gradients_with_group(parameter_list, group, scale=scale)
