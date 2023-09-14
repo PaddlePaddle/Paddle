@@ -927,7 +927,7 @@ def get_package_data_and_package_dir():
 
     if env_dict.get("WITH_SHARED_IR") == "ON":
         package_data['paddle.libs'] += [
-            ('libir' if os.name != 'nt' else 'ir') + ext_suffix
+            ('libpir' if os.name != 'nt' else 'pir') + ext_suffix
         ]
         shutil.copy(env_dict.get("IR_LIB"), libs_path)
 
