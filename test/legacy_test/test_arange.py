@@ -48,7 +48,7 @@ class TestArangeOp(OpTest):
         self.case = (0, 1, 0.2)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestFloatArangeOp(TestArangeOp):
@@ -65,7 +65,7 @@ class TestFloa16ArangeOp(TestArangeOp):
         self.case = (0, 5, 1)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 @unittest.skipIf(
@@ -99,7 +99,7 @@ class TestBFloat16ArangeOp(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_new_ir=True)
 
 
 class TestInt32ArangeOp(TestArangeOp):

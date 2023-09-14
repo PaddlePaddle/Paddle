@@ -40,6 +40,7 @@ from ..framework import (
     convert_np_dtype_to_dtype_,
     core,
     in_dynamic_mode,
+    in_new_ir_mode,
 )
 
 __all__ = []
@@ -1388,7 +1389,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
     elif step.dtype != dtype:
         step = paddle.cast(step, dtype)
 
-    if in_dynamic_mode():
+    if in_new_ir_mode():
         return _C_ops.arange(start, end, step, dtype, _current_expected_place())
     else:
         check_dtype(
