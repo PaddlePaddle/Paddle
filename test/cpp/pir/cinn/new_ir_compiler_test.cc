@@ -27,10 +27,14 @@
 
 #include "paddle/cinn/utils/data_util.h"
 
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/convert_to_dialect.h"
 #include "paddle/cinn/hlir/framework/new_ir_compiler.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 
 using cinn::hlir::framework::newir::Group;
 using cinn::hlir::framework::newir::GroupPtr;
@@ -75,6 +79,71 @@ ProgramInfo BuildProgram() {
                                       relu_op_y.operation()})));
 
   return {program, groups};
+}
+
+std::shared_ptr<::pir::Program> BuildGroupProgram() {
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<::pir::ControlFlowDialect>();
+
+  auto program = std::make_shared<::pir::Program>(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+
+  const float value_one = 1.0;  // relu(tan(1.)) = 1.5;
+  auto group_op1 = builder.Build<cinn::dialect::GroupOp>(
+      std::vector<pir::Type>{builder.float32_type()});
+  pir::Block* block1 = group_op1.Block();
+  builder.SetInsertionPointToEnd(block1);
+  auto full_op_x =
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{64, 128},
+                                             value_one,
+                                             phi::DataType::FLOAT32,
+                                             phi::GPUPlace());
+  builder.Build<::pir::YieldOp>(std::vector<::pir::OpResult>{full_op_x.out()});
+
+  auto group_op2 = builder.Build<cinn::dialect::GroupOp>(
+      std::vector<pir::Type>{builder.float32_type()});
+  pir::Block* block2 = group_op2.Block();
+  builder.SetInsertionPointToEnd(block2);
+
+  auto tan_op_x = builder.Build<paddle::dialect::TanOp>(group_op1->result(0));
+  auto relu_op_x = builder.Build<paddle::dialect::ReluOp>(tan_op_x->result(0));
+  auto tan_op_y = builder.Build<paddle::dialect::TanOp>(relu_op_x->result(0));
+  auto relu_op_y = builder.Build<paddle::dialect::ReluOp>(tan_op_y->result(0));
+  builder.Build<::pir::YieldOp>(std::vector<::pir::OpResult>{relu_op_y.out()});
+
+  return program;
+}
+
+TEST(NewIRCompier, Group) {
+  // Step 1: Construct pir::Program
+  std::shared_ptr<::pir::Program> program = BuildGroupProgram();
+  // EXPECT_EQ(program->block()->size(), 6u);
+  LOG(INFO) << program->block()->size();
+
+  std::stringstream ss;
+  program->Print(ss);
+  LOG(INFO) << ss.str();
+
+  // Step 2: Compiler New pir::Program into Runtime Program
+  // auto target = cinn::common::DefaultNVGPUTarget();
+  // auto scope = cinn::hlir::framework::BuildScope(target, *program);
+  // ASSERT_EQ(scope->var_names().size(), 6);
+
+  // cinn::hlir::framework::NewIRCompiler ir_compiler(*program, target, scope);
+  // auto runtime_program = ir_compiler.Build();
+
+  // // Step 3: Execute Runtime Instruction and check Scope.
+  // ASSERT_NO_THROW(runtime_program->Execute());
+  // for (auto& var_name : scope->var_names()) {
+  //   std::string name = {var_name.begin(), var_name.end()};
+  //   std::vector<float> data =
+  //       cinn::GetTensorData<float>(scope->GetTensor(name), target);
+  //   for (int i = 0; i < 1; ++i) {
+  //     LOG_FIRST_N(INFO, 10) << "data: " << data[i];
+  //   }
+  // }
 }
 
 TEST(NewIRCompier, CompilerAndRun) {
