@@ -37,7 +37,6 @@ namespace paddle {
 
 using framework::Variable;
 using framework::ir::Graph;
-using phi::CPUPlace;
 using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<float, Eigen::Dynamic, 1>>;
 using EigenMatrixDoubleArray =

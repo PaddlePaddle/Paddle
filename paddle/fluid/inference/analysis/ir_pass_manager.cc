@@ -33,7 +33,6 @@
 namespace paddle {
 namespace inference {
 namespace analysis {
-using string::PrettyLog;
 using string::PrettyLogEndl;
 using string::Style;
 
@@ -164,6 +163,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("min_subgraph_size",
                 new int(argument->tensorrt_min_subgraph_size()));
       pass->Set("mark_output", new bool(argument->trt_mark_output()));
+      pass->Set("mark_output_with_id",
+                new bool(argument->trt_mark_output_with_id()));
       pass->Set(
           "output_tensor_names",
           new std::vector<std::string>(argument->trt_output_tensor_names()));

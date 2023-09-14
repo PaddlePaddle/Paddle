@@ -19,7 +19,6 @@
 #include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/call_arg_list_to_pod_value.h"
 #include "paddle/cinn/optim/cast_bool_to_int8.h"
-#include "paddle/cinn/optim/cast_simplify.h"
 #include "paddle/cinn/optim/eliminate_broadcast_in_forloop.h"
 #include "paddle/cinn/optim/extern_call_process.h"
 #include "paddle/cinn/optim/fold_cinn_call_arguments.h"
@@ -28,7 +27,6 @@
 #include "paddle/cinn/optim/lower_function_call_bind_vars.h"
 #include "paddle/cinn/optim/lower_intrin.h"
 #include "paddle/cinn/optim/map_extern_call.h"
-#include "paddle/cinn/optim/remove_nested_block.h"
 #include "paddle/cinn/optim/remove_schedule_block.h"
 #include "paddle/cinn/optim/replace_const_param_to_integer.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
@@ -66,8 +64,8 @@ Expr Optimize(Expr e,
   CudaSyncThreadsDropIfThenElse(&copied);
 #endif
 
-  RemoveNestedBlock(&copied);
-  VLOG(4) << "After Optimize RemoveNestedBlock:" << copied;
+  SimplifyBlocks(&copied);
+  VLOG(4) << "After SimplifyBlocks:" << copied;
 
   MapExternCall(&copied, target);
   VLOG(10) << "After Optimize MapExternCall:" << copied;

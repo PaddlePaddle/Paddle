@@ -11,7 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/pybind/eager_utils.h"
 #include <Python.h>
-#include "paddle/ir/core/value.h"
+#include "paddle/pir/core/value.h"
 // Avoid a problem with copysign defined in pyconfig.h on Windows.
 #ifdef copysign
 #undef copysign
@@ -61,9 +61,7 @@ extern PyTypeObject* g_customplace_pytype;
 extern PyTypeObject* g_framework_tensor_pytype;
 extern PyTypeObject* g_framework_lodtensorarray_pytype;
 extern PyTypeObject* g_jit_function_pytype;
-#ifdef PADDLE_WITH_DISTRIBUTE
 extern PyTypeObject* g_tensor_dist_attr_pytype;
-#endif
 
 int TensorDtype2NumpyDtype(phi::DataType dtype) {
   switch (dtype) {
@@ -140,6 +138,25 @@ bool PyObject_CheckIROpResult(PyObject* obj) {
   return PyObject_TypeCheck(obj, g_ir_opresult_pytype);
 }
 
+bool PyObject_CheckIRVectorOfOpResult(PyObject* obj) {
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    // if obj is [], parse it as std::vector<scalar>
+    if (len == 0) {
+      return false;
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GetItem(obj, i);
+      if (!PyObject_CheckIROpResult(item)) {
+        return false;
+      }
+    }
+    return true;
+  } else {
+    return false;
+  }
+}
 bool CastPyArg2AttrBoolean(PyObject* obj, ssize_t arg_pos) {
   if (obj == Py_None) {
     return false;  // To be compatible with QA integration testing. Some
@@ -549,9 +566,9 @@ platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
   return place;
 }
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 using phi::distributed::TensorDistAttr;
 TensorDistAttr CastPyArg2DistAttr(PyObject* obj, ssize_t arg_pos) {
+#ifdef PADDLE_WITH_DISTRIBUTE
   if (PyObject_IsInstance(
           obj, reinterpret_cast<PyObject*>(g_tensor_dist_attr_pytype))) {
     return ::pybind11::handle(obj).cast<TensorDistAttr>();
@@ -562,8 +579,13 @@ TensorDistAttr CastPyArg2DistAttr(PyObject* obj, ssize_t arg_pos) {
         arg_pos + 1,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
-}
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "The parsing of `DistAttr` is not supported in the current "
+      "PaddlePaddle, please recompile and installPaddlePaddle with the option "
+      "of `WITH_DISTRIBUTE=ON`."));
 #endif
+}
 
 phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_TypeCheck(obj, g_framework_tensor_pytype)) {
@@ -661,7 +683,7 @@ paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s: argument (position %d) must be "
-        "one of core.VarDesc.VarType, "
+        "one of paddle::DataType, "
         "but got %s",
         op_type,
         arg_pos + 1,
@@ -885,13 +907,13 @@ PyObject* ToPyObject(const phi::DenseTensor* value) {
   return obj.ptr();
 }
 
-PyObject* ToPyObject(const ir::OpResult& value) {
+PyObject* ToPyObject(const pir::OpResult& value) {
   auto obj = ::pybind11::cast(value);
   obj.inc_ref();
   return obj.ptr();
 }
 
-PyObject* ToPyObject(const std::vector<ir::OpResult>& value) {
+PyObject* ToPyObject(const std::vector<pir::OpResult>& value) {
   PyObject* result = PyList_New((Py_ssize_t)value.size());
 
   for (size_t i = 0; i < value.size(); i++) {
@@ -901,19 +923,31 @@ PyObject* ToPyObject(const std::vector<ir::OpResult>& value) {
   return result;
 }
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 PyObject* ToPyObject(const phi::distributed::DistTensor* value) {
+#ifdef PADDLE_WITH_DISTRIBUTE
   auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
   obj.inc_ref();
   return obj.ptr();
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "DistTensor to PyObject is not supported in the current "
+      "PaddlePaddle, please recompile and installPaddlePaddle with the option "
+      "of `WITH_DISTRIBUTE=ON`."));
+#endif
 }
 
 PyObject* ToPyObject(const phi::distributed::TensorDistAttr* value) {
+#ifdef PADDLE_WITH_DISTRIBUTE
   auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
   obj.inc_ref();
   return obj.ptr();
-}
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "TensorDistAttr to PyObject is not supported in the current "
+      "PaddlePaddle, please recompile and installPaddlePaddle with the option "
+      "of `WITH_DISTRIBUTE=ON`."));
 #endif
+}
 
 PyObject* ToPyObject(const phi::SelectedRows* value) {
   auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
@@ -1470,11 +1504,13 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
   }
 }
 
-ir::OpResult CastPyArg2OpResult(PyObject* obj,
-                                const std::string& op_type,
-                                size_t arg_pos) {
+pir::OpResult CastPyArg2OpResult(PyObject* obj,
+                                 const std::string& op_type,
+                                 size_t arg_pos) {
   if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
-    return ::pybind11::handle(obj).cast<ir::OpResult>();
+    return ::pybind11::handle(obj).cast<pir::OpResult>();
+  } else if (obj == nullptr || obj == Py_None) {
+    return pir::OpResult();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
@@ -1485,17 +1521,17 @@ ir::OpResult CastPyArg2OpResult(PyObject* obj,
   }
 }
 
-std::vector<ir::OpResult> CastPyArg2VectorOfOpResult(PyObject* obj,
-                                                     const std::string& op_type,
-                                                     size_t arg_pos) {
-  std::vector<ir::OpResult> result_list;
+std::vector<pir::OpResult> CastPyArg2VectorOfOpResult(
+    PyObject* obj, const std::string& op_type, size_t arg_pos) {
+  std::vector<pir::OpResult> result_list;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
       if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
-        result_list.emplace_back(::pybind11::handle(item).cast<ir::OpResult>());
+        result_list.emplace_back(
+            ::pybind11::handle(item).cast<pir::OpResult>());
       } else if (item == Py_None) {
         continue;
       } else {
@@ -1514,7 +1550,8 @@ std::vector<ir::OpResult> CastPyArg2VectorOfOpResult(PyObject* obj,
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
       if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
-        result_list.emplace_back(::pybind11::handle(item).cast<ir::OpResult>());
+        result_list.emplace_back(
+            ::pybind11::handle(item).cast<pir::OpResult>());
       } else if (item == Py_None) {
         continue;
       } else {
@@ -1528,7 +1565,7 @@ std::vector<ir::OpResult> CastPyArg2VectorOfOpResult(PyObject* obj,
       }
     }
   } else if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
-    return {::pybind11::handle(obj).cast<ir::OpResult>()};
+    return {::pybind11::handle(obj).cast<pir::OpResult>()};
   } else if (obj == Py_None) {
     return {};
   } else {
@@ -1680,7 +1717,6 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
         arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
-
   // Fake a IntArray
   return paddle::experimental::IntArray({1});
 }
@@ -1819,7 +1855,7 @@ void PyVoidHook::operator()() {
 
 PyObjectHolder::PyObjectHolder(PyObject* ptr) { ptr_ = ptr; }
 
-PyObjectHolder::~PyObjectHolder() {
+PyObjectHolder::~PyObjectHolder() {  // NOLINT
   ::pybind11::gil_scoped_acquire gil;
   Py_XDECREF(ptr_);
 }
@@ -1845,7 +1881,7 @@ void PyObjectHolder::dec_ref() {
 
 PackHook::PackHook(PyObject* hook) : hook_(hook) { Py_INCREF(hook_); }
 
-PackHook::~PackHook() {
+PackHook::~PackHook() {  // NOLINT
   ::pybind11::gil_scoped_acquire gil;
   Py_DECREF(hook_);
 }
@@ -1884,7 +1920,7 @@ void* PackHook::operator()(void* py_tensor) {
 
 UnPackHook::UnPackHook(PyObject* hook) : hook_(hook) { Py_INCREF(hook_); }
 
-UnPackHook::~UnPackHook() {
+UnPackHook::~UnPackHook() {  // NOLINT
   ::pybind11::gil_scoped_acquire gil;
   Py_DECREF(hook_);
 }

@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 
-from ...fluid.framework import Variable
+from ...base.framework import Variable
 
 __all__ = []
 

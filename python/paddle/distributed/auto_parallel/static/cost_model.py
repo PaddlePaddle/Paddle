@@ -164,7 +164,7 @@ class CompOpCostNode(CostNode):
         self.is_optim = is_optim
 
     def init_comp_cost(self, cost_data):
-        # TODO: improve fluid.CostModel for more specific cost_data
+        # TODO: improve base.CostModel for more specific cost_data
         op_id = self.node.desc.id()
         if op_id in cost_data.keys():
             self.cost = cost_data[op_id]
