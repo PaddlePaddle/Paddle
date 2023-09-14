@@ -137,7 +137,6 @@ class TestVjpPrim(unittest.TestCase):
             self.assertEqual(len(grad_outs), 1)
             self.assertEqual(len(newir_program.global_block().ops), 8)
             self.assertEqual(expand_op.result(0), grad_outs[0][0])
-            self.assertEqual(grad_outs[1][0], None)
             all_op_names = [
                 "pd_op.full",
                 "pd_op.full",
