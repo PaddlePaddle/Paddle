@@ -27,7 +27,7 @@ template <typename DoEachT>
 void MapIr::VisitEachTensor(const DoEachT& DoEach) const {
   ForEachTensor([&](const auto& tensor, const auto& as_output) {
     DoEach(tensor, as_output);
-    return tBreak{false};
+    return tBreak<bool>{false};
   });
 }
 
@@ -104,9 +104,9 @@ bool MapIr::IsMergableTo(
                                    tOut<bool> that_as_output) {
     if (CheckBroadcast(tensor) && CheckWrite(this_as_output, that_as_output)) {
       mergable = false;
-      return tBreak{true};
+      return tBreak<bool>{true};
     } else {
-      return tBreak{false};
+      return tBreak<bool>{false};
     }
   };
   AggregateTensorPair(that, UpdataMergable);
@@ -127,9 +127,9 @@ bool MapIr::HasReadWriteDependence(const MapIr& that) const {
                           tOut<bool> that_as_output) {
                         if (CheckWrite(this_as_output, that_as_output)) {
                           has_read_write_dependence = true;
-                          return tBreak{true};
+                          return tBreak<bool>{true};
                         } else {
-                          return tBreak{false};
+                          return tBreak<bool>{false};
                         }
                       });
 
@@ -397,7 +397,7 @@ bool MergePrevToNext4LoopFuse(
     if (CouldPrevMergedToNext(iter)) {
       MergePrevToNext(iter);
       --iter;
-      iter = op_cluster->erase(iter);
+      iter = map_irs->erase(iter);
       ++merge_count;
     } else {
       ++iter;
@@ -449,12 +449,12 @@ bool MergeNextOrPrev4LoopFuse(
   for (auto iter = map_irs->begin(); iter != map_irs->end();) {
     if (CouldThisMergedToNext(iter)) {
       MergeThisToNext(iter);
-      iter = op_cluster->erase(iter);
+      iter = map_irs->erase(iter);
       ++merge_count;
     } else if (CouldPrevMergedToThis(iter)) {
       MergePrevToThis(iter);
       --iter;
-      iter = op_cluster->erase(iter);
+      iter = map_irs->erase(iter);
       ++merge_count;
     } else {
       ++iter;

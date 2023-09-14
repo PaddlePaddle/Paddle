@@ -19,6 +19,6 @@
 
 namespace cinn::adt::equation {
 
-Value SimplifyValue(const IndexExprInferContext& ctx, Value value);
+Value SimplifyValue(Value value);
 
 }

@@ -35,7 +35,7 @@ struct SimplifyDotUndot {
   using source_pattern_type =
       IndexDot<List<ListGetItem<IndexUnDot<Value>, std::int64_t>>>;
 
-  Value MatchAndRewrite(const Value& value, const IndexExprInferContext& ctx) {
+  Value MatchAndRewrite(const Value& value) {
     const auto& [dot_strides, list_get_item_values] =
         value.Get<IndexDot<Value>>().tuple();
     const auto& list_get_items = list_get_item_values.Get<List<Value>>();
@@ -70,7 +70,7 @@ struct SimplifyUndotDot {
   using source_pattern_type =
       ListGetItem<IndexUnDot<IndexDot<List<Value>>>, std::int64_t>;
 
-  Value MatchAndRewrite(const Value& value, const IndexExprInferContext& ctx) {
+  Value MatchAndRewrite(const Value& value) {
     const auto& [index_undot_value, constant_idx] =
         value.Get<ListGetItem<Value, Constant>>().tuple();
     const auto& [undot_strides, index_value] =
@@ -88,7 +88,7 @@ struct SimplifyUndotDot {
 struct SimplifyListGetItem {
   using source_pattern_type = ListGetItem<List<Value>, std::int64_t>;
 
-  Value MatchAndRewrite(const Value& value, const IndexExprInferContext& ctx) {
+  Value MatchAndRewrite(const Value& value) {
     const auto& [list_values, constant_idx] =
         value.Get<ListGetItem<Value, Constant>>().tuple();
     const auto& iter_values = list_values.Get<List<Value>>();
@@ -97,10 +97,10 @@ struct SimplifyListGetItem {
 };
 
 // Only simplify top-layer of value
-Value SimplifyValue(const IndexExprInferContext& ctx, Value value) {
-  value = MatchAndRewrite<SimplifyDotUndot>(value, ctx);
-  value = MatchAndRewrite<SimplifyUndotDot>(value, ctx);
-  value = MatchAndRewrite<SimplifyListGetItem>(value, ctx);
+Value SimplifyValue(Value value) {
+  value = MatchAndRewrite<SimplifyDotUndot>(value);
+  value = MatchAndRewrite<SimplifyUndotDot>(value);
+  value = MatchAndRewrite<SimplifyListGetItem>(value);
   return value;
 }
 

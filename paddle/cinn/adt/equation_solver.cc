@@ -110,7 +110,7 @@ tHasUniqueInferedValue<bool> MergeInferedValuesIntoCtx(
     const Function* function, IndexExprInferContext* ctx) {
   auto output_variable2value = InferValues(function, ctx);
   for (const auto& [variable, unsimplified_value] : output_variable2value) {
-    Value simplified_value({SimplifyValue(*ctx, unsimplified_value)});
+    Value simplified_value({SimplifyValue(unsimplified_value)});
     if (!ctx->HasValue(variable)) {
       ctx->SetValue(variable, simplified_value);
     } else {

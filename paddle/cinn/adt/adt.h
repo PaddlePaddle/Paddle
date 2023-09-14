@@ -100,6 +100,8 @@ class List final {
   List& operator=(const List&) = default;
   List& operator=(List&&) = default;
 
+  explicit List() : vector_(std::make_shared<std::vector<T>>()) {}
+
   template <typename... Args>
   explicit List(Args&&... args)
       : vector_(std::make_shared<std::vector<T>>(
@@ -132,8 +134,10 @@ class Tagged {
   Tagged& operator=(const Tagged&) = default;
   Tagged& operator=(Tagged&&) = default;
 
-  template <typename ValueT>
-  explicit Tagged(ValueT&& value) : value_(value) {}
+  template <
+      typename Arg,
+      std::enable_if_t<!std::is_same_v<std::decay_t<Arg>, Tagged>, bool> = true>
+  explicit Tagged(Arg&& value) : value_(value) {}
 
   const T& value() const { return value_; }
 
@@ -270,10 +274,7 @@ struct Ok final {
   bool operator!=(const Ok&) const { return false; }
 };
 
-DEFINE_ADT_UNION(OpArgPos,
-                 Undefined,
-                 tIn<std::size_t>,
-                 tOut<std::size_t>);
+DEFINE_ADT_UNION(OpArgPos, Undefined, tIn<std::size_t>, tOut<std::size_t>);
 
 #define ADT_TODO() LOG(FATAL) << "TODO"
 
