@@ -58,20 +58,15 @@ void ProgramTranslator::Translate() {
       platform::errors::PreconditionNotMet(
           "Not support multi block ProgramDesc translated, now has %d blocks",
           legacy_program_->Size()));
-  for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
-    const BlockDesc& block = legacy_program_->Block(block_idx);
-    GetParameterForSingleBlock(block);
-  }
 
-  for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
-    const BlockDesc& block = legacy_program_->Block(block_idx);
-    InsertOperationToSingleBlock(block);
-  }
+  GetParameterForSingleBlock(legacy_program_->Block(0));
 
-  for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
-    const BlockDesc& block = legacy_program_->Block(block_idx);
-    SetParameterFromSingleBlock(block);
-  }
+  TranslateBlock(legacy_program_->Block(0),
+                 0,
+                 legacy_program_->Block(0).OpSize() - 1,
+                 program_->block());
+
+  SetParameterFromSingleBlock(legacy_program_->Block(0));
 
   for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
     const BlockDesc& block = legacy_program_->Block(block_idx);
@@ -82,6 +77,48 @@ void ProgramTranslator::Translate() {
     const BlockDesc& block = legacy_program_->Block(block_idx);
     SetIsPersisableAttributeForAllValue(block);
   }
+}
+
+void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
+                                       uint64_t start_id,
+                                       uint64_t end_id,
+                                       pir::Block* dest_block) {
+  PADDLE_ENFORCE(
+      (src_block.OpSize() > end_id) && (start_id < = end_id),
+      platform::errors::NotFound(
+          "Translation of Block needs to meet the requirements of start_id < "
+          "end_id < block_size, but get start_id=%d, end_id=%d, block_size=%d",
+          start_id,
+          end_id,
+          src_block.OpSize()));
+
+  uint64_t op_id = start_id;
+  while (op_id <= end_id) {
+    auto op = src_block.Op(op_id);
+    if (op->Type() == "conditional_block") {
+      std::vector<const OpDesc*> cond_op_list = {op};
+      // Extract Cond Operator List
+      // Verify Cond Operator List
+      // Translate IfOp
+      op_id += cond_op_list.size();
+    } else {
+      TranslateOperation(op, dest_block);
+      op_id++;
+    }
+  }
+}
+
+void ProgramTranslator::TranslateOperation(const OpDesc* src_op,
+                                           pir::Block* dest_block) {
+  auto& op_translator = OpTranslator::instance();
+  OpTranslateFn& fn = op_translator[src_op->Type()];
+  if (src_op->Type() == "shadow_output") {
+    if (!param_map_.count(src_op->Input("x")[0])) {
+      return;
+    }
+  }
+  pir::Operation* operation = fn(ctx_, &param_map_, *src_op, dest_block);
+  VLOG(10) << "[op translated][special]" << operation;
 }
 
 inline pir::Operation* InsertGetParamaterOp(pir::IrContext* ctx,
@@ -178,7 +215,7 @@ void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
         continue;
       }
     }
-    pir::Operation* operation = fn(ctx_, &param_map_, *op, program_);
+    pir::Operation* operation = fn(ctx_, &param_map_, *op, program_->block());
     VLOG(10) << "[op translated][special]" << operation;
   }
 }
