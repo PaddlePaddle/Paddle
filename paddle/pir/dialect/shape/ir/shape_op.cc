@@ -26,15 +26,14 @@ const char *SymbolicDim::attributes_name[attributes_num] = {"knownNegativeOne",
                                                             "sym_name",
                                                             "value"};  // NOLINT
 
-void SymbolicDim::Build(
-    Builder &builder,
-    OperationArgument &argument,
-    const std::string &sym_name,
-    int64_t value,  // TODO(zhangbo) value = ShapedType::kDynamic
-    bool knownNonNegative,
-    bool knownNegativeOne,
-    bool knownNonSizeOne,
-    bool knownNonSizeZero) {
+void SymbolicDim::Build(Builder &builder,
+                        OperationArgument &argument,
+                        const std::string &sym_name,
+                        int64_t value,
+                        bool knownNonNegative,
+                        bool knownNegativeOne,
+                        bool knownNonSizeOne,
+                        bool knownNonSizeZero) {
   pir::Attribute attr_sym_name =
       pir::StrAttribute::get(pir::IrContext::Instance(), sym_name);
   argument.AddAttribute("sym_name", attr_sym_name);
@@ -106,8 +105,8 @@ void SymbolicDim::updateKnownNonSizeZero(bool attrValue) {
 }
 
 bool SymbolicDim::isDynamic() {
-  return getValue() == -100000;
-}  // TODO(zhangbo): getValue() == ShapedType::kDynamic;
+  return getValue() == ShapedTypeInterface::kDynamic;
+}
 
 bool SymbolicDim::merge(SymbolicDim other) {
   if (!isDynamic() && !other.isDynamic() && getValue() != other.getValue())
@@ -173,6 +172,21 @@ void TieProductEqualOp::Build(Builder &builder,
   argument.inputs = inputs;
 }
 
+void TieProductEqualOp::Build(Builder &builder,
+                              OperationArgument &argument,
+                              const std::vector<pir::OpResult> &lhs,
+                              const std::vector<pir::OpResult> &rhs) {
+  pir::Attribute attr_lhs_len =
+      pir::Int64Attribute::get(pir::IrContext::Instance(), lhs.size());
+  argument.AddAttribute("lhs_len", attr_lhs_len);
+  pir::Attribute attr_rhs_len =
+      pir::Int64Attribute::get(pir::IrContext::Instance(), rhs.size());
+  argument.AddAttribute("rhs_len", attr_rhs_len);
+
+  argument.inputs = lhs;
+  argument.inputs.insert(argument.inputs.end(), rhs.begin(), rhs.end());
+}
+
 std::vector<pir::Value> TieProductEqualOp::getLhs() {
   int64_t lhs_len = attribute<pir::Int64Attribute>("lhs_len").data();
   std::vector<pir::Value> res;
@@ -191,9 +205,32 @@ std::vector<pir::Value> TieProductEqualOp::getRhs() {
   return res;
 }
 
+const char *TieShapeOp::attributes_name[attributes_num] = {
+    SymbolicDim::getSymbolicDimAttrName().c_str()};  // NOLINT
+
+void TieShapeOp::Build(Builder &builder,
+                       OperationArgument &argument,
+                       const pir::OpResult &input) {
+  argument.inputs = {input};
+}
+
+pir::Value TieShapeOp::getValue() { return operand_source(0); }
+
+void FuncOp::Build(Builder &builder, OperationArgument &argument) {
+  argument.num_regions = 1;
+}
+
+pir::Block *FuncOp::block() {
+  pir::Region &region = (*this)->region(0);
+  if (region.empty()) region.emplace_back();
+  return region.front();
+}
+
 }  // namespace dialect
 }  // namespace pir
 
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::SymbolicDim)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::DimOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::TieProductEqualOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::TieShapeOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::FuncOp)
