@@ -34,10 +34,6 @@ pir::OpResult zeros_like(pir::OpResult x,
   return paddle::dialect::full_like(x, 0, dtype, place);
 }
 
-pir::OpResult exponential__grad(pir::OpResult out_grad) {
-  return paddle::dialect::zeros_like(out_grad);
-}
-
 pir::OpResult get_parameter(const std::string& name,
                             phi::DataType dtype,
                             const std::vector<int64_t>& shape) {

@@ -29,8 +29,6 @@ pir::OpResult zeros_like(pir::OpResult x,
                          phi::DataType dtype = phi::DataType::UNDEFINED,
                          const Place& place = {});
 
-pir::OpResult exponential__grad(pir::OpResult out_grad);
-
 pir::OpResult get_parameter(const std::string& name,
                             phi::DataType dtype,
                             const std::vector<int64_t>& shape);
