@@ -17,6 +17,7 @@ from typing import Callable
 import paddle
 import paddle.distributed as dist
 from paddle import nn
+from paddle.base.framework import EagerParamBase
 from paddle.distributed.auto_parallel.interface import (
     shard_tensor as shard_tensor_static,
 )
@@ -130,7 +131,8 @@ def shard_tensor(
     """
     # 1. create dense tensor
     # `paddle.to_tensor` supports both dynamic and static mode
-    data = paddle.to_tensor(data)
+    if not isinstance(data, paddle.Tensor):
+        data = paddle.to_tensor(data)
 
     # 2. create dist tensor
     assert len(dist_attr.dims_mapping) == len(
@@ -138,7 +140,12 @@ def shard_tensor(
     ), "The length of sharding_specs must be same as the shape of the input tensor."
 
     if paddle.in_dynamic_mode():
-        return paddle.Tensor(data, dist_attr=dist_attr)
+        if isinstance(data, EagerParamBase):
+            return EagerParamBase.from_tensor(
+                data, dist_attr=dist_attr, **data.__dict__
+            )
+        else:
+            return paddle.Tensor(data, dist_attr=dist_attr)
     else:
         # TODO(zhiqiu): we need to refine the static shard_tensor
         return shard_tensor_static(
@@ -200,17 +207,14 @@ def shard_layer(
         m: nn.Layer, mesh: dist.ProcessMesh
     ) -> None:
         # dist_attr = dist.DistAttr(mesh=mesh)
-        """
-        等待tensor to parameters打通
         for key, param in m._parameters.items():
             if param is not None:
                 m.add_parameter(
                     key,
-                    nn.ParameterList(shard_tensor(param.data, dist_attr=None)),
+                    shard_tensor(param.data, dist_attr=None),
                 )
             else:
                 raise ValueError("param cannot be none")
-        """
         for key, buffer in m._buffers.items():
             if buffer is not None:
                 m._buffers[key] = shard_tensor(buffer)
