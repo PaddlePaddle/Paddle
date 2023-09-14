@@ -293,7 +293,7 @@ create_test_AxisTensor(TestConcatOp3)
 create_test_AxisTensor(TestConcatOp4)
 create_test_AxisTensor(TestConcatOp5)
 create_test_AxisTensor(TestConcatOp6)
-'''
+
 # ----------------Concat Fp16----------------
 
 
@@ -362,8 +362,6 @@ create_test_fp16(TestConcatOp4)
 create_test_fp16(TestConcatOp5)
 
 create_test_fp16(TestConcatOp6)
-
-'''
 
 
 # ----------------Concat Bf16----------------
