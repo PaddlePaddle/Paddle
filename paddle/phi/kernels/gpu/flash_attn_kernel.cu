@@ -125,6 +125,7 @@ void FlashAttnUnpaddedKernel(
       params.head_size_rounded,
       params.dropout,
       params.scale,
+      1.0f / params.scale,
       params.causal,
       params.return_softmax,
       params.is_bf16,
@@ -209,13 +210,7 @@ void FlashAttnKernel(const Context& ctx,
 
   cudaStream_t stream = ctx.stream();
 
-  int64_t q_size = batch_size * seqlen_q * num_heads * head_size;
-  DenseTensor scaled_q =
-      Empty<T>(ctx, {batch_size, seqlen_q, num_heads, head_size});
-  ComputeScaleQ(ctx, q_size, scale, q.data<T>(), scaled_q.data<T>());
-
   bool succ = phi::dynload::flash_attn_fwd(
-      // attn_mask_tensor ? scaled_q.data() : q.data(),
       q.data(),
       k.data(),
       v.data(),
@@ -233,7 +228,6 @@ void FlashAttnKernel(const Context& ctx,
       params.head_size,
       params.head_size_rounded,
       params.dropout,
-      // attn_mask_tensor ? 1.0f : params.scale,
       params.scale,
       std::sqrt(head_size),  // for unscale
       params.causal,

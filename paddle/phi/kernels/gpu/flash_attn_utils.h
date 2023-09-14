@@ -133,6 +133,9 @@ struct FlashAttnFwdParamsV2 {
     ctx.template Alloc<float>(softmax_lse);
 
     if (return_softmax) {
+      PADDLE_ENFORCE(dropout > 0.0f,
+                     "return_softmax is only supported when dropout > 0.0");
+
       softmax->Resize(
           {batch_size, num_heads, seqlen_q_rounded, seqlen_k_rounded});
       ctx.template Alloc<T>(softmax);
