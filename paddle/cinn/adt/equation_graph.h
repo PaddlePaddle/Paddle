@@ -34,8 +34,8 @@ Edge T0 T1 = (T0, T1)
 // clang-format on
 class Graph final : public std::enable_shared_from_this<Graph> {
  public:
-  using V2Fs = std::unordered_map<const Variable, std::vector<const Function*>>;
-  using F2Vs = std::unordered_map<const Function*, std::vector<const Variable>>;
+  using V2Fs = std::unordered_map<Variable, std::vector<const Function*>>;
+  using F2Vs = std::unordered_map<Function*, std::vector<const Variable>>;
 
   explicit Graph(const Functions& equations)
       : functions_(equations),

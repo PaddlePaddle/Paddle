@@ -28,7 +28,7 @@ class IndexExprInferContext final {
   IndexExprInferContext(IndexExprInferContext&&) = delete;
 
   explicit IndexExprInferContext(
-      const std::unordered_map<const Variable, Value>& init_map)
+      const std::unordered_map<Variable, Value>& init_map)
       : map_(init_map) {}
 
   const Value& GetValue(const Variable& variable) const {
@@ -44,7 +44,7 @@ class IndexExprInferContext final {
   }
 
  private:
-  std::unordered_map<const Variable, Value> map_;
+  std::unordered_map<Variable, Value> map_;
 };
 
 }  // namespace cinn::adt::equation
