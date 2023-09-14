@@ -387,6 +387,7 @@ from .tensor.random import poisson  # noqa: F401
 from .tensor.random import multinomial  # noqa: F401
 from .tensor.random import standard_normal  # noqa: F401
 from .tensor.random import normal  # noqa: F401
+from .tensor.random import normal_  # noqa: F401
 from .tensor.random import uniform  # noqa: F401
 from .tensor.random import randn  # noqa: F401
 from .tensor.random import rand  # noqa: F401
@@ -563,6 +564,7 @@ __all__ = [  # noqa
     'any',
     'slice',
     'normal',
+    'normal_',
     'logsumexp',
     'full',
     'unsqueeze',

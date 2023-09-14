@@ -39,6 +39,7 @@ from ..framework import (
     _get_paddle_place,
     convert_np_dtype_to_dtype_,
     core,
+    dygraph_only,
     in_dynamic_mode,
 )
 
@@ -2701,13 +2702,14 @@ def cauchy(shape, dtype, loc=0, scale=1, name=None):
     return out
 
 
+@dygraph_only
 def cauchy_(x, loc=0, scale=1, name=None):
     r"""
     Inplace version of ``cauchy`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_cauchy`.
     """
-    out = cauchy(x.shape, x.dtype, loc=loc, scale=scale, name=name)
-    paddle.assign(out, x)
+    x.normal_()
+    x.subtract_(0.5).scale_(np.pi).tan_().scale_(scale).add_(loc)
     return x
 
 
@@ -2759,11 +2761,14 @@ def geometric(shape, dtype, probs, name=None):
     return out
 
 
+@dygraph_only
 def geometric_(x, probs, name=None):
     r"""
     Inplace version of ``cauchy`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_cauchy`.
     """
-    out = geometric(x.shape, x.dtype, probs)
-    paddle.assign(out, x)
+    tiny = np.finfo(dtype='float32').tiny
+    probs = paddle.to_tensor(probs)
+    x.uniform_(min=float(tiny), max=float(1))
+    x.log_().divide_(paddle.log1p(-(probs)))
     return x

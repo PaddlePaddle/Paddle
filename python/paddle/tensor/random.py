@@ -392,16 +392,16 @@ def gaussian_(x, mean=0.0, std=1.0, seed=0, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>>import paddle
             # example:
-            x = paddle.ones(shape=[3, 4])
-            x.gaussian_()
-            print(x)
+            >>>x = paddle.ones(shape=[3, 4])
+            >>>x.gaussian_()
+            >>>print(x)
             # [[ 0.84524226,  0.6921872,   0.56528175,  0.71690357], # random
             #  [-0.34646994, -0.45116323, -0.09902662, -0.11397249], # random
             #  [ 0.433519,    0.39483607, -0.8660099,   0.83664286]] # random
     """
-    return _C_ops.gaussian_inplace_(x, float(mean), float(std), seed)
+    return _C_ops.gaussian_inplace_(x, float(mean), float(std), int(seed))
 
 
 def standard_normal(shape, dtype=None, name=None):
@@ -604,36 +604,36 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
 @dygraph_only
 def normal_(x, mean=0.0, std=1.0, name=None):
     """
-        This is the inplace version of api ``normal``, which returns a Tensor filled
-        with random values sampled from a normal distribution. The output Tensor will
-        be inplaced with input ``x``. Please refer to :ref:`api_tensor_noraml`.
-    f normal_
-        Args:
-            x(Tensor): The input tensor to be filled with random values.
-            mean (float|Tensor, optional): The mean of the output Tensor's normal distribution.
-                If ``mean`` is float, all elements of the output Tensor shared the same mean.
-                If ``mean`` is a Tensor(data type supports float32, float64), it has per-element means.
-                Default is 0.0
-            std (float|Tensor, optional): The  standard deviation of the output Tensor's normal distribution.
-                If ``std`` is float, all elements of the output Tensor shared the same standard deviation.
-                If ``std`` is a Tensor(data type supports float32, float64), it has per-element standard deviations.
-                Defaule is 1.0
-            name(str, optional): The default value is None. Normally there is no
-                need for user to set this property. For more information, please
-                refer to :ref:`api_guide_Name`.
-        Returns:
-            A Tensor filled with random values sampled from a normal distribution with ``mean`` and ``std`` .
-        Examples:
-            .. code-block:: python
+    This is the inplace version of api ``normal``, which returns a Tensor filled
+    with random values sampled from a normal distribution. The output Tensor will
+    be inplaced with input ``x``. Please refer to :ref:`api_tensor_noraml`.
 
-                import paddle
-                # example:
-                x = paddle.ones(shape=[3, 4])
-                x.normal_()
-                print(x)
-                # [[ 0.84524226,  0.6921872,   0.56528175,  0.71690357], # random
-                #  [-0.34646994, -0.45116323, -0.09902662, -0.11397249], # random
-                #  [ 0.433519,    0.39483607, -0.8660099,   0.83664286]] # random
+    Args:
+        x(Tensor): The input tensor to be filled with random values.
+        mean (float|Tensor, optional): The mean of the output Tensor's normal distribution.
+            If ``mean`` is float, all elements of the output Tensor shared the same mean.
+            If ``mean`` is a Tensor(data type supports float32, float64), it has per-element means.
+            Default is 0.0
+        std (float|Tensor, optional): The  standard deviation of the output Tensor's normal distribution.
+            If ``std`` is float, all elements of the output Tensor shared the same standard deviation.
+            If ``std`` is a Tensor(data type supports float32, float64), it has per-element standard deviations.
+            Defaule is 1.0
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+    Returns:
+        A Tensor filled with random values sampled from a normal distribution with ``mean`` and ``std`` .
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            # example:
+            x = paddle.ones(shape=[3, 4])
+            x.normal_()
+            print(x)
+            # [[ 0.84524226,  0.6921872,   0.56528175,  0.71690357], # random
+            #  [-0.34646994, -0.45116323, -0.09902662, -0.11397249], # random
+            #  [ 0.433519,    0.39483607, -0.8660099,   0.83664286]] # random
     """
     return gaussian_(x, mean=mean, std=std)
 

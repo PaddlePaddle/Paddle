@@ -333,6 +333,7 @@ from .math import polygamma_  # noqa: F401
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
 from .random import normal  # noqa: F401
+from .random import normal_  # noqa: F401
 from .random import uniform  # noqa: F401
 from .random import uniform_  # noqa: F401
 from .random import randn  # noqa: F401
@@ -687,6 +688,7 @@ tensor_method_func = [  # noqa
     'i1e',
     'polygamma',
     'polygamma_',
+    'normal_',
 ]
 
 # this list used in math_op_patch.py for magic_method bind
