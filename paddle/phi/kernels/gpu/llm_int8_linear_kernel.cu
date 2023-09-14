@@ -55,8 +55,6 @@ void llm_int8_compute(const Context& dev_ctx,
                        k,
                        n);
   if (bias) {
-    std::vector<const phi::DenseTensor*> ins = {out, &(bias.get())};
-    std::vector<phi::DenseTensor*> outs = {out};
     phi::AddKernel<T, Context>(dev_ctx, *out, bias.get(), out);
   }
 #else

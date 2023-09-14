@@ -67,8 +67,6 @@ void ReduceMaxGradKernel(const Context& dev_ctx,
       dev_ctx, equal_inputs, &equal_outputs, funcs::EqualFunctor<T>(), 0);
 
   // 2. dx = dout * 1
-  std::vector<const phi::DenseTensor*> mul_inputs = {&new_out_grad, equal_out};
-  std::vector<phi::DenseTensor*> mul_outputs = {x_grad};
   phi::MultiplyKernel<T, Context>(dev_ctx, new_out_grad, *equal_out, x_grad);
 
   delete equal_out;
