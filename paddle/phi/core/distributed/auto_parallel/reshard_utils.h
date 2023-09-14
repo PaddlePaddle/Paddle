@@ -40,7 +40,7 @@ std::vector<int64_t> GetCurRankCoordInMesh(const ProcessMesh& process_mesh);
 // input vector, return a key-value map of tensor_split_axis and
 // process_mesh_split_axis.
 // For example, if dims_mapping is [-1, 1, -1, 0], will return {1: 1, 3: 0}.
-std::map<int64_t, int64_t> GetSplitAxisWithDimsMapping(
+std::map<int, int64_t> GetSplitAxisWithDimsMapping(
     const std::vector<int64_t>& dims_mapping);
 
 // If given a number, balance split it to multiple pieces.

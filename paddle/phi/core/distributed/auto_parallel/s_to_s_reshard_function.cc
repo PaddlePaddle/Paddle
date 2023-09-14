@@ -14,7 +14,6 @@
 
 #include "paddle/phi/core/distributed/auto_parallel/s_to_s_reshard_function.h"
 
-#include "glog/logging.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
@@ -52,9 +51,9 @@ void SToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   auto dtype = in.dtype();
   const auto& logical_ddim = in.dims();
   int64_t nranks = in_process_ids.size();
-  int64_t in_split_axis =
+  int in_split_axis =
       GetSplitAxisWithDimsMapping(in.dist_attr().dims_mapping()).begin()->first;
-  int64_t out_split_axis =
+  int out_split_axis =
       GetSplitAxisWithDimsMapping(out_dist_attr.dims_mapping()).begin()->first;
 
   DenseTensor in_all_to_all = in.value();
@@ -74,7 +73,7 @@ void SToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     std::vector<int> axis;
     axis.emplace_back(out_split_axis);
     for (size_t i = 0; i < pre_shape_vec.size(); ++i) {
-      if (static_cast<int64_t>(i) != out_split_axis) {
+      if (static_cast<int>(i) != out_split_axis) {
         axis.emplace_back(i);
       }
     }
