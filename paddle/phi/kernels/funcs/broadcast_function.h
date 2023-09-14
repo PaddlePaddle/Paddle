@@ -871,59 +871,6 @@ BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
   int vec_size = GetVectorizedSizeForTensors(ins, *outs);
 #endif
 
-#ifndef PADDLE_WITH_XPU_KP
-  constexpr bool kEnabledInt64IndexKernel = (NumOuts == 1 && Arity <= 3);
-  bool use_int64_index_kernel =
-      kEnabledInt64IndexKernel &&
-      (*outs)[0]->numel() >= std::numeric_limits<int32_t>::max();
-  if (use_int64_index_kernel) {
-    switch (vec_size) {
-      case VecSizeL: {
-        LaunchBroadcastKernelWithInt64IndexHelper<OutT,
-                                                  Functor,
-                                                  Arity,
-                                                  NumOuts,
-                                                  VecSizeL>::Run(ctx,
-                                                                 ins,
-                                                                 outs,
-                                                                 axis,
-                                                                 func);
-        break;
-      }
-      case VecSizeM: {
-        LaunchBroadcastKernelWithInt64IndexHelper<OutT,
-                                                  Functor,
-                                                  Arity,
-                                                  NumOuts,
-                                                  VecSizeM>::Run(ctx,
-                                                                 ins,
-                                                                 outs,
-                                                                 axis,
-                                                                 func);
-        break;
-      }
-      case VecSizeS: {
-        LaunchBroadcastKernelWithInt64IndexHelper<OutT,
-                                                  Functor,
-                                                  Arity,
-                                                  NumOuts,
-                                                  VecSizeS>::Run(ctx,
-                                                                 ins,
-                                                                 outs,
-                                                                 axis,
-                                                                 func);
-        break;
-      }
-      default: {
-        PADDLE_THROW(phi::errors::Unimplemented(
-            "Unsupported vectorized size: %d!", vec_size));
-        break;
-      }
-    }
-    return;
-  }
-#endif
-
   auto classifier =
       BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts>(ins, outs, axis);
   switch (vec_size) {
@@ -962,7 +909,8 @@ void BroadcastKernelApply(const KPDevice &ctx,
   }
 #ifndef PADDLE_WITH_XPU_KP
   constexpr bool kEnabledInt64IndexKernel = (NumOuts == 1 && kArity <= 3);
-  auto loader_classifier = LoaderTypeClassifier<OutT, kArity, Functor>();
+  auto loader_classifier =
+      BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts>(ins, outs, axis);
   // check whether need broadcast
   auto compute_size = std::numeric_limits<int32_t>::max();
   bool use_int64_index_kernel = kEnabledInt64IndexKernel &&
