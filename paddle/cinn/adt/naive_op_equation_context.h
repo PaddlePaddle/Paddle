@@ -254,8 +254,8 @@ class NativeOpEquationContext final : public OpEquationContext {
   }
 
   tInMsgBox<OpArgIndexes> MakeInMsgBoxOpArgIndexes() const {
-    return tInMsgBox<OpArgIndexes>{OpArgIndexes{
-        in_msg_box_in_indexes_.value(), in_msg_box_out_indexes_.value()}};
+    return OpArgIndexes{in_msg_box_in_indexes_.value(),
+                        in_msg_box_out_indexes_.value()};
   }
 
   static std::optional<std::size_t> FindPos(const List<Index>& vector,
