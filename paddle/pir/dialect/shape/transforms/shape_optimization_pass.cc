@@ -25,7 +25,6 @@ namespace {
 
 bool insertTieShapeOnValue(pir::OpResult value,
                            pir::Builder& builder) {  // NOLINT
-  // Only insert tie_shape ops for non-zero ranked tensor type
   auto ty = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
 
   if (!ty || ty.dims().size() == 0) return true;

@@ -586,3 +586,34 @@ TEST(assist_struct_test, shape_analysis) {
   EXPECT_TRUE(shapeAnalysis.isShapeEqual(value1, value2));
   EXPECT_FALSE(shapeAnalysis.isShapeEqual(value1, value5));
 }
+
+TEST(shape_op, tensor_dim) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  pir::Program program(ctx);
+  ctx->GetOrRegisterDialect<pir::dialect::ShapeDialect>();
+  pir::Builder builder = pir::Builder(ctx, program.block());
+
+  pir::Operation *op =
+      CreateDenseTensorOp(ctx, {-100000, 2}, {"op_attr"}, {"op_name"});
+  pir::OpResult resDenseTensorValue = op->result(0);
+
+  pir::dialect::TensorDimOp tensorDimOp0 =
+      builder.Build<pir::dialect::TensorDimOp>(resDenseTensorValue, 0);
+  pir::OpResult res0 = tensorDimOp0.out();
+
+  pir::OpResult indexValue =
+      builder
+          .Build<pir::ConstantOp>(
+              pir::Int64Attribute::get(pir::IrContext::Instance(), 1),
+              pir::IndexType::get(pir::IrContext::Instance()))
+          ->result(0);
+  pir::dialect::TensorDimOp tensorDimOp1 =
+      builder.Build<pir::dialect::TensorDimOp>(resDenseTensorValue, indexValue);
+  pir::OpResult res1 = tensorDimOp1.out();
+
+  EXPECT_EQ(res0.type(), pir::IndexType::get(ctx));
+  EXPECT_EQ(res1.type(), pir::IndexType::get(ctx));
+  EXPECT_EQ(tensorDimOp0.getSource(), resDenseTensorValue);
+  EXPECT_EQ(tensorDimOp1.getSource(), resDenseTensorValue);
+  EXPECT_EQ(tensorDimOp1.getIndex(), indexValue);
+}
