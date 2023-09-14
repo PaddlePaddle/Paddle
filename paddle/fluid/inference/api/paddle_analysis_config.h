@@ -872,7 +872,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// searching for optimization opportunities. The API supports TRT version
   /// >= 8.6, and takes no effect instead.
   ///
-  void SetTRTOptimizationLevel(int level);
+  void SetTensorRtOptimizationLevel(int level);
 
   ///
   /// \brief An integer telling the TRT optimization level.

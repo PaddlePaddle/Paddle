@@ -856,7 +856,7 @@ void AnalysisConfig::Exp_DisableTensorRtOPs(
 
 void AnalysisConfig::EnableVarseqlen() { trt_use_varseqlen_ = true; }
 
-void AnalysisConfig::SetTRTOptimizationLevel(int level) {
+void AnalysisConfig::SetTensorRtOptimizationLevel(int level) {
   PADDLE_ENFORCE(
       level >= 0 && level <= 5,
       platform::errors::InvalidArgument(
