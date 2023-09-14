@@ -40,7 +40,7 @@ struct TensorContainer {
 
 template <typename T, int kVecSize>
 struct alignas(sizeof(T) * kVecSize) AlignedVector {
-  T val_[kVecSize];
+  T val[kVecSize];
 };
 
 template <typename T>
