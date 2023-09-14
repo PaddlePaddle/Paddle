@@ -249,8 +249,8 @@ class NativeOpEquationContext final : public OpEquationContext {
   }
 
   tOutMsgBox<OpArgIndexes> MakeOutMsgBoxOpArgIndexes() const {
-    return tOutMsgBox<OpArgIndexes>{OpArgIndexes{
-        out_msg_box_in_indexes_.value(), out_msg_box_out_indexes_.value()}};
+    return OpArgIndexes{out_msg_box_in_indexes_.value(),
+                        out_msg_box_out_indexes_.value()};
   }
 
   tInMsgBox<OpArgIndexes> MakeInMsgBoxOpArgIndexes() const {
