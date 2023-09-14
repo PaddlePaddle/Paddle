@@ -702,7 +702,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21272;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21272;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python;FLAGS_new_executor_micro_batching=False"
   )
   set_tests_properties(test_ir_pass_pipeline PROPERTIES TIMEOUT "240")
 endif()
@@ -950,4 +950,7 @@ if((WITH_GPU) AND (LINUX))
   )
   set_tests_properties(test_dygraph_save_for_auto_infer
                        PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
+  set_tests_properties(
+    test_dygraph_save_for_auto_infer
+    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
 endif()

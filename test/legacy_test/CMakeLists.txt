@@ -1436,27 +1436,15 @@ py_test_modules(test_stride MODULES test_stride ENVS
 
 set_tests_properties(test_slice_op_with_stride PROPERTIES TIMEOUT 300)
 
-# These UTs are specially designed for FleetExecutor
-set_tests_properties(
-  test_fleet_executor PROPERTIES ENVIRONMENT
-                                 "FLAGS_new_executor_micro_batching=False")
-set_tests_properties(
-  test_fleet_executor_origin_scheduler
-  PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
-set_tests_properties(
-  test_fleet_executor_with_task_nodes
-  PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
-set_tests_properties(
-  test_pass_1F1B PROPERTIES ENVIRONMENT
-                            "FLAGS_new_executor_micro_batching=False")
-set_tests_properties(
-  test_pass_generation_pipeline
-  PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
-
-# TODO(Ruibiao): These UTs require fixing DataLoader issues to run in Standalone Executor.
-set_tests_properties(
-  test_dygraph_save_for_auto_infer
-  PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
-set_tests_properties(
-  test_ir_pass_pipeline PROPERTIES ENVIRONMENT
+if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
+  # These UTs are specially designed for FleetExecutor
+  set_tests_properties(
+    test_fleet_executor PROPERTIES ENVIRONMENT
                                    "FLAGS_new_executor_micro_batching=False")
+  set_tests_properties(
+    test_fleet_executor_origin_scheduler
+    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
+  set_tests_properties(
+    test_fleet_executor_with_task_nodes
+    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
+endif()
