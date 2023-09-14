@@ -70,12 +70,14 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
       const std::shared_ptr<phi::distributed::Store>& store,
       int rank,
       int size,
-      int gid);
+      int gid,
+      int64_t timeout);
 
   ProcessGroupNCCL(const std::shared_ptr<phi::distributed::Store>& store,
                    int rank,
                    int size,
-                   int gid);
+                   int gid,
+                   int64_t timeout = 20 * 1000);
 
   std::string GetBackendName() const override { return "NCCL"; }
 
@@ -212,9 +214,13 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   std::unordered_map<std::string, std::unique_ptr<phi::GPUContext>>
       place_to_comm_ctx_;
 
+  uint64_t comm_seq_{0};
+
   // TODO(sunyilun): attrs below will be removed later
   std::mutex mutex_;
   static uint64_t s_group_call_counter;
+  // default 30 minutes
+  int64_t pg_timeout_;
 };
 
 }  //  namespace distributed

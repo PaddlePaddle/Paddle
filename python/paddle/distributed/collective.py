@@ -151,7 +151,9 @@ def _new_process_group_impl(
     if backend == "gloo":
         pg = core.ProcessGroupGloo.create(store, rank, world_size, group_id)
     elif backend == "nccl":
-        pg = core.ProcessGroupNCCL.create(store, rank, world_size, group_id)
+        pg = core.ProcessGroupNCCL.create(
+            store, rank, world_size, group_id, genv.pg_timeout
+        )
     elif backend == "xccl":
         pg = core.ProcessGroupCustom.create(
             store, genv.device_type, rank, world_size, group_id
