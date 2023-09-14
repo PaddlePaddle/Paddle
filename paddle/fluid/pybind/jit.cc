@@ -258,19 +258,21 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
       // Re-enable custom behavior
       eval_frame_callback_set(callback);
       VLOG(7) << "Start eval new frame and code.";
-      if (code != Py_None) {
-        auto out = eval_custom_code(tstate, frame, code, throw_flag);
+      PyObject *out;
+      if (reinterpret_cast<PyObject *>(code) != Py_None) {
+        out = eval_custom_code(tstate, frame, code, throw_flag);
       } else {
-        auto out = eval_frame_default(tstate, frame, throw_flag);
+        out = eval_frame_default(tstate, frame, throw_flag);
       }
       Py_DECREF(result);
       Py_DECREF(code);
       return out;
     } else {
-      if (code != Py_None) {
-        auto out = eval_custom_code(tstate, frame, code, throw_flag);
+      PyObject *out;
+      if (reinterpret_cast<PyObject *>(code) != Py_None) {
+        out = eval_custom_code(tstate, frame, code, throw_flag);
       } else {
-        auto out = eval_frame_default(tstate, frame, throw_flag);
+        out = eval_frame_default(tstate, frame, throw_flag);
       }
       // Re-enable custom behavior
       eval_frame_callback_set(callback);
