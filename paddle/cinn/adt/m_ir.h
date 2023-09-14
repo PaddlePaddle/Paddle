@@ -28,12 +28,14 @@ namespace cinn::adt::m_ir {
 
 class MapIr final {
  public:
-  MapIr(const m_expr::OpStmt& op_stmt, const LoopIterators& loop_iters)
-      : op_stmts_{op_stmt}, loop_iters_(loop_iters) {}
+  MapIr(const List<m_expr::OpStmt>& op_stmts, const List<LoopIterators>& loop_iters_list)
+      : op_stmts_{op_stmts}, loop_iters_list_(loop_iters_list) {}
+  MapIr(const MapIr&) = default;
+  MapIr(MapIr&&) = default;
 
-  const std::list<m_expr::OpStmt>& op_stmts() const { return op_stmts_; }
+  const List<m_expr::OpStmt>& op_stmts() const { return op_stmts_; }
 
-  const cinn::adt::LoopIterators& loop_iters() const { return loop_iters_; }
+  const List<LoopIterators>& loop_iters_list() const { return loop_iters_list_; }
 
   bool IsMergableTo(
       const MapIr& that,
@@ -55,7 +57,7 @@ class MapIr final {
   template <typename DoEachT>
   tBreak<bool> ForEachTensor(const DoEachT& DoEach) const;
 
-  std::unordered_map<m_expr::Tensor, tAsOutput<bool>> GetTensor2AsOutput()
+  std::unordered_map<m_expr::Tensor, tOut<bool>> GetTensor2AsOutput()
       const;
 
   List<m_expr::OpStmt> op_stmts_;
