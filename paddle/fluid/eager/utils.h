@@ -38,7 +38,7 @@ class IterHelper {
     for (auto element : *elements) visit(element);
   }
 
-  virtual void visit(std::vector<ElementType>& elements) {  // NOLINT
+  virtual void visit(const std::vector<ElementType>& elements) {
     for (auto element : elements) visit(element);
   }
 
@@ -123,17 +123,13 @@ class SetGradOutputDistAttrIter : public IterHelper<paddle::Tensor*> {
     cur_pos_++;
   }
 
-  void visit(std::vector<paddle::Tensor*>* elements) override {
+  void visit(const std::vector<paddle::Tensor*>& elements) override {
     if (!out_meta_[out_indexes_[cur_pos_]].empty()) {
-      for (size_t i = 0; i < elements->size(); ++i) {
-        visit_element(elements->at(i), out_meta_[out_indexes_[cur_pos_]][i]);
+      for (size_t i = 0; i < elements.size(); ++i) {
+        visit_element(elements.at(i), out_meta_[out_indexes_[cur_pos_]][i]);
       }
     }
     cur_pos_++;
-  }
-
-  void visit(std::vector<paddle::Tensor*>& elements) override {
-    visit(&elements);
   }
 
   const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
