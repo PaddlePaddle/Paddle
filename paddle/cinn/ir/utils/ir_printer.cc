@@ -229,7 +229,8 @@ void IrPrinter::Visit(const PolyFor *x) {
 void IrPrinter::Visit(const IfThenElse *x) {
   str_ += "if (";
   Visit(x->condition);
-  str_ += ") {\n";
+  // str_ += ") {\n";
+  str_ += ")\n";
   IncIndent();
   DoIndent();
   Visit(x->true_case);
@@ -239,7 +240,8 @@ void IrPrinter::Visit(const IfThenElse *x) {
   str_ += "}";
 
   if (x->false_case.defined()) {
-    str_ += " else {\n";
+    // str_ += " else {\n";
+    str_ += " else\n";
     IncIndent();
 
     DoIndent();
@@ -248,7 +250,7 @@ void IrPrinter::Visit(const IfThenElse *x) {
 
     DecIndent();
     DoIndent();
-    str_ += "}";
+    // str_ += "}";
   }
 }
 void IrPrinter::Visit(const Block *x) {

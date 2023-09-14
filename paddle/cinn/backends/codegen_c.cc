@@ -285,8 +285,8 @@ void CodeGenC::Visit(const ir::Select *op) {
 void CodeGenC::Visit(const ir::IfThenElse *op) {
   str_ += "if (";
   IrPrinter::Visit(op->condition);
-  str_ += ") {\n";
-
+  // str_ += ") {\n";
+  str_ += ")\n";
   if (!op->true_case.As<ir::Block>()) IncIndent();
   DoIndent();
   IrPrinter::Visit(op->true_case);
@@ -296,10 +296,11 @@ void CodeGenC::Visit(const ir::IfThenElse *op) {
   if (!op->true_case.As<ir::Block>()) DecIndent();
 
   DoIndent();
-  str_ += "}";
+  // str_ += "}";
 
   if (op->false_case.defined()) {
-    str_ += " else {\n";
+    // str_ += " else {\n";
+    str_ += " else\n";
 
     if (!op->true_case.As<ir::Block>()) IncIndent();
     DoIndent();
@@ -309,7 +310,7 @@ void CodeGenC::Visit(const ir::IfThenElse *op) {
     if (!op->true_case.As<ir::Block>()) DecIndent();
 
     DoIndent();
-    str_ += "}";
+    // str_ += "}";
   }
 }
 void CodeGenC::Visit(const ir::Block *op) {

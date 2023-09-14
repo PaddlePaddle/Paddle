@@ -346,6 +346,10 @@ std::vector<const Expr *> ScheduleBlockRealize::expr_fields() const {
 }
 
 Expr IfThenElse::Make(Expr condition, Expr true_case, Expr false_case) {
+  if (true_case.defined() && (!true_case.As<Block>()))
+    true_case = ir::Block::Make({true_case});
+  if (false_case.defined() && (!false_case.As<Block>()))
+    false_case = ir::Block::Make({false_case});
   auto node = make_shared<IfThenElse>(condition, true_case, false_case);
   return Expr(node);
 }
