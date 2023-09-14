@@ -138,6 +138,25 @@ bool PyObject_CheckIROpResult(PyObject* obj) {
   return PyObject_TypeCheck(obj, g_ir_opresult_pytype);
 }
 
+bool PyObject_CheckIRVectorOfOpResult(PyObject* obj) {
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    // if obj is [], parse it as std::vector<scalar>
+    if (len == 0) {
+      return false;
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GetItem(obj, i);
+      if (!PyObject_CheckIROpResult(item)) {
+        return false;
+      }
+    }
+    return true;
+  } else {
+    return false;
+  }
+}
 bool CastPyArg2AttrBoolean(PyObject* obj, ssize_t arg_pos) {
   if (obj == Py_None) {
     return false;  // To be compatible with QA integration testing. Some
@@ -1698,7 +1717,6 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
         arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
-
   // Fake a IntArray
   return paddle::experimental::IntArray({1});
 }
