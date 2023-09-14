@@ -966,8 +966,8 @@ void BroadcastKernelApply(const KPDevice &ctx,
   bool use_int64_index_kernel =
       kEnabledInt64IndexKernel && (*outs)[0]->numel() >= compute_size;
   std::cout << " out_num " << (*outs)[0]->numel() << " " << ins[0]->numel()
-            << " scalar " << ins[0]->meta().is_scalar << std::endl;
-  if (true) {  // use_int64_index_kernel) {
+            << " scalar " << ins[0]->dims().size() << std::endl;
+  if (((*outs)[0])->numel() > compute_size) {  // use_int64_index_kernel) {
     auto loader_classifier = LoaderTypeClassifier<OutT, kArity, Functor>();
     const auto dims_simplifier =
         BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
@@ -995,10 +995,19 @@ void BroadcastKernelApply(const KPDevice &ctx,
     std::vector<int64_t> ins_offset;
     ins_offset.resize(kArity);
     ins_compute_size.resize(kArity);
+    std::cout << " check 946 " << std::endl;
+
+    std::vector<int64_t> ins_scale_for_dim;
+    ins_scale_for_dim.resize(kArity);
+    for (int k = 0; k < kArity; k++) {
+      ins_scale_for_dim[k] = ins[k]->dims().size() == 0 ? 0 : 1;
+      ins_offset[k] = 0;
+    }
 
     for (int k = 0; k < kArity; k++) {
-      old_in_strides[k][0] = 1;
-      ins_offset[k] = 0;
+      if (ins_scale_for_dim[k]) {
+        old_in_strides[k][0] = 1;
+      }
     }
 
     // out_dims and  has been reversed in BroadcastDimsSimplifier
@@ -1007,13 +1016,18 @@ void BroadcastKernelApply(const KPDevice &ctx,
       loop_num_out_stride[i] = 1;
       old_out_strides[i] = old_out_strides[i - 1] * old_out_dims[i - 1];
       for (int k = 0; k < kArity; k++) {
-        old_in_strides[k][i] = old_in_strides[k][i - 1] * old_in_dims[k][i - 1];
+        if (ins_scale_for_dim[k]) {
+          old_in_strides[k][i] =
+              old_in_strides[k][i - 1] * old_in_dims[k][i - 1];
+        }
       }
     }
 
     for (int k = 0; k < kArity; k++) {
-      std::reverse(old_in_dims[k].begin(), old_in_dims[k].end());
-      std::reverse(old_in_strides[k].begin(), old_in_strides[k].end());
+      if (ins_scale_for_dim[k]) {
+        std::reverse(old_in_dims[k].begin(), old_in_dims[k].end());
+        std::reverse(old_in_strides[k].begin(), old_in_strides[k].end());
+      }
     }
     std::reverse(old_out_dims.begin(), old_out_dims.end());
     std::reverse(old_out_strides.begin(), old_out_strides.end());
@@ -1043,7 +1057,9 @@ void BroadcastKernelApply(const KPDevice &ctx,
       loop_num *= loop_num_out[r];
 
       for (int k = 0; k < kArity; k++) {
-        in_split_dims[k][r] = std::min(old_in_dims[k][r], out_split_dim[r]);
+        if (ins_scale_for_dim[k]) {
+          in_split_dims[k][r] = std::min(old_in_dims[k][r], out_split_dim[r]);
+        }
       }
 
       if (split_size != 0) {
@@ -1086,7 +1102,9 @@ void BroadcastKernelApply(const KPDevice &ctx,
     for (int k = 0; k < kArity; k++) {
       std::cout << k << " in_split_dims : ";
       for (int r = 0; r < all_rank; r++) {
-        std::cout << old_in_dims[k][r] << " ";
+        if (ins_scale_for_dim[k]) {
+          std::cout << old_in_dims[k][r] << " ";
+        }
       }
       std::cout << std::endl;
     }
@@ -1107,10 +1125,12 @@ void BroadcastKernelApply(const KPDevice &ctx,
         auto rp = tmp_size / loop_num_out_stride[i];
         out_offset += rp * old_out_strides[i];
         for (int k = 0; k < kArity; k++) {
-          std::cout << k << " kArity " << kArity << "ins_offset "
-                    << ins_offset[k] << " rp " << rp % old_in_dims[k][i] << " "
-                    << old_in_dims[k][i] << std::endl;
-          ins_offset[k] += (rp % old_in_dims[k][i]) * old_in_strides[k][i];
+          if (ins_scale_for_dim[k]) {
+            std::cout << k << " kArity " << kArity << "ins_offset "
+                      << ins_offset[k] << " rp " << rp % old_in_dims[k][i]
+                      << " " << old_in_dims[k][i] << std::endl;
+            ins_offset[k] += (rp % old_in_dims[k][i]) * old_in_strides[k][i];
+          }
         }
         tmp_size = tmp_size % loop_num_out_stride[i];
       }
@@ -1133,31 +1153,34 @@ void BroadcastKernelApply(const KPDevice &ctx,
       // in + compute_size
       auto in_compute_dims = in_split_dims;
       for (int k = 0; k < kArity; k++) {
-        std::cout << "ins_offset " << ins_offset[k] << " tmp_size " << tmp_size
-                  << " " << old_in_dims[k][split_idx] << " in_split_dims "
-                  << in_split_dims[k][split_idx] << " "
-                  << old_in_strides[k][split_idx] << std::endl;
-        auto split_repeat =
-            old_in_dims[k][split_idx] == old_out_dims[split_idx] ? tmp_size : 0;
-        ins_offset[k] += split_repeat * in_split_dims[k][split_idx] *
-                         old_in_strides[k][split_idx];
-        ins_compute_size[k] =
-            std::min(in_split_dims[k][split_idx], tmp_out_compute_size);
-        in_compute_dims[k][split_idx] = ins_compute_size[k];
+        if (ins_scale_for_dim[k]) {
+          std::cout << "ins_offset " << ins_offset[k] << " tmp_size "
+                    << tmp_size << " " << old_in_dims[k][split_idx]
+                    << " in_split_dims " << in_split_dims[k][split_idx] << " "
+                    << old_in_strides[k][split_idx] << std::endl;
+          auto split_repeat =
+              old_in_dims[k][split_idx] == old_out_dims[split_idx] ? tmp_size
+                                                                   : 0;
+          ins_offset[k] += split_repeat * in_split_dims[k][split_idx] *
+                           old_in_strides[k][split_idx];
+          ins_compute_size[k] =
+              std::min(in_split_dims[k][split_idx], tmp_out_compute_size);
+          in_compute_dims[k][split_idx] = ins_compute_size[k];
 
-        std::cout << "out_offset " << out_offset << std::endl;
-        std::cout << "ins_offset " << ins_offset[k] << " " << k << " dtype "
-                  << SizeOf(ins[k]->dtype()) << " " << sizeof(ins[k]->dtype())
-                  << " in_compute_dims : ";
-        for (int r = 0; r < all_rank; r++)
-          std::cout << in_compute_dims[k][r] << " ";
-        std::cout << std::endl;
-
+          std::cout << "out_offset " << out_offset << std::endl;
+          std::cout << "ins_offset " << ins_offset[k] << " " << k << " dtype "
+                    << SizeOf(ins[k]->dtype()) << " " << sizeof(ins[k]->dtype())
+                    << " in_compute_dims : ";
+          for (int r = 0; r < all_rank; r++)
+            std::cout << in_compute_dims[k][r] << " ";
+          std::cout << std::endl;
+        }
         auto new_dim = make_ddim(in_compute_dims[k]);
-        DenseTensorMeta meta(ins[k]->dtype(),
-                             new_dim,
-                             ins[k]->layout(),
-                             ins_offset[k] * SizeOf(ins[k]->dtype()));
+        DenseTensorMeta meta(
+            ins[k]->dtype(),
+            new_dim,
+            ins[k]->layout(),
+            ins_scale_for_dim[k] * ins_offset[k] * SizeOf(ins[k]->dtype()));
         std::cout << " new offset " << meta.offset << std::endl;
         tmp_in[k].set_meta(meta);
         tmp_in[k].ShareBufferWith(*(ins[k]), true);
