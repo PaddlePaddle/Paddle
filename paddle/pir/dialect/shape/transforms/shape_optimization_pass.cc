@@ -23,7 +23,7 @@
 
 namespace {
 
-bool insertTieShapeOnValue(pir::OpResult value,
+bool InsertTieShapeOnValue(pir::OpResult value,
                            pir::Builder& builder) {  // NOLINT
   auto ty = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
 
@@ -37,19 +37,19 @@ bool insertTieShapeOnValue(pir::OpResult value,
   return true;
 }
 
-bool insertTieShapeOnRegion(pir::Region* region);
+bool InsertTieShapeOnRegion(pir::Region* region);
 
-bool insertTieShapeOnOperation(pir::Operation* op,
+bool InsertTieShapeOnOperation(pir::Operation* op,
                                pir::Builder& builder) {  // NOLINT
   if (op->isa<pir::dialect::TieShapeOp>()) return true;
   // TODO(liujinnan): skip the specialized Ops.
 
   for (size_t i = 0; i < op->num_regions(); ++i) {
-    if (!insertTieShapeOnRegion(&(op->region(i)))) return false;
+    if (!InsertTieShapeOnRegion(&(op->region(i)))) return false;
   }
   builder.SetInsertionPointAfter(op);
   for (pir::OpResult v : op->results()) {
-    if (!insertTieShapeOnValue(v, builder)) return false;
+    if (!InsertTieShapeOnValue(v, builder)) return false;
   }
 
   return true;
@@ -63,20 +63,20 @@ bool insertTieShapeOnBlock(pir::Block* block) {
   std::vector<pir::Operation*> op_list;
   for (pir::Operation* op : *block) op_list.push_back(op);
   for (pir::Operation* op : op_list) {
-    if (!insertTieShapeOnOperation(op, builder)) return false;
+    if (!InsertTieShapeOnOperation(op, builder)) return false;
   }
   return true;
 }
 
-bool insertTieShapeOnRegion(pir::Region* region) {
+bool InsertTieShapeOnRegion(pir::Region* region) {
   for (pir::Block* block : *region) {
     if (!insertTieShapeOnBlock(block)) return false;
   }
   return true;
 }
 
-bool materializeShapeComputation(pir::ModuleOp m) {
-  if (!insertTieShapeOnRegion(&(m->region(0)))) return false;
+bool MaterializeShapeComputation(pir::ModuleOp m) {
+  if (!InsertTieShapeOnRegion(&(m->region(0)))) return false;
   // TODO(liujinnan): add rewitter pattern for reifyInferShape.
   return true;
 }
@@ -88,7 +88,7 @@ class ShapeOptimizationPass : public pir::Pass {
   void Run(pir::Operation* op) override {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     IR_ENFORCE(module_op, "ShapeOptimizationPass should run on module op.");
-    materializeShapeComputation(module_op);
+    MaterializeShapeComputation(module_op);
   }
 
   bool CanApplyOn(pir::Operation* op) const override {

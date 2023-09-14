@@ -51,11 +51,11 @@ class IR_API SymbolicDim : public Op<SymbolicDim> {
   void updateKnownNonSizeOne(bool attrValue);
   void updateKnownNonSizeZero(bool attrValue);
 
-  bool isDynamic();
-  bool merge(SymbolicDim other);
+  bool IsDynamic();
+  bool Merge(SymbolicDim other);
 
   static const std::string getSymbolicDimAttrName() {
-    return "SymbolicDimAttr";
+    return "kSymbolicDimAttr";
   }
 
   void Verify() {}

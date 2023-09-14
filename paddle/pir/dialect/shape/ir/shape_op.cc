@@ -105,15 +105,15 @@ void SymbolicDim::updateKnownNonSizeZero(bool attrValue) {
       pir::BoolAttribute::get(pir::IrContext::Instance(), attrValue));
 }
 
-bool SymbolicDim::isDynamic() {
+bool SymbolicDim::IsDynamic() {
   return getValue() == ShapedTypeInterface::kDynamic;
 }
 
-bool SymbolicDim::merge(SymbolicDim other) {
-  if (!isDynamic() && !other.isDynamic() && getValue() != other.getValue())
+bool SymbolicDim::Merge(SymbolicDim other) {
+  if (!IsDynamic() && !other.IsDynamic() && getValue() != other.getValue())
     return false;
-  if (isDynamic() && !other.isDynamic()) updateValue(other.getValue());
-  if (!isDynamic() && other.isDynamic()) other.updateValue(getValue());
+  if (IsDynamic() && !other.IsDynamic()) updateValue(other.getValue());
+  if (!IsDynamic() && other.IsDynamic()) other.updateValue(getValue());
 
   bool knownNonNegativeFlag =
       getKnownNonNegative() || other.getKnownNonNegative();
