@@ -641,11 +641,16 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _append_backward_desc(self, main_program):
         program = main_program
-        # if self._hooker:
-        # program = self._hooker.before_append_backward(program)
+
         targets = list(
             filter(lambda x: isinstance(x, OpResult), self._outputs.tolist())
         )
+        # targets = paddle.decomposition.decompose(program, targets)
+        if self._hooker:
+            program, targets = self._hooker.before_append_backward(
+                program, targets
+            )
+            self._outputs = NestSequence(targets, need_check=True)
         inputs = list(
             filter(lambda x: isinstance(x, OpResult), self._inputs.tolist())
         )
@@ -680,12 +685,20 @@ class PartialProgramLayer:
             # program, start_idx = self._hooker.after_append_backward(
             # program, start_idx
             # )
-
+            if self._hooker:
+                (
+                    program,
+                    forward_end_idx,
+                    targets,
+                ) = self._hooker.after_append_backward(
+                    program, targets, forward_end_idx
+                )
+                self._outputs = NestSequence(targets, need_check=True)
             # TODO: add later
             # self.prepare_gradient_aggregation(
             # start_idx + 1, main_program, program
             # )
-
+        print("whole prog =============== ", program)
         mapping_op_result = (
             lambda x: x if isinstance(x, OpResult) else fake_op_result()
         )

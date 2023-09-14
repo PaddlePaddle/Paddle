@@ -21,6 +21,7 @@ import warnings
 import weakref
 
 import paddle.ir.core as ir_static
+from paddle import decomposition
 from paddle.base import core, framework
 from paddle.base.data_feeder import check_type
 from paddle.base.dygraph.base import (
@@ -1539,7 +1540,10 @@ class ProgramCache:
                 raise
 
         backend = cache_key.kwargs['backend']
-        if prim_or_cinn_is_enabled(cache_key.kwargs['build_strategy'], backend):
+        if (
+            prim_or_cinn_is_enabled(cache_key.kwargs['build_strategy'], backend)
+            and not ir_static._use_new_ir_api()
+        ):
             for var in concrete_program.main_program.list_vars():
                 if var.type not in NO_SHAPE_VAR_TYPE and -1 in var.shape:
                     warnings.warn(
@@ -1558,9 +1562,14 @@ class ProgramCache:
             )
         with backend_guard(backend):
             if core._is_fwd_prim_enabled():
-                partial_program.set_hooker(
-                    PrimHooker(concrete_program.main_program, backend)
-                )
+                if ir_static._use_new_ir_api():
+                    partial_program.set_hooker(
+                        PirPrimHooker(concrete_program.main_program, backend)
+                    )
+                else:
+                    partial_program.set_hooker(
+                        PrimHooker(concrete_program.main_program, backend)
+                    )
         return concrete_program, partial_program
 
     def __getitem__(self, item):
@@ -1660,6 +1669,50 @@ class PrimHooker(PartialProgramLayerHook):
             if core._is_fwd_prim_enabled():
                 _to_prim(infer_program.block(0))
             return infer_program
+
+
+class PirPrimHooker(PartialProgramLayerHook):
+    def __init__(self, original_program, backend):
+        # if len(original_program.blocks) > 1:
+        #     raise ValueError(
+        #         'The primitive mode only support one block currently.'
+        #     )
+        self.backend = backend
+        self.custom_vjps = set()
+        with backend_guard(self.backend):
+            if core._is_all_prim_enabled():
+                self.custom_vjps = {
+                    op.name()
+                    for op in original_program.global_block().ops
+                    if core.has_custom_vjp(op)
+                }
+
+    def before_append_backward(self, forward_program, src_vars):
+        with backend_guard(self.backend):
+            if core._is_fwd_prim_enabled():
+                dst_vars = decomposition.decompose(
+                    forward_program, src_vars, blacklist=self.custom_vjps
+                )
+            return forward_program, dst_vars
+
+    def after_append_backward(self, whole_program, src_vars, forward_end_idx):
+        with backend_guard(self.backend):
+            backward_length = (
+                len(whole_program.global_block().ops) - forward_end_idx
+            )
+            if core._is_fwd_prim_enabled() and len(self.custom_vjps) != 0:
+                # only process backward part of block
+                dst_vars = decomposition.decompose(whole_program, src_vars)
+            new_start_index = (
+                len(whole_program.global_block().ops) - backward_length
+            )
+            return whole_program, new_start_index, dst_vars
+
+    def after_infer(self, infer_program, src_vars):
+        with backend_guard(self.backend):
+            if core._is_fwd_prim_enabled():
+                dst_vars = decomposition.decompose(infer_program, src_vars)
+            return infer_program, dst_vars
 
 
 class ProgramTranslator:
