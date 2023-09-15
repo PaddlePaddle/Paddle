@@ -23,7 +23,7 @@ from paddle import base
 from paddle.base import Program, core, program_guard
 
 
-def create_test_class(op_type, typename, callback):
+def create_test_class(op_type, typename, callback, check_new_ir=False):
     class Cls(op_test.OpTest):
         def setUp(self):
             a = numpy.random.random(size=(10, 7)).astype(typename)
@@ -35,7 +35,7 @@ def create_test_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output(check_cinn=True)
+            self.check_output(check_cinn=True, check_new_ir=check_new_ir)
 
         def test_errors(self):
             paddle.enable_static()

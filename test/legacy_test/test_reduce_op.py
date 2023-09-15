@@ -62,7 +62,7 @@ class TestSumOp(OpTest):
             'Out',
             check_prim=True,
             check_new_ir=True,
-            check_prim_new_ir=True,
+            check_prim_pir=True,
         )
 
 
@@ -96,7 +96,7 @@ class TestSumOp_ZeroDim(TestSumOp):
             'Out',
             check_new_ir=True,
             check_prim=True,
-            check_prim_new_ir=True,
+            check_prim_pir=True,
         )
 
 
@@ -153,7 +153,7 @@ class TestSumOp_withInt(TestSumOp):
             'Out',
             user_defined_grads=self.calc_gradient(),
             check_prim=True,
-            check_prim_new_ir=True,
+            check_prim_pir=True,
             check_new_ir=True,
         )
 
@@ -179,7 +179,7 @@ class TestSumOp3Dim(TestSumOp):
             'Out',
             user_defined_grads=self.calc_gradient(),
             check_prim=True,
-            check_prim_new_ir=True,
+            check_prim_pir=True,
             check_new_ir=True,
         )
 
@@ -200,7 +200,7 @@ def create_test_fp16_class(parent):
                 ['X'],
                 'Out',
                 check_prim=True,
-                check_prim_new_ir=True,
+                check_prim_pir=True,
                 check_new_ir=True,
             )
 
@@ -240,7 +240,7 @@ def create_test_bf16_class(parent):
                 'Out',
                 user_defined_grads=self.gradient,
                 check_prim=True,
-                check_prim_new_ir=True,
+                check_prim_pir=True,
                 check_new_ir=True,
             )
 
@@ -278,7 +278,7 @@ class TestMaxOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
@@ -312,7 +312,7 @@ class TestMaxOp_ZeroDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
@@ -365,7 +365,7 @@ class TestMaxFP32Op(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
@@ -399,7 +399,7 @@ class TestMaxBF16Op(TestMaxFP32Op):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output_with_place(core.CUDAPlace(0), check_new_ir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
@@ -1298,7 +1298,7 @@ class TestReduceMaxOpMultiAxises(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max

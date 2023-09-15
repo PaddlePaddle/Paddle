@@ -249,9 +249,7 @@ class DevelopCommand(DevelopCommandBase):
             )
         # write version.py and cuda_env_config_py to python_source_dir
         write_version_py(
-            filename='{}/python/paddle/version/__init__.py'.format(
-                paddle_source_dir
-            )
+            filename=f'{paddle_source_dir}/python/paddle/version/__init__.py'
         )
         write_cuda_env_config_py(
             filename=f'{paddle_source_dir}/python/paddle/cuda_env.py'
@@ -1622,11 +1620,7 @@ def check_submodules():
                 cwd=TOP_DIR,
             )
             end = time.time()
-            print(
-                ' --- Submodule initialization took {:.2f} sec'.format(
-                    end - start
-                )
-            )
+            print(f' --- Submodule initialization took {end - start:.2f} sec')
         except Exception:
             print(' --- Submodule initalization failed')
             print('Please run:\n\tgit submodule update --init --recursive')
@@ -1656,7 +1650,7 @@ def main():
     sys.path.insert(1, env_dict_path)
     from env_dict import env_dict
 
-    global env_dict
+    global env_dict  # noqa: F811
     global paddle_binary_dir, paddle_source_dir
 
     paddle_binary_dir = env_dict.get("PADDLE_BINARY_DIR")
@@ -1667,9 +1661,7 @@ def main():
     package_name = env_dict.get("PACKAGE_NAME")
 
     write_version_py(
-        filename='{}/python/paddle/version/__init__.py'.format(
-            paddle_binary_dir
-        )
+        filename=f'{paddle_binary_dir}/python/paddle/version/__init__.py'
     )
     write_cuda_env_config_py(
         filename=f'{paddle_binary_dir}/python/paddle/cuda_env.py'
