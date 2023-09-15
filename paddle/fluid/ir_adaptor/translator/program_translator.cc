@@ -170,7 +170,7 @@ void ProgramTranslator::Translate() {
 
   TranslateBlock(legacy_program_->Block(0),
                  0,
-                 legacy_program_->Block(0).OpSize() - 1,
+                 legacy_program_->Block(0).OpSize(),
                  program_->block());
 
   SetParameterFromSingleBlock(legacy_program_->Block(0));
@@ -191,15 +191,15 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
                                        uint64_t end_id,
                                        pir::Block* dest_block) {
   PADDLE_ENFORCE(
-      (src_block.OpSize() > end_id) && (start_id <= end_id),
+      (src_block.OpSize() >= end_id) && (start_id <= end_id),
       platform::errors::NotFound(
-          "Translation of Block needs to meet the requirements of start_id < "
-          "end_id < block_size, but get start_id=%d, end_id=%d, block_size=%d",
+          "Translation of Block needs to meet the requirements of start_id <= "
+          "end_id <= block_size, but get start_id=%d, end_id=%d, block_size=%d",
           start_id,
           end_id,
           src_block.OpSize()));
   std::unordered_map<uint64_t, bool> translate_completed;
-  for (uint64_t op_id = start_id; op_id <= end_id; op_id++) {
+  for (uint64_t op_id = start_id; op_id < end_id; op_id++) {
     if (translate_completed.count(op_id) && translate_completed.at(op_id)) {
       continue;
     }
