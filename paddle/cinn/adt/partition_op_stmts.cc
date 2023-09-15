@@ -19,7 +19,7 @@
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/partition_op_stmts.h"
 
-namespace cinn::adt::partition {
+namespace cinn::adt {
 
 AnchorIndex PickThenEraseAnchorIndex(
     std::unordered_set<AnchorIndex>* candidate_anchor_indexes) {
@@ -33,27 +33,27 @@ AnchorIndex PickThenEraseAnchorIndex(
 
 std::unordered_set<AnchorIndex> InitCandidateAnchorIndex(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
-    const List<m_expr::OpStmt>& op_stmts) {
+    const List<OpStmt>& op_stmts) {
   std::unordered_set<AnchorIndex> ret{};
   for (const auto& op_stmt : *op_stmts) {
-    const std::shared_ptr<equation::config::NativeOpEquationContext>
-        equation_ctx = EquationCtx4OpStmt(op_stmt);
+    const std::shared_ptr<config::NaiveOpEquationContext> equation_ctx =
+        EquationCtx4OpStmt(op_stmt);
     equation_ctx->VisitEachTensorIndex(
         [&](const auto& tensor_index) { ret.emplace(tensor_index); });
   }
   return ret;
 }
 
-std::function<const m_expr::OpStmt&(const equation::FakeOpPlaceHolder&)>
+std::function<const OpStmt&(const FakeOpPlaceHolder&)>
 MakeGetterOpStmt4OpPlaceHolder(const EquationCtx4OpStmtT& EquationCtx4OpStmt,
-                               const List<m_expr::OpStmt>& op_stmts) {
+                               const List<OpStmt>& op_stmts) {
   using FakeOpPlaceHolder2OpStmt =
-      std::unordered_map<equation::FakeOpPlaceHolder, m_expr::OpStmt>;
+      std::unordered_map<FakeOpPlaceHolder, OpStmt>;
   const auto& fake_op_placeholder2op_stmt =
       std::make_shared<FakeOpPlaceHolder2OpStmt>();
 
   for (const auto& op_stmt : *op_stmts) {
-    const std::shared_ptr<equation::config::NativeOpEquationContext> ctx =
+    const std::shared_ptr<config::NaiveOpEquationContext> ctx =
         EquationCtx4OpStmt(op_stmt);
     CHECK(fake_op_placeholder2op_stmt
               ->emplace(ctx->fake_op_placeholder(), op_stmt)
@@ -61,20 +61,19 @@ MakeGetterOpStmt4OpPlaceHolder(const EquationCtx4OpStmtT& EquationCtx4OpStmt,
   }
 
   return [fake_op_placeholder2op_stmt](
-             const equation::FakeOpPlaceHolder& fake_op_placeholder) {
+             const FakeOpPlaceHolder& fake_op_placeholder) {
     return fake_op_placeholder2op_stmt->at(fake_op_placeholder);
   };
 }
 
-std::pair<std::optional<m_expr::OpStmt>, List<m_expr::OpStmt>>
-FindVisitedOpStmts(
+std::pair<std::optional<OpStmt>, List<OpStmt>> FindVisitedOpStmts(
     const AnchorIndex& anchor_index,
-    const equation::GraphView& equation_graph,
-    const std::function<const m_expr::OpStmt&(
-        const equation::FakeOpPlaceHolder&)>& OpStmt4OpPlaceHolder,
+    const GraphView& equation_graph,
+    const std::function<const OpStmt&(const FakeOpPlaceHolder&)>&
+        OpStmt4OpPlaceHolder,
     const EquationCtx4OpStmtT& EquationCtx4OpStmt) {
-  std::optional<m_expr::OpStmt> opt_anchor_op_stmt{std::nullopt};
-  List<m_expr::OpStmt> visited_op_stmts{};
+  std::optional<OpStmt> opt_anchor_op_stmt{std::nullopt};
+  List<OpStmt> visited_op_stmts{};
   const auto& TrySetAnchorOpStmt = [&](const auto& op_stmt) {
     if (!(EquationCtx4OpStmt(op_stmt)
               ->GetOpArgPos(anchor_index)
@@ -83,22 +82,20 @@ FindVisitedOpStmts(
       opt_anchor_op_stmt = op_stmt;
     }
   };
-  const auto& DoEach = [&](const equation::Variable variable) {
-    if (variable.Has<equation::FakeOpPlaceHolder>()) {
-      const auto& fake_op_placeholder =
-          variable.Get<equation::FakeOpPlaceHolder>();
+  const auto& DoEach = [&](const Variable variable) {
+    if (variable.Has<FakeOpPlaceHolder>()) {
+      const auto& fake_op_placeholder = variable.Get<FakeOpPlaceHolder>();
       const auto& op_stmt = OpStmt4OpPlaceHolder(fake_op_placeholder);
       visited_op_stmts->emplace_back(op_stmt);
       TrySetAnchorOpStmt(op_stmt);
     }
   };
-  // Note: Do we need explicitly convert Index -> Variable?
   equation_graph.WalkVariable(anchor_index, DoEach);
   return std::pair{opt_anchor_op_stmt, visited_op_stmts};
 }
 
 template <typename DoEachT>
-void VisitEachEquation(const List<m_expr::OpStmt>& op_stmts,
+void VisitEachEquation(const List<OpStmt>& op_stmts,
                        const EquationCtx4OpStmtT& EquationCtx4OpStmt,
                        const DoEachT& DoEach) {
   for (const auto& op_stmt : *op_stmts) {
@@ -107,20 +104,20 @@ void VisitEachEquation(const List<m_expr::OpStmt>& op_stmts,
   }
 }
 
-equation::GraphView MakeOpsGraphViewForPartition(
+GraphView MakeOpsGraphViewForPartition(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
-    const List<m_expr::OpStmt>& op_stmts) {
-  equation::Equations equations{};
+    const List<OpStmt>& op_stmts) {
+  Equations equations{};
 
   VisitEachEquation(op_stmts, EquationCtx4OpStmt, [&](const auto& equation) {
     equations->emplace_back(equation);
   });
 
-  return std::make_shared<equation::Graph>(equations)->GetGraphView();
+  return std::make_shared<Graph>(equations)->GetGraphView();
 }
 
 template <typename DoEachT>
-void VisitEachIndexAndAsOutput(const List<m_expr::OpStmt>& op_stmts,
+void VisitEachIndexAndAsOutput(const List<OpStmt>& op_stmts,
                                const EquationCtx4OpStmtT& EquationCtx4OpStmt,
                                const DoEachT& DoEach) {
   for (const auto& op_stmt : op_stmts) {
@@ -133,15 +130,14 @@ void VisitEachIndexAndAsOutput(const List<m_expr::OpStmt>& op_stmts,
 }
 
 void MakeGetters4Indexes(
-    const List<m_expr::OpStmt>& op_stmts,
+    const List<OpStmt>& op_stmts,
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
-    std::function<tOut<bool>(const equation::Index&)>* AsOutput4Index,
-    std::function<equation::Index(const equation::Index&)>*
-        OutMsgBoxIndex4InMsgBoxIndex) {
-  using Index2AsOutput = std::unordered_map<equation::Index, tOut<bool>>;
+    std::function<tOut<bool>(const Index&)>* AsOutput4Index,
+    std::function<Index(const Index&)>* OutMsgBoxIndex4InMsgBoxIndex) {
+  using Index2AsOutput = std::unordered_map<Index, tOut<bool>>;
   const auto& index2as_output = std::make_shared<Index2AsOutput>();
 
-  using Index2OwnerOpStmt = std::unordered_map<equation::Index, m_expr::OpStmt>;
+  using Index2OwnerOpStmt = std::unordered_map<Index, OpStmt>;
   const auto& index2owner_op_stmt = std::make_shared<Index2OwnerOpStmt>();
 
   const auto& UpdateCaches =
@@ -152,15 +148,14 @@ void MakeGetters4Indexes(
 
   VisitEachIndexAndAsOutput(op_stmts, EquationCtx4OpStmt, UpdateCaches);
 
-  *AsOutput4Index = [index2as_output](const equation::Index& index) {
+  *AsOutput4Index = [index2as_output](const Index& index) {
     return index2as_output->at(index);
   };
 
   *OutMsgBoxIndex4InMsgBoxIndex =
-      [index2owner_op_stmt,
-       EquationCtx4OpStmt](const equation::Index& index) -> equation::Index {
+      [index2owner_op_stmt, EquationCtx4OpStmt](const Index& index) -> Index {
     const auto& op_stmt = index2owner_op_stmt->at(index);
-    const std::shared_ptr<equation::config::NativeOpEquationContext> ctx =
+    const std::shared_ptr<config::NaiveOpEquationContext> ctx =
         EquationCtx4OpStmt(op_stmt);
     const auto& out_msg_box_index = ctx->OutMsgBoxIndex4InMsgBoxIndex(index);
     CHECK(out_msg_box_index.has_value());
@@ -168,14 +163,13 @@ void MakeGetters4Indexes(
   };
 }
 
-std::unordered_map<m_expr::Tensor, std::vector<equation::Index>>
-GenerateSameTensor2Indexes(const List<m_expr::OpStmt>& op_stmts,
-                           const EquationCtx4OpStmtT& EquationCtx4OpStmt) {
-  std::unordered_map<m_expr::Tensor, std::vector<equation::Index>>
-      tensor2indexes;
+std::unordered_map<Tensor, std::vector<Index>> GenerateSameTensor2Indexes(
+    const List<OpStmt>& op_stmts,
+    const EquationCtx4OpStmtT& EquationCtx4OpStmt) {
+  std::unordered_map<Tensor, std::vector<Index>> tensor2indexes;
 
   for (const auto& op_stmt : *op_stmts) {
-    const std::shared_ptr<equation::config::NativeOpEquationContext> ctx =
+    const std::shared_ptr<config::NaiveOpEquationContext> ctx =
         EquationCtx4OpStmt(op_stmt);
     const auto& [op, op_inputs, op_outputs] = op_stmt.tuple();
     for (std::size_t idx = 0; idx < op_inputs.value()->size(); ++idx) {
@@ -192,7 +186,7 @@ GenerateSameTensor2Indexes(const List<m_expr::OpStmt>& op_stmts,
 }
 
 template <typename DoEachT>
-void VisitIndexesOfSameTensor(const List<m_expr::OpStmt>& op_stmts,
+void VisitIndexesOfSameTensor(const List<OpStmt>& op_stmts,
                               const EquationCtx4OpStmtT& EquationCtx4OpStmt,
                               const DoEachT& DoEach) {
   const auto& tensor2indexes =
@@ -203,13 +197,12 @@ void VisitIndexesOfSameTensor(const List<m_expr::OpStmt>& op_stmts,
   }
 }
 
-// DoEachT is like void(*)(equation::Index producer_index, equation::Index
+// DoEachT is like void(*)(Index producer_index, Index
 // consumer_index)
 template <typename AsOutput4IndexT, typename DoEachT>
-void VisitProducerConsumerPair(
-    const std::vector<equation::Index>& tensor_indexes,
-    const AsOutput4IndexT& AsOutput4Index,
-    const DoEachT& DoEach) {
+void VisitProducerConsumerPair(const std::vector<Index>& tensor_indexes,
+                               const AsOutput4IndexT& AsOutput4Index,
+                               const DoEachT& DoEach) {
   CHECK(!tensor_indexes.empty());
   if (AsOutput4Index(tensor_indexes.at(0)).value()) {  // Write first
     auto producer = tensor_indexes.at(0);
@@ -226,11 +219,11 @@ void VisitProducerConsumerPair(
   }
 }
 
-// DoEachT is like void(*)(equation::Index producer_index, equation::Index
+// DoEachT is like void(*)(Index producer_index, Index
 // consumer_index)
 template <typename AsOutput4IndexT, typename DoEachT>
 void VisitProducerConsumerTensorIndexPair(
-    const List<m_expr::OpStmt>& op_stmts,
+    const List<OpStmt>& op_stmts,
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
     const AsOutput4IndexT& AsOutput4Index,
     const DoEachT& DoEach) {
@@ -240,20 +233,19 @@ void VisitProducerConsumerTensorIndexPair(
       });
 }
 
-void CollectIdentity(const equation::Index& in_tensor_index,
-                     const equation::Index& out_tensor_index,
-                     equation::Equations* equations) {
-  equation::util::IdentityConnect(out_tensor_index, in_tensor_index, equations);
+void CollectIdentity(const Index& in_tensor_index,
+                     const Index& out_tensor_index,
+                     Equations* equations) {
+  IdentityConnect(out_tensor_index, in_tensor_index, equations);
 }
 
-equation::GraphView MakeParametersGraphViewForPartition(
+GraphView MakeParametersGraphViewForPartition(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
-    const List<m_expr::OpStmt>& op_stmts) {
-  equation::Equations equations{};
+    const List<OpStmt>& op_stmts) {
+  Equations equations{};
 
-  std::function<tOut<bool>(const equation::Index&)> AsOutput4Index{};
-  std::function<equation::Index(const equation::Index&)>
-      OutMsgBoxIndex4InMsgBoxIndex{};
+  std::function<tOut<bool>(const Index&)> AsOutput4Index{};
+  std::function<Index(const Index&)> OutMsgBoxIndex4InMsgBoxIndex{};
   MakeGetters4Indexes(op_stmts,
                       EquationCtx4OpStmt,
                       &AsOutput4Index,
@@ -271,12 +263,12 @@ equation::GraphView MakeParametersGraphViewForPartition(
   VisitProducerConsumerTensorIndexPair(
       op_stmts, EquationCtx4OpStmt, AsOutput4Index, CollectEquation);
 
-  return std::make_shared<equation::Graph>(equations)->GetGraphView();
+  return std::make_shared<Graph>(equations)->GetGraphView();
 }
 
-equation::GraphView MakeGlobalEquationGraphViewForPartition(
+GraphView MakeGlobalEquationGraphViewForPartition(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
-    const List<m_expr::OpStmt>& op_stmts) {
+    const List<OpStmt>& op_stmts) {
   const auto& ops_graph_view =
       MakeOpsGraphViewForPartition(EquationCtx4OpStmt, op_stmts);
 
@@ -324,7 +316,7 @@ void EraseCandidateAnchorIndexes(
 std::unordered_map<AnchorIndex, AnchorGroup> PartitionOpStmtsIntoAnchorGroups(
     std::unordered_set<AnchorIndex>* candidate_anchor_indexes,
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
-    const List<m_expr::OpStmt>& op_stmts) {
+    const List<OpStmt>& op_stmts) {
   std::unordered_map<AnchorIndex, AnchorGroup> anchor_index2igroup_spec{};
 
   const auto& OpStmt4OpPlaceHolder =
@@ -333,7 +325,7 @@ std::unordered_map<AnchorIndex, AnchorGroup> PartitionOpStmtsIntoAnchorGroups(
   const auto& equation_graph_view =
       MakeGlobalEquationGraphViewForPartition(EquationCtx4OpStmt, op_stmts);
 
-  std::unordered_set<m_expr::OpStmt> all_visited_op_stmts{};
+  std::unordered_set<OpStmt> all_visited_op_stmts{};
 
   while (!candidate_anchor_indexes->empty()) {
     AnchorIndex anchor_tensor =
@@ -363,14 +355,14 @@ std::unordered_map<AnchorIndex, AnchorGroup> PartitionOpStmtsIntoAnchorGroups(
   return anchor_index2igroup_spec;
 }
 
-std::unordered_map<equation::Variable, equation::Value> MakeAnchorIndex2Ok(
-    const partition::AnchorGroup& igroup_spec) {
+std::unordered_map<Variable, Value> MakeAnchorIndex2Ok(
+    const AnchorGroup& igroup_spec) {
   return {{igroup_spec.anchor_index, Ok{}}};
 }
 
 template <typename DoEachT>
-tBreak<bool> AgregateAnchorGroupOpStmt(
-    const partition::AnchorGroup& igroup_spec, const DoEachT& DoEach) {
+tBreak<bool> AgregateAnchorGroupOpStmt(const AnchorGroup& igroup_spec,
+                                       const DoEachT& DoEach) {
   for (const auto& op_stmt : igroup_spec.op_stmts) {
     tBreak<bool> ret = DoEach(op_stmt);
     if (ret.value()) {
@@ -380,12 +372,12 @@ tBreak<bool> AgregateAnchorGroupOpStmt(
   return tBreak<bool>{false};
 }
 
-bool IsEquationSolvable(const partition::AnchorGroup& igroup_spec) {
+bool IsEquationSolvable(const AnchorGroup& igroup_spec) {
   const auto& equation_graph_view = MakeGlobalEquationGraphViewForPartition(
       igroup_spec.EquationCtx4OpStmt, igroup_spec.op_stmts);
 
   const auto& init_var2value = MakeAnchorIndex2Ok(igroup_spec);
-  equation::IndexExprInferContext ctx{init_var2value};
+  IndexExprInferContext ctx{init_var2value};
 
   const auto& IsOpSolved = [&](const auto& op_stmt) {
     const auto& equation_ctx = *igroup_spec.EquationCtx4OpStmt(op_stmt);
@@ -393,9 +385,9 @@ bool IsEquationSolvable(const partition::AnchorGroup& igroup_spec) {
     return ctx.HasValue(fake_op_placeholder);
   };
 
-  bool is_solvable = equation::value::TrySolveEquations(
-                         equation_graph_view, igroup_spec.anchor_index, &ctx)
-                         .value();
+  bool is_solvable =
+      TrySolveEquations(equation_graph_view, igroup_spec.anchor_index, &ctx)
+          .value();
   AgregateAnchorGroupOpStmt(igroup_spec, [&](const auto& op_stmt) {
     if (!IsOpSolved(op_stmt)) {
       is_solvable = false;
@@ -407,9 +399,9 @@ bool IsEquationSolvable(const partition::AnchorGroup& igroup_spec) {
   return is_solvable;
 }
 
-std::function<std::size_t(const m_expr::OpStmt&)> MakeGetterOrderValue4OpStmt(
-    const List<m_expr::OpStmt>& op_stmts) {
-  using OpStmt2OrderValue = std::unordered_map<m_expr::OpStmt, std::size_t>;
+std::function<std::size_t(const OpStmt&)> MakeGetterOrderValue4OpStmt(
+    const List<OpStmt>& op_stmts) {
+  using OpStmt2OrderValue = std::unordered_map<OpStmt, std::size_t>;
   const auto& op_stmt2order_value = std::make_shared<OpStmt2OrderValue>();
   for (std::size_t idx = 0; idx < op_stmts->size(); ++idx) {
     CHECK(op_stmt2order_value->emplace(op_stmts->at(idx), idx).second);
@@ -439,8 +431,7 @@ void VisitEachAnchorGroup(const std::unordered_map<AnchorIndex, AnchorGroup>&
 
 void SortAnchorGroupOpStmts(
     std::unordered_map<AnchorIndex, AnchorGroup>* anchor_index2igroup_spec,
-    const std::function<std::size_t(const m_expr::OpStmt&)>&
-        OrderValue4OpStmt) {
+    const std::function<std::size_t(const OpStmt&)>& OrderValue4OpStmt) {
   const auto& CompareOpStmt = [&](const auto& lhs, const auto& rhs) {
     return OrderValue4OpStmt(lhs) < OrderValue4OpStmt(rhs);
   };
@@ -455,8 +446,7 @@ void SortAnchorGroupOpStmts(
 std::vector<AnchorGroup> SortedAnchorGroups(
     const std::unordered_map<AnchorIndex, AnchorGroup>&
         anchor_index2igroup_spec,
-    const std::function<std::size_t(const m_expr::OpStmt&)>&
-        OrderValue4OpStmt) {
+    const std::function<std::size_t(const OpStmt&)>& OrderValue4OpStmt) {
   std::vector<AnchorGroup> ret{};
 
   VisitEachAnchorGroup(anchor_index2igroup_spec, [&](const auto& igroup_spec) {
@@ -475,7 +465,7 @@ std::vector<AnchorGroup> SortedAnchorGroups(
 
 std::vector<AnchorGroup> SortedAnchorGroups(
     std::unordered_map<AnchorIndex, AnchorGroup>* anchor_index2igroup_spec,
-    const List<m_expr::OpStmt>& op_stmts) {
+    const List<OpStmt>& op_stmts) {
   const auto& OrderValue4OpStmt = MakeGetterOrderValue4OpStmt(op_stmts);
 
   SortAnchorGroupOpStmts(anchor_index2igroup_spec, OrderValue4OpStmt);
@@ -485,7 +475,7 @@ std::vector<AnchorGroup> SortedAnchorGroups(
 
 std::vector<AnchorGroup> PartitionOpStmts(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
-    const List<m_expr::OpStmt>& op_stmts) {
+    const List<OpStmt>& op_stmts) {
   std::unordered_set<AnchorIndex> candidate_anchor_indexes =
       InitCandidateAnchorIndex(EquationCtx4OpStmt, op_stmts);
 
@@ -496,4 +486,4 @@ std::vector<AnchorGroup> PartitionOpStmts(
   return SortedAnchorGroups(&anchor_index2igroup_spec, op_stmts);
 }
 
-}  // namespace cinn::adt::partition
+}  // namespace cinn::adt

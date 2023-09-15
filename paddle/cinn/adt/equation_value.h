@@ -24,7 +24,7 @@ class Node;
 class NodeData;
 }  // namespace cinn::hlir::framework
 
-namespace cinn::adt::equation {
+namespace cinn::adt {
 
 DEFINE_ADT_TAG(tPointer);
 DEFINE_ADT_TAG(tIterVar);
@@ -39,8 +39,6 @@ DEFINE_ADT_UNION(Constant,
                  Mul<Constant, Constant>);
 
 OVERLOAD_OPERATOR_EQ_NE(Constant, UnionEqual);
-OVERLOAD_OPERATOR_EQ_NE(tStride<UniqueId>, TagEqual);
-OVERLOAD_OPERATOR_EQ_NE(tDim<UniqueId>, TagEqual);
 OVERLOAD_OPERATOR_EQ_NE(List<Constant>, ListEqual);
 OVERLOAD_OPERATOR_EQ_NE(Neg<Constant>, TupleEqual);
 using AddConstant = Add<Constant, Constant>;
@@ -126,4 +124,4 @@ using ListGetItem_Value_Constant = ListGetItem<Value, Constant>;
 OVERLOAD_OPERATOR_EQ_NE(ListGetItem_Value_Constant, TupleEqual);
 OVERLOAD_OPERATOR_EQ_NE(PtrGetItem<Value>, TupleEqual);
 
-}  // namespace cinn::adt::equation
+}  // namespace cinn::adt

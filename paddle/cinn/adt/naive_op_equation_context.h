@@ -23,18 +23,18 @@
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/m_expr.h"
+#include "paddle/cinn/adt/op_arg_pos.h"
 #include "paddle/cinn/adt/op_equation_context.h"
 #include "paddle/cinn/hlir/framework/node.h"
 
-namespace cinn::adt::equation::config {
+namespace cinn::adt::config {
 
-// Note: class name and file name is in-consistent
-class NativeOpEquationContext final : public OpEquationContext {
+class NaiveOpEquationContext final : public OpEquationContext {
  public:
-  NativeOpEquationContext(const NativeOpEquationContext&) = delete;
-  NativeOpEquationContext(NativeOpEquationContext&&) = delete;
+  NaiveOpEquationContext(const NaiveOpEquationContext&) = delete;
+  NaiveOpEquationContext(NaiveOpEquationContext&&) = delete;
 
-  explicit NativeOpEquationContext(
+  explicit NaiveOpEquationContext(
       const std::vector<std::uint64_t>& in_tensors_ranks,
       const std::vector<std::uint64_t>& out_tensors_ranks)
       : in_tensors_ranks_(in_tensors_ranks),
@@ -44,9 +44,6 @@ class NativeOpEquationContext final : public OpEquationContext {
         in_msg_box_out_indexes_(MakeArgIndexes(out_tensors_ranks.size())),
         out_msg_box_in_indexes_(MakeArgIndexes(in_tensors_ranks.size())),
         out_msg_box_out_indexes_(MakeArgIndexes(out_tensors_ranks.size())) {
-    // Note: why do we have below error message?
-    // no default constructor exists for class
-    // "cinn::adt::equation::tOpPlaceHolder<cinn::adt::equation::UniqueId>"
     Init(&in_iterator_tuples_, in_tensors_ranks);
     Init(&out_iterator_tuples_, out_tensors_ranks);
     Init(&in_stride_tuples_, in_tensors_ranks);
@@ -57,7 +54,7 @@ class NativeOpEquationContext final : public OpEquationContext {
     fake_op_placeholder_ = GenerateFakeOpPlaceholder();
   }
 
-  ~NativeOpEquationContext() = default;
+  ~NaiveOpEquationContext() = default;
 
   const std::vector<std::uint64_t>& GetInTensorsRanks() const override {
     return in_tensors_ranks_;
@@ -162,8 +159,7 @@ class NativeOpEquationContext final : public OpEquationContext {
     }
   }
 
-  std::optional<equation::Index> OutMsgBoxIndex4InMsgBoxIndex(
-      const equation::Index& index) const {
+  std::optional<Index> OutMsgBoxIndex4InMsgBoxIndex(const Index& index) const {
     std::optional<Index> ret = OutMsgBoxInIndex4InMsgBoxInIndex(index);
     if (ret.has_value()) {
       return ret.value();
@@ -171,8 +167,8 @@ class NativeOpEquationContext final : public OpEquationContext {
     return OutMsgBoxOutIndex4InMsgBoxOutIndex(index);
   }
 
-  std::optional<equation::Index> OutMsgBoxInIndex4InMsgBoxInIndex(
-      const equation::Index& index) const {
+  std::optional<Index> OutMsgBoxInIndex4InMsgBoxInIndex(
+      const Index& index) const {
     std::optional<std::size_t> pos =
         FindPos(in_msg_box_in_indexes_.value(), index);
     if (!pos.has_value()) {
@@ -182,8 +178,8 @@ class NativeOpEquationContext final : public OpEquationContext {
     return out_msg_box_in_indexes().value()->at(pos.value());
   }
 
-  std::optional<equation::Index> OutMsgBoxOutIndex4InMsgBoxOutIndex(
-      const equation::Index& index) const {
+  std::optional<Index> OutMsgBoxOutIndex4InMsgBoxOutIndex(
+      const Index& index) const {
     std::optional<std::size_t> pos =
         FindPos(in_msg_box_out_indexes_.value(), index);
     if (!pos.has_value()) {
@@ -194,7 +190,7 @@ class NativeOpEquationContext final : public OpEquationContext {
   }
 
   void EraseOutMsgBoxIndexes(
-      const std::vector<equation::Index>& truncated_output_tensor_indexes);
+      const std::vector<Index>& truncated_output_tensor_indexes);
 
   OpArgPos GetOpArgPos(const Index& index) const {
     const auto& input_pos = FindPos(in_msg_box_in_indexes_.value(), index);
@@ -225,10 +221,10 @@ class NativeOpEquationContext final : public OpEquationContext {
     CHECK(iterator_tuple->size() == stride_tuple->size());
     Index index{UniqueId::New()};
     equations_->emplace_back(
-        equation::Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>(
+        Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>(
             stride_tuple, index, iterator_tuple));
     equations_->emplace_back(
-        equation::UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>(
+        UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>(
             stride_tuple, iterator_tuple, index));
     return index;
   }
@@ -270,7 +266,6 @@ class NativeOpEquationContext final : public OpEquationContext {
   }
 
   tOutMsgBox<OpArgIndexes> MakeOutMsgBoxOpArgIndexes() const {
-    // Note: Do we have better option?
     return tOutMsgBox<OpArgIndexes>{OpArgIndexes{
         out_msg_box_in_indexes_.value(), out_msg_box_out_indexes_.value()}};
   }
@@ -307,8 +302,7 @@ class NativeOpEquationContext final : public OpEquationContext {
   FakeOpPlaceHolder fake_op_placeholder_;
 };
 
-std::function<std::shared_ptr<equation::config::NativeOpEquationContext>(
-    const m_expr::OpStmt&)>
-GenerateContext4LocalOpStmt(const List<m_expr::OpStmt>& op_stmts);
+std::function<std::shared_ptr<config::NaiveOpEquationContext>(const OpStmt&)>
+GenerateContext4LocalOpStmt(const List<OpStmt>& op_stmts);
 
-}  // namespace cinn::adt::equation::config
+}  // namespace cinn::adt::config

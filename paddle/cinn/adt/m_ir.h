@@ -20,39 +20,39 @@
 
 namespace cinn::adt {
 
-using LoopIterators = List<equation::Iterator>;
+using LoopIterators = List<Iterator>;
 
 }
 
-namespace cinn::adt::m_ir {
+namespace cinn::adt {
 
 class MapIr final {
  public:
-  MapIr(const List<m_expr::OpStmt>& op_stmts,
+  MapIr(const List<OpStmt>& op_stmts,
         const List<LoopIterators>& loop_iters_list)
       : op_stmts_{op_stmts}, loop_iters_list_(loop_iters_list) {}
   MapIr(const MapIr&) = default;
   MapIr(MapIr&&) = default;
 
-  const List<m_expr::OpStmt>& op_stmts() const { return op_stmts_; }
+  const List<OpStmt>& op_stmts() const { return op_stmts_; }
 
   const List<LoopIterators>& loop_iters_list() const {
     return loop_iters_list_;
   }
 
  private:
-  List<m_expr::OpStmt> op_stmts_;
+  List<OpStmt> op_stmts_;
   List<LoopIterators> loop_iters_list_;
 };
 
 using MapIrList = List<MapIr>;
 
 MapIrList GenerateMapIrListForLoopFuse(
-    const List<m_expr::OpStmt>& op_stmts,
+    const List<OpStmt>& op_stmts,
     const LoopIterators& loop_iters,
-    const std::function<const LoopDescriptor&(const equation::Iterator&)>&
+    const std::function<const LoopDescriptor&(const Iterator&)>&
         GetLoopDescriptor,
-    const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
+    const std::function<const TensorIndexExpr&(const Tensor&)>&
         TensorIndexExpr4Tensor);
 
-}  // namespace cinn::adt::m_ir
+}  // namespace cinn::adt

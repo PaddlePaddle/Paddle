@@ -22,7 +22,7 @@
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/hlir/framework/node.h"
 
-namespace cinn::adt::equation::config {
+namespace cinn::adt::config {
 
 class OpEquationContext {
  public:
@@ -40,9 +40,11 @@ class OpEquationContext {
 
   virtual void Equal(const IteratorTuple& lhs, const IteratorTuple& rhs) = 0;
 
-  virtual const IteratorTuple& GetInIteratorTuple(std::size_t input_idx) const  = 0;
+  virtual const IteratorTuple& GetInIteratorTuple(
+      std::size_t input_idx) const = 0;
 
-  virtual const IteratorTuple& GetOutIteratorTuple(std::size_t output_idx) const = 0;
+  virtual const IteratorTuple& GetOutIteratorTuple(
+      std::size_t output_idx) const = 0;
 
   virtual const Index& GetInIndex(std::size_t input_idx) const = 0;
 
@@ -50,7 +52,8 @@ class OpEquationContext {
 
   virtual const StrideTuple& GetInStrideTuple(std::size_t input_idx) const = 0;
 
-  virtual const StrideTuple& GetOutStrideTuple(std::size_t output_idx) const = 0;
+  virtual const StrideTuple& GetOutStrideTuple(
+      std::size_t output_idx) const = 0;
 
   virtual const DimTuple& GetInDimTuple(std::size_t input_idx) const = 0;
 
@@ -60,4 +63,4 @@ class OpEquationContext {
   OpEquationContext() = default;
 };
 
-}  // namespace cinn::adt::equation::config
+}  // namespace cinn::adt::config

@@ -29,17 +29,17 @@
 
 namespace cinn::adt {
 
-using AnchorIndex = equation::Index;
+using AnchorIndex = Index;
 using EquationCtx4OpStmtT =
-    std::function<std::shared_ptr<equation::config::NativeOpEquationContext>(
-        const m_expr::OpStmt&)>;
+    std::function<std::shared_ptr<config::NaiveOpEquationContext>(
+        const OpStmt&)>;
 
 class IGroup final {
  public:
   IGroup(const IGroup&) = delete;
   IGroup(IGroup&&) = delete;
 
-  explicit IGroup(const List<m_expr::OpStmt>& op_stmts,
+  explicit IGroup(const List<OpStmt>& op_stmts,
                   const AnchorIndex& anchor_index,
                   const EquationCtx4OpStmtT& EquationCtx4OpStmt)
       : op_stmts_(op_stmts),
@@ -49,52 +49,47 @@ class IGroup final {
         op_stmts, EquationCtx4OpStmt, &index2tensor_, &tensor2indexes_);
   }
 
-  const List<m_expr::OpStmt>& op_stmts() const { return op_stmts_; }
+  const List<OpStmt>& op_stmts() const { return op_stmts_; }
 
   const AnchorIndex& anchor_index() const { return anchor_index_; }
 
-  const m_expr::Tensor& anchor_tensor() const {
-    return GetTensor(anchor_index());
+  const Tensor& anchor_tensor() const { return GetTensor(anchor_index()); }
+
+  GraphView GetDefaultGraphView() const {
+    return MakeGlobalEquationGraphViewForPartition(EquationCtx4OpStmt_,
+                                                   op_stmts_);
   }
 
-  equation::GraphView GetDefaultGraphView() const {
-    return partition::MakeGlobalEquationGraphViewForPartition(
-        EquationCtx4OpStmt_, op_stmts_);
-  }
-
-  const m_expr::Tensor& GetTensor(const equation::Index& index) const {
+  const Tensor& GetTensor(const Index& index) const {
     return index2tensor_.at(index);
   }
 
-  const std::vector<equation::Index>& GetIndexes(
-      const m_expr::Tensor& tensor) const {
+  const std::vector<Index>& GetIndexes(const Tensor& tensor) const {
     return tensor2indexes_.at(tensor);
   }
 
-  const std::optional<equation::config::AnchorSdEquationContext>&
-  anchor_sd_equation_ctx() const {
+  const std::optional<config::AnchorSdEquationContext>& anchor_sd_equation_ctx()
+      const {
     return anchor_sd_equation_ctx_;
   }
 
-  void set_anchor_sd_equation_ctx(
-      const equation::config::AnchorSdEquationContext& ctx) {
+  void set_anchor_sd_equation_ctx(const config::AnchorSdEquationContext& ctx) {
     anchor_sd_equation_ctx_ = ctx;
   }
 
-  const List<equation::Iterator>& loop_iterators() const {
+  const List<Iterator>& loop_iterators() const {
     CHECK(anchor_sd_equation_ctx_.has_value());
     return anchor_sd_equation_ctx_.value().loop_iterators();
   }
 
  private:
   static void GenerateIndex2Tensor(
-      const List<m_expr::OpStmt>& op_stmts,
+      const List<OpStmt>& op_stmts,
       const EquationCtx4OpStmtT& EquationCtx4OpStmt,
-      std::unordered_map<equation::Index, m_expr::Tensor>* index2tensor,
-      std::unordered_map<m_expr::Tensor, std::vector<equation::Index>>*
-          tensor2indexes) {
+      std::unordered_map<Index, Tensor>* index2tensor,
+      std::unordered_map<Tensor, std::vector<Index>>* tensor2indexes) {
     for (const auto& op_stmt : *op_stmts) {
-      const std::shared_ptr<equation::config::NativeOpEquationContext> ctx =
+      const std::shared_ptr<config::NaiveOpEquationContext> ctx =
           EquationCtx4OpStmt(op_stmt);
       const auto& [op, op_inputs, op_outputs] = op_stmt.tuple();
       for (std::size_t idx = 0; idx < op_inputs.value()->size(); ++idx) {
@@ -112,14 +107,12 @@ class IGroup final {
     }
   }
 
-  List<m_expr::OpStmt> op_stmts_;
+  List<OpStmt> op_stmts_;
   AnchorIndex anchor_index_;
   EquationCtx4OpStmtT EquationCtx4OpStmt_;
-  std::unordered_map<equation::Index, m_expr::Tensor> index2tensor_;
-  std::unordered_map<m_expr::Tensor, std::vector<equation::Index>>
-      tensor2indexes_;
-  std::optional<equation::config::AnchorSdEquationContext>
-      anchor_sd_equation_ctx_;
+  std::unordered_map<Index, Tensor> index2tensor_;
+  std::unordered_map<Tensor, std::vector<Index>> tensor2indexes_;
+  std::optional<config::AnchorSdEquationContext> anchor_sd_equation_ctx_;
 };
 
 }  // namespace cinn::adt

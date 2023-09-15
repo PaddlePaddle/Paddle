@@ -1,4 +1,4 @@
-// Copyright (c) 2023 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,23 +18,6 @@
 
 namespace cinn::adt {
 
-DEFINE_ADT_TAG(tIn);
-DEFINE_ADT_TAG(tOut);
+DEFINE_ADT_UNION(OpArgPos, Undefined, tIn<std::size_t>, tOut<std::size_t>);
 
-DEFINE_ADT_TAG(tSSAShadow);
-DEFINE_ADT_TAG(tAnchor);
-DEFINE_ADT_TAG(tStride);
-
-DEFINE_ADT_TAG(tIterator);
-DEFINE_ADT_TAG(tIndex);
-DEFINE_ADT_TAG(tDim);
-DEFINE_ADT_TAG(tOpPlaceHolder);
-
-DEFINE_ADT_TAG(tInMsgBox);
-DEFINE_ADT_TAG(tOutMsgBox);
-
-DEFINE_ADT_TAG(tBreak);
-
-DEFINE_ADT_TAG(tHasNoConflictValue);
-
-}  // namespace cinn::adt
+}

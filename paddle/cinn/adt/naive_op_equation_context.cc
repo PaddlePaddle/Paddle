@@ -18,17 +18,18 @@
 #include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
 
-namespace cinn::adt::equation::config {
+namespace cinn::adt::config {
 
 namespace {
 
 using InBox2OutBox = InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>,
                                         tIn<tInMsgBox<OpArgIndexes>>>;
 
-template <typename DoEachEquationT>
-Equations TransformEquations(const Equations& origin_equations,
-                             const DoEachEquationT& HandleInMsgBox2OutMsgBox,
-                             const DoEachEquationT& HandleOther) {
+template <typename HandleInMsgBox2OutMsgBoxT, typename HandleOtherT>
+Equations TransformEquations(
+    const Equations& origin_equations,
+    const HandleInMsgBox2OutMsgBoxT& HandleInMsgBox2OutMsgBox,
+    const HandleOtherT& HandleOther) {
   Equations equations{};
   for (const auto& origin_equation : *origin_equations) {
     if (origin_equation.Has<InBox2OutBox>()) {
@@ -40,9 +41,8 @@ Equations TransformEquations(const Equations& origin_equations,
   return equations;
 }
 
-List<Index> GetNonErasedIndexes(
-    const List<Index>& origin_indexes,
-    const std::vector<equation::Index>& erased_indexes) {
+List<Index> GetNonErasedIndexes(const List<Index>& origin_indexes,
+                                const std::vector<Index>& erased_indexes) {
   List<Index> indexes{};
   for (const auto& index : *origin_indexes) {
     if (std::find(erased_indexes.begin(), erased_indexes.end(), index) ==
@@ -53,9 +53,8 @@ List<Index> GetNonErasedIndexes(
   return indexes;
 }
 
-Equation EraseOutMsgBoxIndexes(
-    const Equation& equation,
-    const std::vector<equation::Index>& erased_output_tensor_indexes) {
+Equation EraseIndexes(const Equation& equation,
+                      const std::vector<Index>& erased_output_tensor_indexes) {
   const auto& in_msg_box2out_msg_box = equation.Get<InBox2OutBox>();
   const auto& [op_placeholder, out_box_indexes, in_box_indexes] =
       in_msg_box2out_msg_box.tuple();
@@ -71,17 +70,16 @@ Equation EraseOutMsgBoxIndexes(
 
 }  // namespace
 
-void NativeOpEquationContext::EraseOutMsgBoxIndexes(
-    const std::vector<equation::Index>& erased_output_tensor_indexes) {
-  const auto& Identity = [](const auto& equation) { return equation };
-  const auto& Erase = [&](const auto& equation) {
-    return EraseOutMsgBoxIndexes(equation, erased_output_tensor_indexes);
+void NaiveOpEquationContext::EraseOutMsgBoxIndexes(
+    const std::vector<Index>& erased_output_tensor_indexes) {
+  const auto& Identity = [](const Equation& equation) { return equation; };
+  const auto& Erase = [&](const Equation& equation) {
+    return EraseIndexes(equation, erased_output_tensor_indexes);
   };
-  // Note: Why error?
   equations_ = TransformEquations(equations_, Erase, Identity);
 }
 
-std::vector<std::uint64_t> MakeTensorRanks(const List<m_expr::Arg>& arg_lists) {
+std::vector<std::uint64_t> MakeTensorRanks(const List<Arg>& arg_lists) {
   std::vector<std::uint64_t> ret;
   for (const auto& arg : *arg_lists) {
     CHECK(arg.Has<adapter::Tensor>());
@@ -90,14 +88,14 @@ std::vector<std::uint64_t> MakeTensorRanks(const List<m_expr::Arg>& arg_lists) {
   return ret;
 }
 
-void GenerateOpEquations(const m_expr::OpStmt& op_stmt,
-                         equation::config::NativeOpEquationContext* ctx) {
+void GenerateOpEquations(const OpStmt& op_stmt,
+                         config::NaiveOpEquationContext* ctx) {
   const auto& [op, inputs, outputs] = op_stmt.tuple();
   CHECK(op.Has<const hlir::framework::Node*>());
   const hlir::framework::Node* op_node = op.Get<const hlir::framework::Node*>();
 
   using GenerateEquationFunc =
-      std::function<void(equation::config::NativeOpEquationContext * ctx)>;
+      std::function<void(config::NaiveOpEquationContext * ctx)>;
 
   const auto& generate_equations =
       hlir::framework::Operator::GetAttrs<GenerateEquationFunc>(
@@ -106,10 +104,10 @@ void GenerateOpEquations(const m_expr::OpStmt& op_stmt,
   generate_equations[op_node->op()](ctx);
 }
 
-std::shared_ptr<equation::config::NativeOpEquationContext>
-MakeContextAndGenerateEquations(const m_expr::OpStmt& op_stmt) {
+std::shared_ptr<config::NaiveOpEquationContext> MakeContextAndGenerateEquations(
+    const OpStmt& op_stmt) {
   const auto& [op, inputs, outputs] = op_stmt.tuple();
-  const auto& ctx = std::make_shared<equation::config::NativeOpEquationContext>(
+  const auto& ctx = std::make_shared<config::NaiveOpEquationContext>(
       MakeTensorRanks(inputs.value()), MakeTensorRanks(outputs.value()));
 
   GenerateOpEquations(op_stmt, ctx.get());
@@ -117,12 +115,11 @@ MakeContextAndGenerateEquations(const m_expr::OpStmt& op_stmt) {
   return ctx;
 }
 
-std::function<std::shared_ptr<equation::config::NativeOpEquationContext>(
-    const m_expr::OpStmt&)>
-GenerateContext4LocalOpStmt(const List<m_expr::OpStmt>& op_stmts) {
-  using OpStmt2EquationContext = std::unordered_map<
-      m_expr::OpStmt,
-      std::shared_ptr<equation::config::NativeOpEquationContext>>;
+std::function<std::shared_ptr<config::NaiveOpEquationContext>(const OpStmt&)>
+GenerateContext4LocalOpStmt(const List<OpStmt>& op_stmts) {
+  using OpStmt2EquationContext =
+      std::unordered_map<OpStmt,
+                         std::shared_ptr<config::NaiveOpEquationContext>>;
   const auto& op_stmt2equation_ctx = std::make_shared<OpStmt2EquationContext>();
 
   for (const auto& op_stmt : *op_stmts) {
@@ -135,4 +132,4 @@ GenerateContext4LocalOpStmt(const List<m_expr::OpStmt>& op_stmts) {
   };
 }
 
-}  // namespace cinn::adt::equation::config
+}  // namespace cinn::adt::config

@@ -126,41 +126,33 @@ bool ListEqual(const T& lhs, const T& rhs) {
   return *lhs == *rhs;
 }
 
-template <typename T>
-class Tagged {
- public:
-  Tagged(const Tagged&) = default;
-  Tagged(Tagged&&) = default;
-  Tagged& operator=(const Tagged&) = default;
-  Tagged& operator=(Tagged&&) = default;
-
-  template <
-      typename Arg,
-      std::enable_if_t<!std::is_same_v<std::decay_t<Arg>, Tagged>, bool> = true>
-  explicit Tagged(Arg&& value) : value_(value) {}
-
-  const T& value() const { return value_; }
-
- private:
-  T value_;
-};
-
-template <typename T>
-bool TagEqual(const T& lhs, const T& rhs) {
-  if (&lhs == &rhs) {
-    return true;
-  }
-  return lhs.value() == rhs.value();
-}
-
-#define DEFINE_ADT_TAG(name)                \
-  template <typename T>                     \
-  struct name : public Tagged<T> {          \
-    using Tagged<T>::Tagged;                \
-    name(const name&) = default;            \
-    name(name&&) = default;                 \
-    name& operator=(const name&) = default; \
-    name& operator=(name&&) = default;      \
+#define DEFINE_ADT_TAG(TagName)                                             \
+  template <typename T>                                                     \
+  class TagName {                                                           \
+   public:                                                                  \
+    TagName() = default;                                                    \
+    TagName(const TagName&) = default;                                      \
+    TagName(TagName&&) = default;                                           \
+    TagName& operator=(const TagName&) = default;                           \
+    TagName& operator=(TagName&&) = default;                                \
+                                                                            \
+    bool operator==(const TagName& other) const {                           \
+      return value_ == other.value();                                       \
+    }                                                                       \
+                                                                            \
+    bool operator!=(const TagName& other) const {                           \
+      return value_ != other.value();                                       \
+    }                                                                       \
+                                                                            \
+    template <typename Arg,                                                 \
+              std::enable_if_t<!std::is_same_v<std::decay_t<Arg>, TagName>, \
+                               bool> = true>                                \
+    explicit TagName(Arg&& value) : value_(value) {}                        \
+                                                                            \
+    const T& value() const { return value_; }                               \
+                                                                            \
+   private:                                                                 \
+    T value_;                                                               \
   };
 
 #define DEFINE_ADT_UNION(class_name, ...)                                      \
@@ -273,8 +265,6 @@ struct Ok final {
   bool operator==(const Ok&) const { return true; }
   bool operator!=(const Ok&) const { return false; }
 };
-
-DEFINE_ADT_UNION(OpArgPos, Undefined, tIn<std::size_t>, tOut<std::size_t>);
 
 #define ADT_TODO() LOG(FATAL) << "TODO"
 

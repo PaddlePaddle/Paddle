@@ -20,7 +20,7 @@
 #include "paddle/cinn/adt/equation_value.h"
 #include "paddle/cinn/adt/m_expr.h"
 
-namespace cinn::adt::equation {
+namespace cinn::adt {
 
 class IndexExprInferContext final {
  public:
@@ -47,4 +47,4 @@ class IndexExprInferContext final {
   std::unordered_map<Variable, Value> map_;
 };
 
-}  // namespace cinn::adt::equation
+}  // namespace cinn::adt

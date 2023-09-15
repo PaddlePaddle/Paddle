@@ -17,7 +17,7 @@
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/equation_util.h"
 
-namespace cinn::adt::equation::config {
+namespace cinn::adt::config {
 
 class AnchorSdEquationContext final {
  public:
@@ -28,8 +28,8 @@ class AnchorSdEquationContext final {
 
   AnchorSdEquationContext(std::size_t num_strides,
                           const AnchorIndex& anchor_index)
-      : strides_(util::MakeStrides(num_strides)),
-        loop_iterators_(util::MakeIterators(num_strides)) {
+      : strides_(MakeStrides(num_strides)),
+        loop_iterators_(MakeIterators(num_strides)) {
     GenerateSdEquation(anchor_index);
   }
 
@@ -41,9 +41,8 @@ class AnchorSdEquationContext final {
 
  private:
   void GenerateSdEquation(const Index& tensor_index) {
-    const auto& sd_index =
-        util::MakeDot(loop_iterators_, strides_, &equations_);
-    util::Equal(sd_index, tensor_index, &equations_);
+    const auto& sd_index = MakeDot(loop_iterators_, strides_, &equations_);
+    Equal(sd_index, tensor_index, &equations_);
   }
 
   List<Stride> strides_;
@@ -51,4 +50,4 @@ class AnchorSdEquationContext final {
   Equations equations_;
 };
 
-}  // namespace cinn::adt::equation::config
+}  // namespace cinn::adt::config

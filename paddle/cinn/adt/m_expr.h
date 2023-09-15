@@ -33,19 +33,26 @@ class NodeData;
 
 namespace cinn {
 namespace adt {
-namespace m_expr {
 
 // Offset = Int64
 using Offset = std::int64_t;
 
-class GlobalMemoryType final {};
+class GlobalMemoryType final {
+  bool operator==(const GlobalMemoryType& global_memory_type) const {
+    return this == &global_memory_type;
+  }
+};
 
 inline std::size_t GetHashValue(const GlobalMemoryType&) {
   static GlobalMemoryType global_memory_type;
   return reinterpret_cast<std::size_t>(&global_memory_type);
 }
 
-class SharedMemoryType final {};
+class SharedMemoryType final {
+  bool operator==(const SharedMemoryType& shared_memory_type) const {
+    return this == &shared_memory_type;
+  }
+};
 
 inline std::size_t GetHashValue(const SharedMemoryType&) {
   static SharedMemoryType shared_memory_type;
@@ -54,17 +61,18 @@ inline std::size_t GetHashValue(const SharedMemoryType&) {
 
 // MemoryType = GlobalMemoryType | SharedMemoryType
 DEFINE_ADT_UNION(MemoryType, GlobalMemoryType, SharedMemoryType);
+OVERLOAD_OPERATOR_EQ_NE(MemoryType, UnionEqual);
 OVERRIDE_UNION_GET_HASH_VALUE(MemoryType);
 
-// TempStorage = (tVar Name, Offset, MemoryType)
-class TempStorage final : public Tuple<tVar<Name>, Offset, MemoryType> {
+// TempStorage = (Name, Offset, MemoryType)
+class TempStorage final : public Tuple<Name, Offset, MemoryType> {
  public:
-  using Tuple<tVar<Name>, Offset, MemoryType>::Tuple;
+  using Tuple<Name, Offset, MemoryType>::Tuple;
 };
 OVERLOAD_OPERATOR_EQ_NE(TempStorage, TupleEqual);
 inline std::size_t GetHashValue(const TempStorage& temp_storage) {
   const auto& [var_name, offset, memory_type] = temp_storage.tuple();
-  std::size_t hash_value = std::hash<std::string>()(var_name.value());
+  std::size_t hash_value = std::hash<std::string>()(var_name);
   hash_value = hash_combine(hash_value, offset);
   hash_value = hash_combine(hash_value, GetHashValue(memory_type));
   return hash_value;
@@ -76,7 +84,6 @@ class SSAShadowTensor final : public Tuple<tSSAShadow<Name>, adapter::Tensor> {
   using Tuple<tSSAShadow<Name>, adapter::Tensor>::Tuple;
 };
 
-OVERLOAD_OPERATOR_EQ_NE(tSSAShadow<Name>, TagEqual);
 OVERLOAD_OPERATOR_EQ_NE(SSAShadowTensor, TupleEqual);
 
 OVERRIDE_TAG_GET_HASH_VALUE(tSSAShadow<Name>);
@@ -131,7 +138,7 @@ class MapStmt final : public Tuple<ScheduleDescriptor, List<T>> {
 // Stmt = OpStmt | MapStmt Stmt
 DEFINE_ADT_UNION(Stmt, OpStmt, MapStmt<Stmt>);
 
-using TensorIndexExpr = equation::Value;
+using TensorIndexExpr = Value;
 using TensorIndexExpr4TensorT =
     std::function<const TensorIndexExpr&(const Tensor&)>;
 
@@ -154,23 +161,22 @@ class Kernel final : public Tuple<List<AnchoredMapStmt>,
 // MapExpr = Kernel;
 using MapExpr = Kernel;
 
-}  // namespace m_expr
 }  // namespace adt
 }  // namespace cinn
 
 namespace std {
 
 template <>
-struct hash<cinn::adt::m_expr::Tensor> {
-  std::size_t operator()(const cinn::adt::m_expr::Tensor& tensor) const {
-    return cinn::adt::m_expr::GetHashValue(tensor);
+struct hash<cinn::adt::Tensor> {
+  std::size_t operator()(const cinn::adt::Tensor& tensor) const {
+    return cinn::adt::GetHashValue(tensor);
   }
 };
 
 template <>
-struct hash<cinn::adt::m_expr::OpStmt> {
-  std::size_t operator()(const cinn::adt::m_expr::OpStmt& op_stmt_node) const {
-    return cinn::adt::m_expr::GetHashValue(op_stmt_node);
+struct hash<cinn::adt::OpStmt> {
+  std::size_t operator()(const cinn::adt::OpStmt& op_stmt_node) const {
+    return cinn::adt::GetHashValue(op_stmt_node);
   }
 };
 

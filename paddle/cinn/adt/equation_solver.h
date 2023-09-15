@@ -20,11 +20,9 @@
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/tags.h"
 
-namespace cinn::adt::equation {
+namespace cinn::adt {
 
 class IndexExprInferContext;
-
-namespace value {
 
 void SolveEquations(
     const EquationGraphTopoWalker<Variable, const Function*>& walker,
@@ -35,6 +33,5 @@ tHasNoConflictValue<bool> TrySolveEquations(
     const EquationGraphTopoWalker<Variable, const Function*>& walker,
     const Variable& start,
     IndexExprInferContext* ctx);
-}  // namespace value
 
-}  // namespace cinn::adt::equation
+}  // namespace cinn::adt

@@ -17,7 +17,7 @@
 #include "paddle/cinn/adt/equation_value.h"
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 
-namespace cinn::adt::equation {
+namespace cinn::adt {
 
 Value SimplifyValue(Value value);
 

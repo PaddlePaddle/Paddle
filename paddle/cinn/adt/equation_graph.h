@@ -21,7 +21,7 @@
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/common/equation_graph_topo_walker.h"
 
-namespace cinn::adt::equation {
+namespace cinn::adt {
 
 using Functions = Equations;
 
@@ -165,13 +165,19 @@ class Graph final : public std::enable_shared_from_this<Graph> {
                               out_iterators.value()->end());
         in_variables.emplace(in_index.value());
       },
-      [&](const InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>,
-                                   tIn<tInMsgBox<OpArgIndexes>>>& in_msg_box2out_msg_box) {
-        const auto& [_, out_box_indexes, in_box_indexes] = in_msg_box2out_msg_box.tuple();
-        const auto& [out_box_in_indexes, out_box_out_indexes] = out_box_indexes.value().value().tuple();
-        const auto& [in_box_in_indexes, in_box_out_indexes] = in_box_indexes.value().value().tuple();
-        out_variables.emplace(out_box_in_indexes.value()->begin(), out_box_in_indexes.value()->end());
-        out_variables.emplace(out_box_out_indexes.value()->begin(), out_box_out_indexes.value()->end());
+      [&](const InMsgBox2OutMsgBox<
+                  tOut<tOutMsgBox<OpArgIndexes>>,
+                  tIn<tInMsgBox<OpArgIndexes>>>& in_msg_box2out_msg_box) {
+        const auto& [_, out_box_indexes, in_box_indexes] =
+            in_msg_box2out_msg_box.tuple();
+        const auto& [out_box_in_indexes, out_box_out_indexes] =
+            out_box_indexes.value().value().tuple();
+        const auto& [in_box_in_indexes, in_box_out_indexes] =
+            in_box_indexes.value().value().tuple();
+        out_variables.emplace(out_box_in_indexes.value()->begin(),
+                              out_box_in_indexes.value()->end());
+        out_variables.emplace(out_box_out_indexes.value()->begin(),
+                              out_box_out_indexes.value()->end());
         in_variables.emplace(in_box_in_indexes.value()->begin(),
                              in_box_in_indexes.value()->end());
         in_variables.emplace(in_box_out_indexes.value()->begin(),
@@ -207,4 +213,4 @@ class Graph final : public std::enable_shared_from_this<Graph> {
   std::vector<std::pair<const Function*, const Variable>> f2v_edges_;
 };
 
-}  // namespace cinn::adt::equation
+}  // namespace cinn::adt

@@ -20,28 +20,28 @@
 #include "paddle/cinn/adt/naive_op_equation_context.h"
 #include "paddle/cinn/hlir/framework/graph.h"
 
-namespace cinn::adt::partition {
+namespace cinn::adt {
 
 using EquationCtx4OpStmtT =
-    std::function<std::shared_ptr<equation::config::NativeOpEquationContext>(
-        const m_expr::OpStmt&)>;
-using AnchorIndex = equation::Index;
+    std::function<std::shared_ptr<config::NaiveOpEquationContext>(
+        const OpStmt&)>;
+using AnchorIndex = Index;
 
 struct AnchorGroup {
   AnchorIndex anchor_index;
-  m_expr::OpStmt op_stmt;
-  List<m_expr::OpStmt> op_stmts;
+  OpStmt op_stmt;
+  List<OpStmt> op_stmts;
   EquationCtx4OpStmtT EquationCtx4OpStmt;
 };
 
 std::vector<AnchorGroup> PartitionOpStmts(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
-    const List<m_expr::OpStmt>& op_stmts);
+    const List<OpStmt>& op_stmts);
 
-bool IsEquationSolvable(const partition::AnchorGroup& igroup_spec);
+bool IsEquationSolvable(const AnchorGroup& igroup_spec);
 
-equation::GraphView MakeGlobalEquationGraphViewForPartition(
+GraphView MakeGlobalEquationGraphViewForPartition(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
-    const List<m_expr::OpStmt>& op_stmts);
+    const List<OpStmt>& op_stmts);
 
-}  // namespace cinn::adt::partition
+}  // namespace cinn::adt

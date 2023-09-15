@@ -20,32 +20,30 @@
 namespace cinn::adt {
 
 template <>
-struct MatchTrait<equation::Constant, std::int64_t> final {
+struct MatchTrait<Constant, std::int64_t> final {
   static constexpr int is_template = false;
 };
 
 template <>
-struct MatchTrait<equation::Constant, equation::tStride<equation::UniqueId>>
-    final {
+struct MatchTrait<Constant, tStride<UniqueId>> final {
   static constexpr int is_template = false;
 };
 
 template <>
-struct MatchTrait<equation::Constant, equation::tDim<equation::UniqueId>>
-    final {
+struct MatchTrait<Constant, tDim<UniqueId>> final {
   static constexpr int is_template = false;
 };
 
 template <typename T>
-struct MatchTrait<equation::Constant, List<T>> final {
-  using base_type = List<equation::Constant>;
+struct MatchTrait<Constant, List<T>> final {
+  using base_type = List<Constant>;
 
   static constexpr int is_template = true;
 
   template <template <typename> class Matcher>
   static bool MatchChildren(const base_type& list) {
     for (const auto& value : *list) {
-      if (!Matcher<equation::Constant>::template Call<T>(value)) {
+      if (!Matcher<Constant>::template Call<T>(value)) {
         return false;
       }
     }
@@ -54,68 +52,65 @@ struct MatchTrait<equation::Constant, List<T>> final {
 };
 
 template <typename T>
-struct MatchTrait<equation::Constant, Neg<T>> final {
-  using base_type = Neg<equation::Constant>;
+struct MatchTrait<Constant, Neg<T>> final {
+  using base_type = Neg<Constant>;
 
   static constexpr int is_template = true;
 
   template <template <typename> class Matcher>
   static bool MatchChildren(const base_type& constant) {
-    return Matcher<equation::Constant>::template Call<T>(
-        std::get<0>(constant.tuple()));
+    return Matcher<Constant>::template Call<T>(std::get<0>(constant.tuple()));
   }
 };
 
 template <typename T0, typename T1>
-struct MatchTrait<equation::Constant, Add<T0, T1>> final {
-  using base_type = Add<equation::Constant, equation::Constant>;
+struct MatchTrait<Constant, Add<T0, T1>> final {
+  using base_type = Add<Constant, Constant>;
 
   static constexpr int is_template = true;
 
   template <template <typename> class Matcher>
   static bool MatchChildren(const base_type& constant) {
-    return Matcher<equation::Constant>::template Call<T0>(
+    return Matcher<Constant>::template Call<T0>(
                std::get<0>(constant.tuple())) &&
-           Matcher<equation::Constant>::template Call<T1>(
-               std::get<1>(constant.tuple()));
+           Matcher<Constant>::template Call<T1>(std::get<1>(constant.tuple()));
   }
 };
 
 template <typename T0, typename T1>
-struct MatchTrait<equation::Constant, Mul<T0, T1>> final {
-  using base_type = Mul<equation::Constant, equation::Constant>;
+struct MatchTrait<Constant, Mul<T0, T1>> final {
+  using base_type = Mul<Constant, Constant>;
 
   static constexpr int is_template = true;
 
   template <template <typename> class Matcher>
   static bool MatchChildren(const base_type& constant) {
-    return Matcher<equation::Constant>::template Call<T0>(
+    return Matcher<Constant>::template Call<T0>(
                std::get<0>(constant.tuple())) &&
-           Matcher<equation::Constant>::template Call<T1>(
-               std::get<1>(constant.tuple()));
+           Matcher<Constant>::template Call<T1>(std::get<1>(constant.tuple()));
   }
 };
 
 template <>
-struct MatchTrait<equation::Value, Undefined> final {
+struct MatchTrait<Value, Undefined> final {
   static constexpr int is_template = false;
 };
 
 template <>
-struct MatchTrait<equation::Value, LoopDescriptor> final {
+struct MatchTrait<Value, LoopDescriptor> final {
   static constexpr int is_template = false;
 };
 
 template <typename T>
-struct MatchTrait<equation::Value, List<T>> final {
-  using base_type = List<equation::Value>;
+struct MatchTrait<Value, List<T>> final {
+  using base_type = List<Value>;
 
   static constexpr int is_template = false;
 
   template <template <typename> class Matcher>
   static bool MatchChildren(const base_type& list) {
     for (const auto& value : *list) {
-      if (!Matcher<equation::Value>::template Call<T>(value)) {
+      if (!Matcher<Value>::template Call<T>(value)) {
         return false;
       }
     }
@@ -123,36 +118,33 @@ struct MatchTrait<equation::Value, List<T>> final {
   }
 };
 
-#define DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(name, type0, type1)    \
-  template <typename T0, typename T1>                                   \
-  struct MatchTrait<equation::Value, equation::name<T0, T1>> final {    \
-    using base_type = equation::name<equation::type0, equation::type1>; \
-                                                                        \
-    static constexpr int is_template = true;                            \
-                                                                        \
-    template <template <typename> class Matcher>                        \
-    static bool MatchChildren(const base_type& value) {                 \
-      return Matcher<equation::type0>::template Call<T0>(               \
-                 std::get<0>(value.tuple())) &&                         \
-             Matcher<equation::type1>::template Call<T1>(               \
-                 std::get<1>(value.tuple()));                           \
-    }                                                                   \
+#define DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(name, type0, type1)          \
+  template <typename T0, typename T1>                                         \
+  struct MatchTrait<Value, name<T0, T1>> final {                              \
+    using base_type = name<type0, type1>;                                     \
+                                                                              \
+    static constexpr int is_template = true;                                  \
+                                                                              \
+    template <template <typename> class Matcher>                              \
+    static bool MatchChildren(const base_type& value) {                       \
+      return Matcher<type0>::template Call<T0>(std::get<0>(value.tuple())) && \
+             Matcher<type1>::template Call<T1>(std::get<1>(value.tuple()));   \
+    }                                                                         \
   };
 
 DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(ListGetItem, Value, Constant);
 
-#define DEFINE_ADT_MATCH_TRAIT_EQUATION(name)                   \
-  template <typename T>                                         \
-  struct MatchTrait<equation::Value, equation::name<T>> final { \
-    using base_type = equation::name<equation::Value>;          \
-                                                                \
-    static constexpr int is_template = true;                    \
-                                                                \
-    template <template <typename> class Matcher>                \
-    static bool MatchChildren(const base_type& value) {         \
-      return Matcher<equation::Value>::template Call<T>(        \
-          std::get<0>(value.tuple()));                          \
-    }                                                           \
+#define DEFINE_ADT_MATCH_TRAIT_EQUATION(name)                              \
+  template <typename T>                                                    \
+  struct MatchTrait<Value, name<T>> final {                                \
+    using base_type = name<Value>;                                         \
+                                                                           \
+    static constexpr int is_template = true;                               \
+                                                                           \
+    template <template <typename> class Matcher>                           \
+    static bool MatchChildren(const base_type& value) {                    \
+      return Matcher<Value>::template Call<T>(std::get<0>(value.tuple())); \
+    }                                                                      \
   };
 
 DEFINE_ADT_MATCH_TRAIT_EQUATION(IndexDot);

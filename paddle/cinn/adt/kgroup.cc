@@ -19,16 +19,16 @@
 
 namespace cinn::adt {
 
-using AnchorTensor = equation::Variable;
+using AnchorTensor = Variable;
 
-std::size_t GetTensorNumel(const m_expr::Tensor& tensor) {
+std::size_t GetTensorNumel(const Tensor& tensor) {
   CHECK(tensor.Has<adapter::Tensor>());
   return tensor.Get<adapter::Tensor>().GetNumel();
 }
 
 ScheduleDescriptor KGroup::GetDefaultScheduleDescriptor(
     const std::shared_ptr<IGroup>& igroup) const {
-  const m_expr::Tensor& tensor = igroup->anchor_tensor();
+  const Tensor& tensor = igroup->anchor_tensor();
 
   CHECK_EQ(GetTensorNumel(tensor) % 64, 0);
   return {{S0x{}, GetTensorNumel(tensor) / 64}, {S1x{}, 64}};

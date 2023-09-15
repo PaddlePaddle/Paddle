@@ -23,7 +23,7 @@
 #include "paddle/cinn/adt/tags.h"
 #include "paddle/cinn/common/equation_graph_topo_walker.h"
 
-namespace cinn::adt::equation::value {
+namespace cinn::adt {
 
 std::unordered_map<Variable, Value> InferValues(
     const Identity<tOut<Iterator>, tIn<Iterator>>& id,
@@ -51,7 +51,6 @@ std::unordered_map<Variable, Value> InferValues(
     in_values->emplace_back(ctx->GetValue(iter));
   }
   List<Constant> stride_constants{strides->begin(), strides->end()};
-  // Note: Something wrong about IndexDot definition?
   IndexDot<Value> index_dot{stride_constants, in_values};
   return {{out_index.value(), index_dot}};
 }
@@ -156,4 +155,4 @@ tHasNoConflictValue<bool> TrySolveEquations(
   return tHasNoConflictValue<bool>{has_no_conflict_value};
 }
 
-}  // namespace cinn::adt::equation::value
+}  // namespace cinn::adt

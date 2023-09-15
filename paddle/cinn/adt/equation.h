@@ -23,19 +23,17 @@
 #include "paddle/cinn/adt/tags.h"
 #include "paddle/cinn/common/equation_graph_topo_walker.h"
 
-namespace cinn::adt::equation {
+namespace cinn::adt {
 
 class UniqueId final {
  public:
+  UniqueId() : unique_id_(NewSeqNumber()) {}
   UniqueId(const UniqueId&) = default;
   UniqueId(UniqueId&&) = default;
   UniqueId& operator=(const UniqueId&) = default;
   UniqueId& operator=(UniqueId&&) = default;
 
-  static UniqueId New() {
-    static std::atomic<std::uint64_t> seq_number{0};
-    return UniqueId{++seq_number};
-  }
+  static UniqueId New() { return UniqueId{NewSeqNumber()}; }
 
   bool operator==(const UniqueId& other) const {
     return this->unique_id_ == other.unique_id_;
@@ -49,34 +47,32 @@ class UniqueId final {
     return this->unique_id_ < other.unique_id_;
   }
 
-  std::uint64_t unique_id() const { return unique_id_; }
+  std::size_t unique_id() const { return unique_id_; }
 
  private:
-  explicit UniqueId(std::uint64_t unique_id) : unique_id_(unique_id) {}
-  std::uint64_t unique_id_;
+  static std::size_t NewSeqNumber() {
+    static std::atomic<std::size_t> seq_number{0};
+    return ++seq_number;
+  }
+
+  explicit UniqueId(std::size_t unique_id) : unique_id_(unique_id) {}
+  std::size_t unique_id_;
 };
 
-}  // namespace cinn::adt::equation
+}  // namespace cinn::adt
 
 namespace std {
 
 template <>
-struct hash<cinn::adt::equation::UniqueId> final {
-  std::size_t operator()(const cinn::adt::equation::UniqueId& unique_id) const {
+struct hash<cinn::adt::UniqueId> final {
+  std::size_t operator()(const cinn::adt::UniqueId& unique_id) const {
     return unique_id.unique_id();
   }
 };
 
 }  // namespace std
 
-namespace cinn::adt::equation {
-
-DEFINE_ADT_TAG(tIterator);
-DEFINE_ADT_TAG(tIndex);
-DEFINE_ADT_TAG(tDim);
-DEFINE_ADT_TAG(tStride);
-DEFINE_ADT_TAG(tOp);
-DEFINE_ADT_TAG(tOpPlaceHolder);
+namespace cinn::adt {
 
 // Iterator = tIterator UniqueId
 using Iterator = tIterator<UniqueId>;
@@ -171,66 +167,52 @@ DEFINE_ADT_UNION(Variable,
 
 OVERLOAD_OPERATOR_EQ_NE(Variable, UnionEqual);
 
-inline bool operator==(const Iterator& lhs, const Iterator& rhs) {
-  return lhs.value() == rhs.value();
-}
-
-inline bool operator==(const Index& lhs, const Index& rhs) {
-  return lhs.value() == rhs.value();
-}
-
-inline bool operator==(const FakeOpPlaceHolder& lhs,
-                       const FakeOpPlaceHolder& rhs) {
-  return lhs.value() == rhs.value();
-}
-
 // Function = Equation
 using Function = Equation;
 
 using Equations = List<Equation>;
 using GraphView = EquationGraphTopoWalker<Variable, const Equation*>;
 
-}  // namespace cinn::adt::equation
+}  // namespace cinn::adt
 
 namespace std {
 
 template <>
-struct hash<cinn::adt::equation::Iterator> final {
-  std::size_t operator()(const cinn::adt::equation::Iterator& iterator) const {
+struct hash<cinn::adt::Iterator> final {
+  std::size_t operator()(const cinn::adt::Iterator& iterator) const {
     return iterator.value().unique_id();
   }
 };
 
 template <>
-struct hash<cinn::adt::equation::Index> final {
-  std::size_t operator()(const cinn::adt::equation::Index& index) const {
+struct hash<cinn::adt::Index> final {
+  std::size_t operator()(const cinn::adt::Index& index) const {
     return index.value().unique_id();
   }
 };
 
 template <>
-struct hash<cinn::adt::equation::FakeOpPlaceHolder> final {
+struct hash<cinn::adt::FakeOpPlaceHolder> final {
   std::size_t operator()(
-      const cinn::adt::equation::FakeOpPlaceHolder& placeholder) const {
+      const cinn::adt::FakeOpPlaceHolder& placeholder) const {
     return placeholder.value().unique_id();
   }
 };
 
 template <>
-struct hash<cinn::adt::equation::Variable> final {
-  std::size_t operator()(const cinn::adt::equation::Variable& variable) const {
+struct hash<cinn::adt::Variable> final {
+  std::size_t operator()(const cinn::adt::Variable& variable) const {
     std::size_t hash_value =
         variable >>
         cinn::adt::match{
-            [](const cinn::adt::equation::Iterator& iterator) {
-              return std::hash<cinn::adt::equation::Iterator>()(iterator);
+            [](const cinn::adt::Iterator& iterator) {
+              return std::hash<cinn::adt::Iterator>()(iterator);
             },
-            [](const cinn::adt::equation::Index& index) {
-              return std::hash<cinn::adt::equation::Index>()(index);
+            [](const cinn::adt::Index& index) {
+              return std::hash<cinn::adt::Index>()(index);
             },
-            [](const cinn::adt::equation::FakeOpPlaceHolder&
-                   fake_op_placeholder) {
-              return std::hash<cinn::adt::equation::FakeOpPlaceHolder>()(
+            [](const cinn::adt::FakeOpPlaceHolder& fake_op_placeholder) {
+              return std::hash<cinn::adt::FakeOpPlaceHolder>()(
                   fake_op_placeholder);
             }};
     return cinn::adt::hash_combine(hash_value, variable.variant().index());

@@ -23,7 +23,7 @@
 #include "paddle/cinn/common/equation_graph_topo_walker.h"
 #include "paddle/cinn/common/topo_walker.h"
 
-namespace cinn::adt::equation::util {
+namespace cinn::adt {
 
 template <typename VT, typename FT>
 common::TopoWalker<FT> GetDAGTopoWalker(
@@ -101,8 +101,9 @@ void IdentityConnect(const Index& out, const Index& in, const DoEachT& DoEach) {
 }
 
 void IdentityConnect(const Index& out, const Index& in, Equations* equations) {
-  IdentityConnect(out, in,
-                 [&](const auto& equation) { (*equations)->push_back(equation); });
+  IdentityConnect(out, in, [&](const auto& equation) {
+    (*equations)->push_back(equation);
+  });
 }
 
 template <typename DoEachT>
@@ -170,4 +171,4 @@ inline List<Iterator> MakeUnDot(const Index& index,
   });
 }
 
-}  // namespace cinn::adt::equation::util
+}  // namespace cinn::adt
