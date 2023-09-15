@@ -45,6 +45,113 @@ const std::unordered_set<std::string> ProgramTranslator::no_cast_var_names = {
     "fetch",
 };
 
+static std::vector<uint64_t> GetCondOpIds(const BlockDesc& src_block,
+                                          uint64_t first_id) {
+  std::vector<uint64_t> op_list = {first_id};
+  if (src_block.Op(first_id + 1)->Type() == "logical_not") {
+    op_list.emplace_back(first_id + 1);
+  }
+  if (src_block.Op(first_id + 2)->Type() == "conditional_block") {
+    op_list.emplace_back(first_id + 2);
+  }
+  if (src_block.Op(first_id + 3)->Type() == "cast") {
+    op_list.emplace_back(first_id + 3);
+  }
+  size_t output_size = src_block.Op(first_id)->Output("Out").size();
+  for (size_t i = 0; i < output_size; i++) {
+    if (src_block.Op(first_id + 4 + i)->Type() == "select_input") {
+      op_list.emplace_back(first_id + 4 + i);
+    }
+  }
+  return op_list;
+}
+
+ConditionBlockCombination::ConditionBlockCombination(
+    const ::paddle::framework::BlockDesc& src_block,
+    const std::vector<uint64_t>& op_ids) {
+  for (auto op_id : op_ids) {
+    op_list.emplace_back(src_block.Op(op_id));
+  }
+  PADDLE_ENFORCE(Verify(op_list),
+                 platform::errors::NotFound(
+                     "There are cond operators in this program that do not "
+                     "meet the translation requirements. Please check the "
+                     "program based on the Verify function"));
+}
+
+std::string ConditionBlockCombination::CondVar() {
+  return op_list[0]->Input("Cond")[0];
+}
+
+size_t ConditionBlockCombination::OutputSize() {
+  return op_list[0]->Output("Out").size();
+}
+
+std::vector<std::string> ConditionBlockCombination::TrueBlockOutputVars() {
+  return op_list[0]->Output("Out");
+}
+
+int ConditionBlockCombination::TrueBlockId() {
+  return op_list[0]->GetBlockAttrId("sub_block");
+}
+
+std::vector<std::string> ConditionBlockCombination::FalseBlockOutputVars() {
+  if (op_list.size() > 1) {
+    return op_list[2]->Output("Out");
+  }
+  return {""};
+}
+
+int ConditionBlockCombination::FalseBlockId() {
+  if (op_list.size() > 1) {
+    return op_list[2]->GetBlockAttrId("sub_block");
+  }
+  return -1;
+}
+
+bool ConditionBlockCombination::Verify(
+    const std::vector<::paddle::framework::OpDesc*>& op_list) {
+  for (size_t id = 0; id < op_list.size(); id++) {
+    if (id == 0) {
+      if (op_list[id]->Type() != "conditional_block") {
+        return false;
+      }
+      if (op_list.size() == 1 && op_list[id]->Output("Out").size() != 0) {
+        return false;
+      }
+    } else if (id == 1) {
+      if (op_list[id]->Type() != "logical_not") {
+        return false;
+      }
+      if (op_list[id]->Input("X")[0] != op_list[id - 1]->Input("Cond")[0]) {
+        return false;
+      }
+    } else if (id == 2) {
+      if (op_list[id]->Type() != "conditional_block") {
+        return false;
+      }
+      if (op_list[id]->Input("Cond")[0] != op_list[id - 1]->Output("Out")[0]) {
+        return false;
+      }
+    } else if (id == 3) {
+      if (op_list[id]->Type() != "cast") {
+        return false;
+      }
+      if (op_list[id]->Input("X")[0] != op_list[0]->Input("Cond")[0]) {
+        return false;
+      }
+    } else {
+      if (op_list[id]->Type() != "select_input") {
+        return false;
+      }
+      if (op_list[id]->Input("Mask")[0] != op_list[3]->Output("Out")[0]) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
                                      pir::Program* program)
     : legacy_program_(legacy_program), program_(program) {
@@ -91,19 +198,30 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
           start_id,
           end_id,
           src_block.OpSize()));
-
-  uint64_t op_id = start_id;
-  while (op_id <= end_id) {
+  std::unordered_map<uint64_t, bool> translate_completed;
+  for (uint64_t op_id = start_id; op_id <= end_id; op_id++) {
+    if (translate_completed.count(op_id) && translate_completed.at(op_id)) {
+      continue;
+    }
     auto op = src_block.Op(op_id);
     if (op->Type() == "conditional_block") {
       std::vector<const OpDesc*> cond_op_list = {op};
       // Extract Cond Operator List
+      std::vector<uint64_t> cond_op_ids = GetCondOpIds(src_block, op_id);
       // Verify Cond Operator List
+      ConditionBlockCombination cond_op_combination(src_block, cond_op_ids);
       // Translate IfOp
-      op_id += cond_op_list.size();
+      // IfOp::Create();
+      // TranslateBlock(true_sub_block, 0,
+      // sub_block.Size()-cond_op_combination.OutputSize(), true_block);
+      // TranslateBlock(false_sub_block, 0,
+      // sub_block.Size()-cond_op_combination.OutputSize(), false_block);
+      for (auto cond_id : cond_op_ids) {
+        translate_completed[cond_id] = true;
+      }
     } else {
       TranslateOperation(op, dest_block);
-      op_id++;
+      translate_completed[op_id] = true;
     }
   }
 }
