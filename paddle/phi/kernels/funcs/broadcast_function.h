@@ -912,7 +912,7 @@ void BroadcastKernelApply(const KPDevice &ctx,
   auto loader_classifier =
       BroadcastTypeClassifier<OutT, Functor, kArity, NumOuts>(ins, outs, axis);
   // check whether need broadcast
-  auto compute_size = std::numeric_limits<int32_t>::max();
+  auto compute_size = 32;  // std::numeric_limits<int32_t>::max();
   bool use_int64_index_kernel = kEnabledInt64IndexKernel &&
                                 (*outs)[0]->numel() >= compute_size &&
                                 (!loader_classifier.all_elementwise);
