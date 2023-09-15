@@ -517,7 +517,7 @@ Expr PolyFor::Make(Var iterator,
   n->condition = condition;
   n->inc = inc;
   n->device_api = device_api;
-  n->body = body;
+  n->body = body.As<ir::Block>() ? body : ir::Block::Make({body});
   n->set_for_type(for_type);
   n->set_vectorize_info(vectorize_info);
   n->set_bind_info(bind_info);
