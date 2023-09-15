@@ -13,9 +13,9 @@
 # limitations under the License.
 
 from . import io
-from .io import *
+from .io import *  # F403# noqa: F403
 from . import math_op_patch
-from .math_op_patch import *
+from .math_op_patch import *  # noqa: F403
 from ..layer_helper import LayerHelper
 
 

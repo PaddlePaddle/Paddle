@@ -54,7 +54,7 @@ from paddle.base.compiler import CompiledProgram
 from paddle.base.log_helper import get_logger
 from . import reader
 from . import unique_name
-from .reader import *
+from .reader import *  # noqa: F403
 from . import core
 from paddle.utils import deprecated
 from paddle.base.framework import static_only

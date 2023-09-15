@@ -279,7 +279,7 @@ try:
     # assign tensor alias
     libpaddle.LoDTensor = libpaddle.Tensor
 
-    from .libpaddle import *
+    from .libpaddle import *  # noqa: F403
     from .libpaddle import __doc__, __file__, __name__, __package__
     from .libpaddle import __unittest_throw_exception__
     from .libpaddle import _append_python_callable_object_and_return_id
