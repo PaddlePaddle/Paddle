@@ -649,7 +649,7 @@ class PartialProgramLayer:
         inputs = list(
             filter(lambda x: isinstance(x, OpResult), self._inputs.tolist())
         )
-        forward_end_idx = len(program.block().ops)
+        forward_end_idx = len(program.global_block().ops)
         if targets:
             with backend_guard(self._backend):
                 check_type(
