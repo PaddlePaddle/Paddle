@@ -222,7 +222,8 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
     }
     auto op = src_block.Op(op_id);
 
-    PADDLE_ENFORCE_EQ(unsupported_ops.count(op->Type()) == 0,
+    PADDLE_ENFORCE_EQ(unsupported_ops.count(op->Type()),
+                      0,
                       platform::errors::PreconditionNotMet(
                           "Not support translated %s op", op->Type()));
 
