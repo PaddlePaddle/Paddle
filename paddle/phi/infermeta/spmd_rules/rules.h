@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/spmd_rules/default_data_parallel.h"
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
+#include "paddle/phi/infermeta/spmd_rules/layer_norm.h"
 #include "paddle/phi/infermeta/spmd_rules/matmul.h"
 #include "paddle/phi/infermeta/spmd_rules/reduction.h"
 #include "paddle/phi/infermeta/spmd_rules/replicated.h"
@@ -456,6 +457,12 @@ PD_REGISTER_SPMD_RULE(
     sum,
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
+
+// layer_norm
+PD_REGISTER_SPMD_RULE(
+    layer_norm,
+    PD_INFER_SPMD(phi::distributed::LayerNormInferSpmd),
+    PD_INFER_SPMD(phi::distributed::LayerNormInferSpmdReverse));
 
 }  // namespace distributed
 }  // namespace phi
