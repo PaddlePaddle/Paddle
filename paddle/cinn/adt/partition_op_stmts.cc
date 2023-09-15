@@ -76,9 +76,9 @@ FindVisitedOpStmts(
   std::optional<m_expr::OpStmt> opt_anchor_op_stmt{std::nullopt};
   List<m_expr::OpStmt> visited_op_stmts{};
   const auto& TrySetAnchorOpStmt = [&](const auto& op_stmt) {
-    if (!EquationCtx4OpStmt(op_stmt)
-             ->GetOpArgPos(anchor_index)
-             ->Has<Undefined>) {
+    if (!(EquationCtx4OpStmt(op_stmt)
+              ->GetOpArgPos(anchor_index)
+              .Has<Undefined>())) {
       CHECK(!opt_anchor_op_stmt.has_value());
       opt_anchor_op_stmt = op_stmt;
     }
@@ -138,7 +138,7 @@ void MakeGetters4Indexes(
     std::function<tOut<bool>(const equation::Index&)>* AsOutput4Index,
     std::function<equation::Index(const equation::Index&)>*
         OutMsgBoxIndex4InMsgBoxIndex) {
-  using Index2AsOutput = std::unordered_map<equation::Index, tAsOutput<bool>>;
+  using Index2AsOutput = std::unordered_map<equation::Index, tOut<bool>>;
   const auto& index2as_output = std::make_shared<Index2AsOutput>();
 
   using Index2OwnerOpStmt = std::unordered_map<equation::Index, m_expr::OpStmt>;
