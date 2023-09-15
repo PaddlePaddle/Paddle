@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
 from paddle.jit import to_static
@@ -74,6 +75,7 @@ class TestParameterList(unittest.TestCase):
 
         return loss
 
+    @test_and_compare_with_new_ir(False)
     def test_parameter_list(self):
         static_loss = self.train(False, to_static=True)
         dygraph_loss = self.train(False, to_static=False)
@@ -126,6 +128,7 @@ class TestRawParameterList(unittest.TestCase):
 
         return loss
 
+    @test_and_compare_with_new_ir(False)
     def test_parameter_list(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)

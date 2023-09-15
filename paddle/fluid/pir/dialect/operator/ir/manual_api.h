@@ -22,7 +22,12 @@
 
 namespace paddle {
 namespace dialect {
+
 pir::OpResult builtin_combine(std::vector<pir::OpResult> x);
+
+pir::OpResult zeros_like(pir::OpResult x,
+                         phi::DataType dtype = phi::DataType::UNDEFINED,
+                         const Place& place = {});
 
 pir::OpResult get_parameter(const std::string& name,
                             phi::DataType dtype,

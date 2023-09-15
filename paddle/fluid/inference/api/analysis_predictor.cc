@@ -1220,7 +1220,7 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
         LOG(ERROR) << "feed names from program do not have name: [" << name
                    << "] from specified input";
       }
-      idx = feed_names_[name];
+      idx = static_cast<int>(feed_names_[name]);
     } else {
       idx = PADDLE_GET_CONST(int, feeds_[i]->GetAttr("col"));
     }
@@ -2236,7 +2236,8 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
     if (!tensor.initialized()) return;
     framework::DDim dim = tensor.dims();
     std::vector<int32_t> shape(dim.size());
-    for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
+    for (int i = 0; i < static_cast<int>(shape.size()); ++i)
+      shape[i] = static_cast<int32_t>(dim[i]);
     if (!shape.empty()) {
       shape_info_[input_name].emplace_back(shape);
     } else if (tensor.numel() > 0) {
@@ -2429,7 +2430,7 @@ bool AnalysisPredictor::LoadProgramDesc() {
     fin.seekg(0, std::ios::end);
     pb_content.resize(fin.tellg());
     fin.seekg(0, std::ios::beg);
-    fin.read(&(pb_content.at(0)), pb_content.size());
+    fin.read(&(pb_content.at(0)), pb_content.size());  // NOLINT
     fin.close();
 
     proto.ParseFromString(pb_content);
