@@ -321,9 +321,6 @@ def prune_by_recompute(tuner_cfg, cur_cfg, history_cfgs):
         if recompute_granularity not in recompute_granularity_candidates:
             return True
 
-    if not use_recompute and recompute_granularity:
-        return True
-
     cfgs = same_cfgs_beside("use_recompute", cur_cfg, history_cfgs)
     if cfgs:
         for cfg in cfgs:
