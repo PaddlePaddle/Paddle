@@ -33,6 +33,7 @@
 #include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/value.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 
 namespace paddle {
 namespace translator {
@@ -204,7 +205,8 @@ void ProgramTranslator::Translate() {
 void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
                                        uint64_t start_id,
                                        uint64_t end_id,
-                                       pir::Block* dest_block) {
+                                       pir::Block* dest_block,
+                                       bool for_cond_block) {
   PADDLE_ENFORCE(
       (src_block.OpSize() >= end_id) && (start_id <= end_id),
       platform::errors::NotFound(
@@ -234,6 +236,23 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
       translate_completed[op_id] = true;
     }
   }
+  // NOTE(zhangbo): If conditional_block operator has output, the cf.yeild
+  // operator needs to be inserted
+  if (for_cond_block) {
+    std::vector<pir::OpResult> yeild_inputs;
+    for (size_t id = end_id; id < src_block.OpSize(); id++) {
+      PADDLE_ENFORCE(
+          src_block.Op(id)->Type() == "assign",
+          "The operator at the end of the sub block needs to be assign");
+      yeild_inputs.emplace_back(
+          param_map_[src_block.Op(id)->Input("X")[0]].value);
+    }
+    pir::AttributeMap attribute_map;
+    auto yeild_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
+    pir::Operation* yeild_op =
+        pir::Operation::Create(yeild_inputs, attribute_map, {}, yeild_info);
+    dest_block->push_back(yeild_op);
+  }
 }
 
 pir::Operation* ProgramTranslator::TranslateCondIfOperation(
@@ -259,11 +278,14 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
 
   pir::Operation* operation = pir::Operation::Create(
       op_inputs, attribute_map, op_output_types, op_info);
-  VLOG(4) << "[general op][conditional_block] IfOp creation end.";
 
-  // for (auto var_desc : output_vardescs) {
-  //   param_map_[var_desc->Name()] = VariableDefiningInfo(value);
-  // }
+  for (size_t i = 0; i < output_vardescs.size(); i++) {
+    param_map_[output_vardescs[i]->Name()] =
+        VariableDefiningInfo(operation->result(i));
+  }
+
+  dest_block->push_back(operation);
+  VLOG(4) << "[general op][conditional_block] IfOp creation end.";
 
   if (cond_ops.TrueBlockId() != -1) {
     const BlockDesc& true_sub_block =
@@ -273,9 +295,10 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
     TranslateBlock(true_sub_block,
                    0,
                    true_sub_block.OpSize() - cond_ops.OutputSize(),
-                   true_region.front());
-    // insert cf.yeild
+                   true_region.front(),
+                   true);
   }
+  VLOG(4) << "[general op][conditional_block] IfOp true block translate end.";
 
   if (cond_ops.FalseBlockId() != -1) {
     const BlockDesc& false_sub_block =
@@ -285,13 +308,11 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
     TranslateBlock(false_sub_block,
                    0,
                    false_sub_block.OpSize() - cond_ops.OutputSize(),
-                   false_region.front());
-    // insert cf.yeild
+                   false_region.front(),
+                   true);
   }
-
-  dest_block->push_back(operation);
-  VLOG(4) << "[general op][conditional_block] opearation insertion end.";
-
+  VLOG(4) << "[general op][conditional_block] IfOp false block translate end.";
+  VLOG(4) << "[general op][conditional_block] IfOp translate end.";
   return operation;
 }
 

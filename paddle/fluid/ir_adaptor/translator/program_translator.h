@@ -98,7 +98,8 @@ class ProgramTranslator {
   void TranslateBlock(const BlockDesc& src_block,
                       uint64_t start_id,
                       uint64_t end_id,
-                      pir::Block* dest_block);
+                      pir::Block* dest_block,
+                      bool for_cond_block = false);
   void TranslateGeneralOperation(const OpDesc* src_op, pir::Block* dest_block);
   void GetParameterForSingleBlock(const BlockDesc& block);
   void InsertOperationToSingleBlock(const BlockDesc& block);
