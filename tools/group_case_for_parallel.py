@@ -22,7 +22,8 @@ def group_case_for_parallel(rootPath):
     # wget file
     for filename in [
         'nightly_case',
-        'single_card_tests',
+        'single_card_tests1',
+        'single_card_tests2',
         'single_card_tests_mem0',
         'multiple_card_tests',
         'multiple_card_tests_mem0',
@@ -30,7 +31,7 @@ def group_case_for_parallel(rootPath):
         'exclusive_card_tests_mem0',
     ]:
         os.system(
-            f'cd {rootPath}/tools && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test_bak_20230908/{filename} --no-check-certificate'
+            f'cd {rootPath}/tools && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/test_group/{filename} --no-check-certificate'
         )
 
     # get nightly tests
@@ -40,7 +41,8 @@ def group_case_for_parallel(rootPath):
 
     parallel_case_file_list = [
         '%s/tools/single_card_tests_mem0' % rootPath,
-        '%s/tools/single_card_tests' % rootPath,
+        '%s/tools/single_card_tests1' % rootPath,
+        '%s/tools/single_card_tests2' % rootPath,
         '%s/tools/multiple_card_tests_mem0' % rootPath,
         '%s/tools/multiple_card_tests' % rootPath,
         '%s/tools/exclusive_card_tests_mem0' % rootPath,
