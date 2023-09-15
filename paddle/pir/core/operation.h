@@ -37,7 +37,7 @@ class IR_API alignas(8) Operation final {
   /// NOTE: Similar to new and delete, the destroy() and the create() need to be
   /// used in conjunction.
   ///
-  static Operation *Create(const std::vector<pir::OpResult> &inputs,
+  static Operation *Create(const std::vector<pir::Value> &inputs,
                            const AttributeMap &attributes,
                            const std::vector<pir::Type> &output_types,
                            pir::OpInfo op_info,

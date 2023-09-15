@@ -216,7 +216,7 @@ Operation* IrParser::ParseOperation() {
 
   OpInfo opinfo = ParseOpInfo();
 
-  std::vector<OpResult> inputs = ParseOprandList();
+  std::vector<Value> inputs = ParseOprandList();
 
   pir::AttributeMap attributeMap = ParseAttributeMap();
 
@@ -269,14 +269,14 @@ OpInfo IrParser::ParseOpInfo() {
 
 // OprandList := ValueList
 // ValueList := ValueId(,ValueId)*
-std::vector<OpResult> IrParser::ParseOprandList() {
+std::vector<Value> IrParser::ParseOprandList() {
   ConsumeAToken("(");
-  std::vector<OpResult> inputs{};
+  std::vector<Value> inputs{};
   Token ind_token = ConsumeToken();
   while (ind_token.val_ != ")") {
     std::string t = "";
     if (ind_token.token_type_ == NULL_) {
-      inputs.push_back(GetNullValue());
+      inputs.emplace_back();
     } else {
       t = ind_token.val_;
       inputs.push_back(opresultmap[t]);
@@ -325,12 +325,6 @@ std::vector<Type> IrParser::ParseTypeList() {
     ConsumeAToken(",");
   }
   return type_vector;
-}
-
-OpResult IrParser::GetNullValue() {
-  Value* v = new Value{nullptr};
-  OpResult* opresult = static_cast<OpResult*>(v);
-  return *opresult;
 }
 
 Attribute Attribute::Parse(std::istream& is, IrContext* ctx) {
