@@ -58,12 +58,12 @@ bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
 
 TEST(program_test, program) {
   // (1) Init environment.
-  ir::IrContext* ctx = ir::IrContext::Instance();
-  ir::Program program((ctx));
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::Program program((ctx));
 
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
 
-  ir::Builder builder = ir::Builder(ctx, program.block());
+  pir::Builder builder = pir::Builder(ctx, program.block());
 
   paddle::dialect::FullOp op1 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
@@ -113,8 +113,8 @@ TEST(program_test, program) {
 
 TEST(dialect_attr, attr) {
   // (1) Init environment.
-  ir::IrContext* ctx = ir::IrContext::Instance();
-  ir::Program program((ctx));
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::Program program((ctx));
 
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   auto kernel_dialect =
@@ -133,41 +133,41 @@ TEST(dialect_attr, attr) {
       true);
 }
 
-ir::AttributeMap CreateAttributeMap(std::vector<std::string> attribute_names,
-                                    std::vector<std::string> attributes,
-                                    std::string attr_name,
-                                    phi::KernelKey kernel_key) {
-  ir::IrContext* ctx = ir::IrContext::Instance();
-  ir::AttributeMap attr_map;
+pir::AttributeMap CreateAttributeMap(std::vector<std::string> attribute_names,
+                                     std::vector<std::string> attributes,
+                                     std::string attr_name,
+                                     phi::KernelKey kernel_key) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::AttributeMap attr_map;
   for (size_t i = 0; i < attribute_names.size(); i++) {
-    ir::Attribute attr_value = ir::StrAttribute::get(ctx, attributes[i]);
+    pir::Attribute attr_value = pir::StrAttribute::get(ctx, attributes[i]);
     attr_map.insert(
-        std::pair<std::string, ir::Attribute>(attribute_names[i], attr_value));
+        std::pair<std::string, pir::Attribute>(attribute_names[i], attr_value));
   }
   auto attr = paddle::dialect::KernelAttribute::get(ctx, kernel_key);
-  attr_map.insert(std::pair<std::string, ir::Attribute>(attr_name, attr));
+  attr_map.insert(std::pair<std::string, pir::Attribute>(attr_name, attr));
   return attr_map;
 }
 
 TEST(kernel_dialect, legacy_op_test) {
   // (1) Init environment.
 
-  ir::IrContext* ctx = ir::IrContext::Instance();
-  ir::Program program((ctx));
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::Program program((ctx));
 
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   phi::KernelKey kernel_key(
       phi::Backend::CPU, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT32);
 
-  ir::OpInfo kernel_op_info =
+  pir::OpInfo kernel_op_info =
       ctx->GetRegisteredOpInfo(paddle::dialect::LegacyKernelOp::name());
-  ir::OperationArgument argument(kernel_op_info);
+  pir::OperationArgument argument(kernel_op_info);
   argument.attributes = CreateAttributeMap({"op_name", "kernel_name"},
                                            {"pd.kernel_op", "kernel_op"},
                                            "kernel_key",
                                            kernel_key);
 
-  ir::Operation* op = ir::Operation::Create(std::move(argument));
+  pir::Operation* op = pir::Operation::Create(std::move(argument));
   EXPECT_EQ("pd.kernel_op",
             op->dyn_cast<paddle::dialect::LegacyKernelOp>().op_name());
   EXPECT_EQ("kernel_op",
@@ -178,35 +178,35 @@ TEST(kernel_dialect, legacy_op_test) {
 
 TEST(kernel_dialect, cond_op_test) {
   // (1) Init environment.
-  pir::IrContext* ctx = pir::IrContext::Instance();
+  ppir::IrContext* ctx = ppir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-  ctx->GetOrRegisterDialect<pir::ControlFlowDialect>();
+  ctx->GetOrRegisterDialect<ppir::ControlFlowDialect>();
 
-  pir::Program program(ctx);
-  pir::Block* block = program.block();
-  pir::Builder builder(ctx, block);
+  ppir::Program program(ctx);
+  ppir::Block* block = program.block();
+  ppir::Builder builder(ctx, block);
 
   auto full_op = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, true, phi::DataType::BOOL);
 
   auto if_op = builder.Build<paddle::dialect::IfOp>(
-      full_op.out(), std::vector<pir::Type>{full_op.result(0).type()});
+      full_op.out(), std::vector<ppir::Type>{full_op.result(0).type()});
 
-  pir::Block* true_block = if_op.true_block();
+  ppir::Block* true_block = if_op.true_block();
 
   builder.SetInsertionPointToStart(true_block);
 
   auto full_op_1 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2}, true, phi::DataType::BOOL);
-  builder.Build<pir::YieldOp>(std::vector<pir::OpResult>{full_op_1.out()});
+  builder.Build<ppir::YieldOp>(std::vector<ppir::OpResult>{full_op_1.out()});
 
-  pir::Block* false_block = if_op.false_block();
+  ppir::Block* false_block = if_op.false_block();
 
   builder.SetInsertionPointToStart(false_block);
 
   auto full_op_2 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{3}, true, phi::DataType::BOOL);
-  builder.Build<pir::YieldOp>(std::vector<pir::OpResult>{full_op_2.out()});
+  builder.Build<ppir::YieldOp>(std::vector<ppir::OpResult>{full_op_2.out()});
 
   program.Print(std::cout);
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
