@@ -367,4 +367,11 @@ std::ostream& operator<<(std::ostream& os, const Kernel& kernel);
 
 std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory);
 
+template <typename Func>
+void InsertKernel(const std::string& name,
+                  Func kernel_fn,
+                  phi::Backend backend,
+                  phi::DataType data_type,
+                  phi::DataLayout data_layout = phi::DataLayout::ALL_LAYOUT);
+
 }  // namespace phi

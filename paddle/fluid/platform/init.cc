@@ -195,6 +195,8 @@ void InitDevices() {
     }
 #endif
     InitDevices(devices);
+
+    paddle::f1();
   });
 }
 

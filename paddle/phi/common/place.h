@@ -242,4 +242,6 @@ PADDLE_API bool operator==(PlaceType place_type, const Place& place);
 
 PADDLE_API GPUPlace DefaultGPUPlace();
 
+void f1();
+
 }  // namespace paddle

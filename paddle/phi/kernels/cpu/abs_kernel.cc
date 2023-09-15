@@ -16,10 +16,12 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/complex.h"
-#include "paddle/phi/core/kernel_registry.h"
+// #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/kernel_utils.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -35,17 +37,32 @@ void AbsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   for_range(functor);
 }
 
-}  // namespace phi
-
-PD_REGISTER_KERNEL(abs,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::AbsKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
-  kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+void f1() {
+  phi::InsertKernel("abs",
+                    phi::AbsKernel<float, phi::CPUContext>,
+                    phi::Backend::CPU,
+                    phi::DataType::FLOAT32);
+  phi::InsertKernel("abs",
+                    phi::AbsKernel<double, phi::CPUContext>,
+                    phi::Backend::CPU,
+                    phi::DataType::FLOAT64);
+  phi::InsertKernel("abs",
+                    phi::AbsKernel<int, phi::CPUContext>,
+                    phi::Backend::CPU,
+                    phi::DataType::INT32);
+  phi::InsertKernel("abs",
+                    phi::AbsKernel<int64_t, phi::CPUContext>,
+                    phi::Backend::CPU,
+                    phi::DataType::INT64);
+  phi::InsertKernel("abs",
+                    phi::AbsKernel<phi::dtype::complex<float>, phi::CPUContext>,
+                    phi::Backend::CPU,
+                    phi::DataType::COMPLEX64);
+  phi::InsertKernel(
+      "abs",
+      phi::AbsKernel<phi::dtype::complex<double>, phi::CPUContext>,
+      phi::Backend::CPU,
+      phi::DataType::COMPLEX128);
 }
+
+}  // namespace phi
