@@ -45,7 +45,7 @@ List<Index> GetNonErasedIndexes(
     const std::vector<equation::Index>& erased_indexes) {
   List<Index> indexes{};
   for (const auto& index : *origin_indexes) {
-    if (std::find(index, erased_indexes.begin(), erased_indexes.end()) ==
+    if (std::find(erased_indexes.begin(), erased_indexes.end(), index) ==
         erased_indexes.end()) {
       indexes->emplace_back(index);
     }
@@ -77,6 +77,7 @@ void NativeOpEquationContext::EraseOutMsgBoxIndexes(
   const auto& Erase = [&](const auto& equation) {
     return EraseOutMsgBoxIndexes(equation, erased_output_tensor_indexes);
   };
+  // Note: Why error?
   equations_ = TransformEquations(equations_, Erase, Identity);
 }
 
@@ -101,9 +102,8 @@ void GenerateOpEquations(const m_expr::OpStmt& op_stmt,
   const auto& generate_equations =
       hlir::framework::Operator::GetAttrs<GenerateEquationFunc>(
           "generate_equations");
-  const auto& iter = generate_equations.find(op_node->op());
-  CHECK(iter != generate_equations.end());
-  iter->second(ctx);
+  CHECK(generate_equations.Find(op_node->op()));
+  generate_equations[op_node->op()](ctx);
 }
 
 std::shared_ptr<equation::config::NativeOpEquationContext>
