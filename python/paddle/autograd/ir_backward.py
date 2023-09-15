@@ -145,7 +145,7 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                     state.op_to_opgrad[opresult.get_defining_op()],
                     fillop,
                 )
-                state.value_to_valuegrad[opresult] = [grad_value]
+                state.value_to_valuegrad[opresult] = [[grad_value]]
 
                 visited_output.add(opresult)
 
@@ -360,7 +360,7 @@ def append_backward_ops(
                         value.first_use().owner()
                     )
                     zero_flag[i] = all(split_zero_flag)
-                    state.value_to_valuegrad[value] = [split_output_grad]
+                    state.value_to_valuegrad[value] = [[split_output_grad]]
                 else:
                     # first case:
                     # this fwd_op's output didn't used by other fwd_op,
