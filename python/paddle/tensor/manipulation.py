@@ -4598,6 +4598,7 @@ def masked_fill(x, mask, value, name=None):
             'masked_fill',
         )
         helper = LayerHelper("masked_fill", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
         mask_shape = list(mask.shape)
         value_shape = list(value.shape)
