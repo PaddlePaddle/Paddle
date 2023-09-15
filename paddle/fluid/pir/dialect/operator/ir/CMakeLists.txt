@@ -77,8 +77,8 @@ add_custom_command(
           ${op_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${op_source_file_tmp}
           ${op_source_file}
-  # COMMAND ${CMAKE_COMMAND} -E copy_if_different ${op_vjp_source_file_tmp}
-  #         ${op_vjp_source_file}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${op_vjp_source_file_tmp}
+          ${op_vjp_source_file}
   COMMENT
     "copy_if_different ${op_header_file} ${op_source_file} ${op_vjp_source_file}"
   DEPENDS ${op_gen_file}
