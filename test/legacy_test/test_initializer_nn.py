@@ -31,10 +31,10 @@ def get_uniform_min_and_max(weight):
     return min_value, max_value
 
 
-def check_cast_op(op):
+def check_cast_op(op, in_dtype=VarDesc.VarType.FP32):
     return (
         op.type == 'cast'
-        and op.attr('in_dtype') == VarDesc.VarType.FP32
+        and op.attr('in_dtype') == in_dtype
         and op.attr('out_dtype') in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]
     )
 
@@ -489,6 +489,13 @@ class TestTruncatedNormal(unittest.TestCase):
 
         block = self.test_truncated_normal_initializer("uint16")  # bfloat16
         self.assertTrue(check_cast_op(block.ops[1]))
+
+    def test_truncated_normal_initializer_fp64(self):
+        """Test truncated normal initializer with float64"""
+        paddle.enable_static()
+
+        # Only test whether float64 data can be generated without error
+        _ = self.test_truncated_normal_initializer("float64")  # float64
 
     def test_truncated_normal_initializer_dygraph(self):
         """Test truncated normal initializer in dygraph model."""
