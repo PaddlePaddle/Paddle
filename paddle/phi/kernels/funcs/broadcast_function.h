@@ -910,7 +910,7 @@ void BroadcastKernelApply(const KPDevice &ctx,
 #ifndef PADDLE_WITH_XPU_KP
   constexpr bool kEnabledInt64IndexKernel = (NumOuts == 1 && kArity <= 3);
   auto loader_classifier =
-      BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts>(ins, outs, axis);
+      BroadcastTypeClassifier<OutT, Functor, kArity, NumOuts>(ins, outs, axis);
   // check whether need broadcast
   auto compute_size = std::numeric_limits<int32_t>::max();
   bool use_int64_index_kernel = kEnabledInt64IndexKernel &&
