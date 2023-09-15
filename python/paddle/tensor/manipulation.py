@@ -4669,15 +4669,18 @@ def masked_fill_(x, mask, value, name=None):
     """
     Inplace version of ``masked_fill`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_masked_fill`.
+
     Examples:
         .. code-block:: python
             >>> import paddle
-            >>> input_tensor = paddle.ones((3, 3), dtype="float32")
-            >>> mask_tensor = paddle.to_tensor([[True, False, True],
-            ... [False, True, False],
-            ... [True, False, True]])
-            >>> inplace_res = paddle.masked_fill_(input_tensor, mask_tensor, 0)
-            >>> print(inplace_res)
+            >>> x = paddle.ones((3, 3), dtype="float32")
+            >>> mask = paddle.to_tensor([[True, False, False]])
+            >>> out = paddle.masked_fill_(x, mask, 2)
+            >>> print(out)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[2., 1., 1.],
+                    [2., 1., 1.],
+                    [2., 1., 1.]])
     """
     if in_dynamic_mode():
         check_variable_and_dtype(
