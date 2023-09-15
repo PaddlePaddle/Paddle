@@ -15,7 +15,6 @@
 import sys
 import unittest
 
-import numpy
 import numpy as np
 
 sys.path.append("../../test/rnn")
