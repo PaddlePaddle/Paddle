@@ -255,8 +255,9 @@ class PyLayerBackwardInferVarType : public framework::VarTypeInference {
                           "input_size and output_size should be equal for "
                           "pylayer_grad op."));
     for (size_t i = 0; i < backward_output_size; ++i) {
-      ctx->SyncTypeAndDataType(
-          PyLayerOp::kInputs, framework::GradVarName(PyLayerOp::kInputs), i);
+      ctx->SyncTypeAndDataType(PyLayerOp::kInputs,
+                               framework::GradVarName(PyLayerOp::kInputs),
+                               static_cast<int>(i));
     }
   }
 };

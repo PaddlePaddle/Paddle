@@ -38,6 +38,8 @@ class PhiKernelInstruction : public InstructionBase {
       const std::unordered_map<const paddle::framework::Variable*, std::string>&
           variable_2_var_name);
 
+  ~PhiKernelInstruction();
+
   phi::Kernel* PhiKernel() const { return phi_kernel_; }
 
   const phi::KernelContext& KernelContext() const { return kernel_context_; }
@@ -49,6 +51,8 @@ class PhiKernelInstruction : public InstructionBase {
   paddle::dialect::InferMetaInterface::Concept* InferMetaInterface() const {
     return infer_meta_interface_;
   }
+
+  ::pir::Operation* Operation() const override { return op_; }
 
   void Run() override;
 
@@ -65,6 +69,8 @@ class PhiKernelInstruction : public InstructionBase {
   phi::Kernel* phi_kernel_{nullptr};  // not owned
 
   std::string phi_op_name_;
+
+  ::pir::Operation* op_{nullptr};  // not owned
 };
 
 }  // namespace framework

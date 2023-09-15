@@ -35,7 +35,7 @@ void SplitCommandlineArg(const std::string& commandline,
     args.push_back(commandline.substr(start_pos, end_pos - start_pos));
   }
   args.push_back("");  // test empty argument
-  *argc = args.size();
+  *argc = static_cast<int>(args.size());
   *argv = new char*[*argc];
   for (size_t i = 0; i < args.size(); i++) {
     (*argv)[i] = const_cast<char*>(args[i].c_str());
