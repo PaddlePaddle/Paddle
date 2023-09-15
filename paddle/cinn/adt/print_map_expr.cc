@@ -12,21 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/cinn/adt/m_expr.h"
-#include "paddle/cinn/adt/m_ir.h"
-#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/adt/print_map_expr.h"
 
 namespace cinn::adt {
 
-class IGroup;
-class KGroup;
-
-MapExpr GenerateMapExpr(
-    const std::shared_ptr<cinn::hlir::framework::Graph::Group>& group);
-
-void TryGenerateMapExprFromGraph(
-    const std::shared_ptr<cinn::hlir::framework::Graph>& graph);
+void PrintMapExpr(const MapExpr& map_expr) {}
 
 }  // namespace cinn::adt

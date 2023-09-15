@@ -15,18 +15,9 @@
 #pragma once
 
 #include "paddle/cinn/adt/m_expr.h"
-#include "paddle/cinn/adt/m_ir.h"
-#include "paddle/cinn/hlir/framework/graph.h"
 
 namespace cinn::adt {
 
-class IGroup;
-class KGroup;
+void PrintMapExpr(const MapExpr& map_expr);
 
-MapExpr GenerateMapExpr(
-    const std::shared_ptr<cinn::hlir::framework::Graph::Group>& group);
-
-void TryGenerateMapExprFromGraph(
-    const std::shared_ptr<cinn::hlir::framework::Graph>& graph);
-
-}  // namespace cinn::adt
+}
