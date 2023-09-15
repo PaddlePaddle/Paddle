@@ -4577,76 +4577,46 @@ def masked_fill(x, mask, value, name=None):
                     [1., 1., 1.],
                     [2., 2., 1.]])
     """
-    check_variable_and_dtype(
-        x,
-        'x',
-        [
-            'float32',
-            'float64',
-            'int32',
-            'int64',
-        ],
-        'paddle.tensor.manipulation.masked_fill',
-    )
-    check_variable_and_dtype(
-        mask,
-        'mask',
-        ['bool'],
-        'paddle.tensor.manipulation.masked_fill',
-    )
+    if np.isscalar(value):
+        value = paddle.full([1], value, x.dtype)
 
     if in_dynamic_mode():
-        value_tensor = paddle.full_like(x, value)
-        out = paddle.where(mask, value_tensor, x)
+        out = paddle.where(mask, value, x)
         return out
     else:
+        check_variable_and_dtype(mask, 'mask', ['bool'], 'masked_fill')
+        check_variable_and_dtype(
+            value,
+            'value',
+            ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            'masked_fill',
+        )
+        check_variable_and_dtype(
+            x,
+            'x',
+            ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            'masked_fill',
+        )
         helper = LayerHelper("masked_fill", **locals())
 
-        dtype = x.dtype
-        check_dtype(
-            dtype,
-            'dtype',
-            [
-                'bool',
-                'float16',
-                'float32',
-                'float64',
-                'int16',
-                'int32',
-                'int64',
-                'uint16',
-            ],
-            'full_like',
-        )
-
-        value_tensor = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(
-            type='fill_any_like',
-            inputs={'X': [x]},
-            attrs={'value': value, "dtype": x.dtype},
-            outputs={'Out': [value_tensor]},
-        )
-
-        out = helper.create_variable_for_type_inference(x.dtype)
-
         mask_shape = list(mask.shape)
-        value_shape = list(value_tensor.shape)
+        value_shape = list(value.shape)
         x_shape = list(x.shape)
 
         if value_shape == x_shape and mask_shape == value_shape:
             broadcast_mask = mask
-            broadcast_value = value_tensor
+            broadcast_value = value
             broadcast_x = x
         else:
-            zeros_like_value = paddle.zeros_like(value_tensor)
+            zeros_like_value = paddle.zeros_like(value)
             zeros_like_x = paddle.zeros_like(x)
             zeros_like_mask = paddle.zeros_like(mask)
-            zeros_like_mask = paddle.cast(zeros_like_mask, value_tensor.dtype)
+            zeros_like_mask = paddle.cast(zeros_like_mask, value.dtype)
             cast_cond = paddle.cast(mask, x.dtype)
 
             broadcast_zeros = paddle.add(zeros_like_value, zeros_like_x)
             broadcast_zeros = paddle.add(broadcast_zeros, zeros_like_mask)
-            broadcast_value = paddle.add(value_tensor, broadcast_zeros)
+            broadcast_value = paddle.add(value, broadcast_zeros)
             broadcast_x = paddle.add(x, broadcast_zeros)
             broadcast_mask = paddle.add(cast_cond, broadcast_zeros)
             broadcast_mask = paddle.cast(broadcast_mask, 'bool')
@@ -4683,20 +4653,9 @@ def masked_fill_(x, mask, value, name=None):
                     [2., 1., 1.]])
     """
     if in_dynamic_mode():
-        check_variable_and_dtype(
-            x,
-            'x',
-            ['float32', 'float64', 'int32', 'int64'],
-            'paddle.tensor.manipulation.masked_fill',
-        )
-        check_variable_and_dtype(
-            mask,
-            'mask',
-            ['bool'],
-            'paddle.tensor.manipulation.masked_fill',
-        )
-        value_tensor = paddle.full_like(x, value)
-        out = paddle.where(mask, value_tensor, x)
+        if np.isscalar(value):
+            value = paddle.full([1], value, x.dtype)
+        out = paddle.where(mask, value, x)
         return out
 
 
