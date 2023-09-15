@@ -17,6 +17,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_type.h"
@@ -139,7 +140,7 @@ void IrPrinter::PrintOperation(Operation* op) {
   PrintGeneralOperation(op);
 }
 
-void IrPrinter::PrintGeneralOperation(const Operation* op) {
+void IrPrinter::PrintOperationWithNoRegion(const Operation* op) {
   // TODO(lyk): add API to get opresults directly
   PrintOpResult(op);
   os << " =";
@@ -160,8 +161,12 @@ void IrPrinter::PrintGeneralOperation(const Operation* op) {
   PrintOpReturnType(op);
 }
 
-void IrPrinter::PrintFullOperation(const Operation* op) {
-  PrintGeneralOperation(op);
+void IrPrinter::PrintGeneralOperation(const Operation* op) {
+  PrintOperationWithNoRegion(op);
+  if (!options.printRegions) {
+    return;
+  }
+
   if (op->num_regions() > 0) {
     os << newline;
   }
@@ -222,17 +227,27 @@ void IrPrinter::PrintOpResult(const Operation* op) {
 
 void IrPrinter::PrintAttributeMap(const Operation* op) {
   AttributeMap attributes = op->attributes();
-  std::map<std::string, Attribute, std::less<std::string>> order_attributes(
-      attributes.begin(), attributes.end());
+
+  std::vector<std::string> attribute_will_be_printed;
+  for (size_t i = 0u; i < op->info().num_attributes(); i++) {
+    attribute_will_be_printed.push_back(op->info().attribute_name(i));
+  }
+  for (const auto& attr_name : options.custom_attrs_white_list) {
+    if (attributes.count(attr_name) == 0) {
+      continue;
+    }
+    attribute_will_be_printed.push_back(attr_name);
+  }
+
   os << " {";
 
   PrintInterleave(
-      order_attributes.begin(),
-      order_attributes.end(),
-      [this](std::pair<std::string, Attribute> it) {
-        this->os << it.first;
+      attribute_will_be_printed.begin(),
+      attribute_will_be_printed.end(),
+      [this, &attributes](std::string attr_name) {
+        this->os << attr_name;
         this->os << ":";
-        this->PrintAttribute(it.second);
+        this->PrintAttribute(attributes.at(attr_name));
       },
       [this]() { this->os << ","; });
 
@@ -299,23 +314,31 @@ void Dialect::PrintOperation(Operation* op, IrPrinter& printer) const {
   printer.PrintGeneralOperation(op);
 }
 
-void Program::Print(std::ostream& os) const {
-  IrPrinter printer(os);
+void Program::Print(std::ostream& os) const { Print(os, PrinterOptions()); }
+
+void Program::Print(std::ostream& os, const PrinterOptions& options) const {
+  IrPrinter printer(os, options);
   printer.PrintProgram(this);
 }
 
-void Operation::Print(std::ostream& os) {
-  IrPrinter printer(os);
+void Operation::Print(std::ostream& os) { Print(os, PrinterOptions()); }
+
+void Operation::Print(std::ostream& os, const PrinterOptions options) {
+  IrPrinter printer(os, options);
   printer.PrintOperation(this);
 }
 
-void Type::Print(std::ostream& os) const {
-  BasicIrPrinter printer(os);
+void Type::Print(std::ostream& os) const { Print(os, PrinterOptions()); }
+
+void Type::Print(std::ostream& os, const PrinterOptions& options) const {
+  BasicIrPrinter printer(os, options);
   printer.PrintType(*this);
 }
 
-void Attribute::Print(std::ostream& os) const {
-  BasicIrPrinter printer(os);
+void Attribute::Print(std::ostream& os) const { Print(os, PrinterOptions()); }
+
+void Attribute::Print(std::ostream& os, const PrinterOptions& options) const {
+  BasicIrPrinter printer(os, options);
   printer.PrintAttribute(*this);
 }
 

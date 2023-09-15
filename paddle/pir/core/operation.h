@@ -28,6 +28,7 @@ class OpBase;
 class Program;
 class OpOperand;
 class OpResult;
+class PrinterOptions;
 
 class IR_API alignas(8) Operation final {
  public:
@@ -72,6 +73,7 @@ class IR_API alignas(8) Operation final {
   uint32_t num_regions() const { return num_regions_; }
 
   void Print(std::ostream &os);
+  void Print(std::ostream &os, const PrinterOptions options);
 
   const AttributeMap &attributes() const { return attributes_; }
 

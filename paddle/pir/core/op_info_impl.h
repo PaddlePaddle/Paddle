@@ -62,9 +62,9 @@ class OpInfoImpl {
 
   const char *name() const { return op_name_; }
 
-  uint32_t AttributeNum() const { return num_attributes_; }
+  uint32_t num_attributes() const { return num_attributes_; }
 
-  const char *GetAttributeByIndex(size_t idx) const {
+  const char *attribute_name(size_t idx) const {
     return idx < num_attributes_ ? p_attributes_[idx] : nullptr;
   }
 

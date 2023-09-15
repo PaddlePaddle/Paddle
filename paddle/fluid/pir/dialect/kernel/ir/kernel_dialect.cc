@@ -110,7 +110,7 @@ void KernelDialect::PrintOperation(pir::Operation *op,
     os << " -> ";
     printer.PrintOpReturnType(op);
   } else {
-    printer.PrintGeneralOperation(op);
+    printer.PrintOperation(op);
   }
 }
 

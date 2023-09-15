@@ -71,6 +71,10 @@ class IR_API OpInfo {
   template <typename InterfaceT>
   typename InterfaceT::Concept *GetInterfaceImpl() const;
 
+  uint32_t num_attributes() const;
+
+  const char *attribute_name(size_t idx) const;
+
   void *AsOpaquePointer() const { return impl_; }
   static OpInfo RecoverFromOpaquePointer(void *pointer) {
     return OpInfo(static_cast<OpInfoImpl *>(pointer));

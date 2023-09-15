@@ -28,6 +28,8 @@
 namespace pir {
 
 class IrContext;
+class PrinterOptions;
+
 ///
 /// \brief Program is an abstraction of model structure, divided into
 /// computational graphs and weights. At the current stage, a computational
@@ -51,6 +53,7 @@ class IR_API Program {
   ModuleOp module_op() const { return module_; }
 
   void Print(std::ostream& os) const;
+  void Print(std::ostream& os, const PrinterOptions& options) const;
 
   static std::unique_ptr<Program> Parse(std::istream& is, IrContext* ctx);
 

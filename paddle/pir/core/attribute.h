@@ -25,6 +25,7 @@ class AttributeStorage;
 class AbstractAttribute;
 class IrContext;
 class Dialect;
+class PrinterOptions;
 
 ///
 /// \brief Unified interface of the Attribute class. Derivation of all Attribute
@@ -67,6 +68,7 @@ class IR_API Attribute {
   /// @brief print attribute
   /// @param os
   void Print(std::ostream &os) const;
+  void Print(std::ostream &os, const PrinterOptions &options) const;
 
   static Attribute Parse(std::istream &is, IrContext *ctx);
 

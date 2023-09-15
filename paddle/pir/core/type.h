@@ -24,6 +24,7 @@ class TypeStorage;
 class AbstractType;
 class IrContext;
 class Dialect;
+class PrinterOptions;
 class ShapedTypeInterface;
 ///
 /// \brief Unified interface of the Type class. Derivation of all Type classes
@@ -117,6 +118,7 @@ class IR_API Type {
   }
 
   void Print(std::ostream &os) const;
+  void Print(std::ostream &os, const PrinterOptions &options) const;
 
   static Type Parse(std::istream &is, IrContext *ctx);
 

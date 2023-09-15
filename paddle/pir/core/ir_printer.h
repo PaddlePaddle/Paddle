@@ -17,6 +17,7 @@
 #include <ostream>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/block.h"
@@ -28,9 +29,25 @@
 
 namespace pir {
 
+struct PrinterOptions {
+  PrinterOptions() = default;
+  PrinterOptions(const PrinterOptions&) = default;
+
+  bool printRegions = true;
+
+  // `custom_attrs` means attributes not in op defintion but added by users
+  // by default, we only print attributes in definition
+  std::unordered_set<std::string> custom_attrs_white_list = {
+      kAttrStopGradients,
+      kAttrIsPersisable,
+  };
+};
+
 class BasicIrPrinter {
  public:
-  explicit BasicIrPrinter(std::ostream& os) : os(os) {}
+  explicit BasicIrPrinter(std::ostream& os,
+                          const PrinterOptions& options = PrinterOptions())
+      : os(os), options(options) {}
 
   void PrintType(Type type);
 
@@ -38,11 +55,14 @@ class BasicIrPrinter {
 
  public:
   std::ostream& os;
+  PrinterOptions options;
 };
 
 class IR_API IrPrinter : public BasicIrPrinter {
  public:
-  explicit IrPrinter(std::ostream& os) : BasicIrPrinter(os) {}
+  explicit IrPrinter(std::ostream& os,
+                     const PrinterOptions& options = PrinterOptions())
+      : BasicIrPrinter(os, options) {}
 
   /// @brief print program
   /// @param program
@@ -51,9 +71,9 @@ class IR_API IrPrinter : public BasicIrPrinter {
   /// @brief dispatch to custom printer function or PrintGeneralOperation
   void PrintOperation(Operation* op);
   /// @brief print operation itself without its regions
-  void PrintGeneralOperation(const Operation* op);
+  void PrintOperationWithNoRegion(const Operation* op);
   /// @brief print operation and its regions
-  void PrintFullOperation(const Operation* op);
+  void PrintGeneralOperation(const Operation* op);
 
   void PrintRegion(const Region& Region);
   void PrintBlock(const Block* block);

@@ -33,6 +33,14 @@ Dialect *OpInfo::dialect() const { return impl_ ? impl_->dialect() : nullptr; }
 
 const char *OpInfo::name() const { return impl_ ? impl_->name() : nullptr; }
 
+uint32_t OpInfo::num_attributes() const {
+  return impl_ ? impl_->num_attributes() : 0;
+}
+
+const char *OpInfo::attribute_name(size_t idx) const {
+  return impl_ ? impl_->attribute_name(idx) : nullptr;
+}
+
 TypeId OpInfo::id() const { return impl_ ? impl_->id() : TypeId(); }
 
 void OpInfo::Verify(Operation *operation) const { impl_->verify()(operation); }
