@@ -54,7 +54,7 @@ class ConditionBlockCombination {
   std::vector<::paddle::framework::VarDesc*> OutputVars() const;
   const std::vector<std::string>& TrueBlockOutputVarNames() const;
   int TrueBlockId() const;
-  const std::vector<std::string>& FalseBlockOutputVarNames() const;
+  std::vector<std::string> FalseBlockOutputVarNames() const;
   int FalseBlockId() const;
 
  private:

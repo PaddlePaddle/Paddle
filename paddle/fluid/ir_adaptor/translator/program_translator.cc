@@ -110,8 +110,8 @@ int ConditionBlockCombination::TrueBlockId() const {
   return op_list_[0]->GetBlockAttrId("sub_block");
 }
 
-const std::vector<std::string>&
-ConditionBlockCombination::FalseBlockOutputVarNames() const {
+std::vector<std::string> ConditionBlockCombination::FalseBlockOutputVarNames()
+    const {
   if (op_list_.size() > 1) {
     return op_list_[2]->Output("Out");
   }
