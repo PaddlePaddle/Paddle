@@ -337,7 +337,7 @@ phi::DataType GetKernelDataTypeByYamlInfo(
       kernel_data_type = find_it->second;
     } else if (input_map.count(slot_name)) {
       // parse from input
-      int in_index = input_map.at(slot_name);
+      int in_index = static_cast<int>(input_map.at(slot_name));
       auto type = map_value_pair.at(op->operand_source(in_index)).type();
 
       if (type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
@@ -407,7 +407,7 @@ phi::Backend GetKernelBackendByYamlInfo(
 
     if (input_map.count(slot_name)) {
       // parse from input
-      int in_index = input_map.at(slot_name);
+      int in_index = static_cast<int>(input_map.at(slot_name));
       auto type = map_value_pair.at(op->operand_source(in_index)).type();
 
       if (type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
@@ -507,7 +507,8 @@ phi::KernelKey GetKernelKey(
 
   if (op_info_parser != nullptr) {
     // only suppurt non vector input for now
-    int tensor_input_number = op_info_parser->InputTensorNumber();
+    int tensor_input_number =
+        static_cast<int>(op_info_parser->InputTensorNumber());
 
     // get datatype info
     kernel_data_type =
