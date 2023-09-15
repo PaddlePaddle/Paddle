@@ -144,6 +144,13 @@ class TestUnfoldOp(OpTest):
     def test_check_grad(self):
         self.check_grad(['X'], 'Y')
 
+    def test_support_tuple(self):
+        try:
+            x = paddle.randn((100, 3, 224, 224))
+            paddle.nn.functional.unfold(x, (3, 3), (1, 1), (1, 1), (1, 1))
+        except Exception as e:
+            raise AssertionError(f"Code raised an exception: {e}")
+
 
 class TestUnfoldFP16Op(TestUnfoldOp):
     def init_dtype(self):

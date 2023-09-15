@@ -111,6 +111,20 @@ class TestBoxCoderOp(OpTest):
     def test_check_output(self):
         self.check_output()
 
+    def test_support_tuple(self):
+        try:
+            prior_box_encode = paddle.rand((80, 4), dtype=paddle.float32)
+            prior_box_var_encode = paddle.rand((80, 4), dtype=paddle.float32)
+            target_box_encode = paddle.rand((20, 4), dtype=paddle.float32)
+            output_encode = paddle.vision.ops.box_coder(
+                prior_box=prior_box_encode,
+                prior_box_var=(1, 2, 3, 4),
+                target_box=target_box_encode,
+                code_type="encode_center_size",
+            )
+        except Exception as e:
+            raise AssertionError(f"Code raised an exception: {e}")
+
     def setUp(self):
         self.op_type = "box_coder"
         self.python_api = paddle.vision.ops.box_coder
