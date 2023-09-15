@@ -391,6 +391,10 @@ std::vector<pir::OpResult> OpTranscriber::GenerateOperationInput(
                  "Input %s not found when parsing op %s",
                  info.name,
                  op_desc.Type());
+      IR_ENFORCE(param_map->count(legacy_input_vars[0]),
+                 "Input [%s] of op [%s] not found in param map",
+                 info.name,
+                 op_desc.Type());
       auto defining_info = (*param_map)[legacy_input_vars[0]];
       op_inputs.push_back(defining_info.value);
 
