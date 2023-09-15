@@ -2907,6 +2907,18 @@ static PyObject* tensor_is_contiguous(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method__set_impl(TensorObject* self,
+                                         PyObject* args,
+                                         PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(4) << "Running in tensor_method__set_impl: set Tensor impl form the "
+             "other Tensor.";
+  auto tensor = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  self->tensor.set_impl(tensor.impl());
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 #if defined(PADDLE_WITH_CUDA)
 static PyObject* tensor_method__uva(TensorObject* self,
                                     PyObject* args,
@@ -3202,6 +3214,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      (PyCFunction)(void (*)(void))tensor_method_strides,
      METH_VARARGS | METH_KEYWORDS,
      tensor_get_strides__doc__},
+    {"_set_impl",
+     (PyCFunction)(void (*)(void))tensor_method__set_impl,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
 #if defined(PADDLE_WITH_CUDA)
     {"_tensor_uva",
      (PyCFunction)(void (*)())tensor_method__uva,
