@@ -1,5 +1,6 @@
-set(TEST_PRIM_PURE_NEW_IR_CASES test_prim_program test_prim_simpnet
-                                test_prim_custom_vjp)
+set(TEST_PRIM_PURE_NEW_IR_CASES
+    test_prim_program test_prim_simpnet test_prim_custom_vjp
+    test_prim_custom_vjp_layer_norm)
 
 foreach(target ${TEST_PRIM_PURE_NEW_IR_CASES})
   py_test_modules(${target} MODULES ${target} ENVS GLOG_v=1
