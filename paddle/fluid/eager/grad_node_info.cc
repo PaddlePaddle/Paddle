@@ -576,7 +576,7 @@ std::vector<std::shared_ptr<GradNodeBase>> GradNodeBase::NextFunctions() {
 }
 
 uintptr_t GradNodeBase::GetThisPtr() const {
-    return reinterpret_cast<uintptr_t>(this);
+  return reinterpret_cast<uintptr_t>(this);
 }
 
 }  // namespace egr
