@@ -18,7 +18,7 @@ import paddle
 from paddle import _C_ops
 from paddle.base.layer_helper import LayerHelper
 from paddle.common_ops_import import Variable, default_main_program
-from paddle.framework import core, in_dynamic_mode, in_new_ir_mode
+from paddle.framework import core, in_dynamic_mode, in_pir_mode
 from paddle.tensor.creation import full
 
 from ...base.data_feeder import (
@@ -1940,7 +1940,7 @@ def linear(x, weight, bias=None, name=None):
         # TODO(jiabin): using addmm for fast forward route
         return _C_ops.linear(x, weight, bias)
 
-    elif in_new_ir_mode():
+    elif in_pir_mode():
         out = paddle._ir_ops.matmul(x, weight, False, False)
         if bias is not None:
             return paddle._ir_ops.add(out, bias)

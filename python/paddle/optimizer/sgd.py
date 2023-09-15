@@ -18,7 +18,7 @@ from paddle import _C_ops
 
 from ..base import framework
 from ..base.dygraph import no_grad
-from ..base.framework import in_dynamic_or_new_ir_mode
+from ..base.framework import in_dynamic_or_pir_mode
 from .optimizer import Optimizer
 
 __all__ = []
@@ -129,7 +129,7 @@ class SGD(Optimizer):
         )
 
         lr = self._create_param_lr(param_and_grad)
-        if in_dynamic_or_new_ir_mode():
+        if in_dynamic_or_pir_mode():
             _C_ops.sgd_(
                 param_and_grad[0],
                 lr,

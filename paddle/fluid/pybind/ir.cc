@@ -31,6 +31,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/phi/core/enforce.h"
@@ -334,7 +335,7 @@ void BindValue(py::module *m) {
       .def("__eq__", &Value::operator==)
       .def("__eq__",
            [](Value &self, OpResult &other) {
-             return self.impl() == other.value_impl();
+             return self.impl() == other.Value::impl();
            })
       .def("__hash__",
            [](const Value &self) { return std::hash<pir::Value>{}(self); });
@@ -405,12 +406,46 @@ void BindOpResult(py::module *m) {
   op_result.def("__eq__", &OpResult::operator==)
       .def("__eq__",
            [](OpResult &self, Value &other) {
-             return self.value_impl() == other.impl();
+             return self.Value::impl() == other.impl();
+           })
+      .def("__neg__",
+           [](OpResult &self) {
+             return paddle::dialect::scale(self, -1.0, 0.0, true);
+           })
+      .def("__add__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::add(self, other);
+           })
+      .def("__sub__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::subtract(self, other);
+           })
+      .def("__mul__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::multiply(self, other);
+           })
+      .def("__truediv__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::divide(self, other);
+           })
+      .def("__lt__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::less_than(self, other);
+           })
+      .def("__le__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::less_equal(self, other);
+           })
+      .def("__gt__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::greater_than(self, other);
+           })
+      .def("__ge__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::greater_equal(self, other);
            })
       .def("__hash__",
-           [](OpResult &self) {
-             return std::hash<pir::Value>{}(self.dyn_cast<pir::Value>());
-           })
+           [](OpResult &self) { return std::hash<pir::Value>{}(self); })
       .def("get_defining_op",
            &OpResult::GetDefiningOp,
            return_value_policy::reference)

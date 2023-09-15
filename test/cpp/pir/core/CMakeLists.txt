@@ -87,14 +87,10 @@ cc_test_old(
   pd_op_dialect
   pir)
 
-cc_test_old(
+cc_test(
   ir_parser_test
-  SRCS
-  ir_parser_test.cc
-  DEPS
-  gtest
-  pd_op_dialect
-  pir)
+  SRCS ir_parser_test.cc
+  DEPS gtest pd_op_dialect pir)
 
 cc_test_old(ir_op_info_test SRCS op_info_test.cc DEPS gtest pir)
 cc_test_old(
@@ -118,9 +114,28 @@ cc_test_old(
   pir)
 
 cc_test_old(
+  type_interface_test
+  SRCS
+  type_interface_test.cc
+  DEPS
+  pir
+  test_dialect
+  gtest
+  pd_op_dialect)
+
+cc_test_old(
   block_operand_test
   SRCS
   block_operand_test.cc
+  DEPS
+  test_dialect
+  gtest
+  pir)
+
+cc_test_old(
+  block_argument_test
+  SRCS
+  block_argument_test.cc
   DEPS
   test_dialect
   gtest
