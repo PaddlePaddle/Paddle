@@ -421,11 +421,35 @@ def _insert_sync_for_fthenb_1f1b(program):
         block._sync_with_cpp()
 
 
+def _overlap_send_recv(program):
+    """
+    This function is used to replace the function '_insert_sync_for_fthenb_1f1b'.
+    The finally target of this function is as follows:
+        1. no need to insert the 'c_sync_calc' and 'c_sync_calc' operators
+        2. 'send_v2' operator uses 'dist_attr.execution_stream' to set stream of its own.
+        3. 'recv_v2' opeator uses 'dist_attr.execution_stream' to set stream of its own.
+    Nowly the first two tagets above has already been achieved.
+    TODO(lizhiyu): The third target will make the peak reserved memory of GPU grow too much.
+    """
+    for block in program.blocks:
+        for op in block.ops:
+            if op.type == 'send_v2':
+                op._set_attr("dynamic_shape", False)
+                ring_id = op.attr("ring_id")
+                op.dist_attr.execution_stream = "send_stream_" + str(ring_id)
+                op.dist_attr.stream_priority = 0
+            elif op.type == 'recv_v2':
+                op._set_attr("dynamic_shape", False)
+            else:
+                pass
+
+
 def _program_for_fthenb_and_1f1b(program):
     """
     This implementation is for fthenb and 1f1b programs and is called in partial_programs function.
     """
-    _insert_sync_for_fthenb_1f1b(program)
+    # _insert_sync_for_fthenb_1f1b(program)
+    _overlap_send_recv(program)
 
     lr_prog = Program()
     fwd_prog = Program()
