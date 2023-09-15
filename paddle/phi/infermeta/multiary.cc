@@ -328,10 +328,6 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
     if (x[i]->is_selected_rows() && x_dim.size() == 1) {
       continue;
     }
-    // for zero-sized tensor
-    if (phi::product(x_dim) == 0) {
-      continue;
-    }
     // for 0D tensor
     if (x_dim.size() == 0) {
       continue;
