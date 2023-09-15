@@ -257,7 +257,7 @@ Expr For::Make(Var loop_var,
   node->min = min;
   node->extent = extent;
   node->device_api = device_api;
-  node->body = body;
+  node->body = body.As<ir::Block>() ? body : ir::Block::Make({body});
   node->set_for_type(for_type);
   node->set_vectorize_info(vector_info);
   node->set_bind_info(bind_info);
