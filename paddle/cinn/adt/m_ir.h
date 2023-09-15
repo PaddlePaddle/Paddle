@@ -20,7 +20,7 @@
 
 namespace cinn::adt {
 
-using LoopIterators = List<equation::IterVar>;
+using LoopIterators = List<equation::Iterator>;
 
 }
 
@@ -50,7 +50,7 @@ using MapIrList = List<MapIr>;
 MapIrList GenerateMapIrListForLoopFuse(
     const List<m_expr::OpStmt>& op_stmts,
     const LoopIterators& loop_iters,
-    const std::function<const LoopDescriptor&(const equation::IterVar&)>&
+    const std::function<const LoopDescriptor&(const equation::Iterator&)>&
         GetLoopDescriptor,
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
         TensorIndexExpr4Tensor);

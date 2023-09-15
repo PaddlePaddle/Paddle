@@ -29,10 +29,6 @@ namespace cinn::adt::equation {
 DEFINE_ADT_TAG(tPointer);
 DEFINE_ADT_TAG(tIterVar);
 
-using IterVar = tIterVar<UniqueId>;
-
-OVERLOAD_OPERATOR_EQ_NE(IterVar, TagEqual);
-
 DEFINE_ADT_UNION(Constant,
                  std::int64_t,
                  tStride<UniqueId>,
@@ -131,14 +127,3 @@ OVERLOAD_OPERATOR_EQ_NE(ListGetItem_Value_Constant, TupleEqual);
 OVERLOAD_OPERATOR_EQ_NE(PtrGetItem<Value>, TupleEqual);
 
 }  // namespace cinn::adt::equation
-
-namespace std {
-
-template <>
-struct hash<cinn::adt::equation::IterVar> final {
-  std::size_t operator()(const cinn::adt::equation::IterVar& iter_var) const {
-    return iter_var.value().unique_id();
-  }
-};
-
-}  // namespace std

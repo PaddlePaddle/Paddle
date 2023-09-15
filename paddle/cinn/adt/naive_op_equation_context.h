@@ -28,6 +28,7 @@
 
 namespace cinn::adt::equation::config {
 
+// Note: class name and file name is in-consistent
 class NativeOpEquationContext final : public OpEquationContext {
  public:
   NativeOpEquationContext(const NativeOpEquationContext&) = delete;

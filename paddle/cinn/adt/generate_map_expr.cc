@@ -30,7 +30,7 @@ namespace cinn::adt {
 namespace {
 
 using LoopDescriptor4IterVarT =
-    std::function<const LoopDescriptor&(const equation::IterVar&)>;
+    std::function<const LoopDescriptor&(const equation::Iterator&)>;
 
 using AnchorTensor = equation::Variable;
 using FakeOpPlaceHolders = List<equation::FakeOpPlaceHolder>;
@@ -195,7 +195,7 @@ MakeGetterTensorIndexExpr(const std::shared_ptr<IGroup>& igroup,
 LoopDescriptor4IterVarT MakeGetterLoopDescriptor4IterVar(
     const LoopIterators& loop_iters, const ScheduleDescriptor& sd) {
   CHECK_EQ(loop_iters->size(), sd->size());
-  using Cache = std::unordered_map<equation::IterVar, LoopDescriptor>;
+  using Cache = std::unordered_map<equation::Iterator, LoopDescriptor>;
   const auto& sd_iter2sd = std::make_shared<Cache>();
   for (std::size_t i = 0; i < loop_iters->size(); ++i) {
     CHECK(sd_iter2sd->emplace(loop_iters->at(i), sd->at(i)).second);

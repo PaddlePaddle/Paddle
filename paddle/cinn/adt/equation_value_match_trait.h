@@ -102,7 +102,7 @@ struct MatchTrait<equation::Value, Undefined> final {
 };
 
 template <>
-struct MatchTrait<equation::Value, equation::IterVar> final {
+struct MatchTrait<equation::Value, LoopDescriptor> final {
   static constexpr int is_template = false;
 };
 

@@ -33,20 +33,20 @@ void VisitEachOpStmt(const List<m_expr::OpStmt>& op_stmts,
 
 void CollectTensorIndexIterators(
     const m_expr::TensorIndexExpr& tensor_index_expr,
-    std::unordered_set<equation::IterVar>* ret);
+    std::unordered_set<equation::Iterator>* ret);
 
 void CollectTensorIndexIterators(const Undefined& tensor_index_expr,
-                                 std::unordered_set<equation::IterVar>* ret) {
+                                 std::unordered_set<equation::Iterator>* ret) {
   LOG(FATAL) << "Not Implemented";
 }
 
-void CollectTensorIndexIterators(const equation::IterVar& tensor_index_expr,
-                                 std::unordered_set<equation::IterVar>* ret) {
+void CollectTensorIndexIterators(const equation::Iterator& tensor_index_expr,
+                                 std::unordered_set<equation::Iterator>* ret) {
   ret->insert(tensor_index_expr);
 }
 
 void CollectTensorIndexIterators(const List<equation::Value>& tensor_index_expr,
-                                 std::unordered_set<equation::IterVar>* ret) {
+                                 std::unordered_set<equation::Iterator>* ret) {
   for (const auto& value : *tensor_index_expr) {
     CollectTensorIndexIterators(value, ret);
   }
@@ -54,61 +54,58 @@ void CollectTensorIndexIterators(const List<equation::Value>& tensor_index_expr,
 
 void CollectTensorIndexIterators(
     const equation::IndexDot<equation::Value>& tensor_index_expr,
-    std::unordered_set<equation::IterVar>* ret) {
+    std::unordered_set<equation::Iterator>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetIterators(), ret);
 }
 
 void CollectTensorIndexIterators(
     const equation::IndexUnDot<equation::Value>& tensor_index_expr,
-    std::unordered_set<equation::IterVar>* ret) {
+    std::unordered_set<equation::Iterator>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetIterators(), ret);
 }
 
 void CollectTensorIndexIterators(
     const equation::ConstantAdd<equation::Value>& tensor_index_expr,
-    std::unordered_set<equation::IterVar>* ret) {
+    std::unordered_set<equation::Iterator>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetArg0(), ret);
 }
 
 void CollectTensorIndexIterators(
     const equation::ConstantDiv<equation::Value>& tensor_index_expr,
-    std::unordered_set<equation::IterVar>* ret) {
+    std::unordered_set<equation::Iterator>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetArg0(), ret);
 }
 
 void CollectTensorIndexIterators(
     const equation::ConstantMod<equation::Value>& tensor_index_expr,
-    std::unordered_set<equation::IterVar>* ret) {
+    std::unordered_set<equation::Iterator>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetArg0(), ret);
 }
 
 void CollectTensorIndexIterators(
     const equation::ListGetItem<equation::Value, equation::Constant>&
         tensor_index_expr,
-    std::unordered_set<equation::IterVar>* ret) {
+    std::unordered_set<equation::Iterator>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetList(), ret);
 }
 
 void CollectTensorIndexIterators(
     const equation::PtrGetItem<equation::Value>& tensor_index_expr,
-    std::unordered_set<equation::IterVar>* ret) {
+    std::unordered_set<equation::Iterator>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetArg1(), ret);
 }
 
 void CollectTensorIndexIterators(
     const m_expr::TensorIndexExpr& tensor_index_expr,
-    std::unordered_set<equation::IterVar>* ret) {
+    std::unordered_set<equation::Iterator>* ret) {
   std::visit(
       [&](auto&& impl) { CollectTensorIndexIterators(std::move(impl), ret); },
       tensor_index_expr.variant());
 }
 
-std::unordered_set<equation::IterVar> GetTensorIndexIterators(
+std::unordered_set<equation::Iterator> GetTensorIndexIterators(
     const m_expr::TensorIndexExpr& tensor_index_expr) {
-  // Note: we have two similar names, check the difference between them.
-  // using Iterator = tIterator<UniqueId>;
-  // using IterVar = tIterVar<UniqueId>;
-  std::unordered_set<equation::IterVar> ret{};
+  std::unordered_set<equation::Iterator> ret{};
 
   CollectTensorIndexIterators(tensor_index_expr, &ret);
 
@@ -116,16 +113,16 @@ std::unordered_set<equation::IterVar> GetTensorIndexIterators(
 }
 
 LoopIterators GetLeftAlignedSdIterators(
-    const std::unordered_set<equation::IterVar>& tensor_index_loop_iters,
+    const std::unordered_set<equation::Iterator>& tensor_index_loop_iters,
     const LoopIterators& loop_iters,
-    const std::function<const LoopDescriptor&(const equation::IterVar&)>&
+    const std::function<const LoopDescriptor&(const equation::Iterator&)>&
         GetLoopDescriptor) {
-  const auto& Used = [&](const equation::IterVar& iter_var) {
+  const auto& Used = [&](const equation::Iterator& iter_var) {
     return tensor_index_loop_iters.count(iter_var) != 0;
   };
 
   const auto& IsIterVarLoopTypeSpatial =
-      [&](const equation::IterVar& iter_var) {
+      [&](const equation::Iterator& iter_var) {
         return IsSpatial(GetLoopDescriptor(iter_var).GetLoopType());
       };
 
@@ -143,7 +140,7 @@ LoopIterators GetLeftAlignedSdIterators(
 LoopIterators GetTensorLoopIterators(
     const m_expr::Tensor& tensor,
     const LoopIterators& loop_iters,
-    const std::function<const LoopDescriptor&(const equation::IterVar&)>&
+    const std::function<const LoopDescriptor&(const equation::Iterator&)>&
         GetLoopDescriptor,
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
         TensorIndexExpr4Tensor) {
@@ -169,6 +166,8 @@ bool LocalEquationsSolvable(
     const equation::FakeOpPlaceHolder& fake_op_placeholder) {
   const auto& init_var2value = MakeAnchorIndex2Ok(anchor_index);
   equation::IndexExprInferContext ctx{init_var2value};
+  // Note: namespace and function name conflict, maybe we do not need value
+  // namespace
   bool has_no_conflict_value =
       equation::value::TrySolveEquations(graph_view, anchor_index, &ctx)
           .value();
@@ -243,7 +242,7 @@ GenerateAnchorIndex2LoopIterators(
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
         TensorIndexExpr4Tensor,
     const LoopIterators& loop_iters,
-    const std::function<const LoopDescriptor&(const equation::IterVar&)>&
+    const std::function<const LoopDescriptor&(const equation::Iterator&)>&
         GetLoopDescriptor) {
   std::unordered_map<equation::Index, LoopIterators> anchor_index2loop_iters{};
   for (const auto& anchor_group : partitioned_anchor_groups) {
@@ -311,7 +310,7 @@ MapIrList ConvertAnchorGroups2MapIrList(
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
         TensorIndexExpr4Tensor,
     const LoopIterators& loop_iters,
-    const std::function<const LoopDescriptor&(const equation::IterVar&)>&
+    const std::function<const LoopDescriptor&(const equation::Iterator&)>&
         GetLoopDescriptor) {
   const auto& anchor_index2loop_iters =
       GenerateAnchorIndex2LoopIterators(partitioned_anchor_groups,
@@ -334,7 +333,7 @@ MapIrList ConvertAnchorGroups2MapIrList(
 MapIrList GenerateMapIrListForLoopFuse(
     const List<m_expr::OpStmt>& op_stmts,
     const LoopIterators& loop_iters,
-    const std::function<const LoopDescriptor&(const equation::IterVar&)>&
+    const std::function<const LoopDescriptor&(const equation::Iterator&)>&
         GetLoopDescriptor,
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
         TensorIndexExpr4Tensor) {
