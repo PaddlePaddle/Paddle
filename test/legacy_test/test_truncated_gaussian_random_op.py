@@ -34,7 +34,7 @@ class TestTrunctedGaussianRandomOp(unittest.TestCase):
         }
         self.outputs = ["Out"]
 
-    def test_cpu_fp32(self):
+    def test_cpu(self):
         self._gaussian_random_test(
             place=base.CPUPlace(), dtype=core.VarDesc.VarType.FP32
         )
@@ -48,7 +48,7 @@ class TestTrunctedGaussianRandomOp(unittest.TestCase):
             place=base.CPUPlace(), dtype=core.VarDesc.VarType.FP64
         )
 
-    def test_gpu_fp32(self):
+    def test_gpu(self):
         if core.is_compiled_with_cuda():
             self._gaussian_random_test(
                 place=base.CUDAPlace(0), dtype=core.VarDesc.VarType.FP32
