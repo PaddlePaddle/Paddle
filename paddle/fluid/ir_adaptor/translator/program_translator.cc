@@ -33,6 +33,7 @@
 #include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/value.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 
 namespace paddle {
@@ -178,6 +179,7 @@ ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
                                      pir::Program* program)
     : legacy_program_(legacy_program), program_(program) {
   ctx_ = pir::IrContext::Instance();
+  ctx_->GetOrRegisterDialect<pir::ControlFlowDialect>();
 }
 
 void ProgramTranslator::Translate() {
