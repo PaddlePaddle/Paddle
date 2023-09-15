@@ -249,7 +249,7 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
   // NOTE(zhangbo): If conditional_block operator has output, the cf.yeild
   // operator needs to be inserted
   if (for_cond_block) {
-    std::vector<pir::OpResult> yeild_inputs;
+    std::vector<pir::Value> yeild_inputs;
     for (size_t id = end_id; id < src_block.OpSize(); id++) {
       PADDLE_ENFORCE(
           src_block.Op(id)->Type() == "assign",
@@ -269,7 +269,7 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
     const ConditionBlockCombination& cond_ops, pir::Block* dest_block) {
   auto& type_translator = TypeTranslator::instance();
   auto op_info = ctx_->GetRegisteredOpInfo(paddle::dialect::IfOp::name());
-  std::vector<pir::OpResult> op_inputs = {
+  std::vector<pir::Value> op_inputs = {
       param_map_[cond_ops.CondVarName()].value};
 
   // NOTE(zhangbo): Now paddle::dialect::IfOp has 0 attribute
