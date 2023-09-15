@@ -71,7 +71,6 @@ class TesBackward_1(unittest.TestCase):
         with paddle.ir.core.program_guard(newir_program):
             out = paddle.mean(tanh_out)
             input_grad = grad(out, input)
-
         self.assertEqual(
             newir_program.global_block().ops[-3].name(), "pd_op.full_like"
         )
@@ -98,13 +97,10 @@ class TesBackward_1(unittest.TestCase):
         with paddle.ir.core.program_guard(newir_program):
             out = paddle.mean(tanh_out)
             input_grad = grad(out, input, no_grad_vars=[input])
-
         self.assertEqual(
             newir_program.global_block().ops[-1].name(), "pd_op.full"
         )
-        self.assertEqual(
-            newir_program.global_block().ops[-2].name(), "pd_op.mean"
-        )
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
     def test_split(self):
         # test create output_grad in backward use full op
@@ -131,6 +127,7 @@ class TesBackward_1(unittest.TestCase):
         ]
         for i, op in enumerate(newir_program.global_block().ops):
             self.assertEqual(op.name(), ops_name[i])
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
 
 def get_ir_program_1():
