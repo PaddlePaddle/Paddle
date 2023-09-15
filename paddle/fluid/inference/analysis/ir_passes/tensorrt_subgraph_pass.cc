@@ -382,7 +382,6 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   auto mark_output = Get<bool>("mark_output");
   auto output_tensor_name =
       Get<std::vector<std::string>>("output_tensor_names");
-  auto mark_output_with_id = Get<bool>("mark_output_with_id");
 
   if (mark_output) {
     VLOG(1) << "begin to mark output ...";
@@ -391,17 +390,14 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
         for (auto *x : node->outputs) {
           if (std::count(parameters.begin(), parameters.end(), x->Name()) > 0)
             continue;
-          std::string name_with_id = x->Name() + std::to_string(x->id());
-          if (((!mark_output_with_id && std::count(output_tensor_name.begin(),
-                                                   output_tensor_name.end(),
-                                                   x->Name()) > 0) ||
-               (mark_output_with_id && std::count(output_tensor_name.begin(),
-                                                  output_tensor_name.end(),
-                                                  name_with_id) > 0)) &&
+          if ((std::count(output_tensor_name.begin(),
+                          output_tensor_name.end(),
+                          x->Name()) > 0) ||
               !x->outputs.empty()) {
             VLOG(3) << "output " << x->Name() << " has been marked";
             output_names.insert(x->Name());
-            output_names_with_id.insert(name_with_id);
+            output_names_with_id.insert(
+                RenameVarBeUnique(x->Name(), std::to_string(x->id())));
             origin_name_output_rank[x->Name()] = x->Var()->GetShape().size();
             trt_outputs.insert(x);
             map_origin_outputs_dtype[x->Name()] =
