@@ -670,6 +670,7 @@ inline void RunProgramAPI(
                                                       backward_global_block,
                                                       output_names,
                                                       x,
+                                                      input_names,
                                                       params,
                                                       place);
       interpreter_core =
