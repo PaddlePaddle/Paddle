@@ -206,6 +206,7 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
                                        uint64_t end_id,
                                        pir::Block* dest_block,
                                        bool for_cond_block) {
+  VLOG(0) << "=============>start to translate a block";
   PADDLE_ENFORCE(
       (src_block.OpSize() >= end_id) && (start_id <= end_id),
       platform::errors::NotFound(
@@ -221,6 +222,7 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
       continue;
     }
     auto op = src_block.Op(op_id);
+    VLOG(0) << "=============>start to translate a op: " << op->Type();
 
     PADDLE_ENFORCE_EQ(unsupported_ops.count(op->Type()),
                       0,
@@ -283,7 +285,7 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
   VLOG(4) << "[general op][conditional_block] IfOp preparation end.";
 
   pir::Operation* operation = pir::Operation::Create(
-      op_inputs, attribute_map, op_output_types, op_info);
+      op_inputs, attribute_map, op_output_types, op_info, 2);
 
   for (size_t i = 0; i < output_vardescs.size(); i++) {
     param_map_[output_vardescs[i]->Name()] =
@@ -332,7 +334,7 @@ void ProgramTranslator::TranslateGeneralOperation(const OpDesc* src_op,
     }
   }
   pir::Operation* operation = fn(ctx_, &param_map_, *src_op, dest_block);
-  VLOG(10) << "[op translated][special]" << operation;
+  VLOG(10) << "[op translated][special]" << operation << "end";
 }
 
 inline pir::Operation* InsertGetParamaterOp(pir::IrContext* ctx,
