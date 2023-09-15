@@ -21,7 +21,6 @@ _INFERMETA_NEED_META_CONFIG = {
     'ReduceIntArrayAxisInferMeta',
 }
 
-
 _PREPARE_DATA_WITH_VECTOR_INT64_MTTABLE_ATTRIBUTE = {'FrobeniusNormOp'}
 
 OP_BUILD_TEMPLATE = """
