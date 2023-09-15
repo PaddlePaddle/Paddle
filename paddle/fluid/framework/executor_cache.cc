@@ -381,10 +381,8 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
   for (size_t i = 0; i < x.size(); ++i) {
     auto &name = x_names[i];
     auto &in_t = x[i];
-    std::cerr << "x input " << name << std::endl;
     if (block->FindVarRecursive(name) == nullptr) {
       continue;
-      std::cerr << "skip" << std::endl;
     }
     auto p = in_t.place().GetType();
 
@@ -445,12 +443,10 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     op_desc->SetOutput("out", {"@EMPTY@"});
   }
 
-  std::cerr << "before translator" << std::endl;
   paddle::translator::ProgramTranslator program_translator(&local_program,
                                                            program.get());
 
   program_translator.Translate();
-  std::cerr << "after translator" << std::endl;
 
   auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
