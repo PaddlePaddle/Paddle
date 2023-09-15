@@ -23,7 +23,6 @@ from paddle.decomposition import decompose
 from paddle.framework import core
 
 paddle.enable_static()
-# paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
 
 class SimpNet(nn.Layer):
@@ -39,7 +38,6 @@ class TestPrimMode(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
         self.shape_x = [2, 1024, 1024]
-        # self.norm_shape = self.shape_x[1:]
         self.norm_shape = [1048576]
         self.ep = 1e-5
         self.begin_axis = 1
@@ -49,7 +47,6 @@ class TestPrimMode(unittest.TestCase):
         self.bias = np.random.random(self.norm_shape).astype("float32")
 
     def base_net(self, flag=None):
-        print("############## flag is: ", flag, " ###############")
         if flag == "backward":
             core._set_prim_backward_enabled(True)
         main_program = paddle.ir.core.Program()
@@ -66,7 +63,6 @@ class TestPrimMode(unittest.TestCase):
                 'bias', shape=self.norm_shape, dtype='float32'
             )
             bias.stop_gradient = True
-
             output_grad = paddle.tensor.fill_constant(
                 self.shape_x, dtype='float32', value=1.0
             )
@@ -75,28 +71,11 @@ class TestPrimMode(unittest.TestCase):
             whole_ops_before = [
                 op.name() for op in main_program.global_block().ops
             ]
-            print("whole ops before: ", whole_ops_before)
-            if flag == "backward":
-                core._set_prim_forward_enabled(False)
-            else:
-                core._set_prim_forward_enabled(True)
             [res2] = decompose(
                 main_program,
                 [res],
             )
-            core._set_prim_forward_enabled(False)
-            whole_ops_after_decompose = [
-                op.name() for op in main_program.global_block().ops
-            ]
-            print("whole ops after decompose: ", whole_ops_after_decompose)
-
-            # gradients = grad(res, x, output_grad)
             gradients = grad(res2, x, output_grad)
-
-            whole_ops_after_grad = [
-                op.name() for op in main_program.global_block().ops
-            ]
-            print("whole ops after grad: ", whole_ops_after_grad)
 
             if flag == "backward":
                 assert (
@@ -107,13 +86,10 @@ class TestPrimMode(unittest.TestCase):
                 [res2] = decompose(
                     main_program, [res2], whitelist={"pd_op.layer_norm"}
                 )
-                whole_ops_after_decompose_2 = [
+                whole_ops_after = [
                     op.name() for op in main_program.global_block().ops
                 ]
-                print(
-                    "whole ops after decompose 2: ", whole_ops_after_decompose_2
-                )
-                # assert "pd_op.layer_norm" not in whole_ops_after_decompose_2
+                assert "pd_op.layer_norm" not in whole_ops_after
                 core._set_prim_forward_enabled(False)
 
             exe = paddle.static.Executor()
@@ -133,10 +109,7 @@ class TestPrimMode(unittest.TestCase):
     def test_prim_custom_vjp(self):
         res_ref = self.base_net()
         res = self.base_net("backward")
-        # res = self.base_net()
         for ref, actual in zip(res_ref, res):
-            # np.testing.assert_allclose(ref, actual, rtol=1e-6)
-            # np.testing.assert_allclose(ref, actual, rtol=1e-6, atol=1e-6)
             np.testing.assert_allclose(ref, actual, rtol=1e-6, atol=1e-5)
 
 
