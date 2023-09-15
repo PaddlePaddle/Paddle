@@ -109,7 +109,6 @@ class TesBackward_1(unittest.TestCase):
         with paddle.ir.core.program_guard(newir_program):
             out = paddle.split(tanh_out, [2, 2], 0)
             input_grad = grad(out, input)
-        print(newir_program)
         ops_name = [
             "pd_op.data",
             "pd_op.tanh",
