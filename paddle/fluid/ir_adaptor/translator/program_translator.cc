@@ -47,6 +47,12 @@ const std::unordered_set<std::string> ProgramTranslator::no_cast_var_names = {
     "fetch",
 };
 
+const std::unordered_set<std::string> ProgramTranslator::unsupported_ops = {
+    "conditional_block_grad",
+    "while",
+    "while_grad",
+};
+
 static std::vector<uint64_t> GetCondOpIds(const BlockDesc& src_block,
                                           uint64_t first_id) {
   std::vector<uint64_t> op_list = {first_id};
@@ -175,13 +181,6 @@ ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
 }
 
 void ProgramTranslator::Translate() {
-  PADDLE_ENFORCE_EQ(
-      legacy_program_->Size(),
-      1u,
-      platform::errors::PreconditionNotMet(
-          "Not support multi block ProgramDesc translated, now has %d blocks",
-          legacy_program_->Size()));
-
   GetParameterForSingleBlock(legacy_program_->Block(0));
 
   TranslateBlock(legacy_program_->Block(0),
@@ -215,12 +214,18 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
           start_id,
           end_id,
           src_block.OpSize()));
+
   std::unordered_map<uint64_t, bool> translate_completed;
   for (uint64_t op_id = start_id; op_id < end_id; op_id++) {
     if (translate_completed.count(op_id) && translate_completed.at(op_id)) {
       continue;
     }
     auto op = src_block.Op(op_id);
+
+    PADDLE_ENFORCE_EQ(unsupported_op_names.count(op->Type()) == 0,
+                      platform::errors::PreconditionNotMet(
+                          "Not support translated %s op", op->Type()));
+
     if (op->Type() == "conditional_block") {
       std::vector<const OpDesc*> cond_op_list = {op};
       std::vector<uint64_t> cond_op_ids = GetCondOpIds(src_block, op_id);

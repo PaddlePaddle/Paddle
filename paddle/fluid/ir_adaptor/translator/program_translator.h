@@ -95,6 +95,8 @@ class ProgramTranslator {
   /// `Get/SetParameterFromSingleBlock`
   static const std::unordered_set<std::string> no_cast_var_names;
 
+  static const std::unordered_set<std::string> unsupported_ops;
+
   void TranslateBlock(const BlockDesc& src_block,
                       uint64_t start_id,
                       uint64_t end_id,
