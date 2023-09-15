@@ -272,6 +272,88 @@ def find_compatible_distributed_operator_impls(dist_op, fwd=True, partial=True):
     return best_compatible_impl
 
 
+def find_distributed_operator_container(dist_op, partial, fwd):
+    """
+    Return a unique container for dist op.
+    If not specific container found, default container will be return.
+    """
+
+    op_type = dist_op.serial_op.type
+    dist_op_impl_container = get_distributed_operator_impl_container(op_type)
+    dist_op_eltwise_impl_container = get_distributed_operator_impl_container(
+        "elementwise"
+    )
+    dist_op_default_impl_container = get_distributed_operator_impl_container(
+        "default"
+    )
+    compatible_impls = []
+    if partial:
+        if fwd:
+            # First, find impls in the corresponding container
+            if dist_op_impl_container:
+                compatible_impls.extend(
+                    dist_op_impl_container.get_input_compatible_impls(dist_op)
+                )
+            # Second, find impls in the elementwise container
+            if dist_op_eltwise_impl_container and is_elementwise_op(op_type):
+                compatible_impls.extend(
+                    dist_op_eltwise_impl_container.get_input_compatible_impls(
+                        dist_op
+                    )
+                )
+            # Third, find impls in the default container
+            if dist_op_default_impl_container:
+                compatible_impls.extend(
+                    dist_op_default_impl_container.get_input_compatible_impls(
+                        dist_op
+                    )
+                )
+        else:
+            # First, find impls in the corresponding container
+            if dist_op_impl_container:
+                compatible_impls.extend(
+                    dist_op_impl_container.get_output_compatible_impls(dist_op)
+                )
+            # Second, find impls in the elementwise container
+            if dist_op_eltwise_impl_container and is_elementwise_op(op_type):
+                compatible_impls.extend(
+                    dist_op_eltwise_impl_container.get_output_compatible_impls(
+                        dist_op
+                    )
+                )
+            # Third, find impls in the default container
+            if dist_op_default_impl_container:
+                compatible_impls.extend(
+                    dist_op_default_impl_container.get_output_compatible_impls(
+                        dist_op
+                    )
+                )
+    else:
+        # First, find impls in the corresponding container
+        if dist_op_impl_container:
+            compatible_impls.extend(
+                dist_op_impl_container.get_compatible_impls(dist_op)
+            )
+        # Second, find impls in the elementwise container
+        if dist_op_eltwise_impl_container and is_elementwise_op(op_type):
+            compatible_impls.extend(
+                dist_op_eltwise_impl_container.get_compatible_impls(dist_op)
+            )
+        # Third, find impls in the default container
+        if dist_op_default_impl_container:
+            compatible_impls.extend(
+                dist_op_default_impl_container.get_compatible_impls(dist_op)
+            )
+
+    if compatible_impls:
+        # For now, just return the first compatible impl
+        # best_compatible_impl = compatible_impls[0]
+        best_compatible_impl = compatible_impls
+    else:
+        best_compatible_impl = None
+    return best_compatible_impl
+
+
 def is_parameter_related(varname, block, dist_context=None):
     # TODO(zhaoyingli): maintain a dict in dist_context to record all variables which are be renamed
     if ".subprog_" in varname:

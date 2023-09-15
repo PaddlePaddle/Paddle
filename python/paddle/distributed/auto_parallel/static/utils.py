@@ -2500,3 +2500,17 @@ def wrap_data_for_completion(
         attrs[attr_name] = serial_op.desc.attr(attr_name)
 
     return input_specs, output_specs, attrs
+
+
+def format_op_name(op_name):
+    OP_NAME_MAPPING = {
+        "matmul_v2": "matmul",
+        "transpose2": "transpose",
+        "reshape2": "reshape",
+        "unsqueeze2": "unsqueeze",
+    }
+
+    if op_name in OP_NAME_MAPPING:
+        return OP_NAME_MAPPING[op_name]
+    else:
+        return op_name
