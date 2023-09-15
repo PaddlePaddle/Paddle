@@ -58,7 +58,7 @@ TEST(program_test, program) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::Program program((ctx));
 
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
   pir::Builder builder = pir::Builder(ctx, program.block());
 
@@ -94,7 +94,7 @@ TEST(program_test, program) {
                 ->front()
                 ->dyn_cast<paddle::dialect::PhiKernelOp>()
                 .op_name(),
-            "pd.full");
+            "pd_op.full");
   EXPECT_EQ(kernel_program->block()
                 ->front()
                 ->dyn_cast<paddle::dialect::PhiKernelOp>()
@@ -113,9 +113,9 @@ TEST(dialect_attr, attr) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::Program program((ctx));
 
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   auto kernel_dialect =
-      ctx->GetOrRegisterDialect<paddle::dialect::PaddleKernelDialect>();
+      ctx->GetOrRegisterDialect<paddle::dialect::KernelDialect>();
 
   phi::KernelKey kernel_key(
       phi::Backend::CPU, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT32);
@@ -152,7 +152,7 @@ TEST(kernel_dialect, legacy_op_test) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::Program program((ctx));
 
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   phi::KernelKey kernel_key(
       phi::Backend::CPU, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT32);
 
@@ -160,12 +160,12 @@ TEST(kernel_dialect, legacy_op_test) {
       ctx->GetRegisteredOpInfo(paddle::dialect::LegacyKernelOp::name());
   pir::OperationArgument argument(kernel_op_info);
   argument.attributes = CreateAttributeMap({"op_name", "kernel_name"},
-                                           {"pd.kernel_op", "kernel_op"},
+                                           {"pd_op.kernel_op", "kernel_op"},
                                            "kernel_key",
                                            kernel_key);
 
   pir::Operation* op = pir::Operation::Create(std::move(argument));
-  EXPECT_EQ("pd.kernel_op",
+  EXPECT_EQ("pd_op.kernel_op",
             op->dyn_cast<paddle::dialect::LegacyKernelOp>().op_name());
   EXPECT_EQ("kernel_op",
             op->dyn_cast<paddle::dialect::LegacyKernelOp>().kernel_name());
@@ -175,35 +175,35 @@ TEST(kernel_dialect, legacy_op_test) {
 
 TEST(kernel_dialect, cond_op_test) {
   // (1) Init environment.
-  ppir::IrContext* ctx = ppir::IrContext::Instance();
+  pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-  ctx->GetOrRegisterDialect<ppir::ControlFlowDialect>();
+  ctx->GetOrRegisterDialect<pir::ControlFlowDialect>();
 
-  ppir::Program program(ctx);
-  ppir::Block* block = program.block();
-  ppir::Builder builder(ctx, block);
+  pir::Program program(ctx);
+  pir::Block* block = program.block();
+  pir::Builder builder(ctx, block);
 
   auto full_op = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, true, phi::DataType::BOOL);
 
   auto if_op = builder.Build<paddle::dialect::IfOp>(
-      full_op.out(), std::vector<ppir::Type>{full_op.result(0).type()});
+      full_op.out(), std::vector<pir::Type>{full_op.result(0).type()});
 
-  ppir::Block* true_block = if_op.true_block();
+  pir::Block* true_block = if_op.true_block();
 
   builder.SetInsertionPointToStart(true_block);
 
   auto full_op_1 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2}, true, phi::DataType::BOOL);
-  builder.Build<ppir::YieldOp>(std::vector<ppir::OpResult>{full_op_1.out()});
+  builder.Build<pir::YieldOp>(std::vector<pir::OpResult>{full_op_1.out()});
 
-  ppir::Block* false_block = if_op.false_block();
+  pir::Block* false_block = if_op.false_block();
 
   builder.SetInsertionPointToStart(false_block);
 
   auto full_op_2 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{3}, true, phi::DataType::BOOL);
-  builder.Build<ppir::YieldOp>(std::vector<ppir::OpResult>{full_op_2.out()});
+  builder.Build<pir::YieldOp>(std::vector<pir::OpResult>{full_op_2.out()});
 
   program.Print(std::cout);
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
