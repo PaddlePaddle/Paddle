@@ -45,40 +45,39 @@ void CompilationResult::InitCompilationResult(int group_size) {
   instructions_.resize(group_size);
 }
 
-void CompilationResult::SetStatus(uint idx, const CompilationStatus& status) {
+void CompilationResult::SetStatus(int idx, const CompilationStatus& status) {
   if (idx < status_.size()) {
     status_[idx] = status;
   }
 }
 
-void CompilationResult::SetMessage(uint idx, const std::string& message) {
+void CompilationResult::SetMessage(int idx, const std::string& message) {
   if (idx < messages_.size()) {
     messages_[idx] = message;
   }
 }
 
 void CompilationResult::SetLoweredFuncs(
-    uint idx, const std::vector<ir::LoweredFunc>& funcs) {
+    int idx, const std::vector<ir::LoweredFunc>& funcs) {
   if (idx < lowered_funcs_.size()) {
     lowered_funcs_[idx] = funcs;
   }
 }
 
-void CompilationResult::SetSourceCode(uint idx,
-                                      const std::string& source_code) {
+void CompilationResult::SetSourceCode(int idx, const std::string& source_code) {
   if (idx < source_codes_.size()) {
     source_codes_[idx] = source_code;
   }
 }
 
-void CompilationResult::SetSourcePtx(uint idx, const std::string& source_ptx) {
+void CompilationResult::SetSourcePtx(int idx, const std::string& source_ptx) {
   if (idx < source_ptxs_.size()) {
     source_ptxs_[idx] = source_ptx;
   }
 }
 
 void CompilationResult::SetInstruction(
-    uint idx, std::unique_ptr<Instruction> instruction) {
+    int idx, std::unique_ptr<Instruction> instruction) {
   if (idx < instructions_.size()) {
     instructions_[idx] = std::move(instruction);
   }
@@ -108,7 +107,7 @@ CompilationStatus CompilationResult::Status() const {
   return worst_status;
 }
 
-CompilationStatus CompilationResult::Status(uint idx) const {
+CompilationStatus CompilationResult::Status(int idx) const {
   if (idx >= status_.size()) {
     return CompilationStatus::UNKNOWN_FAIL;
   }
@@ -123,7 +122,7 @@ std::string CompilationResult::Message() const {
   return res;
 }
 
-std::string CompilationResult::Message(uint idx) const {
+std::string CompilationResult::Message(int idx) const {
   if (idx >= messages_.size()) {
     std::stringstream ss;
     ss << "The index(" << idx
@@ -152,7 +151,7 @@ std::vector<std::vector<ir::LoweredFunc>> CompilationResult::LoweredFuncs()
   return res;
 }
 
-std::vector<ir::LoweredFunc> CompilationResult::LoweredFuncs(uint idx) const {
+std::vector<ir::LoweredFunc> CompilationResult::LoweredFuncs(int idx) const {
   if (idx >= lowered_funcs_.size()) {
     std::stringstream ss;
     ss << "The index(" << idx
@@ -187,7 +186,7 @@ std::vector<std::string> CompilationResult::SourceCodes() const {
   return res;
 }
 
-std::string CompilationResult::SourceCode(uint idx) const {
+std::string CompilationResult::SourceCode(int idx) const {
   if (idx >= source_codes_.size()) {
     std::stringstream ss;
     ss << "The index(" << idx
@@ -223,7 +222,7 @@ std::vector<std::string> CompilationResult::SourcePtxs() const {
   return res;
 }
 
-std::string CompilationResult::SourcePtx(uint idx) const {
+std::string CompilationResult::SourcePtx(int idx) const {
   if (idx >= source_ptxs_.size()) {
     std::stringstream ss;
     ss << "The index(" << idx
@@ -261,7 +260,7 @@ CompilationResult::RuntimeInstructions() const {
 }
 
 const std::unique_ptr<Instruction>& CompilationResult::RuntimeInstruction(
-    uint idx) const {
+    int idx) const {
   const std::vector<std::unique_ptr<Instruction>>& insts =
       runtime_program_ ? runtime_program_->GetRunInstructions() : instructions_;
   if (idx >= insts.size()) {

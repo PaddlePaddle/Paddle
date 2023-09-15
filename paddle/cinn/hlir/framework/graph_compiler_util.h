@@ -108,29 +108,29 @@ class CompilationResult {
   void InitCompilationResult(int group_size);
 
   // Setters
-  void SetStatus(uint idx, const CompilationStatus& status);
-  void SetMessage(uint idx, const std::string& message);
-  void SetLoweredFuncs(uint idx, const std::vector<ir::LoweredFunc>& funcs);
-  void SetSourceCode(uint idx, const std::string& source_code);
-  void SetSourcePtx(uint idx, const std::string& source_ptx);
-  void SetInstruction(uint idx, std::unique_ptr<Instruction> instruction);
+  void SetStatus(int idx, const CompilationStatus& status);
+  void SetMessage(int idx, const std::string& message);
+  void SetLoweredFuncs(int idx, const std::vector<ir::LoweredFunc>& funcs);
+  void SetSourceCode(int idx, const std::string& source_code);
+  void SetSourcePtx(int idx, const std::string& source_ptx);
+  void SetInstruction(int idx, std::unique_ptr<Instruction> instruction);
   void SetRuntimeProgram(std::unique_ptr<Program> runtime_program);
 
   // Getters
   bool IsSuccess() const;
-  uint Size() const { return size_; }
+  int Size() const { return size_; }
   CompilationStatus Status() const;
-  CompilationStatus Status(uint idx) const;
+  CompilationStatus Status(int idx) const;
   std::string Message() const;
-  std::string Message(uint idx) const;
+  std::string Message(int idx) const;
   std::vector<std::vector<ir::LoweredFunc>> LoweredFuncs() const;
-  std::vector<ir::LoweredFunc> LoweredFuncs(uint idx) const;
+  std::vector<ir::LoweredFunc> LoweredFuncs(int idx) const;
   std::vector<std::string> SourceCodes() const;
-  std::string SourceCode(uint idx) const;
+  std::string SourceCode(int idx) const;
   std::vector<std::string> SourcePtxs() const;
-  std::string SourcePtx(uint idx) const;
+  std::string SourcePtx(int idx) const;
   const std::vector<std::unique_ptr<Instruction>>& RuntimeInstructions() const;
-  const std::unique_ptr<Instruction>& RuntimeInstruction(uint idx) const;
+  const std::unique_ptr<Instruction>& RuntimeInstruction(int idx) const;
   std::unique_ptr<Program> RuntimeProgram();
 
  private:
@@ -141,7 +141,7 @@ class CompilationResult {
   std::vector<std::optional<std::string>> source_ptxs_;
   std::vector<std::unique_ptr<Instruction>> instructions_;
   std::unique_ptr<Program> runtime_program_;
-  uint size_;
+  int size_;
 };
 
 }  // namespace framework

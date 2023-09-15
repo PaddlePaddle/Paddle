@@ -40,6 +40,7 @@ PD_DECLARE_string(cinn_dump_group_instruction);
 namespace cinn {
 namespace backends {
 using ir::Module;
+using CompilationStatus = hlir::framework::CompilationStatus;
 
 static constexpr int DebugLogMaxLen = 30000;
 
@@ -91,7 +92,7 @@ void CompilationInfoDumper::DumpLoweredFunc() {
   }
   for (int idx = 0; idx < info_.Size(); ++idx) {
     std::stringstream content;
-    if (info_.Status(idx) > hlir::framework::CompilationStatus::LOWERING_FAIL) {
+    if (info_.Status(idx) > CompilationStatus::LOWERING_FAIL) {
       content << info_.LoweredFuncs(idx).front();
     } else {
       content << "[No lowered func generated]\n\n" << info_.Message(idx);
@@ -109,8 +110,7 @@ void CompilationInfoDumper::DumpSourceCode() {
   }
   for (int idx = 0; idx < info_.Size(); ++idx) {
     std::string dump_str;
-    if (info_.Status(idx) >
-        hlir::framework::CompilationStatus::CODEGEN_JIT_FAIL) {
+    if (info_.Status(idx) > CompilationStatus::CODEGEN_JIT_FAIL) {
       dump_str = info_.SourceCode(idx);
     } else {
       dump_str = "[No source code generated]\n\n" + info_.Message(idx);
@@ -125,8 +125,7 @@ void CompilationInfoDumper::DumpPtxCode() {
   }
   for (int idx = 0; idx < info_.Size(); ++idx) {
     std::string dump_str;
-    if (info_.Status(idx) >
-        hlir::framework::CompilationStatus::CODEGEN_JIT_FAIL) {
+    if (info_.Status(idx) > CompilationStatus::CODEGEN_JIT_FAIL) {
       dump_str = info_.SourcePtx(idx);
     } else {
       dump_str = "[No source ptxs generated]\n\n" + info_.Message(idx);
