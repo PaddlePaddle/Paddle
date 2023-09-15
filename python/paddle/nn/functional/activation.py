@@ -189,7 +189,7 @@ def gelu(x, approximate=False, name=None):
              [ 0.84119201,  1.39957154]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.gelu(x, approximate)
     else:
         check_variable_and_dtype(

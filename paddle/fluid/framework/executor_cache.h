@@ -168,6 +168,7 @@ class InterpreterCoreInfo {
   struct CacheValue {
     std::shared_ptr<InterpreterCore> core_{nullptr};
     std::set<std::string> skip_eager_delete_vars_;
+    std::unique_ptr<::pir::Program> ir_prog_{nullptr};
   };
 
   bool IsAvailable(bool is_grad) {

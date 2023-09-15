@@ -54,6 +54,7 @@ vjp_interface_declare_gen_op_list = [
     'slice',
     'transpose',
     'slice_double',
+    'scale',
 ]
 vjp_interface_implementation_gen_op_list = [
     "tanh",
@@ -86,4 +87,5 @@ vjp_interface_implementation_gen_op_list = [
     'slice',
     'transpose',
     'slice_double',
+    'scale',
 ]

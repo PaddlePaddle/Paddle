@@ -312,7 +312,7 @@ def slice(input, axes, starts, ends):
             sliced_2 = paddle.slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends)
             # sliced_2 is input[1:3, 0:2, 2:4].
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         attrs = ()
         starts_tensor = None
         ends_tensor = None
@@ -3601,6 +3601,8 @@ def reshape(x, shape, name=None):
             for ele in shape:
                 if isinstance(ele, core.eager.Tensor):
                     new_shape.append(ele.item())
+                elif isinstance(ele, paddle.ir.OpResult):
+                    new_shape.append(-1)
                 else:
                     new_shape.append(ele)
 
@@ -3608,12 +3610,14 @@ def reshape(x, shape, name=None):
                 out = x
             else:
                 out = _C_ops.reshape(x, new_shape)
-        elif isinstance(shape, core.eager.Tensor):
+        elif isinstance(shape, core.eager.Tensor) or isinstance(
+            shape, paddle.ir.OpResult
+        ):
             shape.stop_gradient = True
             out = _C_ops.reshape(x, shape)
         else:
             raise ValueError(
-                "shape must be an instance of `list`, `tuple` or `Variable`,"
+                "shape must be an instance of `list`, `tuple` `Variable(in dygraph mode)` or `OpResult(in pir mode)`,"
                 " got '{}.'".format(type(shape))
             )
 

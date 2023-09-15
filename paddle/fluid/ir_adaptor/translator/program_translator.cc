@@ -218,7 +218,7 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
               ctx_, defining_op_result, parameter_name_mappings_[var_name]);
 
           pir::Block* block = program_->block();
-          pir::Block::iterator insert_pos = std::find(
+          pir::Block::Iterator insert_pos = std::find(
               block->begin(), block->end(), defining_op_result.owner());
 
           IR_ENFORCE(

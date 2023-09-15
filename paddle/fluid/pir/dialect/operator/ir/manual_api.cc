@@ -37,6 +37,12 @@ std::vector<pir::OpResult> add_n_grad(std::vector<pir::OpResult> inputs,
   return inputs_grad;
 }
 
+pir::OpResult zeros_like(pir::OpResult x,
+                         phi::DataType dtype,
+                         const Place& place) {
+  return paddle::dialect::full_like(x, 0, dtype, place);
+}
+
 pir::OpResult get_parameter(const std::string& name,
                             phi::DataType dtype,
                             const std::vector<int64_t>& shape) {
