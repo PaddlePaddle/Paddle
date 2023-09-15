@@ -30,6 +30,7 @@ void TransposeCooKernel(const Context& dev_ctx,
                         const std::vector<int>& perm,
                         SparseCooTensor* out) {
   // create out sparse tensor
+  int64_t x_nnz = x.nnz();
   DDim out_dims = x.dims().transpose(perm);
   DenseTensor out_indices = EmptyLike<int64_t, Context>(dev_ctx, x.indices());
   const DenseTensor& out_values(x.values());
@@ -37,12 +38,11 @@ void TransposeCooKernel(const Context& dev_ctx,
 
   // compute values of indices
   const DenseTensor& x_indices = x.indices();
-  int64_t x_indices_dim0 = x_indices.dims()[0];
   const auto* x_indices_data = x_indices.data<int64_t>();
   auto* out_indices_data = out_indices.data<int64_t>();
   for (unsigned int i = 0; i < perm.size(); ++i) {
-    for (int64_t j = 0; j < x_indices_dim0; ++j) {
-      out_indices_data[j + i * x_indices_dim0] = x_indices_data[j + perm[i] * x_indices_dim0];
+    for (int64_t j = 0; j < x_nnz; ++j) {
+      out_indices_data[j + i * x_nnz] = x_indices_data[j + perm[i] * x_nnz];
     }
   }
 }
