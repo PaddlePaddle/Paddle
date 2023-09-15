@@ -1232,10 +1232,17 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
 
   try {
     instr_node->WaitEvent(place_);
-
-    VLOG(5) << "begin to run op " << instr_node->Name();
+    VLOG(4) << "begin to run op " << instr_node->Name();
     if (!instr_node->IsArtificial()) {
       instr_node->Run();
+      VLOG(4) << __func__ << " OP id:" << instr_node->Id()
+              << " name:" << instr_node->Operation()->name() << " type:"
+              << (instr_node->KernelType() == OpFuncType::kCpuSync
+                      ? "kCpuSync"
+                      : (instr_node->KernelType() == OpFuncType::kGpuSync
+                             ? "kGpuSync"
+                             : "kGpuAsync"))
+              << " runs on " << platform::GetCurrentThreadName();
       VLOG(4) << "done instruction node run";
       CheckGC(instr_node);
       VLOG(4) << "done CheckGC";
