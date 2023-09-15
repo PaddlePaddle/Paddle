@@ -235,32 +235,16 @@ def distributed_attr_check_for_dist_op(
         serial_op = serial_ops[serial_op_idx[i]]
         dist_op_0 = dist_ops[dist_op_idx[i][0]]
 
-        if dist_op_0.type == "c_identity":
-            # serial op input's dist_attr
-            serial_in_dist_attr = get_input_var_dist_attr(
-                serial_op, serial_main_prog, dist_context
-            )
-            # c_identity output's(new var) dist_attr
-            identity_out_dist_attr = get_output_var_dist_attr(
-                dist_op_0, dist_main_prog, dist_context
-            )
-            # check var dist_attr
-            equal = check_equal_var_dist_attr(
-                serial_in_dist_attr, identity_out_dist_attr
-            )
-        else:
-            # serial op output's dist_attr
-            serial_out_dist_attr = get_output_var_dist_attr(
-                serial_op, serial_main_prog, dist_context
-            )
-            # dist op output's(new var) dist_attr
-            out_dist_attr = get_output_var_dist_attr(
-                dist_op_0, dist_main_prog, dist_context
-            )
-            # check var dist_attr
-            equal = check_equal_var_dist_attr(
-                serial_out_dist_attr, out_dist_attr
-            )
+        # serial op output's dist_attr
+        serial_out_dist_attr = get_output_var_dist_attr(
+            serial_op, serial_main_prog, dist_context
+        )
+        # dist op output's(new var) dist_attr
+        out_dist_attr = get_output_var_dist_attr(
+            dist_op_0, dist_main_prog, dist_context
+        )
+        # check var dist_attr
+        equal = check_equal_var_dist_attr(serial_out_dist_attr, out_dist_attr)
 
         # check op's dist_attr
         equal = check_equal_dist_op_attr(
