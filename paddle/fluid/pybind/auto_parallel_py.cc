@@ -24,7 +24,6 @@
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
-#include "paddle/fluid/pybind/slice_utils.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/auto_parallel/device_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
@@ -50,6 +49,14 @@ namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
+
+static bool PyCheckInteger(PyObject *obj) {
+#if PY_VERSION_HEX < 0x03000000
+  return (PyLong_Check(obj) || PyInt_Check(obj)) && !PyBool_Check(obj);
+#else
+  return PyLong_Check(obj) && !PyBool_Check(obj);
+#endif
+}
 
 using paddle::distributed::auto_parallel::DistTensorSpec;
 using paddle::distributed::auto_parallel::kDefault;
