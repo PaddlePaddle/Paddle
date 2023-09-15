@@ -1163,7 +1163,7 @@ _erf_ = generate_layer_fn('erf')
 
 
 def erf(x, name=None):
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.erf(x)
 
     locals_var = locals().copy()

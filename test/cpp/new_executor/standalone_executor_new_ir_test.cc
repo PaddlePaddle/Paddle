@@ -49,101 +49,96 @@ bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
 namespace paddle {
 namespace framework {
 
-// TEST(StandaloneExecutor, run) {
-//   pir::IrContext* ctx = pir::IrContext::Instance();
-//   pir::Program program((ctx));
+TEST(StandaloneExecutor, run) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::Program program((ctx));
 
-//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
-//   pir::Builder builder = pir::Builder(ctx, program.block());
+  pir::Builder builder = pir::Builder(ctx, program.block());
 
-//   paddle::dialect::FullOp op1 = builder.Build<paddle::dialect::FullOp>(
-//       std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32,
-//       phi::CPUPlace());
+  paddle::dialect::FullOp op1 = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
-//   paddle::dialect::FullOp op2 = builder.Build<paddle::dialect::FullOp>(
-//       std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32,
-//       phi::CPUPlace());
+  paddle::dialect::FullOp op2 = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
-//   builder.Build<paddle::dialect::AddOp>(op1->result(0), op2->result(0));
+  builder.Build<paddle::dialect::AddOp>(op1->result(0), op2->result(0));
 
-//   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
-//   auto place = platform::CPUPlace();
-//   Scope scope;
+  auto place = platform::CPUPlace();
+  Scope scope;
 
-//   ProgramDesc prog_desc;
-//   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
+  ProgramDesc prog_desc;
+  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
 
-//   std::stringstream os;
-//   os << reinterpret_cast<NewIRInterpreter*>(
-//       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
-//   std::string out_name = os.str() + "_inner_var_2";
-//   test_core.SetSkipGcVars({out_name});
+  std::stringstream os;
+  os << reinterpret_cast<NewIRInterpreter*>(
+      const_cast<InterpreterBaseImpl*>(test_core.Impl()));
+  std::string out_name = os.str() + "_inner_var_2";
+  test_core.SetSkipGcVars({out_name});
 
-//   test_core.Run({});
+  test_core.Run({});
 
-//   auto out_tensor =
-//       test_core.local_scope() == nullptr
-//           ? scope.FindVar(out_name)->Get<phi::DenseTensor>()
-//           :
-//           test_core.local_scope()->FindVar(out_name)->Get<phi::DenseTensor>();
+  auto out_tensor =
+      test_core.local_scope() == nullptr
+          ? scope.FindVar(out_name)->Get<phi::DenseTensor>()
+          : test_core.local_scope()->FindVar(out_name)->Get<phi::DenseTensor>();
 
-//   bool res0 = simple_cmp(out_tensor.data<float>()[0], 2.0);
-//   bool res1 = simple_cmp(out_tensor.data<float>()[1], 2.0);
-//   bool res2 = simple_cmp(out_tensor.data<float>()[2], 2.0);
-//   bool res3 = simple_cmp(out_tensor.data<float>()[3], 2.0);
+  bool res0 = simple_cmp(out_tensor.data<float>()[0], 2.0);
+  bool res1 = simple_cmp(out_tensor.data<float>()[1], 2.0);
+  bool res2 = simple_cmp(out_tensor.data<float>()[2], 2.0);
+  bool res3 = simple_cmp(out_tensor.data<float>()[3], 2.0);
 
-//   EXPECT_EQ(res0, true);
-//   EXPECT_EQ(res1, true);
-//   EXPECT_EQ(res2, true);
-//   EXPECT_EQ(res3, true);
-// }
+  EXPECT_EQ(res0, true);
+  EXPECT_EQ(res1, true);
+  EXPECT_EQ(res2, true);
+  EXPECT_EQ(res3, true);
+}
 
-// TEST(StandaloneExecutor, run_inplace_sqrt) {
-//   pir::IrContext* ctx = pir::IrContext::Instance();
-//   pir::Program program((ctx));
-//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-//   pir::Builder builder = pir::Builder(ctx, program.block());
+TEST(StandaloneExecutor, run_inplace_sqrt) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::Program program((ctx));
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  pir::Builder builder = pir::Builder(ctx, program.block());
 
-//   paddle::dialect::FullOp full = builder.Build<paddle::dialect::FullOp>(
-//       std::vector<int64_t>{2, 2}, 4.0, phi::DataType::FLOAT32,
-//       phi::CPUPlace());
+  paddle::dialect::FullOp full = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{2, 2}, 4.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
-//   builder.Build<paddle::dialect::Sqrt_Op>(full->result(0));
+  builder.Build<paddle::dialect::Sqrt_Op>(full->result(0));
 
-//   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
-//   auto place = platform::CPUPlace();
-//   Scope scope;
-//   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
+  auto place = platform::CPUPlace();
+  Scope scope;
+  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
 
-//   std::stringstream os;
-//   os << reinterpret_cast<NewIRInterpreter*>(
-//       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
-//   std::string out_name = os.str() + "_inner_var_0";
-//   test_core.SetSkipGcVars({out_name});
+  std::stringstream os;
+  os << reinterpret_cast<NewIRInterpreter*>(
+      const_cast<InterpreterBaseImpl*>(test_core.Impl()));
+  std::string out_name = os.str() + "_inner_var_0";
+  test_core.SetSkipGcVars({out_name});
 
-//   test_core.Run({});
+  test_core.Run({});
 
-//   auto out_tensor =
-//       test_core.local_scope() == nullptr
-//           ? scope.FindVar(out_name)->Get<phi::DenseTensor>()
-//           :
-//           test_core.local_scope()->FindVar(out_name)->Get<phi::DenseTensor>();
+  auto out_tensor =
+      test_core.local_scope() == nullptr
+          ? scope.FindVar(out_name)->Get<phi::DenseTensor>()
+          : test_core.local_scope()->FindVar(out_name)->Get<phi::DenseTensor>();
 
-//   bool res0 = simple_cmp(out_tensor.data<float>()[0], 2.0);
-//   bool res1 = simple_cmp(out_tensor.data<float>()[1], 2.0);
-//   bool res2 = simple_cmp(out_tensor.data<float>()[2], 2.0);
-//   bool res3 = simple_cmp(out_tensor.data<float>()[3], 2.0);
+  bool res0 = simple_cmp(out_tensor.data<float>()[0], 2.0);
+  bool res1 = simple_cmp(out_tensor.data<float>()[1], 2.0);
+  bool res2 = simple_cmp(out_tensor.data<float>()[2], 2.0);
+  bool res3 = simple_cmp(out_tensor.data<float>()[3], 2.0);
 
-//   EXPECT_EQ(scope.kids().size(), 1u);
-//   EXPECT_EQ(scope.kids().front()->Size(), 1u);
-//   EXPECT_EQ(res0, true);
-//   EXPECT_EQ(res1, true);
-//   EXPECT_EQ(res2, true);
-//   EXPECT_EQ(res3, true);
-// }
+  EXPECT_EQ(scope.kids().size(), 1u);
+  EXPECT_EQ(scope.kids().front()->Size(), 1u);
+  EXPECT_EQ(res0, true);
+  EXPECT_EQ(res1, true);
+  EXPECT_EQ(res2, true);
+  EXPECT_EQ(res3, true);
+}
 
 TEST(StandaloneExecutor, if_op) {
   pir::IrContext* ctx = pir::IrContext::Instance();

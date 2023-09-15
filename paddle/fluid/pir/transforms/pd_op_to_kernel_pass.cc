@@ -801,13 +801,7 @@ void HandleForSpecialOp(
           vec_inputs.emplace_back();
           continue;
         }
-        PADDLE_ENFORCE_EQ(map_value_pair->count(cur_in),
-                          true,
-                          phi::errors::PreconditionNotMet(
-                              "[%d]'s input of [%s] op MUST in map pair",
-                              i,
-                              op_item->name()));
-        auto new_in = map_value_pair->at(cur_in);
+        auto new_in = GetNewInput(cur_in, *map_value_pair, i, op_item->name());
         vec_inputs.push_back(new_in);
       }
     }

@@ -952,7 +952,6 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is BetaRunning.";
     // Build
-
     VLOG(4) << "Done BuildScope";
     VLOG(4) << DebugValueInfo();
 
@@ -998,7 +997,6 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
   if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
   }
-  std::cerr << "after clear" << std::endl;
   // return Fetch Tensors
   Scope* inner_scope = InnerScope();
   if (FLAGS_enable_new_ir_in_executor) {
