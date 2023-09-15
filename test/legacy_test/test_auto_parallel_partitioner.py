@@ -234,6 +234,7 @@ def distributed_attr_check_for_dist_op(
     for i in range(len(serial_op_idx)):
         serial_op = serial_ops[serial_op_idx[i]]
         dist_op_0 = dist_ops[dist_op_idx[i][0]]
+
         if dist_op_0.type == "c_identity":
             # serial op input's dist_attr
             serial_in_dist_attr = get_input_var_dist_attr(
@@ -504,7 +505,7 @@ class TestMLPAutoPartitioner(unittest.TestCase):
         )
         # check distribured attr for dist op
         serial_op_idx = [1, 4]
-        dist_op_idx = [[1, 2], [5, 6]]
+        dist_op_idx = [[1, 2], [4, 5]]
         self.assertTrue(
             distributed_attr_check_for_dist_op(
                 serial_main_prog,
@@ -597,7 +598,7 @@ class TestMLPAutoPartitioner(unittest.TestCase):
         )
         # check distribured attr for dist op
         serial_op_idx = [1, 4]
-        dist_op_idx = [[1, 2], [5, 6]]
+        dist_op_idx = [[1, 2], [4, 5]]
         self.assertTrue(
             distributed_attr_check_for_dist_op(
                 serial_main_prog,
@@ -893,7 +894,7 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         )
         # check distribured attr for dist op
         serial_op_idx = [0, 4, 6, 18]
-        dist_op_idx = [[0, 1], [5, 6], [8, 9], [21, 22]]
+        dist_op_idx = [[0, 1], [4, 5], [6, 7], [18, 19]]
         self.assertTrue(
             distributed_attr_check_for_dist_op(
                 serial_main_prog,
@@ -999,7 +1000,7 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         )
         # check distribured attr for dist op
         serial_op_idx = [0, 4, 6, 18]
-        dist_op_idx = [[0, 1], [5, 6], [8, 9], [21, 22]]
+        dist_op_idx = [[0, 1], [4, 5], [6, 7], [18, 19]]
         self.assertTrue(
             distributed_attr_check_for_dist_op(
                 serial_main_prog,
@@ -1387,13 +1388,13 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
         # check distribured attr
         serial_op_idx = [0, 5, 9, 11, 24, 29, 32]
         dist_op_idx = [
-            [0, 1],
+            [2, 3],
             [6, 7],
-            [11, 12],
-            [14, 15],
-            [28, 29],
+            [10, 11],
+            [12, 13],
+            [25, 26],
+            [31, 32],
             [34, 35],
-            [38, 39],
         ]
         self.assertTrue(
             distributed_attr_check_for_dist_op(
