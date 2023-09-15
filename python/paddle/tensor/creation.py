@@ -40,6 +40,7 @@ from ..framework import (
     convert_np_dtype_to_dtype_,
     core,
     in_dynamic_mode,
+    in_dynamic_or_pir_mode,
     in_pir_mode,
 )
 
@@ -1511,7 +1512,7 @@ def tril(x, diagonal=0, name=None):
              [5 , 0 , 0 , 0 ],
              [9 , 10, 0 , 0 ]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.tril(x, diagonal)
     else:
         return _tril_triu_op(LayerHelper('tril', **locals()))
@@ -1588,7 +1589,7 @@ def triu(x, diagonal=0, name=None):
              [0 , 10, 11, 12]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.triu(x, diagonal)
     else:
         return _tril_triu_op(LayerHelper('triu', **locals()))
