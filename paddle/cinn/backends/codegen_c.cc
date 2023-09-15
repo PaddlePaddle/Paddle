@@ -23,6 +23,7 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_verify.h"
 #include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/optim/remove_nested_block.h"
 #include "paddle/cinn/runtime/cpu/thread_backend.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
@@ -644,7 +645,7 @@ void CodeGenC::Visit(const ir::_LoweredFunc_ *op) {
 
   Expr func_body = ir::Block::Make(new_body);
 
-  optim::SimplifyBlocks(&func_body);
+  optim::RemoveNestedBlock(&func_body);
 
   IrPrinter::Visit(func_body);
 }

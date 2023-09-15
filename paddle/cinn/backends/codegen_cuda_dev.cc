@@ -24,6 +24,7 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_verify.h"
 #include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/optim/remove_nested_block.h"
 
 namespace cinn {
 namespace backends {
@@ -140,7 +141,7 @@ void CodeGenCUDA_Dev::Visit(const ir::_LoweredFunc_ *op) {
 
   Expr func_body = ir::Block::Make(new_body);
 
-  optim::SimplifyBlocks(&func_body);
+  optim::RemoveNestedBlock(&func_body);
   // Make sure that the function's body is wrapped by a block
   if (!func_body.As<ir::Block>()) {
     func_body = ir::Block::Make({func_body});
