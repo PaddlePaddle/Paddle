@@ -59,7 +59,6 @@ limitations under the License. */
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "paddle/phi/core/errors.h"
 
-#include "paddle/phi/backends/dynload/port.h"
 #include "paddle/utils/string/printf.h"
 #include "paddle/utils/string/to_string.h"
 
@@ -415,59 +414,59 @@ struct EnforceNotMet : public std::exception {
  *    PADDLE_ENFORCE(a, b, "some simple enforce failed between %d numbers", 2)
  */
 
-#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                    \
-  do {                                                         \
-    if (UNLIKELY(nullptr == (__VAL))) {                        \
-      auto __summary__ = phi::ErrorSummary(__VA_ARGS__);       \
-      auto __message__ = ::paddle::string::Sprintf(            \
-          "%s\n  [Hint: " #__VAL " should not be null.]",      \
-          __summary__.error_message());                        \
-      __THROW_ERROR_INTERNAL__(                                \
-          phi::ErrorSummary(__summary__.code(), __message__)); \
-    }                                                          \
+#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                               \
+  do {                                                                    \
+    if (UNLIKELY(nullptr == (__VAL))) {                                   \
+      auto __summary__ = phi::ErrorSummary(__VA_ARGS__);                  \
+      auto __message__ = ::paddle::string::Sprintf(                       \
+          "%s\n  [Hint: " #__VAL " should not be null.]",                 \
+          __summary__.error_message());                                   \
+      __THROW_ERROR_INTERNAL__(                                           \
+          phi::ErrorSummary(__summary__.code(), std::move(__message__))); \
+    }                                                                     \
   } while (0)
 
-#define PADDLE_WARN_NOT_NULL(__VAL, ...)                  \
-  do {                                                    \
-    if (UNLIKELY(nullptr == (__VAL))) {                   \
-      auto __summary__ = phi::ErrorSummary(__VA_ARGS__);  \
-      auto __message__ = ::paddle::string::Sprintf(       \
-          "%s\n  [Hint: " #__VAL " should not be null.]", \
-          __summary__.error_message());                   \
-      ::phi::enforce::ThrowWarnInternal(__message__);     \
-    }                                                     \
+#define PADDLE_WARN_NOT_NULL(__VAL, ...)                         \
+  do {                                                           \
+    if (UNLIKELY(nullptr == (__VAL))) {                          \
+      auto __summary__ = phi::ErrorSummary(__VA_ARGS__);         \
+      auto __message__ = ::paddle::string::Sprintf(              \
+          "%s\n  [Hint: " #__VAL " should not be null.]",        \
+          __summary__.error_message());                          \
+      ::phi::enforce::ThrowWarnInternal(std::move(__message__)); \
+    }                                                            \
   } while (0)
 
-#define __PADDLE_BINARY_COMPARE(__VAL1, __VAL2, __CMP, __INV_CMP, ...)  \
-  do {                                                                  \
-    auto __val1 = (__VAL1);                                             \
-    auto __val2 = (__VAL2);                                             \
-    using __TYPE1__ = decltype(__val1);                                 \
-    using __TYPE2__ = decltype(__val2);                                 \
-    using __COMMON_TYPE1__ =                                            \
-        ::phi::details::CommonType1<__TYPE1__, __TYPE2__>;              \
-    using __COMMON_TYPE2__ =                                            \
-        ::phi::details::CommonType2<__TYPE1__, __TYPE2__>;              \
-    bool __is_not_error = (static_cast<__COMMON_TYPE1__>(__val1))__CMP( \
-        static_cast<__COMMON_TYPE2__>(__val2));                         \
-    if (UNLIKELY(!__is_not_error)) {                                    \
-      auto __summary__ = phi::ErrorSummary(__VA_ARGS__);                \
-      constexpr bool __kCanToString__ =                                 \
-          ::phi::details::CanToString<__TYPE1__>::kValue &&             \
-          ::phi::details::CanToString<__TYPE2__>::kValue;               \
-      auto __message__ = ::paddle::string::Sprintf(                     \
-          "%s\n  [Hint: Expected %s " #__CMP                            \
-          " %s, but received %s " #__INV_CMP " %s.]",                   \
-          __summary__.error_message(),                                  \
-          #__VAL1,                                                      \
-          #__VAL2,                                                      \
-          ::phi::details::BinaryCompareMessageConverter<                \
-              __kCanToString__>::Convert(#__VAL1, __val1),              \
-          ::phi::details::BinaryCompareMessageConverter<                \
-              __kCanToString__>::Convert(#__VAL2, __val2));             \
-      __THROW_ERROR_INTERNAL__(                                         \
-          phi::ErrorSummary(__summary__.code(), __message__));          \
-    }                                                                   \
+#define __PADDLE_BINARY_COMPARE(__VAL1, __VAL2, __CMP, __INV_CMP, ...)    \
+  do {                                                                    \
+    auto __val1 = (__VAL1);                                               \
+    auto __val2 = (__VAL2);                                               \
+    using __TYPE1__ = decltype(__val1);                                   \
+    using __TYPE2__ = decltype(__val2);                                   \
+    using __COMMON_TYPE1__ =                                              \
+        ::phi::details::CommonType1<__TYPE1__, __TYPE2__>;                \
+    using __COMMON_TYPE2__ =                                              \
+        ::phi::details::CommonType2<__TYPE1__, __TYPE2__>;                \
+    bool __is_not_error = (static_cast<__COMMON_TYPE1__>(__val1))__CMP(   \
+        static_cast<__COMMON_TYPE2__>(__val2));                           \
+    if (UNLIKELY(!__is_not_error)) {                                      \
+      auto __summary__ = phi::ErrorSummary(__VA_ARGS__);                  \
+      constexpr bool __kCanToString__ =                                   \
+          ::phi::details::CanToString<__TYPE1__>::kValue &&               \
+          ::phi::details::CanToString<__TYPE2__>::kValue;                 \
+      auto __message__ = ::paddle::string::Sprintf(                       \
+          "%s\n  [Hint: Expected %s " #__CMP                              \
+          " %s, but received %s " #__INV_CMP " %s.]",                     \
+          __summary__.error_message(),                                    \
+          #__VAL1,                                                        \
+          #__VAL2,                                                        \
+          ::phi::details::BinaryCompareMessageConverter<                  \
+              __kCanToString__>::Convert(#__VAL1, __val1),                \
+          ::phi::details::BinaryCompareMessageConverter<                  \
+              __kCanToString__>::Convert(#__VAL2, __val2));               \
+      __THROW_ERROR_INTERNAL__(                                           \
+          phi::ErrorSummary(__summary__.code(), std::move(__message__))); \
+    }                                                                     \
   } while (0)
 
 #define PADDLE_ENFORCE_EQ(__VAL0, __VAL1, ...) \

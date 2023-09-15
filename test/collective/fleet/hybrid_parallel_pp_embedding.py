@@ -120,7 +120,7 @@ class SimpleNetPipe(Layer):
         return feat
 
 
-class TestDistEmbeddingTraning(unittest.TestCase):
+class TestDistEmbeddingTraining(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 1

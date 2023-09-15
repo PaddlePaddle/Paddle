@@ -23,7 +23,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-static const char kNumRepeats[] = "num_repeats";
+static const char kNumRepeats[] = "num_repeats";  // NOLINT
 typedef std::unordered_map<std::string, std::vector<ir::Node*>> SSAVarList;
 
 ir::Node* SameNameVar(std::unordered_set<ir::Node*> all, ir::Node* target) {
@@ -278,7 +278,8 @@ void BatchMergePass::ApplyImpl(ir::Graph* graph) const {
     scale_op.SetInput("X", {sum_out_var_node->Var()->Name()});
     // NOTE: inplace scale.
     scale_op.SetOutput("Out", {sum_out_var_node->Var()->Name()});
-    scale_op.SetAttr("scale", static_cast<float>(1.0f / num_repeats));
+    scale_op.SetAttr(
+        "scale", static_cast<float>(1.0f / static_cast<float>(num_repeats)));
     scale_op.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                      static_cast<int>(OpRole::kBackward));
 

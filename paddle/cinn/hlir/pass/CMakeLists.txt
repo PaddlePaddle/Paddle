@@ -1,3 +1,5 @@
+add_subdirectory(general_fusion_merge_pass)
+
 core_gather_headers()
 
 gather_srcs(

@@ -15,7 +15,7 @@
 #pragma once
 #include "paddle/cinn/runtime/cinn_runtime.h"
 
-#ifdef CINN_WITH_MKLDNN
+#ifdef CINN_WITH_DNNL
 #include "dnnl.hpp"  // NOLINT
 #endif
 

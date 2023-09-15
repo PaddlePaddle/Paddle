@@ -298,6 +298,26 @@ class DeviceContext : public WrapperBase<PD_DeviceContext> {
     PD_CHECK_STATUS(status);
     return static_cast<T*>(ptr);
   }
+
+  uint64_t seed() const {
+    C_Status status;
+    auto seed_val = PD_DeviceContextGetSeed(raw_data(), &status);
+    PD_CHECK_STATUS(status);
+    return seed_val;
+  }
+
+  void seed(uint64_t seed_val) const {
+    C_Status status;
+    PD_DeviceContextSetSeed(raw_data(), seed_val, &status);
+    PD_CHECK_STATUS(status);
+  }
+
+  uint64_t random() const {
+    C_Status status;
+    auto rand_val = PD_DeviceContextGetRandom(raw_data(), &status);
+    PD_CHECK_STATUS(status);
+    return rand_val;
+  }
 };
 
 class Scalar : public WrapperBase<PD_Scalar> {

@@ -37,8 +37,13 @@ class InplaceOpVarPass : public FusePassBase {
 
   std::vector<std::string> GetControlFlowVarNames(ir::Graph* graph) const;
 
-  std::set<std::string> inplace_ops_{
-      "reshape", "unsqueeze", "unsqueeze2", "squeeze", "squeeze2"};
+  std::set<std::string> inplace_ops_{"reshape",
+                                     "reshape2",
+                                     "unsqueeze",
+                                     "unsqueeze2",
+                                     "squeeze",
+                                     "squeeze2",
+                                     "flatten_contiguous_range"};
   std::set<std::string> control_flow_ops_{"while", "conditional_block"};
 };
 

@@ -92,7 +92,7 @@ void TablePrinter::InsertRow(const std::vector<std::string>& row) {
   size_t max_height = 0;
 
   for (size_t i = 0; i < row.size(); ++i) {
-    table_row.emplace_back(std::vector<std::string>());
+    table_row.emplace_back();
     std::stringstream ss(row[i]);
     std::string line;
     size_t max_width = 0;
@@ -113,7 +113,7 @@ void TablePrinter::InsertRow(const std::vector<std::string>& row) {
 
 void TablePrinter::InsetDivider() {
   heights_.emplace_back(1);
-  data_.emplace_back(std::vector<std::vector<std::string>>());
+  data_.emplace_back();
 }
 
 void TablePrinter::CalcLayout() {
@@ -141,8 +141,8 @@ void TablePrinter::CalcLayout() {
     }
   }
 
-  for (auto it = idx.begin(); it != idx.end(); ++it) {
-    shares_[*it] = static_cast<size_t>(shares_[*it]);
+  for (auto& item : idx) {
+    shares_[item] = static_cast<size_t>(shares_[item]);
   }
 
   // For each record.

@@ -49,7 +49,7 @@ using string::PrettyLogDetail;
 
 void SelfAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
 #if !defined(__AVX512F__) || !defined(PADDLE_WITH_MKLML) || \
-    !defined(PADDLE_WITH_MKLDNN)
+    !defined(PADDLE_WITH_DNNL)
   LOG(WARNING) << "No-avx512 or MKL supported!";
   return;
 #endif

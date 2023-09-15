@@ -41,7 +41,7 @@ PADDLE_DEFINE_EXPORTED_bool(
 PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
 PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
 PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
-DECLARE_bool(benchmark);
+PD_DECLARE_bool(benchmark);
 
 namespace paddle {
 namespace memory {
@@ -248,11 +248,11 @@ class GPUBuddyAllocatorList {
 
     std::call_once(*init_flags_[pos], [this, pos] {
       platform::SetDeviceId(devices_[pos]);
-      allocators_[pos].reset(
-          new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
-                                 new detail::GPUAllocator(devices_[pos])),
-                             platform::GpuMinChunkSize(),
-                             platform::GpuMaxChunkSize()));
+      allocators_[pos] = std::make_unique<BuddyAllocator>(
+          std::unique_ptr<detail::SystemAllocator>(
+              new detail::GPUAllocator(devices_[pos])),
+          platform::GpuMinChunkSize(),
+          platform::GpuMaxChunkSize());
       VLOG(10) << "\n\nNOTE:\n"
                << "You can set GFlags environment variable "
                << "'FLAGS_fraction_of_gpu_memory_to_use' "
@@ -386,8 +386,7 @@ void *Alloc<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
   if (ptr == nullptr) {
     LOG(WARNING) << "cudaHostAlloc Cannot allocate " << size
                  << " bytes in CUDAPinnedPlace";
-  }
-  if (FLAGS_init_allocated_mem) {
+  } else if (FLAGS_init_allocated_mem) {
     memset(ptr, 0xEF, size);
   }
   return ptr;
@@ -430,7 +429,7 @@ class BuddyAllocatorList {
       : device_type_(device_type) {
     auto devices = phi::DeviceManager::GetSelectedDeviceList(device_type);
     for (auto dev_id : devices) {
-      init_flags_[dev_id].reset(new std::once_flag());
+      init_flags_[dev_id] = std::make_unique<std::once_flag>();
     }
   }
 
@@ -460,13 +459,13 @@ class BuddyAllocatorList {
       phi::DeviceManager::SetDevice(device_type_, dev_id);
       platform::CustomPlace place(device_type_, dev_id);
 
-      allocators_[dev_id].reset(new BuddyAllocator(
+      allocators_[dev_id] = std::make_unique<BuddyAllocator>(
           std::unique_ptr<detail::SystemAllocator>(
               new detail::CustomAllocator(device_type_, dev_id)),
           phi::DeviceManager::GetMinChunkSize(place),
           phi::DeviceManager::GetMaxChunkSize(place),
           phi::DeviceManager::GetExtraPaddingSize(place),
-          device_type_));
+          device_type_);
     });
 
     return allocators_[dev_id].get();
@@ -531,7 +530,9 @@ void Free<platform::CustomPlace>(const platform::CustomPlace &place,
                                  size_t size) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
-  GetBuddyAllocator(place)->Free(p);
+  if (phi::DeviceManager::HasDeviceType(place.GetDeviceType())) {
+    GetBuddyAllocator(place)->Free(p);
+  }
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
       "'CustomPlace' is not supported in CPU only device."));

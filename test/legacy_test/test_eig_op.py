@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, skip_check_grad_ci
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 # cast output to complex for numpy.linalg.eig
@@ -66,7 +66,7 @@ class TestEigOp(OpTest):
         self.python_api = paddle.linalg.eig
         self.__class__.op_type = self.op_type
         self.init_input()
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
         self.outputs = {'Eigenvalues': self.out[0], 'Eigenvectors': self.out[1]}
 
     def init_input(self):
@@ -243,15 +243,15 @@ class TestEigStatic(TestEigOp):
         place = core.CPUPlace()
         input_np = np.random.random([3, 3]).astype('complex')
         expect_val, expect_vec = np.linalg.eig(input_np)
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input = paddle.static.data(
                 name="input", shape=[3, 3], dtype='complex'
             )
             act_val, act_vec = paddle.linalg.eig(input)
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetch_val, fetch_vec = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[act_val, act_vec],
             )
@@ -281,6 +281,7 @@ class TestEigStatic(TestEigOp):
 
 class TestEigDyGraph(unittest.TestCase):
     def test_check_output_with_place(self):
+        np.random.seed(1024)
         input_np = np.random.random([3, 3]).astype('complex')
         expect_val, expect_vec = np.linalg.eig(input_np)
 
@@ -325,8 +326,8 @@ class TestEigDyGraph(unittest.TestCase):
         grad_v = np.ones(real_v.shape, test_type)
         grad_x = eig_backward(real_w, real_v, grad_w, grad_v)
 
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(input_np)
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(input_np)
             x.stop_gradient = False
             w, v = paddle.linalg.eig(x)
             (w.sum() + v.sum()).backward()

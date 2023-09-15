@@ -18,10 +18,10 @@ import numpy as np
 from simple_nets import batchnorm_fc_with_inputs, simple_fc_net_with_inputs
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core, framework
-from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import Program, program_guard
+from paddle import base
+from paddle.base import core, framework
+from paddle.base.backward import append_backward
+from paddle.base.framework import Program, program_guard
 
 np.random.seed(123)
 
@@ -63,11 +63,11 @@ class TestCondInputOutput(unittest.TestCase):
             # out is one tensor
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         (ret,) = exe.run(main_program, fetch_list=[out.name])
         np.testing.assert_allclose(
             np.asarray(ret), np.full((3, 2), -1, np.int32), rtol=1e-05
@@ -101,11 +101,11 @@ class TestCondInputOutput(unittest.TestCase):
             # out is one tensor
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         (ret,) = exe.run(main_program, fetch_list=[out.name])
         np.testing.assert_allclose(np.asarray(ret), np.array(2), rtol=1e-05)
         self.assertEqual(ret.shape, ())
@@ -138,11 +138,11 @@ class TestCondInputOutput(unittest.TestCase):
             # out is a tensor
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         (ret,) = exe.run(main_program, fetch_list=[out.name])
         np.testing.assert_allclose(
             np.asarray(ret), np.full((3, 3), 2, np.int32), rtol=1e-05
@@ -170,12 +170,12 @@ class TestCondInputOutput(unittest.TestCase):
             append_backward(out)
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
 
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         ret = exe.run(main_program, fetch_list=[out.name, a.grad_name])
         np.testing.assert_allclose(
             np.asarray(ret[0]), np.array(2.0), rtol=1e-05
@@ -244,11 +244,11 @@ class TestCondInputOutput(unittest.TestCase):
             # out is a tuple containing 2 tensors
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         ret = exe.run(main_program, fetch_list=out)
         np.testing.assert_allclose(
             np.asarray(ret[0]), np.full((1, 2), 1, np.int32), rtol=1e-05
@@ -290,11 +290,11 @@ class TestCondInputOutput(unittest.TestCase):
                 pred, lambda: true_func(a, i), lambda: false_func(a, i)
             )
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         for feed_i in range(5):
             expected_a = 7 * (feed_i + 1) if feed_i % 2 == 0 else 8 - feed_i
             (ret,) = exe.run(
@@ -335,11 +335,11 @@ class TestCondInputOutput(unittest.TestCase):
             out2 = paddle.static.nn.cond(pred, None, false_func)
             out3 = paddle.static.nn.cond(pred, true_func, None)
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         for feed_i in range(5):
             # Test that output is None is runnable
             exe.run(main_program, feed={'i': np.full((1), feed_i, np.int32)})
@@ -409,9 +409,9 @@ class TestCondInputOutput(unittest.TestCase):
 
     def test_extremely_simple_net_with_op_in_condition(self):
         paddle.enable_static()
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(main_program, startup_program):
             a = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=1.23
             )
@@ -424,11 +424,11 @@ class TestCondInputOutput(unittest.TestCase):
         append_backward(out)
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         ret = exe.run(
             main_program, fetch_list=[out, b, a.grad_name, b.grad_name]
         )
@@ -488,11 +488,11 @@ class TestCondNestedControlFlow(unittest.TestCase):
             append_backward(mean)
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         for feed_i in range(0, 10):
             expected_a = 2.0 * feed_i
             if feed_i < 5:
@@ -557,11 +557,11 @@ class TestCondNestedControlFlow(unittest.TestCase):
             append_backward(out)
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         ret = exe.run(
             main_program,
             fetch_list=[out.name, i.grad_name],
@@ -577,10 +577,10 @@ class TestCondNestedControlFlow(unittest.TestCase):
 
     def test_cond_op_in_condition(self):
         paddle.enable_static()
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
+        main_program = base.Program()
+        startup_program = base.Program()
 
-        with fluid.program_guard(main_program, startup_program):
+        with base.program_guard(main_program, startup_program):
             a = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=1.23
             )
@@ -605,11 +605,11 @@ class TestCondNestedControlFlow(unittest.TestCase):
             append_backward(out)
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         ret = exe.run(main_program, fetch_list=[out, a.grad_name, b.grad_name])
         # Note: fill_constant has loss of precision, so we assertAlmostEqual.
         self.assertAlmostEqual(ret[0][0], 1.5252)
@@ -638,8 +638,8 @@ class TestCondBackward(unittest.TestCase):
             i = paddle.static.data(name="i", shape=[1], dtype='int32')
             loss = cond_func(i, img, label)
             append_backward(loss)
-        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+        exe = base.Executor(place)
         exe.run(startup_program)
 
         num_devices = 1
@@ -695,11 +695,11 @@ class TestCondBackward(unittest.TestCase):
             )
             i = paddle.static.data(name="i", shape=[1], dtype='int32')
             loss = cond_func(i, img, label)
-            optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.1)
             optimizer.minimize(loss)
 
-        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+        exe = base.Executor(place)
         exe.run(startup_program)
 
         for feed_i in range(0, 10):

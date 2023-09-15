@@ -17,13 +17,13 @@ import os
 from dist_mnist import cnn_model  # noqa: F401
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed.fleet.base import role_maker
 from paddle.distributed.fleet.meta_optimizers import sharding
 
 # Fix seed for test
-fluid.default_startup_program().random_seed = 1
-fluid.default_main_program().random_seed = 1
+base.default_startup_program().random_seed = 1
+base.default_main_program().random_seed = 1
 
 
 def runtime_main():
@@ -34,12 +34,12 @@ def runtime_main():
     paddle.enable_static()
 
     # model definition
-    train_prog = paddle.fluid.Program()
-    startup_prog = paddle.fluid.Program()
+    train_prog = paddle.base.Program()
+    startup_prog = paddle.base.Program()
     role = role_maker.PaddleCloudRoleMaker(is_collective=True)
     fleet.init(role)
-    with fluid.program_guard(train_prog, startup_prog):
-        with fluid.unique_name.guard():
+    with base.program_guard(train_prog, startup_prog):
+        with base.unique_name.guard():
             input_x = paddle.static.data(
                 name="x", shape=[-1, 32], dtype='float32'
             )
@@ -66,7 +66,7 @@ def runtime_main():
                 "sharding_degree": 2,
             }
 
-            optimizer = paddle.fluid.optimizer.Momentum(
+            optimizer = paddle.optimizer.Momentum(
                 learning_rate=0.01, momentum=0.9
             )
             optimizer = fleet.distributed_optimizer(
@@ -76,8 +76,8 @@ def runtime_main():
 
     # execution
     device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-    place = fluid.CUDAPlace(device_id)
-    exe = fluid.Executor(place)
+    place = base.CUDAPlace(device_id)
+    exe = base.Executor(place)
     exe.run(startup_prog)
     dirname = "./ut_sharding_save_model"
     sharding.utils.save_persistables(

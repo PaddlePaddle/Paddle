@@ -107,7 +107,7 @@ class CastOp : public framework::OperatorWithKernel {
                             ctx.device_context().GetPlace());
     }
 
-    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_DNNL
     int in_dtype = ctx.Attr<int>("in_dtype");
     int out_dtype = ctx.Attr<int>("out_dtype");
 
@@ -118,7 +118,7 @@ class CastOp : public framework::OperatorWithKernel {
         (out_dtype != dtype_fp32 && out_dtype != dtype_bf16)) {
       this->SetDnnFallback(true);
     }
-    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_DNNL
 
     return phi::KernelKey(framework::TransToProtoVarType(tensor->dtype()),
                           tensor_place);

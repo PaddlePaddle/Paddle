@@ -20,12 +20,12 @@ import numpy as np
 from test_imperative_resnet import ResNet, optimizer_setting, train_parameters
 
 import paddle
-from paddle import fluid, nn
+from paddle import base, nn
 from paddle.autograd import PyLayer
 from paddle.static import InputSpec
 
-if fluid.core.is_compiled_with_cuda():
-    fluid.set_flags({"FLAGS_cudnn_deterministic": True})
+if base.core.is_compiled_with_cuda():
+    base.set_flags({"FLAGS_cudnn_deterministic": True})
 
 
 class SimpleConv(paddle.nn.Layer):
@@ -56,38 +56,38 @@ class SimpleConv(paddle.nn.Layer):
 class TestAutoCast(unittest.TestCase):
     def amp_guard_white_op(self):
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             conv2d = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
-            data = fluid.dygraph.to_variable(data)
+            data = base.dygraph.to_variable(data)
             with paddle.amp.amp_guard(True):
                 out_fp16 = conv2d(data)
 
             with paddle.amp.amp_guard(False):
                 out_fp32 = conv2d(data)
 
-        self.assertTrue(data.dtype == fluid.core.VarDesc.VarType.FP32)
-        self.assertTrue(out_fp16.dtype == fluid.core.VarDesc.VarType.FP16)
-        self.assertTrue(out_fp32.dtype == fluid.core.VarDesc.VarType.FP32)
+        self.assertTrue(data.dtype == base.core.VarDesc.VarType.FP32)
+        self.assertTrue(out_fp16.dtype == base.core.VarDesc.VarType.FP16)
+        self.assertTrue(out_fp32.dtype == base.core.VarDesc.VarType.FP32)
 
     def test_amp_guard_white_op(self):
         self.amp_guard_white_op()
 
     def amp_guard_black_op(self):
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
-        with fluid.dygraph.guard():
-            data = fluid.dygraph.to_variable(data)
+        with base.dygraph.guard():
+            data = base.dygraph.to_variable(data)
             with paddle.amp.amp_guard(True):
                 out_fp32 = paddle.mean(data)
 
-        self.assertTrue(data.dtype == fluid.core.VarDesc.VarType.FP32)
-        self.assertTrue(out_fp32.dtype == fluid.core.VarDesc.VarType.FP32)
+        self.assertTrue(data.dtype == base.core.VarDesc.VarType.FP32)
+        self.assertTrue(out_fp32.dtype == base.core.VarDesc.VarType.FP32)
 
     def test_amp_guard_black_op(self):
         self.amp_guard_black_op()
 
     def custom_op_list(self):
-        with fluid.dygraph.guard():
-            tracer = fluid.framework._dygraph_tracer()
+        with base.dygraph.guard():
+            tracer = base.framework._dygraph_tracer()
             base_white_list = paddle.amp.white_list()["float16"]["O1"]
             base_black_list = paddle.amp.black_list()["float16"]["O1"]
             with paddle.amp.amp_guard(
@@ -129,7 +129,7 @@ class TestAutoCast(unittest.TestCase):
         inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
 
         def func():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 model = SimpleConv(
                     num_channels=3,
                     num_filters=64,
@@ -140,7 +140,7 @@ class TestAutoCast(unittest.TestCase):
                 with paddle.amp.amp_guard(
                     custom_white_list=["conv2d"], custom_black_list=["conv2d"]
                 ):
-                    inp = fluid.dygraph.to_variable(inp_np)
+                    inp = base.dygraph.to_variable(inp_np)
                     out = model(inp)
 
         self.assertRaises(ValueError, func)
@@ -150,9 +150,9 @@ class TestAutoCast(unittest.TestCase):
 
     def amp_guard_upsupported_fp16_op(self):
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             conv2d = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
-            data = fluid.dygraph.to_variable(data)
+            data = base.dygraph.to_variable(data)
             with paddle.amp.amp_guard(True):
                 out_amp_fp16 = conv2d(data)
                 out_amp_fp32 = paddle.expand_as(
@@ -164,14 +164,14 @@ class TestAutoCast(unittest.TestCase):
                 out_purefp16_fp32 = paddle.expand_as(
                     out_purefp16_fp16, out_purefp16_fp16
                 )  # expand_as_v2 has no fp16 kernel
-        self.assertTrue(data.dtype == fluid.core.VarDesc.VarType.FP32)
-        self.assertTrue(out_amp_fp16.dtype == fluid.core.VarDesc.VarType.FP16)
-        self.assertTrue(out_amp_fp32.dtype == fluid.core.VarDesc.VarType.FP32)
+        self.assertTrue(data.dtype == base.core.VarDesc.VarType.FP32)
+        self.assertTrue(out_amp_fp16.dtype == base.core.VarDesc.VarType.FP16)
+        self.assertTrue(out_amp_fp32.dtype == base.core.VarDesc.VarType.FP32)
         self.assertTrue(
-            out_purefp16_fp16.dtype == fluid.core.VarDesc.VarType.FP16
+            out_purefp16_fp16.dtype == base.core.VarDesc.VarType.FP16
         )
         self.assertTrue(
-            out_purefp16_fp32.dtype == fluid.core.VarDesc.VarType.FP32
+            out_purefp16_fp32.dtype == base.core.VarDesc.VarType.FP32
         )
 
     def test_amp_guard_upsupported_fp16_op(self):
@@ -180,9 +180,9 @@ class TestAutoCast(unittest.TestCase):
     def mode_exception(self):
         def func():
             data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 conv2d = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
-                data = fluid.dygraph.to_variable(data)
+                data = base.dygraph.to_variable(data)
                 with paddle.amp.amp_guard(level='O'):
                     out = conv2d(data)
 
@@ -196,13 +196,13 @@ class TestAmpScaler(unittest.TestCase):
     def scale(self):
         if not paddle.amp.is_float16_supported():
             return
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             with paddle.amp.auto_cast(dtype='float16'):
                 data = paddle.rand([10, 1024])
             scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
             scaled_data = scaler.scale(data)
-            self.assertEqual(
-                np.array_equal(scaled_data.numpy(), data.numpy() * 1024), True
+            np.testing.assert_array_equal(
+                scaled_data.numpy(), data.numpy() * 1024
             )
 
     def test_scale(self):
@@ -214,7 +214,7 @@ class TestAmpScaler(unittest.TestCase):
         def run_simple_conv(inp_np, use_scaler=True):
             paddle.seed(10)
             paddle.framework.random._manual_program_seed(10)
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 model = SimpleConv(
                     num_channels=3,
                     num_filters=64,
@@ -222,11 +222,11 @@ class TestAmpScaler(unittest.TestCase):
                     stride=2,
                     act='relu',
                 )
-                optimizer = fluid.optimizer.SGDOptimizer(
-                    learning_rate=0.01, parameter_list=model.parameters()
+                optimizer = paddle.optimizer.SGD(
+                    learning_rate=0.01, parameters=model.parameters()
                 )
                 scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
-                data = fluid.dygraph.to_variable(inp_np)
+                data = base.dygraph.to_variable(inp_np)
 
                 out = model(data)
                 loss = paddle.mean(out)
@@ -275,7 +275,7 @@ class TestAmpScaler(unittest.TestCase):
         def run_simple_conv(inp_np, use_scaler=True):
             paddle.seed(10)
             paddle.framework.random._manual_program_seed(10)
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 model = SimpleConv(
                     num_channels=3,
                     num_filters=64,
@@ -287,7 +287,7 @@ class TestAmpScaler(unittest.TestCase):
                     learning_rate=0.01, parameters=model.parameters()
                 )
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-                data = fluid.dygraph.to_variable(inp_np)
+                data = base.dygraph.to_variable(inp_np)
 
                 out = model(data)
                 loss = paddle.mean(out)
@@ -320,7 +320,7 @@ class TestAmpScaler(unittest.TestCase):
     def nan_inf(self):
         inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
         inp_np[0][1][2][3] = np.nan
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             model = SimpleConv(
                 num_channels=3,
                 num_filters=64,
@@ -331,11 +331,11 @@ class TestAmpScaler(unittest.TestCase):
             params_init = {}
             for param in model.parameters():
                 params_init[param.name] = param.numpy()
-            optimizer = fluid.optimizer.SGDOptimizer(
-                learning_rate=0.01, parameter_list=model.parameters()
+            optimizer = paddle.optimizer.SGD(
+                learning_rate=0.01, parameters=model.parameters()
             )
             scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
-            data = fluid.dygraph.to_variable(inp_np)
+            data = base.dygraph.to_variable(inp_np)
             with paddle.amp.auto_cast(dtype='float16'):
                 out = model(data)
                 loss = paddle.mean(out)
@@ -408,7 +408,7 @@ class TestAmpScaler(unittest.TestCase):
         self.step_update_exception()
 
     def test_get_and_set(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             scaler = paddle.amp.GradScaler(
                 enable=True,
                 init_loss_scaling=1024,
@@ -437,7 +437,7 @@ class TestAmpScaler(unittest.TestCase):
             self.assertEqual(scaler.get_init_loss_scaling() == 100, True)
 
     def test_state_dict_and_load_state_dict(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             scaler1 = paddle.amp.GradScaler(
                 enable=True,
                 init_loss_scaling=14,
@@ -515,7 +515,7 @@ class TestGradScalerStateDict(unittest.TestCase):
                 batch_size=batch_size,
                 drop_last=True,
             )
-            train_loader = fluid.io.DataLoader.from_generator(
+            train_loader = base.io.DataLoader.from_generator(
                 capacity=4,
                 use_double_buffer=True,
                 iterable=True,
@@ -566,7 +566,7 @@ class TestGradScalerStateDict(unittest.TestCase):
                 if param.trainable:
                     np_array = np.array(param._grad_ivar().value().get_tensor())
                     dy_grad_value[
-                        param.name + fluid.core.grad_var_suffix()
+                        param.name + base.core.grad_var_suffix()
                     ] = np_array
 
             resnet.clear_gradients()
@@ -585,7 +585,7 @@ class TestGradScalerStateDict(unittest.TestCase):
 
     def test_with_state_dict(self):
         def func_isinstance():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 out_use_state_dict = self.train_resnet(
                     enable_amp=True, use_data_loader=True, use_save_load=True
                 )
@@ -603,7 +603,7 @@ class TestGradScalerStateDict(unittest.TestCase):
 class TestAmpDecorator(unittest.TestCase):
     def test_mode_exception(self):
         def func():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
                 opt = paddle.optimizer.SGD(parameters=model.parameters())
                 model, opt = paddle.amp.decorate(
@@ -619,7 +619,7 @@ class TestAmpDecorator(unittest.TestCase):
                     print("A fake Model")
 
             model = MyModel()
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 paddle.amp.decorate(models=model, optimizers=None, level='O2')
 
         self.assertRaises(TypeError, test_error_model)
@@ -627,7 +627,7 @@ class TestAmpDecorator(unittest.TestCase):
         def test_error_distributed_model():
             model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
             model = paddle.DataParallel(model)
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 model = paddle.amp.decorate(models=model, level='O2')
 
         self.assertRaises(RuntimeError, test_error_distributed_model)
@@ -639,7 +639,7 @@ class TestAmpDecorator(unittest.TestCase):
 
             model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
             opt = MyOptimizer()
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 paddle.amp.decorate(models=model, optimizers=opt, level='O2')
 
         self.assertRaises(TypeError, test_error_optimizer)
@@ -809,7 +809,7 @@ class TestPureFp16SaveLoad(unittest.TestCase):
                 batch_size=batch_size,
                 drop_last=True,
             )
-            train_loader = fluid.io.DataLoader.from_generator(
+            train_loader = base.io.DataLoader.from_generator(
                 capacity=4,
                 use_double_buffer=True,
                 iterable=True,
@@ -869,7 +869,7 @@ class TestPureFp16SaveLoad(unittest.TestCase):
                 if param.trainable:
                     np_array = np.array(param._grad_ivar().value().get_tensor())
                     dy_grad_value[
-                        param.name + fluid.core.grad_var_suffix()
+                        param.name + base.core.grad_var_suffix()
                     ] = np_array
 
             resnet.clear_gradients()
@@ -909,7 +909,7 @@ class TestPureFp16SaveLoad(unittest.TestCase):
 
     def test_with_save_load(self):
         def func_isinstance():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 out_use_save_load = self.train_resnet(
                     enable_amp=True, use_data_loader=True, use_save_load=True
                 )
@@ -1101,7 +1101,7 @@ class TestResnet2(unittest.TestCase):
                 batch_size=batch_size,
                 drop_last=True,
             )
-            train_loader = fluid.io.DataLoader.from_generator(
+            train_loader = base.io.DataLoader.from_generator(
                 capacity=4,
                 use_double_buffer=True,
                 iterable=True,
@@ -1157,7 +1157,7 @@ class TestResnet2(unittest.TestCase):
                 if param.trainable:
                     np_array = np.array(param._grad_ivar().value().get_tensor())
                     dy_grad_value[
-                        param.name + fluid.core.grad_var_suffix()
+                        param.name + base.core.grad_var_suffix()
                     ] = np_array
 
             resnet.clear_gradients()
@@ -1171,7 +1171,7 @@ class TestResnet2(unittest.TestCase):
 
     def test_resnet(self):
         def func_isinstance():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 out_fp32 = self.train_resnet(enable_amp=False)
                 out_amp = self.train_resnet(enable_amp=True)
                 out_pure_fp16 = self.train_resnet(enable_amp=True, level='O2')
@@ -1187,7 +1187,7 @@ class TestResnet2(unittest.TestCase):
 
     def test_with_data_loader(self):
         def func_isinstance():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 out_fp32 = self.train_resnet(
                     enable_amp=False, use_data_loader=True
                 )
@@ -1209,7 +1209,7 @@ class TestResnet2(unittest.TestCase):
 
     def test_param_group(self):
         def func_isinstance():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 out_fp32 = self.train_resnet(
                     enable_amp=False, use_data_loader=True, use_param_group=True
                 )
@@ -1244,7 +1244,7 @@ class TestResnet(unittest.TestCase):
         batch_size = train_parameters["batch_size"]
         batch_num = 1
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
@@ -1291,8 +1291,8 @@ class TestResnet(unittest.TestCase):
                     .astype('int64')
                     .reshape(-1, 1)
                 )
-                img = fluid.dygraph.to_variable(dy_x_data)
-                label = fluid.dygraph.to_variable(y_data)
+                img = base.dygraph.to_variable(dy_x_data)
+                label = base.dygraph.to_variable(y_data)
                 label.stop_gradient = True
                 with paddle.amp.amp_guard(enable=enable_amp, level=level):
                     out = resnet(img)
@@ -1316,7 +1316,7 @@ class TestResnet(unittest.TestCase):
                             param._grad_ivar().value().get_tensor()
                         )
                         dy_grad_value[
-                            param.name + fluid.core.grad_var_suffix()
+                            param.name + base.core.grad_var_suffix()
                         ] = np_array
 
                 resnet.clear_gradients()
@@ -1350,16 +1350,14 @@ class TestLayerNormFp16(unittest.TestCase):
 
     def test_layer_norm_fp16(self):
         def func_isinstance():
-            if fluid.is_compiled_with_cuda():
-                with fluid.dygraph.guard(fluid.CUDAPlace(0)):
+            if base.is_compiled_with_cuda():
+                with base.dygraph.guard(base.CUDAPlace(0)):
                     x = paddle.rand([2, 2, 2, 3])
                     layer_norm = paddle.nn.LayerNorm(x.shape[1:])
                     with paddle.amp.auto_cast(custom_white_list=['layer_norm']):
                         out = layer_norm(x)
 
-                    self.assertTrue(
-                        out.dtype == fluid.core.VarDesc.VarType.FP16
-                    )
+                    self.assertTrue(out.dtype == base.core.VarDesc.VarType.FP16)
 
         func_isinstance()
 
@@ -1387,8 +1385,8 @@ class TestBf16(unittest.TestCase):
     def test_bf16(self):
         def func_isinstance():
             if (
-                fluid.core.is_compiled_with_cuda()
-                and fluid.core.is_bfloat16_supported(paddle.CUDAPlace(0))
+                base.core.is_compiled_with_cuda()
+                and base.core.is_bfloat16_supported(paddle.CUDAPlace(0))
             ):
                 out_fp32 = self.train(enable_amp=False)
                 out_bf16_O1 = self.train(enable_amp=True, amp_level='O1')
@@ -1432,7 +1430,7 @@ class TestAmpWithPyLyer(unittest.TestCase):
 class TestAmpWithHook(unittest.TestCase):
     def test_hook_change_dtype(self):
         def func_isinstance():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 v = paddle.rand([3, 3])
                 v.stop_gradient = False
 
@@ -1452,7 +1450,7 @@ class TestAmpWithHook(unittest.TestCase):
 
     def test_hook_change_place(self):
         def func_isinstance():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 v = paddle.rand([3, 3])
                 v.stop_gradient = False
 

@@ -16,11 +16,11 @@ import itertools
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestQrOp(OpTest):
@@ -143,9 +143,9 @@ class TestQrAPI(unittest.TestCase):
             np_q = np.zeros(np_q_shape).astype(np_dtype)
             np_r = np.zeros(np_r_shape).astype(np_dtype)
             places = []
-            places = [fluid.CPUPlace()]
+            places = [base.CPUPlace()]
             if core.is_compiled_with_cuda():
-                places.append(fluid.CUDAPlace(0))
+                places.append(base.CUDAPlace(0))
             for place in places:
                 batch_size = a.size // (a.shape[-1] * a.shape[-2])
                 for i in range(batch_size):
@@ -209,11 +209,11 @@ class TestQrAPI(unittest.TestCase):
             np_q = np.zeros(np_q_shape).astype(np_dtype)
             np_r = np.zeros(np_r_shape).astype(np_dtype)
             places = []
-            places = [fluid.CPUPlace()]
+            places = [base.CPUPlace()]
             if core.is_compiled_with_cuda():
-                places.append(fluid.CUDAPlace(0))
+                places.append(base.CUDAPlace(0))
             for place in places:
-                with fluid.program_guard(fluid.Program(), fluid.Program()):
+                with base.program_guard(base.Program(), base.Program()):
                     batch_size = a.size // (a.shape[-1] * a.shape[-2])
                     for i in range(batch_size):
                         coord = np.unravel_index(i, a.shape[:-2])
@@ -229,9 +229,9 @@ class TestQrAPI(unittest.TestCase):
                     )
                     if mode == "r":
                         r = paddle.linalg.qr(x, mode=mode)
-                        exe = fluid.Executor(place)
+                        exe = base.Executor(place)
                         fetches = exe.run(
-                            fluid.default_main_program(),
+                            base.default_main_program(),
                             feed={"input": a},
                             fetch_list=[r],
                         )
@@ -240,9 +240,9 @@ class TestQrAPI(unittest.TestCase):
                         )
                     else:
                         q, r = paddle.linalg.qr(x, mode=mode)
-                        exe = fluid.Executor(place)
+                        exe = base.Executor(place)
                         fetches = exe.run(
-                            fluid.default_main_program(),
+                            base.default_main_program(),
                             feed={"input": a},
                             fetch_list=[q, r],
                         )

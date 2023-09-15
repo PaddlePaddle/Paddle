@@ -20,6 +20,8 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
+from paddle.base import core
+from paddle.base.framework import _set_expected_place
 from paddle.distributed.collective import (
     Group,
     _default_group_name,
@@ -27,8 +29,6 @@ from paddle.distributed.collective import (
     _set_group_map_backend,
     _set_group_map_by_name,
 )
-from paddle.fluid import core
-from paddle.fluid.framework import _set_expected_place
 
 ctypes.CDLL("libmpi.so", mode=ctypes.RTLD_GLOBAL)
 
@@ -69,10 +69,10 @@ def test_allreduce_sum(pg, shape, dtype):
     sum_result = tensor_x + tensor_y
     if pg.rank() == 0:
         task = dist.all_reduce(tensor_x)
-        assert np.array_equal(tensor_x, sum_result)
+        np.testing.assert_array_equal(tensor_x, sum_result)
     else:
         task = dist.all_reduce(tensor_y)
-        assert np.array_equal(tensor_y, sum_result)
+        np.testing.assert_array_equal(tensor_y, sum_result)
     print("test allreduce sum api ok")
 
 
@@ -91,13 +91,13 @@ def test_allreduce_max(pg, shape, dtype):
             tensor_x, dist.ReduceOp.MAX, use_calc_stream=False
         )
         task.wait()
-        assert np.array_equal(tensor_x, max_result)
+        np.testing.assert_array_equal(tensor_x, max_result)
     else:
         task = dist.all_reduce(
             tensor_y, dist.ReduceOp.MAX, use_calc_stream=False
         )
         task.wait()
-        assert np.array_equal(tensor_y, max_result)
+        np.testing.assert_array_equal(tensor_y, max_result)
     print("test allreduce max api ok")
 
 
@@ -116,13 +116,13 @@ def test_allreduce_min(pg, shape, dtype):
             tensor_x, dist.ReduceOp.MIN, use_calc_stream=False
         )
         task.wait()
-        assert np.array_equal(tensor_x, min_result)
+        np.testing.assert_array_equal(tensor_x, min_result)
     else:
         task = dist.all_reduce(
             tensor_y, dist.ReduceOp.MIN, use_calc_stream=False
         )
         task.wait()
-        assert np.array_equal(tensor_y, min_result)
+        np.testing.assert_array_equal(tensor_y, min_result)
     print("test allreduce min api ok")
 
 
@@ -141,13 +141,13 @@ def test_allreduce_prod(pg, shape, dtype):
             tensor_x, dist.ReduceOp.PROD, use_calc_stream=False
         )
         task.wait()
-        assert np.array_equal(tensor_x, prod_result)
+        np.testing.assert_array_equal(tensor_x, prod_result)
     else:
         task = dist.all_reduce(
             tensor_y, dist.ReduceOp.PROD, use_calc_stream=False
         )
         task.wait()
-        assert np.array_equal(tensor_y, prod_result)
+        np.testing.assert_array_equal(tensor_y, prod_result)
     print("test allreduce prod api ok")
 
 
@@ -164,10 +164,10 @@ def test_broadcast(pg, shape, dtype):
         task = dist.broadcast(tensor_x, 0, use_calc_stream=False)
         task.synchronize()
         assert task.is_completed()
-        assert np.array_equal(broadcast_result, tensor_x)
+        np.testing.assert_array_equal(broadcast_result, tensor_x)
     else:
         task = dist.broadcast(tensor_y, 0)
-        assert np.array_equal(broadcast_result, tensor_y)
+        np.testing.assert_array_equal(broadcast_result, tensor_y)
     print("test broadcast api ok")
 
 
@@ -205,8 +205,8 @@ def test_allgather(pg, shape, dtype):
         tensor_out = paddle.concat(tensor_out_list)
     out_1 = paddle.slice(tensor_out, [0], [0], [out_shape[0] // 2])
     out_2 = paddle.slice(tensor_out, [0], [out_shape[0] // 2], [out_shape[0]])
-    assert np.array_equal(tensor_x, out_1)
-    assert np.array_equal(tensor_y, out_2)
+    np.testing.assert_array_equal(tensor_x, out_1)
+    np.testing.assert_array_equal(tensor_y, out_2)
     print("test allgather api ok\n")
 
     if pg.rank() == 0:
@@ -219,8 +219,8 @@ def test_allgather(pg, shape, dtype):
         tensor_out = paddle.concat(tensor_out_list)
     out_1 = paddle.slice(tensor_out, [0], [0], [out_shape[0] // 2])
     out_2 = paddle.slice(tensor_out, [0], [out_shape[0] // 2], [out_shape[0]])
-    assert np.array_equal(tensor_x, out_1)
-    assert np.array_equal(tensor_y, out_2)
+    np.testing.assert_array_equal(tensor_x, out_1)
+    np.testing.assert_array_equal(tensor_y, out_2)
     print("test allgather api2 ok\n")
 
 
@@ -249,9 +249,9 @@ def test_all2all(pg, shape, dtype):
     out1_2 = paddle.slice(tensor_out1, [0], [shape[0] // 2], [shape[0]])
     out2_1 = paddle.slice(tensor_out2, [0], [0], [shape[0] // 2])
     if pg.rank() == 0:
-        assert np.array_equal(out1_2.numpy(), raw_tensor_y_1.numpy())
+        np.testing.assert_array_equal(out1_2.numpy(), raw_tensor_y_1.numpy())
     else:
-        assert np.array_equal(out2_1, raw_tensor_x_2)
+        np.testing.assert_array_equal(out2_1, raw_tensor_x_2)
     print("test alltoall api ok\n")
 
     x = np.random.random(shape).astype(dtype)
@@ -277,9 +277,9 @@ def test_all2all(pg, shape, dtype):
     out1_2 = paddle.slice(tensor_out1, [0], [shape[0] // 2], [shape[0]])
     out2_1 = paddle.slice(tensor_out2, [0], [0], [shape[0] // 2])
     if pg.rank() == 0:
-        assert np.array_equal(out1_2.numpy(), raw_tensor_y_1.numpy())
+        np.testing.assert_array_equal(out1_2.numpy(), raw_tensor_y_1.numpy())
     else:
-        assert np.array_equal(out2_1, raw_tensor_x_2)
+        np.testing.assert_array_equal(out2_1, raw_tensor_x_2)
     print("test alltoall api2 ok\n")
 
 
@@ -297,7 +297,7 @@ def test_reduce_sum(pg, shape, dtype):
         task = dist.reduce(tensor_y, 0, use_calc_stream=False)
         task.wait()
     if pg.rank() == 0:
-        assert np.array_equal(tensor_x, sum_result)
+        np.testing.assert_array_equal(tensor_x, sum_result)
     print("test reduce sum api ok\n")
 
 
@@ -316,7 +316,7 @@ def test_reduce_max(pg, shape, dtype):
             tensor_x, 0, dist.ReduceOp.MAX, use_calc_stream=False
         )
         task.wait()
-        assert np.array_equal(tensor_x, max_result)
+        np.testing.assert_array_equal(tensor_x, max_result)
     else:
         task = dist.reduce(
             tensor_y, 0, dist.ReduceOp.MAX, use_calc_stream=False
@@ -340,7 +340,7 @@ def test_reduce_min(pg, shape, dtype):
             tensor_x, 0, dist.ReduceOp.MIN, use_calc_stream=False
         )
         task.wait()
-        assert np.array_equal(tensor_x, min_result)
+        np.testing.assert_array_equal(tensor_x, min_result)
     else:
         task = dist.reduce(
             tensor_y, 0, dist.ReduceOp.MIN, use_calc_stream=False
@@ -364,7 +364,7 @@ def test_reduce_prod(pg, shape, dtype):
             tensor_x, 0, dist.ReduceOp.PROD, use_calc_stream=False
         )
         task.wait()
-        assert np.array_equal(tensor_x, prod_result)
+        np.testing.assert_array_equal(tensor_x, prod_result)
     else:
         task = dist.reduce(
             tensor_y, 0, dist.ReduceOp.PROD, use_calc_stream=False
@@ -391,9 +391,9 @@ def test_scatter(pg, shape, dtype):
     out1 = paddle.slice(tensor_x, [0], [0], [shape[0]])
     out2 = paddle.slice(tensor_x, [0], [shape[0]], [shape[0] * 2])
     if pg.rank() == 0:
-        assert np.array_equal(tensor_y, out1)
+        np.testing.assert_array_equal(tensor_y, out1)
     else:
-        assert np.array_equal(tensor_y, out2)
+        np.testing.assert_array_equal(tensor_y, out2)
     print("test scatter api ok\n")
 
 
@@ -411,7 +411,7 @@ def test_send_recv(pg, sub_group, shape, dtype):
     elif pg.rank() == 1:
         task = dist.recv(tensor_y, 0, group=sub_group, use_calc_stream=False)
         task.wait()
-        assert np.array_equal(tensor_y, tensor_x)
+        np.testing.assert_array_equal(tensor_y, tensor_x)
 
     print("test send api ok")
 
@@ -427,7 +427,7 @@ def test_send_recv(pg, sub_group, shape, dtype):
         task = dist.send(tensor_x, 1, group=sub_group, use_calc_stream=True)
     elif pg.rank() == 1:
         task = dist.recv(tensor_y, 0, group=sub_group, use_calc_stream=True)
-        assert np.array_equal(tensor_y, tensor_x)
+        np.testing.assert_array_equal(tensor_y, tensor_x)
 
     print("test send api ok")
 

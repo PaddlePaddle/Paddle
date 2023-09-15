@@ -57,11 +57,6 @@ void check_memory_size() const;
 
 void set_layout(const DataLayout layout);
 
-void clear() {
-  holder_.reset();
-  meta_.offset = 0;
-}
-
 void ShareBufferWith(const DenseTensor& tensor, bool only_buffer=false);
 
 void ShareDataTypeWith(const DenseTensor& tensor) {
@@ -109,7 +104,7 @@ We temporarily leave them here to unblock Tensor Unification progress.
 In the final state, we should come up with a MKLDNN_Tensor and move the
 following codes there.
 */
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 
 public:
 const dnnl::memory::desc& mem_desc() const;

@@ -53,7 +53,7 @@ class TestBase(IPUOpTest):
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='int64'
         )
-        out = paddle.fluid.layers.embedding(x, **self.attrs)
+        out = paddle.static.nn.embedding(x, **self.attrs)
         if self.is_training:
             loss = paddle.mean(out)
             adam = paddle.optimizer.Adam(learning_rate=1e-2)

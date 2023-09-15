@@ -150,6 +150,7 @@ proto::VarType::Type PromoteTypesIfComplexExists(
   // Here is a complete rules table, but some rules are not used.
   // It is still written this way because array accessing is still
   // more efficient than if-else
+  // NOLINTBEGIN(*-avoid-c-arrays)
   static constexpr proto::VarType::Type promote_types_table[4][4] = {
       /*        f4  f8  c4  c8*/
       /* f4 */ {f4, f8, c4, c8},
@@ -157,6 +158,7 @@ proto::VarType::Type PromoteTypesIfComplexExists(
       /* c4 */ {c4, c8, c4, c8},
       /* c8 */ {c8, c8, c8, c8},
   };
+  // NOLINTEND(*-avoid-c-arrays)
 
   return promote_types_table[type_an][type_bn];
 }

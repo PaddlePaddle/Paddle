@@ -125,17 +125,16 @@ void GatherOpHandle::RunImpl() {
 
   // copy
   auto dev_ctx = dev_ctxes_.at(out_var_handle->place());
-  RunAndRecordEvent(out_var_handle->place(),
-                    [in_tensors, out_tensor, &dev_ctx, t_out_p] {
-                      int s = 0, e = 0;
-                      for (size_t j = 0; j < in_tensors.size(); ++j) {
-                        e += in_tensors[j].dims()[0];
-                        auto sub_out = out_tensor->Slice(s, e);
-                        paddle::framework::TensorCopy(
-                            in_tensors[j], t_out_p, *dev_ctx, &sub_out);
-                        s = e;
-                      }
-                    });
+  RunAndRecordEvent(
+      out_var_handle->place(), [in_tensors, out_tensor, &dev_ctx, t_out_p] {
+        int s = 0, e = 0;
+        for (const auto &in_tensor : in_tensors) {
+          e += static_cast<int>(in_tensor.dims()[0]);
+          auto sub_out = out_tensor->Slice(s, e);
+          paddle::framework::TensorCopy(in_tensor, t_out_p, *dev_ctx, &sub_out);
+          s = e;
+        }
+      });
 }
 
 std::string GatherOpHandle::Name() const { return "gather"; }

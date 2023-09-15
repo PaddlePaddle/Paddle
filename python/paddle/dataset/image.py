@@ -123,9 +123,9 @@ def load_image_bytes(bytes, is_color=True):
 
     .. code-block:: python
 
-        with open('cat.jpg') as f:
-            im = load_image_bytes(f.read())
-
+        >>> with open('cat.jpg') as f:
+        ...     im = load_image_bytes(f.read())
+        ...
     :param bytes: the input image bytes array.
     :type bytes: str
     :param is_color: If set is_color True, it will load and
@@ -148,7 +148,7 @@ def load_image(file, is_color=True):
 
     .. code-block:: python
 
-        im = load_image('cat.jpg')
+        >>> im = load_image('cat.jpg')
 
     :param file: the input image path.
     :type file: string
@@ -178,8 +178,8 @@ def resize_short(im, size):
 
     .. code-block:: python
 
-        im = load_image('cat.jpg')
-        im = resize_short(im, 256)
+        >>> im = load_image('cat.jpg')
+        >>> im = resize_short(im, 256)
 
     :param im: the input image with HWC layout.
     :type im: ndarray
@@ -208,9 +208,9 @@ def to_chw(im, order=(2, 0, 1)):
 
     .. code-block:: python
 
-        im = load_image('cat.jpg')
-        im = resize_short(im, 256)
-        im = to_chw(im)
+        >>> im = load_image('cat.jpg')
+        >>> im = resize_short(im, 256)
+        >>> im = to_chw(im)
 
     :param im: the input image with HWC layout.
     :type im: ndarray
@@ -230,7 +230,8 @@ def center_crop(im, size, is_color=True):
 
     .. code-block:: python
 
-        im = center_crop(im, 224)
+        >>> im = load_image('cat.jpg')
+        >>> im = center_crop(im, 224)
 
     :param im: the input image with HWC layout.
     :type im: ndarray
@@ -258,7 +259,8 @@ def random_crop(im, size, is_color=True):
 
     .. code-block:: python
 
-        im = random_crop(im, 224)
+        >>> im = load_image('cat.jpg')
+        >>> im = random_crop(im, 224)
 
     :param im: the input image with HWC layout.
     :type im: ndarray
@@ -287,7 +289,8 @@ def left_right_flip(im, is_color=True):
 
     .. code-block:: python
 
-        im = left_right_flip(im)
+        >>> im = load_image('cat.jpg')
+        >>> im = left_right_flip(im)
 
     :param im: input image with HWC layout or HW layout for gray image
     :type im: ndarray
@@ -311,7 +314,8 @@ def simple_transform(
 
     .. code-block:: python
 
-        im = simple_transform(im, 256, 224, True)
+        >>> im = load_image('cat.jpg')
+        >>> im = simple_transform(im, 256, 224, True)
 
     :param im: The input image with HWC layout.
     :type im: ndarray
@@ -365,7 +369,7 @@ def load_and_transform(
 
     .. code-block:: python
 
-        im = load_and_transform('cat.jpg', 256, 224, True)
+        >>> im = load_and_transform('cat.jpg', 256, 224, True)
 
     :param filename: The file name of input image.
     :type filename: string

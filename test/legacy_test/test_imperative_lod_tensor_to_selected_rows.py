@@ -19,10 +19,9 @@ from test_imperative_base import new_program_scope
 from utils import DyGraphProgramDescTracerTestHelper
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.optimizer import SGDOptimizer
+from paddle import base
+from paddle.base import core
+from paddle.base.dygraph.base import to_variable
 
 
 class SimpleNet(paddle.nn.Layer):
@@ -45,7 +44,7 @@ class SimpleNet(paddle.nn.Layer):
             vocab_size,
             hidden_size,
             sparse=is_sparse,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name='embedding_para',
                 initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
@@ -53,7 +52,7 @@ class SimpleNet(paddle.nn.Layer):
             ),
         )
         self.softmax_bias = self.create_parameter(
-            attr=fluid.ParamAttr(),
+            attr=base.ParamAttr(),
             shape=[self.vocab_size],
             dtype=dtype,
             default_initializer=paddle.nn.initializer.Uniform(
@@ -88,9 +87,9 @@ class TestDygraphSimpleNet(unittest.TestCase):
                 self.simple_net_float32(is_sparse, dtype)
 
     def simple_net_float32(self, is_sparse, dtype):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
 
         for place in places:
             seed = 90
@@ -102,7 +101,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
             batch_num = 200
 
             for is_sort_sum_gradient in [True, False]:
-                with fluid.dygraph.guard(place):
+                with base.dygraph.guard(place):
                     paddle.seed(seed)
                     paddle.framework.random._manual_program_seed(seed)
 
@@ -115,16 +114,16 @@ class TestDygraphSimpleNet(unittest.TestCase):
                         dtype=dtype,
                     )
 
-                    sgd = SGDOptimizer(
+                    sgd = paddle.optimizer.SGD(
                         learning_rate=1e-3,
-                        parameter_list=simple_net.parameters(),
+                        parameters=simple_net.parameters(),
                     )
                     dy_param_updated = {}
                     dy_param_init = {}
                     dy_loss = None
 
                     helper = DyGraphProgramDescTracerTestHelper(self)
-                    fluid.set_flags(
+                    base.set_flags(
                         {'FLAGS_sort_sum_gradient': is_sort_sum_gradient}
                     )
 
@@ -161,8 +160,8 @@ class TestDygraphSimpleNet(unittest.TestCase):
                         dtype=dtype,
                     )
 
-                    exe = fluid.Executor(place)
-                    sgd = SGDOptimizer(learning_rate=1e-3)
+                    exe = base.Executor(place)
+                    sgd = paddle.optimizer.SGD(learning_rate=1e-3)
                     x = paddle.static.data(
                         name="x", shape=[-1, num_steps], dtype='int64'
                     )
@@ -178,7 +177,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
                         static_param_name_list.append(param.name)
 
                     out = exe.run(
-                        fluid.default_startup_program(),
+                        base.default_startup_program(),
                         fetch_list=static_param_name_list,
                     )
                     for i in range(len(static_param_name_list)):
@@ -192,7 +191,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
                         fetch_list = [static_loss]
                         fetch_list.extend(static_param_name_list)
                         out = exe.run(
-                            fluid.default_main_program(),
+                            base.default_main_program(),
                             feed={"x": x_data, "y": y_data},
                             fetch_list=fetch_list,
                         )

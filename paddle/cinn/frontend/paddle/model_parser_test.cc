@@ -14,17 +14,17 @@
 
 #include "paddle/cinn/frontend/paddle/model_parser.h"
 
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
+#include "paddle/utils/flags.h"
 
-DEFINE_string(model_dir, "<NOTEXIST>", "model directory path");
+PD_DEFINE_string(model_dir, "<NOTEXIST>", "model directory path");
 
 namespace cinn::frontend::paddle {
 
 TEST(LoadModelPb, naive_model) {
   hlir::framework::Scope scope;
   cpp::ProgramDesc program_desc;
-  LoadModelPb(FLAGS_model_dir, "__model__", "", &scope, &program_desc, false);
+  LoadModelPb(FLAGS_model_dir, "/__model__", "", &scope, &program_desc, false);
 
   ASSERT_EQ(program_desc.BlocksSize(), 1UL);
 

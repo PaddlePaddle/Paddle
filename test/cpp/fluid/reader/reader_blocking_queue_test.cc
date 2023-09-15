@@ -146,18 +146,18 @@ void MultiSenderMultiReceiver(const size_t queue_cap,
   size_t sender_num = to_send.size();
   std::vector<std::thread> senders;
   for (size_t s_idx = 0; s_idx < sender_num; ++s_idx) {
-    senders.emplace_back(std::thread([&, s_idx] {
+    senders.emplace_back([&, s_idx] {
       for (size_t elem : to_send[s_idx]) {
         std::this_thread::sleep_for(std::chrono::milliseconds(send_time_gap));
         EXPECT_TRUE(q.Send(elem));
       }
-    }));
+    });
   }
   std::vector<std::thread> receivers;
   std::mutex mu;
   std::vector<std::vector<size_t>> res;
   for (size_t r_idx = 0; r_idx < receiver_num; ++r_idx) {
-    receivers.emplace_back(std::thread([&] {
+    receivers.emplace_back([&] {
       std::vector<size_t> receiver_res;
       while (true) {
         std::this_thread::sleep_for(
@@ -170,7 +170,7 @@ void MultiSenderMultiReceiver(const size_t queue_cap,
       }
       std::lock_guard<std::mutex> lock(mu);
       res.push_back(receiver_res);
-    }));
+    });
   }
   for (auto& t : senders) {
     t.join();
@@ -204,7 +204,13 @@ struct MyClass {
   explicit MyClass(int val) : val_(val) {}
   MyClass(const MyClass& b) { val_ = b.val_; }
   MyClass(MyClass&& b) { val_ = b.val_; }
-  void operator=(const MyClass& b) { val_ = b.val_; }
+  MyClass& operator=(const MyClass& b) {
+    if (this != &b) {
+      val_ = b.val_;
+      return *this;
+    }
+    return *this;
+  }
 
   int val_;
 };
@@ -212,7 +218,7 @@ struct MyClass {
 TEST(BlockingQueue, MyClassTest) {
   BlockingQueue<MyClass> q(2);
   MyClass a(200);
-  q.Send(std::move(a));
+  q.Send(a);
   MyClass b;
   q.Receive(&b);
   EXPECT_EQ(a.val_, b.val_);

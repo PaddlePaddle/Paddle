@@ -24,7 +24,7 @@ import unittest
 from multiprocessing import Process
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -40,11 +40,11 @@ def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):
     avg_cost = paddle.mean(cost)
 
     # optimizer
-    sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+    sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
     sgd_optimizer.minimize(avg_cost)
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    exe = fluid.Executor(place)
+    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+    exe = base.Executor(place)
 
     pserver_endpoints = ip + ":" + port
     current_endpoint = ip + ":" + port
@@ -77,11 +77,11 @@ def run_pserver_with_empty_block(
     avg_cost = paddle.mean(cost)
 
     # optimizer
-    sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+    sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
     sgd_optimizer.minimize(avg_cost)
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    exe = fluid.Executor(place)
+    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+    exe = base.Executor(place)
 
     ps1 = ip + ":" + str(int(port) + 1)
     ps2 = ip + ":" + port

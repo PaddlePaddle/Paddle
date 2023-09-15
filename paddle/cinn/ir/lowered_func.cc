@@ -27,10 +27,8 @@
 #include "paddle/cinn/ir/buffer.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_visitor.h"
-#include "paddle/cinn/optim/tensor_write_tell.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
-DECLARE_bool(cinn_ir_schedule);
 
 namespace cinn {
 namespace ir {
@@ -58,8 +56,7 @@ LoweredFunc _LoweredFunc_::Make(const std::string& name,
   n->PrepareCreateTempBufferExprs();
   n->PrepareAllocTempBufferExprs();
   n->AllocTempBuffer();
-  bool with_expr_gen_tensor = true;
-  if (FLAGS_cinn_ir_schedule) with_expr_gen_tensor = false;
+  bool with_expr_gen_tensor = false;
   n->PrepareBufferCastExprs(with_expr_gen_tensor);
   n->PrepareArgumentExprs();
   n->PrepareDeallocTempBufferExprs();
@@ -211,8 +208,7 @@ void _LoweredFunc_::AllocTempBuffer() {}
 void _LoweredFunc_::PrepareBufferCastExprs(bool with_expr_gen_tensor) {
   buffer_data_cast_exprs.clear();
   // collect write.
-  optim::TensorWriteTeller write_teller;
-  write_teller.Collect(&body);
+  auto write_teller = ir::CollectTensorNeedsWrite(&body);
 
   auto tensors = CollectAllTensorReference(with_expr_gen_tensor);
   std::sort(tensors.begin(),
@@ -226,7 +222,7 @@ void _LoweredFunc_::PrepareBufferCastExprs(bool with_expr_gen_tensor) {
     if (!tensor->buffer.defined()) continue;
 
     Type value_type = tensor->type().ElementOf();
-    bool is_const = !write_teller.IsWrite(tensor->name);
+    bool is_const = !write_teller.count(tensor->name);
     value_type.set_cpp_handle();
     value_type.set_cpp_const(is_const);
     Var variable = _Var_::Make(tensor->name, value_type);
@@ -252,8 +248,7 @@ std::vector<Expr> _LoweredFunc_::CudaAliasVarExprs() const {
   }
   // collect write.
   std::vector<Expr> res;
-  optim::TensorWriteTeller write_teller;
-  write_teller.Collect(&body);
+  auto write_teller = ir::CollectTensorNeedsWrite(&body);
 
   auto tensors = CollectAllTensorReference();
   std::sort(tensors.begin(),
@@ -271,7 +266,7 @@ std::vector<Expr> _LoweredFunc_::CudaAliasVarExprs() const {
       continue;
     }
     Type value_type = tensor->type().ElementOf();
-    bool is_const = !write_teller.IsWrite(tensor->name);
+    bool is_const = !write_teller.count(tensor->name);
     value_type.set_cpp_handle();
     value_type.set_cpp_const(is_const);
     Var variable = _Var_::Make(tensor->name, value_type);

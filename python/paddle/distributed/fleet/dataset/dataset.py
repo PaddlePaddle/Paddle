@@ -15,8 +15,8 @@
 
 from google.protobuf import text_format
 
-from paddle.fluid import core
-from paddle.fluid.proto import data_feed_pb2
+from paddle.base import core
+from paddle.base.proto import data_feed_pb2
 
 __all__ = []
 
@@ -1279,10 +1279,11 @@ class QueueDataset(DatasetBase):
     QueueDataset, it will process data streamly.
 
     Examples:
-        .. code-block:: python
 
-          import paddle
-          dataset = paddle.distributed.QueueDataset()
+    .. code-block:: python
+
+    import paddle
+    dataset = paddle.distributed.QueueDataset()
 
     """
 
@@ -1298,6 +1299,7 @@ class QueueDataset(DatasetBase):
         :api_attr: Static Graph
 
         should be called only once in user's python scripts to initialize setings of dataset instance
+
         """
         super().init(**kwargs)
 

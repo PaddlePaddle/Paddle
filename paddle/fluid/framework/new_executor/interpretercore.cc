@@ -16,8 +16,8 @@
 
 #include "paddle/fluid/framework/new_executor/new_ir_interpreter.h"
 #include "paddle/fluid/framework/new_executor/program_interpreter.h"
-#include "paddle/ir/core/program.h"
-#include "paddle/ir/core/value.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_serial_run,
@@ -47,13 +47,15 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       place, block, scope, execution_config);
 }
 
-InterpreterCore::InterpreterCore(const platform::Place& place,
-                                 std::unique_ptr<::ir::Program> ir_prog,
-                                 framework::Scope* scope,
-                                 const ExecutionConfig& execution_config) {
+InterpreterCore::InterpreterCore(
+    const platform::Place& place,
+    const std::vector<std::string>& fetch_var_names,
+    std::unique_ptr<::pir::Program> ir_prog,
+    framework::Scope* scope,
+    const ExecutionConfig& execution_config) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place;
   impl_ = std::make_unique<NewIRInterpreter>(
-      place, std::move(ir_prog), scope, execution_config);
+      place, fetch_var_names, std::move(ir_prog), scope, execution_config);
 }
 
 InterpreterCore::~InterpreterCore() {
@@ -70,11 +72,6 @@ FetchList InterpreterCore::Run(
 FetchList InterpreterCore::Run(const std::vector<std::string>& feed_names,
                                bool need_fetch) {
   return impl_->Run(feed_names, need_fetch);
-}
-
-FetchList InterpreterCore::BetaRun(const std::vector<std::string>& feed_names,
-                                   bool need_fetch) {
-  return impl_->BetaRun(feed_names, need_fetch);
 }
 
 void InterpreterCore::ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src) {
@@ -123,5 +120,6 @@ const platform::Place& InterpreterCore::GetPlace() const {
 void InterpreterCore::SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
   impl_->SetOutputHooks(hookfuncs);
 }
+
 }  // namespace framework
 }  // namespace paddle

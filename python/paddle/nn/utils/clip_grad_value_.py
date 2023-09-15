@@ -31,19 +31,20 @@ def clip_grad_value_(
         clip_value (float or int): maximum allowed value of the gradients.
             The gradients are clipped in the range
             :math:`\left[\text{-clip\_value}, \text{clip\_value}\right]`
+
     Example:
         .. code-block:: python
 
-            import paddle
-            x = paddle.uniform([10, 10], min=-10.0, max=10.0, dtype='float32')
-            clip_value = float(5.0)
-            linear = paddle.nn.Linear(in_features=10, out_features=10)
-            out = linear(x)
-            loss = paddle.mean(out)
-            loss.backward()
-            paddle.nn.utils.clip_grad_value_(linear.parameters(), clip_value)
-            sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters())
-            sdg.step()
+            >>> import paddle
+            >>> x = paddle.uniform([10, 10], min=-10.0, max=10.0, dtype='float32')
+            >>> clip_value = float(5.0)
+            >>> linear = paddle.nn.Linear(in_features=10, out_features=10)
+            >>> out = linear(x)
+            >>> loss = paddle.mean(out)
+            >>> loss.backward()
+            >>> paddle.nn.utils.clip_grad_value_(linear.parameters(), clip_value)
+            >>> sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters())
+            >>> sdg.step()
     """
     if not paddle.in_dynamic_mode():
         raise RuntimeError('this API can only run in dynamic mode.')

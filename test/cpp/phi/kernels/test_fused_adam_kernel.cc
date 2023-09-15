@@ -89,7 +89,7 @@ static auto ToMutableTensorPtrVector(
 static auto ToMetaTensorVector(const std::vector<DenseTensor> &tensors) {
   std::vector<MetaTensor> results;
   for (auto &t : tensors) {
-    results.push_back(t);
+    results.emplace_back(t);
   }
   return results;
 }

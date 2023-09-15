@@ -18,9 +18,9 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.fluid import core
-from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.framework import Variable
+from paddle.base import core
+from paddle.base.dygraph.base import switch_to_static_graph
+from paddle.base.framework import Variable
 
 
 def _append_backward_desc(main_program, outs):
@@ -32,7 +32,7 @@ def _append_backward_desc(main_program, outs):
             targets.append(program.global_block().var(out.name))
 
     if targets:
-        paddle.fluid.backward.gradients(targets=targets, inputs=[])
+        paddle.base.backward.gradients(targets=targets, inputs=[])
 
     return program
 
@@ -76,7 +76,7 @@ def _add_build_strategy_for(input_program, start_op_index, end_op_index):
     compiled_program._compile(
         core.Scope(), paddle.framework._current_expected_place()
     )
-    ir_graph = paddle.fluid.framework.IrGraph(compiled_program._graph)
+    ir_graph = paddle.base.framework.IrGraph(compiled_program._graph)
     builded_program = ir_graph.to_program()
     return builded_program
 
@@ -135,6 +135,8 @@ class TestRunProgram(unittest.TestCase):
             [out.name + '@GRAD'],
             'x_grad_names',
             [x_t.name + '@GRAD', y_t.name + '@GRAD'],
+            'x_names',
+            [x_t.name, y_t.name],
         ]
 
         use_interpretorcore = True

@@ -19,16 +19,12 @@
 #include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 #include "paddle/fluid/platform/flags.h"
 
-PADDLE_DEFINE_EXPORTED_bool(
-    cache_inference_while_scope,
-    false,
-    "Cache the scope of the while op to avoid repeated creation of the scope "
-    "for each iteration and improve inference performance.");
+PHI_DECLARE_bool(cache_inference_while_scope);
 
 namespace paddle {
 namespace framework {
@@ -116,7 +112,7 @@ class WhileOp : public framework::OperatorBase {
             cond.numel(),
             ".\n"));
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     // Executor on being destroyed clears oneDNN cache and resets
     // registered model data layout. This is unwanted for nested
     // Executors (executors declared inside control ops)
@@ -162,7 +158,7 @@ class WhileOp : public framework::OperatorBase {
     auto step_scopes =
         scope.FindVar(Output(kStepScopes))->GetMutable<StepScopeVar>();
 
-    if (step_scopes->size() > 0) {
+    if (!step_scopes->empty()) {
       platform::DeviceContextPool::Instance().Get(dev_place)->Wait();
       for (auto &s : *step_scopes) {
         if (scope.HasKid(s)) {

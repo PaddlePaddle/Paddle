@@ -377,7 +377,7 @@ void Reducer::InitializeDenseGroups(
     p_group->length_.push_back(size);
 
     // for concat operator
-    p_group->dense_tensors_.push_back(phi::DenseTensor());
+    p_group->dense_tensors_.emplace_back();
 
     // check the dtype and place, it must be same.
     const auto &dtype = var->DataType();
@@ -467,9 +467,9 @@ void Reducer::PrepareDeps(const std::unordered_set<GradOpNode *> &init_nodes) {
   std::queue<GradOpNode *> q;
   std::unordered_set<GradOpNode *> visited;
 
-  for (auto pos = init_nodes.begin(); pos != init_nodes.end(); pos++) {
-    q.push(*pos);
-    visited.insert(*pos);
+  for (auto init_node : init_nodes) {
+    q.push(init_node);
+    visited.insert(init_node);
   }
 
   while (!q.empty()) {

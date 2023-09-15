@@ -31,8 +31,9 @@ void SetOutDataLayout(std::shared_ptr<VarType> var,
     if (var->MutableVar()->IsInitialized()) {
       paddle::framework::Variable* tmp_var = var->MutableVar();
       auto* out = tmp_var->GetMutable<phi::DenseTensor>();
-      phi::DenseTensorUtils::GetMutableMeta(static_cast<phi::DenseTensor*>(out))
-          ->layout = layout;
+      auto meta = phi::DenseTensorUtils::GetMutableMeta(
+          static_cast<phi::DenseTensor*>(out));
+      meta->layout = layout;
     }
   }
 }

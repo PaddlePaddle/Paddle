@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard
+from op_test import OpTest, paddle_static_guard
 
 import paddle
 
@@ -68,7 +68,7 @@ class TestFlattenOpSixDims(TestFlattenOp):
 
 class TestFlattenOpFP16(unittest.TestCase):
     def test_fp16_with_gpu(self):
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             with paddle_static_guard():
                 place = paddle.CUDAPlace(0)
                 with paddle.static.program_guard(
@@ -90,7 +90,7 @@ class TestFlattenOpFP16(unittest.TestCase):
                         fetch_list=[y],
                     )
 
-                    assert np.array_equal(res[0].shape, [12 * 14])
+                    np.testing.assert_array_equal(res[0].shape, [12 * 14])
 
 
 if __name__ == "__main__":

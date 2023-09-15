@@ -18,90 +18,34 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_rope_utils.h"
+
 namespace phi {
 namespace fusion {
-
-template <typename T, typename MPType, int VecSize = 2>
-__global__ void VectorizedFusedRopeKernel(phi::Array<const T*, 3> ins_data,
-                                          int batch_size,
-                                          int seq_len,
-                                          int num_heads,
-                                          int head_dim,
-                                          phi::Array<T*, 3> outs_data,
-                                          int num_inputs,
-                                          MPType div_c) {
-  int index = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
-  int stride = gridDim.x * blockDim.x * VecSize;
-  int size = batch_size * seq_len * num_heads * head_dim;
-  MPType sin_value[VecSize];
-  MPType cos_value[VecSize];
-  MPType result[VecSize];
-  T store[VecSize];
-  using VecType = phi::AlignedVector<T, VecSize>;
-  constexpr int kVectorsPerThread = VecSize / 2;
-
-  for (; index < size; index += stride) {
-#pragma unroll
-    for (int nx = 0; nx < VecSize; ++nx) {
-      // get sin_index and cos_index
-      int index_wc = (index + nx) % (seq_len * num_heads * head_dim);
-      int pos_seq = index_wc / (num_heads * head_dim);
-      MPType idx = static_cast<MPType>((index_wc % head_dim) / 2 * 2.0);
-      MPType indicses =
-          static_cast<MPType>(1) /
-          pow(static_cast<MPType>(10000), idx * static_cast<MPType>(div_c));
-      MPType value = pos_seq * indicses;
-      sin_value[nx] = sin(value);
-      cos_value[nx] = cos(value);
-    }
-
-#pragma unroll
-    for (int iter = 0; iter < 3; iter++) {
-      if (iter > num_inputs) break;
-      const T* input = ins_data[iter] + index;
-      VecType* out = reinterpret_cast<VecType*>(outs_data[iter] + index);
-
-#pragma unroll
-      for (int nx = 0; nx < kVectorsPerThread; ++nx) {
-        int pr_index = nx * 2;
-        int ls_index = pr_index + 1;
-
-        MPType p0 = static_cast<MPType>(input[pr_index]);
-        MPType p1 = static_cast<MPType>(input[ls_index]);
-
-        result[pr_index] = cos_value[pr_index] * p0;
-        result[pr_index] -= sin_value[pr_index] * p1;
-
-        result[ls_index] = sin_value[ls_index] * p0;
-        result[ls_index] += cos_value[ls_index] * p1;
-
-        store[pr_index] = static_cast<T>(result[pr_index]);
-        store[ls_index] = static_cast<T>(result[ls_index]);
-      }
-      out[0] = *(reinterpret_cast<VecType*>(store));
-    }
-  }
-}
 
 template <typename T, typename Context>
 void FusedRopeKernel(const Context& dev_ctx,
                      const DenseTensor& q,
                      const paddle::optional<DenseTensor>& k,
                      const paddle::optional<DenseTensor>& v,
+                     const paddle::optional<DenseTensor>& sin,
+                     const paddle::optional<DenseTensor>& cos,
+                     const paddle::optional<DenseTensor>& position_ids,
+                     bool use_neox_rotary_style,
                      DenseTensor* out_q,
                      DenseTensor* out_k,
                      DenseTensor* out_v) {
-  int numel = q.numel();
+  int64_t numel = q.numel();
   if (numel <= 0) return;
   dev_ctx.template Alloc<T>(out_q);
-  out_q->Resize(q.dims());
-  // small size for broadcast
+
+  // q.shape: [batch_size, seq_len, num_heads, head_dim]
   auto batch_size = q.dims()[0];
+  auto seq_len = q.dims()[1];
   auto num_heads = q.dims()[2];
   auto head_dim = q.dims()[3];
-  auto seq_len = q.dims()[1];
-  PADDLE_ENFORCE_NE(head_dim % 2,
-                    1,
+  PADDLE_ENFORCE_EQ(head_dim % 2,
+                    0,
                     phi::errors::InvalidArgument(
                         "The head_dim of input must be a multiple of 2."));
 
@@ -110,12 +54,14 @@ void FusedRopeKernel(const Context& dev_ctx,
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
 
-  int grid = config.block_per_grid.x;
-  int block = config.thread_per_block.x;
+  int64_t grid = config.block_per_grid.x;
+  int64_t block = config.thread_per_block.x;
   auto stream = dev_ctx.stream();
 
   phi::Array<T*, 3> outs_data;
   phi::Array<const T*, 3> ins_data;
+  phi::Array<const T*, 2> sin_cos_data;
+  const int64_t* position_ids_data = NULL;
 
   ins_data[0] = q.data<T>();
   outs_data[0] = out_q->data<T>();
@@ -123,7 +69,6 @@ void FusedRopeKernel(const Context& dev_ctx,
 
   if (k.get_ptr()) {
     dev_ctx.template Alloc<T>(out_k);
-    out_k->Resize(q.dims());
     ins_data[1] = k->data<T>();
     outs_data[1] = out_k->data<T>();
     num_inputs++;
@@ -131,7 +76,6 @@ void FusedRopeKernel(const Context& dev_ctx,
 
   if (v.get_ptr()) {
     dev_ctx.template Alloc<T>(out_v);
-    out_v->Resize(q.dims());
     ins_data[2] = v->data<T>();
     outs_data[2] = out_v->data<T>();
     num_inputs++;
@@ -140,15 +84,117 @@ void FusedRopeKernel(const Context& dev_ctx,
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPType div_c = static_cast<MPType>(1.0f / head_dim);
 
-  VectorizedFusedRopeKernel<T, MPType, vec_size>
-      <<<grid, block, 0, stream>>>(ins_data,
-                                   batch_size,
-                                   seq_len,
-                                   num_heads,
-                                   head_dim,
-                                   outs_data,
-                                   num_inputs,
-                                   div_c);
+  bool flag_sin_cos = false;
+
+  if (sin.get_ptr() && cos.get_ptr()) {
+    PADDLE_ENFORCE_EQ(sin.get_ptr()->dims(),
+                      cos.get_ptr()->dims(),
+                      phi::errors::InvalidArgument(
+                          "The dims of sin and cos must be the same. But "
+                          "recieved sin's dims is {%s}, cos's dims is {%s}.",
+                          sin.get_ptr()->dims(),
+                          cos.get_ptr()->dims()));
+
+    auto sin_dims = sin.get_ptr()->dims();
+    int dims_size = sin_dims.size();
+    PADDLE_ENFORCE_EQ(
+        (dims_size == 2 || dims_size == 4),
+        true,
+        phi::errors::InvalidArgument("The dims of sin and cos is expected to "
+                                     "be 2 or 4, but recieved %d.",
+                                     dims_size));
+    if (dims_size == 4) {
+      // sin.shape: [1, seq_len, 1, head_dim]
+      PADDLE_ENFORCE_EQ(
+          (sin_dims[0] == 1 && sin_dims[2] == 1),
+          true,
+          phi::errors::InvalidArgument(
+              "The batch_size and num_heads of sin and cos must be 1."));
+    }
+    int sin_seq_len_dim = (dims_size) == 4 ? 1 : 0;
+
+    if (position_ids.get_ptr()) {
+      PADDLE_ENFORCE_EQ(
+          (sin_dims[dims_size - 1] == head_dim &&
+           sin_dims[sin_seq_len_dim] >= seq_len),
+          true,
+          phi::errors::InvalidArgument(
+              "The seq_len of sin and cos must be greater than or equal to "
+              "this of q. The head_dim of sin and cos must be the same as this "
+              "of q. But recieved sin's "
+              "shape is {%s}, q's shape is {%s}.",
+              sin_dims,
+              q.dims()));
+
+      auto position_ids_dims = position_ids.get_ptr()->dims();
+      PADDLE_ENFORCE_EQ(position_ids_dims.size(),
+                        2,
+                        phi::errors::InvalidArgument(
+                            "The dims of position_ids is expected to "
+                            "be 2, but recieved %d.",
+                            position_ids_dims.size()));
+
+      PADDLE_ENFORCE_EQ(
+          (position_ids_dims[0] == batch_size &&
+           position_ids_dims[1] == seq_len),
+          true,
+          phi::errors::InvalidArgument(
+              "The batch_size and seq_len of position_ids must be the same as "
+              "those of q. But recieved position_ids's "
+              "shape is {%s}, q's shape is {%s}.",
+              position_ids_dims,
+              q.dims()));
+
+      position_ids_data = position_ids->data<int64_t>();
+    } else {
+      PADDLE_ENFORCE_EQ(
+          (sin_dims[dims_size - 1] == head_dim &&
+           sin_dims[sin_seq_len_dim] == seq_len),
+          true,
+          phi::errors::InvalidArgument(
+              "The seq_len and head_dim of sin and cos "
+              "must be the same as those of q. But recieved sin's "
+              "shape is {%s}, q's shape is {%s}.",
+              sin_dims,
+              q.dims()));
+    }
+
+    sin_cos_data[0] = sin->data<T>();
+    sin_cos_data[1] = cos->data<T>();
+
+    flag_sin_cos = true;
+  }
+
+  int sign = 1;
+  if (use_neox_rotary_style) {
+    VectorizedFusedRopeWithRotateEveryTwoKernel<T, MPType, vec_size>
+        <<<grid, block, 0, stream>>>(ins_data,
+                                     sin_cos_data,
+                                     position_ids_data,
+                                     flag_sin_cos,
+                                     sign,
+                                     batch_size,
+                                     seq_len,
+                                     num_heads,
+                                     head_dim,
+                                     outs_data,
+                                     num_inputs,
+                                     div_c);
+  } else {
+    VectorizedFusedRopeWithRotateHalfKernel<T, MPType, vec_size>
+        <<<grid, block, 0, stream>>>(ins_data,
+                                     sin_cos_data,
+                                     position_ids_data,
+                                     flag_sin_cos,
+                                     sign,
+                                     batch_size,
+                                     seq_len,
+                                     num_heads,
+                                     head_dim,
+                                     outs_data,
+                                     num_inputs,
+                                     div_c);
+  }
 }
 }  // namespace fusion
 }  // namespace phi

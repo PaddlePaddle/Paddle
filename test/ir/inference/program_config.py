@@ -18,10 +18,10 @@ from typing import Any, Callable, Dict, List, Optional
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core, framework
-from paddle.fluid.executor import global_scope
-from paddle.fluid.framework import (
+from paddle import base
+from paddle.base import core, framework
+from paddle.base.executor import global_scope
+from paddle.base.framework import (
     IrGraph,
     IrNode,
     Operator,
@@ -67,7 +67,7 @@ class TensorConfig:
     def __repr__(self):
         return str({'shape': self.shape, 'lod': self.lod, 'dtype': self.dtype})
 
-    def astype(self, type: np.dtype):
+    def convert_type_inplace(self, type: np.dtype):
         self.data = self.data.astype(type)
         self.dtype = self.data.dtype
         return self
@@ -115,6 +115,7 @@ _OP_WITHOUT_KERNEL_SET = {
     'go',
     'rnn_memory_helper_grad',
     'conditional_block',
+    'static_pylayer',
     'while',
     'send',
     'recv',
@@ -277,9 +278,9 @@ class ProgramConfig:
 
     def set_input_type(self, type: np.dtype):
         for inp in self.inputs.values():
-            inp.astype(type)
+            inp.convert_type_inplace(type)
         for weight in self.weights.values():
-            weight.astype(type)
+            weight.convert_type_inplace(type)
         return self
 
     def get_input_type(self) -> np.dtype:
@@ -290,7 +291,7 @@ def create_fake_model(program_config):
     '''Create a Paddle model(in memory) according to the given config.'''
     paddle.enable_static()
     main_program_desc = core.ProgramDesc()
-    util_program = fluid.Program()
+    util_program = base.Program()
     main_block_desc = main_program_desc.block(0)
 
     var_desc = main_block_desc.var(b"feed")
@@ -408,10 +409,10 @@ def create_fake_model(program_config):
     model = main_program_desc.serialize_to_string()
 
     util_program._sync_with_cpp()
-    place = fluid.CPUPlace()
-    executor = fluid.Executor(place)
-    scope = fluid.Scope()
-    with fluid.scope_guard(scope):
+    place = base.CPUPlace()
+    executor = base.Executor(place)
+    scope = base.Scope()
+    with base.scope_guard(scope):
         executor.run(util_program)
         params = scope.find_var("out_var_0").get_bytes()
 
@@ -432,7 +433,7 @@ def create_quant_model(
         inference_program,
         feed_target_names,
         fetch_targets,
-    ] = paddle.static.load_inference_model(
+    ] = paddle.static.io.load_inference_model(
         path_prefix=None,
         executor=exe,
         model_filename=model,
@@ -596,18 +597,19 @@ def create_quant_model(
             tensor = scope.var(var_name).get_tensor()
             tensor.set(np.ones(tensor.shape(), dtype=np.float32), place)
 
-    if save:
-        fluid.io.save_inference_model(
-            'test_inference_model',
-            feed_target_names,
-            fetch_targets,
-            exe,
-            main_program=main_program,
-        )
-
     feed_vars = [
         main_program.global_block().var(name) for name in feed_target_names
     ]
+
+    if save:
+        paddle.static.io.save_inference_model(
+            'test_inference_model',
+            feed_vars,
+            fetch_targets,
+            exe,
+            program=main_program,
+        )
+
     serialized_program = paddle.static.serialize_program(
         feed_vars, fetch_targets, program=main_program
     )

@@ -211,10 +211,10 @@ std::vector<double> Lexical_Test(
     EXPECT_GT(outputs->size(), 0UL);
     EXPECT_EQ(3UL, (*outputs)[0].size());
     std::vector<int64_t> acc_sum(3);
-    for (size_t i = 0; i < outputs->size(); i++) {
+    for (auto &output : *outputs) {
       for (size_t j = 0; j < 3UL; j++) {
         acc_sum[j] =
-            acc_sum[j] + *static_cast<int64_t *>((*outputs)[i][j].data.data());
+            acc_sum[j] + *static_cast<int64_t *>(output[j].data.data());
       }
     }
     // nums_infer, nums_label, nums_correct

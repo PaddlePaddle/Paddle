@@ -62,7 +62,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                           op_.Type(),
                           idx,
                           op_proto->inputs().size()));
-    return op_proto->inputs()[idx].name();
+    return op_proto->inputs()[static_cast<int>(idx)].name();
   }
 
   std::string GetOutputNameByIdx(size_t idx) const override {
@@ -77,7 +77,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
             op_.Type(),
             idx,
             op_proto->outputs().size()));
-    return op_proto->outputs()[idx].name();
+    return op_proto->outputs()[static_cast<int>(idx)].name();
   }
 
   void ShareDim(const std::string &in,
@@ -346,13 +346,13 @@ class CompileTimeInferShapeContext : public InferShapeContext {
       const std::vector<std::string> &names) const {
     std::vector<proto::VarType::Type> retv;
     retv.resize(names.size());
-    std::transform(
-        names.begin(),
-        names.end(),
-        retv.begin(),
-        std::bind(std::mem_fn(&CompileTimeInferShapeContext::GetVarType),
-                  this,
-                  std::placeholders::_1));
+    std::transform(names.begin(),
+                   names.end(),
+                   retv.begin(),
+                   std::bind(  // NOLINT
+                       std::mem_fn(&CompileTimeInferShapeContext::GetVarType),
+                       this,
+                       std::placeholders::_1));
     return retv;
   }
 
@@ -512,6 +512,9 @@ OpDesc::OpDesc(const proto::OpDesc &desc, BlockDesc *block)
 // Explicitly implement the assign operator, Since the added
 // unique_ptr data member does not have the implicit assign operator.
 OpDesc &OpDesc::operator=(const OpDesc &other) {
+  if (this == &other) {
+    return *this;
+  }
   CopyFrom(other);
   block_ = other.block_;
   need_update_ = true;
@@ -1197,7 +1200,7 @@ VarDesc *OpDesc::FindVarRecursive(const std::string &name) {
   PADDLE_THROW(platform::errors::NotFound(
       "Not found Var(%s) from Block(%d) back into global Block.",
       name,
-      block_->ID()));
+      block_->ID()));  // NOLINT
 }
 
 CompileTimeInferShapeContext::CompileTimeInferShapeContext(

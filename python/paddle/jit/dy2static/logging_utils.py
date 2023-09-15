@@ -15,7 +15,7 @@
 import os
 import threading
 
-from paddle.fluid import log_helper
+from paddle.base import log_helper
 
 from .ast_utils import ast_to_source_code
 
@@ -206,14 +206,14 @@ def set_verbosity(level=0, also_to_stdout=False):
     Examples:
         .. code-block:: python
 
-            import os
-            import paddle
+            >>> import os
+            >>> import paddle
 
-            paddle.jit.set_verbosity(1)
-            # The verbosity level is now 1
+            >>> paddle.jit.set_verbosity(1)
+            >>> # The verbosity level is now 1
 
-            os.environ['TRANSLATOR_VERBOSITY'] = '3'
-            # The verbosity level is now 3, but it has no effect because it has a lower priority than `set_verbosity`
+            >>> os.environ['TRANSLATOR_VERBOSITY'] = '3'
+            >>> # The verbosity level is now 3, but it has no effect because it has a lower priority than `set_verbosity`
     """
     _TRANSLATOR_LOGGER.verbosity_level = level
     _TRANSLATOR_LOGGER.need_to_echo_log_to_stdout = also_to_stdout
@@ -244,14 +244,15 @@ def set_code_level(level=LOG_AllTransformer, also_to_stdout=False):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import os
+            >>> import paddle
 
-            paddle.jit.set_code_level(2)
-            # It will print the transformed code at level 2, which means to print the code after second transformer,
-            # as the date of August 28, 2020, it is CastTransformer.
+            >>> paddle.jit.set_code_level(2)
+            >>> # It will print the transformed code at level 2, which means to print the code after second transformer,
+            >>> # as the date of August 28, 2020, it is CastTransformer.
 
-            os.environ['TRANSLATOR_CODE_LEVEL'] = '3'
-            # The code level is now 3, but it has no effect because it has a lower priority than `set_code_level`
+            >>> os.environ['TRANSLATOR_CODE_LEVEL'] = '3'
+            >>> # The code level is now 3, but it has no effect because it has a lower priority than `set_code_level`
 
     """
     _TRANSLATOR_LOGGER.transformed_code_level = level

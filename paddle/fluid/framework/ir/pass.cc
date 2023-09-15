@@ -28,7 +28,7 @@ class Graph;
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -36,7 +36,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-static const char kParamScopeAttr[] = "__param_scope__";
+static const char kParamScopeAttr[] = "__param_scope__";  // NOLINT
 
 static const std::vector<std::string> support_subgraph_passes = {
     "simplify_with_basic_ops_pass",
@@ -158,7 +158,7 @@ Graph *Pass::Apply(Graph *graph) const {
     }
   }
   applied_ = true;
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // Clear mkl-dnn cache,
   // Passes can change params, tensors, so caching need to be discarded
   platform::ClearMKLDNNCache(paddle::platform::CPUPlace());

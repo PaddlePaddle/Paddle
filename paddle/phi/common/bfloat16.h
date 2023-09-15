@@ -31,10 +31,14 @@
 #include <cuda_bf16.h>
 #endif
 
+#ifndef PADDLE_WITH_HIP
 #if !defined(_WIN32)
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
 #else
 #define PADDLE_ALIGN(x) __declspec(align(x))
+#endif
+#else
+#define PADDLE_ALIGN(x)
 #endif
 
 namespace phi {
@@ -153,7 +157,9 @@ struct PADDLE_ALIGN(2) bfloat16 {
     uint16_t temp = x;
     uint16_t* temp_ptr = reinterpret_cast<uint16_t*>(&temp);
     res = *temp_ptr;
-    return res;
+    // return res;
+    res = res << 16;
+    return *reinterpret_cast<float*>(&res);
 #else
 #ifdef PADDLE_CUDA_BF16
     return __bfloat162float(*reinterpret_cast<const __nv_bfloat16*>(&x));

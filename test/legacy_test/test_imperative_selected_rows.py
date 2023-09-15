@@ -17,10 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.optimizer import SGDOptimizer
+from paddle import base
+from paddle.base import core
+from paddle.base.dygraph.base import to_variable
 
 
 class SimpleNet(paddle.nn.Layer):
@@ -40,15 +39,15 @@ class SimpleNet(paddle.nn.Layer):
 
 class TestSimpleNet(unittest.TestCase):
     def test_selectedrows_gradient1(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
 
         for place in places:
             for dtype in ["float32", "float64"]:
                 for sort_sum_gradient in [True, False]:
                     paddle.disable_static(place)
-                    fluid.set_flags(
+                    base.set_flags(
                         {'FLAGS_sort_sum_gradient': sort_sum_gradient}
                     )
                     # grad_clip = paddle.nn.ClipGradByGlobalNorm(5.0)
@@ -57,9 +56,9 @@ class TestSimpleNet(unittest.TestCase):
                     input = paddle.to_tensor(input_word)
 
                     simplenet = SimpleNet(20, 32, dtype)
-                    adam = SGDOptimizer(
+                    adam = paddle.optimizer.SGD(
                         learning_rate=0.001,
-                        parameter_list=simplenet.parameters(),
+                        parameters=simplenet.parameters(),
                     )  # grad_clip=grad_clip
                     input_emb, emb = simplenet(input)
                     input_emb.retain_grads()
@@ -79,14 +78,14 @@ class TestSimpleNet(unittest.TestCase):
                     paddle.enable_static()
 
     def test_selectedrows_gradient2(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
 
         for place in places:
             for sort_sum_gradient in [True, False]:
-                with fluid.dygraph.guard(place):
-                    fluid.set_flags(
+                with base.dygraph.guard(place):
+                    base.set_flags(
                         {'FLAGS_sort_sum_gradient': sort_sum_gradient}
                     )
                     grad_clip = paddle.nn.ClipGradByGlobalNorm(5.0)
@@ -95,9 +94,9 @@ class TestSimpleNet(unittest.TestCase):
                     input = to_variable(input_word)
 
                     simplenet = SimpleNet(20, 32, "float32")
-                    adam = SGDOptimizer(
+                    adam = paddle.optimizer.SGD(
                         learning_rate=0.001,
-                        parameter_list=simplenet.parameters(),
+                        parameters=simplenet.parameters(),
                         grad_clip=grad_clip,
                     )
                     input_emb, emb = simplenet(input)

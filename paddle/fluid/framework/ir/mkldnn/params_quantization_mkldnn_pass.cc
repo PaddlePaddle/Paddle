@@ -76,7 +76,7 @@ void QuantizeConvInput(Scope* scope,
 
 }  // namespace
 
-ParamsQuantizationMkldnnPass::ParamsQuantizationMkldnnPass() {
+ParamsQuantizationMkldnnPass::ParamsQuantizationMkldnnPass() {  // NOLINT
   AddOpCompat(OpCompat("fused_conv2d"))
       .AddInput("Input")
       .IsTensor()

@@ -36,7 +36,9 @@ void PyReader::ReadNext(paddle::framework::LoDTensorArray* out) {
   if (!success) out->clear();
 }
 
-PyReader::~PyReader() { queue_->Close(); }
+PyReader::~PyReader() {  // NOLINT
+  queue_->Close();
+}
 
 void PyReader::Shutdown() { queue_->Close(); }
 

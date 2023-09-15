@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestInplaceANBOpTraining(unittest.TestCase):
@@ -42,12 +42,12 @@ class TestInplaceANBOpTraining(unittest.TestCase):
         use_cuda=False,
         inplace=False,
     ):
-        main = fluid.Program()
-        startup = fluid.Program()
+        main = base.Program()
+        startup = base.Program()
         main.random_seed = seed
         startup.random_seed = seed
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, startup):
+        with base.unique_name.guard():
+            with base.program_guard(main, startup):
                 data = paddle.static.data(
                     name='input',
                     shape=self.dshape,
@@ -58,8 +58,8 @@ class TestInplaceANBOpTraining(unittest.TestCase):
 
                 bn = paddle.static.nn.batch_norm(
                     data,
-                    param_attr=fluid.ParamAttr(name='bn_scale'),
-                    bias_attr=fluid.ParamAttr(name='bn_bias'),
+                    param_attr=base.ParamAttr(name='bn_scale'),
+                    bias_attr=base.ParamAttr(name='bn_bias'),
                     moving_mean_name='bn_moving_mean',
                     moving_variance_name='bn_moving_variance',
                     data_layout=layout,
@@ -78,7 +78,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                 sigmoid = paddle.nn.functional.sigmoid(bn)
                 out = paddle.sum(sigmoid)
                 if not only_forward:
-                    sgd_opt = fluid.optimizer.SGD(learning_rate=0.0)
+                    sgd_opt = paddle.optimizer.SGD(learning_rate=0.0)
                     sgd_opt.backward(out)
         return main, startup, [out, bn]
 
@@ -103,7 +103,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                         use_cuda,
                         False,
                     )
-                    exe = fluid.Executor(place)
+                    exe = base.Executor(place)
                     exe.run(startup)
                     exe.run(program=main, feed={'input': data})
 

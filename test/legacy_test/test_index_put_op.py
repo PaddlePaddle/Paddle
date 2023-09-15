@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import Program
+from paddle.base import Program
 
 
 def compute_index_put_ref(x_np, indices_np, value_np, accumulate=False):
@@ -47,14 +47,15 @@ def has_duplicate_index(indices, shapes):
         return True
 
 
-def gen_indices_np(x_shape, indices_shapes, index_type):
+def gen_indices_np(x_shape, indices_shapes, index_type, is_all_false):
     indices = []
     if index_type == np.bool_:
         indice = np.zeros(indices_shapes[0], dtype=np.bool_)
-        indice.flatten()
-        for i in range(len(indice)):
-            indice[i] = (i & 1) == 0
-        indice = indice.reshape(indices_shapes[0])
+        if not is_all_false:
+            indice.flatten()
+            for i in range(len(indice)):
+                indice[i] = (i & 1) == 0
+            indice = indice.reshape(indices_shapes[0])
         indices.append(indice)
     else:
         while True:
@@ -78,6 +79,7 @@ def gen_indices_np(x_shape, indices_shapes, index_type):
 class TestIndexPutAPIBase(unittest.TestCase):
     def setUp(self):
         self.mixed_indices = False
+        self.is_all_false = False
         self.init_dtype_type()
         self.setPlace()
         self.x_np = np.random.random(self.x_shape).astype(self.dtype_np)
@@ -85,17 +87,26 @@ class TestIndexPutAPIBase(unittest.TestCase):
 
         if self.mixed_indices:
             tmp_indices_np1 = gen_indices_np(
-                self.x_shape, self.indices_shapes, self.index_type_np
+                self.x_shape,
+                self.indices_shapes,
+                self.index_type_np,
+                self.is_all_false,
             )
             tmp_indices_np2 = gen_indices_np(
-                self.x_shape, self.indices_shapes1, self.index_type_np1
+                self.x_shape,
+                self.indices_shapes1,
+                self.index_type_np1,
+                self.is_all_false,
             )
             self.indices_np = tuple(
                 list(tmp_indices_np1) + list(tmp_indices_np2)
             )
         else:
             self.indices_np = gen_indices_np(
-                self.x_shape, self.indices_shapes, self.index_type_np
+                self.x_shape,
+                self.indices_shapes,
+                self.index_type_np,
+                self.is_all_false,
             )
 
     def init_dtype_type(self):
@@ -565,6 +576,32 @@ class TestIndexPutAPI30(TestIndexPutAPIBase):
         self.accumulate = True
 
 
+class TestIndexPutAPI31(TestIndexPutAPIBase):
+    def init_dtype_type(self):
+        self.dtype_np = np.bool_
+        self.index_type_np = np.int32
+        self.x_shape = (100, 110)
+        self.indices_shapes = [(21,), (21,)]
+        self.value_shape = (21,)
+        self.dtype_pd = paddle.bool
+        self.index_type_pd = paddle.int32
+        self.accumulate = False
+        self.is_all_false = True
+
+
+class TestIndexPutAPI32(TestIndexPutAPIBase):
+    def init_dtype_type(self):
+        self.dtype_np = np.bool_
+        self.index_type_np = np.int32
+        self.x_shape = (100, 110)
+        self.indices_shapes = [(21,), (21,)]
+        self.value_shape = (21,)
+        self.dtype_pd = paddle.bool
+        self.index_type_pd = paddle.int32
+        self.accumulate = True
+        self.is_all_false = True
+
+
 class TestIndexPutInplaceAPI(unittest.TestCase):
     def setUp(self):
         self.init_dtype_type()
@@ -572,7 +609,7 @@ class TestIndexPutInplaceAPI(unittest.TestCase):
         self.x_np = np.random.random(self.x_shape).astype(self.dtype_np)
         self.value_np = np.random.random(self.value_shape).astype(self.dtype_np)
         self.indices_np = gen_indices_np(
-            self.x_shape, self.indices_shapes, self.index_type_np
+            self.x_shape, self.indices_shapes, self.index_type_np, False
         )
 
     def init_dtype_type(self):
@@ -678,7 +715,7 @@ class TestIndexPutAPIBackward(unittest.TestCase):
                 atol=1e-7,
             )
 
-    def test_backwardScalarVal(self):
+    def test_backward_scalarval(self):
         paddle.disable_static()
         for place in self.place:
             paddle.device.set_device(place)
@@ -719,7 +756,7 @@ class TestIndexPutAPIBackward(unittest.TestCase):
                 np.array([4.0], dtype=np.float64), dvalue.numpy(), atol=1e-7
             )
 
-    def test_backwardBroadCastValue(self):
+    def test_backward_broadcastvalue(self):
         paddle.disable_static()
         for place in self.place:
             paddle.device.set_device(place)
@@ -764,7 +801,7 @@ class TestIndexPutAPIBackward(unittest.TestCase):
                 atol=1e-7,
             )
 
-    def test_backwardBroadCastValue1(self):
+    def test_backward_broadcastvalue1(self):
         paddle.disable_static()
         for place in self.place:
             paddle.device.set_device(place)
@@ -809,7 +846,7 @@ class TestIndexPutAPIBackward(unittest.TestCase):
                 atol=1e-7,
             )
 
-    def test_backwardBroadCastValue2(self):
+    def test_backward_broadcastvalue2(self):
         paddle.disable_static()
         for place in self.place:
             paddle.device.set_device(place)
@@ -853,6 +890,83 @@ class TestIndexPutAPIBackward(unittest.TestCase):
                 dvalue.numpy(),
                 atol=1e-7,
             )
+
+    def test_backward_all_false_bool_indice(self):
+        paddle.disable_static()
+        for place in self.place:
+            paddle.device.set_device(place)
+            value = paddle.ones(shape=[2, 1], dtype=paddle.float64)
+            x = paddle.ones(shape=[16, 21], dtype=paddle.float64)
+            ix = paddle.zeros(shape=[16, 21], dtype=paddle.bool)
+
+            value.stop_gradient = False
+            x.stop_gradient = False
+            out = paddle.index_put(x, (ix,), value, False)
+
+            dx, dvalue = paddle.grad(
+                outputs=[out],
+                inputs=[x, value],
+                create_graph=False,
+                retain_graph=True,
+            )
+            ref_dx = np.ones(shape=[16, 21], dtype=np.float64)
+
+            np.testing.assert_allclose(ref_dx, dx.numpy(), atol=1e-7)
+            np.testing.assert_allclose(
+                np.array([[0.0], [0.0]], dtype=np.float64),
+                dvalue.numpy(),
+                atol=1e-7,
+            )
+
+            out = paddle.index_put(x, (ix,), value, True)
+
+            dx, dvalue = paddle.grad(
+                outputs=[out],
+                inputs=[x, value],
+                create_graph=False,
+                retain_graph=True,
+            )
+            ref_dx = np.ones(shape=[16, 21], dtype=np.float64)
+
+            np.testing.assert_allclose(ref_dx, dx.numpy(), atol=1e-7)
+            np.testing.assert_allclose(
+                np.array([[0.0], [0.0]], dtype=np.float64),
+                dvalue.numpy(),
+                atol=1e-7,
+            )
+
+    def test_backward_in_static(self):
+        paddle.enable_static()
+        exe = paddle.static.Executor()
+        train_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(train_program, startup_program):
+            x = paddle.zeros((4, 2, 5))
+            x.stop_gradient = False
+
+            y = x + 1
+            index = paddle.to_tensor([0, 1, 3])
+
+            value = paddle.ones((5,))
+            value.stop_gradient = False
+
+            z = paddle.index_put(y, (index,), value)
+            l = z.sum()
+            paddle.static.append_backward(l)
+            res = exe.run(fetch_list=[z, x.grad_name, value.grad_name])
+
+            expected_z = np.ones((4, 2, 5))
+            expected_z[[0, 1, 3]] = np.ones((5,))
+
+            expected_x_grad = np.ones((4, 2, 5))
+            expected_x_grad[[0, 1, 3]] = 0
+
+            expected_v_grad = np.ones((5,)) * 3 * 2
+
+            np.testing.assert_allclose(expected_z, res[0])
+            np.testing.assert_allclose(expected_x_grad, res[1])
+            np.testing.assert_allclose(expected_v_grad, res[2])
+        paddle.disable_static()
 
 
 class TestIndexPutAPIMixedIndices(TestIndexPutAPIBase):

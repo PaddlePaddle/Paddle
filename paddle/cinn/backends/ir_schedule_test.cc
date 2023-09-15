@@ -177,7 +177,7 @@ void TestSplitThrow() {
   std::vector<Expr> vec_ast{ast_expr};
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(
-      mod_expr, -1, false, ir::ScheduleErrorMessageLevel::kGeneral);
+      mod_expr, -1, false, utils::ErrorMessageLevel::kGeneral);
   auto fused = ir_sch.Fuse("B", {0, 1});
   // statement that cause the exception
   auto splited = ir_sch.Split(fused, {-1, -1});
@@ -196,7 +196,7 @@ void TestSplitThrow() {
   auto source_code = codegen.Compile(module, CodeGenC::OutputKind::CImpl);
 }
 TEST(IrSchedule, split_throw) {
-  ASSERT_THROW(TestSplitThrow(), ir::enforce::EnforceNotMet);
+  ASSERT_THROW(TestSplitThrow(), utils::enforce::EnforceNotMet);
 }
 
 TEST(IrSchedule, reorder1) {

@@ -16,6 +16,7 @@ import unittest
 
 import paddle
 import paddle.nn.functional as F
+from paddle.base import core
 
 
 class ConvBNLayer(paddle.nn.Layer):
@@ -77,6 +78,11 @@ class Model(paddle.nn.Layer):
         return x
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0.",
+)
 class TestAMPDecorate(unittest.TestCase):
     def check_results(self, fp32_layers=[], fp16_layers=[]):
         for idx in range(len(fp32_layers)):

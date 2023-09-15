@@ -112,8 +112,8 @@ TEST(buffered_allocator, garbage_collection) {
   auto chunk = cpu_allocator->Allocate(2048);
   std::unique_ptr<Allocator> allocator(new BestFitAllocator(chunk.get()));
 
-  auto buffered_allocator = std::unique_ptr<BufferedAllocator>(
-      new BufferedAllocator(std::move(allocator)));
+  auto buffered_allocator =
+      std::make_unique<BufferedAllocator>(std::move(allocator));
   auto x1 = buffered_allocator->Allocate(1600);
   auto x2 = buffered_allocator->Allocate(400);
   x1 = nullptr;

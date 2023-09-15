@@ -88,7 +88,7 @@ ReduceMaxFusePattern::ReduceMaxFusePattern(PDPattern* pattern,
             auto* op_desc = node->Op();
             auto input_var = node->inputs[0]->Var();
             auto pool2d_x_shape = input_var->GetShape();
-            std::vector<int> HW = {static_cast<int>(pool2d_x_shape[2]),
+            std::vector<int> hw = {static_cast<int>(pool2d_x_shape[2]),
                                    static_cast<int>(pool2d_x_shape[3])};
             auto pool_type =
                 op_desc->GetAttrIfExists<std::string>("pooling_type");
@@ -98,8 +98,8 @@ ReduceMaxFusePattern::ReduceMaxFusePattern(PDPattern* pattern,
                 op_desc->GetAttrIfExists<std::vector<int>>("strides");
             auto paddings_array =
                 op_desc->GetAttrIfExists<std::vector<int>>("paddings");
-            return pool_type == "max" && ksize_array == HW &&
-                   strides_array == HW &&
+            return pool_type == "max" && ksize_array == hw &&
+                   strides_array == hw &&
                    paddings_array == std::vector<int>{0, 0};
           });
   auto* pool2d_out = pattern->NewNode(pool2d_out_repr())
@@ -181,7 +181,7 @@ ReduceMeanFusePattern::ReduceMeanFusePattern(PDPattern* pattern,
             auto* op_desc = node->Op();
             auto input_var = node->inputs[0]->Var();
             auto pool2d_x_shape = input_var->GetShape();
-            std::vector<int> HW = {static_cast<int>(pool2d_x_shape[2]),
+            std::vector<int> hw = {static_cast<int>(pool2d_x_shape[2]),
                                    static_cast<int>(pool2d_x_shape[3])};
             auto pool_type =
                 op_desc->GetAttrIfExists<std::string>("pooling_type");
@@ -191,8 +191,8 @@ ReduceMeanFusePattern::ReduceMeanFusePattern(PDPattern* pattern,
                 op_desc->GetAttrIfExists<std::vector<int>>("strides");
             auto paddings_array =
                 op_desc->GetAttrIfExists<std::vector<int>>("paddings");
-            return pool_type == "avg" && ksize_array == HW &&
-                   strides_array == HW &&
+            return pool_type == "avg" && ksize_array == hw &&
+                   strides_array == hw &&
                    paddings_array == std::vector<int>{0, 0};
           });
   auto* pool2d_out = pattern->NewNode(pool2d_out_repr())
@@ -295,7 +295,7 @@ void ReduceOpsFusePass::FuseReduceMean(ir::Graph* graph) const {
     framework::OpDesc reduce_op_desc(block);
     reduce_op_desc.SetType("reduce_mean");
     reduce_op_desc.SetInput("X", {x->Name()});
-    reduce_op_desc.SetAttr("dim", std::vector<int>{-2});
+    reduce_op_desc.SetAttr("dim", std::vector<int>{-1});
     reduce_op_desc.SetAttr("reduce_all", false);
     reduce_op_desc.SetAttr("keep_dim", true);
     reduce_op_desc.SetOutput("Out", {squeeze2_out->Name()});

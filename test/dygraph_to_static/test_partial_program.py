@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 from test_fetch_feed import Linear
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.jit.api import to_static
 
 SEED = 2020
@@ -49,9 +50,10 @@ def nested_output(x, y):
 
 def fake_data(shape):
     x_data = np.random.random(shape).astype('float32')
-    return fluid.dygraph.to_variable(x_data)
+    return base.dygraph.to_variable(x_data)
 
 
+@dy2static_unittest
 class TestWithNestedInput(unittest.TestCase):
     def setUp(self):
         self.x = None
@@ -71,7 +73,7 @@ class TestWithNestedInput(unittest.TestCase):
         ]
 
     def _run(self, to_static):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             if self.x is None or self.y is None:
                 self.fake_input()
 
@@ -88,13 +90,14 @@ class TestWithNestedInput(unittest.TestCase):
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
+@dy2static_unittest
 class TestWithNestedOutput(unittest.TestCase):
     def setUp(self):
         self.x = None
         self.y = None
 
     def _run(self, to_static):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             if self.x is None or self.y is None:
                 self.x = fake_data([10, 16])
                 self.y = fake_data([10, 16])
@@ -116,7 +119,7 @@ class TestWithNestedOutput(unittest.TestCase):
         self.assertTrue(len(dygraph_res) == len(static_res))
 
         for dy_var, st_var in zip(dygraph_res, static_res):
-            if isinstance(dy_var, fluid.core.eager.Tensor):
+            if isinstance(dy_var, base.core.eager.Tensor):
                 np.testing.assert_allclose(
                     dy_var.numpy(), st_var.numpy(), rtol=1e-05
                 )
@@ -124,12 +127,15 @@ class TestWithNestedOutput(unittest.TestCase):
                 self.assertTrue(dy_var, st_var)
 
 
+@dy2static_unittest
 class TestWithTrainAndEval(unittest.TestCase):
+    @ast_only_test
     def test_switch_eval_and_train(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             linear_net = Linear()
+            linear_net = paddle.jit.to_static(linear_net)
             x_data = np.random.random((4, 10)).astype('float32')
-            x = fluid.dygraph.to_variable(x_data)
+            x = base.dygraph.to_variable(x_data)
             linear_net(x)
 
             _, train_partial_layer = linear_net.forward.program_cache.last()[-1]
@@ -154,16 +160,20 @@ class TestWithTrainAndEval(unittest.TestCase):
             )
 
 
+@dy2static_unittest
 class TestWithNoGrad(unittest.TestCase):
+    @ast_only_test
     def test_with_no_grad(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             linear_net = Linear()
+            linear_net = paddle.jit.to_static(linear_net)
             x_data = np.random.random((5, 10)).astype('float32')
-            x = fluid.dygraph.to_variable(x_data)
+            x = base.dygraph.to_variable(x_data)
 
             with paddle.no_grad():
                 linear_net.train()
                 linear_net(x)
+                # BUG: 我们希望这里 是 ASTStaticFunction(StaticFunction):
                 _, partial_layer = linear_net.forward.program_cache.last()[-1]
                 self.assertEqual(
                     partial_layer.program, partial_layer._train_program
@@ -186,12 +196,13 @@ class GPT2LMHeadModel(paddle.nn.Layer):
         return x1
 
 
+@dy2static_unittest
 class TestPruneUnusedParamInProgram(unittest.TestCase):
     def test_prune(self):
         input_ids = np.array([[15, 11, 6, 3, 18, 13]]).astype("float32")
 
-        place = fluid.CPUPlace()
-        with fluid.dygraph.guard(place):
+        place = base.CPUPlace()
+        with base.dygraph.guard(place):
             model = GPT2LMHeadModel()
             model.eval()
             input_ids = paddle.to_tensor(input_ids)

@@ -31,6 +31,8 @@
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
+
+PHI_DECLARE_bool(use_stride_kernel);
 namespace paddle {
 namespace imperative {
 
@@ -195,7 +197,16 @@ class Tracer {
 
   void DisableLayoutAutoTune() { use_layout_autotune_ = false; }
 
-  void EnableLayoutAutoTune() { use_layout_autotune_ = true; }
+  void EnableLayoutAutoTune() {
+    use_layout_autotune_ = true;
+    if (FLAGS_use_stride_kernel) {
+      LOG(WARNING) << "When the layout_autotune policy is on, Paddle will turn "
+                      "off the Stride policy. This will cause the input and "
+                      "output of the Strided API no longer share memory, which "
+                      "may cause problems with model accuracy.";
+      FLAGS_use_stride_kernel = false;
+    }
+  }
 
   bool UseLayoutAutoTune() {
 #if defined(PADDLE_WITH_CUDA)

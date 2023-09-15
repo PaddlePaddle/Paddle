@@ -36,7 +36,7 @@ endif()
 set(PHI_DEPS
     phi_profiler_proto
     auto_parallel_proto
-    gflags
+    ${flags_dep}
     glog
     warpctc
     warprnnt
@@ -90,6 +90,10 @@ if(WITH_XPU)
     add_subdirectory(kernels/xpu/plugin)
     list(APPEND PHI_DEPS xpuplugin)
   endif()
+endif()
+
+if(WITH_DGC)
+  list(APPEND PHI_DEPS dgc)
 endif()
 
 set(PHI_SRCS

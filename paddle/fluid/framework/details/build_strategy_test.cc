@@ -30,7 +30,7 @@
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/platform/place.h"
 
-DECLARE_bool(convert_all_blocks);
+PD_DECLARE_bool(convert_all_blocks);
 
 namespace paddle {
 namespace framework {

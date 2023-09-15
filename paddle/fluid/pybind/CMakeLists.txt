@@ -39,9 +39,10 @@ set(PYBIND_DEPS
     phi_utils
     phi
     phi_kernel_adaptor
-    pd_dialect
+    pd_op_dialect
     program_translator
-    ir
+    pd_inplace_pass
+    pir
     new_profiler
     jit_layer
     jit_property
@@ -57,18 +58,7 @@ if(WITH_PSCORE)
   endif()
 endif()
 if(WITH_RPC)
-  set(PYBIND_DEPS
-      ${PYBIND_DEPS}
-      paddle_rpc
-      brpc
-      ssl
-      crypto
-      protobuf
-      zlib
-      leveldb
-      snappy
-      phi
-      glog)
+  set(PYBIND_DEPS ${PYBIND_DEPS} paddle_rpc ${EXTERNAL_BRPC_DEPS} zlib phi)
 endif()
 if(WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
@@ -124,6 +114,8 @@ set(PYBIND_SRCS
     pybind.cc
     imperative.cc
     inference_api.cc
+    ops_api.cc
+    static_op_function.cc
     ir.cc
     graph.cc
     bind_fleet_executor.cc
@@ -352,7 +344,7 @@ if(WITH_PYTHON)
       add_custom_command(
         OUTPUT ${op_impl_path}/ir.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${IR_LIB} ${op_impl_path}
-        DEPENDS ir)
+        DEPENDS pir)
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/ir.dll)
     endif()
 
@@ -534,6 +526,7 @@ if(WITH_PYTHON)
   #                PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
   # endif()
 
+  add_dependencies(${SHARD_LIB_NAME} ops_api_gen)
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     add_dependencies(${SHARD_LIB_NAME} legacy_eager_codegen)
     add_dependencies(${SHARD_LIB_NAME} eager_legacy_op_function_generator_cmd)

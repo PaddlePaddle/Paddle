@@ -69,7 +69,6 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
  public:
   static std::shared_ptr<ProcessGroupNCCL> CreateProcessGroupNCCL(
       const std::shared_ptr<phi::distributed::Store>& store,
-      int device_id,
       int rank,
       int size,
       int gid);

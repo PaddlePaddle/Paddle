@@ -18,7 +18,6 @@ import paddle
 import paddle.nn.functional as F
 from paddle import nn, tensor
 from paddle.distributed.fleet import auto
-from paddle.fluid import layers
 from paddle.nn.layer.transformer import _convert_param_attr_to_list
 
 paddle.enable_static()
@@ -36,7 +35,7 @@ def init_global():
 
 class MultiHeadAttention(nn.Layer):
     """
-    Attention mapps queries and a set of key-value pairs to outputs, and
+    Attention maps queries and a set of key-value pairs to outputs, and
     Multi-Head Attention performs multiple parallel attention to jointly attending
     to information from different representation subspaces.
     """
@@ -115,7 +114,7 @@ class MultiHeadAttention(nn.Layer):
 
     def _prepare_qkv(self, query, key, value, use_cache=False, cache=None):
         """
-        Prapares linear projected queries, keys and values for usage of subsequnt
+        Prepares linear projected queries, keys and values for usage of subsequent
         multiple parallel attention. If `cache` is not None, using cached results
         to reduce redundant calculations.
         """
@@ -204,7 +203,7 @@ class MultiHeadAttention(nn.Layer):
 
     def gen_cache(self, key, value=None, type=Cache):
         """
-        Generates cache for `forward` usage in inference accroding to arguments.
+        Generates cache for `forward` usage in inference according to arguments.
         The generated cache is an instance of `MultiHeadAttention.Cache` or an
         instance of `MultiHeadAttention.StaticCache`.
         """
@@ -212,18 +211,10 @@ class MultiHeadAttention(nn.Layer):
             k, v = self.compute_kv(key, value)
             return self.StaticCache(k, v)
         elif value is None:  # incremental_state
-            k = layers.fill_constant_batch_size_like(
-                input=key,
-                shape=[-1, self.num_heads, 0, self.head_dim],
-                dtype=key.dtype,
-                value=0,
-            )
-            v = layers.fill_constant_batch_size_like(
-                input=key,
-                shape=[-1, self.num_heads, 0, self.head_dim],
-                dtype=key.dtype,
-                value=0,
-            )
+            fill_shape = [-1, self.num_heads, 0, self.head_dim]
+            fill_shape[0] = paddle.shape(key)[0].item()
+            k = paddle.full(shape=fill_shape, fill_value=0, dtype=key.dtype)
+            v = paddle.full(shape=fill_shape, fill_value=0, dtype=key.dtype)
             return self.Cache(k, v)
         else:
             # incremental_state with initial value, mainly for usage like UniLM
@@ -582,7 +573,7 @@ class GPTEmbeddings(nn.Layer):
             ones = paddle.ones_like(input_ids, dtype="int64")
             seq_length = paddle.cumsum(ones, axis=-1)
             position_ids = seq_length - ones
-        input_embedings = self.word_embeddings(input_ids)
+        input_embeddings = self.word_embeddings(input_ids)
         if _global_parallel_strategy == "mp":
             auto.shard_tensor(
                 self.word_embeddings.weight, _global_process_mesh, ["x", None]
@@ -601,7 +592,7 @@ class GPTEmbeddings(nn.Layer):
             )
 
         position_embeddings = self.position_embeddings(position_ids)
-        embeddings = input_embedings + position_embeddings
+        embeddings = input_embeddings + position_embeddings
         embeddings = self.dropout(embeddings)
         return embeddings
 
@@ -818,7 +809,7 @@ class GPTForPretraining(nn.Layer):
             x_dims_mapping = ["x"] + [None for i in range(len(x.shape) - 1)]
             w_dims_mapping = ["y"] + [None for i in range(len(w.shape) - 1)]
 
-        with paddle.fluid.name_scope('skip_quant'):
+        with paddle.base.name_scope('skip_quant'):
             if mesh:
                 matmul = auto.shard_op(
                     paddle.matmul, mesh, [x_dims_mapping, w_dims_mapping, None]

@@ -270,11 +270,9 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
     while (!sorted_indices.empty()) {
       const int idx = sorted_indices.front().second;
       bool keep = true;
-      for (size_t k = 0; k < selected_indices->size(); ++k) {
+      for (const auto kept_idx : *selected_indices) {
         if (keep) {
-          const int kept_idx = (*selected_indices)[k];
           T overlap = T(0.);
-
           overlap = JaccardOverlap<T>(cls_dets[idx], cls_dets[kept_idx], false);
           keep = overlap <= adaptive_threshold;
         } else {
@@ -374,8 +372,7 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
     for (const auto& it : indices) {
       int label = it.first;
       const std::vector<int>& label_indices = it.second;
-      for (size_t j = 0; j < label_indices.size(); ++j) {
-        int idx = label_indices[j];
+      for (auto idx : label_indices) {
         score_index_pairs.push_back(std::make_pair(preds.at(label)[idx][4],
                                                    std::make_pair(label, idx)));
       }

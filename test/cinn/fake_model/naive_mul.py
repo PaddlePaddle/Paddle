@@ -14,7 +14,7 @@
 
 
 import paddle
-from paddle import fluid, static
+from paddle import static
 
 size = 30
 paddle.enable_static()
@@ -37,5 +37,5 @@ loss = exe = static.Executor(cpu)
 
 exe.run(static.default_startup_program())
 
-fluid.io.save_inference_model("./naive_mul_model", [a.name], [a1], exe)
+static.io.save_inference_model("./naive_mul_model", [a], [a1], exe)
 print('res is : ', a1.name)

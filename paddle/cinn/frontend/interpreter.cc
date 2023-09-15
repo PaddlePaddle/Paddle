@@ -19,13 +19,13 @@
 #include "paddle/cinn/frontend/optimize.h"
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/op/use_ops.h"
-#include "paddle/cinn/hlir/pass/use_general_pass.h"
 #include "paddle/cinn/hlir/pass/use_pass.h"
 #include "paddle/cinn/runtime/flags.h"
 
-DECLARE_bool(enable_auto_tuner);
+PD_DECLARE_bool(enable_auto_tuner);
 
 namespace cinn::frontend {
 
@@ -121,10 +121,8 @@ void Interpreter::Impl::Build(const Target& target,
   graph->attrs["model_name"] = std::make_shared<absl::any>(model_name);
   scope_ = hlir::framework::BuildScope(target, graph, scope_);
 
-  graph_compiler_.reset(
-      new hlir::framework::GraphCompiler(target, scope_, graph));
-  hlir::framework::GraphCompiler::CompileOptions options;
-  options.with_instantiate_variables = true;
+  hlir::framework::CompilationContext context(graph, scope_, target);
+  context.with_instantiate_variables = true;
   if (FLAGS_enable_auto_tuner) {
     VLOG(4) << "Compile with auto-tune";
     auto_schedule::AutoTuner auto_tuner(target, graph.get());
@@ -132,10 +130,10 @@ void Interpreter::Impl::Build(const Target& target,
                           graph_compiler_.get());
     auto_schedule::TuningOptions tuning_options;
     auto_schedule::TuningResult tuning_result = auto_tuner.Tune(tuning_options);
-    options.Apply(tuning_result);
+    context.ApplyTuningResult(tuning_result);
   }
-  runtime_program_ =
-      graph_compiler_->Build(options, std::move(fetch_var_ids)).runtime_program;
+  graph_compiler_ = std::make_unique<hlir::framework::GraphCompiler>(context);
+  runtime_program_ = graph_compiler_->Build();
   runtime_program_->PreRun();
 }
 
@@ -151,4 +149,4 @@ Interpreter::Interpreter(
 
 }  // namespace cinn::frontend
 
-cinn::frontend::Interpreter::~Interpreter() {}
+cinn::frontend::Interpreter::~Interpreter() = default;

@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 devices = ['cpu', 'gpu']
 
@@ -33,17 +33,17 @@ class TestSparseCreate(unittest.TestCase):
             dense_indices, dense_elements, dense_shape, stop_gradient=False
         )
         # test the to_string.py
-        assert np.array_equal(indices, coo.indices().numpy())
-        assert np.array_equal(values, coo.values().numpy())
+        np.testing.assert_array_equal(indices, coo.indices().numpy())
+        np.testing.assert_array_equal(values, coo.values().numpy())
 
     def test_create_coo_by_np(self):
         indices = [[0, 1, 2], [1, 2, 0]]
         values = [1.0, 2.0, 3.0]
         dense_shape = [3, 3]
         coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
-        assert np.array_equal(3, coo.nnz())
-        assert np.array_equal(indices, coo.indices().numpy())
-        assert np.array_equal(values, coo.values().numpy())
+        np.testing.assert_array_equal(3, coo.nnz())
+        np.testing.assert_array_equal(indices, coo.indices().numpy())
+        np.testing.assert_array_equal(values, coo.values().numpy())
 
     def test_create_csr_by_tensor(self):
         crows = [0, 2, 3, 5]
@@ -69,10 +69,10 @@ class TestSparseCreate(unittest.TestCase):
         dense_shape = [3, 4]
         csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
         # test the to_string.py
-        assert np.array_equal(5, csr.nnz())
-        assert np.array_equal(crows, csr.crows().numpy())
-        assert np.array_equal(cols, csr.cols().numpy())
-        assert np.array_equal(values, csr.values().numpy())
+        np.testing.assert_array_equal(5, csr.nnz())
+        np.testing.assert_array_equal(crows, csr.crows().numpy())
+        np.testing.assert_array_equal(cols, csr.cols().numpy())
+        np.testing.assert_array_equal(values, csr.values().numpy())
 
     def test_place(self):
         place = core.CPUPlace()
@@ -132,8 +132,8 @@ class TestSparseConvert(unittest.TestCase):
         values = [1.0, 2.0, 3.0, 4.0, 5.0]
         dense_x = paddle.to_tensor(x, dtype='float32', stop_gradient=False)
         out = dense_x.to_sparse_coo(2)
-        assert np.array_equal(out.indices().numpy(), indices)
-        assert np.array_equal(out.values().numpy(), values)
+        np.testing.assert_array_equal(out.indices().numpy(), indices)
+        np.testing.assert_array_equal(out.values().numpy(), values)
         # test to_sparse_coo_grad backward
         out_grad_indices = [[0, 1], [0, 1]]
         out_grad_values = [2.0, 3.0]
@@ -144,7 +144,9 @@ class TestSparseConvert(unittest.TestCase):
             stop_gradient=True,
         )
         out.backward(out_grad)
-        assert np.array_equal(dense_x.grad.numpy(), out_grad.to_dense().numpy())
+        np.testing.assert_array_equal(
+            dense_x.grad.numpy(), out_grad.to_dense().numpy()
+        )
 
     def test_coo_to_dense(self):
         indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
@@ -168,7 +170,7 @@ class TestSparseConvert(unittest.TestCase):
             dense_tensor.backward(paddle.to_tensor(out_grad))
             # mask the out_grad by sparse_x.indices()
             correct_x_grad = [2.0, 4.0, 7.0, 9.0, 10.0]
-            assert np.array_equal(
+            np.testing.assert_array_equal(
                 correct_x_grad, sparse_x.grad.values().numpy()
             )
 
@@ -182,7 +184,7 @@ class TestSparseConvert(unittest.TestCase):
             sparse_x_cpu.retain_grads()
             dense_tensor_cpu = sparse_x_cpu.to_dense()
             dense_tensor_cpu.backward(paddle.to_tensor(out_grad))
-            assert np.array_equal(
+            np.testing.assert_array_equal(
                 correct_x_grad, sparse_x_cpu.grad.values().numpy()
             )
 
@@ -193,12 +195,12 @@ class TestSparseConvert(unittest.TestCase):
         values = [1, 2, 3, 4, 5]
         dense_x = paddle.to_tensor(x)
         out = dense_x.to_sparse_csr()
-        assert np.array_equal(out.crows().numpy(), crows)
-        assert np.array_equal(out.cols().numpy(), cols)
-        assert np.array_equal(out.values().numpy(), values)
+        np.testing.assert_array_equal(out.crows().numpy(), crows)
+        np.testing.assert_array_equal(out.cols().numpy(), cols)
+        np.testing.assert_array_equal(out.values().numpy(), values)
 
         dense_tensor = out.to_dense()
-        assert np.array_equal(dense_tensor.numpy(), x)
+        np.testing.assert_array_equal(dense_tensor.numpy(), x)
 
     def test_coo_values_grad(self):
         indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
@@ -214,7 +216,7 @@ class TestSparseConvert(unittest.TestCase):
         out_grad = [2.0, 3.0, 5.0, 8.0, 9.0]
         # test coo_values_grad
         values_tensor.backward(paddle.to_tensor(out_grad))
-        assert np.array_equal(out_grad, sparse_x.grad.values().numpy())
+        np.testing.assert_array_equal(out_grad, sparse_x.grad.values().numpy())
         indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
         values = [
             [1.0, 1.0],
@@ -240,7 +242,7 @@ class TestSparseConvert(unittest.TestCase):
         ]
         # test coo_values_grad
         values_tensor.backward(paddle.to_tensor(out_grad))
-        assert np.array_equal(out_grad, sparse_x.grad.values().numpy())
+        np.testing.assert_array_equal(out_grad, sparse_x.grad.values().numpy())
 
     def test_sparse_coo_tensor_grad(self):
         for device in devices:
@@ -266,7 +268,9 @@ class TestSparseConvert(unittest.TestCase):
                 )
                 sparse_x.backward(sparse_out_grad)
                 correct_values_grad = [0, 3]
-                assert np.array_equal(correct_values_grad, values.grad.numpy())
+                np.testing.assert_array_equal(
+                    correct_values_grad, values.grad.numpy()
+                )
 
                 # test the non-zero values is a vector
                 values = [[1, 1], [2, 2]]
@@ -283,7 +287,9 @@ class TestSparseConvert(unittest.TestCase):
                 )
                 sparse_x.backward(sparse_out_grad)
                 correct_values_grad = [[0, 0], [3, 3]]
-                assert np.array_equal(correct_values_grad, values.grad.numpy())
+                np.testing.assert_array_equal(
+                    correct_values_grad, values.grad.numpy()
+                )
 
     def test_sparse_coo_tensor_sorted(self):
         for device in devices:
@@ -300,10 +306,12 @@ class TestSparseConvert(unittest.TestCase):
                 sparse_x = paddle.sparse.coalesce(sparse_x)
                 indices_sorted = [[0, 1], [1, 0]]
                 values_sorted = [5.0, 1.0]
-                assert np.array_equal(
+                np.testing.assert_array_equal(
                     indices_sorted, sparse_x.indices().numpy()
                 )
-                assert np.array_equal(values_sorted, sparse_x.values().numpy())
+                np.testing.assert_array_equal(
+                    values_sorted, sparse_x.values().numpy()
+                )
 
                 # test the non-zero values is a vector
                 values = [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
@@ -311,16 +319,18 @@ class TestSparseConvert(unittest.TestCase):
                 sparse_x = paddle.sparse.sparse_coo_tensor(indices, values)
                 sparse_x = paddle.sparse.coalesce(sparse_x)
                 values_sorted = [[5.0, 5.0], [1.0, 1.0]]
-                assert np.array_equal(
+                np.testing.assert_array_equal(
                     indices_sorted, sparse_x.indices().numpy()
                 )
-                assert np.array_equal(values_sorted, sparse_x.values().numpy())
+                np.testing.assert_array_equal(
+                    values_sorted, sparse_x.values().numpy()
+                )
 
     def test_batch_csr(self):
         def verify(dense_x):
             sparse_x = dense_x.to_sparse_csr()
             out = sparse_x.to_dense()
-            assert np.allclose(out.numpy(), dense_x.numpy())
+            np.testing.assert_allclose(out.numpy(), dense_x.numpy())
 
         shape = np.random.randint(low=1, high=10, size=3)
         shape = list(shape)

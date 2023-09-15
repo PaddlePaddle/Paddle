@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestDiffOp(unittest.TestCase):
@@ -79,11 +79,11 @@ class TestDiffOp(unittest.TestCase):
 
     def test_static(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for place in places:
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with base.program_guard(base.Program(), base.Program()):
                 x = paddle.static.data(
                     name="input", shape=self.input.shape, dtype=self.input.dtype
                 )
@@ -105,12 +105,12 @@ class TestDiffOp(unittest.TestCase):
                         dtype=self.append.dtype,
                     )
 
-                exe = fluid.Executor(place)
+                exe = base.Executor(place)
                 out = paddle.diff(
                     x, n=self.n, axis=self.axis, prepend=prepend, append=append
                 )
                 fetches = exe.run(
-                    fluid.default_main_program(),
+                    base.default_main_program(),
                     feed={
                         "input": self.input,
                         "prepend": self.prepend,
@@ -143,6 +143,15 @@ class TestDiffOp(unittest.TestCase):
     def test_grad(self):
         self.setUp()
         self.func_grad()
+
+
+class TestDiffOpN(TestDiffOp):
+    def set_args(self):
+        self.input = np.array([1, 4, 5, 2]).astype('float32')
+        self.n = 2
+        self.axis = 0
+        self.prepend = None
+        self.append = None
 
 
 class TestDiffOpAxis(TestDiffOp):
@@ -231,7 +240,7 @@ class TestDiffOpPreAppendAxis(TestDiffOp):
 class TestDiffOpFp16(TestDiffOp):
     def test_fp16_with_gpu(self):
         paddle.enable_static()
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()

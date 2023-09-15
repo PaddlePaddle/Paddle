@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 
 import paddle
 from paddle import tensor
-from paddle.fluid import core
+from paddle.base import core
 
 TOLERANCE = {
     "float16": {"rtol": 1e-3, "atol": 1e-3},
@@ -54,6 +55,7 @@ class PrimeNet(
         return out
 
 
+@dy2static_unittest
 class TestPrimForward(unittest.TestCase):
     """
     This case only tests prim_forward + to_static + cinn. Thus we need to
@@ -110,6 +112,7 @@ class TestPrimForward(unittest.TestCase):
         # Ensure that reduce_mean is splitted into small ops
         self.assertTrue('reduce_mean' not in fwd_ops)
 
+    @ast_only_test
     def test_cinn_prim_forward(self):
         for shape in self.shapes:
             for dtype in self.dtypes:
@@ -131,6 +134,7 @@ class TestPrimForward(unittest.TestCase):
                 )
 
 
+@dy2static_unittest
 class TestPrimForwardAndBackward(unittest.TestCase):
     """
     Test PrimeNet with @to_static + prim forward + prim backward + cinn v.s Dygraph
@@ -183,6 +187,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         # Ensure that reduce_mean is splitted into small ops
         self.assertTrue('reduce_mean' not in fwd_ops)
 
+    @ast_only_test
     def test_cinn_prim(self):
         for shape in self.shapes:
             for dtype in self.dtypes:

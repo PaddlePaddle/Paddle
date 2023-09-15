@@ -64,7 +64,7 @@ class SimpleNet(paddle.nn.Layer):
         return self.share_net(tmp)
 
 
-class TestDistTraning(unittest.TestCase):
+class TestDistTraining(unittest.TestCase):
     def test_multiple_xpus(self):
         dist.init_parallel_env()
         self.trainer_id = dist.get_rank()

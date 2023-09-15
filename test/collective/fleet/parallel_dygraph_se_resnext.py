@@ -18,8 +18,8 @@ import numpy as np
 from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
-from paddle.fluid.dygraph.base import to_variable
+from paddle import base
+from paddle.base.dygraph.base import to_variable
 from paddle.nn import Linear
 
 batch_size = 64
@@ -55,22 +55,23 @@ def optimizer_setting(params, parameter_list=None):
     bd = [step * e for e in ls["epochs"]]
     lr = params["lr"]
     num_epochs = params["num_epochs"]
-    if fluid.in_dygraph_mode():
-        optimizer = fluid.optimizer.Momentum(
-            learning_rate=fluid.layers.cosine_decay(
+
+    if base.in_dygraph_mode():
+        optimizer = paddle.optimizer.Momentum(
+            learning_rate=base.layers.cosine_decay(
                 learning_rate=lr, step_each_epoch=step, epochs=num_epochs
             ),
             momentum=momentum_rate,
-            regularization=paddle.regularizer.L2Decay(l2_decay),
+            weight_decay=paddle.regularizer.L2Decay(l2_decay),
             parameter_list=parameter_list,
         )
     else:
-        optimizer = fluid.optimizer.Momentum(
-            learning_rate=fluid.layers.cosine_decay(
+        optimizer = paddle.optimizer.Momentum(
+            learning_rate=paddle.optimizer.lr.cosine_decay(
                 learning_rate=lr, step_each_epoch=step, epochs=num_epochs
             ),
             momentum=momentum_rate,
-            regularization=paddle.regularizer.L2Decay(l2_decay),
+            weight_decay=paddle.regularizer.L2Decay(l2_decay),
         )
 
     return optimizer

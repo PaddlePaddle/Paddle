@@ -106,7 +106,7 @@ static int FindFCIdx(Node* x, const std::string& act_type = "relu") {
   for (size_t k = 0; k < x->outputs.size(); ++k) {
     auto* out_op = x->outputs[k];
     if (IsFCWithAct(out_op, act_type) && out_op->outputs.size() == 1U) {
-      return k;
+      return static_cast<int>(k);
     }
   }
   return -1;
@@ -120,7 +120,7 @@ static int FindInputIdx(Node* n,
   }
   for (size_t i = 0; i < n->inputs.size(); ++i) {
     if (n->inputs[i]->Name() == n->Op()->Input(name)[0]) {
-      return i;
+      return static_cast<int>(i);
     }
   }
   return -1;
@@ -405,8 +405,8 @@ int RepeatedFCReluFusePass::BuildFusion(Graph* graph,
       IR_NODE_LINK_TO(weights_vars[i], op);
       IR_NODE_LINK_TO(bias_vars[i], op);
     }
-    for (size_t i = 0; i < relu_vars.size(); ++i) {
-      IR_NODE_LINK_TO(op, relu_vars[i]);
+    for (auto& relu_var : relu_vars) {
+      IR_NODE_LINK_TO(op, relu_var);
     }
     IR_NODE_LINK_TO(op, last_out_var);
 
@@ -418,8 +418,8 @@ int RepeatedFCReluFusePass::BuildFusion(Graph* graph,
       marked_nodes.erase(weights_vars[i]);
       marked_nodes.erase(bias_vars[i]);
     }
-    for (size_t i = 0; i < relu_vars.size(); ++i) {
-      marked_nodes.erase(relu_vars[i]);
+    for (auto& relu_var : relu_vars) {
+      marked_nodes.erase(relu_var);
     }
     marked_nodes.erase(input_var);
     marked_nodes.erase(last_out_var);

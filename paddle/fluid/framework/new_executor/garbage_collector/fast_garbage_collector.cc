@@ -22,6 +22,11 @@ void InterpreterCoreFastGarbageCollector::Add(Variable* var,
   Add(var);
 }
 
+void InterpreterCoreFastGarbageCollector::Add(Variable* var,
+                                              const InstructionBase*) {
+  Add(var);
+}
+
 void InterpreterCoreFastGarbageCollector::Add(Variable* var) {
   if (UNLIKELY(max_memory_size_ < 0) || var == nullptr) {
     return;
@@ -67,7 +72,7 @@ void InterpreterCoreFastGarbageCollector::Add(Garbage garbage) {
     std::unique_ptr<GarbageQueue> pending_delete_garbages;
     {  // lock guard
       std::lock_guard<memory::SpinLock> guard(spinlock_);
-      cur_memory_size_ += garbage->size();
+      cur_memory_size_ += static_cast<int64_t>(garbage->size());
       garbages_->push_back(std::move(garbage));
 
       if (cur_memory_size_ >= max_memory_size_) {

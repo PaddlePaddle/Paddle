@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 from paddle.jit.dy2static import partial_program, program_translator
 
 
 class TestPartiaProgramLayerHook(unittest.TestCase):
     def setUp(self):
+        os.environ["ENABLE_FALL_BACK"] = "False"
         self._hook = partial_program.PartialProgramLayerHook()
 
     def test_before_append_backward(self):
@@ -35,6 +37,7 @@ class TestPartiaProgramLayerHook(unittest.TestCase):
 
 class TestPrimHook(unittest.TestCase):
     def setUp(self):
+        os.environ["ENABLE_FALL_BACK"] = "False"
         core._set_prim_all_enabled(False)
 
         def f():

@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include <gflags/gflags.h>
-
 #include <string>
 #include <vector>
 
@@ -27,6 +25,7 @@
 #include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/utils/flags.h"
 
 namespace cinn {
 
@@ -56,8 +55,7 @@ class CodeGenC : public ir::IrPrinter {
   void SetInlineBuiltinCodes(bool x = true) { inline_builtin_codes_ = x; }
 
  protected:
-  std::string Compile(const ir::LoweredFunc& function);
-  std::string Compile(const ir::Buffer& buffer);
+  void Compile(const ir::LoweredFunc& function);
 
   void GenerateHeaderFile(const ir::Module& module);
 
@@ -71,9 +69,11 @@ class CodeGenC : public ir::IrPrinter {
   // @}
 
   void PrintFunctionDeclaration(const ir::_LoweredFunc_* op) {
-    os() << "void " << op->name << "(";
-    os() << "void* _args, int32_t num_args";
-    os() << ")";
+    str_ += "void ";
+    str_ += op->name;
+    str_ += "(";
+    str_ += "void* _args, int32_t num_args";
+    str_ += ")";
   }
 
   void PrintShape(const std::vector<Expr>& shape,

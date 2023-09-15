@@ -44,7 +44,7 @@ static __device__ __forceinline__ double RealSqrt(double x) { return sqrt(x); }
 
 template <typename T>
 struct PairForLayerNorm {
-  __device__ __forceinline__ PairForLayerNorm() {}
+  __device__ __forceinline__ PairForLayerNorm() = default;
   __device__ __forceinline__ PairForLayerNorm(const T& first, const T& second)
       : first_(first), second_(second) {}
 

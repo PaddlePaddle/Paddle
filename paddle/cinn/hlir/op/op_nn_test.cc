@@ -30,8 +30,6 @@
 #include "paddle/cinn/hlir/pe/nn.h"
 #include "paddle/cinn/runtime/flags.h"
 
-DECLARE_bool(cinn_ir_schedule);
-
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -49,33 +47,17 @@ Module LowerToModule(const std::string test_name,
                      const Target &target) {
   Module::Builder builder("module", target);
 
-  if (FLAGS_cinn_ir_schedule) {
-    cinn_inputs.emplace_back(output_name);
-    common::CINNValuePack cinn_input = common::CINNValuePack{cinn_inputs};
-    input_names.push_back(output_name);
+  cinn_inputs.emplace_back(output_name);
+  common::CINNValuePack cinn_input = common::CINNValuePack{cinn_inputs};
+  input_names.push_back(output_name);
 
-    auto funcs = framework::GetFuncFromImpl(
-        impl, cinn_input, inputs, input_names, func_name, target);
+  auto funcs = framework::GetFuncFromImpl(
+      impl, cinn_input, inputs, input_names, func_name, target);
 
-    for (auto func : funcs) {
-      LOG(INFO) << "Test" << test_name << "'s Strategy, func is :\n" << func;
-      builder.AddFunction(func);
-    }
-  } else {
-    common::CINNValuePack cinn_input = common::CINNValuePack{cinn_inputs};
-    common::CINNValuePack rets = impl->fcompute(cinn_input);
-    rets = impl->fschedule(rets);
-    // the last element is a StageMap
-    for (int i = 0; i < rets->size() - 1; i++) {
-      Expr temp = rets[i];
-      inputs.push_back(temp.as_tensor_ref());
-    }
-    auto func = Lower("fn_" + func_name, rets.back(), inputs);
-    LOG(INFO) << "Test Strategy Codegen:\n" << func;
-
+  for (auto func : funcs) {
+    LOG(INFO) << "Test" << test_name << "'s Strategy, func is :\n" << func;
     builder.AddFunction(func);
   }
-
   return builder.Build();
 }
 

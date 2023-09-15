@@ -21,7 +21,7 @@ from paddle.distributed import fleet
 paddle.enable_static()
 
 
-class TensorParallelNet(paddle.fluid.dygraph.Layer):
+class TensorParallelNet(paddle.base.dygraph.Layer):
     def __init__(self, hidden_size):
         super().__init__()
         self.embedding = paddle.nn.Embedding(hidden_size, hidden_size)
@@ -106,7 +106,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
             y = model_a(input_x)
             loss = paddle.mean(y)
 
-        optimizer = paddle.fluid.optimizer.Adam(0.01)
+        optimizer = paddle.optimizer.Adam(0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(loss)
         ref_ops = [

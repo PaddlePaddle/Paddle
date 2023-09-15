@@ -53,7 +53,7 @@ using IntArray = experimental::IntArray;
 class AbstractAutogradMeta {
  public:
   // No AbstractAutogradMeta should be created
-  virtual ~AbstractAutogradMeta() {}
+  virtual ~AbstractAutogradMeta() = default;
 };
 
 /**
@@ -96,7 +96,7 @@ class PADDLE_API Tensor final {
   /**
    * @brief Construct a new Tensor object by move
    */
-  Tensor(Tensor&&) = default;
+  Tensor(Tensor&&) noexcept = default;
 
   /**
    * @brief Construct a new Tensor object by a TensorBase pointer
@@ -176,6 +176,13 @@ class PADDLE_API Tensor final {
    * @return std::vector<int64_t>
    */
   std::vector<int64_t> shape() const;
+
+  /**
+   * @brief Return the strides (dimensions) of Tensor.
+   *
+   * @return phi::DDim
+   */
+  const phi::DDim& strides() const;
 
   /**
    * @brief Reset the shape of the tensor.
@@ -515,7 +522,7 @@ class PADDLE_API Tensor final {
    * @param x
    * @return Tensor&
    */
-  Tensor& operator=(Tensor&& x) &;
+  Tensor& operator=(Tensor&& x) & noexcept;
 
   /**
    * @brief Tensor operants

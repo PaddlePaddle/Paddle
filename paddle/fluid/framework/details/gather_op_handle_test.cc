@@ -40,8 +40,8 @@ struct TestGatherOpHandle {
   std::vector<std::unique_ptr<ir::Node>> nodes_;
 
   void WaitAll() {
-    for (size_t j = 0; j < ctxs_.size(); ++j) {
-      ctxs_[j]->Wait();
+    for (auto& ctx : ctxs_) {
+      ctx->Wait();
     }
   }
 
@@ -134,12 +134,12 @@ struct TestGatherOpHandle {
   }
 
   void TestGatherSelectedRows(size_t output_scope_idx) {
-    int height = kDims[0] * 2;
+    int height = static_cast<int>(kDims[0] * 2);
     std::vector<int64_t> rows{0, 1, 2, 3, 3, 0, 14, 7, 3, 1,
                               2, 4, 6, 3, 1, 1, 1,  1, 3, 7};
     std::vector<float> send_vector(phi::product(kDims));
     for (size_t k = 0; k < send_vector.size(); ++k) {
-      send_vector[k] = k;
+      send_vector[k] = static_cast<float>(k);
     }
 
     for (size_t input_scope_idx = 0; input_scope_idx < gpu_list_.size();

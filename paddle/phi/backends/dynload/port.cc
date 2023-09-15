@@ -14,6 +14,7 @@
 
 #include <paddle/phi/backends/dynload/port.h>
 
+#include <array>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -74,7 +75,7 @@ int gettimeofday(struct timeval *tp, void *tzp) {
 #endif              // !_WIN32
 
 void ExecShellCommand(const std::string &cmd, std::string *message) {
-  char buffer[128];
+  std::array<char, 128> buffer;
 #if !defined(_WIN32)
   std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
 #else
@@ -85,8 +86,8 @@ void ExecShellCommand(const std::string &cmd, std::string *message) {
     return;
   }
   while (!feof(pipe.get())) {
-    if (fgets(buffer, 128, pipe.get()) != nullptr) {
-      *message += buffer;
+    if (fgets(buffer.data(), 128, pipe.get()) != nullptr) {
+      *message += buffer.data();
     }
   }
 }

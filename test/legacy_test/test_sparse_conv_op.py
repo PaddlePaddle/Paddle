@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 from paddle import sparse
-from paddle.fluid import core
+from paddle.base import core
 
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO
@@ -94,7 +94,7 @@ class TestSparseConv(unittest.TestCase):
         )
         out.backward(out)
         out = paddle.sparse.coalesce(out)
-        assert np.array_equal(correct_out_values, out.values().numpy())
+        np.testing.assert_array_equal(correct_out_values, out.values().numpy())
 
     def test_subm_conv2d(self):
         indices = [[0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
@@ -126,7 +126,9 @@ class TestSparseConv(unittest.TestCase):
         y = paddle.sparse.nn.functional.subm_conv3d(
             sparse_x, weight, key='subm_conv'
         )
-        assert np.array_equal(sparse_x.indices().numpy(), y.indices().numpy())
+        np.testing.assert_array_equal(
+            sparse_x.indices().numpy(), y.indices().numpy()
+        )
 
     def test_Conv2D(self):
         # (3, non_zero_num), 3-D:(N, H, W)
@@ -223,7 +225,7 @@ class TestSparseConv(unittest.TestCase):
 
         sparse_out = subm_conv3d(sparse_input)
         # the output shape of subm_conv is same as input shape
-        assert np.array_equal(indices, sparse_out.indices().numpy())
+        np.testing.assert_array_equal(indices, sparse_out.indices().numpy())
 
         # test errors
         with self.assertRaises(ValueError):
@@ -294,14 +296,16 @@ class TestSparseConv(unittest.TestCase):
         dense_out = sp_out.to_dense()
         sp_loss = dense_out.mean()
         sp_loss.backward()
-        assert np.allclose(out.numpy(), dense_out.numpy(), atol=1e-3, rtol=1e-3)
-        assert np.allclose(
+        np.testing.assert_allclose(
+            out.numpy(), dense_out.numpy(), atol=1e-3, rtol=1e-3
+        )
+        np.testing.assert_allclose(
             conv3d.weight.grad.numpy().transpose(2, 3, 4, 1, 0),
             sp_conv3d.weight.grad.numpy(),
             atol=1e-3,
             rtol=1e-3,
         )
-        assert np.allclose(
+        np.testing.assert_allclose(
             conv3d.bias.grad.numpy(),
             sp_conv3d.bias.grad.numpy(),
             atol=1e-5,

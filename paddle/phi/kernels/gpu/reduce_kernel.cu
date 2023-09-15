@@ -29,6 +29,10 @@ void ReduceKernel(const Context& dev_ctx,
                   int root,
                   int reduce_type,
                   DenseTensor* out) {
+  PADDLE_ENFORCE_GT(
+      x.numel(),
+      0,
+      phi::errors::InvalidArgument("Tensor need be reduced must not empyt."));
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   out->Resize(x.dims());
   dev_ctx.template Alloc<T>(out);
@@ -45,17 +49,17 @@ void ReduceKernel(const Context& dev_ctx,
                           errors::NotFound("Should initialize NCCL firstly."));
 
   ncclRedOp_t red_type = ncclSum;
-  switch (reduce_type) {
-    case distributed::kRedSum:
+  switch (static_cast<ReduceType>(reduce_type)) {
+    case ReduceType::kRedSum:
       red_type = ncclSum;
       break;
-    case distributed::kRedMax:
+    case ReduceType::kRedMax:
       red_type = ncclMax;
       break;
-    case distributed::kRedMin:
+    case ReduceType::kRedMin:
       red_type = ncclMin;
       break;
-    case distributed::kRedProd:
+    case ReduceType::kRedProd:
       red_type = ncclProd;
       break;
   }

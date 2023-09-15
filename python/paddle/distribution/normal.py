@@ -18,9 +18,9 @@ from collections.abc import Iterable
 import numpy as np
 
 import paddle
+from paddle.base.data_feeder import check_type, convert_dtype
+from paddle.base.framework import Variable
 from paddle.distribution import distribution
-from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.layers import tensor
 from paddle.framework import in_dynamic_mode
 from paddle.tensor import random
 
@@ -54,36 +54,44 @@ class Normal(distribution.Distribution):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.distribution import Normal
+            >>> import paddle
+            >>> from paddle.distribution import Normal
 
-            # Define a single scalar Normal distribution.
-            dist = Normal(loc=0., scale=3.)
-            # Define a batch of two scalar valued Normals.
-            # The first has mean 1 and standard deviation 11, the second 2 and 22.
-            dist = Normal(loc=[1., 2.], scale=[11., 22.])
-            # Get 3 samples, returning a 3 x 2 tensor.
-            dist.sample([3])
+            >>> # Define a single scalar Normal distribution.
+            >>> dist = Normal(loc=0., scale=3.)
+            >>> # Define a batch of two scalar valued Normals.
+            >>> # The first has mean 1 and standard deviation 11, the second 2 and 22.
+            >>> dist = Normal(loc=[1., 2.], scale=[11., 22.])
+            >>> # Get 3 samples, returning a 3 x 2 tensor.
+            >>> dist.sample([3])
 
-            # Define a batch of two scalar valued Normals.
-            # Both have mean 1, but different standard deviations.
-            dist = Normal(loc=1., scale=[11., 22.])
+            >>> # Define a batch of two scalar valued Normals.
+            >>> # Both have mean 1, but different standard deviations.
+            >>> dist = Normal(loc=1., scale=[11., 22.])
 
-            # Complete example
-            value_tensor = paddle.to_tensor([0.8], dtype="float32")
+            >>> # Complete example
+            >>> value_tensor = paddle.to_tensor([0.8], dtype="float32")
 
-            normal_a = Normal([0.], [1.])
-            normal_b = Normal([0.5], [2.])
-            sample = normal_a.sample([2])
-            # a random tensor created by normal distribution with shape: [2, 1]
-            entropy = normal_a.entropy()
-            # [1.4189385] with shape: [1]
-            lp = normal_a.log_prob(value_tensor)
-            # [-1.2389386] with shape: [1]
-            p = normal_a.probs(value_tensor)
-            # [0.28969154] with shape: [1]
-            kl = normal_a.kl_divergence(normal_b)
-            # [0.34939718] with shape: [1]
+            >>> normal_a = Normal([0.], [1.])
+            >>> normal_b = Normal([0.5], [2.])
+            >>> sample = normal_a.sample([2])
+            >>> # a random tensor created by normal distribution with shape: [2, 1]
+            >>> entropy = normal_a.entropy()
+            >>> print(entropy)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [1.41893852])
+            >>> lp = normal_a.log_prob(value_tensor)
+            >>> print(lp)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [-1.23893857])
+            >>> p = normal_a.probs(value_tensor)
+            >>> print(p)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.28969154])
+            >>> kl = normal_a.kl_divergence(normal_b)
+            >>> print(kl)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.34939718])
     """
 
     def __init__(self, loc, scale, name=None):
@@ -91,13 +99,13 @@ class Normal(distribution.Distribution):
             check_type(
                 loc,
                 'loc',
-                (int, float, np.ndarray, tensor.Variable, list, tuple),
+                (int, float, np.ndarray, Variable, list, tuple),
                 'Normal',
             )
             check_type(
                 scale,
                 'scale',
-                (int, float, np.ndarray, tensor.Variable, list, tuple),
+                (int, float, np.ndarray, Variable, list, tuple),
                 'Normal',
             )
 
@@ -174,9 +182,9 @@ class Normal(distribution.Distribution):
         name = self.name + '_sample'
         if -1 in batch_shape:
             output_shape = shape + batch_shape
-            zero_tmp = tensor.fill_constant_batch_size_like(
-                self.loc + self.scale, batch_shape + shape, self.dtype, 0.0
-            )
+            fill_shape = list(batch_shape + shape)
+            fill_shape[0] = paddle.shape(self.loc + self.scale)[0].item()
+            zero_tmp = paddle.full(fill_shape, 0.0, self.dtype)
             zero_tmp_reshape = paddle.reshape(zero_tmp, output_shape)
 
             zero_tmp_shape = paddle.shape(zero_tmp_reshape)
@@ -234,9 +242,10 @@ class Normal(distribution.Distribution):
         name = self.name + '_entropy'
         batch_shape = list((self.loc + self.scale).shape)
         if -1 in batch_shape:
-            zero_tmp = tensor.fill_constant_batch_size_like(
-                self.loc + self.scale, batch_shape, self.dtype, 0.0
-            )
+            fill_shape = list(batch_shape)
+            fill_shape[0] = paddle.shape(self.loc + self.scale)[0].item()
+            fill_dtype = (self.loc + self.scale).dtype
+            zero_tmp = paddle.full(fill_shape, 0.0, fill_dtype)
         else:
             zero_tmp = paddle.full(batch_shape, 0.0, self.dtype)
         return paddle.add(

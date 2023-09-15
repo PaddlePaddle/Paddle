@@ -16,9 +16,9 @@
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 
-namespace ir {
+namespace pir {
 class Operation;
-}  // namespace ir
+}  // namespace pir
 
 namespace paddle {
 namespace framework {
@@ -30,13 +30,15 @@ class PhiKernelInstruction : public InstructionBase {
   PhiKernelInstruction(
       size_t id,
       const platform::Place& place,
-      ::ir::Operation* op,
+      ::pir::Operation* op,
       Scope* scope,
       Scope* local_scope,
-      const std::unordered_map<::ir::Value, std::string>& value_2_var_name,
+      const std::unordered_map<::pir::Value, std::string>& value_2_var_name,
       const std::map<std::string, int>& var_name_2_id,
       const std::unordered_map<const paddle::framework::Variable*, std::string>&
           variable_2_var_name);
+
+  ~PhiKernelInstruction();
 
   phi::Kernel* PhiKernel() const { return phi_kernel_; }
 
@@ -50,21 +52,13 @@ class PhiKernelInstruction : public InstructionBase {
     return infer_meta_interface_;
   }
 
+  ::pir::Operation* Operation() const override { return op_; }
+
   void Run() override;
 
   const std::string& Name() const override { return phi_op_name_; }
 
  private:
-  void InitInputsOutputsIds(
-      ::ir::Operation* op,
-      Scope* inner_scope,
-      const std::unordered_map<::ir::Value, std::string>& value_2_var_name,
-      const std::map<std::string, int>& var_name_2_id,
-      const std::unordered_map<const paddle::framework::Variable*, std::string>&
-          variable_2_var_name);
-
-  std::string phi_op_name_;
-
   paddle::dialect::InferMetaInterface::Concept* infer_meta_interface_{
       nullptr};  // not owned
 
@@ -73,6 +67,10 @@ class PhiKernelInstruction : public InstructionBase {
   phi::KernelContext kernel_context_;
 
   phi::Kernel* phi_kernel_{nullptr};  // not owned
+
+  std::string phi_op_name_;
+
+  ::pir::Operation* op_{nullptr};  // not owned
 };
 
 }  // namespace framework

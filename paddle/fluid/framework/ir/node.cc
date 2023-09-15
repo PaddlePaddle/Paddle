@@ -23,7 +23,7 @@ namespace ir {
 #if !defined(_WIN32) && (__cplusplus < 201703L)
 constexpr char Node::kControlDepVarName[];
 #else
-const char Node::kControlDepVarName[] = "__control_var";
+const char Node::kControlDepVarName[] = "__control_var";  // NOLINT
 #endif
 
 std::unique_ptr<Node> CreateNodeForTest(const std::string &name,

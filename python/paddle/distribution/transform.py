@@ -166,7 +166,7 @@ class Transform:
         Returns:
             Tensor: Outcome of forward transformation.
         """
-        if not isinstance(x, paddle.fluid.framework.Variable):
+        if not isinstance(x, paddle.base.framework.Variable):
             raise TypeError(
                 f"Expected 'x' is a Tensor or Real, but got {type(x)}."
             )
@@ -187,7 +187,7 @@ class Transform:
         Returns:
             Tensor: Outcome of inverse transform.
         """
-        if not isinstance(y, paddle.fluid.framework.Variable):
+        if not isinstance(y, paddle.base.framework.Variable):
             raise TypeError(
                 f"Expected 'y' is a Tensor or Real, but got {type(y)}."
             )
@@ -209,12 +209,12 @@ class Transform:
         Returns:
             Tensor: The log of the absolute value of Jacobian determinant.
         """
-        if not isinstance(x, paddle.fluid.framework.Variable):
+        if not isinstance(x, paddle.base.framework.Variable):
             raise TypeError(
                 f"Expected 'y' is a Tensor or Real, but got {type(x)}."
             )
         if (
-            isinstance(x, paddle.fluid.framework.Variable)
+            isinstance(x, paddle.base.framework.Variable)
             and x.dim() < self._domain.event_rank
         ):
             raise ValueError(
@@ -241,7 +241,7 @@ class Transform:
         Returns:
             Tensor: The value of :math:`log|det J_{f^{-1}}(y)|`.
         """
-        if not isinstance(y, paddle.fluid.framework.Variable):
+        if not isinstance(y, paddle.base.framework.Variable):
             raise TypeError(f"Expected 'y' is a Tensor, but got {type(y)}.")
         if y.dim() < self._codomain.event_rank:
             raise ValueError(
@@ -360,34 +360,34 @@ class AbsTransform(Transform):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            abs = paddle.distribution.AbsTransform()
+            >>> abs = paddle.distribution.AbsTransform()
 
-            print(abs.forward(paddle.to_tensor([-1., 0., 1.])))
-            # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [1., 0., 1.])
+            >>> print(abs.forward(paddle.to_tensor([-1., 0., 1.])))
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [1., 0., 1.])
 
-            print(abs.inverse(paddle.to_tensor([1.])))
-            # (Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [-1.]), Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [1.]))
+            >>> print(abs.inverse(paddle.to_tensor([1.])))
+            (Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [-1.]), Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [1.]))
 
-            # The |dX/dY| is constant 1. So Log|dX/dY| == 0
-            print(abs.inverse_log_det_jacobian(paddle.to_tensor(1.)))
-            # (Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        0.), Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        0.))
+            >>> # The |dX/dY| is constant 1. So Log|dX/dY| == 0
+            >>> print(abs.inverse_log_det_jacobian(paddle.to_tensor(1.)))
+            (Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    0.), Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    0.))
 
-            #Special case handling of 0.
-            print(abs.inverse(paddle.to_tensor([0.])))
-            # (Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0.]), Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0.]))
-            print(abs.inverse_log_det_jacobian(paddle.to_tensor(0.)))
-            # (Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        0.), Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        0.))
+            >>> #Special case handling of 0.
+            >>> print(abs.inverse(paddle.to_tensor([0.])))
+            (Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [0.]), Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [0.]))
+            >>> print(abs.inverse_log_det_jacobian(paddle.to_tensor(0.)))
+            (Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    0.), Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    0.))
 
     """
     _type = Type.SURJECTION
@@ -423,27 +423,27 @@ class AffineTransform(Transform):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([1., 2.])
-            affine = paddle.distribution.AffineTransform(paddle.to_tensor(0.), paddle.to_tensor(1.))
+            >>> x = paddle.to_tensor([1., 2.])
+            >>> affine = paddle.distribution.AffineTransform(paddle.to_tensor(0.), paddle.to_tensor(1.))
 
-            print(affine.forward(x))
-            # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [1., 2.])
-            print(affine.inverse(affine.forward(x)))
-            # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [1., 2.])
-            print(affine.forward_log_det_jacobian(x))
-            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        0.)
+            >>> print(affine.forward(x))
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [1., 2.])
+            >>> print(affine.inverse(affine.forward(x)))
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [1., 2.])
+            >>> print(affine.forward_log_det_jacobian(x))
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    0.)
     """
     _type = Type.BIJECTION
 
     def __init__(self, loc, scale):
-        if not isinstance(loc, paddle.fluid.framework.Variable):
+        if not isinstance(loc, paddle.base.framework.Variable):
             raise TypeError(f"Expected 'loc' is a Tensor, but got {type(loc)}")
-        if not isinstance(scale, paddle.fluid.framework.Variable):
+        if not isinstance(scale, paddle.base.framework.Variable):
             raise TypeError(
                 f"Expected scale is a Tensor, but got {type(scale)}"
             )
@@ -503,28 +503,28 @@ class ChainTransform(Transform):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
 
-            x = paddle.to_tensor([0., 1., 2., 3.])
+            >>> x = paddle.to_tensor([0., 1., 2., 3.])
 
-            chain = paddle.distribution.ChainTransform((
-                paddle.distribution.AffineTransform(
-                    paddle.to_tensor(0.), paddle.to_tensor(1.)),
-                paddle.distribution.ExpTransform()
-            ))
-            print(chain.forward(x))
-            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [1.         , 2.71828175 , 7.38905621 , 20.08553696])
-            print(chain.inverse(chain.forward(x)))
-            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0., 1., 2., 3.])
-            print(chain.forward_log_det_jacobian(x))
-            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0., 1., 2., 3.])
-            print(chain.inverse_log_det_jacobian(chain.forward(x)))
-            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [ 0., -1., -2., -3.])
+            >>> chain = paddle.distribution.ChainTransform((
+            ...     paddle.distribution.AffineTransform(
+            ...         paddle.to_tensor(0.), paddle.to_tensor(1.)),
+            ...     paddle.distribution.ExpTransform()
+            >>> ))
+            >>> print(chain.forward(x))
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [1.         , 2.71828175 , 7.38905621 , 20.08553696])
+            >>> print(chain.inverse(chain.forward(x)))
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [0., 1., 2., 3.])
+            >>> print(chain.forward_log_det_jacobian(x))
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [0., 1., 2., 3.])
+            >>> print(chain.inverse_log_det_jacobian(chain.forward(x)))
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [ 0., -1., -2., -3.])
     """
 
     def __init__(self, transforms):
@@ -625,24 +625,24 @@ class ExpTransform(Transform):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            exp = paddle.distribution.ExpTransform()
-            print(exp.forward(paddle.to_tensor([1., 2., 3.])))
-            # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [2.71828175 , 7.38905621 , 20.08553696])
+            >>> exp = paddle.distribution.ExpTransform()
+            >>> print(exp.forward(paddle.to_tensor([1., 2., 3.])))
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [2.71828175 , 7.38905621 , 20.08553696])
 
-            print(exp.inverse(paddle.to_tensor([1., 2., 3.])))
-            # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0.        , 0.69314718, 1.09861231])
+            >>> print(exp.inverse(paddle.to_tensor([1., 2., 3.])))
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [0.        , 0.69314718, 1.09861231])
 
-            print(exp.forward_log_det_jacobian(paddle.to_tensor([1., 2., 3.])))
-            # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [1., 2., 3.])
+            >>> print(exp.forward_log_det_jacobian(paddle.to_tensor([1., 2., 3.])))
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [1., 2., 3.])
 
-            print(exp.inverse_log_det_jacobian(paddle.to_tensor([1., 2., 3.])))
-            # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [ 0.        , -0.69314718, -1.09861231])
+            >>> print(exp.inverse_log_det_jacobian(paddle.to_tensor([1., 2., 3.])))
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [ 0.        , -0.69314718, -1.09861231])
     """
     _type = Type.BIJECTION
 
@@ -695,20 +695,20 @@ class IndependentTransform(Transform):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([[1., 2., 3.], [4., 5., 6.]])
+            >>> x = paddle.to_tensor([[1., 2., 3.], [4., 5., 6.]])
 
-            # Exponential transform with event_rank = 1
-            multi_exp = paddle.distribution.IndependentTransform(
-                paddle.distribution.ExpTransform(), 1)
-            print(multi_exp.forward(x))
-            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[2.71828175  , 7.38905621  , 20.08553696 ],
-            #         [54.59814835 , 148.41316223, 403.42880249]])
-            print(multi_exp.forward_log_det_jacobian(x))
-            # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [6. , 15.])
+            >>> # Exponential transform with event_rank = 1
+            >>> multi_exp = paddle.distribution.IndependentTransform(
+            ...     paddle.distribution.ExpTransform(), 1)
+            >>> print(multi_exp.forward(x))
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [[2.71828175  , 7.38905621  , 20.08553696 ],
+                     [54.59814835 , 148.41316223, 403.42880249]])
+            >>> print(multi_exp.forward_log_det_jacobian(x))
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [6. , 15.])
     """
 
     def __init__(self, base, reinterpreted_batch_rank):
@@ -773,25 +773,25 @@ class PowerTransform(Transform):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([1., 2.])
-            power = paddle.distribution.PowerTransform(paddle.to_tensor(2.))
+            >>> x = paddle.to_tensor([1., 2.])
+            >>> power = paddle.distribution.PowerTransform(paddle.to_tensor(2.))
 
-            print(power.forward(x))
-            # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [1., 4.])
-            print(power.inverse(power.forward(x)))
-            # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [1., 2.])
-            print(power.forward_log_det_jacobian(x))
-            # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0.69314718, 1.38629436])
+            >>> print(power.forward(x))
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [1., 4.])
+            >>> print(power.inverse(power.forward(x)))
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [1., 2.])
+            >>> print(power.forward_log_det_jacobian(x))
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [0.69314718, 1.38629436])
     """
     _type = Type.BIJECTION
 
     def __init__(self, power):
-        if not isinstance(power, paddle.fluid.framework.Variable):
+        if not isinstance(power, paddle.base.framework.Variable):
             raise TypeError(
                 f"Expected 'power' is a tensor, but got {type(power)}"
             )
@@ -840,24 +840,24 @@ class ReshapeTransform(Transform):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.ones((1,2,3))
-            reshape_transform = paddle.distribution.ReshapeTransform((2, 3), (3, 2))
-            print(reshape_transform.forward_shape((1,2,3)))
-            # (5, 2, 6)
-            print(reshape_transform.forward(x))
-            # Tensor(shape=[1, 3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[[1., 1.],
-            #          [1., 1.],
-            #          [1., 1.]]])
-            print(reshape_transform.inverse(reshape_transform.forward(x)))
-            # Tensor(shape=[1, 2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[[1., 1., 1.],
-            #          [1., 1., 1.]]])
-            print(reshape_transform.forward_log_det_jacobian(x))
-            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        0.)
+            >>> x = paddle.ones((1,2,3))
+            >>> reshape_transform = paddle.distribution.ReshapeTransform((2, 3), (3, 2))
+            >>> print(reshape_transform.forward_shape((1,2,3)))
+            (1, 3, 2)
+            >>> print(reshape_transform.forward(x))
+            Tensor(shape=[1, 3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [[[1., 1.],
+                    [1., 1.],
+                    [1., 1.]]])
+            >>> print(reshape_transform.inverse(reshape_transform.forward(x)))
+            Tensor(shape=[1, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [[[1., 1., 1.],
+                        [1., 1., 1.]]])
+            >>> print(reshape_transform.forward_log_det_jacobian(x))
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.])
     """
     _type = Type.BIJECTION
 
@@ -956,22 +956,22 @@ class SigmoidTransform(Transform):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.ones((2,3))
-            t = paddle.distribution.SigmoidTransform()
-            print(t.forward(x))
-            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[0.73105860, 0.73105860, 0.73105860],
-            #         [0.73105860, 0.73105860, 0.73105860]])
-            print(t.inverse(t.forward(x)))
-            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[1.00000012, 1.00000012, 1.00000012],
-            #         [1.00000012, 1.00000012, 1.00000012]])
-            print(t.forward_log_det_jacobian(x))
-            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[-1.62652326, -1.62652326, -1.62652326],
-            #         [-1.62652326, -1.62652326, -1.62652326]])
+            >>> x = paddle.ones((2,3))
+            >>> t = paddle.distribution.SigmoidTransform()
+            >>> print(t.forward(x))
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [[0.73105860, 0.73105860, 0.73105860],
+                     [0.73105860, 0.73105860, 0.73105860]])
+            >>> print(t.inverse(t.forward(x)))
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [[1.00000012, 1.00000012, 1.00000012],
+                     [1.00000012, 1.00000012, 1.00000012]])
+            >>> print(t.forward_log_det_jacobian(x))
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [[-1.62652326, -1.62652326, -1.62652326],
+                     [-1.62652326, -1.62652326, -1.62652326]])
     """
 
     @property
@@ -1003,18 +1003,18 @@ class SoftmaxTransform(Transform):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.ones((2,3))
-            t = paddle.distribution.SoftmaxTransform()
-            print(t.forward(x))
-            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[0.33333334, 0.33333334, 0.33333334],
-            #         [0.33333334, 0.33333334, 0.33333334]])
-            print(t.inverse(t.forward(x)))
-            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[-1.09861231, -1.09861231, -1.09861231],
-            #         [-1.09861231, -1.09861231, -1.09861231]])
+            >>> x = paddle.ones((2,3))
+            >>> t = paddle.distribution.SoftmaxTransform()
+            >>> print(t.forward(x))
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [[0.33333334, 0.33333334, 0.33333334],
+                     [0.33333334, 0.33333334, 0.33333334]])
+            >>> print(t.inverse(t.forward(x)))
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [[-1.09861231, -1.09861231, -1.09861231],
+                     [-1.09861231, -1.09861231, -1.09861231]])
     """
     _type = Type.OTHER
 
@@ -1061,32 +1061,32 @@ class StackTransform(Transform):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.stack(
-                (paddle.to_tensor([1., 2., 3.]), paddle.to_tensor([1, 2., 3.])), 1)
-            t = paddle.distribution.StackTransform(
-                (paddle.distribution.ExpTransform(),
-                paddle.distribution.PowerTransform(paddle.to_tensor(2.))),
-                1
-            )
-            print(t.forward(x))
-            # Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[2.71828175 , 1.         ],
-            #         [7.38905621 , 4.         ],
-            #         [20.08553696, 9.         ]])
+            >>> x = paddle.stack(
+            ...     (paddle.to_tensor([1., 2., 3.]), paddle.to_tensor([1, 2., 3.])), 1)
+            >>> t = paddle.distribution.StackTransform(
+            ...     (paddle.distribution.ExpTransform(),
+            ...     paddle.distribution.PowerTransform(paddle.to_tensor(2.))),
+            ...     1
+            >>> )
+            >>> print(t.forward(x))
+            Tensor(shape=[3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [[2.71828175 , 1.         ],
+                     [7.38905621 , 4.         ],
+                     [20.08553696, 9.         ]])
 
-            print(t.inverse(t.forward(x)))
-            # Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[1., 1.],
-            #         [2., 2.],
-            #         [3., 3.]])
+            >>> print(t.inverse(t.forward(x)))
+            Tensor(shape=[3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [[1., 1.],
+                     [2., 2.],
+                     [3., 3.]])
 
-            print(t.forward_log_det_jacobian(x))
-            # Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[1.        , 0.69314718],
-            #         [2.        , 1.38629436],
-            #         [3.        , 1.79175949]])
+            >>> print(t.forward_log_det_jacobian(x))
+            Tensor(shape=[3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [[1.        , 0.69314718],
+                     [2.        , 1.38629436],
+                     [3.        , 1.79175949]])
     """
 
     def __init__(self, transforms, axis=0):
@@ -1176,20 +1176,20 @@ class StickBreakingTransform(Transform):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
 
-            x = paddle.to_tensor([1.,2.,3.])
-            t = paddle.distribution.StickBreakingTransform()
-            print(t.forward(x))
-            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0.47536686, 0.41287899, 0.10645414, 0.00530004])
-            print(t.inverse(t.forward(x)))
-            # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0.99999988, 2.        , 2.99999881])
-            print(t.forward_log_det_jacobian(x))
-            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        -9.10835075)
+            >>> x = paddle.to_tensor([1.,2.,3.])
+            >>> t = paddle.distribution.StickBreakingTransform()
+            >>> print(t.forward(x))
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [0.47536686, 0.41287899, 0.10645414, 0.00530004])
+            >>> print(t.inverse(t.forward(x)))
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [0.99999988, 2.        , 2.99999881])
+            >>> print(t.forward_log_det_jacobian(x))
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    -9.10835075)
     """
 
     _type = Type.BIJECTION
@@ -1241,28 +1241,30 @@ class TanhTransform(Transform):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            tanh = paddle.distribution.TanhTransform()
+            >>> tanh = paddle.distribution.TanhTransform()
 
-            x = paddle.to_tensor([[1., 2., 3.], [4., 5., 6.]])
+            >>> x = paddle.to_tensor([[1., 2., 3.], [4., 5., 6.]])
 
-            print(tanh.forward(x))
-            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[0.76159418, 0.96402758, 0.99505478],
-            #         [0.99932933, 0.99990922, 0.99998772]])
-            print(tanh.inverse(tanh.forward(x)))
-            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[1.00000012, 2.        , 3.00000286],
-            #         [4.00002146, 5.00009823, 6.00039864]])
-            print(tanh.forward_log_det_jacobian(x))
-            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[-0.86756170 , -2.65000558 , -4.61865711 ],
-            #         [-6.61437654 , -8.61379623 , -10.61371803]])
-            print(tanh.inverse_log_det_jacobian(tanh.forward(x)))
-            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[0.86756176 , 2.65000558 , 4.61866283 ],
-            #         [6.61441946 , 8.61399269 , 10.61451530]])
+            >>> # doctest: +SKIP('random sample')
+            >>> print(tanh.forward(x))
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [[0.76159418, 0.96402758, 0.99505472],
+                    [0.99932921, 0.99990916, 0.99998784]])
+            >>> print(tanh.inverse(tanh.forward(x)))
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [[1.        , 2.        , 2.99999666],
+                    [3.99993253, 4.99977016, 6.00527668]])
+            >>> print(tanh.forward_log_det_jacobian(x))
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [[-0.86756170 , -2.65000558 , -4.61865711 ],
+                     [-6.61437654 , -8.61379623 , -10.61371803]])
+            >>> print(tanh.inverse_log_det_jacobian(tanh.forward(x)))
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [[0.86756176 , 2.65000558 , 4.61866283 ],
+                     [6.61441946 , 8.61399269 , 10.61451530]])
+            >>> # doctest: -SKIP
     """
     _type = Type.BIJECTION
 

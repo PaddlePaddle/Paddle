@@ -34,6 +34,13 @@ void ReshapeKernel(const Context& dev_ctx,
                    DenseTensor* out,
                    DenseTensor* xshape);
 
+template <typename Context>
+void ReshapeStridedKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const IntArray& shape,
+                          DenseTensor* out,
+                          DenseTensor* xshape);
+
 template <typename T, typename Context>
 DenseTensor Reshape(const Context& dev_ctx,
                     const DenseTensor& x,

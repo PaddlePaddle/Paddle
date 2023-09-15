@@ -76,12 +76,12 @@ void FuseOperatorReshape2OneDNNPass::FuseReshape2(Graph *graph,
 
     int num_of_minus_ones = 0;
 
-    for (size_t i = 0; i < reshape2_shape.size(); ++i) {
-      if (reshape2_shape[i] == 0) {
+    for (auto item : reshape2_shape) {
+      if (item == 0) {
         VLOG(4) << "OneDNN op+reshape2 fuse pass does not support zero dims, "
                    "skipping";
         return;
-      } else if (reshape2_shape[i] == -1) {
+      } else if (item == -1) {
         ++num_of_minus_ones;
       }
     }

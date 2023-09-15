@@ -23,8 +23,8 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid, tensor
-from paddle.fluid import Program, program_guard
+from paddle import base, tensor
+from paddle.base import Program, program_guard
 
 paddle.enable_static()
 
@@ -42,19 +42,19 @@ class XPUTestUnbindOP(XPUOpTestWrapper):
             [out_0, out_1] = tensor.unbind(input=x_1, axis=0)
             input_1 = np.random.random([2, 3]).astype(self.dtype)
             axis = paddle.static.data(shape=[], dtype='int32', name='axis')
-            exe = fluid.Executor(place=self.place)
+            exe = base.Executor(place=self.place)
 
             [res_1, res_2] = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"x_1": input_1, "axis": 0},
                 fetch_list=[out_0, out_1],
             )
 
-            assert np.array_equal(res_1, input_1[0, 0:100])
-            assert np.array_equal(res_2, input_1[1, 0:100])
+            np.testing.assert_array_equal(res_1, input_1[0, 0:100])
+            np.testing.assert_array_equal(res_2, input_1[1, 0:100])
 
         def test_unbind_dygraph(self):
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 self.dtype = self.in_type
                 self.place = paddle.XPUPlace(0)
                 np_x = np.random.random([2, 3]).astype(self.dtype)
@@ -81,16 +81,16 @@ class XPUTestUnbindOP(XPUOpTestWrapper):
             [out_0, out_1] = paddle.unbind(input=x_1, axis=0)
             input_1 = np.random.random([2, 3]).astype(self.dtype)
             axis = paddle.static.data(shape=[], dtype='int32', name='axis')
-            exe = fluid.Executor(place=self.place)
+            exe = base.Executor(place=self.place)
 
             [res_1, res_2] = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"x_1": input_1, "axis": 0},
                 fetch_list=[out_0, out_1],
             )
 
-            assert np.array_equal(res_1, input_1[0, 0:100])
-            assert np.array_equal(res_2, input_1[1, 0:100])
+            np.testing.assert_array_equal(res_1, input_1[0, 0:100])
+            np.testing.assert_array_equal(res_2, input_1[1, 0:100])
 
     class TestUnbindOp(XPUOpTest):
         def initParameters(self):

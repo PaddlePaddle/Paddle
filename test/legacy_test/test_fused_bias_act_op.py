@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import convert_float_to_uint16
+from op_test import convert_float_to_uint16
 from scipy.special import erf, expit
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.base import core
 
 
 def round_type_1_process(val):
@@ -73,8 +73,6 @@ def fused_act_bias_wrapper(
     smooth=None,
     act_method='gelu',
     compute_dtype='default',
-    rows=0,
-    cols=0,
     quant_scale=-1,
     quant_round_type=0,
     quant_max_bound=0,
@@ -88,8 +86,6 @@ def fused_act_bias_wrapper(
         smooth,
         act_method,
         compute_dtype,
-        rows,
-        cols,
         quant_scale,
         quant_round_type,
         quant_max_bound,
@@ -140,8 +136,6 @@ class TestFusedBiasActOp(unittest.TestCase):
         return fused_act_bias_wrapper(
             x=x,
             bias=bias,
-            rows=self.rows,
-            cols=self.cols,
             act_method=self.act_method,
             compute_dtype=self.compute_dtype,
         )
@@ -197,8 +191,6 @@ class TestFastGeluFP16(TestFusedBiasActOp):
         out = fused_act_bias_wrapper(
             x=x,
             bias=bias,
-            rows=self.rows,
-            cols=self.cols,
             act_method=self.act_method,
         )
         self.use_fast_math(False)
@@ -284,8 +276,6 @@ class TestQuantFP32(TestFusedBiasActOp):
             smooth=smooth,
             act_method=self.act_method,
             compute_dtype=self.compute_dtype,
-            rows=self.rows,
-            cols=self.cols,
             quant_scale=self.quant_scale,
             quant_round_type=self.quant_round_type,
             quant_max_bound=self.quant_max_bound,
@@ -332,8 +322,6 @@ class TestDequantFP32(TestQuantFP32):
             dequant_scales=dequant_scales,
             act_method=self.act_method,
             compute_dtype=self.compute_dtype,
-            rows=self.rows,
-            cols=self.cols,
         )
         return out
 
@@ -441,8 +429,6 @@ class TestFusedBiasActOpBF16(unittest.TestCase):
             bias=bias,
             act_method=self.act_method,
             compute_dtype=self.compute_dtype,
-            rows=self.rows,
-            cols=self.cols,
         )
         return out
 
@@ -565,8 +551,6 @@ class TestQuantBF16(TestFusedBiasActOpBF16):
             smooth=smooth,
             act_method=self.act_method,
             compute_dtype=self.compute_dtype,
-            rows=self.rows,
-            cols=self.cols,
             quant_scale=self.quant_scale,
             quant_round_type=self.quant_round_type,
             quant_max_bound=self.quant_max_bound,
@@ -678,8 +662,6 @@ class TestAssert(unittest.TestCase):
             out = fused_act_bias_wrapper(
                 x=paddle.to_tensor(x),
                 bias=paddle.to_tensor(bias),
-                rows=self.rows,
-                cols=self.cols,
             )
         except ValueError as e:
             pass
@@ -696,8 +678,6 @@ class TestAssert(unittest.TestCase):
             out = fused_act_bias_wrapper(
                 x=paddle.to_tensor(x),
                 bias=paddle.to_tensor(bias),
-                rows=self.rows,
-                cols=self.cols,
                 compute_dtype='fp16',
             )
         except ValueError as e:
@@ -715,8 +695,6 @@ class TestAssert(unittest.TestCase):
             out = fused_act_bias_wrapper(
                 x=paddle.to_tensor(x),
                 bias=paddle.to_tensor(bias),
-                rows=self.rows,
-                cols=self.cols,
                 compute_dtype='fp16',
                 act_method=act_method,
             )
@@ -765,8 +743,6 @@ class TestWithoutBias(unittest.TestCase):
         return fused_act_bias_wrapper(
             x=x,
             bias=None,
-            rows=self.rows,
-            cols=self.cols,
             act_method=self.act_method,
         )
 

@@ -43,6 +43,7 @@ using AtomicVectorSizeT = std::vector<std::atomic<size_t>>;
 
 namespace paddle {
 namespace framework {
+class InstructionBase;
 namespace interpreter {
 class AsyncWorkQueue {
  public:
@@ -71,11 +72,21 @@ bool IsCommunicationOp(const Instruction& instr);
 
 bool IsCpuOp(const Instruction& instr);
 
+bool IsCpuOp(Instruction* instr);
+
+bool IsCpuOp(const paddle::framework::InstructionBase& instr);
+
+bool IsCpuOp(const paddle::framework::InstructionBase* instr);
+
 bool IsGradOp(const std::string& op_name);
 
 bool IsMemcpyD2H(const Instruction& instr);
 
 bool IsMemcpyH2D(const Instruction& instr);
+
+bool IsMemcpyH2D(Instruction* instr);
+
+bool IsMemcpyH2D(paddle::framework::InstructionBase* instr);
 
 bool IsMemcpyOp(const Instruction& instr);
 
@@ -95,21 +106,31 @@ void BuildOpFuncList(const platform::Place& place,
 
 void BuildOpFuncList(
     const platform::Place& place,
-    ::ir::Block* block,
+    ::pir::Block* block,
     std::vector<OpFuncNode>* vec_func_list,
     framework::Scope* scope,
     framework::Scope* local_scope,
-    const std::unordered_map<::ir::Value, std::string>& value_2_name_map,
+    const std::unordered_map<::pir::Value, std::string>& value_2_name_map,
     const ExecutionConfig& execution_config);
 
 void BuildVariableScope(const framework::BlockDesc& block,
                         const ExecutionConfig& execution_config,
                         VariableScope* var_scope);
+void BuildId2VarName(const std::map<std::string, int>& var_name_2_id,
+                     std::unordered_map<int, std::string>* id_2_var_name);
 
 void LogDeviceMemoryStats(const platform::Place& place);
 
 void SetDeviceCommContext(framework::OperatorBase* operator_base,
                           platform::DeviceContext* dev_ctx);
+
+void SetDeviceCommContext(::pir::Operation* op,
+                          platform::DeviceContext* dev_ctx);
+
+std::unordered_set<std::string> GetSpecialOpNames();
+
+const std::vector<std::string> GetInstructionCallStack(
+    const std::string& type, const pir::AttributeMap& attrs);
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle

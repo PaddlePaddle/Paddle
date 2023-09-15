@@ -20,19 +20,58 @@ import unittest
 import numpy as np
 from bert_dygraph_model import PretrainModelLayer
 from bert_utils import get_bert_config, get_feed_data_reader
+from dygraph_to_static_util import ast_only_test, test_with_new_ir
 from predictor_utils import PredictorTools
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
-place = (
-    fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
-)
+place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 SEED = 2020
 STEP_NUM = 10
 PRINT_STEP = 2
+
+
+class FakeBertDataset(paddle.io.Dataset):
+    def __init__(self, data_reader, steps):
+        self.src_ids = []
+        self.pos_ids = []
+        self.sent_ids = []
+        self.input_mask = []
+        self.mask_label = []
+        self.mask_pos = []
+        self.labels = []
+        self.data_reader = data_reader
+
+        self._generate_fake_data(1 * (steps + 1))
+
+    def _generate_fake_data(self, length):
+        for i, data in enumerate(self.data_reader.data_generator()()):
+            if i >= length:
+                break
+            self.src_ids.append(data[0])
+            self.pos_ids.append(data[1])
+            self.sent_ids.append(data[2])
+            self.input_mask.append(data[3])
+            self.mask_label.append(data[4])
+            self.mask_pos.append(data[5])
+            self.labels.append(data[6])
+
+    def __getitem__(self, idx):
+        return [
+            self.src_ids[idx],
+            self.pos_ids[idx],
+            self.sent_ids[idx],
+            self.input_mask[idx],
+            self.mask_label[idx],
+            self.mask_pos[idx],
+            self.labels[idx],
+        ]
+
+    def __len__(self):
+        return len(self.src_ids)
 
 
 class TestBert(unittest.TestCase):
@@ -52,22 +91,20 @@ class TestBert(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def train(self, bert_config, data_reader, to_static):
-        with fluid.dygraph.guard(place):
-            fluid.default_main_program().random_seed = SEED
-            fluid.default_startup_program().random_seed = SEED
+        with base.dygraph.guard(place):
+            base.default_main_program().random_seed = SEED
+            base.default_startup_program().random_seed = SEED
 
-            data_loader = fluid.io.DataLoader.from_generator(
-                capacity=50, iterable=True
-            )
-            data_loader.set_batch_generator(
-                data_reader.data_generator(), places=place
+            fake_dataset = FakeBertDataset(data_reader, STEP_NUM)
+            data_loader = paddle.io.DataLoader(
+                fake_dataset, places=place, batch_size=None
             )
 
             bert = PretrainModelLayer(
                 config=bert_config, weight_sharing=False, use_fp16=False
             )
 
-            optimizer = fluid.optimizer.Adam(parameter_list=bert.parameters())
+            optimizer = paddle.optimizer.Adam(parameters=bert.parameters())
             step_idx = 0
             speed_list = []
             for input_data in data_loader():
@@ -80,6 +117,7 @@ class TestBert(unittest.TestCase):
                     mask_pos,
                     labels,
                 ) = input_data
+
                 next_sent_acc, mask_lm_loss, total_loss = bert(
                     src_ids=src_ids,
                     position_ids=pos_ids,
@@ -135,13 +173,13 @@ class TestBert(unittest.TestCase):
 
     def predict_static(self, data):
         paddle.enable_static()
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         # load inference model
         [
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(
+        ] = paddle.static.io.load_inference_model(
             self.model_save_dir,
             executor=exe,
             model_filename=self.model_filename,
@@ -157,7 +195,7 @@ class TestBert(unittest.TestCase):
 
     def predict_dygraph(self, bert_config, data):
         paddle.jit.enable_to_static(False)
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             bert = PretrainModelLayer(
                 config=bert_config, weight_sharing=False, use_fp16=False
             )
@@ -166,7 +204,7 @@ class TestBert(unittest.TestCase):
             bert.set_dict(model_dict)
             bert.eval()
 
-            input_vars = [fluid.dygraph.to_variable(x) for x in data]
+            input_vars = [base.dygraph.to_variable(x) for x in data]
             (
                 src_ids,
                 pos_ids,
@@ -190,7 +228,7 @@ class TestBert(unittest.TestCase):
             return pred_res
 
     def predict_dygraph_jit(self, data):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             bert = paddle.jit.load(self.model_save_prefix)
             bert.eval()
 
@@ -223,6 +261,18 @@ class TestBert(unittest.TestCase):
         out = output()
         return out
 
+    @test_with_new_ir
+    def test_train_new_ir(self):
+        static_loss, static_ppl = self.train_static(
+            self.bert_config, self.data_reader
+        )
+        dygraph_loss, dygraph_ppl = self.train_dygraph(
+            self.bert_config, self.data_reader
+        )
+        np.testing.assert_allclose(static_loss, dygraph_loss, rtol=1e-05)
+        np.testing.assert_allclose(static_ppl, dygraph_ppl, rtol=1e-05)
+
+    @ast_only_test
     def test_train(self):
         static_loss, static_ppl = self.train_static(
             self.bert_config, self.data_reader

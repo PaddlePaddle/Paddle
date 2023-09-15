@@ -30,7 +30,7 @@ TEST(PhiUtils, TransPhiKernelKeyToOpKernelType) {
   ASSERT_EQ(op_kernel_type.library_type_,
             paddle::framework::LibraryType::kPlain);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   phi::KernelKey kernel_key_mkldnn(
       phi::Backend::ONEDNN, phi::DataLayout::NCHW, phi::DataType::FLOAT32);
   op_kernel_type =
@@ -66,7 +66,7 @@ TEST(PhiUtils, TransOpKernelTypeToPhiKernelKey) {
   ASSERT_EQ(kernel_key.layout(), phi::DataLayout::NCHW);
   ASSERT_EQ(kernel_key.backend(), phi::Backend::CPU);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   paddle::framework::OpKernelType op_kernel_type_mkldnn(
       paddle::framework::proto::VarType::FP32,
       paddle::platform::CPUPlace(),

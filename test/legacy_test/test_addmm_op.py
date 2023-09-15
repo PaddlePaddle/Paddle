@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 class TestAddMMOp(OpTest):
@@ -119,14 +119,14 @@ class TestAddMMOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # The input type of addmm_op must be Variable.
 
-            input = fluid.create_lod_tensor(
-                np.array([[-1, -1], [-1, -1]]), [[2]], fluid.CPUPlace()
+            input = base.create_lod_tensor(
+                np.array([[-1, -1], [-1, -1]]), [[2]], base.CPUPlace()
             )
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1, -1], [-1, -1]]), [[2]], fluid.CPUPlace()
+            x1 = base.create_lod_tensor(
+                np.array([[-1, -1], [-1, -1]]), [[2]], base.CPUPlace()
             )
-            x2 = fluid.create_lod_tensor(
-                np.array([[-1, -1], [-1, -1]]), [[2]], fluid.CPUPlace()
+            x2 = base.create_lod_tensor(
+                np.array([[-1, -1], [-1, -1]]), [[2]], base.CPUPlace()
             )
             self.assertRaises(TypeError, paddle.addmm, input, x1, x2)
 
@@ -323,12 +323,14 @@ class TestAddMMOp5(unittest.TestCase):
         np_x = np.random.random((20, 6)).astype(np.float32)
         np_y = np.random.random((6, 30)).astype(np.float32)
 
-        with fluid.dygraph.guard():
-            input = fluid.dygraph.to_variable(np_input)
-            x = fluid.dygraph.to_variable(np_x)
-            y = fluid.dygraph.to_variable(np_y)
+        with base.dygraph.guard():
+            input = base.dygraph.to_variable(np_input)
+            x = base.dygraph.to_variable(np_x)
+            y = base.dygraph.to_variable(np_y)
             out = paddle.tensor.addmm(input, x, y)
-            assert np.allclose(np_input + np.dot(np_x, np_y), out.numpy())
+            np.testing.assert_allclose(
+                np_input + np.dot(np_x, np_y), out.numpy(), rtol=1e-5, atol=1e-8
+            )
 
 
 class TestAddMMAPI(unittest.TestCase):

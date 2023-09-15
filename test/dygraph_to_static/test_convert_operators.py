@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test
 
 import paddle
 
@@ -40,6 +41,8 @@ net.forward = "A string so that convert forward will fail"
 
 
 class TestConvertCall(unittest.TestCase):
+    # fallback mode will raise a InnerError, it's ok.
+    @ast_only_test
     def test_class_exception(self):
         @paddle.jit.to_static
         def call_not_exist():

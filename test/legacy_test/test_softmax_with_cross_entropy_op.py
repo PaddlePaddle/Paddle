@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard
+from op_test import OpTest, paddle_static_guard
 from test_softmax_op import stable_softmax
 
 import paddle
-from paddle.fluid import Program, core, program_guard
+from paddle.base import Program, core, program_guard
 
 
 def cross_entropy(softmax, label, soft_label, axis, ignore_index=-1):

@@ -17,7 +17,7 @@ import math
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
-from paddle.fluid.param_attr import ParamAttr
+from paddle.base.param_attr import ParamAttr
 from paddle.nn import Conv2D, Dropout, Linear, MaxPool2D, ReLU
 from paddle.nn.initializer import Uniform
 from paddle.utils.download import get_weights_path_from_url
@@ -75,7 +75,7 @@ class AlexNet(nn.Layer):
 
     Args:
         num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
-                            will not be defined. Default: 1000.
+            will not be defined. Default: 1000.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of AlexNet model.
@@ -83,16 +83,14 @@ class AlexNet(nn.Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import AlexNet
+            >>> import paddle
+            >>> from paddle.vision.models import AlexNet
 
-            alexnet = AlexNet()
-
-            x = paddle.rand([1, 3, 224, 224])
-            out = alexnet(x)
-
-            print(out.shape)
-            # [1, 1000]
+            >>> alexnet = AlexNet()
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = alexnet(x)
+            >>> print(out.shape)
+            [1, 1000]
     """
 
     def __init__(self, num_classes=1000):
@@ -197,7 +195,7 @@ def alexnet(pretrained=False, **kwargs):
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
-                            on ImageNet. Default: False.
+            on ImageNet. Default: False.
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`AlexNet <api_paddle_vision_AlexNet>`.
 
     Returns:
@@ -206,19 +204,19 @@ def alexnet(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import alexnet
+            >>> import paddle
+            >>> from paddle.vision.models import alexnet
 
-            # build model
-            model = alexnet()
+            >>> # Build model
+            >>> model = alexnet()
 
-            # build model and load imagenet pretrained weight
-            # model = alexnet(pretrained=True)
+            >>> # Build model and load imagenet pretrained weight
+            >>> # model = alexnet(pretrained=True)
 
-            x = paddle.rand([1, 3, 224, 224])
-            out = model(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = model(x)
 
-            print(out.shape)
-            # [1, 1000]
+            >>> print(out.shape)
+            [1, 1000]
     """
     return _alexnet('alexnet', pretrained, **kwargs)

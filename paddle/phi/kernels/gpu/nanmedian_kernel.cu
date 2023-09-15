@@ -149,6 +149,14 @@ void ProcessMedianKernel(const Context& dev_ctx,
   auto x_dim = x.dims();
   int64_t x_rank = x_dim.size();
   int64_t stride = x_dim[x_rank - 1];
+
+  PADDLE_ENFORCE_NE(
+      stride,
+      0,
+      phi::errors::InvalidArgument("The input Tensor x's shape[-1] should not "
+                                   "be 0, but shape is %s now.",
+                                   x_dim));
+
   int64_t pre_dim = numel / stride;
   int64_t i = 0;
 
@@ -279,6 +287,7 @@ PD_REGISTER_KERNEL(nanmedian,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }

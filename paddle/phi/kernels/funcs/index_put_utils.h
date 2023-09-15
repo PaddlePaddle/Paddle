@@ -15,6 +15,7 @@
 #pragma once
 
 #include <vector>
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
@@ -88,6 +89,11 @@ std::vector<const phi::DenseTensor*> DealWithBoolIndices(
       nonzero_indices.Resize(phi::make_ddim({-1, rank}));
       NonZeroKernel<bool, Context>(dev_ctx, *indices_v[i], &nonzero_indices);
 
+      if (nonzero_indices.numel() == 0) {
+        std::vector<const phi::DenseTensor*> empty_indices;
+        return empty_indices;
+      }
+
       std::vector<phi::DenseTensor*> integer_indices(rank, nullptr);
       const int tmp_ix = tmp_indices_v->size();
       for (int i = 0; i < rank; ++i) {
@@ -100,6 +106,16 @@ std::vector<const phi::DenseTensor*> DealWithBoolIndices(
       }
       SplitWithNumKernel<int64_t, Context>(
           dev_ctx, nonzero_indices, rank, 1, integer_indices);
+#ifdef PADDLE_WITH_XPU
+      auto place = dev_ctx.GetPlace();
+      if (place.GetType() == phi::AllocationType::XPU) {
+        auto& pool = phi::DeviceContextPool::Instance();
+        auto* xpu_ctx = static_cast<phi::XPUContext*>(pool.Get(place));
+        if (xpu_ctx->x_context()->xpu_stream) {
+          dev_ctx.Wait();
+        }
+      }
+#endif
 
     } else if ((indices_v[i]->dtype() == phi::DataType::INT64) ||
                (indices_v[i]->dtype() == phi::DataType::INT32)) {

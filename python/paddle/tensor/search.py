@@ -19,8 +19,9 @@ import numpy as np
 import paddle
 from paddle import _C_ops
 from paddle.common_ops_import import VarDesc, Variable
+from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..fluid.data_feeder import check_dtype, check_variable_and_dtype
+from ..base.data_feeder import check_dtype, check_variable_and_dtype
 from ..framework import (
     LayerHelper,
     convert_np_dtype_to_dtype_,
@@ -28,8 +29,8 @@ from ..framework import (
     in_dynamic_mode,
 )
 
-# from ..fluid.layers import has_inf  #DEFINE_ALIAS
-# from ..fluid.layers import has_nan  #DEFINE_ALIAS
+# from ..base.layers import has_inf  #DEFINE_ALIAS
+# from ..base.layers import has_nan  #DEFINE_ALIAS
 
 __all__ = []
 
@@ -39,7 +40,7 @@ def argsort(x, axis=-1, descending=False, name=None):
     Sorts the input along the given axis, and returns the corresponding index tensor for the sorted output values. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
 
     Args:
-        x (Tensor): An input N-D Tensor with type float16, float32, float64, int16,
+        x (Tensor): An input N-D Tensor with type bfloat16, float16, float32, float64, int16,
             int32, int64, uint8.
         axis (int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
@@ -318,7 +319,7 @@ def index_select(x, index, axis=0, name=None):
     size as the length of ``index``; other dimensions have the same size as in the ``x`` tensor.
 
     Args:
-        x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float16, float32, float64, int32, int64.
+        x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float16, float32, float64, int32, int64, complex64 and complex128.
         index (Tensor): The 1-D Tensor containing the indices to index. The data type of ``index`` must be int32 or int64.
         axis (int, optional): The dimension in which we index. Default: if None, the ``axis`` is 0.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -352,7 +353,16 @@ def index_select(x, index, axis=0, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'uint16',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
             'paddle.tensor.search.index_select',
         )
         check_variable_and_dtype(
@@ -708,6 +718,43 @@ def where(condition, x=None, y=None, name=None):
         return out
 
 
+@inplace_apis_in_dygraph_only
+def where_(condition, x=None, y=None, name=None):
+    r"""
+    Inplace version of ``where`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_where`.
+    """
+    if np.isscalar(x) or np.isscalar(y):
+        raise ValueError("either both or neither of x and y should be given")
+
+    if x is None or y is None:
+        raise ValueError("either both or neither of x and y should be given")
+
+    condition_shape = list(condition.shape)
+    x_shape = list(x.shape)
+    y_shape = list(y.shape)
+    if x_shape == y_shape and condition_shape == x_shape:
+        broadcast_condition = condition
+        broadcast_x = x
+        broadcast_y = y
+    else:
+        zeros_like_x = paddle.zeros_like(x)
+        zeros_like_y = paddle.zeros_like(y)
+        zeros_like_condition = paddle.zeros_like(condition)
+        zeros_like_condition = paddle.cast(zeros_like_condition, x.dtype)
+        cast_cond = paddle.cast(condition, x.dtype)
+
+        broadcast_zeros = paddle.add(zeros_like_x, zeros_like_y)
+        broadcast_zeros = paddle.add(broadcast_zeros, zeros_like_condition)
+        broadcast_x = x.add_(broadcast_zeros)
+        broadcast_y = paddle.add(y, broadcast_zeros)
+        broadcast_condition = paddle.add(cast_cond, broadcast_zeros)
+        broadcast_condition = paddle.cast(broadcast_condition, 'bool')
+
+    if in_dynamic_mode():
+        return _C_ops.where_(broadcast_condition, broadcast_x, broadcast_y)
+
+
 def index_sample(x, index):
     """
     **IndexSample Layer**
@@ -733,7 +780,7 @@ def index_sample(x, index):
 
     Args:
         x (Tensor): The source input tensor with 2-D shape. Supported data type is
-            int32, int64, bfloat16, float16, float32, float64.
+            int32, int64, bfloat16, float16, float32, float64, complex64, complex128.
         index (Tensor): The index input tensor with 2-D shape, first dimension should be same with X.
             Data type is int32 or int64.
 
@@ -788,7 +835,16 @@ def index_sample(x, index):
         check_variable_and_dtype(
             x,
             'x',
-            ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'uint16',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
             'paddle.tensor.search.index_sample',
         )
         check_variable_and_dtype(

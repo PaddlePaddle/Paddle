@@ -15,8 +15,8 @@
 import paddle
 import paddle.nn.functional as F
 from paddle import _C_ops, in_dynamic_mode
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.base.layer_helper import LayerHelper
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 g_enable_math = None
 g_enable_flash = None
@@ -81,7 +81,7 @@ def _math_attention(
 
 
 def _select_sdp_cuda(head_dim):
-    if head_dim <= 128:
+    if head_dim <= 256:
         return "flash_attn"
     else:
         return "mem_efficient"
@@ -181,13 +181,12 @@ def flash_attention(
     Examples:
         .. code-block:: python
 
-            # required: skiptest
-            import paddle
+            >>> import paddle
 
-            q = paddle.rand((1, 128, 2, 16), dtype=paddle.float16)
+            >>> paddle.seed(1)
+            >>> q = paddle.rand((1, 128, 2, 16))
 
-            output = paddle.nn.functional.flash_attention(q, q, q, 0.9, False, False)
-            print(output)
+            >>> output = paddle.nn.functional.flash_attention.flash_attention(q, q, q, 0.9, False, False)
     """
     head_dim = query.shape[3]
     sdp_func_name = _select_sdp(head_dim)
@@ -202,6 +201,7 @@ def flash_attention(
                 key,
                 value,
                 fixed_seed_offset,
+                None,
                 dropout,
                 causal,
                 return_softmax,
@@ -339,13 +339,12 @@ def flash_attn_unpadded(
     Examples:
         .. code-block:: python
 
-            # required: skiptest
-            import paddle
+            >>> import paddle
+            >>> paddle.seed(1)
+            >>> q = paddle.rand((1, 128, 2, 16))
 
-            q = paddle.rand((1, 128, 2, 16), dtype=paddle.float16)
-
-            output = paddle.nn.functional.flash_attn_unpadded(q, q, q, 0.9, False, False)
-            print(output)
+            >>> output = paddle.nn.functional.flash_attention.flash_attn_unpadded(q, q, q, 0.9, False, False)
+            >>> print(output)
     """
     if in_dynamic_mode():
         (
@@ -358,6 +357,7 @@ def flash_attn_unpadded(
             cu_seqlens_q,
             cu_seqlens_k,
             fixed_seed_offset,
+            None,
             max_seqlen_q,
             max_seqlen_k,
             scale,
@@ -407,4 +407,83 @@ def flash_attn_unpadded(
     return out, softmax if return_softmax else None
 
 
-scaled_dot_product_attention = flash_attention
+def scaled_dot_product_attention(
+    query,
+    key,
+    value,
+    attn_mask=None,
+    dropout_p=0.0,
+    is_causal=False,
+    training=True,
+    name=None,
+):
+    r"""
+    The equation is:
+
+    .. math::
+
+        result=softmax(\frac{ Q * K^T }{\sqrt{d}}) * V
+
+    where : ``Q``, ``K``, and ``V`` represent the three input parameters of the attention module.
+    The dimensions of the three parameters are the same.
+    ``d`` represents the size of the last dimension of the three parameters.
+
+    Warning:
+        This API only supports inputs with dtype float16 and bfloat16.
+
+    Args:
+        query(Tensor): The query tensor in the Attention module.
+                        4-D tensor with shape:
+                        [batch_size, seq_len, num_heads, head_dim].
+                        The dtype can be float61 or bfloat16.
+        key(Tensor): The key tensor in the Attention module.
+                        4-D tensor with shape:
+                        [batch_size, seq_len, num_heads, head_dim].
+                        The dtype can be float61 or bfloat16.
+        value(Tensor): The value tensor in the Attention module.
+                        4-D tensor with shape:
+                        [batch_size, seq_len, num_heads, head_dim].
+                        The dtype can be float61 or bfloat16.
+        attn_mask(Tensor,optional): A float mask of the same type as query,
+                        key, value that is added to the attention score.
+        dropout_p(float): The dropout ratio.
+        is_causal(bool): Whether enable causal mode.
+        training(bool): Whether it is in the training phase.
+        name(str, optional): The default value is None. Normally there is no need for user
+                        to set this property. For more information, please refer to
+                        :ref:`api_guide_Name`.
+
+    Returns:
+        out(Tensor): The attention tensor.
+                    4-D tensor with shape: [batch_size, seq_len, num_heads, head_dim].
+                    The dtype can be float16 or bfloat16.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +SKIP()
+            >>> import paddle
+            >>> q = paddle.rand((1, 128, 2, 16), dtype=paddle.bfloat16)
+            >>> output = paddle.nn.functional.scaled_dot_product_attention(q, q, q, None, 0.9, False)
+            >>> print(output)
+            >>> # doctest: -SKIP
+    """
+    if attn_mask is None:
+        out, _ = flash_attention(query, key, value, dropout_p, is_causal)
+    else:
+        fixed_seed_offset = (None,)
+        return_softmax = False
+        rng_name = ""
+        out, _ = _C_ops.flash_attn(
+            query,
+            key,
+            value,
+            fixed_seed_offset,
+            attn_mask,
+            dropout_p,
+            is_causal,
+            return_softmax,
+            not training,
+            rng_name,
+        )
+    return out

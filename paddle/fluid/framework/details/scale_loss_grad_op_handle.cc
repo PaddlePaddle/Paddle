@@ -33,14 +33,14 @@ ScaleLossGradOpHandle::ScaleLossGradOpHandle(ir::Node *node,
                                              platform::DeviceContext *dev_ctx,
                                              proto::VarType::Type dtype)
     : OpHandleBase(node),
-      coeff_(static_cast<float>(1.0 / num_dev)),
+      coeff_(static_cast<float>(1.0 / num_dev)),  // NOLINT
       scope_(scope),
       place_(place),
       out_dtype_(dtype) {
   this->SetDeviceContext(place_, dev_ctx);
 }
 
-ScaleLossGradOpHandle::~ScaleLossGradOpHandle() {}
+ScaleLossGradOpHandle::~ScaleLossGradOpHandle() = default;
 
 struct ScaleLossGradFunctor {
   float coeff_;

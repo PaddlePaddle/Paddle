@@ -727,5 +727,90 @@ class TestDeleteRepeatedGatherPass(PassAutoScanTest):
         )
 
 
+class TestDeleteRepeatedTransposePass(PassAutoScanTest):
+    def sample_predictor_configs(self, program_config):
+        config = self.create_inference_config(use_xpu=True)
+        yield config, ['transpose2', 'relu', 'relu', 'relu'], (1e-5, 1e-5)
+
+    def sample_program_config(self, draw):
+        batch_size = draw(st.integers(min_value=1, max_value=4))
+        H = draw(st.integers(min_value=1, max_value=64))
+        W = draw(st.integers(min_value=1, max_value=64))
+        in_shape = [batch_size, H, W]
+        axis = [0, 2, 1]
+
+        transpose_op0 = OpConfig(
+            type='transpose2',
+            inputs={
+                "X": ["transpose_x"],
+            },
+            outputs={"Out": ["transpose_output0"]},
+            attrs={"axis": axis},
+        )
+        relu_op0 = OpConfig(
+            "relu",
+            inputs={
+                "X": ["transpose_output0"],
+            },
+            outputs={"Out": ["relu0_out"]},
+        )
+        transpose_op1 = OpConfig(
+            type='transpose2',
+            inputs={
+                "X": ["transpose_x"],
+            },
+            outputs={"Out": ["transpose_output1"]},
+            attrs={"axis": axis},
+        )
+        relu_op1 = OpConfig(
+            "relu",
+            inputs={
+                "X": ["transpose_output1"],
+            },
+            outputs={"Out": ["relu1_out"]},
+        )
+        transpose_op2 = OpConfig(
+            type='transpose2',
+            inputs={
+                "X": ["transpose_x"],
+            },
+            outputs={"Out": ["transpose_output2"]},
+            attrs={"axis": axis},
+        )
+        relu_op2 = OpConfig(
+            "relu",
+            inputs={
+                "X": ["transpose_output2"],
+            },
+            outputs={"Out": ["relu2_out"]},
+        )
+
+        ops = [
+            transpose_op0,
+            relu_op0,
+            transpose_op1,
+            relu_op1,
+            transpose_op2,
+            relu_op2,
+        ]
+
+        program_config = ProgramConfig(
+            ops=ops,
+            weights={},
+            inputs={
+                "transpose_x": TensorConfig(shape=in_shape),
+            },
+            outputs=["relu0_out", "relu1_out", "relu2_out"],
+        )
+        return program_config
+
+    def test(self):
+        self.run_and_statis(
+            quant=False,
+            max_examples=25,
+            passes=["delete_repeated_ops_pass"],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

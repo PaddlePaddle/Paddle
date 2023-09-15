@@ -14,14 +14,14 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <map>
 #include <string>
 #include <type_traits>
 
-#include "gflags/gflags.h"
 #include "paddle/phi/core/macros.h"
-
+#include "paddle/utils/flags.h"
 #include "paddle/utils/variant.h"
 
 #if defined(_WIN32)
@@ -32,9 +32,9 @@
 #define PHI_IMPORT_FLAG
 #endif  // _WIN32
 
-// We redefine the gflags' macro for exporting global variable
+// We redefine the flags macro for exporting flags defined in phi
+#ifdef PADDLE_WITH_GFLAGS
 
-// ----------------------------DECLARE FLAGS----------------------------
 // clang-format off
 #define PHI_DECLARE_VARIABLE(type, shorttype, name) \
   namespace fL##shorttype {                         \
@@ -43,35 +43,10 @@
   using fL##shorttype::FLAGS_##name
 // clang-format on
 
-#define PHI_DECLARE_bool(name) PHI_DECLARE_VARIABLE(bool, B, name)
-
-#define PHI_DECLARE_int32(name) \
-  PHI_DECLARE_VARIABLE(::GFLAGS_NAMESPACE::int32, I, name)
-
-#define PHI_DECLARE_uint32(name) \
-  PHI_DECLARE_VARIABLE(::GFLAGS_NAMESPACE::uint32, U, name)
-
-#define PHI_DECLARE_int64(name) \
-  PHI_DECLARE_VARIABLE(::GFLAGS_NAMESPACE::int64, I64, name)
-
-#define PHI_DECLARE_uint64(name) \
-  PHI_DECLARE_VARIABLE(::GFLAGS_NAMESPACE::uint64, U64, name)
-
-#define PHI_DECLARE_double(name) PHI_DECLARE_VARIABLE(double, D, name)
-
-#define PHI_DECLARE_string(name)                               \
-  /* We always want to import declared variables, dll or no */ \
-  namespace fLS {                                              \
-  extern PHI_IMPORT_FLAG ::fLS::clstring& FLAGS_##name;        \
-  }                                                            \
-  using fLS::FLAGS_##name
-
-// ----------------------------DEFINE FLAGS----------------------------
 #define PHI_DEFINE_VARIABLE(type, shorttype, name, value, help) \
   namespace fL##shorttype {                                     \
-    static const type FLAGS_nono##name = value;                 \
-    PHI_EXPORT_FLAG type FLAGS_##name = FLAGS_nono##name;       \
-    static type FLAGS_no##name = FLAGS_nono##name;              \
+    PHI_EXPORT_FLAG type FLAGS_##name = value;                  \
+    static type FLAGS_no##name = value;                         \
     static GFLAGS_NAMESPACE::FlagRegisterer o_##name(           \
         #name,                                                  \
         MAYBE_STRIPPED_HELP(help),                              \
@@ -81,50 +56,74 @@
   } /* NOLINT */                                                \
   using fL##shorttype::FLAGS_##name
 
-#define PHI_DEFINE_bool(name, val, txt)                              \
-  namespace fLB {                                                    \
-  typedef ::fLB::CompileAssert FLAG_##name##_value_is_not_a_bool     \
-      [(sizeof(::fLB::IsBoolFlag(val)) != sizeof(double)) ? 1 : -1]; \
-  }                                                                  \
+#else  // PADDLE_WITH_GFLAGS
+
+#define PHI_DECLARE_VARIABLE(type, shorttype, name) \
+  namespace paddle_flags {                          \
+  extern PHI_IMPORT_FLAG type FLAGS_##name;         \
+  }                                                 \
+  using paddle_flags::FLAGS_##name
+
+#define PHI_DEFINE_VARIABLE(type, shorttype, name, default_value, description) \
+  namespace paddle_flags {                                                     \
+  static const type FLAGS_##name##_default = default_value;                    \
+  PHI_EXPORT_FLAG type FLAGS_##name = default_value;                           \
+  /* Register FLAG */                                                          \
+  static ::paddle::flags::FlagRegisterer flag_##name##_registerer(             \
+      #name, description, __FILE__, &FLAGS_##name##_default, &FLAGS_##name);   \
+  }                                                                            \
+  using paddle_flags::FLAGS_##name
+
+#endif
+
+// ----------------------------DECLARE FLAGS----------------------------
+#define PHI_DECLARE_bool(name) PHI_DECLARE_VARIABLE(bool, B, name)
+#define PHI_DECLARE_int32(name) PHI_DECLARE_VARIABLE(int32_t, I, name)
+#define PHI_DECLARE_uint32(name) PHI_DECLARE_VARIABLE(uint32_t, U, name)
+#define PHI_DECLARE_int64(name) PHI_DECLARE_VARIABLE(int64_t, I64, name)
+#define PHI_DECLARE_uint64(name) PHI_DECLARE_VARIABLE(uint64_t, U64, name)
+#define PHI_DECLARE_double(name) PHI_DECLARE_VARIABLE(double, D, name)
+
+// ----------------------------DEFINE FLAGS-----------------------------
+#define PHI_DEFINE_bool(name, val, txt) \
   PHI_DEFINE_VARIABLE(bool, B, name, val, txt)
-
 #define PHI_DEFINE_int32(name, val, txt) \
-  PHI_DEFINE_VARIABLE(GFLAGS_NAMESPACE::int32, I, name, val, txt)
-
+  PHI_DEFINE_VARIABLE(int32_t, I, name, val, txt)
 #define PHI_DEFINE_uint32(name, val, txt) \
-  PHI_DEFINE_VARIABLE(GFLAGS_NAMESPACE::uint32, U, name, val, txt)
-
+  PHI_DEFINE_VARIABLE(uint32_t, U, name, val, txt)
 #define PHI_DEFINE_int64(name, val, txt) \
-  PHI_DEFINE_VARIABLE(GFLAGS_NAMESPACE::int64, I64, name, val, txt)
-
+  PHI_DEFINE_VARIABLE(int64_t, I64, name, val, txt)
 #define PHI_DEFINE_uint64(name, val, txt) \
-  PHI_DEFINE_VARIABLE(GFLAGS_NAMESPACE::uint64, U64, name, val, txt)
-
+  PHI_DEFINE_VARIABLE(uint64_t, U64, name, val, txt)
 #define PHI_DEFINE_double(name, val, txt) \
   PHI_DEFINE_VARIABLE(double, D, name, val, txt)
 
-#define PHI_DEFINE_string(name, val, txt)                             \
-  namespace fLS {                                                     \
-  using ::fLS::clstring;                                              \
-  using ::fLS::StringFlagDestructor;                                  \
-  static union {                                                      \
-    void* align;                                                      \
-    char s[sizeof(clstring)];                                         \
-  } s_##name[2];                                                      \
-  clstring* const FLAGS_no##name =                                    \
-      ::fLS::dont_pass0toDEFINE_string(s_##name[0].s, val);           \
-  static GFLAGS_NAMESPACE::FlagRegisterer o_##name(                   \
-      #name,                                                          \
-      MAYBE_STRIPPED_HELP(txt),                                       \
-      __FILE__,                                                       \
-      FLAGS_no##name,                                                 \
-      new (s_##name[1].s) clstring(*FLAGS_no##name));                 \
-  static StringFlagDestructor d_##name(s_##name[0].s, s_##name[1].s); \
-  extern PHI_EXPORT_FLAG clstring& FLAGS_##name;                      \
-  using fLS::FLAGS_##name;                                            \
-  clstring& FLAGS_##name = *FLAGS_no##name;                           \
-  } /* NOLINT */                                                      \
+#ifdef PADDLE_WITH_GFLAGS
+#define PHI_DECLARE_string(name)                        \
+  namespace fLS {                                       \
+  extern PHI_IMPORT_FLAG ::fLS::clstring& FLAGS_##name; \
+  }                                                     \
   using fLS::FLAGS_##name
+
+#define PHI_DEFINE_string(name, val, txt)                                    \
+  namespace fLS {                                                            \
+  using ::fLS::clstring;                                                     \
+  clstring FLAGS_##name##_default = val;                                     \
+  clstring FLAGS_##name##_current = val;                                     \
+  static GFLAGS_NAMESPACE::FlagRegisterer o_##name(#name,                    \
+                                                   MAYBE_STRIPPED_HELP(txt), \
+                                                   __FILE__,                 \
+                                                   &FLAGS_##name##_current,  \
+                                                   &FLAGS_##name##_default); \
+  PHI_EXPORT_FLAG clstring& FLAGS_##name = FLAGS_##name##_current;           \
+  } /* NOLINT */                                                             \
+  using ::fLS::FLAGS_##name
+#else
+#define PHI_DECLARE_string(name) PHI_DECLARE_VARIABLE(std::string, S, name)
+
+#define PHI_DEFINE_string(name, val, txt) \
+  PHI_DEFINE_VARIABLE(std::string, S, name, val, txt)
+#endif
 
 namespace phi {
 

@@ -113,8 +113,8 @@ static bool limit_args(const OpGroupPtr& first, const OpGroupPtr& second) {
   }
 }
 
-bool WithoutLastDimInReduce(const api::Shape& inshape,
-                            const std::vector<int>& axes) {
+inline bool WithoutLastDimInReduce(const api::Shape& inshape,
+                                   const std::vector<int>& axes) {
   // if last axis is in reduce.
   if (std::find(axes.begin(), axes.end(), inshape.size() - 1) != axes.end() ||
       std::find(axes.begin(), axes.end(), -1) != axes.end()) {

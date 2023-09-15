@@ -22,8 +22,8 @@
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/profiler.h"
 
-DECLARE_bool(cinn_sync_run);
-DECLARE_string(cinn_self_check_accuracy);
+PD_DECLARE_bool(cinn_sync_run);
+PD_DECLARE_string(cinn_self_check_accuracy);
 
 namespace cinn {
 namespace hlir {
@@ -363,6 +363,29 @@ void Instruction::Run(
   //     CUDA_CALL(cudaStreamSynchronize(static_cast<cudaStream_t>(stream)));
   // #endif
   //   }
+}
+
+std::string Instruction::DumpInstruction() const {
+  std::stringstream ss;
+  ss << "Instruction {" << std::endl;
+  for (size_t i = 0; i < fn_names_.size(); ++i) {
+    ss << "  Function " << fn_names_[i] << ":" << std::endl;
+    ss << "    function ptr: " << fn_ptrs_[i] << std::endl;
+
+    auto in_arg = in_args_[i];
+    std::sort(in_arg.begin(), in_arg.end());
+    for (auto& in_name : in_arg) {
+      ss << "    input: " << in_name << std::endl;
+    }
+
+    auto out_arg = out_args_[i];
+    std::sort(out_arg.begin(), out_arg.end());
+    for (auto& out_name : out_arg) {
+      ss << "    output: " << out_name << std::endl;
+    }
+  }
+  ss << "}" << std::endl;
+  return ss.str();
 }
 
 void Instruction::CheckResults(

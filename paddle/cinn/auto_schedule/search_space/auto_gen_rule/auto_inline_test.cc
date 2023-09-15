@@ -40,8 +40,6 @@
 #include "paddle/cinn/utils/string.h"
 #include "test/cpp/cinn/concrete_program_builder.h"
 
-DECLARE_bool(cinn_ir_schedule);
-
 namespace cinn {
 namespace auto_schedule {
 
@@ -155,7 +153,6 @@ TEST(AutoInline, AddReluInline) {
 
   frontend::Program program = builder.Build();
 
-  FLAGS_cinn_ir_schedule = true;
   auto graph = std::make_shared<Graph>(program, target);
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
 
@@ -164,14 +161,14 @@ TEST(AutoInline, AddReluInline) {
           "inferdtype");
   const auto& shape_dict = graph->GetAttrs<
       absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
-  auto op_lowerer = std::make_unique<hlir::framework::OpLowerer>(
-      dtype_dict, shape_dict, target);
+  auto op_lowerer =
+      hlir::framework::CreateOpLowerer(dtype_dict, shape_dict, target);
 
   EXPECT_EQ(graph->fusion_groups.size(), 1UL);
   std::vector<ir::LoweredFunc> funcs =
-      op_lowerer->Lower(graph->fusion_groups[0],
-                        /*apply_op_schedule = */ false,
-                        /*apply_group_schedule=*/false);
+      op_lowerer.Lower(graph->fusion_groups[0],
+                       /*apply_op_schedule = */ false,
+                       /*apply_group_schedule=*/false);
 
   VLOG(6) << "Expr before auto inline: " << funcs[0]->body;
 

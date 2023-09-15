@@ -14,8 +14,6 @@
 
 #include "paddle/cinn/hlir/op/contrib/sort.h"
 
-#include <gflags/gflags.h>
-
 #include <memory>
 #include <string>
 #include <utility>
@@ -37,8 +35,6 @@
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
-
-DECLARE_bool(cinn_ir_schedule);
 
 namespace cinn {
 namespace hlir {

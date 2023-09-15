@@ -14,20 +14,11 @@
 
 #pragma once
 
-#include <cstring>
-#include <string>
-#include <type_traits>
 #include <typeindex>
 #include <typeinfo>
-#include <vector>
 
 #include "paddle/phi/core/custom_kernel.h"
-#include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/extended_tensor.h"
-#include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/kernel_utils.h"
-#include "paddle/phi/core/macros.h"
-#include "paddle/phi/core/type_defs.h"
 
 namespace phi {
 
@@ -57,7 +48,7 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
     auto args_type = ParseArgType(Indices{});
     for (auto arg_type : args_type) {
       if (arg_type == std::type_index(typeid(const CPUContext&))
-#if defined(PADDLE_WITH_MKLDNN)
+#if defined(PADDLE_WITH_DNNL)
           || arg_type == std::type_index(typeid(const OneDNNContext&))
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -1401,6 +1392,14 @@ struct KernelRegistrar {
                                             meta_kernel_fn,        \
                                             BACKEND_LIST)
 
+#define PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(    \
+    kernel_name, layout, meta_kernel_fn)                           \
+  _PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(::phi::RegType::INNER, \
+                                            kernel_name,           \
+                                            layout,                \
+                                            meta_kernel_fn,        \
+                                            BACKEND_LIST_EXCEPT_CUSTOM)
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #define _DEVICE GPU,
 #elif defined(PADDLE_WITH_XPU)
@@ -1415,6 +1414,7 @@ struct KernelRegistrar {
 #endif
 
 #define BACKEND_LIST _DEVICE _CUSTOM CPU
+#define BACKEND_LIST_EXCEPT_CUSTOM _DEVICE CPU
 
 #define _PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(                            \
     reg_type, kernel_name, layout, meta_kernel_fn, ...)                       \

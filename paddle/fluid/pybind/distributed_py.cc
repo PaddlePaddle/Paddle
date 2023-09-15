@@ -54,8 +54,6 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sync_batch_norm_kernel.h"
 
-namespace py = pybind11;
-
 namespace paddle {
 namespace pybind {
 
@@ -1238,7 +1236,6 @@ void BindDistributed(py::module *m) {
       .def_static("create",
                   distributed::ProcessGroupNCCL::CreateProcessGroupNCCL,
                   py::arg("store"),
-                  py::arg("device_id"),
                   py::arg("rank"),
                   py::arg("world_size"),
                   py::arg("group_id") = 0,

@@ -51,14 +51,14 @@ void ConcatGradKernel(const Context& dev_ctx,
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
       out_grad.mem_desc(), funcs::to_void_cast(out_grad.data<T>()));
 
-  for (size_t i = 0; i < x_grad.size(); ++i) {
-    if (x_grad[i]->numel() != 0UL) {
-      auto x_grad_vec_dims = vectorize(x_grad[i]->dims());
+  for (auto& grad : x_grad) {
+    if (grad->numel() != 0UL) {
+      auto x_grad_vec_dims = vectorize(grad->dims());
       auto slice_mem_p = reorder_handler.AcquireSubmemory(
           x_grad_vec_dims, offset, reorder_src_memory_p);
 
       auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-          x_grad[i],
+          grad,
           x_grad_vec_dims,
           funcs::GetPlainOneDNNFormat(x_grad_vec_dims.size()),
           dev_ctx.GetPlace());
@@ -67,9 +67,9 @@ void ConcatGradKernel(const Context& dev_ctx,
 
       reorder_p->execute(astream, *slice_mem_p, *reorder_dst_memory_p);
 
-      offset[axis] += x_grad[i]->dims()[axis];
+      offset[axis] += grad->dims()[axis];
 
-      x_grad[i]->set_mem_desc(reorder_dst_memory_p->get_desc());
+      grad->set_mem_desc(reorder_dst_memory_p->get_desc());
     }
   }
   astream.wait();

@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.base import core
 
 TOLERANCE = {
     "float16": {"rtol": 1e-2, "atol": 1e-2},
@@ -101,6 +102,7 @@ class TestPrimForward(unittest.TestCase):
         # Ensure that layer_norm is splitted into small ops
         self.assertTrue('layer_norm' not in fwd_ops)
 
+    @ast_only_test
     def test_cinn_prim_forward(self):
         for dtype in self.dtypes:
             if paddle.device.get_device() == "cpu":
@@ -168,6 +170,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         # Ensure that layer_norm is splitted into small ops
         self.assertTrue('layer_norm' not in fwd_ops)
 
+    @ast_only_test
     def test_cinn_prim(self):
         for dtype in self.dtypes:
             if paddle.device.get_device() == "cpu":

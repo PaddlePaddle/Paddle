@@ -931,9 +931,8 @@ __global__ void masked_multihead_attention_kernel(
 
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
   if (bi == 0 && hi == 0 && tid == 0) {
-    printf("=======q_out=======\n");
-    for (int i = 0; i < Dh; ++i) printf("%f ", static_cast<float>(q_smem[i]));
-    printf("\n");
+    VLOG(0) << "=======q_out=======\n";
+    for (int i = 0; i < Dh; ++i) VLOG(0) << static_cast<float>(q_smem[i]);
   }
   __syncthreads();
 #endif

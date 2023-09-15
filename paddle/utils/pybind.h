@@ -37,6 +37,9 @@ typedef struct {
 // Internal use only, to expose the Tensor type to Python.
 bool PyCheckTensor(PyObject* obj);
 
+// Share Tensor for inplace.
+void ShareTensor(PyObject* src, PyObject* dst);
+
 // Internal use only, to expose the Tensor type to Python.
 paddle::Tensor CastPyArg2Tensor(PyObject* obj, Py_ssize_t arg_pos);
 

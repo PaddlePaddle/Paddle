@@ -19,7 +19,7 @@ import numpy as np
 from hybrid_parallel_mp_model import (
     SimpleDPNet,
     SimpleMPNet,
-    TestDistMPTraning,
+    TestDistMPTraining,
     parallel_matmul,
     set_random_seed,
 )
@@ -58,7 +58,7 @@ class SimpleDPMultimodalNet(SimpleDPNet):
         return x
 
 
-class TestMPBroadcastObj(TestDistMPTraning):
+class TestMPBroadcastObj(TestDistMPTraining):
     def build_model_optimizer(self):
         hcg = fleet.get_hybrid_communicate_group()
         word_size = hcg.get_model_parallel_world_size()

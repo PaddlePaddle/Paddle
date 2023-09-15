@@ -17,6 +17,7 @@ import random
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 from simnet_dygraph_model_v2 import BOW, HingeLoss
 
 import paddle
@@ -72,8 +73,8 @@ def fake_vocabulary():
 vocab = fake_vocabulary()
 
 
-class FakeReaderProcessor:
-    def __init__(self, args, vocab):
+class FakeReaderProcessor(paddle.io.Dataset):
+    def __init__(self, args, vocab, length):
         self.vocab = vocab
         self.seq_len = args.seq_len
         self.sample_size = args.fake_sample_size
@@ -85,6 +86,10 @@ class FakeReaderProcessor:
             self.data_samples.append(
                 np.array([query, pos_title, neg_title]).astype(np.int64)
             )
+        self.query = []
+        self.pos_title = []
+        self.neg_title = []
+        self._init_data(length)
 
     def get_reader(self, mode, epoch=0):
         def reader_with_pairwise():
@@ -94,8 +99,25 @@ class FakeReaderProcessor:
 
         return reader_with_pairwise
 
+    def _init_data(self, length):
+        reader = self.get_reader("train", epoch=args.epoch)()
+        for i, yield_data in enumerate(reader):
+            if i >= length:
+                break
+            self.query.append(yield_data[0])
+            self.pos_title.append(yield_data[1])
+            self.neg_title.append(yield_data[2])
 
-simnet_process = FakeReaderProcessor(args, vocab)
+    def __getitem__(self, idx):
+        return self.query[idx], self.pos_title[idx], self.neg_title[idx]
+
+    def __len__(self):
+        return len(self.query)
+
+
+simnet_process = FakeReaderProcessor(
+    args, vocab, args.batch_size * (args.epoch + 1)
+)
 
 
 def train(conf_dict, to_static):
@@ -132,12 +154,8 @@ def train(conf_dict, to_static):
     global_step = 0
     losses = []
 
-    train_loader = paddle.fluid.io.DataLoader.from_generator(
-        capacity=16, return_list=True, iterable=True, use_double_buffer=True
-    )
-    get_train_examples = simnet_process.get_reader("train", epoch=args.epoch)
-    train_loader.set_sample_list_generator(
-        paddle.batch(get_train_examples, batch_size=args.batch_size), place
+    train_loader = paddle.io.DataLoader(
+        simnet_process, batch_size=args.batch_size
     )
 
     for left, pos_right, neg_right in train_loader():
@@ -159,9 +177,10 @@ def train(conf_dict, to_static):
 
 
 class TestSimnet(unittest.TestCase):
+    @test_and_compare_with_new_ir(True)
     def test_dygraph_static_same_loss(self):
         if paddle.is_compiled_with_cuda():
-            paddle.fluid.set_flags({"FLAGS_cudnn_deterministic": True})
+            paddle.base.set_flags({"FLAGS_cudnn_deterministic": True})
         conf_dict = create_conf_dict()
         dygraph_loss = train(conf_dict, to_static=False)
         static_loss = train(conf_dict, to_static=True)

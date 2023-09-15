@@ -17,14 +17,14 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestImperativePartitialBackward(unittest.TestCase):
     def test_partitial_backward(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             x = np.random.randn(2, 4, 5).astype("float32")
-            x = fluid.dygraph.to_variable(x)
+            x = base.dygraph.to_variable(x)
             linear1 = paddle.nn.Linear(5, 10)
             linear2 = paddle.nn.Linear(5, 10)
 
@@ -39,8 +39,8 @@ class TestImperativePartitialBackward(unittest.TestCase):
             for param in linear2.parameters():
                 self.assertIsNone(param._grad_ivar())
 
-            optimizer = fluid.optimizer.AdamOptimizer(
-                parameter_list=(linear1.parameters() + linear2.parameters())
+            optimizer = paddle.optimizer.Adam(
+                parameters=(linear1.parameters() + linear2.parameters())
             )
             _, params_grads = optimizer.minimize(loss)
 
