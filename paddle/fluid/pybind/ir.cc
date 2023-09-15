@@ -428,10 +428,24 @@ void BindOpResult(py::module *m) {
            [](OpResult &self, OpResult &other) {
              return paddle::dialect::divide(self, other);
            })
-      .def("__hash__",
-           [](OpResult &self) {
-             return std::hash<pir::Value>{}(self.dyn_cast<pir::Value>());
+      .def("__lt__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::less_than(self, other);
            })
+      .def("__le__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::less_equal(self, other);
+           })
+      .def("__gt__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::greater_than(self, other);
+           })
+      .def("__ge__",
+           [](OpResult &self, OpResult &other) {
+             return paddle::dialect::greater_equal(self, other);
+           })
+      .def("__hash__",
+           [](OpResult &self) { return std::hash<pir::Value>{}(self); })
       .def("get_defining_op",
            &OpResult::GetDefiningOp,
            return_value_policy::reference)

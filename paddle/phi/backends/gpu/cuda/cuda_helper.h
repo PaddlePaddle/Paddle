@@ -89,6 +89,12 @@ cudaDataType_t ToCudaDataType() {
   } else if (std::is_same<T, phi::dtype::bfloat16>::value) {
     return CUDA_R_16BF;
 #endif
+#if CUDA_VERSION >= 11060
+  } else if (std::is_same<T, int8_t>::value) {
+    return CUDA_R_8I;
+  } else if (std::is_same<T, int32_t>::value) {
+    return CUDA_R_32I;
+#endif
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "DataType %s is unsupported for CUDA.",

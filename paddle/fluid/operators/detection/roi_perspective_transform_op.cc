@@ -259,10 +259,10 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
 
     auto in_dims = phi::vectorize<int64_t>(in->dims());
-    int channels = in_dims[1];
-    int in_height = in_dims[2];
-    int in_width = in_dims[3];
-    int rois_num = rois->dims()[0];
+    int channels = static_cast<int>(in_dims[1]);
+    int in_height = static_cast<int>(in_dims[2]);
+    int in_width = static_cast<int>(in_dims[3]);
+    int rois_num = static_cast<int>(rois->dims()[0]);
 
     const T* input_data = in->data<T>();
     int* mask_data = mask->mutable_data<int>(ctx.GetPlace());
@@ -273,7 +273,7 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     auto lod = rois->lod().back();
     for (size_t i = 0; i < lod.size() - 1; ++i) {
       for (size_t j = lod[i]; j < lod[i + 1]; ++j) {
-        roi2image_data[j] = i;
+        roi2image_data[j] = static_cast<int64_t>(i);
       }
     }
 
@@ -413,7 +413,7 @@ class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
     int channels = in_dims[1];
     int in_height = in_dims[2];
     int in_width = in_dims[3];
-    int rois_num = rois->dims()[0];
+    int rois_num = static_cast<int>(rois->dims()[0]);
 
     T* in_grad_data = in_grad->mutable_data<T>(ctx.GetPlace());
     const T* out_grad_data = out_grad->data<T>();
@@ -425,7 +425,7 @@ class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
     auto lod = rois->lod().back();
     for (size_t i = 0; i < lod.size() - 1; ++i) {
       for (size_t j = lod[i]; j < lod[i + 1]; ++j) {
-        roi2image_data[j] = i;
+        roi2image_data[j] = static_cast<int>(i);
       }
     }
 

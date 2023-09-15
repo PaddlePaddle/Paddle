@@ -48,7 +48,7 @@ class PointerAttribute;
 ///
 class Builder {
  public:
-  Builder(IrContext *context, Block *block, Block::iterator insert_point)
+  Builder(IrContext *context, Block *block, Block::Iterator insert_point)
       : context_(context) {
     SetInsertionPoint(block, insert_point);
   }
@@ -57,10 +57,10 @@ class Builder {
       : Builder(context, block, block->end()) {}
 
   explicit Builder(IrContext *context)
-      : Builder(context, nullptr, Block::iterator{}) {}
+      : Builder(context, nullptr, Block::Iterator{}) {}
 
   /// Set the insertion point to the specified location.
-  void SetInsertionPoint(Block *block, Block::iterator insert_point) {
+  void SetInsertionPoint(Block *block, Block::Iterator insert_point) {
     // TODO(liuyuanle): check that insertPoint is in this rather than some other
     // block.
     this->block_ = block;
@@ -70,13 +70,13 @@ class Builder {
   /// Set the insertion point to the specified operation, which will cause
   /// subsequent insertions to go right before it.
   void SetInsertionPoint(Operation *op) {
-    SetInsertionPoint(op->GetParent(), Block::iterator{*op});
+    SetInsertionPoint(op->GetParent(), Block::Iterator{*op});
   }
 
   /// Set the insertion point to the node after the specified operation, which
   /// will cause subsequent insertions to go right after it.
   void SetInsertionPointAfter(Operation *op) {
-    SetInsertionPoint(op->GetParent(), std::next(Block::iterator{*op}));
+    SetInsertionPoint(op->GetParent(), std::next(Block::Iterator{*op}));
   }
 
   /// Set the insertion point to the start of the specified block.
@@ -138,7 +138,7 @@ class Builder {
   IrContext *context_;
   Block *block_;
   // The insertion point within the list that this builder is inserting before.
-  Block::iterator insert_point_;
+  Block::Iterator insert_point_;
 };
 
 }  // namespace pir

@@ -2397,7 +2397,7 @@ class RuleBasedTuner:
             self._logger.info(
                 "The process will be quitted when just tune not run."
             )
-            quit()
+            sys.exit()
 
     def tune(self):
         begin = time.time()
