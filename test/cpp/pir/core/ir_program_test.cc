@@ -274,7 +274,7 @@ TEST(program_test, builder) {
   EXPECT_EQ(program.block()->back(), full_op.operation());
   EXPECT_EQ(full_op.num_operands(), 0u);
   EXPECT_EQ(full_op.num_results(), 1u);
-  EXPECT_EQ(full_op.attributes().size(), 4u);
+  EXPECT_EQ(full_op.attributes().size(), 5u);
   EXPECT_EQ(
       full_op_output.dyn_cast<paddle::dialect::DenseTensorType>().offset() == 0,
       true);

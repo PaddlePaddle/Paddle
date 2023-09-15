@@ -594,6 +594,8 @@ def GenBuildOutputs(
                 )
 
     build_output_str += "  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());\n"
+    # NOTE(Aurelius84): PassStopGradients must be placed after argument.AddOutputs.
+    build_output_str += "  ::pir::PassStopGradientsDefaultly(argument);\n"
 
     return build_output_str
 
