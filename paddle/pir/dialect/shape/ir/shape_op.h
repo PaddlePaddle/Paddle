@@ -51,11 +51,11 @@ class IR_API SymbolicDim : public Op<SymbolicDim> {
   void updateKnownNonSizeOne(bool attrValue);
   void updateKnownNonSizeZero(bool attrValue);
 
-  bool isDynamic();
-  bool merge(SymbolicDim other);
+  bool IsDynamic();
+  bool Merge(SymbolicDim other);
 
   static const std::string getSymbolicDimAttrName() {
-    return "SymbolicDimAttr";
+    return "kSymbolicDimAttr";
   }
 
   void Verify() {}
@@ -112,7 +112,14 @@ class IR_API TieShapeOp : public Op<TieShapeOp> {
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
                     const pir::OpResult &input);
+
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    const pir::OpResult &input,
+                    const std::vector<pir::OpResult> &dims);
+
   pir::Value getValue();
+  std::vector<pir::Value> getShapeDimIndexes();
   void Verify() {}
 };
 
@@ -129,6 +136,29 @@ class IR_API FuncOp : public Op<FuncOp> {
   pir::Block *block();
   void Verify() {}
 };
+
+class IR_API TensorDimOp : public Op<TensorDimOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "shape.tensor_dim"; }
+
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    const pir::OpResult &source,
+                    const pir::OpResult &index);
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    const pir::OpResult &source,
+                    int64_t index);
+  pir::Value getIndex();
+  pir::Value getSource();
+  pir::OpResult out() { return result(0); }
+  void Verify() {}
+};
+
 }  // namespace dialect
 }  // namespace pir
 
@@ -137,3 +167,4 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::DimOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::TieProductEqualOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::TieShapeOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::FuncOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::TensorDimOp);

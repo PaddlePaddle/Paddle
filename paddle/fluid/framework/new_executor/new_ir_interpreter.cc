@@ -562,6 +562,10 @@ std::string NewIRInterpreter::DebugValueInfo() {
   os << "value info of interpretercore " << this << "\n"
      << "value -> var_name -> id -> variable*"
      << "\n";
+
+  interpreter::PrintValuesAndVariables(
+      *ir_program_->block(), &value_2_var_name_, &variable_2_var_name_);
+
   for (auto kv : value_2_var_name_) {
     PADDLE_ENFORCE((bool)kv.first,
                    platform::errors::PreconditionNotMet(
