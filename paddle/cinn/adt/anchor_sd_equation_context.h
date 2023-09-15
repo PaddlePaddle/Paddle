@@ -19,6 +19,8 @@
 
 namespace cinn::adt::config {
 
+using AnchorIndex = Index;
+
 class AnchorSdEquationContext final {
  public:
   AnchorSdEquationContext(const AnchorSdEquationContext&) = default;

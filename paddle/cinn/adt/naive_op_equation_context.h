@@ -44,12 +44,12 @@ class NaiveOpEquationContext final : public OpEquationContext {
         in_msg_box_out_indexes_(MakeArgIndexes(out_tensors_ranks.size())),
         out_msg_box_in_indexes_(MakeArgIndexes(in_tensors_ranks.size())),
         out_msg_box_out_indexes_(MakeArgIndexes(out_tensors_ranks.size())) {
-    Init(&in_iterator_tuples_, in_tensors_ranks);
-    Init(&out_iterator_tuples_, out_tensors_ranks);
-    Init(&in_stride_tuples_, in_tensors_ranks);
-    Init(&out_stride_tuples_, out_tensors_ranks);
-    Init(&in_dim_tuples_, in_tensors_ranks);
-    Init(&out_dim_tuples_, out_tensors_ranks);
+    Init<Iterator>(&in_iterator_tuples_, in_tensors_ranks);
+    Init<Iterator>(&out_iterator_tuples_, out_tensors_ranks);
+    Init<Stride>(&in_stride_tuples_, in_tensors_ranks);
+    Init<Stride>(&out_stride_tuples_, out_tensors_ranks);
+    Init<Dim>(&in_dim_tuples_, in_tensors_ranks);
+    Init<Dim>(&out_dim_tuples_, out_tensors_ranks);
     GenerateDots();
     fake_op_placeholder_ = GenerateFakeOpPlaceholder();
   }
@@ -205,13 +205,12 @@ class NaiveOpEquationContext final : public OpEquationContext {
   }
 
  private:
-  template <typename ContainerT>
-  void Init(std::vector<ContainerT>* vec,
-            const std::vector<std::uint64_t>& tensors_ranks) {
+  template <typename value_type, typename ContainerT>
+  void Init(ContainerT* vec, const std::vector<std::uint64_t>& tensors_ranks) {
     for (std::size_t i = 0; i < tensors_ranks.size(); ++i) {
-      vec->push_back(ContainerT{});
+      vec->push_back(typename ContainerT::value_type{});
       for (std::size_t j = 0; j < tensors_ranks.at(i); ++j) {
-        vec->at(i).push_back(ContainerT::value_type{UniqueId::New()});
+        vec->at(i)->emplace_back(value_type{UniqueId::New()});
       }
     }
   }
@@ -221,11 +220,11 @@ class NaiveOpEquationContext final : public OpEquationContext {
     CHECK(iterator_tuple->size() == stride_tuple->size());
     Index index{UniqueId::New()};
     equations_->emplace_back(
-        Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>(
-            stride_tuple, index, iterator_tuple));
+        adt::Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>{
+            stride_tuple, index, iterator_tuple});
     equations_->emplace_back(
-        UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>(
-            stride_tuple, iterator_tuple, index));
+        adt::UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>{
+            stride_tuple, iterator_tuple, index});
     return index;
   }
 

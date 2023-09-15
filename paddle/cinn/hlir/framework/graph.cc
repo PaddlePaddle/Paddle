@@ -468,7 +468,7 @@ std::vector<std::string> Graph::VisualizeGroups(
   return dot_vec;
 }
 
-std::unordered_set<NodeData*> Graph::Group::GetInputNodeDatas() {
+std::unordered_set<NodeData*> Graph::Group::GetInputNodeDatas() const {
   std::unordered_set<NodeData*> group_inputs;
 
   // count all node's input data
@@ -498,7 +498,7 @@ std::unordered_set<NodeData*> Graph::Group::GetInputNodeDatas() {
   return group_inputs;
 }
 
-std::unordered_set<NodeData*> Graph::Group::GetOutputNodeDatas() {
+std::unordered_set<NodeData*> Graph::Group::GetOutputNodeDatas() const {
   std::unordered_set<NodeData*> group_outputs;
 
   for (auto node : this->output_nodes) {

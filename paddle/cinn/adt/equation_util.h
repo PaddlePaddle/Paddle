@@ -30,10 +30,10 @@ common::TopoWalker<FT> GetDAGTopoWalker(
     const EquationGraphTopoWalker<VT, FT>& eg_walker, const VT& start) {
   auto var2solo_producer =
       std::make_shared<std::unordered_map<VT, std::optional<FT>>>();
-  var2solo_producer.emplace_back(start, std::nullopt);
+  var2solo_producer->emplace_back(start, std::nullopt);
   eg_walker(start, [&](FT function) {
-    eg_walker.VisitOutputVariables(function, [](VT out_variable) {
-      var2solo_producer.emplace_back(out_variable, function);
+    eg_walker.VisitOutputVariables(function, [&](VT out_variable) {
+      var2solo_producer->emplace_back(out_variable, function);
     });
   });
   const auto& VisitPrevNodes = [var2solo_producer, eg_walker](

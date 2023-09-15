@@ -13,6 +13,7 @@
 // limitations under the License.
 #include <algorithm>
 
+#include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/equation_solver.h"
 #include "paddle/cinn/adt/equation_util.h"
@@ -36,8 +37,7 @@ std::unordered_set<AnchorIndex> InitCandidateAnchorIndex(
     const List<OpStmt>& op_stmts) {
   std::unordered_set<AnchorIndex> ret{};
   for (const auto& op_stmt : *op_stmts) {
-    const std::shared_ptr<config::NaiveOpEquationContext> equation_ctx =
-        EquationCtx4OpStmt(op_stmt);
+    const auto& equation_ctx = EquationCtx4OpStmt(op_stmt);
     equation_ctx->VisitEachTensorIndex(
         [&](const auto& tensor_index) { ret.emplace(tensor_index); });
   }
@@ -53,8 +53,7 @@ MakeGetterOpStmt4OpPlaceHolder(const EquationCtx4OpStmtT& EquationCtx4OpStmt,
       std::make_shared<FakeOpPlaceHolder2OpStmt>();
 
   for (const auto& op_stmt : *op_stmts) {
-    const std::shared_ptr<config::NaiveOpEquationContext> ctx =
-        EquationCtx4OpStmt(op_stmt);
+    const auto& ctx = EquationCtx4OpStmt(op_stmt);
     CHECK(fake_op_placeholder2op_stmt
               ->emplace(ctx->fake_op_placeholder(), op_stmt)
               .second);
@@ -75,9 +74,10 @@ std::pair<std::optional<OpStmt>, List<OpStmt>> FindVisitedOpStmts(
   std::optional<OpStmt> opt_anchor_op_stmt{std::nullopt};
   List<OpStmt> visited_op_stmts{};
   const auto& TrySetAnchorOpStmt = [&](const auto& op_stmt) {
-    if (!(EquationCtx4OpStmt(op_stmt)
-              ->GetOpArgPos(anchor_index)
-              .Has<Undefined>())) {
+    const auto& op_arg_pos =
+        EquationCtx4OpStmt(op_stmt)->GetOpArgPos(anchor_index);
+    const bool valid = !op_arg_pos.template Has<Undefined>();
+    if (valid) {
       CHECK(!opt_anchor_op_stmt.has_value());
       opt_anchor_op_stmt = op_stmt;
     }
@@ -99,7 +99,7 @@ void VisitEachEquation(const List<OpStmt>& op_stmts,
                        const EquationCtx4OpStmtT& EquationCtx4OpStmt,
                        const DoEachT& DoEach) {
   for (const auto& op_stmt : *op_stmts) {
-    const auto* ctx = EquationCtx4OpStmt(op_stmt);
+    const auto& ctx = EquationCtx4OpStmt(op_stmt);
     ctx->VisitEachEquation(DoEach);
   }
 }
@@ -120,8 +120,8 @@ template <typename DoEachT>
 void VisitEachIndexAndAsOutput(const List<OpStmt>& op_stmts,
                                const EquationCtx4OpStmtT& EquationCtx4OpStmt,
                                const DoEachT& DoEach) {
-  for (const auto& op_stmt : op_stmts) {
-    const auto* ctx = EquationCtx4OpStmt(op_stmt);
+  for (const auto& op_stmt : *op_stmts) {
+    const auto& ctx = EquationCtx4OpStmt(op_stmt);
     ctx->VisitEachInputTensorIndex(
         [&](const auto& index) { DoEach(op_stmt, index, tOut<bool>{false}); });
     ctx->VisitEachOutputTensorIndex(
@@ -155,8 +155,7 @@ void MakeGetters4Indexes(
   *OutMsgBoxIndex4InMsgBoxIndex =
       [index2owner_op_stmt, EquationCtx4OpStmt](const Index& index) -> Index {
     const auto& op_stmt = index2owner_op_stmt->at(index);
-    const std::shared_ptr<config::NaiveOpEquationContext> ctx =
-        EquationCtx4OpStmt(op_stmt);
+    const auto& ctx = EquationCtx4OpStmt(op_stmt);
     const auto& out_msg_box_index = ctx->OutMsgBoxIndex4InMsgBoxIndex(index);
     CHECK(out_msg_box_index.has_value());
     return out_msg_box_index.value();
@@ -169,8 +168,7 @@ std::unordered_map<Tensor, std::vector<Index>> GenerateSameTensor2Indexes(
   std::unordered_map<Tensor, std::vector<Index>> tensor2indexes;
 
   for (const auto& op_stmt : *op_stmts) {
-    const std::shared_ptr<config::NaiveOpEquationContext> ctx =
-        EquationCtx4OpStmt(op_stmt);
+    const auto& ctx = EquationCtx4OpStmt(op_stmt);
     const auto& [op, op_inputs, op_outputs] = op_stmt.tuple();
     for (std::size_t idx = 0; idx < op_inputs.value()->size(); ++idx) {
       tensor2indexes[op_inputs.value()->at(idx)].emplace_back(
@@ -283,7 +281,7 @@ void VisitTensorIndex(const AnchorGroup& igroup_spec, const DoEachT& DoEach) {
   const auto& op_stmts = igroup_spec.op_stmts;
   const auto& EquationCtx4OpStmt = igroup_spec.EquationCtx4OpStmt;
   for (const auto& igroup_op_stmt : *op_stmts) {
-    const auto* ctx = EquationCtx4OpStmt(igroup_op_stmt);
+    const auto& ctx = EquationCtx4OpStmt(igroup_op_stmt);
     ctx->VisitEachTensorIndex(DoEach);
   }
 }
@@ -355,7 +353,7 @@ std::unordered_map<AnchorIndex, AnchorGroup> PartitionOpStmtsIntoAnchorGroups(
   return anchor_index2igroup_spec;
 }
 
-std::unordered_map<Variable, Value> MakeAnchorIndex2Ok(
+std::unordered_map<Variable, const Value> MakeAnchorIndex2Ok(
     const AnchorGroup& igroup_spec) {
   return {{igroup_spec.anchor_index, Ok{}}};
 }
@@ -363,7 +361,7 @@ std::unordered_map<Variable, Value> MakeAnchorIndex2Ok(
 template <typename DoEachT>
 tBreak<bool> AgregateAnchorGroupOpStmt(const AnchorGroup& igroup_spec,
                                        const DoEachT& DoEach) {
-  for (const auto& op_stmt : igroup_spec.op_stmts) {
+  for (const auto& op_stmt : *igroup_spec.op_stmts) {
     tBreak<bool> ret = DoEach(op_stmt);
     if (ret.value()) {
       return ret;

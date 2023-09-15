@@ -89,8 +89,7 @@ class IGroup final {
       std::unordered_map<Index, Tensor>* index2tensor,
       std::unordered_map<Tensor, std::vector<Index>>* tensor2indexes) {
     for (const auto& op_stmt : *op_stmts) {
-      const std::shared_ptr<config::NaiveOpEquationContext> ctx =
-          EquationCtx4OpStmt(op_stmt);
+      const auto& ctx = EquationCtx4OpStmt(op_stmt);
       const auto& [op, op_inputs, op_outputs] = op_stmt.tuple();
       for (std::size_t idx = 0; idx < op_inputs.value()->size(); ++idx) {
         const auto& index = ctx->GetInIndex(idx);

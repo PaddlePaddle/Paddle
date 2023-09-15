@@ -39,7 +39,6 @@ DEFINE_ADT_UNION(Constant,
                  Mul<Constant, Constant>);
 
 OVERLOAD_OPERATOR_EQ_NE(Constant, UnionEqual);
-OVERLOAD_OPERATOR_EQ_NE(List<Constant>, ListEqual);
 OVERLOAD_OPERATOR_EQ_NE(Neg<Constant>, TupleEqual);
 using AddConstant = Add<Constant, Constant>;
 using MulConstant = Mul<Constant, Constant>;
@@ -50,14 +49,16 @@ template <typename IteratorsT>
 struct IndexDot : public Tuple<IteratorsT, Constant> {
   using Tuple<IteratorsT, Constant>::Tuple;
 
-  const IteratorsT& GetIterators() const { return std::get<0>(this->tuple()); }
+  const IteratorsT& GetIteratorsValue() const {
+    return std::get<0>(this->tuple());
+  }
 };
 
-template <typename IteratorsT>
-struct IndexUnDot : public Tuple<IteratorsT, Constant> {
-  using Tuple<IteratorsT, Constant>::Tuple;
+template <typename IndexT>
+struct IndexUnDot : public Tuple<IndexT, Constant> {
+  using Tuple<IndexT, Constant>::Tuple;
 
-  const IteratorsT& GetIterators() const { return std::get<0>(this->tuple()); }
+  const IndexT& GetIndexValue() const { return std::get<0>(this->tuple()); }
 };
 
 // ConstantAdd T = Add T Constant
@@ -114,7 +115,6 @@ DEFINE_ADT_UNION(Value,
                  PtrGetItem<Value>);
 
 OVERLOAD_OPERATOR_EQ_NE(Value, UnionEqual);
-OVERLOAD_OPERATOR_EQ_NE(List<Value>, ListEqual);
 OVERLOAD_OPERATOR_EQ_NE(IndexDot<Value>, TupleEqual);
 OVERLOAD_OPERATOR_EQ_NE(IndexUnDot<Value>, TupleEqual);
 OVERLOAD_OPERATOR_EQ_NE(ConstantAdd<Value>, TupleEqual);

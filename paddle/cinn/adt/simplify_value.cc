@@ -20,7 +20,7 @@
 #include "paddle/cinn/adt/match.h"
 #include "paddle/cinn/adt/simplify_value.h"
 
-namespace cinn::adt {
+namespace cinn::adt::equation {
 
 template <typename T, typename ExprT>
 ExprT MatchAndRewrite(const ExprT& expr) {
@@ -36,7 +36,7 @@ struct SimplifyDotUndot {
       IndexDot<List<ListGetItem<IndexUnDot<Value>, std::int64_t>>>;
 
   Value MatchAndRewrite(const Value& value) {
-    const auto& [dot_strides, list_get_item_values] =
+    const auto& [list_get_item_values, dot_strides] =
         value.Get<IndexDot<Value>>().tuple();
     const auto& list_get_items = list_get_item_values.Get<List<Value>>();
     std::optional<Value> pre_index_undot{std::nullopt};
@@ -57,7 +57,7 @@ struct SimplifyDotUndot {
       }
     }
     CHECK(pre_index_undot.has_value());
-    const auto& [undot_strides, index_value] =
+    const auto& [index_value, undot_strides] =
         pre_index_undot.value().Get<IndexUnDot<Value>>().tuple();
     if (dot_strides != undot_strides) {
       return value;
@@ -73,9 +73,9 @@ struct SimplifyUndotDot {
   Value MatchAndRewrite(const Value& value) {
     const auto& [index_undot_value, constant_idx] =
         value.Get<ListGetItem<Value, Constant>>().tuple();
-    const auto& [undot_strides, index_value] =
+    const auto& [index_value, undot_strides] =
         index_undot_value.Get<IndexUnDot<Value>>().tuple();
-    const auto& [dot_strides, index_dot_values] =
+    const auto& [index_dot_values, dot_strides] =
         index_value.Get<IndexDot<Value>>().tuple();
     const auto& iter_values = index_dot_values.Get<List<Value>>();
     if (undot_strides != dot_strides) {
@@ -104,4 +104,4 @@ Value SimplifyValue(Value value) {
   return value;
 }
 
-}  // namespace cinn::adt
+}  // namespace cinn::adt::equation

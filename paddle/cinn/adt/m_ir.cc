@@ -53,12 +53,12 @@ void CollectTensorIndexIterators(const List<Value>& tensor_index_expr,
 
 void CollectTensorIndexIterators(const IndexDot<Value>& tensor_index_expr,
                                  std::unordered_set<Iterator>* ret) {
-  CollectTensorIndexIterators(tensor_index_expr.GetIterators(), ret);
+  CollectTensorIndexIterators(tensor_index_expr.GetIteratorsValue(), ret);
 }
 
 void CollectTensorIndexIterators(const IndexUnDot<Value>& tensor_index_expr,
                                  std::unordered_set<Iterator>* ret) {
-  CollectTensorIndexIterators(tensor_index_expr.GetIterators(), ret);
+  CollectTensorIndexIterators(tensor_index_expr.GetIndexValue(), ret);
 }
 
 void CollectTensorIndexIterators(const ConstantAdd<Value>& tensor_index_expr,
@@ -143,7 +143,7 @@ LoopIterators GetTensorLoopIterators(
 
 namespace {
 
-std::unordered_map<Variable, Value> MakeAnchorIndex2Ok(
+std::unordered_map<Variable, const Value> MakeAnchorIndex2Ok(
     const Index& anchor_index) {
   return {{anchor_index, Ok{}}};
 }

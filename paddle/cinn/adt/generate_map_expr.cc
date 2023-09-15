@@ -79,7 +79,7 @@ template <typename DoEachT>
 void VisitEachOpStmt(
     const std::shared_ptr<hlir::framework::Graph::Group>& group,
     const DoEachT& DoEach) {
-  for (const auto* op : group.nodes) {
+  for (const auto* op : group->nodes) {
     // Tuple<Op, In<List<Arg>>, Out<List<Arg>>>
     DoEach(OpStmt{MakeOp(op),
                   MakeOpStmtInputList(op, group->graph_),
@@ -179,8 +179,10 @@ std::function<const TensorIndexExpr&(const Tensor&)> MakeGetterTensorIndexExpr(
   const auto& init_var2value = MakeSdIterator2LoopDescriptor(*igroup, sd);
   auto ctx = std::make_shared<IndexExprInferContext>(init_var2value);
 
-  const std::vector<Variable> starts{igroup->loop_iterators()->begin(),
-                                     igroup->loop_iterators()->end()};
+  std::vector<Variable> starts{};
+  for (const auto& loop_iterator : *igroup->loop_iterators()) {
+    starts.emplace_back(loop_iterator);
+  }
   SolveEquations(merged_view, starts, ctx.get());
   return [ctx, igroup](const Tensor& tensor) {
     // All indexes of same tensor have the same Value.
@@ -243,7 +245,7 @@ List<LoopIteratorsAndMapIrList> GroupByFirstLoopIterators(
                                      MakeMapIrList(begin, end)};
   };
 
-  List<MapIrList> ret{};
+  List<LoopIteratorsAndMapIrList> ret{};
   VisitRangeWithSameFirstLoopIterators([&](std::size_t begin, std::size_t end) {
     ret->emplace_back(MakeLoopIteratorsAndMapIrList(begin, end));
   });
@@ -279,27 +281,38 @@ LoopIteratorsAndMapIrList GetStrippedMapIrs(const MapIrList& map_irs) {
   return {map_irs->at(0).loop_iters_list()->at(0), ret_map_irs};
 }
 
-List<Stmt> MakeStmtList(const MapIrList& map_irs) {
+List<Stmt> MakeStmtList(const MapIrList& map_irs,
+                        const LoopDescriptor4IterVarT& LoopDescriptor4IterVar) {
   const auto& grouped_map_irs = GroupByFirstLoopIterators(map_irs);
   List<Stmt> ret{};
 
   const auto& CollectOpStmts = [&](const auto& inner_map_irs) {
-    for (const auto& map_ir : inner_map_irs) {
+    for (const auto& map_ir : *inner_map_irs) {
       CHECK(map_ir.loop_iters_list()->empty());
-      for (const auto& op_stmt : map_ir.op_stmts()) {
+      for (const auto& op_stmt : *map_ir.op_stmts()) {
         ret->emplace_back(op_stmt);
       }
     }
   };
 
-  for (const auto& [loop_iters, inner_map_irs] : grouped_map_irs) {
-    if (loop_iters.empty()) {
+  for (const auto& [loop_iters, inner_map_irs] : *grouped_map_irs) {
+    if (loop_iters->empty()) {
       CollectOpStmts(inner_map_irs);
     } else {
-      ret->emplace_back({MakeMapStmt(inner_map_irs)});
+      ret->emplace_back(MakeMapStmt(inner_map_irs, LoopDescriptor4IterVar));
     }
   }
 
+  return ret;
+}
+
+ScheduleDescriptor MakeScheduleDescriptor(
+    const LoopIterators& first_loop_iters,
+    const LoopDescriptor4IterVarT& LoopDescriptor4IterVar) {
+  ScheduleDescriptor ret{};
+  for (const auto& loop_iterator : *first_loop_iters) {
+    ret->emplace_back(LoopDescriptor4IterVar(loop_iterator));
+  }
   return ret;
 }
 
@@ -311,7 +324,7 @@ MapStmt<Stmt> MakeMapStmt(
 
   return MapStmt<Stmt>{
       MakeScheduleDescriptor(first_loop_iters, LoopDescriptor4IterVar),
-      MakeStmtList(first_stripped_map_irs)};
+      MakeStmtList(first_stripped_map_irs, LoopDescriptor4IterVar)};
 }
 
 Tensor GetAnchorTensor(const std::shared_ptr<IGroup>& igroup) {
@@ -321,16 +334,16 @@ Tensor GetAnchorTensor(const std::shared_ptr<IGroup>& igroup) {
 template <typename DoEachT>
 void VisitInputTensor(const hlir::framework::Graph::Group& group,
                       const DoEachT& DoEach) {
-  for (const auto* node_data : group->GetInputNodeDatas()) {
-    DoEach(node_data, group->graph_);
+  for (const auto* node_data : group.GetInputNodeDatas()) {
+    DoEach(node_data, group.graph_);
   }
 }
 
 template <typename DoEachT>
 void VisitOutputTensor(const hlir::framework::Graph::Group& group,
                        const DoEachT& DoEach) {
-  for (const auto& node_data : group->GetOutputNodeDatas()) {
-    DoEach(node_data, group->graph_);
+  for (const auto& node_data : group.GetOutputNodeDatas()) {
+    DoEach(node_data, group.graph_);
   }
 }
 

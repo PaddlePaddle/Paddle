@@ -31,7 +31,9 @@ ScheduleDescriptor KGroup::GetDefaultScheduleDescriptor(
   const Tensor& tensor = igroup->anchor_tensor();
 
   CHECK_EQ(GetTensorNumel(tensor) % 64, 0);
-  return {{S0x{}, GetTensorNumel(tensor) / 64}, {S1x{}, 64}};
+  return List<LoopDescriptor>{
+      LoopDescriptor{S0x{}, GetTensorNumel(tensor) / 64},
+      LoopDescriptor{S1x{}, 64}};
 }
 
 }  // namespace cinn::adt

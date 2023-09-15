@@ -38,6 +38,7 @@ namespace adt {
 using Offset = std::int64_t;
 
 class GlobalMemoryType final {
+ public:
   bool operator==(const GlobalMemoryType& global_memory_type) const {
     return this == &global_memory_type;
   }
@@ -49,6 +50,7 @@ inline std::size_t GetHashValue(const GlobalMemoryType&) {
 }
 
 class SharedMemoryType final {
+ public:
   bool operator==(const SharedMemoryType& shared_memory_type) const {
     return this == &shared_memory_type;
   }

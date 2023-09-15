@@ -79,8 +79,7 @@ std::vector<framework::shape_t> InferShapeForRelu(
   return res;
 }
 
-void GenerateEquationsForRelu(
-    cinn::adt::equation::config::OpEquationContext *ctx) {
+void GenerateEquationsForRelu(cinn::adt::config::OpEquationContext *ctx) {
   CHECK(ctx->GetInTensorsRanks().size() != 0)
       << "The inputs is empty! Please check again.";
   ctx->Equal(ctx->GetInIteratorTuple(0), ctx->GetOutIteratorTuple(0));

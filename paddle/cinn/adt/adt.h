@@ -100,12 +100,32 @@ class List final {
   List& operator=(const List&) = default;
   List& operator=(List&&) = default;
 
+  using value_type = T;
+
   explicit List() : vector_(std::make_shared<std::vector<T>>()) {}
 
-  template <typename... Args>
-  explicit List(Args&&... args)
+  template <
+      typename Arg,
+      std::enable_if_t<!std::is_same_v<std::decay_t<Arg>, List>, bool> = true>
+  explicit List(Arg&& arg)
       : vector_(std::make_shared<std::vector<T>>(
-            std::vector{std::forward<Args>(args)...})) {}
+            std::vector<T>{std::forward<Arg>(arg)})) {}
+
+  template <typename Arg0, typename Arg1, typename... Args>
+  List(Arg0&& arg0, Arg1&& arg1, Args&&... args)
+      : vector_(std::make_shared<std::vector<T>>(
+            std::vector<T>{std::forward<Arg0>(arg0),
+                           std::forward<Arg1>(arg1),
+                           std::forward<Args>(args)...})) {}
+
+  bool operator==(const List& other) const {
+    if (&vector() == &other.vector()) {
+      return true;
+    }
+    return vector() == other.vector();
+  }
+
+  bool operator!=(const List& other) const { return !(*this == other); }
 
   std::vector<T>& operator*() const { return *vector_; }
   std::vector<T>* operator->() const { return vector_.get(); }
@@ -117,14 +137,6 @@ class List final {
  private:
   std::shared_ptr<std::vector<T>> vector_;
 };
-
-template <typename T>
-bool ListEqual(const T& lhs, const T& rhs) {
-  if (&*lhs == &*rhs) {
-    return true;
-  }
-  return *lhs == *rhs;
-}
 
 #define DEFINE_ADT_TAG(TagName)                                             \
   template <typename T>                                                     \

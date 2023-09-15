@@ -50,8 +50,11 @@ std::unordered_map<Variable, Value> InferValues(
   for (const auto& iter : *in_iters.value()) {
     in_values->emplace_back(ctx->GetValue(iter));
   }
-  List<Constant> stride_constants{strides->begin(), strides->end()};
-  IndexDot<Value> index_dot{stride_constants, in_values};
+  List<Constant> stride_constants{};
+  for (const auto& stride : *strides) {
+    stride_constants->emplace_back(stride);
+  }
+  IndexDot<Value> index_dot{in_values, stride_constants};
   return {{out_index.value(), index_dot}};
 }
 
@@ -59,9 +62,13 @@ std::unordered_map<Variable, Value> InferValues(
     const UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>& undot,
     IndexExprInferContext* ctx) {
   const auto& [strides, out_iters, in_index] = undot.tuple();
-  List<Constant> stride_constants{strides->begin(), strides->end()};
-  IndexUnDot<Value> index_undot{stride_constants,
-                                ctx->GetValue(in_index.value())};
+
+  List<Constant> stride_constants{};
+  for (const auto& stride : *strides) {
+    stride_constants->emplace_back(stride);
+  }
+  IndexUnDot<Value> index_undot{ctx->GetValue(in_index.value()),
+                                stride_constants};
 
   std::unordered_map<Variable, Value> ret{};
   for (std::size_t idx = 0; idx < out_iters.value()->size(); ++idx) {
