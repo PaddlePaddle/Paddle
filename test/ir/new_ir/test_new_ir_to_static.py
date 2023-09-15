@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
 
 import paddle
-
-os.environ['FLAGS_enable_new_ir_api'] = 'true'  # don't work, we should
 
 
 class TestDy2staticNewIR(unittest.TestCase):
