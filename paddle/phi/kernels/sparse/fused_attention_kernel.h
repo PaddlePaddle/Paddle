@@ -29,6 +29,8 @@ void FusedAttentionCsrKernel(
     const SparseCsrTensor& sparse_mask,
     const paddle::optional<DenseTensor>& key_padding_mask,
     const paddle::optional<DenseTensor>& attn_mask,
+    const float scale_qk_coeff,
+    const float dropout_rate,
     DenseTensor* out,
     SparseCsrTensor* softmax);
 
