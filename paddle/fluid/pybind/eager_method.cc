@@ -1665,14 +1665,17 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       // use inplace set_value_ operator
       if (value_tensor.initialized() &&
           (self->tensor.dtype() != value_tensor.dtype())) {
-        paddle::small_vector<std::vector<paddle::Tensor>,
-                             egr::kSlotSmallVectorSize>
-            tmps = {{self->tensor}, {value_tensor}};
-        auto amp_dtype = egr::GetAmpDestDtype("set_value", tmps);
-        self->tensor = egr::EagerAmpAutoCast(
-            self->tensor.name(), self->tensor, amp_dtype, "set_value");
-        value_tensor = egr::EagerAmpAutoCast(
-            value_tensor.name(), value_tensor, amp_dtype, "set_value");
+        if (egr::Controller::Instance().GetAMPLevel() !=
+            paddle::imperative::AmpLevel::O0) {
+          paddle::small_vector<std::vector<paddle::Tensor>,
+                               egr::kSlotSmallVectorSize>
+              tmps = {{self->tensor}, {value_tensor}};
+          auto amp_dtype = egr::GetAmpDestDtype("set_value", tmps);
+          self->tensor = egr::EagerAmpAutoCast(
+              self->tensor.name(), self->tensor, amp_dtype, "set_value");
+          value_tensor = egr::EagerAmpAutoCast(
+              value_tensor.name(), value_tensor, amp_dtype, "set_value");
+        }
         if (self->tensor.dtype() != value_tensor.dtype()) {
           value_tensor = cast_ad_func(value_tensor, self->tensor.dtype());
         }

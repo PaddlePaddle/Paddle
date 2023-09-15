@@ -285,6 +285,8 @@ class HybridParallelOptimizer:
 
         self._sharding_enable = self._hcg.get_sharding_parallel_world_size() > 1
 
+        self._sep_enable = self._hcg.get_sep_parallel_world_size() > 1
+
         if (
             isinstance(self._inner_opt._grad_clip, ClipGradByGlobalNorm)
             and not self._use_dp_mode
@@ -439,10 +441,7 @@ class HybridParallelOptimizer:
                             moment2, src_rank, mp_group, mp_configs.sync_mode
                         )
 
-    @no_grad()
-    @framework.dygraph_only
-    def step(self):
-        parameter_list = list(obtain_optimizer_parameters_list(self._inner_opt))
+    def _hybrid_sync_grad(self, parameter_list):
         dp_parameter_list = parameter_list
         if self._sharding_enable:
             assert isinstance(self._inner_opt, DygraphShardingOptimizer)
@@ -452,10 +451,14 @@ class HybridParallelOptimizer:
                 dp_parameter_list = self._inner_opt.filter_parameters(
                     parameter_list, self._hcg
                 )
-
-        if self._dp_enable:
+        if self._dp_enable or self._sep_enable:
             fused_allreduce_gradients(dp_parameter_list, self._hcg)
 
+    @no_grad()
+    @framework.dygraph_only
+    def step(self):
+        parameter_list = list(obtain_optimizer_parameters_list(self._inner_opt))
+        self._hybrid_sync_grad(parameter_list)
         self._step(parameter_list)
 
     @no_grad()
@@ -470,21 +473,7 @@ class HybridParallelOptimizer:
             else obtain_optimizer_parameters_list(self._inner_opt)
         )
         parameter_list = list(parameter_list)
-        dp_parameter_list = parameter_list
-        # Here sharding should use global parameter list
-        if self._sharding_enable:
-            assert isinstance(self._inner_opt, DygraphShardingOptimizer)
-            self._inner_opt.reduce_gradients(parameter_list, self._hcg)
-
-            # dp later do not need to use global parameter list
-            if not g_shard_norm_align_dp:
-                dp_parameter_list = self._inner_opt.filter_parameters(
-                    parameter_list, self._hcg
-                )
-
-        if self._dp_enable:
-            fused_allreduce_gradients(dp_parameter_list, self._hcg)
-
+        self._hybrid_sync_grad(parameter_list)
         return self._inner_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set
         )

@@ -63,7 +63,7 @@ class OpInlineResultImpl : public OpResultImpl {
     }
   }
 
-  static bool classof(const OpResultImpl &value) {
+  static bool classof(const ValueImpl &value) {
     return value.kind() < OUTLINE_OP_RESULT_INDEX;
   }
 
@@ -80,7 +80,7 @@ class OpOutlineResultImpl : public OpResultImpl {
       : OpResultImpl(type, OUTLINE_OP_RESULT_INDEX),
         outline_index_(outline_index) {}
 
-  static bool classof(const OpResultImpl &value) {
+  static bool classof(const ValueImpl &value) {
     return value.kind() == OUTLINE_OP_RESULT_INDEX;
   }
 
