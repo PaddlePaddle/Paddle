@@ -131,3 +131,14 @@ OVERLOAD_OPERATOR_EQ_NE(ListGetItem_Value_Constant, TupleEqual);
 OVERLOAD_OPERATOR_EQ_NE(PtrGetItem<Value>, TupleEqual);
 
 }  // namespace cinn::adt::equation
+
+namespace std {
+
+template <>
+struct hash<cinn::adt::equation::IterVar> final {
+  std::size_t operator()(const cinn::adt::equation::IterVar& iter_var) const {
+    return iter_var.value().unique_id();
+  }
+};
+
+}  // namespace std

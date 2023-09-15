@@ -105,7 +105,10 @@ void CollectTensorIndexIterators(
 
 std::unordered_set<equation::IterVar> GetTensorIndexIterators(
     const m_expr::TensorIndexExpr& tensor_index_expr) {
-  std::unordered_set<equation::IterVar> ret;
+  // Note: we have two similar names, check the difference between them.
+  // using Iterator = tIterator<UniqueId>;
+  // using IterVar = tIterVar<UniqueId>;
+  std::unordered_set<equation::IterVar> ret{};
 
   CollectTensorIndexIterators(tensor_index_expr, &ret);
 
@@ -121,13 +124,14 @@ LoopIterators GetLeftAlignedSdIterators(
     return tensor_index_loop_iters.count(iter_var) != 0;
   };
 
-  const auto& IsSpatial = [&](const equation::IterVar& iter_var) {
-    return IsSpatial(GetLoopDescriptor(iter_var).GetLoopType());
-  };
+  const auto& IsIterVarLoopTypeSpatial =
+      [&](const equation::IterVar& iter_var) {
+        return IsSpatial(GetLoopDescriptor(iter_var).GetLoopType());
+      };
 
   LoopIterators ret{loop_iters->begin(), loop_iters->end()};
   for (int i = ret->size() - 1; i >= 0; --i) {
-    if (Used(ret->at(i)) || IsSpatial(ret->at(i))) {
+    if (Used(ret->at(i)) || IsIterVarLoopTypeSpatial(ret->at(i))) {
       break;
     } else {
       ret->resize(i);
@@ -213,15 +217,19 @@ m_expr::Tensor GetTensor(const equation::config::NativeOpEquationContext& ctx,
   const auto& op_arg_pos = ctx.GetOpArgPos(index);
   const auto& [op, in_args, out_args] = op_stmt.tuple();
   return op_arg_pos >>
-         match{[&](const Undefined&) -> m_expr::Tensor {
-                 LOG(FATAL) << "position not found";
-               },
-               [&](const tIn<std::size_t>& pos) -> m_expr::Tensor {
-                 return in_args.value()->at(pos.value());
-               },
-               [&](const tOut<std::size_t>& pos) -> m_expr::Tensor {
-                 return out_args.value()->at(pos.value());
-               }};
+         match{
+             [&](const Undefined&) -> m_expr::Tensor {
+               LOG(FATAL) << "position not found";
+             },
+             // Note: structured binding cannot be captured in lambda, fix this
+             // following below link:
+             // https://stackoverflow.com/questions/46114214/lambda-implicit-capture-fails-with-variable-declared-from-structured-binding
+             [&in_args = in_args](const tIn<std::size_t>& pos)
+                 -> m_expr::Tensor { return in_args.value()->at(pos.value()); },
+             [&out_args =
+                  out_args](const tOut<std::size_t>& pos) -> m_expr::Tensor {
+               return out_args.value()->at(pos.value());
+             }};
 }
 
 const auto& GetAnchorTensor(const partition::AnchorGroup& anchor_group) {
