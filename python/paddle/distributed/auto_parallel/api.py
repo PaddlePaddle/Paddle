@@ -209,7 +209,7 @@ def reshard(dist_tensor, dist_attr):
         print(out_d_tensor)
     """
 
-    if paddle.framework.in_dynamic_mode:
+    if paddle.framework.in_dynamic_mode():
         return paddle.base.core.reshard(dist_tensor, dist_attr)
     else:
         # TODO(GhostScreaming): Support static DistTensor later.
