@@ -79,8 +79,6 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
     VLOG(6) << "Add full op into program";
     VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
 
-    // Get OpResult from args
-
     // Parse Attributes
     PyObject *shape_obj = PyTuple_GET_ITEM(args, 0);
     PyObject *value_obj = PyTuple_GET_ITEM(args, 1);
