@@ -389,6 +389,7 @@ class OpTest(unittest.TestCase):
         cls.input_shape_is_large = True
         cls.is_calc_ref = False
         cls.check_prim = False
+        cls.check_prim_pir = False
         cls._check_cinn = False
 
         np.random.seed(123)
@@ -472,6 +473,7 @@ class OpTest(unittest.TestCase):
                 and not is_rocm_op_test()
                 and not is_custom_device_op_test()
                 and not cls.check_prim
+                and not cls.check_prim_pir
             ):
                 raise AssertionError(
                     "This test of %s op needs check_grad with fp64 precision."
@@ -1331,42 +1333,50 @@ class OpTest(unittest.TestCase):
                     args, len(inputs_sig)
                 )
                 ret_tuple = self.python_api(*args)
-                result = construct_output_dict_by_kernel_sig(
-                    ret_tuple, outputs_sig
+                fetch_list = getattr(self, "fetch_list", [])
+                # if the fetch_list is customized by user, we use it directly.
+                # if not, fill the fetch_list by the user configured outputs in test.
+
+                if len(fetch_list) == 0:
+                    if isinstance(ret_tuple, (tuple, list)):
+                        for var in ret_tuple:
+                            if no_check_set is not None and var in no_check_set:
+                                continue
+                            if isinstance(var, list):
+                                for v in var:
+                                    fetch_list.append(v)
+                            else:
+                                fetch_list.append(var)
+                    elif isinstance(
+                        ret_tuple, paddle.base.libpaddle.ir.OpResult
+                    ):
+                        fetch_list.append(ret_tuple)
+                    else:
+                        raise ValueError(
+                            "output of python api should be OpResult or list of OpResult or tuple of OpResult"
+                        )
+
+                # executor run
+                executor = Executor(place)
+                outs = executor.run(
+                    ir_program, feed=feed, fetch_list=[fetch_list]
                 )
+
+                result = construct_output_dict_by_kernel_sig(outs, outputs_sig)
                 if hasattr(self, "python_out_sig_sub_name"):
                     for key in self.python_out_sig_sub_name.keys():
                         for i in range(len(self.python_out_sig_sub_name[key])):
                             result[key][0][
                                 i
                             ].name = self.python_out_sig_sub_name[key][i]
-                fetch_list = getattr(self, "fetch_list", [])
-                # if the fetch_list is customized by user, we use it directly.
-                # if not, fill the fetch_list by the user configured outputs in test.
-
-                if len(fetch_list) == 0:
-                    for var in result.items():
-                        if no_check_set is not None and var in no_check_set:
-                            continue
-                        if isinstance(var[1], list):
-                            for v in var[1]:
-                                fetch_list.append(v)
-                        else:
-                            fetch_list.append(var[1])
-
-                # executor run
-                executor = Executor(place)
-                (outs,) = executor.run(
-                    ir_program, feed=feed, fetch_list=[fetch_list]
-                )
-        return outs
+            return result
 
     def _check_ir_output(self, place, program, feed_map, fetch_list, outs):
         if os.getenv("FLAGS_NEW_IR_OPTEST") is None:
             return
         if os.getenv("FLAGS_NEW_IR_OPTEST_WHITE_LIST") is None:
             return
-        if self.check_prim:
+        if self.check_prim or self.check_prim_pir:
             return
         if self._check_cinn:
             return
@@ -1934,6 +1944,7 @@ class OpTest(unittest.TestCase):
         equal_nan=False,
         check_dygraph=True,
         check_prim=False,
+        check_prim_pir=False,
         only_check_prim=False,
         inplace_atol=None,
         check_cinn=False,
@@ -2308,6 +2319,7 @@ class OpTest(unittest.TestCase):
                         place, no_check_set=no_check_set
                     )
                 self.outputs = new_ir_outs
+
                 if self.op_test.is_compared_with_fp32():
                     self.op_test.enable_cal_ref_output()
                     self.is_python_api_test = True
@@ -2359,19 +2371,57 @@ class OpTest(unittest.TestCase):
                         expect_np = convert_uint16_to_float(expect_np)
                 return actual_np, expect_np
 
+            def find_imperative_actual(target_name, new_ir_outs, place):
+                for name in new_ir_outs:
+                    if name == target_name:
+                        return new_ir_outs[name][0]
+
+                    var_list = new_ir_outs[name]
+                    for i, var in enumerate(var_list):
+                        if isinstance(var, list):
+                            for tensor in var:
+                                if tensor.name == target_name:
+                                    return tensor
+                        elif (
+                            isinstance(var, paddle.Tensor)
+                            and var.name == target_name
+                        ):
+                            return new_ir_outs[name][i]
+                    self.assertTrue(
+                        False,
+                        f"Found failed {new_ir_outs.keys()} {target_name}",
+                    )
+
+            def find_imperative_expect(target_name, new_ir_outs, place):
+                for name in new_ir_outs:
+                    if name == target_name:
+                        return new_ir_outs[name][0]
+                    var_list = new_ir_outs[name]
+                    for i, var in enumerate(var_list):
+                        if var.name == target_name:
+                            return new_ir_outs[name][i]
+                self.assertTrue(
+                    False,
+                    f"Found failed {new_ir_outs.keys()} {target_name}",
+                )
+
             def find_actual_value(self, target_name):
                 with paddle.ir.core.program_guard(
                     paddle.ir.core.default_main_program()
                 ):
-                    actual = self.outputs
+                    actual = find_imperative_actual(
+                        target_name, self.outputs, place
+                    )
                     actual_t = np.array(actual)
                     return actual, actual_t
 
-            def find_expect_value(self, name):
+            def find_expect_value(self, target_name):
                 with paddle.ir.core.program_guard(
                     paddle.ir.core.default_main_program()
                 ):
-                    expect = self.ref_outputs
+                    expect = find_imperative_expect(
+                        target_name, self.ref_outputs, place
+                    )
                     expect_t = np.array(expect)
                     return expect, expect_t
 
@@ -2452,8 +2502,16 @@ class OpTest(unittest.TestCase):
             # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
             self.__class__.check_prim = True
             self.__class__.op_type = self.op_type
-            if only_check_prim:
-                return
+
+        if check_prim_pir:
+            with paddle.new_ir_utils.IrGuard():
+                prim_checker = PrimForwardChecker(self, place)
+                prim_checker.check()
+                # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
+                self.__class__.check_prim_pir = True
+                self.__class__.op_type = self.op_type
+        if only_check_prim:
+            return
 
         static_checker = StaticChecker(self, self.outputs)
         static_checker.check()
@@ -2578,6 +2636,7 @@ class OpTest(unittest.TestCase):
         equal_nan=False,
         check_dygraph=True,
         check_prim=False,
+        check_prim_pir=False,
         inplace_atol=None,
         check_cinn=False,
         only_check_prim=False,
@@ -2603,6 +2662,7 @@ class OpTest(unittest.TestCase):
                 equal_nan,
                 check_dygraph=check_dygraph,
                 check_prim=check_prim,
+                check_prim_pir=check_prim_pir,
                 only_check_prim=only_check_prim,
                 inplace_atol=inplace_atol,
                 check_cinn=check_cinn,
@@ -2770,6 +2830,7 @@ class OpTest(unittest.TestCase):
         user_defined_grad_outputs=None,
         check_dygraph=True,
         check_prim=False,
+        check_prim_pir=False,
         only_check_prim=False,
         atol=1e-5,
         check_cinn=False,
@@ -2793,6 +2854,7 @@ class OpTest(unittest.TestCase):
                 user_defined_grad_outputs,
                 check_dygraph=check_dygraph,
                 check_prim=check_prim,
+                check_prim_pir=check_prim_pir,
                 only_check_prim=only_check_prim,
                 atol=atol,
                 check_cinn=check_cinn,
@@ -2812,6 +2874,7 @@ class OpTest(unittest.TestCase):
         user_defined_grad_outputs=None,
         check_dygraph=True,
         check_prim=False,
+        check_prim_pir=False,
         only_check_prim=False,
         numeric_place=None,
         atol=1e-5,
@@ -2836,8 +2899,24 @@ class OpTest(unittest.TestCase):
             prim_grad_checker.check()
             # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
             self.__class__.check_prim = True
-            if only_check_prim:
-                return
+
+        if check_prim_pir:
+            with paddle.new_ir_utils.IrGuard():
+                self._check_grad_helper()
+                prim_grad_checker = PrimGradChecker(
+                    self,
+                    place,
+                    inputs_to_check,
+                    output_names,
+                    no_grad_set,
+                    user_defined_grad_outputs,
+                )
+                prim_grad_checker.check()
+                # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
+                self.__class__.check_prim_pir = True
+
+        if only_check_prim:
+            return
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else {}
         op_outputs = self.outputs if hasattr(self, "outputs") else {}
@@ -3223,7 +3302,7 @@ class OpTest(unittest.TestCase):
             return
         if os.getenv("FLAGS_NEW_IR_OPTEST_WHITE_LIST") is None:
             return
-        if self.check_prim:
+        if self.check_prim or self.check_prim_pir:
             return
         if self._check_cinn:
             return

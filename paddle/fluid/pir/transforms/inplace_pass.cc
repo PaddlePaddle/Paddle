@@ -317,7 +317,7 @@ class InplacePass : public pir::Pass {
                      .at("op_name")
                      .dyn_cast<pir::StrAttribute>()
                      .AsString();
-      pir::Block::iterator insert_pos =
+      pir::Block::Iterator insert_pos =
           std::find(block->begin(), block->end(), kv.first);
       IR_ENFORCE(insert_pos != block->end(),
                  "Operator %s not found in block.",

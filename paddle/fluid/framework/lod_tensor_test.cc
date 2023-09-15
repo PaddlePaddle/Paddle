@@ -136,7 +136,7 @@ TEST(LoD, SplitLoDTensor) {
   lod_tensor.Resize({20, 1});
   float* dst_ptr = lod_tensor.mutable_data<float>(place);
   for (int i = 0; i < lod_tensor.numel(); ++i) {
-    dst_ptr[i] = i;
+    dst_ptr[i] = static_cast<float>(i);
   }
   lod_tensor.set_lod(lod);
 
@@ -190,7 +190,7 @@ TEST(LoD, MergeLoDTensor) {
   lod_tensor0.Resize({13, 1});
   float* dst_ptr = lod_tensor0.mutable_data<float>(place);
   for (int i = 0; i < lod_tensor0.numel(); ++i) {
-    dst_ptr[i] = i;
+    dst_ptr[i] = static_cast<float>(i);
   }
 
   phi::DenseTensor lod_tensor1;
@@ -201,7 +201,7 @@ TEST(LoD, MergeLoDTensor) {
   lod_tensor1.Resize({7, 1});
   dst_ptr = lod_tensor1.mutable_data<float>(place);
   for (int i = 0; i < lod_tensor1.numel(); ++i) {
-    dst_ptr[i] = i;
+    dst_ptr[i] = static_cast<float>(i);
   }
 
   phi::DenseTensor lod_tensor2;

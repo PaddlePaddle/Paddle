@@ -20,6 +20,7 @@
 #include "paddle/cinn/utils/type_defs.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type.h"
 
 namespace cinn {
@@ -61,7 +62,9 @@ AttributeMap ConvertAttributes(const NewIR_AttributeMap& src_attrs) {
   AttributeMap dst_attrs;
   for (auto& item : src_attrs) {
     VLOG(4) << "deal with " << item.first;
-    if (item.second.isa<paddle::dialect::PlaceAttribute>()) {
+    if (item.first == ::pir::kStopGradientAttrName) {
+      continue;
+    } else if (item.second.isa<paddle::dialect::PlaceAttribute>()) {
       auto is_cpu =
           item.second.dyn_cast<paddle::dialect::PlaceAttribute>().data() ==
           phi::CPUPlace();
