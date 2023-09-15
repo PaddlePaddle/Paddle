@@ -370,13 +370,14 @@ bool GetOpResultBoolAttr(const OpResult &self, const std::string &attr_name) {
                      .AsVector();
     return attrs[self.GetResultIndex()].dyn_cast<pir::BoolAttribute>().data();
   } else {
-    return false;
+    return true;
   }
 }
 
 void SetOpResultBoolAttr(const OpResult &self,
                          const std::string &attr_name,
-                         bool value) {
+                         bool value,
+                         bool default_value) {
   auto *defining_op = self.owner();
   std::vector<pir::Attribute> attrs;
   if (defining_op->HasAttribute(attr_name)) {
@@ -386,7 +387,7 @@ void SetOpResultBoolAttr(const OpResult &self,
   } else {
     attrs = std::vector<pir::Attribute>(
         defining_op->num_results(),
-        pir::BoolAttribute::get(pir::IrContext::Instance(), false));
+        pir::BoolAttribute::get(pir::IrContext::Instance(), default_value));
   }
   attrs[self.GetResultIndex()] =
       pir::BoolAttribute::get(pir::IrContext::Instance(), value);
@@ -479,7 +480,12 @@ void BindOpResult(py::module *m) {
             return GetOpResultBoolAttr(self, kAttrStopGradients);
           },
           [](OpResult &self, bool stop_gradient) {
-            SetOpResultBoolAttr(self, kAttrStopGradients, stop_gradient);
+            // NOTE(Aurelius84): For other OpResult, set theirs stop_gradient
+            // default value as true.
+            SetOpResultBoolAttr(self,
+                                kAttrStopGradients,
+                                stop_gradient,
+                                /*default_value=*/true);
           })
       .def_property(
           "is_persistable",
@@ -487,7 +493,12 @@ void BindOpResult(py::module *m) {
             return GetOpResultBoolAttr(self, kAttrIsPersisable);
           },
           [](OpResult &self, bool is_persistable) {
-            SetOpResultBoolAttr(self, kAttrIsPersisable, is_persistable);
+            // NOTE(Aurelius84): For other OpResult, set theirs is_persistable
+            // default value as false.
+            SetOpResultBoolAttr(self,
+                                kAttrIsPersisable,
+                                is_persistable,
+                                /*default_value=*/false);
           })
       .def_property(
           "shape",

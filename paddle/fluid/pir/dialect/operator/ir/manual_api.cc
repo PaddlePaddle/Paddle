@@ -28,6 +28,12 @@ pir::OpResult builtin_combine(std::vector<pir::OpResult> x) {
   return combine_op.out();
 }
 
+pir::OpResult zeros_like(pir::OpResult x,
+                         phi::DataType dtype,
+                         const Place& place) {
+  return paddle::dialect::full_like(x, 0, dtype, place);
+}
+
 pir::OpResult get_parameter(const std::string& name,
                             phi::DataType dtype,
                             const std::vector<int64_t>& shape) {

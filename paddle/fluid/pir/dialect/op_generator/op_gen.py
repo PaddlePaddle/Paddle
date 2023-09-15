@@ -409,6 +409,17 @@ class OpInfoParser:
             return self.op_yaml_item['view']
         return None
 
+    def is_mutable_attribute(self, attr_dict):
+        if (
+            'support_tensor' in attr_dict
+            and attr_dict['support_tensor'] is True
+        ):
+            return True
+        elif 'tensor_name' in attr_dict or 'tensors_name' in attr_dict:
+            return True
+        else:
+            return False
+
     def parse_mutable_attribute(self):
         """
         {'axis': 'paddle::dialect::ScalarAttribute', 'rotl': 'paddle::dialect::IntArrayAttribute'}
@@ -420,6 +431,10 @@ class OpInfoParser:
             'scalar' in self.op_compat_item
         ):
             for scalar_attr in self.op_compat_item['scalar'].keys():
+                if not self.is_mutable_attribute(
+                    self.op_compat_item['scalar'][scalar_attr]
+                ):
+                    continue
                 if 'data_type' in self.op_compat_item['scalar'][scalar_attr]:
                     if (
                         scalar_attr == "depth"
@@ -458,6 +473,10 @@ class OpInfoParser:
             'int_array' in self.op_compat_item
         ):
             for int_array_attr in self.op_compat_item['int_array']:
+                if not self.is_mutable_attribute(
+                    self.op_compat_item['int_array'][int_array_attr]
+                ):
+                    continue
                 mutable_attribute_name_list.append(int_array_attr)
                 mutable_attribute_type_list.append(
                     [
@@ -819,9 +838,14 @@ def OpGenerator(
             op_yaml_items = op_yaml_items + ops
     op_info_items = {}
     for op in op_yaml_items:
-        op_info_items[op['name']] = OpInfoParser(
-            op, op_compat_parser.get_compat(op['name'])
-        )
+        op_compat_item = op_compat_parser.get_compat(op['name'])
+        if (
+            op_compat_item is None
+            and op['name'].endswith(('_grad', '_grad_'))
+            and 'forward' in op
+        ):
+            op_compat_item = op_compat_parser.get_compat(op['forward']['name'])
+        op_info_items[op['name']] = OpInfoParser(op, op_compat_item)
     # (3) CodeGen: Traverse op_info_items and generate
     ops_name_list = []  # all op class name store in this list
     ops_declare_list = []  # all op class declare store in this list

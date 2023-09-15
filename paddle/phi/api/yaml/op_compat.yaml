@@ -2649,6 +2649,7 @@
   int_array:
       sections :
           data_type : int
+          support_tensor : true
   scalar :
       axis :
         data_type : int
