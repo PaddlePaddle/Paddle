@@ -12,26 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/dialect/shape/ir/shape_dialect.h"
-#include "paddle/pir/dialect/shape/ir/shape_op.h"
+#pragma once
+
+#include <memory>
+#include "paddle/pir/core/dll_decl.h"
 
 namespace pir {
-namespace dialect {
-ShapeDialect::ShapeDialect(IrContext *context)
-    : Dialect(name(), context, TypeId::get<ShapeDialect>()) {
-  initialize();
-}
 
-void ShapeDialect::initialize() {
-  RegisterOps<SymbolicDim,
-              DimOp,
-              TieProductEqualOp,
-              TieShapeOp,
-              FuncOp,
-              TensorDimOp>();
-}
+class Pass;
 
-}  // namespace dialect
+IR_API std::unique_ptr<Pass> CreateShapeOptimizationPass();
+
 }  // namespace pir
-
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::ShapeDialect)
