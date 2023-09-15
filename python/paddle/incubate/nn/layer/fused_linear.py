@@ -56,14 +56,16 @@ class FusedLinear(Layer):
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            from paddle.incubate.nn import FusedLinear
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> from paddle.incubate.nn import FusedLinear
 
-            x = paddle.randn([3, 4])
-            linear = FusedLinear(4, 5)
-            y = linear(x)
-            print(y.shape) # [3, 5]
+            >>> x = paddle.randn([3, 4])
+            >>> linear = FusedLinear(4, 5)
+            >>> y = linear(x)
+            >>> print(y.shape)
+            [3, 5]
     """
 
     def __init__(

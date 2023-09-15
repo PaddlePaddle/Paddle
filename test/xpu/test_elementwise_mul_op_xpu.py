@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, skip_check_grad_ci
 from get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import OpTest, skip_check_grad_ci
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -89,8 +89,8 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
             self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
             self.out = np.multiply(self.x, self.y)
             self.inputs = {
-                'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-                'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+                'X': OpTest.np_dtype_to_base_dtype(self.x),
+                'Y': OpTest.np_dtype_to_base_dtype(self.y),
             }
             self.outputs = {'Out': self.out}
             self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}

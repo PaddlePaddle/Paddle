@@ -69,17 +69,21 @@ bool FindFlag(const std::string& name);
  */
 void PrintAllFlagHelp(bool to_file = false,
                       const std::string& file_name = "all_flags.txt");
+
+/**
+ * @brief Get environment variable. If not found, return default value.
+ */
+template <typename T>
+T GetFromEnv(const std::string& name, const T& default_val);
 }  // namespace flags
 }  // namespace paddle
 
 // ----------------------------DECLARE FLAGS----------------------------
 #define PD_DECLARE_VARIABLE(type, name) \
-  namespace paddle {                    \
-  namespace flags {                     \
+  namespace paddle_flags {              \
   extern type FLAGS_##name;             \
   }                                     \
-  }                                     \
-  using paddle::flags::FLAGS_##name
+  using paddle_flags::FLAGS_##name
 
 #define PD_DECLARE_bool(name) PD_DECLARE_VARIABLE(bool, name)
 #define PD_DECLARE_int32(name) PD_DECLARE_VARIABLE(int32_t, name)
@@ -105,16 +109,14 @@ class FlagRegisterer {
 
 // ----------------------------DEFINE FLAGS----------------------------
 #define PD_DEFINE_VARIABLE(type, name, default_value, description)           \
-  namespace paddle {                                                         \
-  namespace flags {                                                          \
+  namespace paddle_flags {                                                   \
   static const type FLAGS_##name##_default = default_value;                  \
   type FLAGS_##name = default_value;                                         \
   /* Register FLAG */                                                        \
   static ::paddle::flags::FlagRegisterer flag_##name##_registerer(           \
       #name, description, __FILE__, &FLAGS_##name##_default, &FLAGS_##name); \
   }                                                                          \
-  }                                                                          \
-  using paddle::flags::FLAGS_##name
+  using paddle_flags::FLAGS_##name
 
 #define PD_DEFINE_bool(name, val, txt) PD_DEFINE_VARIABLE(bool, name, val, txt)
 #define PD_DEFINE_int32(name, val, txt) \

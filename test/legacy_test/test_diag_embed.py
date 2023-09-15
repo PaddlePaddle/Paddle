@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard
+from op_test import OpTest, paddle_static_guard
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestDiagEmbedOp(OpTest):
@@ -61,9 +61,9 @@ class TestDiagEmbedAPICase(unittest.TestCase):
             out2 = F.diag_embed(data1, offset=1, dim1=-2, dim2=3)
 
             place = core.CPUPlace()
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             results = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"data1": diag_embed},
                 fetch_list=[out1, out2],
                 return_numpy=True,

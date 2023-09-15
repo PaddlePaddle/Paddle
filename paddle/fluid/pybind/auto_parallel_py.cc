@@ -14,6 +14,7 @@
 
 #include <pybind11/operators.h>
 #include <pybind11/stl.h>
+#include <utility>
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
@@ -32,8 +33,11 @@
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/p_to_r_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/r_to_p_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/r_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/s_to_r_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/s_to_s_reshard_function.h"
 
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
@@ -155,6 +159,18 @@ void BindAutoParallel(py::module *m) {
 
   py::class_<phi::distributed::SToRReshardFunction>(
       *m, "SToRReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::RToPReshardFunction>(
+      *m, "RToPReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::PToRReshardFunction>(
+      *m, "PToRReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::SToSReshardFunction>(
+      *m, "SToSReshardFunction", ReshardFunction)
       .def(py::init<>());
 
   py::class_<ProcessMesh>(*m, "ProcessMesh")
@@ -335,9 +351,14 @@ void BindAutoParallel(py::module *m) {
           },
           py::arg("memo"))
       .def("__str__", &TensorDistAttr::to_string)
-      .def("_is_partial", &TensorDistAttr::is_partial)
+      .def(
+          "_is_partial", &TensorDistAttr::is_partial, py::arg("mesh_axis") = -1)
       .def("_partial_dims", &TensorDistAttr::partial_dims)
       .def("_clean_partial_dims", &TensorDistAttr::clean_partial_dims)
+      .def("_set_partial_dims",
+           [](TensorDistAttr &self, const std::vector<int64_t> &dims) {
+             self.set_partial_status(dims);
+           })
       .def("_clean_partial_status", &TensorDistAttr::clean_partial_status);
 
   py::class_<SPMDRuleBase>(*m, "SPMDRuleBase")
@@ -366,6 +387,44 @@ void BindAutoParallel(py::module *m) {
              }
              return self.InferForward(ctx);
            })
+      .def("infer_forward",  // for op that have vector argument
+           [](const phi::distributed::SpmdRule &self,
+              const std::vector<std::pair<int, int>> &input_ranges,
+              const std::vector<DistTensorSpec> &input_specs,
+              const std::vector<phi::Attribute> &attrs) {
+             /*
+             to distingish between single tensor argument and vector argument of
+             one tensor: start - end == 0: single tensor start - end == 1:
+             vector containing one tensor input_ranges: [(0, 0), (1, 3), (3, 4)]
+             + input_specs: [t0, t1, t2, t3]  --> t0, [t1, t2], [t3]
+             */
+             phi::distributed::InferSpmdContext ctx;
+             paddle::small_vector<phi::distributed::DistMetaTensor,
+                                  phi::kInputSmallVectorSize>
+                 ins;
+             for (auto &range : input_ranges) {
+               if (range.second - range.first == 0) {
+                 auto &in = input_specs.at(range.first);
+                 ctx.EmplaceBackInput(phi::distributed::DistMetaTensor(
+                     phi::make_ddim(in.shape()), in.dist_attr()));
+               } else {
+                 int start = range.first;
+                 int end = range.second;
+                 ins.reserve(end - start);
+                 for (int i = start; i < end; ++i) {
+                   auto &in = input_specs.at(i);
+                   ins.emplace_back(phi::distributed::DistMetaTensor(
+                       phi::make_ddim(in.shape()), in.dist_attr()));
+                 }
+                 ctx.EmplaceBackInputs(ins);
+                 ins.clear();
+               }
+             }
+             for (auto &attr : attrs) {
+               ctx.EmplaceBackAttr(attr);
+             }
+             return self.InferForward(ctx);
+           })
       .def("infer_backward",
            [](const phi::distributed::SpmdRule &self,
               const std::vector<DistTensorSpec> &input_specs,
@@ -379,6 +438,44 @@ void BindAutoParallel(py::module *m) {
              for (auto &spec : output_specs) {
                ctx.EmplaceBackInput(phi::distributed::DistMetaTensor(
                    phi::make_ddim(spec.shape()), spec.dist_attr()));
+             }
+             for (auto &attr : attrs) {
+               ctx.EmplaceBackAttr(attr);
+             }
+             return self.InferBackward(ctx);
+           })
+      .def("infer_backward",  // for op that have vector argument
+           [](const phi::distributed::SpmdRule &self,
+              const std::vector<std::pair<int, int>> &input_ranges,
+              const std::vector<DistTensorSpec> &input_specs,
+              const std::vector<phi::Attribute> &attrs) {
+             /*
+             to distingish between single tensor argument and vector argument of
+             one tensor: start - end == 0: single tensor start - end == 1:
+             vector containing one tensor input_ranges: [(0, 0), (1, 3), (3, 4)]
+             + input_specs: [t0, t1, t2, t3]  --> t0, [t1, t2], [t3]
+             */
+             phi::distributed::InferSpmdContext ctx;
+             paddle::small_vector<phi::distributed::DistMetaTensor,
+                                  phi::kInputSmallVectorSize>
+                 ins;
+             for (auto &range : input_ranges) {
+               if (range.second - range.first == 0) {
+                 auto &in = input_specs.at(range.first);
+                 ctx.EmplaceBackInput(phi::distributed::DistMetaTensor(
+                     phi::make_ddim(in.shape()), in.dist_attr()));
+               } else {
+                 int start = range.first;
+                 int end = range.second;
+                 ins.reserve(end - start);
+                 for (int i = start; i < end; ++i) {
+                   auto &in = input_specs.at(i);
+                   ins.emplace_back(phi::distributed::DistMetaTensor(
+                       phi::make_ddim(in.shape()), in.dist_attr()));
+                 }
+                 ctx.EmplaceBackInputs(ins);
+                 ins.clear();
+               }
              }
              for (auto &attr : attrs) {
                ctx.EmplaceBackAttr(attr);
@@ -432,6 +529,16 @@ void BindAutoParallel(py::module *m) {
       .def_property("scheduling_priority",
                     &OperatorDistAttr::scheduling_priority,
                     &OperatorDistAttr::set_scheduling_priority)
+      .def_property("force_record_event",
+                    &OperatorDistAttr::force_record_event,
+                    &OperatorDistAttr::set_force_record_event)
+      .def_property("events_to_wait",
+                    &OperatorDistAttr::events_to_wait,
+                    &OperatorDistAttr::set_events_to_wait,
+                    pybind11::return_value_policy::reference)
+      .def_property("event_to_record",
+                    &OperatorDistAttr::event_to_record,
+                    &OperatorDistAttr::set_event_to_record)
       .def_property("annotated",
                     &OperatorDistAttr::annotated,
                     &OperatorDistAttr::set_annotated)

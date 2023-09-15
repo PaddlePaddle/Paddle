@@ -14,11 +14,11 @@
 
 import paddle
 from paddle import _C_ops
-from paddle.fluid import framework
-from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid.framework import Program
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.base import framework
+from paddle.base.dygraph import base as imperative_base
+from paddle.base.framework import Program
+from paddle.base.layer_helper import LayerHelper
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.framework import in_dynamic_mode
 from paddle.optimizer import Optimizer
 
@@ -69,96 +69,100 @@ class ModelAverage(Optimizer):
 
     Examples:
 
-      .. code-block:: python
+        .. code-block:: python
 
-        import numpy as np
-        import paddle
-        import paddle.nn as nn
-        import paddle.optimizer as opt
+            >>> # doctest: +SKIP("Cannot get source code by to_static in REPL")
+            >>> import numpy as np
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> import paddle.optimizer as opt
 
-        BATCH_SIZE = 16
-        BATCH_NUM = 4
-        EPOCH_NUM = 4
+            >>> BATCH_SIZE = 16
+            >>> BATCH_NUM = 4
+            >>> EPOCH_NUM = 4
 
-        IMAGE_SIZE = 784
-        CLASS_NUM = 10
+            >>> IMAGE_SIZE = 784
+            >>> CLASS_NUM = 10
 
-        # define a random dataset
-        class RandomDataset(paddle.io.Dataset):
-            def __init__(self, num_samples):
-                self.num_samples = num_samples
+            >>> # define a random dataset
+            >>> class RandomDataset(paddle.io.Dataset):
+            ...     def __init__(self, num_samples):
+            ...         self.num_samples = num_samples
+            ...     def __getitem__(self, idx):
+            ...         image = np.random.random([IMAGE_SIZE]).astype('float32')
+            ...         label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+            ...         return image, label
+            ...     def __len__(self):
+            ...         return self.num_samples
+            ...
+            >>> class LinearNet(nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+            ...         self.bias = self._linear.bias
+            ...
+            ...     @paddle.jit.to_static
+            ...     def forward(self, x):
+            ...         return self._linear(x)
+            ...
+            >>> def train(layer, loader, loss_fn, opt, model_average):
+            ...     for epoch_id in range(EPOCH_NUM):
+            ...         for batch_id, (image, label) in enumerate(loader()):
+            ...             out = layer(image)
+            ...             loss = loss_fn(out, label)
+            ...             loss.backward()
+            ...             opt.step()
+            ...             model_average.step()
+            ...             opt.clear_grad()
+            ...             model_average.clear_grad()
+            ...             print("Train Epoch {} batch {}: loss = {}, bias = {}".format(
+            ...                 epoch_id, batch_id, np.mean(loss.numpy()), layer.bias.numpy()))
+            ...
+            >>> def evaluate(layer, loader, loss_fn):
+            ...     for batch_id, (image, label) in enumerate(loader()):
+            ...         out = layer(image)
+            ...         loss = loss_fn(out, label)
+            ...         loss.backward()
+            ...         print("Evaluate batch {}: loss = {}, bias = {}".format(
+            ...             batch_id, np.mean(loss.numpy()), layer.bias.numpy()))
+            ...
+            >>> # create network
+            >>> layer = LinearNet()
+            >>> loss_fn = nn.CrossEntropyLoss()
+            >>> optimizer = opt.Momentum(learning_rate=0.2, momentum=0.1, parameters=layer.parameters())
+            >>> model_average = paddle.incubate.ModelAverage(
+            ...     0.15,
+            ...     parameters=layer.parameters(),
+            ...     min_average_window=2,
+            ...     max_average_window=10
+            ... )
+            ...
+            >>> # create data loader
+            >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
+            >>> loader = paddle.io.DataLoader(dataset,
+            ...     batch_size=BATCH_SIZE,
+            ...     shuffle=True,
+            ...     drop_last=True,
+            ...     num_workers=2)
+            ...
+            >>> # create data loader
+            >>> eval_loader = paddle.io.DataLoader(dataset,
+            ...     batch_size=BATCH_SIZE,
+            ...     shuffle=True,
+            ...     drop_last=True,
+            ...     num_workers=1
+            ... )
+            ...
+            >>> # train
+            >>> train(layer, loader, loss_fn, optimizer, model_average)
 
-            def __getitem__(self, idx):
-                image = np.random.random([IMAGE_SIZE]).astype('float32')
-                label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
-                return image, label
+            >>> print("\nEvaluate With ModelAverage")
+            >>> with model_average.apply(need_restore=False):
+            ...     evaluate(layer, eval_loader, loss_fn)
 
-            def __len__(self):
-                return self.num_samples
-
-        class LinearNet(nn.Layer):
-            def __init__(self):
-                super().__init__()
-                self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
-                self.bias = self._linear.bias
-
-            @paddle.jit.to_static
-            def forward(self, x):
-                return self._linear(x)
-
-        def train(layer, loader, loss_fn, opt, model_average):
-            for epoch_id in range(EPOCH_NUM):
-                for batch_id, (image, label) in enumerate(loader()):
-                    out = layer(image)
-                    loss = loss_fn(out, label)
-                    loss.backward()
-                    opt.step()
-                    model_average.step()
-                    opt.clear_grad()
-                    model_average.clear_grad()
-                    print("Train Epoch {} batch {}: loss = {}, bias = {}".format(
-                        epoch_id, batch_id, np.mean(loss.numpy()), layer.bias.numpy()))
-        def evaluate(layer, loader, loss_fn):
-            for batch_id, (image, label) in enumerate(loader()):
-                out = layer(image)
-                loss = loss_fn(out, label)
-                loss.backward()
-                print("Evaluate batch {}: loss = {}, bias = {}".format(
-                    batch_id, np.mean(loss.numpy()), layer.bias.numpy()))
-
-        # create network
-        layer = LinearNet()
-        loss_fn = nn.CrossEntropyLoss()
-        optimizer = opt.Momentum(learning_rate=0.2, momentum=0.1, parameters=layer.parameters())
-        model_average = paddle.incubate.ModelAverage(0.15,
-                                                    parameters=layer.parameters(),
-                                                    min_average_window=2,
-                                                    max_average_window=10)
-
-        # create data loader
-        dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-        loader = paddle.io.DataLoader(dataset,
-            batch_size=BATCH_SIZE,
-            shuffle=True,
-            drop_last=True,
-            num_workers=2)
-        # create data loader
-        eval_loader = paddle.io.DataLoader(dataset,
-            batch_size=BATCH_SIZE,
-            shuffle=True,
-            drop_last=True,
-            num_workers=1)
-
-        # train
-        train(layer, loader, loss_fn, optimizer, model_average)
-
-        print("\nEvaluate With ModelAverage")
-        with model_average.apply(need_restore=False):
-            evaluate(layer, eval_loader, loss_fn)
-
-        print("\nEvaluate With Restored Paramters")
-        model_average.restore()
-        evaluate(layer, eval_loader, loss_fn)
+            >>> print("\nEvaluate With Restored Paramters")
+            >>> model_average.restore()
+            >>> evaluate(layer, eval_loader, loss_fn)
 
     """
 
@@ -296,9 +300,9 @@ class ModelAverage(Optimizer):
 
         Args:
             loss (Tensor): A ``Tensor`` containing the value to minimize.
-            startup_program (Program, optional): :ref:`api_fluid_Program` for
+            startup_program (Program, optional): :ref:`api_base_Program` for
                 initializing parameters in ``parameters``. The default value
-                is None, at this time :ref:`api_fluid_default_startup_program` will be used.
+                is None, at this time :ref:`api_base_default_startup_program` will be used.
             parameters (list, optional): List of ``Tensor`` or ``Tensor.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
@@ -317,23 +321,25 @@ class ModelAverage(Optimizer):
 
             .. code-block:: python
 
-                import paddle
-                inp = paddle.rand([1, 10], dtype="float32")
-                linear = paddle.nn.Linear(10, 1)
-                out = linear(inp)
-                loss = paddle.mean(out)
-                loss.backward()
+                >>> import paddle
+                >>> inp = paddle.rand([1, 10], dtype="float32")
+                >>> linear = paddle.nn.Linear(10, 1)
+                >>> out = linear(inp)
+                >>> loss = paddle.mean(out)
+                >>> loss.backward()
 
-                sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
-                sgd.minimize(loss)
+                >>> sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
+                >>> sgd.minimize(loss)
 
-                modelaverage = paddle.incubate.ModelAverage(0.15,
-                                                            parameters=linear.parameters(),
-                                                            min_average_window=2,
-                                                            max_average_window=4)
-                modelaverage.minimize(loss)
-                sgd.clear_grad()
-                modelaverage.clear_grad()
+                >>> modelaverage = paddle.incubate.ModelAverage(
+                ...     0.15,
+                ...     parameters=linear.parameters(),
+                ...     min_average_window=2,
+                ...     max_average_window=4
+                ... )
+                >>> modelaverage.minimize(loss)
+                >>> sgd.clear_grad()
+                >>> modelaverage.clear_grad()
 
         """
         if in_dynamic_mode():
@@ -352,21 +358,23 @@ class ModelAverage(Optimizer):
 
             .. code-block:: python
 
-                import paddle
-                inp = paddle.rand([1, 10], dtype="float32")
-                linear = paddle.nn.Linear(10, 1)
-                out = linear(inp)
-                loss = paddle.mean(out)
-                sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
-                modelaverage = paddle.incubate.ModelAverage(0.15,
-                                                            parameters=linear.parameters(),
-                                                            min_average_window=2,
-                                                            max_average_window=4)
-                loss.backward()
-                sgd.step()
-                modelaverage.step()
-                sgd.clear_grad()
-                modelaverage.clear_grad()
+                >>> import paddle
+                >>> inp = paddle.rand([1, 10], dtype="float32")
+                >>> linear = paddle.nn.Linear(10, 1)
+                >>> out = linear(inp)
+                >>> loss = paddle.mean(out)
+                >>> sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
+                >>> modelaverage = paddle.incubate.ModelAverage(
+                ...     0.15,
+                ...     parameters=linear.parameters(),
+                ...     min_average_window=2,
+                ...     max_average_window=4
+                ... )
+                >>> loss.backward()
+                >>> sgd.step()
+                >>> modelaverage.step()
+                >>> sgd.clear_grad()
+                >>> modelaverage.clear_grad()
         """
 
         params_grads = []
@@ -398,28 +406,30 @@ class ModelAverage(Optimizer):
 
             .. code-block:: python
 
-                import paddle
-                inp = paddle.rand([1, 10], dtype="float32")
-                linear = paddle.nn.Linear(10, 1)
-                out = linear(inp)
-                loss = paddle.mean(out)
-                loss.backward()
+                >>> import paddle
+                >>> inp = paddle.rand([1, 10], dtype="float32")
+                >>> linear = paddle.nn.Linear(10, 1)
+                >>> out = linear(inp)
+                >>> loss = paddle.mean(out)
+                >>> loss.backward()
 
-                sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
+                >>> sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
 
-                modelaverage = paddle.incubate.ModelAverage(0.15,
-                                                            parameters=linear.parameters(),
-                                                            min_average_window=2,
-                                                            max_average_window=4)
-                sgd.step()
-                modelaverage.step()
+                >>> modelaverage = paddle.incubate.ModelAverage(
+                ...     0.15,
+                ...     parameters=linear.parameters(),
+                ...     min_average_window=2,
+                ...     max_average_window=4
+                ... )
+                >>> sgd.step()
+                >>> modelaverage.step()
 
-                with modelaverage.apply():
-                    for param in linear.parameters():
-                        print(param)
+                >>> with modelaverage.apply():
+                ...     for param in linear.parameters():
+                ...         print(param)
 
-                for param in linear.parameters():
-                    print(param)
+                >>> for param in linear.parameters():
+                ...     print(param)
         """
         if in_dynamic_mode():
             for param in self._parameter_list:
@@ -472,33 +482,35 @@ class ModelAverage(Optimizer):
 
             .. code-block:: python
 
-                import paddle
-                inp = paddle.rand([1, 10], dtype="float32")
-                linear = paddle.nn.Linear(10, 1)
-                out = linear(inp)
-                loss = paddle.mean(out)
-                loss.backward()
+                >>> import paddle
+                >>> inp = paddle.rand([1, 10], dtype="float32")
+                >>> linear = paddle.nn.Linear(10, 1)
+                >>> out = linear(inp)
+                >>> loss = paddle.mean(out)
+                >>> loss.backward()
 
-                sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
+                >>> sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
 
-                modelaverage = paddle.incubate.ModelAverage(0.15,
-                                                            parameters=linear.parameters(),
-                                                            min_average_window=2,
-                                                            max_average_window=4)
-                sgd.step()
-                modelaverage.step()
+                >>> modelaverage = paddle.incubate.ModelAverage(
+                ...     0.15,
+                ...     parameters=linear.parameters(),
+                ...     min_average_window=2,
+                ...     max_average_window=4
+                ... )
+                >>> sgd.step()
+                >>> modelaverage.step()
 
-                with modelaverage.apply(need_restore=False):
-                    for param in linear.parameters():
-                        print(param)
+                >>> with modelaverage.apply(need_restore=False):
+                ...     for param in linear.parameters():
+                ...         print(param)
 
-                for param in linear.parameters():
-                    print(param)
+                >>> for param in linear.parameters():
+                ...     print(param)
 
-                modelaverage.restore()
+                >>> modelaverage.restore()
 
-                for param in linear.parameters():
-                    print(param)
+                >>> for param in linear.parameters():
+                ...     print(param)
         """
         if in_dynamic_mode():
             for param in self._parameter_list:

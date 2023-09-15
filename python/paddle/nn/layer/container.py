@@ -15,8 +15,8 @@
 from collections import OrderedDict
 from collections.abc import Iterable, Mapping
 
-from ...fluid.dygraph.base import param_guard
-from ...fluid.framework import Parameter
+from ...base.dygraph.base import param_guard
+from ...base.framework import Parameter
 from .layers import Layer
 
 __all__ = []
@@ -303,7 +303,7 @@ class ParameterList(Layer):
     This container acts like a Python list, but parameters it contains will be properly added.
 
     Parameters:
-        parameters (iterable, optional): Iterable Parameters to be added
+        parameters (iterable, optional): Iterable Parameters to be added.
 
     Examples:
         .. code-block:: python

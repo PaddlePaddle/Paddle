@@ -114,10 +114,10 @@ void FillMatmulOperandNotation(const int x_ndim,
 
 ////////////////// InferMeta(Contains SPMD) Functions //////////////////
 
-SpmdInfo MatmulSpmdInferForward(const DistMetaTensor& x,
-                                const DistMetaTensor& y,
-                                bool trans_x,
-                                bool trans_y) {
+SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
+                         const DistMetaTensor& y,
+                         bool trans_x,
+                         bool trans_y) {
   // Step0: verify input args based on matmul logic
   auto x_shape = phi::vectorize(x.dims());
   auto y_shape = phi::vectorize(y.dims());
@@ -221,11 +221,11 @@ SpmdInfo MatmulSpmdInferForward(const DistMetaTensor& x,
   return {{x_dist_attr_dst, y_dist_attr_dst}, {output_dist_attr_dst}};
 }
 
-SpmdInfo MatmulSpmdInferBackward(const DistMetaTensor& x,
-                                 const DistMetaTensor& y,
-                                 const DistMetaTensor& out,
-                                 bool trans_x,
-                                 bool trans_y) {
+SpmdInfo MatmulInferSpmdReverse(const DistMetaTensor& x,
+                                const DistMetaTensor& y,
+                                const DistMetaTensor& out,
+                                bool trans_x,
+                                bool trans_y) {
   auto out_shape = phi::vectorize(out.dims());
   int out_ndim = out_shape.size();
 

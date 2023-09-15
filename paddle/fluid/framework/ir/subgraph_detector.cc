@@ -122,7 +122,7 @@ void SubgraphDetector::MarkNodesInsideSubGraph() {
 using node_map_t = std::map<int, Node *>;
 // Find the ancestor id of a node.
 int UnionFindGetAncestor(const node_map_t &node_map, size_t id) {
-  int tmp = id;
+  int tmp = static_cast<int>(id);
   do {
     tmp = Agent(node_map.at(tmp)).union_find_parent();
   } while (Agent(node_map.at(tmp)).union_find_parent() != tmp);
@@ -134,8 +134,8 @@ void UnionFindCombine(const node_map_t &node_map, size_t a, size_t b) {
   int a_ancestor = UnionFindGetAncestor(node_map, a);
   int b_ancestor = UnionFindGetAncestor(node_map, b);
   Agent(node_map.at(b_ancestor)).set_union_find_parent(a_ancestor);
-  Agent(node_map.at(a)).set_union_find_parent(a_ancestor);
-  Agent(node_map.at(b)).set_union_find_parent(a_ancestor);
+  Agent(node_map.at(a)).set_union_find_parent(a_ancestor);  // NOLINT
+  Agent(node_map.at(b)).set_union_find_parent(a_ancestor);  // NOLINT
 }
 
 // This is a simple representation of a graph.

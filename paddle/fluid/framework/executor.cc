@@ -51,11 +51,11 @@ void ExecutorPrepareContext::PrepareUnusedVars(
   // If gc is enabled and block size > 1
   if (prog_.Size() > 1) {
     operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
-        prog_, block_id_, ops_);
+        prog_, static_cast<int>(block_id_), ops_);
     operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
-        prog_, block_id_, ops_);
+        prog_, static_cast<int>(block_id_), ops_);
     operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-        prog_, block_id_, ops_);
+        prog_, static_cast<int>(block_id_), ops_);
   }
 
   force_disable_gc_ = force_disable_gc;
@@ -485,7 +485,7 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
     if (create_local_scope) {
       local_scope = &scope->NewScope();
     }
-    CreateVariables(ctx->prog_, local_scope, ctx->block_id_);
+    CreateVariables(ctx->prog_, local_scope, static_cast<int>(ctx->block_id_));
   }
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
@@ -585,7 +585,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx,
                                   bool create_vars,
                                   bool keep_kids) {
   int64_t start_op_index = 0;
-  int64_t end_op_index = ctx->ops_.size();
+  int64_t end_op_index = static_cast<int64_t>(ctx->ops_.size());
   RunPartialPreparedContext(ctx,
                             scope,
                             start_op_index,

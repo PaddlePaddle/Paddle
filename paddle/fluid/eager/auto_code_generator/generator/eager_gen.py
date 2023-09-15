@@ -81,6 +81,30 @@ special_prune_dict = {
     "matmul_grad": {"x": "grad_y", "y": "grad_x"},
 }
 
+strided_op_list = {
+    "as_complex",
+    "as_real",
+    "as_strided",
+    "real",
+    "imag",
+    "diagonal",
+    "flatten",
+    "flatten_infer",
+    "reshape",
+    "slice",
+    "squeeze_infer",
+    "squeeze",
+    "strided_slice",
+    "strided_slice_raw",
+    "tensor_unfold",
+    "transpose",
+    "unbind",
+    "unsqueeze_infer",
+    "unsqueeze",
+    "view_shape",
+    "view_dtype",
+}
+
 
 #########
 # Utils #
@@ -234,6 +258,9 @@ FORWARD_FUNCTION_TEMPLATE = """
   // Node Declaration
   std::shared_ptr<{}> grad_node;
 
+  // Pre contiguous tensor in not strided op, if 1)require_any_grad=true; 2) need wrapper to backward; 3) not contiguous
+{}
+
   // Set grad_node before API Call
 {}
 
@@ -380,6 +407,7 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/fluid/prim/api/all.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/phi/core/flags.h"
+#include "paddle/phi/api/lib/data_transform.h"
 PHI_DECLARE_bool(check_nan_inf);
 {}
 """
@@ -408,6 +436,7 @@ FORWARD_CC_FILE_TEMPLATE = """
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 #include "paddle/phi/core/flags.h"
+#include "paddle/phi/api/lib/data_transform.h"
 
 PHI_DECLARE_bool(check_nan_inf);
 PHI_DECLARE_string(tensor_operants_mode);
@@ -505,6 +534,12 @@ CHECK_BACKWARD_INPLACE_TEMPLATE = """
   if ({}.initialized()) {{
     VLOG(10) << {}.name() << "({}) use_count: " << {}.impl().use_count();
     if ({}.impl().use_count() == 1 || ({}.impl().use_count() == 2 && {}.impl().get() == {}.impl().get())) {{
+      if ({}.is_dense_tensor() && !std::dynamic_pointer_cast<phi::DenseTensor>({}.impl())->meta().is_contiguous()) {{
+        auto tmp = paddle::experimental::Trans2Contiguous(*(std::dynamic_pointer_cast<phi::DenseTensor>({}.impl())));
+        auto holder = tmp.MoveMemoryHolder();
+        std::dynamic_pointer_cast<phi::DenseTensor>({}.impl())->ResetHolder(holder);
+        std::dynamic_pointer_cast<phi::DenseTensor>({}.impl())->set_meta(tmp.meta());
+      }}
       can_be_inplaced = true;
     }}
   }}"""
@@ -977,6 +1012,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             set_attributes_list.append(set_attributes)
         set_attributes_str = "\n".join(set_attributes_list)
 
+        need_pre_contiguous_set = set()
         # SetTensorWrappers
         set_input_tensor_wrappers_list = []
         set_output_tensor_wrappers_list = []
@@ -1000,12 +1036,30 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                             {"indent": indent, "name": name}
                         )
                     else:
-                        set_tensor_wrappers = f"{indent}if({name}) grad_node->SetTensorWrapper{name}(*{name});"
+                        if (
+                            (forward_api_name in strided_op_list)
+                            or for_backward
+                            or IsVectorTensorType(atype)
+                            or (name in self.optional_inputs)
+                        ):
+                            set_tensor_wrappers = f"{indent}if({name}) grad_node->SetTensorWrapper{name}(*{name});"
+                        else:
+                            need_pre_contiguous_set.add(name)
+                            set_tensor_wrappers = f"{indent}if({name}) grad_node->SetTensorWrapper{name}(*{name}_tmp);"
                 else:
                     if is_inplace_input:
                         set_tensor_wrappers = f"{indent}auto {name}_clone = paddle::experimental::assign({name});\n{indent}grad_node->SetTensorWrapper{name}({name}_clone);"
                     else:
-                        set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name});"
+                        if (
+                            (forward_api_name in strided_op_list)
+                            or for_backward
+                            or IsVectorTensorType(atype)
+                            or (name in self.optional_inputs)
+                        ):
+                            set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name});"
+                        else:
+                            need_pre_contiguous_set.add(name)
+                            set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper{name}({name}_tmp);"
                 set_input_tensor_wrappers_list.append(set_tensor_wrappers)
             else:  # Forwad's output as backward's input
                 if num_fwd_outputs > 1:
@@ -1024,6 +1078,24 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         set_output_tensor_wrappers_str = "\n".join(
             set_output_tensor_wrappers_list
         )
+
+        if (forward_api_name in strided_op_list) or for_backward:
+            self.inputs_call_list_tmp = None
+            self.node_creation_pre_contiguous_str = ""
+        else:
+            self.inputs_call_list_tmp = self.inputs_call_list
+            pre_contiguous_list = []
+            for name, (ttype, pos) in forward_inputs_position_map.items():
+                if name in need_pre_contiguous_set:
+                    pre_contiguous_list.append(
+                        f"{indent}const auto& {name}_tmp = (require_any_grad && {name}.is_dense_tensor() && !std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl())->meta().is_contiguous()) ? paddle::Tensor(std::make_shared<phi::DenseTensor>(std::move(paddle::experimental::Trans2Contiguous(*(std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl()))))), {name}.mutable_autograd_meta()) : {name};"
+                    )
+                    self.inputs_call_list_tmp[pos] = (
+                        self.inputs_call_list_tmp[pos] + '_tmp'
+                    )
+            self.node_creation_pre_contiguous_str = "\n".join(
+                pre_contiguous_list
+            )
 
         # SetGradOutMeta & SetEdges
         grad_node_out_list = []
@@ -1463,6 +1535,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         inputs_args_declaration_str = ", ".join(inputs_args_declaration_list)
         inputs_args_definition_str = ", ".join(inputs_args_definition_list)
         inputs_call_args_str = ", ".join(inputs_call_list)
+        self.inputs_call_list = inputs_call_list
 
         # Forward Full Logic
         function_name = forward_api_name
@@ -1649,6 +1722,12 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             node_creation_str = self.node_creation_str
             node_creation_before_call_str = self.node_creation_before_call_str
             node_creation_after_call_str = self.node_creation_after_call_str
+            node_creation_pre_contiguous_str = (
+                self.node_creation_pre_contiguous_str
+            )
+            if self.inputs_call_list_tmp is not None:
+                inputs_call_args_str_tmp = ", ".join(self.inputs_call_list_tmp)
+                forward_call_str = f"{indent}{api_out_type} api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str_tmp});"
 
         dygraph_event_str = f"{indent}paddle::platform::RecordEvent dygraph_entrance_record_event(\"{forward_api_name} dygraph\", paddle::platform::TracerEventType::Operator, 1);\n"
         forward_ad_function_name = GetDygraphForwardFunctionName(
@@ -1760,6 +1839,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 before_log_str,
                 compute_require_grad_args_str,
                 self.grad_node_name,
+                node_creation_pre_contiguous_str,
                 node_creation_before_call_str,
                 forward_call_str,
                 check_nan_inf_str,
@@ -2160,6 +2240,11 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                     transformed_tensor_name,
                     transformed_tensor_name,
                     tensor_wrapper_intermidiate_tensor_str,
+                    transformed_tensor_name,
+                    transformed_tensor_name,
+                    transformed_tensor_name,
+                    transformed_tensor_name,
+                    transformed_tensor_name,
                 )
                 inplace_grad_input_str = transformed_tensor_name
             if is_optional:
@@ -2229,6 +2314,11 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                         transformed_tensor_name,
                         transformed_tensor_name,
                         grads_tensor_str,
+                        transformed_tensor_name,
+                        transformed_tensor_name,
+                        transformed_tensor_name,
+                        transformed_tensor_name,
+                        transformed_tensor_name,
                     )
                     inplace_grad_input_str = transformed_tensor_name
 

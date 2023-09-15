@@ -14,12 +14,12 @@
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle.framework import core
+from paddle.framework import core, in_dynamic_or_pir_mode
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ...fluid.data_feeder import check_dtype, check_variable_and_dtype
-from ...fluid.framework import convert_np_dtype_to_dtype_
-from ...fluid.layer_helper import LayerHelper
+from ...base.data_feeder import check_dtype, check_variable_and_dtype
+from ...base.framework import convert_np_dtype_to_dtype_
+from ...base.layer_helper import LayerHelper
 from ...tensor.manipulation import chunk
 from ...tensor.math import tanh  # noqa: F401
 from ...tensor.math import tanh_  # noqa: F401
@@ -189,7 +189,7 @@ def gelu(x, approximate=False, name=None):
              [ 0.84119201,  1.39957154]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.gelu(x, approximate)
     else:
         check_variable_and_dtype(
@@ -759,6 +759,10 @@ def relu(x, name=None):
     if in_dynamic_mode():
         return _C_ops.relu(x)
     else:
+        if paddle.framework.in_dynamic_or_pir_mode():
+            # Below code will be removed after we can generate IR api automatically
+            return paddle._ir_ops.relu(x)
+
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'relu'
         )
@@ -786,7 +790,7 @@ def log_sigmoid(x, name=None):
         log\_sigmoid(x) = log \frac{1}{1 + e^{-x}}
 
     Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type float32, float64, complex64, complex128.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -809,7 +813,10 @@ def log_sigmoid(x, name=None):
         return _C_ops.logsigmoid(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'log_sigmoid'
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'complex64', 'complex128'],
+            'log_sigmoid',
         )
         helper = LayerHelper("log_sigmoid", **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
@@ -1027,7 +1034,7 @@ def silu(x, name=None):
     Where :math:`x` is the input Tensor.
 
     Parameters:
-        x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64.
+        x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64, complex64, complex128.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1046,11 +1053,21 @@ def silu(x, name=None):
             [0.73105860, 1.76159406, 2.85772228, 3.92805505])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.silu(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'silu'
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+            ],
+            'silu',
         )
         helper = LayerHelper("silu", **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
