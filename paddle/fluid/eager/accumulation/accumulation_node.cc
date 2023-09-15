@@ -133,10 +133,6 @@ GradNodeAccumulation::operator()(
     ApplyReduceHooks();
   }
 
-  std::stringstream ss;
-  ss << this;
-  std::string this_pointer = ss.str();
-
   VLOG(3) << "Finish AD API Grad: GradNodeAccumulation";
   if (VLOG_IS_ON(4)) {
     const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s], Output: [%s] } ";
