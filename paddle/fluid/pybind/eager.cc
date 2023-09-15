@@ -45,6 +45,7 @@ limitations under the License. */
 #include "paddle/phi/core/string_tensor.h"
 using phi::distributed::DistTensor;
 using phi::distributed::TensorDistAttr;
+
 namespace paddle {
 namespace pybind {
 
@@ -219,6 +220,7 @@ void InitTensorWithNumpyValue(TensorObject* self,
           "EmptyTensorInitializer is "
           "forbidden. Please check your code and make sure you new a "
           "eager tensor before init it with NumPy."));
+
   phi::DenseTensor* impl_ptr =
       static_cast<phi::DenseTensor*>(self->tensor.impl().get());
   if (platform::is_cpu_place(place)) {
@@ -829,6 +831,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       {"name", kw_name},
       {"stop_gradient", kw_stop_gradient},
       {"dims", kw_dims},
+      {"dtype", kw_dtype},
       {"type", kw_type},
       {"dist_attr", kw_dist_attr}};
 

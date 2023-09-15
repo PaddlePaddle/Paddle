@@ -179,11 +179,6 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
                                                          bool sync_op,
                                                          bool use_calc_stream);
 
-  void BroadcastUniqueNCCLID(ncclUniqueId* nccl_id,
-                             bool is_p2p_op = false,
-                             const std::string& p2p_key = "",
-                             int p2p_rank = 0);
-
   void CreateNCCLEnvCache(const Place& place,
                           const std::string& place_key,
                           CommType comm_type,

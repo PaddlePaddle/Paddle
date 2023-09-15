@@ -175,11 +175,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
   // numel > 0 indicates the tensor need to be sliced
   const phi::DenseTensor& in_tensor_maybe_partial =
       numel > 0 ? GetPartialTensor(in_tensor, offset, numel) : in_tensor;
-  phi::distributed::CommStaticCheck::GatherLikeShape(*out_tensor,
-                                                     in_tensor_maybe_partial,
-                                                     /*dst_rank*/ rank_,
-                                                     /*cur_rank*/ rank_,
-                                                     size_);
   return Collective(
       [&](gpuStream_t stream) {
         auto comm_context = this->GetCommContext();
@@ -209,11 +204,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
     const AllreduceOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  phi::distributed::CommStaticCheck::SameShape(*out_tensor,
-                                               in_tensor,
-                                               /*dst_rank*/ rank_,
-                                               /*cur_rank*/ rank_,
-                                               size_);
   return Collective(
       [&](gpuStream_t stream) {
         auto comm_context = this->GetCommContext();
@@ -634,30 +624,6 @@ std::shared_ptr<ProcessGroupNCCL::NCCLTask> ProcessGroupNCCL::CreateTask(
     bool use_calc_stream) {
   return std::make_shared<ProcessGroupNCCL::NCCLTask>(
       place, rank, comm_type, is_sync, use_calc_stream);
-}
-
-void ProcessGroupNCCL::BroadcastUniqueNCCLID(ncclUniqueId* nccl_id,
-                                             bool is_p2p_op,
-                                             const std::string& p2p_key,
-                                             int p2p_rank) {
-  std::string store_key;
-
-  if (!is_p2p_op) {
-    store_key = "ProcessGroupNCCL/nccl_ids/" + std::to_string(gid_) + "/0";
-  } else {
-    store_key =
-        "ProcessGroupNCCL/nccl_ids/" + std::to_string(gid_) + "/" + p2p_key;
-  }
-
-  if (rank_ == 0 || (is_p2p_op && p2p_rank == 0)) {
-    std::vector<uint8_t> nccl_id_wrapper(
-        reinterpret_cast<uint8_t*>(nccl_id),
-        reinterpret_cast<uint8_t*>(nccl_id) + NCCL_UNIQUE_ID_BYTES);
-    store_->set(store_key, nccl_id_wrapper);
-  } else {
-    const auto& nccl_id_wrapper = store_->get(store_key);
-    std::memcpy(nccl_id, nccl_id_wrapper.data(), nccl_id_wrapper.size());
-  }
 }
 
 void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,

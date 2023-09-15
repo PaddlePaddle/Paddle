@@ -189,6 +189,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
 
     Examples:
         .. code-block:: python
+
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
 
@@ -305,6 +306,7 @@ def is_available():
 
     Examples:
         .. code-block:: python
+
             >>> import paddle
             >>> print(paddle.distributed.is_available())
 

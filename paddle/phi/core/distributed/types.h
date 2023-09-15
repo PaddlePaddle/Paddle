@@ -58,4 +58,4 @@ struct ReduceScatterOptions {
 };
 
 }  //  namespace distributed
-}  //  namespace paddle
+}  // namespace phi
