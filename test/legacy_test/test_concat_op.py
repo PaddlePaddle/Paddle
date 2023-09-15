@@ -330,7 +330,6 @@ def create_test_fp16(parent):
             ):
                 return
             if self.dtype == np.uint16:
-                print("**********")
                 place = core.CUDAPlace(0)
                 self.check_grad_with_place(
                     place, ['x0'], 'Out', check_new_ir=True

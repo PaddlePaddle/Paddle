@@ -120,6 +120,7 @@ class TesBackward_1(unittest.TestCase):
             "pd_op.full",
             "pd_op.full_like",
             "pd_op.full",
+            "pd_op.full_like",
             "builtin.combine",
             "pd_op.concat",
             "pd_op.tanh_grad",
