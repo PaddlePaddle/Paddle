@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import numpy as np
 from . import unique_name
 from . import core
@@ -373,6 +374,7 @@ def _setitem_for_tensor_array(var, item, value):
         from paddle.jit.dy2static.variable_trans_func import (
             to_static_variable,
         )
+        from paddle import cast
         from paddle.tensor import array_write
 
         item = paddle.cast(to_static_variable(item), dtype='int64')

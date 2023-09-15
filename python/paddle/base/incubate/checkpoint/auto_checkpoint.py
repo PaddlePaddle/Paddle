@@ -14,10 +14,13 @@
 
 import sys
 import logging
+import hashlib
 import json
 import os
 import time
-from threading import current_thread
+import collections
+from threading import Thread, current_thread
+from contextlib import contextmanager
 
 from paddle.base import unique_name, compiler
 from .checkpoint_saver import SerializableBase, CheckpointSaver, PaddleModel

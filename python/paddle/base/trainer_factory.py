@@ -25,11 +25,22 @@ local_logger = get_logger(
 
 from .trainer_desc import (
     MultiTrainer,
+    DistMultiTrainer,
+    PipelineTrainer,
+    HeterXpuTrainer,
+    PSGPUTrainer,
+    HeterPipelineTrainer,
 )
 from .device_worker import (
     Hogwild,
+    DownpourSGD,
+    DownpourLite,
+    Section,
+    DownpourSGDOPT,
+    HeterSection,
 )
 from .framework import Variable
+from multiprocessing import Process, Manager
 
 __all__ = ["TrainerFactory", "FetchHandlerMonitor"]
 

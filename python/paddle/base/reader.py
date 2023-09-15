@@ -17,20 +17,26 @@ import sys
 import numpy as np
 import threading
 import paddle
+import time
+import copy
 
 from .framework import (
     Program,
+    Variable,
     program_guard,
     default_main_program,
     default_startup_program,
     in_dygraph_mode,
+    cpu_places,
     _current_expected_place,
 )
 from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider
 from .multiprocess_utils import (
+    multiprocess_queue_set,
     CleanupFuncRegistrar,
     _cleanup_mmap,
+    _cleanup,
     _set_SIGCHLD_handler,
 )
 from .layers.io import (
@@ -45,7 +51,9 @@ import logging
 import warnings
 
 ### Dygraph DataLoader configs ###
+import os
 import multiprocessing
+import signal
 
 import queue
 

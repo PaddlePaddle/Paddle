@@ -14,6 +14,7 @@
 
 import logging
 import os
+import multiprocessing
 import sys
 import warnings
 import numpy as np
@@ -41,6 +42,7 @@ from .trainer_factory import FetchHandlerMonitor
 import copy
 from . import framework
 from .incubate.checkpoint import auto_checkpoint as acp
+from .compiler import _prune_feed_ops
 
 from functools import lru_cache
 
