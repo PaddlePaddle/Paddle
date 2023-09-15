@@ -132,6 +132,7 @@ PD_REGISTER_KERNEL(assign_value,
                    bool,
                    int,
                    float,
+                   double,
                    int8_t,
                    int64_t) {}
 
@@ -159,6 +160,7 @@ PD_REGISTER_KERNEL(assign_value,
                    bool,
                    int,
                    float,
+                   double,
                    int8_t,
                    int64_t) {}
 #endif

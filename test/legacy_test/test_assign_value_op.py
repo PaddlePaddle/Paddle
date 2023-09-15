@@ -72,6 +72,27 @@ class TestAssignValueOp4(TestAssignValueOp):
         self.attrs["bool_values"] = [int(v) for v in self.value.flat]
 
 
+class TestAssignValueOp5(eager_op_test.OpTest):
+    def setUp(self):
+        self.op_type = "assign_value"
+        self.python_api = assign_value_wrapper
+        self.inputs = {}
+        self.attrs = {}
+        self.init_data()
+        self.attrs["shape"] = self.value.shape
+        self.attrs["dtype"] = framework.convert_np_dtype_to_dtype_(
+            self.value.dtype
+        )
+        self.outputs = {"Out": self.value}
+
+    def init_data(self):
+        self.value = np.random.random(size=(2, 5)).astype(np.float64)
+        self.attrs["fp64_values"] = [float(v) for v in self.value.flat]
+
+    def test_forward(self):
+        self.check_output(check_cinn=True)
+
+
 class TestAssignApi(unittest.TestCase):
     def setUp(self):
         with eager_op_test.paddle_static_guard():
