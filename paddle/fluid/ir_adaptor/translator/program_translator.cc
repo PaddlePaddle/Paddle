@@ -70,9 +70,9 @@ ConditionBlockCombination::ConditionBlockCombination(
     const ::paddle::framework::BlockDesc& src_block,
     const std::vector<uint64_t>& op_ids) {
   for (auto op_id : op_ids) {
-    op_list.emplace_back(src_block.Op(op_id));
+    op_list_.emplace_back(src_block.Op(op_id));
   }
-  PADDLE_ENFORCE(Verify(op_list),
+  PADDLE_ENFORCE(Verify(op_list_),
                  platform::errors::NotFound(
                      "There are cond operators in this program that do not "
                      "meet the translation requirements. Please check the "
@@ -80,31 +80,31 @@ ConditionBlockCombination::ConditionBlockCombination(
 }
 
 std::string ConditionBlockCombination::CondVar() {
-  return op_list[0]->Input("Cond")[0];
+  return op_list_[0]->Input("Cond")[0];
 }
 
 size_t ConditionBlockCombination::OutputSize() {
-  return op_list[0]->Output("Out").size();
+  return op_list_[0]->Output("Out").size();
 }
 
 std::vector<std::string> ConditionBlockCombination::TrueBlockOutputVars() {
-  return op_list[0]->Output("Out");
+  return op_list_[0]->Output("Out");
 }
 
 int ConditionBlockCombination::TrueBlockId() {
-  return op_list[0]->GetBlockAttrId("sub_block");
+  return op_list_[0]->GetBlockAttrId("sub_block");
 }
 
 std::vector<std::string> ConditionBlockCombination::FalseBlockOutputVars() {
-  if (op_list.size() > 1) {
-    return op_list[2]->Output("Out");
+  if (op_list_.size() > 1) {
+    return op_list_[2]->Output("Out");
   }
   return {""};
 }
 
 int ConditionBlockCombination::FalseBlockId() {
-  if (op_list.size() > 1) {
-    return op_list[2]->GetBlockAttrId("sub_block");
+  if (op_list_.size() > 1) {
+    return op_list_[2]->GetBlockAttrId("sub_block");
   }
   return -1;
 }

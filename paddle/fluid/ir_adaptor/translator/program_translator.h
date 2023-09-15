@@ -59,7 +59,7 @@ class ConditionBlockCombination {
  private:
   bool Verify(const std::vector<::paddle::framework::OpDesc*>& op_list);
 
-  std::vector<::paddle::framework::OpDesc*> op_list;
+  std::vector<::paddle::framework::OpDesc*> op_list_;
 };
 
 using TranslationContext =
