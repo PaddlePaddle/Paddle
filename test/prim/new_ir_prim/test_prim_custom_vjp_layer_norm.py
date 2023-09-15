@@ -76,10 +76,15 @@ class TestPrimMode(unittest.TestCase):
                 op.name() for op in main_program.global_block().ops
             ]
             print("whole ops before: ", whole_ops_before)
+            if flag == "backward":
+                core._set_prim_forward_enabled(False)
+            else:
+                core._set_prim_forward_enabled(True)
             [res2] = decompose(
                 main_program,
                 [res],
             )
+            core._set_prim_forward_enabled(False)
             whole_ops_after_decompose = [
                 op.name() for op in main_program.global_block().ops
             ]
