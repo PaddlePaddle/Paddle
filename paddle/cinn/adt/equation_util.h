@@ -100,7 +100,9 @@ void IdentityConnect(const Index& out, const Index& in, const DoEachT& DoEach) {
   DoEach(Identity<tOut<Index>, tIn<Index>>{out, in});
 }
 
-void IdentityConnect(const Index& out, const Index& in, Equations* equations) {
+inline void IdentityConnect(const Index& out,
+                            const Index& in,
+                            Equations* equations) {
   IdentityConnect(out, in, [&](const auto& equation) {
     (*equations)->push_back(equation);
   });
