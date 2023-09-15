@@ -445,9 +445,7 @@ void BindOpResult(py::module *m) {
              return paddle::dialect::greater_equal(self, other);
            })
       .def("__hash__",
-           [](OpResult &self) {
-             return std::hash<pir::Value>{}(self.dyn_cast<pir::Value>());
-           })
+           [](OpResult &self) { return std::hash<pir::Value>{}(self); })
       .def("get_defining_op",
            &OpResult::GetDefiningOp,
            return_value_policy::reference)
