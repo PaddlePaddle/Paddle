@@ -497,8 +497,8 @@ def _add_feed_fetch_ops(
         global_block, fetch_list, fetch_var_name, fetch_op
     ):
         for i, var in enumerate(fetch_list):
-            assert isinstance(var, Variable) or isinstance(
-                var, str
+            assert isinstance(
+                var, (Variable, str)
             ), "Wrong type for fetch_list[%s]: %s" % (i, type(var))
             global_block.append_op(
                 type=fetch_op,
@@ -666,7 +666,7 @@ def _get_program_cache_key(feed, fetch_list):
     feed_var_names = []
     if isinstance(feed, dict):
         feed_var_names = list(feed.keys())
-    elif isinstance(feed, list) or isinstance(feed, tuple):
+    elif isinstance(feed, (list, tuple)):
         for i, each in enumerate(feed):
             feed_var_names += list(each.keys())
     fetch_var_names = list(map(_to_name_str, fetch_list))
@@ -1297,11 +1297,7 @@ class Executor:
                     raise TypeError(
                         "The operator in fetch_list is not an optimize_op"
                     )
-            elif (
-                isinstance(item, Variable)
-                or isinstance(item, str)
-                or isinstance(item, str)
-            ):
+            elif isinstance(item, (Variable, str)):
                 _fetch_list.append(item)
             else:
                 raise TypeError(
@@ -1367,7 +1363,7 @@ class Executor:
         feed_names = []
         if isinstance(feed, dict):
             feed_names = list(feed.keys())
-        elif isinstance(feed, list) or isinstance(feed, tuple):
+        elif isinstance(feed, (list, tuple)):
             for i, each in enumerate(feed):
                 feed_names += list(each.keys())
 
@@ -1428,7 +1424,7 @@ class Executor:
                         % feed_name
                     )
 
-        elif isinstance(feed, list) or isinstance(feed, tuple):
+        elif isinstance(feed, (list, tuple)):
             for i, each in enumerate(feed):
                 for feed_name in list(each.keys()):
                     if not global_block.has_var(feed_name):
@@ -2807,8 +2803,8 @@ class Executor:
             global_block, fetch_list, fetch_var_name, fetch_op
         ):
             for i, var in enumerate(fetch_list):
-                assert isinstance(var, Variable) or isinstance(
-                    var, str
+                assert isinstance(
+                    var, (Variable, str)
                 ), "Wrong type for fetch_list[%s]: %s" % (i, type(var))
                 global_block.append_op(
                     type=fetch_op,
