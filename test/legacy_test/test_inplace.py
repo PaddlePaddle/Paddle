@@ -254,6 +254,18 @@ class TestDygraphInplace(unittest.TestCase):
         np.testing.assert_array_equal(grad_var_a_inplace, grad_var_a)
 
 
+class TestDygraphInplaceMaskedFill(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.masked_fill(var, self.mask, self.value)
+
+    def inplace_api_processing(self, var):
+        return paddle.masked_fill_(var, self.mask, self.value)
+
+    def init_data(self, var):
+        self.value = np.random.uniform(-10, 10)
+        self.mask = np.random.randint(2, var.shape).astype('bool')
+
+
 class TestDygraphInplaceWithContinuous(TestDygraphInplace):
     def init_data(self):
         self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
