@@ -507,6 +507,7 @@ class TestMatMulV2API(unittest.TestCase):
             self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
+        paddle.enable_static()
         with base.program_guard(base.Program(), base.Program()):
             input_x = paddle.static.data(
                 name="input_x", shape=[4, 3], dtype="float32"
@@ -526,6 +527,7 @@ class TestMatMulV2API(unittest.TestCase):
                 feed={"input_x": x_np, "input_y": y_np},
                 fetch_list=[result],
             )
+        paddle.disable_static()
 
     def test_static(self):
         for place in self.places:
