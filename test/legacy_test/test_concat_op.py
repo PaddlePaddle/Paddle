@@ -53,20 +53,26 @@ class TestConcatOp(OpTest):
     def test_check_output(self):
         if self.dtype == np.uint16:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place)
+            self.check_output_with_place(place, check_new_ir=True)
         else:
-            self.check_output()
+            self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         if self.dtype == np.uint16:
             place = core.CUDAPlace(0)
-            self.check_grad_with_place(place, ['x0'], 'Out', check_prim=True)
-            self.check_grad_with_place(place, ['x1'], 'Out', check_prim=True)
-            self.check_grad_with_place(place, ['x2'], 'Out', check_prim=True)
+            self.check_grad_with_place(
+                place, ['x0'], 'Out', check_prim=True, check_new_ir=True
+            )
+            self.check_grad_with_place(
+                place, ['x1'], 'Out', check_prim=True, check_new_ir=True
+            )
+            self.check_grad_with_place(
+                place, ['x2'], 'Out', check_prim=True, check_new_ir=True
+            )
         else:
-            self.check_grad(['x0'], 'Out', check_prim=True)
-            self.check_grad(['x1'], 'Out', check_prim=True)
-            self.check_grad(['x2'], 'Out', check_prim=True)
+            self.check_grad(['x0'], 'Out', check_prim=True, check_new_ir=True)
+            self.check_grad(['x1'], 'Out', check_prim=True, check_new_ir=True)
+            self.check_grad(['x2'], 'Out', check_prim=True, check_new_ir=True)
 
     def init_test_data(self):
         if self.dtype == np.uint16:
@@ -160,12 +166,12 @@ class TestConcatOp6(TestConcatOp):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=False)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out')
-        self.check_grad(['x1'], 'Out')
-        self.check_grad(['x2'], 'Out')
+        self.check_grad(['x0'], 'Out', check_new_ir=False)
+        self.check_grad(['x1'], 'Out', check_new_ir=False)
+        self.check_grad(['x2'], 'Out', check_new_ir=False)
 
     def init_test_data(self):
         self.x0 = np.random.random([100]).astype(self.dtype)
@@ -204,12 +210,12 @@ class TestConcatOp7(TestConcatOp):
         return "float64"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', check_prim=True)
-        self.check_grad(['x1'], 'Out', check_prim=True)
-        self.check_grad(['x2'], 'Out', check_prim=True)
+        self.check_grad(['x0'], 'Out', check_prim=True, check_new_ir=True)
+        self.check_grad(['x1'], 'Out', check_prim=True, check_new_ir=True)
+        self.check_grad(['x2'], 'Out', check_prim=True, check_new_ir=True)
 
     def init_test_data(self):
         if self.dtype == np.uint16:
@@ -262,13 +268,19 @@ def create_test_AxisTensor(parent):
                 return
             if self.dtype == np.uint16:
                 place = core.CUDAPlace(0)
-                self.check_grad_with_place(place, ['x0'], 'Out')
-                self.check_grad_with_place(place, ['x1'], 'Out')
-                self.check_grad_with_place(place, ['x2'], 'Out')
+                self.check_grad_with_place(
+                    place, ['x0'], 'Out', check_new_ir=True
+                )
+                self.check_grad_with_place(
+                    place, ['x1'], 'Out', check_new_ir=True
+                )
+                self.check_grad_with_place(
+                    place, ['x2'], 'Out', check_new_ir=True
+                )
             else:
-                self.check_grad(['x0'], 'Out')
-                self.check_grad(['x1'], 'Out')
-                self.check_grad(['x2'], 'Out')
+                self.check_grad(['x0'], 'Out', check_new_ir=True)
+                self.check_grad(['x1'], 'Out', check_new_ir=True)
+                self.check_grad(['x2'], 'Out', check_new_ir=True)
 
     cls_name = "{}_{}".format(parent.__name__, "AxisTensor")
     TestConcatAxisTensor.__name__ = cls_name
@@ -318,14 +330,21 @@ def create_test_fp16(parent):
             ):
                 return
             if self.dtype == np.uint16:
+                print("**********")
                 place = core.CUDAPlace(0)
-                self.check_grad_with_place(place, ['x0'], 'Out')
-                self.check_grad_with_place(place, ['x1'], 'Out')
-                self.check_grad_with_place(place, ['x2'], 'Out')
+                self.check_grad_with_place(
+                    place, ['x0'], 'Out', check_new_ir=True
+                )
+                self.check_grad_with_place(
+                    place, ['x1'], 'Out', check_new_ir=True
+                )
+                self.check_grad_with_place(
+                    place, ['x2'], 'Out', check_new_ir=True
+                )
             else:
-                self.check_grad(['x0'], 'Out')
-                self.check_grad(['x1'], 'Out')
-                self.check_grad(['x2'], 'Out')
+                self.check_grad(['x0'], 'Out', check_new_ir=True)
+                self.check_grad(['x1'], 'Out', check_new_ir=True)
+                self.check_grad(['x2'], 'Out', check_new_ir=True)
 
         def get_dtype(self):
             return np.float16
@@ -339,7 +358,9 @@ create_test_fp16(TestConcatOp)
 create_test_fp16(TestConcatOp2)
 create_test_fp16(TestConcatOp3)
 create_test_fp16(TestConcatOp4)
+
 create_test_fp16(TestConcatOp5)
+
 create_test_fp16(TestConcatOp6)
 
 
@@ -382,13 +403,19 @@ def create_test_bf16(parent):
                 return
             if self.dtype == np.uint16:
                 place = core.CUDAPlace(0)
-                self.check_grad_with_place(place, ['x0'], 'Out')
-                self.check_grad_with_place(place, ['x1'], 'Out')
-                self.check_grad_with_place(place, ['x2'], 'Out')
+                self.check_grad_with_place(
+                    place, ['x0'], 'Out', check_new_ir=True
+                )
+                self.check_grad_with_place(
+                    place, ['x1'], 'Out', check_new_ir=True
+                )
+                self.check_grad_with_place(
+                    place, ['x2'], 'Out', check_new_ir=True
+                )
             else:
-                self.check_grad(['x0'], 'Out')
-                self.check_grad(['x1'], 'Out')
-                self.check_grad(['x2'], 'Out')
+                self.check_grad(['x0'], 'Out', check_new_ir=True)
+                self.check_grad(['x1'], 'Out', check_new_ir=True)
+                self.check_grad(['x2'], 'Out', check_new_ir=True)
 
         def get_dtype(self):
             return np.uint16
@@ -412,6 +439,7 @@ create_test_bf16(TestConcatOp4)
 
 class TestConcatOpError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input type of concat_op should be list.
 
@@ -446,6 +474,7 @@ class TestConcatOpError(unittest.TestCase):
                 paddle.concat([x7, x8])
 
             self.assertRaises(TypeError, test_input_same_dtype)
+        paddle.disable_static()
 
 
 class TestConcatAPI(unittest.TestCase):

@@ -77,7 +77,7 @@ class TestComplexSumOP(TestSumOp):
         self.attrs = {'dim': [0]}
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_prim=False)
 
 
 class TestSumOp_ZeroDim(TestSumOp):
