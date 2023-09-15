@@ -13,9 +13,15 @@
 # limitations under the License.
 
 # generator build function
-_INFERMETA_NEED_META_CONFIG = {'SplitInferMeta'}
+_INFERMETA_NEED_META_CONFIG = {
+    'SplitInferMeta',
+    'SumInferMeta',
+    'SplitWithNumInferMeta',
+    'ConcatInferMeta',
+    'ReduceIntArrayAxisInferMeta',
+}
 
-_PREPARE_DATA_WITH_UNKNOW_ATTRIBUTE = {'SplitOp'}
+_PREPARE_DATA_WITH_VECTOR_INT64_MTTABLE_ATTRIBUTE = {'FrobeniusNormOp'}
 
 OP_BUILD_TEMPLATE = """
 void {op_name}::Build({build_args}) {{
@@ -363,6 +369,25 @@ def GenBuildOutputs(
     PADDLE_THROW(phi::errors::Unimplemented("Only support VectorType or DenseTensorType"));
   }}\n"""
 
+    CREATE_VECTOR_INT_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  std::vector<int64_t> {name};
+  if ({name}_.owner()->info().id() == pir::TypeId::get<paddle::dialect::FullIntArrayOp>()) {{
+    {name} = {name}_.owner()
+                          ->dyn_cast<paddle::dialect::FullIntArrayOp>()
+                          .attributes()
+                          .at("value")
+                          .dyn_cast<paddle::dialect::IntArrayAttribute>()
+                          .data()
+                          .GetData();
+  }} else if ({name}_.type().isa<pir::VectorType>()) {{
+    size_t {name}_size = {name}_.type().dyn_cast<pir::VectorType>().size();
+    {name} = std::vector<int64_t>({name}_size, -1);
+  }} else if ({name}_.type().isa<paddle::dialect::DenseTensorType>()) {{
+    size_t {name}_size = phi::product({name}_.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
+    {name} = std::vector<int64_t>({name}_size, -1);
+  }} else {{
+    PADDLE_THROW(phi::errors::Unimplemented("Only support VectorType or DenseTensorType"));
+  }}\n"""
+
     CREATE_SCALAR_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::Scalar {name};
   if ({name}_.owner()->info().id() == pir::TypeId::get<paddle::dialect::FullOp>()) {{
     {name} = std::move(phi::Scalar({name}_.owner()
@@ -411,30 +436,23 @@ def GenBuildOutputs(
             attr_dtype = op_mutable_attribute_type_list[idx]
             # int_array
             if attr_dtype[0] == "paddle::dialect::IntArrayAttribute":
-                if op_class_name in _PREPARE_DATA_WITH_UNKNOW_ATTRIBUTE:
-                    build_output_str += CREATE_INTARRAY_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE.format(
+                if (
+                    op_class_name
+                    in _PREPARE_DATA_WITH_VECTOR_INT64_MTTABLE_ATTRIBUTE
+                ):
+                    build_output_str += CREATE_VECTOR_INT_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE.format(
                         name=op_mutable_attribute_name_list[idx]
                     )
                 else:
-                    build_output_str += (
-                        CREATE_INTARRAY_MUTABLE_ATTRIBUE_TEMPLATE.format(
-                            name=op_mutable_attribute_name_list[idx]
-                        )
+                    build_output_str += CREATE_INTARRAY_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE.format(
+                        name=op_mutable_attribute_name_list[idx]
                     )
             # scalar
             elif attr_dtype[0] == "paddle::dialect::ScalarAttribute":
-                if op_class_name in _PREPARE_DATA_WITH_UNKNOW_ATTRIBUTE:
-                    build_output_str += CREATE_SCALAR_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE.format(
-                        name=op_mutable_attribute_name_list[idx],
-                        dtype=attr_dtype[1],
-                    )
-                else:
-                    build_output_str += (
-                        CREATE_SCALAR_MUTABLE_ATTRIBUE_TEMPLATE.format(
-                            name=op_mutable_attribute_name_list[idx],
-                            dtype=attr_dtype[1],
-                        )
-                    )
+                build_output_str += CREATE_SCALAR_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE.format(
+                    name=op_mutable_attribute_name_list[idx],
+                    dtype=attr_dtype[1],
+                )
             # string
             elif attr_dtype[0] == "pir::StrAttribute":
                 build_output_str += ""
@@ -669,21 +687,41 @@ def gen_build_func_str(
     )
 
     GET_ATTRIBUTES_FROM_MAP_TEMPLATE = """
+  PADDLE_ENFORCE(
+      attributes.find("{attribute_name}") != attributes.end(),
+      phi::errors::NotFound(
+          "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<{attr_ir_type}>().data();
 """
     GET_STR_ATTRIBUTES_FROM_MAP_TEMPLATE = """
+  PADDLE_ENFORCE(
+      attributes.find("{attribute_name}") != attributes.end(),
+      phi::errors::NotFound(
+          "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<pir::StrAttribute>().AsString();
 """
     GET_ARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE = """
+  PADDLE_ENFORCE(
+      attributes.find("{attribute_name}") != attributes.end(),
+      phi::errors::NotFound(
+          "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name};
   for (size_t i = 0; i < attributes.at("{attribute_name}").dyn_cast<pir::ArrayAttribute>().size(); i++) {{
     {attribute_name}.push_back(attributes.at("{attribute_name}").dyn_cast<pir::ArrayAttribute>().at(i).dyn_cast<{inner_type}>().{data_name}());
   }}
 """
     GET_INTARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE = """
+  PADDLE_ENFORCE(
+      attributes.find("{attribute_name}") != attributes.end(),
+      phi::errors::NotFound(
+          "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
 """
     GET_SCALAR_ATTRIBUTE_FROM_MAP_TEMPLATE = """
+  PADDLE_ENFORCE(
+      attributes.find("{attribute_name}") != attributes.end(),
+      phi::errors::NotFound(
+          "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<paddle::dialect::ScalarAttribute>().data().to<{attr_type}>();
 """
 
@@ -706,6 +744,7 @@ def gen_build_func_str(
                     data_name = "AsString"
                 get_attributes_str += (
                     GET_ARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE.format(
+                        op_name=op_class_name,
                         attr_type=attr_type,
                         attribute_name=op_attribute_name_list[idx],
                         inner_type=inner_type,
@@ -718,6 +757,7 @@ def gen_build_func_str(
             ):
                 get_attributes_str += (
                     GET_INTARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE.format(
+                        op_name=op_class_name,
                         attr_type=attr_type,
                         attribute_name=op_attribute_name_list[idx],
                     )
@@ -728,6 +768,7 @@ def gen_build_func_str(
             ):
                 get_attributes_str += (
                     GET_SCALAR_ATTRIBUTE_FROM_MAP_TEMPLATE.format(
+                        op_name=op_class_name,
                         attr_type=attr_type,
                         attribute_name=op_attribute_name_list[idx],
                     )
@@ -735,6 +776,7 @@ def gen_build_func_str(
             elif "pir::StrAttribute" in op_attribute_type_list[idx]:
                 get_attributes_str += (
                     GET_STR_ATTRIBUTES_FROM_MAP_TEMPLATE.format(
+                        op_name=op_class_name,
                         attr_type=attr_type,
                         attribute_name=op_attribute_name_list[idx],
                         attr_ir_type=op_attribute_type_list[idx],
@@ -742,6 +784,7 @@ def gen_build_func_str(
                 )
             else:
                 get_attributes_str += GET_ATTRIBUTES_FROM_MAP_TEMPLATE.format(
+                    op_name=op_class_name,
                     attr_type=attr_type,
                     attribute_name=op_attribute_name_list[idx],
                     attr_ir_type=op_attribute_type_list[idx],

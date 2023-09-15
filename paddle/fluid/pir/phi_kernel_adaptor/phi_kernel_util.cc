@@ -735,7 +735,8 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
       } else if (array_list[0].isa<pir::Int64Attribute>()) {
         std::vector<int> vec_int64;
         for (auto attribute : array_list) {
-          vec_int64.push_back(attribute.dyn_cast<pir::Int64Attribute>().data());
+          vec_int64.push_back(
+              attribute.dyn_cast<pir::Int64Attribute>().data());  // NOLINT
         }
         attr_map[name] = vec_int64;
       } else if (array_list[0].isa<pir::BoolAttribute>()) {
@@ -747,14 +748,15 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
       } else if (array_list[0].isa<pir::FloatAttribute>()) {
         std::vector<int> vec_float;
         for (auto attribute : array_list) {
-          vec_float.push_back(attribute.dyn_cast<pir::FloatAttribute>().data());
+          vec_float.push_back(
+              attribute.dyn_cast<pir::FloatAttribute>().data());  // NOLINT
         }
         attr_map[name] = vec_float;
       } else if (array_list[0].isa<pir::DoubleAttribute>()) {
         std::vector<int> vec_double;
         for (auto attribute : array_list) {
           vec_double.push_back(
-              attribute.dyn_cast<pir::DoubleAttribute>().data());
+              attribute.dyn_cast<pir::DoubleAttribute>().data());  // NOLINT
         }
         attr_map[name] = vec_double;
       } else {

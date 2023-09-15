@@ -201,20 +201,20 @@ static PyObject* tensor_method_numpy(TensorObject* self,
              "otherwise 'Tensor.numpy()[0]' will raise error in release 2.6.";
       py_rank = 1;
       py_dims[0] = 1;
-      py_strides[0] = sizeof_dtype * numel;
+      py_strides[0] = static_cast<Py_intptr_t>(sizeof_dtype * numel);
     }
   } else if (self->tensor.is_dense_tensor()) {
     auto tensor_stride = self->tensor.strides();
 
-    for (int i = tensor_dims.size() - 1; i >= 0; --i) {
-      py_dims[i] = static_cast<size_t>(tensor_dims[i]);
-      py_strides[i] = sizeof_dtype * tensor_stride[i];
+    for (int i = static_cast<int>(tensor_dims.size()) - 1; i >= 0; --i) {
+      py_dims[i] = static_cast<Py_intptr_t>(tensor_dims[i]);
+      py_strides[i] = static_cast<Py_intptr_t>(sizeof_dtype * tensor_stride[i]);
       numel *= py_dims[i];
     }
   } else {
-    for (int i = tensor_dims.size() - 1; i >= 0; --i) {
-      py_dims[i] = static_cast<size_t>(tensor_dims[i]);
-      py_strides[i] = sizeof_dtype * numel;
+    for (int i = static_cast<int>(tensor_dims.size()) - 1; i >= 0; --i) {
+      py_dims[i] = static_cast<Py_intptr_t>(tensor_dims[i]);
+      py_strides[i] = static_cast<Py_intptr_t>(sizeof_dtype * numel);
       numel *= py_dims[i];
     }
   }
@@ -223,7 +223,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
     PyObject* array = api.PyArray_NewFromDescr_(
         api.PyArray_Type_,
         api.PyArray_DescrFromType_(numpy_dtype),
-        py_rank,
+        static_cast<int>(py_rank),
         py_dims,
         py_strides,
         nullptr,
@@ -471,7 +471,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   PyObject* array = api.PyArray_NewFromDescr_(
       api.PyArray_Type_,
       api.PyArray_DescrFromType_(numpy_dtype),
-      py_rank,
+      static_cast<int>(py_rank),
       py_dims,
       py_strides,
       reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(array_buffer) +
@@ -1665,14 +1665,17 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       // use inplace set_value_ operator
       if (value_tensor.initialized() &&
           (self->tensor.dtype() != value_tensor.dtype())) {
-        paddle::small_vector<std::vector<paddle::Tensor>,
-                             egr::kSlotSmallVectorSize>
-            tmps = {{self->tensor}, {value_tensor}};
-        auto amp_dtype = egr::GetAmpDestDtype("set_value", tmps);
-        self->tensor = egr::EagerAmpAutoCast(
-            self->tensor.name(), self->tensor, amp_dtype, "set_value");
-        value_tensor = egr::EagerAmpAutoCast(
-            value_tensor.name(), value_tensor, amp_dtype, "set_value");
+        if (egr::Controller::Instance().GetAMPLevel() !=
+            paddle::imperative::AmpLevel::O0) {
+          paddle::small_vector<std::vector<paddle::Tensor>,
+                               egr::kSlotSmallVectorSize>
+              tmps = {{self->tensor}, {value_tensor}};
+          auto amp_dtype = egr::GetAmpDestDtype("set_value", tmps);
+          self->tensor = egr::EagerAmpAutoCast(
+              self->tensor.name(), self->tensor, amp_dtype, "set_value");
+          value_tensor = egr::EagerAmpAutoCast(
+              value_tensor.name(), value_tensor, amp_dtype, "set_value");
+        }
         if (self->tensor.dtype() != value_tensor.dtype()) {
           value_tensor = cast_ad_func(value_tensor, self->tensor.dtype());
         }
@@ -2817,9 +2820,9 @@ static PyObject* tensor_method_strides(TensorObject* self,
     return ToPyObject(value);
   }
   auto stride = self->tensor.strides();
-  size_t rank = static_cast<size_t>(stride.size());
+  int rank = static_cast<int>(stride.size());
   value.resize(rank);
-  for (size_t i = 0; i < rank; i++) {
+  for (int i = 0; i < rank; i++) {
     value[i] = stride[i];
   }
   return ToPyObject(value);

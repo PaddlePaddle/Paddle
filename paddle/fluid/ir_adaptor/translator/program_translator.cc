@@ -17,9 +17,9 @@
 #include <unordered_map>
 
 #include "glog/logging.h"
-
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/ir_adaptor/translator/attribute_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/op_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/type_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
@@ -218,7 +218,7 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
               ctx_, defining_op_result, parameter_name_mappings_[var_name]);
 
           pir::Block* block = program_->block();
-          pir::Block::iterator insert_pos = std::find(
+          pir::Block::Iterator insert_pos = std::find(
               block->begin(), block->end(), defining_op_result.owner());
 
           IR_ENFORCE(

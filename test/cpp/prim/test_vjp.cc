@@ -421,7 +421,7 @@ TEST(VJP, SplitBackwardTest) {
   paddle::dialect::FullOp op4 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
-  std::vector<std::vector<bool>> stop_gradients{{false}, {true}, {true}};
+  std::vector<std::vector<bool>> stop_gradients{{false}};
   std::vector<std::vector<pir::OpResult>> out_grads{{op3.result(0), op4.out()}};
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.split");
 
