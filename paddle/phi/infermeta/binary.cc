@@ -2123,54 +2123,82 @@ void MatmulInferMeta(const MetaTensor& x,
                         "The Input(y) dims size must be greater than 0,"
                         " but reviced dims size is 0. "));
 
-  bool x_broadcasted = false, y_broadcasted = false;
+  if (ndims_x == 1 && ndims_y == 1) {
+    int64_t m = x.numel();
+    int64_t n = y.numel();
+    PADDLE_ENFORCE_EQ(
+        m,
+        n,
+        phi::errors::InvalidArgument(
+            "X's numbers must be equal to Y's numbers,"
+            "when X/Y's dims =1. But received X has [%d] elements,"
+            "received Y has [%d] elements",
+            m,
+            n));
+    out->set_dims(phi::make_ddim({}));
+    out->set_dtype(x.dtype());
+    out->set_layout(x.layout());
+    return;
+  }
+
   if (ndims_x == 1) {
-    dims_x.insert(dims_x.begin(), 1);
-    ndims_x = 2;
-    x_broadcasted = true;
+    return;
   }
+  // bool x_broadcasted = false y_broadcasted = false;
+  // if (ndims_x == 1) {
+  //   dims_x.insert(dims_x.begin(), 1);
+  //   ndims_x = 2;
+  //   x_broadcasted = true;
+  // }
 
-  if (ndims_y == 1) {
-    dims_y.push_back(1);
-    ndims_y = 2;
-    y_broadcasted = true;
-  }
+  // if (ndims_y == 1) {
+  //   dims_y.push_back(1);
+  //   ndims_y = 2;
+  //   y_broadcasted = true;
+  // }
 
-  size_t M, N;
-  if (trans_x) {
-    M = dims_x[ndims_x - 1];
-  } else {
-    M = dims_x[ndims_x - 2];
-  }
-  if (trans_y) {
-    N = dims_y[ndims_y - 2];
-  } else {
-    N = dims_y[ndims_y - 1];
-  }
+  // size_t M, N;
+  // if (trans_x) {
+  //   M = dims_x[ndims_x - 1];
+  // } else {
+  //   M = dims_x[ndims_x - 2];
+  // }
+  // if (trans_y) {
+  //   N = dims_y[ndims_y - 2];
+  // } else {
+  //   N = dims_y[ndims_y - 1];
+  // }
 
   std::vector<int64_t> new_dims;
-  if (ndims_x > ndims_y) {
-    new_dims.assign(dims_x.begin(), dims_x.end() - 2);
-  } else if (ndims_x < ndims_y) {
-    new_dims.assign(dims_y.begin(), dims_y.end() - 2);
-  } else {
-    new_dims.reserve(ndims_x);
-    for (size_t i = 0; i < ndims_x - 2; ++i) {
-      new_dims.push_back(std::max(dims_x[i], dims_y[i]));
-    }
-  }
-  if (!x_broadcasted) {
-    new_dims.push_back(M);  // NOLINT
-  }
-  if (!y_broadcasted) {
-    new_dims.push_back(N);  // NOLINT
-  }
+  // if (ndims_x > ndims_y) {
+  //   new_dims.assign(dims_x.begin(), dims_x.end() - 2);
+  // } else if (ndims_x < ndims_y) {
+  //   new_dims.assign(dims_y.begin(), dims_y.end() - 2);
+  // } else {
+  //   new_dims.reserve(ndims_x);
+  //   for (size_t i = 0; i < ndims_x - 2; ++i) {
+  //     new_dims.push_back(std::max(dims_x[i], dims_y[i]));
+  //   }
+  // }
+  // if (!x_broadcasted) {
+  //   new_dims.push_back(M);  // NOLINT
+  // }
+  // if (!y_broadcasted) {
+  //   new_dims.push_back(N);  // NOLINT
+  // }
 
   auto ddim_out = phi::make_ddim(new_dims);
 
   out->set_dims(ddim_out);
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
+
+  VLOG(0) << "Matmul InferMeta: "
+          << "X shape: [" << x.dims() << "], Y shape: [" << y.dims()
+          << "], trans_x: "
+          << "[" << trans_x << "] "
+          << "trans_y: "
+          << "[" << trans_y << "], Out Shape: [" << out->dims() << "];";
 }
 
 void MatmulInt8InferMeta(const MetaTensor& x,

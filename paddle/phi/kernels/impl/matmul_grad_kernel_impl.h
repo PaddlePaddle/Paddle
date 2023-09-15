@@ -272,11 +272,31 @@ void MatmulGradKernel(const Context& dev_ctx,
 
     DDim dx_dims;
     if (dx) {
+      dx_dims = dx->dims();
+      if (dx_dims != x_help.dims()) {
+        if (dx_dims != x.dims()) {
+          VLOG(0) << "No broadcast - Before calc - dx_dims: " << dx_dims
+                  << ", x_help dims: " << x_help.dims()
+                  << ", x dims: " << x.dims();
+        }
+        dx->Resize(x_help.dims());
+      }
+
       y_conj = Conj<T>(dev_ctx, y_help);
     }
 
     DDim dy_dims;
     if (dy) {
+      dy_dims = dy->dims();
+      if (dy_dims != y_help.dims()) {
+        if (dy_dims != y.dims()) {
+          VLOG(0) << "No broadcast - Before calc - dy_dims: " << dy_dims
+                  << ", y_help dims: " << y_help.dims()
+                  << ", y dims: " << y.dims();
+        }
+        dy->Resize(y_help.dims());
+      }
+
       x_conj = Conj<T>(dev_ctx, x_help);
     }
 
@@ -301,12 +321,27 @@ void MatmulGradKernel(const Context& dev_ctx,
       CalcInputGrad<T>(
           dev_ctx, x_conj, true, true, out_grad_help, false, true, dy);
     }
+
+    if (dx) {
+      if (dx_dims != x_help.dims()) {
+        dx->Resize(dx_dims);
+      }
+    }
+    if (dy) {
+      if (dy_dims != y_help.dims()) {
+        dy->Resize(dy_dims);
+      }
+    }
   } else {
     // Case3: broadcast. It need cost much time to reduce sum for the
     // broadcast and wastes the memory.
     // So we should avoid the case in reality.
     VLOG(3) << "It need cost much time to reduce sum for the broadcast and "
                "wastes the memory. So we should avoid the case in reality";
+
+    auto dx_origin_dims = dx->dims();
+    auto dy_origin_dims = dy->dims();
+
     x_conj = Conj<T>(dev_ctx, x);
     y_conj = Conj<T>(dev_ctx, y);
 
@@ -435,6 +470,12 @@ void MatmulGradKernel(const Context& dev_ctx,
         ReduceSumForMatmulGrad<Context, T>()(
             dev_ctx, dx_help, dx, dx_reduce_dims);
       }
+      if (dx->dims() != x.dims()) {
+        VLOG(0) << "Broadcast - Before calc - dx origin dims: "
+                << dx_origin_dims << ", dx_dims: " << dx->dims()
+                << ", x dims: " << x.dims();
+        dx->Resize(x.dims());
+      }
     }
     if (dy) {
       if (dy_reduce_dims.empty()) {
@@ -442,6 +483,12 @@ void MatmulGradKernel(const Context& dev_ctx,
       } else {
         ReduceSumForMatmulGrad<Context, T>()(
             dev_ctx, dy_help, dy, dy_reduce_dims);
+      }
+      if (dy->dims() != y.dims()) {
+        VLOG(0) << "Broadcast - Before calc - dy origin dims: "
+                << dy_origin_dims << ", dy_dims: " << dy->dims()
+                << ", y dims: " << y.dims();
+        dy->Resize(y.dims());
       }
     }
     // Get the OutputGrad(out)

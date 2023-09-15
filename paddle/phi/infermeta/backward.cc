@@ -654,33 +654,114 @@ void MatmulGradInferMeta(const MetaTensor& x,
                          bool transpose_y,
                          MetaTensor* x_grad,
                          MetaTensor* y_grad) {
+  std::vector<std::int64_t> x_dims = vectorize(x.dims());
+  std::vector<std::int64_t> y_dims = vectorize(y.dims());
+  std::vector<std::int64_t> dout_dims = vectorize(out_grad.dims());
+
+  int x_ndim = x_dims.size();
+  int y_ndim = y_dims.size();
+  int ndim = dout_dims.size();
+
+  bool is_broadcast = true;
+  if (x_ndim <= 2 || y_ndim <= 2) {
+    is_broadcast = false;
+  } else if (x_ndim != y_ndim) {
+    is_broadcast = true;
+  } else {
+    is_broadcast = !std::equal(
+        x_dims.cbegin(), x_dims.cbegin() + x_ndim - 2, y_dims.cbegin());
+  }
+
   if (transpose_x) {
     if (transpose_y) {
       // X'Y': dX = Y'G', dY = G'X'
-      MatmulInferMeta(
-          y, out_grad, /*transpose_x=*/true, /*transpose_y=*/true, x_grad);
-      MatmulInferMeta(
-          out_grad, x, /*transpose_x=*/true, /*transpose_y=*/true, y_grad);
+      if (x_grad) {
+        MatmulInferMeta(
+            y, out_grad, /*transpose_x=*/true, /*transpose_y=*/true, x_grad);
+      }
+      if (y_grad) {
+        MatmulInferMeta(
+            out_grad, x, /*transpose_x=*/true, /*transpose_y=*/true, y_grad);
+      }
     } else {
       // X'Y: dX = YG', dY = XG
-      MatmulInferMeta(
-          y, out_grad, /*transpose_x=*/false, /*transpose_y=*/true, x_grad);
-      MatmulInferMeta(
-          x, out_grad, /*transpose_x=*/false, /*transpose_y=*/false, y_grad);
+      if (x_grad) {
+        MatmulInferMeta(
+            y, out_grad, /*transpose_x=*/false, /*transpose_y=*/true, x_grad);
+      }
+      if (y_grad) {
+        MatmulInferMeta(
+            x, out_grad, /*transpose_x=*/false, /*transpose_y=*/false, y_grad);
+      }
     }
   } else {
     if (transpose_y) {
       // XY': dX = GY, dY = G'X
-      MatmulInferMeta(
-          out_grad, y, /*transpose_x=*/false, /*transpose_y=*/false, x_grad);
-      MatmulInferMeta(
-          out_grad, x, /*transpose_x=*/true, /*transpose_y=*/false, y_grad);
+      if (x_grad) {
+        MatmulInferMeta(
+            out_grad, y, /*transpose_x=*/false, /*transpose_y=*/false, x_grad);
+      }
+      if (y_grad) {
+        MatmulInferMeta(
+            out_grad, x, /*transpose_x=*/true, /*transpose_y=*/false, y_grad);
+      }
     } else {
       // XY: dX = GY', dY = X'G
-      MatmulInferMeta(
-          out_grad, y, /*transpose_x=*/false, /*transpose_y=*/true, x_grad);
-      MatmulInferMeta(
-          x, out_grad, /*transpose_x=*/true, /*transpose_y=*/false, y_grad);
+      if (x_grad) {
+        MatmulInferMeta(
+            out_grad, y, /*transpose_x=*/false, /*transpose_y=*/true, x_grad);
+      }
+      if (y_grad) {
+        MatmulInferMeta(
+            x, out_grad, /*transpose_x=*/true, /*transpose_y=*/false, y_grad);
+      }
+    }
+  }
+
+  if (is_broadcast) {
+    auto dx_dims = vectorize(x_grad->dims());
+    auto dy_dims = vectorize(y_grad->dims());
+
+    std::vector<std::int64_t> dx_broadcast_dims(ndim);
+    std::vector<std::int64_t> dy_broadcast_dims(ndim);
+
+    std::fill(
+        dx_broadcast_dims.data(), dx_broadcast_dims.data() + ndim - x_ndim, 1);
+    std::fill(
+        dy_broadcast_dims.data(), dy_broadcast_dims.data() + ndim - y_ndim, 1);
+    std::copy(x_dims.data(),
+              x_dims.data() + x_ndim,
+              dx_broadcast_dims.data() + ndim - x_ndim);
+    std::copy(y_dims.data(),
+              y_dims.data() + y_ndim,
+              dy_broadcast_dims.data() + ndim - y_ndim);
+
+    std::vector<int> dx_reduce_dims;
+    std::vector<int> dy_reduce_dims;
+    for (int idx = 0; idx <= ndim - 3; idx++) {
+      if (dx_dims[idx] != 1 && dx_broadcast_dims[idx] == 1) {
+        dx_reduce_dims.push_back(idx);
+      }
+      if (dy_dims[idx] != 1 && dy_broadcast_dims[idx] == 1) {
+        dy_reduce_dims.push_back(idx);
+      }
+    }
+
+    if (x_grad && !dx_reduce_dims.empty()) {
+      SumRawInferMeta(*x_grad,
+                      dx_reduce_dims,
+                      /*keep_dim=*/true,
+                      /*reduce_all=*/false,
+                      x_grad->dtype(),
+                      x_grad);
+    }
+    if (y_grad && !dy_reduce_dims.empty()) {
+      SumRawInferMeta(*y_grad,
+                      dy_reduce_dims,
+                      /*keep_dim=*/true,
+                      /*reduce_all=*/false,
+                      y_grad->dtype(),
+                      y_grad);
     }
   }
 }
