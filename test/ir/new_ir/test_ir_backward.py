@@ -86,7 +86,6 @@ class TesBackward_1(unittest.TestCase):
             .name(),
             "pd_op.mean_grad",
         )
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
     def test_no_grad_set(self):
         # test create output_grad in backward use full op
@@ -100,7 +99,6 @@ class TesBackward_1(unittest.TestCase):
         self.assertEqual(
             newir_program.global_block().ops[-1].name(), "pd_op.full"
         )
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
     def test_split(self):
         # test create output_grad in backward use full op
@@ -127,7 +125,6 @@ class TesBackward_1(unittest.TestCase):
         ]
         for i, op in enumerate(newir_program.global_block().ops):
             self.assertEqual(op.name(), ops_name[i])
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
 
 def get_ir_program_1():
