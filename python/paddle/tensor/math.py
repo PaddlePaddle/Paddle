@@ -685,7 +685,7 @@ def add(x, y, name=None):
             [3., 8., 6.])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.add(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_add', **locals()))
@@ -883,11 +883,9 @@ def divide(x, y, name=None):
             [2.        , 0.60000000, 2.        ])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.divide(x, y)
     else:
-        if paddle.ir.core._use_new_ir_api():
-            return paddle._ir_ops.divide(x, y)
         return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
 
@@ -1081,7 +1079,7 @@ def multiply(x, y, name=None):
               [2, 4, 6]]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.multiply(x, y)
     else:
         if x.dtype != y.dtype:
@@ -2805,7 +2803,7 @@ def max(x, axis=None, keepdim=False, name=None):
               [1., 1.]]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.max(x, axis, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)

@@ -28,22 +28,22 @@ class OpResultImpl;
 ///
 class IR_API OpResult : public Value {
  public:
-  using Value::Value;
-
-  static bool classof(Value value);
-
+  OpResult() = default;
   Operation *owner() const;
-
   uint32_t GetResultIndex() const;
-
   bool operator==(const OpResult &other) const;
+  // OpResult(const detail::OpResultImpl *impl);  // NOLINT
 
-  friend Operation;
-
-  detail::OpResultImpl *impl() const;
+  // This func will remove in next pr.
+  OpResult(const detail::ValueImpl *impl) : Value(impl) {}  // NOLINT
 
  private:
+  friend Operation;
   static uint32_t GetValidInlineIndex(uint32_t index);
+  // Access classof annd dyn_cast_from.
+  friend Value;
+  static bool classof(Value value);
+  static OpResult dyn_cast_from(Value value);
 };
 
 }  // namespace pir

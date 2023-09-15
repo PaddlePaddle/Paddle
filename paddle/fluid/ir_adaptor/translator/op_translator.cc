@@ -391,6 +391,10 @@ std::vector<pir::OpResult> OpTranscriber::GenerateOperationInput(
                  "Input %s not found when parsing op %s",
                  info.name,
                  op_desc.Type());
+      IR_ENFORCE(param_map->count(legacy_input_vars[0]),
+                 "Input [%s] of op [%s] not found in param map",
+                 info.name,
+                 op_desc.Type());
       auto defining_info = (*param_map)[legacy_input_vars[0]];
       op_inputs.push_back(defining_info.value);
 
@@ -586,7 +590,9 @@ void OpTranscriber::RecordOpResultMapping(pir::IrContext* ctx,
     bool generated_by_vector = value.type().isa<pir::VectorType>();
 
     (*param_map)[arg_name] = VariableDefiningInfo(
-        value, generated_by_vector, generated_by_vector ? idx_in_vec : -1);
+        value,
+        generated_by_vector,
+        static_cast<int>(generated_by_vector ? idx_in_vec : -1));
   }
 }
 
@@ -1190,14 +1196,6 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
              paddle::dialect::VarTypeToDataType(
                  static_cast<paddle::framework::proto::VarType_Type>(dtype)))}};
 
-    if (op_desc.HasAttr("force_cpu")) {
-      bool force_cpu = PADDLE_GET_CONST(bool, op_desc.GetAttr("force_cpu"));
-      if (force_cpu) {
-        attribute_map["place"] =
-            paddle::dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
-      }
-    }
-
     int place_type = PADDLE_GET_CONST(int, op_desc.GetAttr("place_type"));
     switch (place_type) {
       case -1:
@@ -1221,6 +1219,15 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
             paddle::dialect::PlaceAttribute::get(ctx, phi::XPUPlace());
         break;
     }
+
+    if (op_desc.HasAttr("force_cpu")) {
+      bool force_cpu = PADDLE_GET_CONST(bool, op_desc.GetAttr("force_cpu"));
+      if (force_cpu) {
+        attribute_map["place"] =
+            paddle::dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
+      }
+    }
+
     return attribute_map;
   }
 };
@@ -1479,10 +1486,11 @@ struct ElementwiseTranscriber : public OpTranscriber {
     std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
 
     if (axis < 0) {
-      axis += x_shape.size();
+      axis += static_cast<int>(x_shape.size());
     }
 
-    int append_size = x_shape.size() - axis - 1 - y_shape.size();
+    int append_size =
+        static_cast<int>(x_shape.size() - axis - 1 - y_shape.size());
     if (append_size < 0) {  // which means x.rank <= y.rank, mostly
                             // x.rank=y.rank
       return {x_value, y_value};

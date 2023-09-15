@@ -337,7 +337,7 @@ phi::DataType GetKernelDataTypeByYamlInfo(
       kernel_data_type = find_it->second;
     } else if (input_map.count(slot_name)) {
       // parse from input
-      int in_index = input_map.at(slot_name);
+      int in_index = static_cast<int>(input_map.at(slot_name));
       auto type = map_value_pair.at(op->operand_source(in_index)).type();
 
       if (type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
@@ -407,7 +407,7 @@ phi::Backend GetKernelBackendByYamlInfo(
 
     if (input_map.count(slot_name)) {
       // parse from input
-      int in_index = input_map.at(slot_name);
+      int in_index = static_cast<int>(input_map.at(slot_name));
       auto type = map_value_pair.at(op->operand_source(in_index)).type();
 
       if (type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
@@ -493,13 +493,22 @@ phi::KernelKey GetKernelKey(
                 op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
   }
 
+  if (op->name() == "pd_op.seed") {
+    auto backend = paddle::experimental::ParseBackend(place);
+    return {backend,
+            phi::DataLayout::ANY,
+            TransToPhiDataType(
+                op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
+  }
+
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
   phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
   phi::DataType kernel_data_type = phi::DataType::UNDEFINED;
 
   if (op_info_parser != nullptr) {
     // only suppurt non vector input for now
-    int tensor_input_number = op_info_parser->InputTensorNumber();
+    int tensor_input_number =
+        static_cast<int>(op_info_parser->InputTensorNumber());
 
     // get datatype info
     kernel_data_type =
@@ -1009,13 +1018,13 @@ void AddShadowFeed(
     std::unordered_map<pir::Value, pir::OpResult>* map_value_pair) {
   bool feed_op_add_shadow_feed =
       (op_item->name() == "pd_op.feed") && platform::is_gpu_place(place);
-  bool data_op_add_shadow_feed = (op_item->name() == "pd_op.data") &&
-                                 platform::is_gpu_place(place) &&
-                                 (kernel_op->attributes()
-                                      .at("place")
-                                      .dyn_cast<dialect::PlaceAttribute>()
-                                      .data()
-                                      .GetType() != phi::AllocationType::GPU);
+  bool data_op_add_shadow_feed =
+      (op_item->name() == "pd_op.data") && platform::is_gpu_place(place) &&
+      (kernel_op->attributes()
+           .at("place")
+           .dyn_cast<dialect::PlaceAttribute>()
+           .data()
+           .GetType() == phi::AllocationType::UNDEFINED);
   bool add_shadow_feed = feed_op_add_shadow_feed || data_op_add_shadow_feed;
   if (add_shadow_feed) {
     // if shadow data op place not gpu,add shadow feed op
