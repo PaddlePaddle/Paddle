@@ -731,25 +731,25 @@ SplitedResult ForwardBackwardSplit(
   // backward program construc.
   // Step1. insert data op for inputs_values and middle_values
   int counter = 0;
-  auto create_data_fn = [&backward_builder, &backward_value_map, &counter](
-                            const pir::Value &v) {
-    if (v.impl() == nullptr) {
-      return;
-    }
-    auto value_type = v.type().dyn_cast<DenseTensorType>();
-    auto dtype = paddle::dialect::TransToPhiDataType(value_type.dtype());
-    auto shape = phi::vectorize(value_type.dims());
-    auto place = phi::CPUPlace();  // TODO(xiongkun): how to get default places.
+  auto create_data_fn =
+      [&backward_builder, &backward_value_map, &counter](const pir::Value &v) {
+        if (v.impl() == nullptr) {
+          return;
+        }
+        auto value_type = v.type().dyn_cast<DenseTensorType>();
+        auto dtype = paddle::dialect::TransToPhiDataType(value_type.dtype());
+        auto shape = phi::vectorize(value_type.dims());
+        auto place = phi::Place();
 
-    paddle::dialect::DataOp op =
-        backward_builder.Build<paddle::dialect::DataOp>(
-            std::string("input_") + std::to_string(counter),
-            shape,
-            dtype,
-            place);
-    counter += 1;
-    backward_value_map[v] = op->results()[0].Value::impl();
-  };
+        paddle::dialect::DataOp op =
+            backward_builder.Build<paddle::dialect::DataOp>(
+                std::string("input_") + std::to_string(counter),
+                shape,
+                dtype,
+                place);
+        counter += 1;
+        backward_value_map[v] = op->results()[0].Value::impl();
+      };
 
   auto create_output_fn_forward = [&ctx,
                                    &forward_value_map,
