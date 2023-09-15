@@ -72,6 +72,30 @@ AddNGradNodeFinal::operator()(
     egr::CheckTensorHasNanOrInf("add_n_grad", returns);
   }
 
+  if (VLOG_IS_ON(4)) {
+    const char *INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
+    std::string input_str = "";
+    std::string output_str = "";
+
+    const char *TENSOR_INPUT_TEMPLATE = " \n( x , [%s]), ";
+    std::string input_x_str =
+        paddle::string::Sprintf(TENSOR_INPUT_TEMPLATE, egr::EagerUtils::TensorStr(x));
+    input_str += input_x_str;
+
+    const char *TENSOR_OUT_GRAD_TEMPLATE = " \n( out_grad , [%s]), ";
+    std::string input_out_grad_str =
+        paddle::string::Sprintf(TENSOR_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(out_grad));
+    input_str += input_out_grad_str;
+
+    const char *TENSOR_OUTPUT_TEMPLATE = " \n ( returns , [%s]), ";
+    std::string output_returns_str = paddle::string::Sprintf(
+        TENSOR_OUTPUT_TEMPLATE, egr::EagerUtils::TensorStr(returns[0][0]));
+    output_str += output_returns_str;
+
+    VLOG(4) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
+    VLOG(6) << "gradnode_ptr = " << this << ", " << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
+  }
+
   if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
   return returns;
 }
