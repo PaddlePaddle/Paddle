@@ -60,6 +60,8 @@ class Temporal final {
  public:
   bool IsSpatial() const { return false; }
 
+  const std::string& iter_var_name() const { return iter_var_name_; }
+
  private:
   std::string iter_var_name_;
 };
@@ -68,6 +70,8 @@ class Vectorize final {
  public:
   bool IsSpatial() const { return false; }
 
+  const std::string& iter_var_name() const { return iter_var_name_; }
+
  private:
   std::string iter_var_name_;
 };
@@ -75,6 +79,8 @@ class Vectorize final {
 class Unroll final {
  public:
   bool IsSpatial() const { return false; }
+
+  const std::string& iter_var_name() const { return iter_var_name_; }
 
  private:
   std::string iter_var_name_;
