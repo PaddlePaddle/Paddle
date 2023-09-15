@@ -128,26 +128,25 @@ def shard_tensor(
     """
     # 1. create dense tensor
     # `paddle.to_tensor` supports both dynamic and static mode
-    if not isinstance(data, paddle.Tensor):
-        data = paddle.to_tensor(data)
+    tensor = paddle.to_tensor(data)
 
     # 2. create dist tensor
     assert len(dist_attr.dims_mapping) == len(
-        list(data.shape)
+        list(tensor.shape)
     ), "The length of sharding_specs must be same as the shape of the input tensor."
 
     if paddle.in_dynamic_mode():
         # here the dist tensor is deep copy constructed
         if isinstance(data, EagerParamBase):
             return EagerParamBase.from_tensor(
-                data, dist_attr=dist_attr, **data.__dict__
+                tensor, dist_attr=dist_attr, **tensor.__dict__
             )
         else:
-            return paddle.Tensor(data, dist_attr=dist_attr)
+            return paddle.Tensor(tensor, dist_attr=dist_attr)
     else:
         # TODO(zhiqiu): we need to refine the static shard_tensor
         return shard_tensor_static(
-            data, dist_attr.process_mesh, dist_attr.sharding_specs
+            tensor, dist_attr.process_mesh, dist_attr.sharding_specs
         )
 
 
