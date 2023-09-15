@@ -16,34 +16,40 @@
 
 #include "paddle/pir/core/value.h"
 namespace pir {
+class Block;
 
 namespace detail {
-class OpResultImpl;
+class BlockArgumentImpl;
 }  // namespace detail
 
 ///
-/// \brief OpResult class represents the value defined by a result of operation.
-/// This class only provides interfaces, for specific implementation, see Impl
-/// class.
+/// \brief BlockArgument class represents the value defined by a result of
+/// operation. This class only provides interfaces, for specific implementation,
+/// see Impl class.
 ///
-class IR_API OpResult : public Value {
+class IR_API BlockArgument : public Value {
  public:
-  OpResult() = default;
-  Operation *owner() const;
-  uint32_t GetResultIndex() const;
-  bool operator==(const OpResult &other) const;
-  // OpResult(const detail::OpResultImpl *impl);  // NOLINT
-
-  // This func will remove in next pr.
-  OpResult(const detail::ValueImpl *impl) : Value(impl) {}  // NOLINT
+  BlockArgument() = default;
+  Block *owner() const;
+  uint32_t arg_index() const;
 
  private:
-  friend Operation;
-  static uint32_t GetValidInlineIndex(uint32_t index);
+  /// constructor
+  BlockArgument(detail::BlockArgumentImpl *impl);  // NOLINT
+
+  /// create a new argument with the given type and owner.
+  static BlockArgument Create(Type type, Block *owner, uint32_t index);
+  /// Destroy the argument.
+  void Destroy();
+  /// set the position in the block argument list.
+  void set_arg_index(uint32_t index);
+  // Access create annd destroy.
+  friend Block;
+
   // Access classof annd dyn_cast_from.
   friend Value;
   static bool classof(Value value);
-  static OpResult dyn_cast_from(Value value);
+  static BlockArgument dyn_cast_from(Value value);
 };
 
 }  // namespace pir
