@@ -228,6 +228,22 @@ class CublasLtHelper {
   size_t workspace_size_ = 0;
 };
 
+template <typename T>
+inline cudaDataType_t GetCublasLtDataType() {
+    return CUDA_R_32F;
+}
+
+template <>
+inline cudaDataType_t GetCublasLtDataType<phi::dtype::float16>() {
+    return CUDA_R_16F;
+}
+
+template <>
+inline cudaDataType_t GetCublasLtDataType<phi::dtype::bfloat16>() {
+    return CUDA_R_16BF;
+}
+
+
 template<typename T>
 void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx, const phi::DenseTensor& mat_a, const phi::DenseTensor& mat_b, phi::DenseTensor& workspace, phi::DenseTensor* out) {
     int m, k, n;
@@ -243,7 +259,7 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx, const phi::DenseTensor& m
     cublasStatus_t status;
     auto A_type = CUDA_R_8F_E4M3;
     auto B_type = CUDA_R_8F_E4M3;
-    auto C_type = CUDA_R_16BF;
+    auto C_type = GetCublasLtDataType<T>();
 
     cublasLtMatmulDesc_t matmul_desc_;
     cublasLtMatrixLayout_t A_desc_;
@@ -287,9 +303,9 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx, const phi::DenseTensor& m
                                     mat_a.data<phi::dtype::float8_e4m3>(),
                                     A_desc_,
                                     &beta_,
-                                    out->data<phi::dtype::bfloat16>(),
+                                    out->data<T>(),
                                     C_desc_,
-                                    out->data<phi::dtype::bfloat16>(),
+                                    out->data<T>(),
                                     C_desc_,
                                     // nullptr,
                                     &heuristicResult.algo,
