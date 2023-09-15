@@ -49,12 +49,13 @@ class ConditionBlockCombination {
  public:
   ConditionBlockCombination(const ::paddle::framework::BlockDesc& src_block,
                             const std::vector<uint64_t>& op_ids);
-  std::string CondVar();
-  size_t OutputSize();
-  std::vector<std::string> TrueBlockOutputVars();
-  int TrueBlockId();
-  std::vector<std::string> FalseBlockOutputVars();
-  int FalseBlockId();
+  const std::string& CondVarName() const;
+  size_t OutputSize() const;
+  std::vector<::paddle::framework::VarDesc*> OutputVars() const;
+  const std::vector<std::string>& TrueBlockOutputVarNames() const;
+  int TrueBlockId() const;
+  const std::vector<std::string>& FalseBlockOutputVarNames() const;
+  int FalseBlockId() const;
 
  private:
   bool Verify(const std::vector<::paddle::framework::OpDesc*>& op_list);
@@ -98,12 +99,16 @@ class ProgramTranslator {
                       uint64_t start_id,
                       uint64_t end_id,
                       pir::Block* dest_block);
-  void TranslateOperation(const OpDesc* src_op, pir::Block* dest_block);
+  void TranslateGeneralOperation(const OpDesc* src_op, pir::Block* dest_block);
   void GetParameterForSingleBlock(const BlockDesc& block);
   void InsertOperationToSingleBlock(const BlockDesc& block);
   void SetParameterFromSingleBlock(const BlockDesc& block);
   void SetStopGradientAttributeForAllValue(const BlockDesc& block);
   void SetIsPersisableAttributeForAllValue(const BlockDesc& block);
+
+  /// Translate methods for control flow ops.
+  pir::Operation* TranslateCondIfOperation(
+      const ConditionBlockCombination& cond_ops, pir::Block* dest_block);
 };
 
 }  // namespace translator
