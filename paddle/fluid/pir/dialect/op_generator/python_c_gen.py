@@ -15,7 +15,13 @@
 import argparse
 import re
 
-from api_gen import NAMESPACE_TEMPLATE, OP_RESULT, VECTOR_TYPE, CodeGen
+from api_gen import (
+    INTARRAY_ATTRIBUTE,
+    NAMESPACE_TEMPLATE,
+    OP_RESULT,
+    VECTOR_TYPE,
+    CodeGen,
+)
 
 H_FILE_TEMPLATE = """
 
@@ -300,7 +306,7 @@ class PythonCCodeGen(CodeGen):
                     mutable_attr_type_list[mutable_attr_name_list.index(name)][
                         0
                     ]
-                    == "paddle::dialect::IntArrayAttribute"
+                    == INTARRAY_ATTRIBUTE
                 ):
                     mutable_cast_str = MUTABLE_ATTR_CAST_TEMPLATE.format(
                         type='std::vector<pir::OpResult>',
@@ -337,7 +343,7 @@ class PythonCCodeGen(CodeGen):
                     mutable_attr_type_list[mutable_attr_name_list.index(name)][
                         0
                     ]
-                    == "paddle::dialect::IntArrayAttribute"
+                    == INTARRAY_ATTRIBUTE
                 ):
                     no_mutable_cast_str += FULL_INT_ARRAY_OP_TEMPLATE.format(
                         name=name,
