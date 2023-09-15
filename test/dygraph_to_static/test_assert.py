@@ -37,7 +37,7 @@ class TestAssertVariable(unittest.TestCase):
     def _run(self, func, x, with_exception, to_static):
         paddle.jit.enable_to_static(to_static)
         if with_exception:
-            with self.assertRaises(BaseException):
+            with self.assertRaises(ValueException):
                 with base.dygraph.guard():
                     func(x)
         else:

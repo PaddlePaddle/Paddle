@@ -315,7 +315,7 @@ class TestLayerNormSPMDRule(unittest.TestCase):
         self.mean_spec.set_dims_mapping([0])
         self.var_spec.set_dims_mapping([-1])
 
-        with self.assertRaises(BaseException):
+        with self.assertRaises(ValueException):
             result_dist_attrs = self.rule.infer_backward(
                 [self.x_spec, self.scale_spec, self.bias_spec],
                 [self.out_spec, self.mean_spec, self.var_spec],
