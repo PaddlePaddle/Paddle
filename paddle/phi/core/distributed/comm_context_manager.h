@@ -25,6 +25,7 @@
 namespace phi {
 namespace distributed {
 
+struct P2POption;
 class Store;
 
 class CommContextManager {

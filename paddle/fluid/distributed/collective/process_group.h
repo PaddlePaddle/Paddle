@@ -20,7 +20,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/eager/api/utils/tensor_utils.h"  // NOTE: this header is required somewhere
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/types.h"
