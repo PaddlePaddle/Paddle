@@ -113,7 +113,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       if (FLAGS_new_ir_apply_inplace_pass) {
         pir::PassManager pm(pir::IrContext::Instance(), 3);
         pm.AddPass(pir::CreateInplacePass());
-        pm.Run(kernel_program.get());
+        pm.Run(shared_program.get());
       }
 
       interpretercores_.emplace_back(
