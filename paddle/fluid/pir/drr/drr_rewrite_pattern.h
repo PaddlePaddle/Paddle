@@ -285,14 +285,14 @@ class DrrRewritePattern : public pir::RewritePattern {
   }
 
   std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>
-  FindOutputOp(pir::Operation* op,
-               const OpCall* anchor,
-               const SourcePatternGraph& source_pattern_graph) const {
-    // get drr_output op
+  FindCandidateIrOutputOp(
+      pir::Operation* op,
+      const OpCall* anchor,
+      const SourcePatternGraph& source_pattern_graph) const {
+    // get all source pattern op
     std::unordered_set<const OpCall*> drr_output_op_set;
     auto id2tensor = source_pattern_graph.id2owend_tensor();
     for (auto output_tensor_name : source_pattern_graph.output_tensors()) {
-      VLOG(6) << "output tensor name : " << output_tensor_name;
       OpCall* output_op_candidate =
           id2tensor[output_tensor_name].get()->producer();
       if (std::all_of(output_op_candidate->outputs().begin(),
@@ -306,22 +306,13 @@ class DrrRewritePattern : public pir::RewritePattern {
     }
     std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>
         output_op_bind_map{{anchor, {op}}};
-    // source pattern output size == 1
     if (drr_output_op_set.size() == 1) {
-      VLOG(6) << "source pattern has a unique output op :";
       return output_op_bind_map;
     }
     std::unordered_set<const OpCall*> drr_visited_ops{anchor};
-    DfsVisitor(anchor,
-               op,
-               source_pattern_graph,
-               drr_output_op_set,
-               &drr_visited_ops,
-               &output_op_bind_map);
-    // TODO(gst): source_pattern 的outputop是否都找到了对应的ir_op
+    DfsVisitor(
+        anchor, op, drr_output_op_set, &drr_visited_ops, &output_op_bind_map);
     if (output_op_bind_map.size() != drr_output_op_set.size()) {
-      VLOG(6) << "未匹配到source pattern中所有的output op";
-
       return {};
     }
     return output_op_bind_map;
@@ -330,7 +321,6 @@ class DrrRewritePattern : public pir::RewritePattern {
   bool DfsVisitor(
       const OpCall* drr_op,
       pir::Operation* ir_op,
-      const SourcePatternGraph& source_pattern_graph,
       const std::unordered_set<const OpCall*>& drr_output_op_set,
       std::unordered_set<const OpCall*>* drr_visited_ops,
       std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>*
@@ -339,9 +329,6 @@ class DrrRewritePattern : public pir::RewritePattern {
             << "ir op(" << ir_op->name() << ")";
 
     if (drr_op->name() != ir_op->name()) {
-      VLOG(6) << "drr_op and ir_op have different op names. "
-              << "drr_op name :" << drr_op->name()
-              << " ir_op name :" << ir_op->name();
       return false;
     }
     // check input's size
@@ -363,53 +350,53 @@ class DrrRewritePattern : public pir::RewritePattern {
               << " ir_op_output_value_size: " << ir_op_output_value_size;
       return false;
     }
-
     // check producer op
     for (size_t i = 0; i < drr_op_input_tensors.size(); ++i) {
       // case 1: drr_op_input_tensor is the input tensor of source pattern
-      if (source_pattern_graph.input_tensors().count(
-              drr_op_input_tensors[i]->name())) {
-        // TODO(gst) : bro op
-
+      if (drr_op_input_tensors[i]->producer() == nullptr) {
+        // dfs source pattern input tensor orther child op
+        auto ir_input_tensor = ir_op->operand(i).source();
+        for (auto drr_bro_op : drr_op_input_tensors[i]->consumers()) {
+          if (drr_visited_ops->count(drr_bro_op)) {
+            continue;
+          }
+          for (auto it = ir_input_tensor.use_begin();
+               it != ir_input_tensor.use_end();
+               ++it) {
+            auto* ir_bro_op = it.owner();
+            if (drr_bro_op->name() == ir_bro_op->name()) {
+              drr_visited_ops->insert(drr_bro_op);
+              DfsVisitor(drr_bro_op,
+                         ir_bro_op,
+                         drr_output_op_set,
+                         drr_visited_ops,
+                         output_op_bind_map);
+              drr_visited_ops->erase(drr_bro_op);
+            }
+          }
+        }
         continue;
       }
       // case 2: have producer op
       const auto& drr_producer_op = drr_op_input_tensors[i]->producer();
       if (drr_visited_ops->count(drr_producer_op)) {
-        VLOG(6) << "drr_producer_op has already been visited.";
         continue;
       }
       auto ir_operand_value = ir_op->operand(i).source();
       if (drr_op_input_tensors[i]->consumers().size() !=
           ir_operand_value.use_count()) {
-        VLOG(6) << "input tensor have diff num of consumer "
-                << "drr_op_input_tensors consumers : "
-                << drr_op_input_tensors[i]->consumers().size()
-                << " ir_operand_value use_count : "
-                << ir_operand_value.use_count();
-        VLOG(6) << " drr_input tensor name :"
-                << drr_op_input_tensors[i]->name();
-        size_t use_num = 0;
-        for (auto it = ir_operand_value.use_begin();
-             it != ir_operand_value.use_end();
-             ++it) {
-          VLOG(6) << "use index : " << ++use_num
-                  << " user name :" << it->owner()->name();
-        }
         return false;
       }
       auto* ir_producer_op = ir_operand_value.GetDefiningOp();
       drr_visited_ops->insert(drr_producer_op);
       DfsVisitor(drr_producer_op,
                  ir_producer_op,
-                 source_pattern_graph,
                  drr_output_op_set,
                  drr_visited_ops,
                  output_op_bind_map);
 
       drr_visited_ops->erase(drr_producer_op);
     }
-    // bianing drr_output and ir_output_candidate
     if (drr_output_op_set.count(drr_op)) {
       (*output_op_bind_map)[drr_op].insert(ir_op);
       return true;
@@ -419,11 +406,6 @@ class DrrRewritePattern : public pir::RewritePattern {
       const auto& drr_child_ops = drr_op_output_tensors[i]->consumers();
       auto ir_output_value = ir_op->result(i);
       if (drr_child_ops.size() != ir_output_value.use_count()) {
-        VLOG(6) << " drr_output_tensor and ir_output_tensor have different "
-                   "consumer number."
-                << "drr_op_output_tensors[" << i
-                << "]: " << drr_child_ops.size() << "ir_op->result(" << i
-                << "): " << ir_output_value.use_count();
         return false;
       }
       for (auto* drr_child_op : drr_child_ops) {
@@ -431,12 +413,13 @@ class DrrRewritePattern : public pir::RewritePattern {
              it != ir_output_value.use_end();
              ++it) {
           auto* ir_child_op = it.owner();
-          // 重名op 全遍历
           if (drr_child_op->name() == ir_child_op->name()) {
+            if (drr_visited_ops->count(drr_child_op)) {
+              continue;
+            }
             drr_visited_ops->insert(drr_child_op);
             DfsVisitor(drr_child_op,
                        ir_child_op,
-                       source_pattern_graph,
                        drr_output_op_set,
                        drr_visited_ops,
                        output_op_bind_map);
@@ -444,8 +427,8 @@ class DrrRewritePattern : public pir::RewritePattern {
           }
         }
       }
-    }              // check child ops
-    return false;  // todo(gst): dfs返回值判断
+    }  // check child ops
+    return false;
   }
 
   bool MatchFromBackToFront(
@@ -453,9 +436,8 @@ class DrrRewritePattern : public pir::RewritePattern {
       std::vector<pir::Operation*> ir_output_sequence,
       const SourcePatternGraph& source_pattern_graph,
       const std::shared_ptr<MatchContextImpl>& source_pattern_match_ctx) const {
-    VLOG(6) << "Assert drr_output and ir_output have equal lengths";
+    VLOG(6) << "MatchFromBackToFront Start";
     IR_ENFORCE(drr_output_sequence.size() == ir_output_sequence.size());
-    // init
     std::unordered_set<const OpCall*> drr_visited;
     std::unordered_set<Operation*> ir_visited;
     std::queue<const OpCall*> drr_q;
@@ -467,117 +449,94 @@ class DrrRewritePattern : public pir::RewritePattern {
       drr_visited.insert(drr_output_sequence[i]);
       ir_q.push(ir_output_sequence[i]);
       ir_visited.insert(ir_output_sequence[i]);
-      // binding output tensor
-      auto drr_op_output_tensor = drr_output_sequence[i]->outputs();
-      for (size_t j = 0; j < drr_op_output_tensor.size(); j++) {
-        source_pattern_match_ctx->BindIrValue(
-            drr_op_output_tensor[j]->name(),
-            std::make_shared<IrValue>(ir_output_sequence[i]->result(j)));
-      }
     }
     while (!drr_q.empty()) {
-      VLOG(6) << "new floop-------------------------------match:" << matched;
       if (!matched) break;
       auto* drr_node = drr_q.front();
       auto* ir_node = ir_q.front();
-      VLOG(6) << "-------cur drr node name : " << drr_node->name();
-      VLOG(6) << "-------cur ir node name : " << ir_node->name();
       drr_q.pop();
       ir_q.pop();
       if (drr_node->name() != ir_node->name()) {
-        VLOG(6) << "drr node and ir node have diff name. "
-                << "drr node name : " << drr_node->name()
-                << "ir node name : " << ir_node->name();
         matched = false;
         break;
       }
       const auto& drr_input_tensors = drr_node->inputs();
       auto ir_input_value_size = ir_node->num_operands();
       // check input size
-      VLOG(6) << "---------------------check input size";
       if (drr_input_tensors.size() != ir_input_value_size) {
-        VLOG(6) << "Match False! drr_node input size:"
-                << drr_input_tensors.size()
-                << "not equal ir_node input size:" << ir_input_value_size;
         matched = false;
         break;
       }
       // check output size
-      VLOG(6) << "---------------------check output size";
       if (drr_node->outputs().size() != ir_node->num_results()) {
-        VLOG(6) << "Match False! drr_node output size:"
-                << drr_node->outputs().size()
-                << "not equal ir_node output size:" << ir_node->num_results();
         matched = false;
         break;
       }
       // binding op
       source_pattern_match_ctx->BindIrOperation(
           drr_node, std::make_shared<IrOperation>(ir_node));
-
-      // join the producerOp of input
-      VLOG(6) << "join the producerOp of input";
+      // binding input_tensor of current op
       for (size_t i = 0; i < drr_input_tensors.size(); ++i) {
-        // binding input tensor
-        VLOG(6) << "binding input tensor num : " << i;
-        //<< " drr_tensor name : " << drr_input_tensors[i]->name();
         source_pattern_match_ctx->BindIrValue(
             drr_input_tensors[i]->name(),
             std::make_shared<IrValue>(ir_node->operand(i).source()));
-
-        VLOG(6) << "after bind ------------------------------";
         auto* drr_producer_op = drr_input_tensors[i]->producer();
         auto* ir_producer_op = ir_node->operand(i).source().GetDefiningOp();
         if (drr_producer_op == nullptr) {
-          VLOG(6) << "op input tensor[" << i
-                  << "] is source pattern input tensor.";
           continue;
         }
+        if (drr_input_tensors[i]->consumers().size() !=
+            ir_node->operand(i).source().use_count()) {
+          matched = false;
+          break;
+        }
         // bfs producer op
-        VLOG(6) << "bfs producer op";
         if (!drr_visited.count(drr_producer_op)) {
-          VLOG(6) << "-----!drr_visited.count(drr_producer_op)";
           drr_q.push(drr_producer_op);
           ir_q.push(ir_producer_op);
           drr_visited.insert(drr_producer_op);
           ir_visited.insert(ir_producer_op);
         }
       }
-
+      // binding output tensor
+      auto drr_op_output_tensor = drr_node->outputs();
+      for (size_t j = 0; j < drr_op_output_tensor.size(); j++) {
+        source_pattern_match_ctx->BindIrValue(
+            drr_op_output_tensor[j]->name(),
+            std::make_shared<IrValue>(ir_node->result(j)));
+      }
       ++step;
     }
 
     if (matched) {
-      VLOG(6) << "step : " << step << " count of op calls :"
-              << source_pattern_graph.CountOfOpCalls();
       IR_ENFORCE(step == source_pattern_graph.CountOfOpCalls());
     } else {
       return matched;
     }
 
-    VLOG(6) << "------------------MatchContext Constraints";
     MatchContext match_context{source_pattern_match_ctx};
     for (const auto& constraint : constraints_) {
       matched = constraint(match_context);
       if (!matched) break;
     }
 
-    VLOG(6) << "------------------MatchFromBackToFront return";
     return matched;
   }
 
   bool PatternGraphMatchV2(
       pir::Operation* op,
-      std::shared_ptr<MatchContextImpl>& source_pattern_match_ctx) const {
-    // Match
+      const std::shared_ptr<MatchContextImpl>& source_pattern_match_ctx) const {
     VLOG(6) << "PatternGraphMatch Start: op(" << op->name() << ")";
     const OpCall* anchor = source_pattern_graph_->AnchorNode();
     std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>
-        bind_map = FindOutputOp(op, anchor, *(source_pattern_graph_.get()));
+        bind_map =
+            FindCandidateIrOutputOp(op, anchor, *(source_pattern_graph_.get()));
+    if (bind_map.empty()) {
+      return false;
+    }
     std::vector<const OpCall*> drr_output_sequence;
     std::vector<Operation*> ir_output_sequence;
-    // vector<vector<pir::Operation*>> ir_output_sequence_candidate;
-    //  优化迭代器删除操作
+
     for (auto pair : bind_map) {
       drr_output_sequence.push_back(pair.first);
     }
