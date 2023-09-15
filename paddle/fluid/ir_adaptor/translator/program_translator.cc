@@ -208,7 +208,7 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
                                        uint64_t end_id,
                                        pir::Block* dest_block,
                                        bool for_cond_block) {
-  VLOG(0) << "=============>start to translate a block";
+  VLOG(8) << "=============>start to translate a block";
   PADDLE_ENFORCE(
       (src_block.OpSize() >= end_id) && (start_id <= end_id),
       platform::errors::NotFound(
@@ -224,7 +224,7 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
       continue;
     }
     auto op = src_block.Op(op_id);
-    VLOG(0) << "=============>start to translate a op: " << op->Type();
+    VLOG(8) << "=============>start to translate a op: " << op->Type();
 
     PADDLE_ENFORCE_EQ(unsupported_ops.count(op->Type()),
                       0,
