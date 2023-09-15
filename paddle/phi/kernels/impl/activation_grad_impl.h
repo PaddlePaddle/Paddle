@@ -162,12 +162,6 @@ void TanhDoubleGradKernel(const Context& dev_ctx,
                           const DenseTensor& ddx,
                           DenseTensor* dout_new,
                           DenseTensor* ddout) {
-  if (dout_new == nullptr) {
-    VLOG(4) << "dout_new is null in tanh_double_grad_kernel";
-  }
-  if (ddout == nullptr) {
-    VLOG(4) << "ddout is null in tanh_double_grad_kernel";
-  }
   if (dout_new) {
     dout_new->Resize(out.dims());
     dev_ctx.template Alloc<T>(dout_new);
@@ -390,7 +384,6 @@ void PowTripleGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_NOT_NULL(
       out_d_x,
       errors::NotFound("The output DenseTensor D_X can not be nullptr"));
-
   float exponent = factor.to<float>();
   if (exponent != 2 && exponent != 1) {
     // case1: b != 2 and b != 1
