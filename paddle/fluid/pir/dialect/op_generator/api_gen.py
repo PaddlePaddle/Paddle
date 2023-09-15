@@ -86,6 +86,7 @@ COMPUTE_OP_TEMPLATE = """
 
 OP_RESULT = 'pir::OpResult'
 VECTOR_TYPE = 'pir::VectorType'
+INTARRAY_ATTRIBUTE = "paddle::dialect::IntArrayAttribute"
 
 
 def get_op_class_name(op_name):
@@ -133,7 +134,7 @@ class CodeGen:
         return ', '.join(ret)
 
     def _gen_api_attrs(
-        self, op_info, with_default, is_mutable_attr, is_vector_mutable_sttr
+        self, op_info, with_default, is_mutable_attr, is_vector_mutable_attr
     ):
         name_list = op_info.attribute_name_list
         type_list = op_info.attribute_build_arg_type_list
@@ -149,8 +150,8 @@ class CodeGen:
             if is_mutable_attr and name in mutable_name_list:
                 if (
                     mutable_type_list[mutable_name_list.index(name)][0]
-                    == "paddle::dialect::IntArrayAttribute"
-                    and is_vector_mutable_sttr
+                    == INTARRAY_ATTRIBUTE
+                    and is_vector_mutable_attr
                 ):
                     mutable_attr.append(f'std::vector<{OP_RESULT}> {name}')
                 else:
@@ -231,7 +232,7 @@ class CodeGen:
                     declare_str += self._gen_one_declare(
                         op_info, op_name, True, False
                     )
-                    if "paddle::dialect::IntArrayAttribute" in {
+                    if INTARRAY_ATTRIBUTE in {
                         type[0] for type in op_info.mutable_attribute_type_list
                     }:
                         declare_str += self._gen_one_declare(
@@ -267,10 +268,7 @@ class CodeGen:
             type_list = op_info.mutable_attribute_type_list
             assert len(name_list) == len(type_list)
             for name, type in zip(name_list, type_list):
-                if (
-                    type[0] == "paddle::dialect::IntArrayAttribute"
-                    and is_vector_mutable_attr
-                ):
+                if type[0] == INTARRAY_ATTRIBUTE and is_vector_mutable_attr:
                     op_name = f'{name}_combine_op'
                     combine_op += COMBINE_OP_TEMPLATE.format(
                         op_name=op_name, in_name=name
@@ -400,7 +398,7 @@ class CodeGen:
                     impl_str += self._gen_one_impl(
                         op_info, op_name, True, False
                     )
-                    if "paddle::dialect::IntArrayAttribute" in {
+                    if INTARRAY_ATTRIBUTE in {
                         type[0] for type in op_info.mutable_attribute_type_list
                     }:
                         impl_str += self._gen_one_impl(
