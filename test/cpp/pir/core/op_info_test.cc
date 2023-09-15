@@ -34,7 +34,7 @@ TEST(ir_op_info_test, op_op_info_test) {
 
   pir::Operation* op = block->back();
 
-  EXPECT_EQ(block->end(), ++pir::Block::iterator(*op));
+  EXPECT_EQ(block->end(), ++pir::Block::Iterator(*op));
 
   auto& info_map = context->registered_op_info_map();
   EXPECT_FALSE(info_map.empty());

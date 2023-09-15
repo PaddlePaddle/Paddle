@@ -83,7 +83,7 @@ TEST(infershape_test, infershape_test) {
   std::string op_name = OperationTest::name();
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
 
-  std::vector<pir::OpResult> op_inputs = {};
+  std::vector<pir::Value> op_inputs = {};
   std::vector<pir::Type> op_output_types = {pir::Float32Type::get(ctx)};
   pir::Operation *op =
       pir::Operation::Create(op_inputs, {}, op_output_types, op_info);

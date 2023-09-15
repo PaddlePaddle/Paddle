@@ -137,3 +137,12 @@ cc_test_old(
   test_dialect
   gtest
   pir)
+
+cc_test_old(
+  block_argument_test
+  SRCS
+  block_argument_test.cc
+  DEPS
+  test_dialect
+  gtest
+  pir)
