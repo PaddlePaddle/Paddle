@@ -51,7 +51,7 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::DefaultDataParallelSpmdInferForward),
     PD_INFER_SPMD(phi::distributed::DefaultDataParallelSpmdInferBackward));
 
-// replicated rule /* for unitest */
+// replicated rule /* for unittest */
 PD_REGISTER_SPMD_RULE(
     replicated,
     PD_INFER_SPMD(phi::distributed::ReplicatedSpmdInferForward),
