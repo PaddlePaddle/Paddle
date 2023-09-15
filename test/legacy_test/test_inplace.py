@@ -843,7 +843,7 @@ class TestDygraphInplaceHypot(TestDygraphInplace):
         self.input_var_numpy = np.random.randint(2, size=200)
         self.input_var_numpy = self.input_var_numpy.reshape([10, 20])
         self.dtype = "float32"
-        self.y = paddle.randn(low=-5, high=5, shape=[10, 20], dtype="float32")
+        self.y = paddle.randn(shape=[10, 20], dtype="float32")
 
     def inplace_api_processing(self, var):
         return paddle.hypot_(var, self.y)
