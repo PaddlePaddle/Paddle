@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..fluid import core
+from ..base import core
 
 __all__ = []
 

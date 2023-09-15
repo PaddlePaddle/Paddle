@@ -15,8 +15,8 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
+from op_test import OpTest, convert_float_to_uint16
 from test_activation_op import (
     TestAbs,
     TestAbs_ZeroDim,
@@ -45,7 +45,7 @@ from test_gelu_op import gelu
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestMKLDNNReluDim2(TestRelu):
@@ -123,7 +123,7 @@ class TestMKLDNNGeluDim2(TestActivation):
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
         out = gelu(x, False)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True}
 
@@ -137,7 +137,7 @@ class TestMKLDNNGelu_ZeroDim(TestActivation_ZeroDim):
         x = np.random.uniform(-1, 1, []).astype(self.dtype)
         out = gelu(x, False)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True}
 
@@ -151,7 +151,7 @@ class TestMKLDNNGeluDim2Approx(TestActivation):
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
         out = gelu(x, True)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True, "approximate": True}
 
@@ -268,7 +268,7 @@ class TestMKLDNNReluDim4(TestRelu):
         x[np.abs(x) < 0.005] = 0.02
         out = np.maximum(x, 0)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True}
 
@@ -285,7 +285,7 @@ class TestMKLDNNLeakyReluDim4(TestLeakyRelu):
         x[np.abs(x) < 0.005] = 0.02
         out = np.maximum(x, 0.02 * x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True}
 
@@ -310,7 +310,7 @@ class TestMKLDNNGeluDim4(TestActivation):
         x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype(self.dtype)
         out = gelu(x, False)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True}
 
@@ -324,7 +324,7 @@ class TestMKLDNNGeluDim4Approx(TestActivation):
         x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype(self.dtype)
         out = gelu(x, True)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True, "approximate": True}
 
@@ -435,7 +435,7 @@ class TestMKLDNNHardSwishDim4(TestHardSwish):
 
         out = ref_hardswish(x, threshold, scale, offset)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True}
 
@@ -452,7 +452,7 @@ class TestMKLDNNMish(TestActivation):
         x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
         out = x * np.tanh(np.log(1 + np.exp(x)))
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True}
 
@@ -466,7 +466,7 @@ class TestMKLDNNMish_ZeroDim(TestActivation_ZeroDim):
         x = np.random.uniform(0.1, 1, []).astype(self.dtype)
         out = x * np.tanh(np.log(1 + np.exp(x)))
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True}
 
@@ -501,7 +501,7 @@ class TestMKLDNNSigmoidDim4(TestSigmoid):
 
         x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
         out = 1 / (1 + np.exp(-x))
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True}
 

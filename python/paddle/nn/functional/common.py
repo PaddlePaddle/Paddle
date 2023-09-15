@@ -16,12 +16,12 @@ import numpy
 
 import paddle
 from paddle import _C_ops
+from paddle.base.layer_helper import LayerHelper
 from paddle.common_ops_import import Variable, default_main_program
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.framework import core, in_dynamic_mode
+from paddle.framework import core, in_dynamic_mode, in_pir_mode
 from paddle.tensor.creation import full
 
-from ...fluid.data_feeder import (
+from ...base.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
@@ -1939,6 +1939,13 @@ def linear(x, weight, bias=None, name=None):
     if in_dynamic_mode():
         # TODO(jiabin): using addmm for fast forward route
         return _C_ops.linear(x, weight, bias)
+
+    elif in_pir_mode():
+        out = paddle._ir_ops.matmul(x, weight, False, False)
+        if bias is not None:
+            return paddle._ir_ops.add(out, bias)
+        else:
+            return out
     else:
         helper = LayerHelper('linear', **locals())
         dtype = x.dtype
@@ -2280,7 +2287,7 @@ def fold(
 
     Parameters:
         x(Tensor):                3-D Tensor, input tensor of format [N, C, L],
-                                  data type can be float32 or float64
+                                  data type can be float32, float64, complex64 or complex128
         output_sizes(int|list|tuple):       The size of output size, should be [output_size_h, output_size_w]
                                   or an interger o treated as [o, o].
         kernel_sizes(int|list|tuple):   The size of convolution kernel, should be [k_h, k_w]
@@ -2325,7 +2332,9 @@ def fold(
 
     helper = LayerHelper("fold", **locals())
 
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'fold')
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'complex64', 'complex128'], 'fold'
+    )
 
     assert len(x.shape) == 3, "input should be the format of [N, C, L]"
 

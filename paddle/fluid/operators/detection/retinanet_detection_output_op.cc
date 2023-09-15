@@ -364,7 +364,7 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
       if (static_cast<bool>(preds.count(c))) {
         const std::vector<std::vector<T>> cls_dets = preds.at(c);
         NMSFast(cls_dets, nms_threshold, nms_eta, &(indices[c]));
-        num_det += indices[c].size();
+        num_det += static_cast<int>(indices[c].size());
       }
     }
 
@@ -530,14 +530,14 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
       batch_starts.push_back(batch_starts.back() + num_nmsed_out);
     }
 
-    int num_kept = batch_starts.back();
+    int num_kept = static_cast<int>(batch_starts.back());
     if (num_kept == 0) {
       outs->Resize({0, out_dim});
     } else {
       outs->mutable_data<T>({num_kept, out_dim}, ctx.GetPlace());
       for (int i = 0; i < batch_size; ++i) {
-        int64_t s = batch_starts[i];
-        int64_t e = batch_starts[i + 1];
+        int64_t s = static_cast<int64_t>(batch_starts[i]);
+        int64_t e = static_cast<int64_t>(batch_starts[i + 1]);
         if (e > s) {
           phi::DenseTensor out = outs->Slice(s, e);
           MultiClassOutput(dev_ctx, all_nmsed_out[i], &out);

@@ -24,8 +24,8 @@ import numpy as np
 import paddle
 import paddle.distributed.auto_parallel.static.utils as auto_utils
 from paddle import static, utils
+from paddle.base.executor import _to_name_str
 from paddle.distributed import fleet
-from paddle.fluid.executor import _to_name_str
 from paddle.framework import IrGraph
 from paddle.framework import _current_expected_place as _get_device
 from paddle.framework import core, in_dynamic_mode

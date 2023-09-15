@@ -25,9 +25,9 @@ import numpy as np
 import paddle
 
 # deprecated module import
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.framework import (
+from paddle import base
+from paddle.base import core
+from paddle.base.framework import (
     EagerParamBase,
     Program,
     Variable,
@@ -62,7 +62,7 @@ def _build_saved_state_dict(state_dict):
                     raise ValueError(
                         "The saved tensor is not initialized. If you used group sharded, please use save_group_sharded_model."
                     )
-                save_dict[key] = np.array(value)
+                save_dict[key] = np.array(value.cpu())
             name_table[key] = value.name
         else:
             save_dict[key] = value
@@ -83,7 +83,7 @@ def _load_state_dict_from_save_inference_model(model_path, config):
     programs = _construct_program_holders(model_path, config.model_filename)
 
     # 2. load layer parameters & buffers
-    with fluid.dygraph.guard():
+    with base.dygraph.guard():
         persistable_var_dict = _construct_params_and_buffers(
             model_path, programs, config.params_filename, append_suffix=False
         )
@@ -91,7 +91,9 @@ def _load_state_dict_from_save_inference_model(model_path, config):
         # 3. construct state_dict
         load_param_dict = {}
         for var_name in persistable_var_dict:
-            load_param_dict[var_name] = np.array(persistable_var_dict[var_name])
+            load_param_dict[var_name] = np.array(
+                persistable_var_dict[var_name].cpu()
+            )
 
         # if *.info exists, we can recover structured_name
         var_info_filename = str(config.params_filename) + ".info"
@@ -131,7 +133,7 @@ def _load_state_dict_from_save_params(model_path):
             var_name_list.append(var_name)
 
     # 2. create and load Tensor
-    with fluid.dygraph.guard():
+    with base.dygraph.guard():
         for name in var_name_list:
             new_var = _create_tensor(name=name, persistable=True)
             _dygraph_tracer().trace_op(
@@ -145,7 +147,7 @@ def _load_state_dict_from_save_params(model_path):
     # 3. construct state_dict
     load_param_dict = {}
     for var in load_var_list:
-        load_param_dict[var.name] = np.array(var)
+        load_param_dict[var.name] = np.array(var.cpu())
 
     return load_param_dict
 
@@ -160,8 +162,8 @@ def _load_state_dict_from_save_params(model_path):
 #       - paddle.jit.save
 #       - paddle.static.save_inference_model
 #   - need [directory] when loading [compatible for paddle 1.x]
-#       - paddle.fluid.io.save_inference_model
-#       - paddle.fluid.io.save_params/save_persistable
+#       - paddle.base.io.save_inference_model
+#       - paddle.base.io.save_params/save_persistable
 # 2. Error cases:
 #   - no error case
 def _build_load_path_and_config(path, config):
@@ -187,7 +189,7 @@ def _build_load_path_and_config(path, config):
         error_msg = "The ``path`` (%s) to load model not exists."
         # if current path is a prefix, and the path.pdparams or path.pdopt
         # is exist, users may want use `paddle.load` load the result of
-        # `fluid.save_dygraph`, we raise error here for users
+        # `base.save_dygraph`, we raise error here for users
         params_file_path = path + ".pdparams"
         opti_file_path = path + ".pdopt"
         if os.path.exists(params_file_path) or os.path.exists(opti_file_path):
@@ -290,13 +292,15 @@ def _pickle_save(obj, f, protocol):
         )
 
     def reduce_varbase(self):
-        data = np.array(self)
+        data = np.array(self.cpu())
         name = self.name
 
         return (tuple, ((name, data),))
 
     def reduce_LoDTensor(self):
-        data = np.array(self)
+        p = core.Place()
+        p.set_place(paddle.CPUPlace())
+        data = np.array(self._copy(p))
 
         return (eval, ('data', {'data': data}))
 
@@ -561,15 +565,15 @@ def _save_lod_tensor(tensor, file_name):
 
 
 def _load_lod_tensor(file_name):
-    temp_t = paddle.fluid.core.LoDTensor()
+    temp_t = paddle.base.core.LoDTensor()
     if _is_file_path(file_name):
         # '_seek' is the end position of this tensor in the file.
-        _seek = paddle.fluid.core.load_lod_tensor(temp_t, file_name)
+        _seek = paddle.base.core.load_lod_tensor(temp_t, file_name)
 
     elif _is_memory_buffer(file_name):
         with _open_file_buffer(file_name, 'rb') as f:
             tensor_bytes = f.read()
-            paddle.fluid.core.load_lod_tensor_from_memory(temp_t, tensor_bytes)
+            paddle.base.core.load_lod_tensor_from_memory(temp_t, tensor_bytes)
             _seek = f.tell()
 
     else:
@@ -612,7 +616,7 @@ def _load_selected_rows(file_name):
     elif _is_memory_buffer(file_name):
         with _open_file_buffer(file_name, 'rb') as f:
             selected_rows_bytes = f.read()
-            paddle.fluid.core.load_selected_rows_from_memory(
+            paddle.base.core.load_selected_rows_from_memory(
                 temp_sr, selected_rows_bytes
             )
         _seek = f.tell()
@@ -905,8 +909,8 @@ def load(path, **configs):
         or ``paddle.Model().save(training=False)`` , ``path`` need to be a file prefix,
         such as ``model/mnist``, and ``paddle.load`` will get information from
         ``mnist.pdmodel`` and ``mnist.pdiparams`` ;
-        3. loading from paddle 1.x APIs ``paddle.fluid.io.save_inference_model`` or
-        ``paddle.fluid.io.save_params/save_persistables`` , ``path`` need to be a
+        3. loading from paddle 1.x APIs ``paddle.base.io.save_inference_model`` or
+        ``paddle.base.io.save_params/save_persistables`` , ``path`` need to be a
         directory, such as ``model`` and model is a directory.
 
     Note:
@@ -1108,7 +1112,9 @@ def load(path, **configs):
                 try:
                     tensor, _ = _load_lod_tensor(path)
                     if config.return_numpy:
-                        return np.array(tensor)
+                        p = core.Place()
+                        p.set_place(paddle.CPUPlace())
+                        return np.array(tensor._copy(p))
                     else:
                         if in_dygraph_mode():
                             return _lod_tensor2varbase(tensor)
