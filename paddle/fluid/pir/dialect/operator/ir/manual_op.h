@@ -12,19 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef GET_MANUAL_OP_LIST
-#undef GET_MANUAL_OP_LIST
-paddle::dialect::AddNOp, paddle::dialect::SplitGradOp, paddle::dialect::IfOp,
-    paddle::dialect::AddNGradOp
-
-#else
-
 #pragma once
 #include <vector>
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
+#include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
@@ -100,24 +94,6 @@ class AddNWithKernelOp : public pir::Op<AddNWithKernelOp,
   pir::OpResult out() { return result(0); }
 
   static void InferMeta(phi::InferMetaContext *infer_meta);
-};
-
-class AddNGradOp : public pir::Op<AddNGradOp, OpYamlInfoInterface> {
- public:
-  using Op::Op;
-  static const char *name() { return "pd_op.add_n_grad"; }
-  static constexpr const char **attributes_name = nullptr;
-  static constexpr uint32_t attributes_num = 0;
-  static OpInfoTuple GetOpInfo();
-  static void Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    pir::OpResult inputs,
-                    pir::OpResult output_grad);
-
-  void Verify();
-  pir::Value inputs() { return operand_source(0); }
-  pir::Value output_grad() { return operand_source(1); }
-  pir::OpResult outputs() { return result(0); }
 };
 
 class FusedGemmEpilogueOp
@@ -223,9 +199,7 @@ class IfOp : public pir::Op<IfOp> {
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)
-#endif

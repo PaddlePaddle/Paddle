@@ -79,5 +79,24 @@ pir::OpResult embedding_grad(pir::OpResult x,
   }
 }
 
+pir::OpResult split_with_num_grad(std::vector<pir::OpResult> out_grad,
+                                  int axis) {
+  auto out_grad_combine_op =
+      APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(out_grad);
+  paddle::dialect::SplitGradOp split_grad_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::SplitGradOp>(
+          out_grad_combine_op.out(), axis);
+  return split_grad_op.result(0);
+}
+
+pir::OpResult split_with_num_grad(std::vector<pir::OpResult> out_grad,
+                                  pir::OpResult axis) {
+  auto out_grad_combine_op =
+      APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(out_grad);
+  paddle::dialect::SplitGradOp split_grad_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::SplitGradOp>(
+          out_grad_combine_op.out(), axis);
+  return split_grad_op.result(0);
+}
 }  // namespace dialect
 }  // namespace paddle
