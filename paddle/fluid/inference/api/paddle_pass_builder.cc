@@ -553,6 +553,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "add_activation_xpu_fuse_pass",
       "add_layernorm_xpu_fuse_pass",
       "fast_layernorm_xpu_fuse_pass",
+      "bn_act_xpu_fuse_pass",
       "yolo_box_xpu_fuse_pass",
       "fast_where_xpu_fuse_pass",
       "elementwise_mul_add_fuse_pass",

@@ -107,17 +107,19 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       }
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
+      std::shared_ptr<pir::Program> shared_program = std::move(kernel_program);
+      plan_.UpdateIrProgram("base", shared_program);
 
       if (FLAGS_new_ir_apply_inplace_pass) {
         pir::PassManager pm(pir::IrContext::Instance(), 3);
         pm.AddPass(pir::CreateInplacePass());
-        pm.Run(kernel_program.get());
+        pm.Run(shared_program.get());
       }
 
       interpretercores_.emplace_back(
           std::make_shared<InterpreterCore>(place_,
                                             fetch_var_names_,
-                                            std::move(kernel_program),
+                                            shared_program->block(),
                                             scope_,
                                             execution_config));
     } else {
