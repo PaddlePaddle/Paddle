@@ -19,8 +19,8 @@ import numpy as np
 from decorator_helper import prog_scope
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -57,9 +57,9 @@ class TestMatmulDoubleGradCheck(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -72,9 +72,9 @@ class TestMatmulDoubleGradCheckCase1(TestMatmulDoubleGradCheck):
         self.transpose_y = True
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -111,9 +111,9 @@ class TestMatmulDoubleGradCheck2(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -150,9 +150,9 @@ class TestMatmulDoubleGradCheckCase3(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -190,9 +190,9 @@ def func(self, place):
 
 
 def test_grad(self):
-    places = [fluid.CPUPlace()]
+    places = [base.CPUPlace()]
     if core.is_compiled_with_cuda():
-        places.append(fluid.CUDAPlace(0))
+        places.append(base.CUDAPlace(0))
     for p in places:
         self.func(p)
 
@@ -229,9 +229,9 @@ class TestMatmulTripleGradCheckNormalCase1(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -268,9 +268,9 @@ class TestMatmulTripleGradCheckNormalCase2(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -307,9 +307,9 @@ class TestMatmulTripleGradCheckNormalCase3(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -346,9 +346,9 @@ class TestMatmulTripleGradCheckNormalCase4(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -385,9 +385,9 @@ class TestMatmulTripleGradCheckBroadcastCase1(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -424,9 +424,9 @@ class TestMatmulTripleGradCheckBroadcastCase2(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -463,9 +463,9 @@ class TestMatmulTripleGradCheckBroadcastCase3(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -502,9 +502,9 @@ class TestMatmulTripleGradCheckBroadcastCase4(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -541,9 +541,9 @@ class TestMatmulTripleGradCheckBroadcastCase5(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -580,9 +580,9 @@ class TestMatmulTripleGradCheckSpecialCase1(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -619,9 +619,9 @@ class TestMatmulTripleGradCheckSpecialCase2(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 

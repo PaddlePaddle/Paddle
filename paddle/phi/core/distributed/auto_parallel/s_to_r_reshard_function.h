@@ -23,14 +23,13 @@ class SToRReshardFunction final : public ReshardFunction {
   SToRReshardFunction() = default;
   ~SToRReshardFunction() = default;
 
-  bool IsSuitable(
-      const DistTensor& in,
-      const std::shared_ptr<TensorDistAttr>& out_dist_attr) override;
+  bool IsSuitable(const DistTensor& in,
+                  const TensorDistAttr& out_dist_attr) override;
 
-  std::shared_ptr<DistTensor> Eval(
-      DeviceContext* dev_ctx,
-      const DistTensor& in,
-      const std::shared_ptr<TensorDistAttr>& out_dist_attr) override;
+  void Eval(DeviceContext* dev_ctx,
+            const DistTensor& in,
+            const TensorDistAttr& out_dist_attr,
+            DistTensor* out) override;
 };
 
 }  // namespace distributed

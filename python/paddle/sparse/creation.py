@@ -16,14 +16,14 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops, in_dynamic_mode
-from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid.framework import (
+from paddle.base.data_feeder import convert_dtype
+from paddle.base.framework import (
     _current_expected_place,
     _get_paddle_place,
     core,
     dygraph_only,
 )
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.layer_helper import LayerHelper
 from paddle.tensor import max, to_tensor
 
 __all__ = [
@@ -217,20 +217,20 @@ def sparse_csr_tensor(
 
     Examples:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        import paddle
+            >>> import paddle
 
-        crows = [0, 2, 3, 5]
-        cols = [1, 3, 2, 0, 1]
-        values = [1, 2, 3, 4, 5]
-        dense_shape = [3, 4]
-        csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
-        # print(csr)
-        # Tensor(shape=[3, 4], dtype=paddle.int64, place=Place(gpu:0), stop_gradient=True,
-        #       crows=[0, 2, 3, 5],
-        #       cols=[1, 3, 2, 0, 1],
-        #       values=[1, 2, 3, 4, 5])
+            >>> crows = [0, 2, 3, 5]
+            >>> cols = [1, 3, 2, 0, 1]
+            >>> values = [1, 2, 3, 4, 5]
+            >>> dense_shape = [3, 4]
+            >>> csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
+            >>> print(csr)
+            Tensor(shape=[3, 4], dtype=paddle.int64, place=Place(cpu), stop_gradient=True,
+                  crows=[0, 2, 3, 5],
+                  cols=[1, 3, 2, 0, 1],
+                  values=[1, 2, 3, 4, 5])
     """
 
     place = _get_place(place)

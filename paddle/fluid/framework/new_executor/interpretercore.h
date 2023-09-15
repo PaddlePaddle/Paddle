@@ -15,11 +15,11 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
 
-DECLARE_bool(new_executor_use_local_scope);
+PD_DECLARE_bool(new_executor_use_local_scope);
 
-namespace ir {
+namespace pir {
 class Program;
-}  // namespace ir
+}  // namespace pir
 
 namespace paddle {
 namespace framework {
@@ -38,7 +38,7 @@ class InterpreterCore {
   // This constructor is for New IR.
   InterpreterCore(const platform::Place& place,
                   const std::vector<std::string>& fetch_var_names,
-                  std::unique_ptr<::ir::Program> ir_prog,
+                  std::unique_ptr<::pir::Program> ir_prog,
                   Scope* scope,
                   const ExecutionConfig& execution_config = ExecutionConfig());
   ~InterpreterCore();

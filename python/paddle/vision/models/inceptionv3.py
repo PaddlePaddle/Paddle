@@ -16,7 +16,7 @@ import math
 
 import paddle
 from paddle import nn
-from paddle.fluid.param_attr import ParamAttr
+from paddle.base.param_attr import ParamAttr
 from paddle.nn import AdaptiveAvgPool2D, AvgPool2D, Dropout, Linear, MaxPool2D
 from paddle.nn.initializer import Uniform
 from paddle.utils.download import get_weights_path_from_url
@@ -491,7 +491,7 @@ class InceptionV3(nn.Layer):
 
     Args:
         num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
-                            will not be defined. Default: 1000.
+            will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
     Returns:
@@ -500,16 +500,16 @@ class InceptionV3(nn.Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import InceptionV3
+            >>> import paddle
+            >>> from paddle.vision.models import InceptionV3
 
-            inception_v3 = InceptionV3()
+            >>> inception_v3 = InceptionV3()
 
-            x = paddle.rand([1, 3, 299, 299])
-            out = inception_v3(x)
+            >>> x = paddle.rand([1, 3, 299, 299])
+            >>> out = inception_v3(x)
 
-            print(out.shape)
-            # [1, 1000]
+            >>> print(out.shape)
+            [1, 1000]
     """
 
     def __init__(self, num_classes=1000, with_pool=True):
@@ -591,7 +591,7 @@ def inception_v3(pretrained=False, **kwargs):
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
-                            on ImageNet. Default: False.
+            on ImageNet. Default: False.
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`InceptionV3 <api_paddle_vision_InceptionV3>`.
 
     Returns:
@@ -600,20 +600,20 @@ def inception_v3(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import inception_v3
+            >>> import paddle
+            >>> from paddle.vision.models import inception_v3
 
-            # build model
-            model = inception_v3()
+            >>> # Build model
+            >>> model = inception_v3()
 
-            # build model and load imagenet pretrained weight
-            # model = inception_v3(pretrained=True)
+            >>> # Build model and load imagenet pretrained weight
+            >>> # model = inception_v3(pretrained=True)
 
-            x = paddle.rand([1, 3, 299, 299])
-            out = model(x)
+            >>> x = paddle.rand([1, 3, 299, 299])
+            >>> out = model(x)
 
-            print(out.shape)
-            # [1, 1000]
+            >>> print(out.shape)
+            [1, 1000]
     """
     model = InceptionV3(**kwargs)
     arch = "inception_v3"

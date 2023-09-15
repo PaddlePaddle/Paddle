@@ -16,7 +16,7 @@
 
 #include <unordered_set>
 
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
@@ -36,13 +36,20 @@
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/device_manager.h"
 
+#ifdef PADDLE_WITH_CINN
+#include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
+#endif
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
-#include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
-#include "paddle/ir/core/builtin_attribute.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/phi_kernel_adaptor/phi_kernel_util.h"
+#include "paddle/pir/core/builtin_attribute.h"
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
-
 PHI_DECLARE_bool(enable_new_ir_in_executor_trace_run);
 
 namespace paddle {
@@ -51,7 +58,7 @@ namespace framework {
 NewIRInterpreter::NewIRInterpreter(
     const platform::Place& place,
     const std::vector<std::string>& fetch_var_names,
-    std::unique_ptr<::ir::Program> ir_prog,
+    std::unique_ptr<::pir::Program> ir_prog,
     framework::Scope* scope,
     const ExecutionConfig& execution_config)
     : place_(place),
@@ -165,7 +172,7 @@ void NewIRInterpreter::reset_scope(Scope* new_scope) {
   var_scope_.SetScope(new_scope);
   scope_ = new_scope;
   for (size_t i = 0; i < variable_list_.size(); i++) {
-    const auto& var_name = GetNameById(i);
+    const auto& var_name = GetNameById(static_cast<int>(i));
     variable_list_[i] = new_scope->FindVar(var_name);
   }
   // The index should be assured valid, cause the InterpreterCore may not be
@@ -185,11 +192,10 @@ std::string NewIRInterpreter::GetNameById(int id) const {
   // typically when the target variable is not existed in the original program
   // desc, but created by interpretercore.
   // For example, created and used by d2h_copy or h2d_copy operator.
-  auto it = std::find_if(var_name_2_id_.begin(),
-                         var_name_2_id_.end(),
-                         [id](const auto& pair) { return pair.second == id; });
-  if (it != var_name_2_id_.end()) {
-    return it->first;
+
+  auto it = id_2_var_name_.find(id);
+  if (it != id_2_var_name_.end()) {
+    return it->second;
   }
   return "";
 }
@@ -201,24 +207,18 @@ void NewIRInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
 }
 
 void NewIRInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
-  if (is_shared_results_build_ || !src.IsSharedResultsBuild()) {
+  const NewIRInterpreter& impl = dynamic_cast<const NewIRInterpreter&>(src);
+  if (is_shared_results_build_ || !impl.IsSharedResultsBuild()) {
     return;
   }
   // share op dependency
-  ir_dependency_builder_.ShareDependencyFrom(src.GetNewIrDependencyBuilder());
-  dependecy_count_ = src.GetDependencyCount();
+  ir_dependency_builder_.ShareDependencyFrom(impl.GetNewIrDependencyBuilder());
+  dependecy_count_ = impl.GetDependencyCount();
   // share event analysis
-  ir_stream_analyzer_.ShareEventInfoFrom(src.GetNewIrStreamAnalyzer());
+  ir_stream_analyzer_.ShareEventInfoFrom(impl.GetNewIrStreamAnalyzer());
   is_shared_results_build_ = true;
-  VLOG(8) << "Share Build Results from InterpreterCore(" << &src
+  VLOG(8) << "Share Build Results from InterpreterCore(" << &impl
           << ") to InterpreterCore(" << this << ")";
-}
-
-// op dependences
-const interpreter::DependencyBuilder& NewIRInterpreter::GetDependencyBuilder()
-    const {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "GetDependencyBuilder is not implemented in NewIRInterpreter."));
 }
 
 const interpreter::NewIrDependencyBuilder&
@@ -229,11 +229,6 @@ NewIRInterpreter::GetNewIrDependencyBuilder() const {
 std::shared_ptr<std::vector<size_t>> NewIRInterpreter::GetDependencyCount()
     const {
   return dependecy_count_;
-}
-
-const interpreter::StreamAnalyzer& NewIRInterpreter::GetStreamAnalyzer() const {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "GetStreamAnalyzer is not implemented in NewIRInterpreter."));
 }
 
 const interpreter::NewIrStreamAnalyzer&
@@ -351,6 +346,91 @@ void NewIRInterpreter::UpdateSyncOpNum() {
   VLOG(4) << "Update sync op num, sync op num is: " << sync_op_num_;
 }
 
+void NewIRInterpreter::UpdateNcclOpNum() {
+  static std::set<std::string> nccl_op_set = {
+      "pd_op.c_softmax_with_cross_entropy",
+      "pd_op.c_allgather",
+      "pd_op.c_allreduce_max",
+      "pd_op.c_allreduce_min",
+      "pd_op.c_allreduce_sum",
+      "pd_op.c_allreduce_prod",
+      "pd_op.c_reduce_max",
+      "pd_op.c_reduce_min",
+      "pd_op.c_reduce_prod",
+      "pd_op.c_reducescatter",
+      "pd_op.c_broadcast",
+      "pd_op.c_broadcast_",
+      "pd_op.c_scatter",
+      "pd_op.partial_send",
+      "pd_op.partial_recv",
+      "pd_op.partial_allgather",
+      "pd_op.recv_v2",
+      "pd_op.send_v2",
+      "pd_op.mp_allreduce_sum",
+      "pd_op.barrier",
+      "pd_op.alltoall",
+      "pd_op.global_gather",
+      "pd_op.distributed_fused_lamb",
+      "pd_op.margin_cross_entropy",
+      "pd_op.sync_batch_norm",
+      "pd_op.sync_batch_norm_",
+      "pd_op.data_norm",
+      "pd_op.class_center_sample",
+      "pd_op.all_to_all",
+      "pd_op.dist_concat",
+      "pd_op.all_gather",
+      "pd_op.broadcast",
+      "pd_op.p_recv",
+      "pd_op.p_send",
+      "pd_op.reduce_scatter",
+      "pd_op.all_reduce",
+      "pd_op.reduce",
+      "pd_op.c_softmax_with_cross_entropy_grad",
+      "pd_op.c_allgather_grad",
+      "pd_op.c_allreduce_max_grad",
+      "pd_op.c_allreduce_min_grad",
+      "pd_op.c_allreduce_sum_grad",
+      "pd_op.c_allreduce_prod_grad",
+      "pd_op.c_reduce_max_grad",
+      "pd_op.c_reduce_min_grad",
+      "pd_op.c_reduce_prod_grad",
+      "pd_op.c_reducescatter_grad",
+      "pd_op.c_broadcast_grad",
+      "pd_op.c_scatter_grad",
+      "pd_op.partial_send_grad",
+      "pd_op.partial_recv_grad",
+      "pd_op.partial_allgather_grad",
+      "pd_op.recv_v2_grad",
+      "pd_op.send_v2_grad",
+      "pd_op.mp_allreduce_sum_grad",
+      "pd_op.barrier_grad",
+      "pd_op.alltoall_grad",
+      "pd_op.global_gather_grad",
+      "pd_op.distributed_fused_lamb_grad",
+      "pd_op.margin_cross_entropy_grad",
+      "pd_op.margin_cross_entropy_grad_"
+      "pd_op.sync_batch_norm_grad",
+      "pd_op.data_norm_grad",
+      "pd_op.class_center_sample_grad",
+      "pd_op.all_to_all_grad",
+      "pd_op.dist_concat_grad",
+      "pd_op.all_gather_grad",
+      "pd_op.broadcast_grad",
+      "pd_op.p_recv_grad",
+      "pd_op.p_send_grad",
+      "pd_op.reduce_scatter_grad",
+      "pd_op.all_reduce_grad",
+      "pd_op.reduce_grad"};
+  int64_t nccl_op_num = 0;
+  for (auto& ins : vec_instruction_base_) {
+    if (nccl_op_set.count(ins->Name())) {
+      nccl_op_num = nccl_op_num + 1;
+    }
+  }
+  nccl_op_num_ = nccl_op_num;
+  VLOG(4) << "Update nccl op num, nccl op num is: " << nccl_op_num;
+}
+
 // Note(zhangbo):
 // When there is a KQueueSync type OP in the model, breadth traversal is better
 // than depth traversal. For example: OP(O) ->(direct_run)-> OP(A)
@@ -431,7 +511,7 @@ void NewIRInterpreter::BuildInstruction() {
     } else if (op->dialect()->name() == "pd_kernel") {
       auto op_name = op->attributes()
                          .at("op_name")
-                         .dyn_cast<::ir::StrAttribute>()
+                         .dyn_cast<::pir::StrAttribute>()
                          .AsString();
       if (interpreter::GetSpecialOpNames().count(op_name)) {
         VLOG(6) << "skip process " << op_name;
@@ -439,8 +519,7 @@ void NewIRInterpreter::BuildInstruction() {
       }
       VLOG(6) << "process " << op_name;
 
-      if (op_name == "pd.fused_softmax_mask_upper_triangle" ||
-          op_name == "pd.fused_softmax_mask_upper_triangle_grad") {
+      if (op->name().compare(paddle::dialect::LegacyKernelOp::name()) == 0) {
         vec_instruction_base_.emplace_back(
             std::make_unique<LegacyKernelInstruction>(op_idx++,
                                                       place_,
@@ -461,9 +540,14 @@ void NewIRInterpreter::BuildInstruction() {
                                                    var_name_2_id_,
                                                    variable_2_var_name_));
       }
+#ifdef PADDLE_WITH_CINN
+    } else if (op->dialect()->name() == "cinn_runtime") {
+      vec_instruction_base_.emplace_back(
+          std::make_unique<CinnJitInstruction>(op_idx++, place_, op, scope_));
+#endif
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Now only support pd or pd_kernel dialect."));
+          "Now only support pd_kernel and cinn dialect."));
     }
   }
 }
@@ -473,6 +557,10 @@ std::string NewIRInterpreter::DebugValueInfo() {
   os << "value info of interpretercore " << this << "\n"
      << "value -> var_name -> id -> variable*"
      << "\n";
+
+  interpreter::PrintValuesAndVariables(
+      *ir_program_->block(), &value_2_var_name_, &variable_2_var_name_);
+
   for (auto kv : value_2_var_name_) {
     PADDLE_ENFORCE((bool)kv.first,
                    platform::errors::PreconditionNotMet(
@@ -481,9 +569,10 @@ std::string NewIRInterpreter::DebugValueInfo() {
                    platform::errors::PreconditionNotMet(
                        "var(%s) should exist in var_name_2_id_", kv.second));
     auto* var = InnerScope()->FindVar(kv.second);
-    PADDLE_ENFORCE(var != nullptr,
-                   platform::errors::PreconditionNotMet(
-                       "var(%s) should exist in var_name_2_id_", kv.second));
+    PADDLE_ENFORCE(
+        var != nullptr,
+        platform::errors::PreconditionNotMet(
+            "var(%s) should exist in scope (%p)", kv.second, InnerScope()));
     os << kv.first.impl() << " -> " << kv.second << " -> "
        << var_name_2_id_.at(kv.second) << " -> " << var << "\n";
   }
@@ -548,7 +637,7 @@ void NewIRInterpreter::BuildInstructionDependences() {
 
 void NewIRInterpreter::RecordMemcpyD2H(InstructionBase* instr_node) {
   // NOTE(zhiqiu): hot fix for jit input var
-  if (instr_node->Name() == "pd.memcpy_d2h") {
+  if (instr_node->Name() == "pd_op.memcpy_d2h") {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto* default_dev_ctx = pool.Get(place_);
     for (auto& event : instr_node->EventsToWait()) {
@@ -671,17 +760,19 @@ void NewIRInterpreter::CheckGC(InstructionBase* instr) {
 #endif
 
   for (auto var_id : instr->GCCheckVars()) {
-    VLOG(4) << "GC:" << GetNameById(var_id) << ", id:" << var_id
-            << ", ref:" << refs_[var_id]->DynamicRef();
+    VLOG(4) << "GC:" << GetNameById(static_cast<int>(var_id))
+            << ", id:" << var_id << ", ref:" << refs_[var_id]->DynamicRef();
     bool is_ready = refs_[var_id]->CheckAndDecrease();
     // ignore all persistable var while GCphi
-    if (parameter_var_names_.count(GetNameById(var_id))) {
-      VLOG(4) << GetNameById(var_id) << " is a parameter, skip gc";
+    if (parameter_var_names_.count(GetNameById(static_cast<int>(var_id)))) {
+      VLOG(4) << GetNameById(static_cast<int>(var_id))
+              << " is a parameter, skip gc";
       continue;
     }
 
     if (is_ready) {
-      VLOG(6) << "Async delete variable with name : " << GetNameById(var_id);
+      VLOG(6) << "Async delete variable with name : "
+              << GetNameById(static_cast<int>(var_id));
       gc_->Add(refs_[var_id]->Var(), instr);
     }
   }
@@ -693,14 +784,14 @@ void NewIRInterpreter::CalculateLastLiveOps() {
     InstructionBase* instr = vec_instruction_base_[op_idx].get();
     std::set<size_t> gc_check_vars;
 
-    const std::unordered_map<::ir::Value, std::vector<int>>& ins =
+    const std::unordered_map<::pir::Value, std::vector<int>>& ins =
         instr->Inputs();
-    const std::unordered_map<::ir::Value, std::vector<int>>& outs =
+    const std::unordered_map<::pir::Value, std::vector<int>>& outs =
         instr->Outputs();
-    std::unordered_multimap<::ir::Value, std::vector<int>> ins_and_outs{
+    std::unordered_multimap<::pir::Value, std::vector<int>> ins_and_outs{
         ins.begin(), ins.end()};
 
-    if (instr->Name() != "pd.fetch") {
+    if (instr->Name() != "pd_op.fetch") {
       ins_and_outs.insert(outs.begin(), outs.end());
     }
 
@@ -717,13 +808,13 @@ void NewIRInterpreter::CalculateLastLiveOps() {
     for (auto var_id : gc_check_vars) {
       Scope* inner_scope = InnerScope();
       paddle::framework::Variable* var =
-          inner_scope->FindVar(GetNameById(var_id));
+          inner_scope->FindVar(GetNameById(static_cast<int>(var_id)));
       if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>() ||
           var->IsType<LoDTensorArray>()) {
         last_live_ops_[var_id].insert(op_idx);
       } else {
-        VLOG(4) << "not clear " << GetNameById(var_id) << " after "
-                << instr->Name() << " because its type is "
+        VLOG(4) << "not clear " << GetNameById(static_cast<int>(var_id))
+                << " after " << instr->Name() << " because its type is "
                 << framework::ToTypeName(var->Type());
       }
     }
@@ -767,14 +858,15 @@ void NewIRInterpreter::CalculateLastLiveOps() {
         }
       }
       if (not_before_any) {
-        VLOG(6) << "last live op of var " << i << " " << GetNameById(i) << " : "
-                << item << " " << vec_instruction_base_[item]->Name();
+        VLOG(6) << "last live op of var " << i << " "
+                << GetNameById(static_cast<int>(i)) << " : " << item << " "
+                << vec_instruction_base_[item]->Name();
         minumum_last_live_ops.insert(item);
         vec_instruction_base_[item]->AddGCCheckVar(i);
       }
     }
     last_live_ops_[i] = minumum_last_live_ops;
-    var_ref_count_[i] = last_live_ops_[i].size();
+    var_ref_count_[i] = static_cast<int>(last_live_ops_[i].size());
   }
 
   for (auto& dep : *dependecy_count_) {
@@ -790,7 +882,8 @@ void NewIRInterpreter::ConstructEventForJitInput() {
   for (size_t i = 0; i < dependecy_count_->size(); ++i) {
     if ((*dependecy_count_)[i] == 0) {
       InstructionBase* inst = vec_instruction_base_[i].get();
-      if (inst->Name() == "pd.memcpy_d2h" && platform::is_gpu_place(place_)) {
+      if (inst->Name() == "pd_op.memcpy_d2h" &&
+          platform::is_gpu_place(place_)) {
         for (auto& item : inst->Inputs()) {
           for (auto var_id : item.second) {
             auto name = GetNameById(var_id);
@@ -830,13 +923,16 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
     // Build
     std::stringstream ss;
     ss << this;
-    ::ir::BuildScope(*ir_program_->block(),
-                     InnerScope(),
-                     ss.str(),
-                     &value_2_var_name_,
-                     &variable_2_var_name_,
-                     &var_name_2_id_,
-                     &variable_list_);
+    ::pir::BuildScope(*ir_program_->block(),
+                      InnerScope(),
+                      ss.str(),
+                      &value_2_var_name_,
+                      &variable_2_var_name_,
+                      &var_name_2_id_,
+                      &variable_list_);
+
+    interpreter::BuildId2VarName(var_name_2_id_, &id_2_var_name_);
+
     VLOG(4) << "Done BuildScope";
     VLOG(4) << DebugValueInfo();
 
@@ -854,7 +950,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
     VLOG(4) << "Done PreAnalysis";
 
     // Run
-    if (FLAGS_enable_new_ir_in_executor_trace_run ||
+    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
@@ -869,7 +965,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
-    if (FLAGS_enable_new_ir_in_executor_trace_run ||
+    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       TraceRunImpl();
@@ -1148,6 +1244,10 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     VLOG(5) << "after run kernel";
     instr_node->RecordEvent(place_);
   } catch (platform::EnforceNotMet& ex) {
+    auto* op = instr_node->Operation();
+    const std::vector<std::string> op_callstack_attr =
+        interpreter::GetInstructionCallStack(op->name(), op->attributes());
+    framework::InsertCallStackInfo(op->name(), op_callstack_attr, &ex);
     LOG(WARNING) << instr_node->Name() << " raises an EnforceNotMet exception "
                  << platform::demangle(typeid(ex).name()) << ", " << ex.what();
     exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
@@ -1184,9 +1284,12 @@ void NewIRInterpreter::PreAnalysis() {
 
   UpdateSyncOpNum();
   VLOG(4) << "Done UpdateSyncOpNum";
+
+  UpdateNcclOpNum();
+  VLOG(4) << "Done UpdateNcclOpNum";
 }
 
-::ir::Value NewIRInterpreter::GetValueByName(const std::string& var_name) {
+::pir::Value NewIRInterpreter::GetValueByName(const std::string& var_name) {
   for (auto kv : value_2_var_name_) {
     if (kv.second == var_name) {
       return kv.first;
@@ -1198,16 +1301,16 @@ void NewIRInterpreter::PreAnalysis() {
 void NewIRInterpreter::SolvePersisableVarNames() {
   VLOG(6) << "SolvePersisableVarNames";
   for (auto kv : value_2_var_name_) {
-    ::ir::Value value = kv.first;
+    ::pir::Value value = kv.first;
     const std::string& var_name = kv.second;
-    ::ir::OpResult result = value.dyn_cast<::ir::OpResult>();
+    ::pir::OpResult result = value.dyn_cast<::pir::OpResult>();
     auto* defining_op = value.GetDefiningOp();
     if (defining_op->HasAttribute(kAttrIsPersisable)) {
       auto is_persisables = defining_op->attribute(kAttrIsPersisable)
-                                .dyn_cast<::ir::ArrayAttribute>()
+                                .dyn_cast<::pir::ArrayAttribute>()
                                 .AsVector();
       if (is_persisables[result.GetResultIndex()]
-              .dyn_cast<::ir::BoolAttribute>()
+              .dyn_cast<::pir::BoolAttribute>()
               .data()) {
         VLOG(6) << "parameter_var_names_ include: " << var_name;
         parameter_var_names_.insert(var_name);

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import convert_float_to_uint16
+from op_test import convert_float_to_uint16
 
 import paddle
 from paddle.framework import in_dynamic_mode
@@ -31,6 +31,8 @@ SUPPORTED_DTYPES = [
     np.float16,
     np.float32,
     np.float64,
+    np.complex64,
+    np.complex128,
 ]
 
 TEST_META_OP_DATA = [
@@ -124,6 +126,10 @@ def np_data_generator(np_shape, dtype, *args, **kwargs):
     elif dtype == np.uint16:
         x = np.random.uniform(0.0, 1.0, np_shape).astype(np.float32)
         return convert_float_to_uint16(x)
+    elif dtype == np.complex64 or dtype == np.complex128:
+        return np.random.normal(0, 1, np_shape).astype(dtype) + (
+            1.0j * np.random.normal(0, 1, np_shape)
+        ).astype(dtype)
     else:
         return np.random.normal(0, 1, np_shape).astype(dtype)
 
@@ -169,6 +175,41 @@ def test(unit_test, use_gpu=False, test_error=False):
                     (dygraph_result.numpy() == np_result).all()
                 )
                 unit_test.assertTrue((eager_result.numpy() == np_result).all())
+            # add some corner case for complex datatype
+            for complex_data_type in [np.complex64, np.complex128]:
+                for x_data in (0 + 0j, 0 + 1j, 1 + 0j, 1 + 1j):
+                    for y_data in (0 + 0j, 0 + 1j, 1 + 0j, 1 + 1j):
+                        meta_data['x_np'] = (
+                            x_data * np.ones(shape_data['x_shape'])
+                        ).astype(complex_data_type)
+                        meta_data['y_np'] = (
+                            y_data * np.ones(shape_data['y_shape'])
+                        ).astype(complex_data_type)
+                        if meta_data['binary_op'] and test_error:
+                            # catch C++ Exception
+                            unit_test.assertRaises(
+                                BaseException, run_static, **meta_data
+                            )
+                            unit_test.assertRaises(
+                                BaseException, run_dygraph, **meta_data
+                            )
+                            continue
+                        static_result = run_static(**meta_data)
+                        dygraph_result = run_dygraph(**meta_data)
+                        eager_result = run_eager(**meta_data)
+                        if meta_data['binary_op']:
+                            np_result = np_op(
+                                meta_data['x_np'], meta_data['y_np']
+                            )
+                        else:
+                            np_result = np_op(meta_data['x_np'])
+                        unit_test.assertTrue((static_result == np_result).all())
+                        unit_test.assertTrue(
+                            (dygraph_result.numpy() == np_result).all()
+                        )
+                        unit_test.assertTrue(
+                            (eager_result.numpy() == np_result).all()
+                        )
 
 
 def test_type_error(unit_test, use_gpu, type_str_map):
@@ -180,7 +221,9 @@ def test_type_error(unit_test, use_gpu, type_str_map):
             y = paddle.to_tensor(y)
             error_type = BaseException
         if binary_op:
-            if type_str_map['x'] != type_str_map['y']:
+            if type_str_map['x'] != type_str_map['y'] and type_str_map[
+                'x'
+            ] not in [np.complex64, np.complex128]:
                 unit_test.assertRaises(error_type, op, x=x, y=y)
             if not in_dynamic_mode():
                 error_type = TypeError

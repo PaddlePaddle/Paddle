@@ -17,21 +17,21 @@
 #include <unordered_map>
 
 #include "glog/logging.h"
-
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/ir_adaptor/translator/attribute_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/op_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/type_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
-#include "paddle/ir/core/attribute.h"
-#include "paddle/ir/core/block.h"
-#include "paddle/ir/core/builtin_attribute.h"
-#include "paddle/ir/core/builtin_op.h"
-#include "paddle/ir/core/builtin_type.h"
-#include "paddle/ir/core/enforce.h"
-#include "paddle/ir/core/operation.h"
-#include "paddle/ir/core/value.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/pir/core/attribute.h"
+#include "paddle/pir/core/block.h"
+#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/core/builtin_type.h"
+#include "paddle/pir/core/enforce.h"
+#include "paddle/pir/core/operation.h"
+#include "paddle/pir/core/value.h"
 
 namespace paddle {
 namespace translator {
@@ -46,9 +46,9 @@ const std::unordered_set<std::string> ProgramTranslator::no_cast_var_names = {
 };
 
 ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
-                                     ir::Program* program)
+                                     pir::Program* program)
     : legacy_program_(legacy_program), program_(program) {
-  ctx_ = ir::IrContext::Instance();
+  ctx_ = pir::IrContext::Instance();
 }
 
 void ProgramTranslator::Translate() {
@@ -84,31 +84,31 @@ void ProgramTranslator::Translate() {
   }
 }
 
-inline ir::Operation* InsertGetParamaterOp(ir::IrContext* ctx,
-                                           const VarDesc* var) {
+inline pir::Operation* InsertGetParamaterOp(pir::IrContext* ctx,
+                                            const VarDesc* var) {
   auto& type_translator = TypeTranslator::instance();
-  std::string get_parameter_op_name(ir::GetParameterOp::name());
-  ir::OpInfo op_info = ctx->GetRegisteredOpInfo(get_parameter_op_name);
-  std::unordered_map<std::string, ir::Attribute> op_attribute_map = {
-      {"parameter_name", ir::StrAttribute::get(ctx, var->Name())},
+  std::string get_parameter_op_name(pir::GetParameterOp::name());
+  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(get_parameter_op_name);
+  std::unordered_map<std::string, pir::Attribute> op_attribute_map = {
+      {"parameter_name", pir::StrAttribute::get(ctx, var->Name())},
   };
 
-  ir::Type translated_var_type = type_translator[var->GetType()](ctx, *var);
-  ir::Operation* operation = ir::Operation::Create(
+  pir::Type translated_var_type = type_translator[var->GetType()](ctx, *var);
+  pir::Operation* operation = pir::Operation::Create(
       {}, op_attribute_map, {translated_var_type}, op_info);
   return operation;
 }
 
-inline ir::Operation* InsertSetParamaterOp(ir::IrContext* ctx,
-                                           ir::OpResult defining_op_result,
-                                           const VarDesc* var) {
-  std::string set_parameter_op_name(ir::SetParameterOp::name());
-  ir::OpInfo op_info = ctx->GetRegisteredOpInfo(set_parameter_op_name);
-  std::unordered_map<std::string, ir::Attribute> op_attribute_map = {
-      {"parameter_name", ir::StrAttribute::get(ctx, var->Name())},
+inline pir::Operation* InsertSetParamaterOp(pir::IrContext* ctx,
+                                            pir::OpResult defining_op_result,
+                                            const VarDesc* var) {
+  std::string set_parameter_op_name(pir::SetParameterOp::name());
+  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(set_parameter_op_name);
+  std::unordered_map<std::string, pir::Attribute> op_attribute_map = {
+      {"parameter_name", pir::StrAttribute::get(ctx, var->Name())},
   };
 
-  ir::Operation* operation = ir::Operation::Create(
+  pir::Operation* operation = pir::Operation::Create(
       {defining_op_result}, op_attribute_map, {}, op_info);
   return operation;
 }
@@ -143,12 +143,16 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
           var_desc = block.FindVarRecursive(var_name);
         }
 
-        bool need_get_parameter_op = is_parameter || is_unseen_variable;
+        bool need_get_parameter_op = is_parameter && is_unseen_variable;
         if (need_get_parameter_op) {
-          ir::Operation* op = InsertGetParamaterOp(ctx_, var_desc);
+          PADDLE_ENFORCE_NOT_NULL(
+              var_desc,
+              phi::errors::PreconditionNotMet(
+                  "VarDesc of [%s] can not be nullptr", var_name));
+          pir::Operation* op = InsertGetParamaterOp(ctx_, var_desc);
           program_->block()->push_back(op);
           param_map_[var_name] = VariableDefiningInfo(op->result(0));
-          VLOG(10) << "[op translated][get parameter]" << op;
+          VLOG(10) << "[op translated][get parameter]" << var_name;
 
           program_->SetParameter(var_name, nullptr);
           parameter_visited_.insert(var_name);
@@ -174,7 +178,7 @@ void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
         continue;
       }
     }
-    ir::Operation* operation = fn(ctx_, &param_map_, *op, program_);
+    pir::Operation* operation = fn(ctx_, &param_map_, *op, program_);
     VLOG(10) << "[op translated][special]" << operation;
   }
 }
@@ -199,7 +203,7 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
         need_set_parameter_op &= (param_map_.count(var_name) != 0);
         need_set_parameter_op &= (!set_input_var_names.count(var_name));
         if (need_set_parameter_op) {
-          ir::OpResult defining_op_result = param_map_[var_name].value;
+          pir::OpResult defining_op_result = param_map_[var_name].value;
           if (!defining_op_result) {
             continue;
           }
@@ -210,11 +214,11 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
             defining_op_result = param_map_.at(var_name).value;
           }
 
-          ir::Operation* op = InsertSetParamaterOp(
+          pir::Operation* op = InsertSetParamaterOp(
               ctx_, defining_op_result, parameter_name_mappings_[var_name]);
 
-          ir::Block* block = program_->block();
-          ir::Block::iterator insert_pos = std::find(
+          pir::Block* block = program_->block();
+          pir::Block::Iterator insert_pos = std::find(
               block->begin(), block->end(), defining_op_result.owner());
 
           IR_ENFORCE(
@@ -224,7 +228,7 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
           insert_pos++;
 
           block->insert(insert_pos, op);
-          VLOG(10) << "[op translated][set parameter]" << op;
+          VLOG(10) << "[op translated][set parameter]" << var_name;
 
           program_->SetParameter(var_name, nullptr);
           parameter_visited_.insert(var_name);
@@ -245,7 +249,7 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
     if (var == nullptr) {
       continue;
     }
-    ir::OpResult value = value_info.value;
+    pir::OpResult value = value_info.value;
     if (!value) {
       PADDLE_THROW(phi::errors::PreconditionNotMet(
           "Value of [%s] can not ber None", var_name));
@@ -257,19 +261,19 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
             "Defining operator of [%s] can not be nullptr", var_name));
     VLOG(8) << "[op translated][stop gradient]" << var_name
             << " from: " << defining_op->name();
-    std::vector<ir::Attribute> stop_gradients;
+    std::vector<pir::Attribute> stop_gradients;
     if (defining_op->HasAttribute(kAttrStopGradients)) {
       stop_gradients = defining_op->attribute(kAttrStopGradients)
-                           .dyn_cast<ir::ArrayAttribute>()
+                           .dyn_cast<pir::ArrayAttribute>()
                            .AsVector();
     } else {
-      stop_gradients = std::vector<ir::Attribute>(
-          defining_op->num_results(), ir::BoolAttribute::get(ctx_, false));
+      stop_gradients = std::vector<pir::Attribute>(
+          defining_op->num_results(), pir::BoolAttribute::get(ctx_, false));
     }
     stop_gradients[value.GetResultIndex()] =
-        ir::BoolAttribute::get(ctx_, var->StopGradient());
+        pir::BoolAttribute::get(ctx_, var->StopGradient());
     defining_op->set_attribute(kAttrStopGradients,
-                               ir::ArrayAttribute::get(ctx_, stop_gradients));
+                               pir::ArrayAttribute::get(ctx_, stop_gradients));
   }
 }
 
@@ -284,7 +288,7 @@ void ProgramTranslator::SetIsPersisableAttributeForAllValue(
     if (var == nullptr) {
       continue;
     }
-    ir::OpResult value = value_info.value;
+    pir::OpResult value = value_info.value;
     if (!value) {
       PADDLE_THROW(phi::errors::PreconditionNotMet(
           "Value of [%s] can not ber None", var_name));
@@ -296,19 +300,19 @@ void ProgramTranslator::SetIsPersisableAttributeForAllValue(
             "Defining operator of [%s] can not be nullptr", var_name));
     VLOG(8) << "[op translated][is persisable]" << var_name
             << " from: " << defining_op->name();
-    std::vector<ir::Attribute> is_persisable;
+    std::vector<pir::Attribute> is_persisable;
     if (defining_op->HasAttribute(kAttrIsPersisable)) {
       is_persisable = defining_op->attribute(kAttrIsPersisable)
-                          .dyn_cast<ir::ArrayAttribute>()
+                          .dyn_cast<pir::ArrayAttribute>()
                           .AsVector();
     } else {
-      is_persisable = std::vector<ir::Attribute>(
-          defining_op->num_results(), ir::BoolAttribute::get(ctx_, false));
+      is_persisable = std::vector<pir::Attribute>(
+          defining_op->num_results(), pir::BoolAttribute::get(ctx_, false));
     }
     is_persisable[value.GetResultIndex()] =
-        ir::BoolAttribute::get(ctx_, var->Persistable());
+        pir::BoolAttribute::get(ctx_, var->Persistable());
     defining_op->set_attribute(kAttrIsPersisable,
-                               ir::ArrayAttribute::get(ctx_, is_persisable));
+                               pir::ArrayAttribute::get(ctx_, is_persisable));
   }
 }
 

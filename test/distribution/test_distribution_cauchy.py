@@ -27,9 +27,9 @@ from parameterize import (
 from test_distribution import DistributionNumpy
 
 import paddle
+from paddle.base.data_feeder import convert_dtype
 from paddle.distribution import Cauchy
 from paddle.distribution.kl import kl_divergence
-from paddle.fluid.data_feeder import convert_dtype
 
 np.random.seed(2023)
 paddle.seed(2023)
@@ -91,7 +91,7 @@ class CauchyNumpy(DistributionNumpy):
 class CauchyTest(unittest.TestCase):
     def setUp(self):
         paddle.disable_static(self.place)
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             # just for convenience
             self.dtype = self.expected_dtype
 
@@ -275,7 +275,7 @@ class CauchyTestFeature(CauchyTest):
         ]
     )
     def test_log_prob(self, value):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             if convert_dtype(value.dtype) == convert_dtype(
                 self.rv_paddle.loc.dtype
             ):
@@ -302,7 +302,7 @@ class CauchyTestFeature(CauchyTest):
         ]
     )
     def test_prob(self, value):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             if convert_dtype(value.dtype) == convert_dtype(
                 self.rv_paddle.loc.dtype
             ):
@@ -329,7 +329,7 @@ class CauchyTestFeature(CauchyTest):
         ]
     )
     def test_cdf(self, value):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             if convert_dtype(value.dtype) == convert_dtype(
                 self.rv_paddle.loc.dtype
             ):
@@ -347,7 +347,7 @@ class CauchyTestFeature(CauchyTest):
                     self.rv_paddle.cdf(value)
 
     def test_entropy(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self.rv_paddle.entropy(),
                 self.rv_np.entropy(),
@@ -362,7 +362,7 @@ class CauchyTestFeature(CauchyTest):
         ]
     )
     def test_kl_divergence(self, loc, scale):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             # convert loc/scale to paddle's dtype(float32/float64)
             rv_paddle_other = Cauchy(
                 loc=paddle.full((), loc, dtype=self.rv_paddle.loc.dtype),
@@ -557,7 +557,7 @@ class CauchyTestFeature(CauchyTest):
 )
 class CauchyTestSample(CauchyTest):
     def test_sample(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             sample_np = self.rv_np.sample(self.shape)
             sample_paddle = self.rv_paddle.sample(self.shape)
 
@@ -581,7 +581,7 @@ class CauchyTestSample(CauchyTest):
                 )
 
     def test_rsample(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             sample_np = self.rv_np.sample(self.shape)
             rsample_paddle = self.rv_paddle.rsample(self.shape)
 
@@ -605,7 +605,7 @@ class CauchyTestSample(CauchyTest):
                 )
 
     def test_rsample_backpropagation(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             self.rv_paddle.loc.stop_gradient = False
             self.rv_paddle.scale.stop_gradient = False
             rsample_paddle = self.rv_paddle.rsample(self.shape)
@@ -638,14 +638,14 @@ class CauchyTestError(unittest.TestCase):
         ]
     )
     def test_bad_init(self, loc, scale, error):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             self.assertRaises(error, Cauchy, loc, scale)
 
     def test_bad_property(self):
         """For property like mean/variance/stddev which is undefined in math,
         we should raise `ValueError` instead of `NotImplementedError`.
         """
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             rv = Cauchy(loc=0.0, scale=1.0)
             with self.assertRaises(ValueError):
                 _ = rv.mean
@@ -661,7 +661,7 @@ class CauchyTestError(unittest.TestCase):
         ]
     )
     def test_bad_sample_shape_type(self, shape):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             rv = Cauchy(loc=0.0, scale=1.0)
 
             with self.assertRaises(TypeError):
@@ -680,7 +680,7 @@ class CauchyTestError(unittest.TestCase):
         ]
     )
     def test_bad_value_type(self, value):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             rv = Cauchy(loc=0.0, scale=1.0)
 
             with self.assertRaises(TypeError):
@@ -698,7 +698,7 @@ class CauchyTestError(unittest.TestCase):
         ]
     )
     def test_bad_kl_other_type(self, other):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             rv = Cauchy(loc=0.0, scale=1.0)
 
             with self.assertRaises(TypeError):
@@ -714,7 +714,7 @@ class CauchyTestError(unittest.TestCase):
         ]
     )
     def test_bad_broadcast(self, loc, scale, value):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             rv = Cauchy(loc=loc, scale=scale)
             self.assertRaises(ValueError, rv.cdf, value)
             self.assertRaises(ValueError, rv.log_prob, value)

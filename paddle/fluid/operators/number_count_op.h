@@ -27,10 +27,7 @@ namespace operators {
 template <typename T, typename DeviceContext>
 class NumberCountOpCPUKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Do not support expert count op for cpu kernel now."));
-  }
+  void Compute(const framework::ExecutionContext& ctx) const override {}
 };
 
 }  // namespace operators

@@ -199,6 +199,10 @@ class CollectiveController(Controller):
         '''
         collective_master = peer_list[0]['candidate']
 
+        # get collective master ip
+        collective_master_ip = collective_master.split(':')[0].strip()
+        os.environ["COLLECTIVE_MASTER_IP"] = collective_master_ip
+
         job_endpoints = [i['endpoints'] for i in peer_list]
 
         # self.pod.reset()

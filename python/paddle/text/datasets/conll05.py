@@ -67,28 +67,39 @@ class Conll05st(Dataset):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.text.datasets import Conll05st
+            >>> import paddle
+            >>> from paddle.text.datasets import Conll05st
 
-            class SimpleNet(paddle.nn.Layer):
-                def __init__(self):
-                    super().__init__()
+            >>> class SimpleNet(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...
+            ...     def forward(self, pred_idx, mark, label):
+            ...         return paddle.sum(pred_idx), paddle.sum(mark), paddle.sum(label)
 
-                def forward(self, pred_idx, mark, label):
-                    return paddle.sum(pred_idx), paddle.sum(mark), paddle.sum(label)
 
+            >>> conll05st = Conll05st()
 
-            conll05st = Conll05st()
-
-            for i in range(10):
-                pred_idx, mark, label= conll05st[i][-3:]
-                pred_idx = paddle.to_tensor(pred_idx)
-                mark = paddle.to_tensor(mark)
-                label = paddle.to_tensor(label)
-
-                model = SimpleNet()
-                pred_idx, mark, label= model(pred_idx, mark, label)
-                print(pred_idx, mark, label)
+            >>> for i in range(10):
+            ...     pred_idx, mark, label= conll05st[i][-3:]
+            ...     pred_idx = paddle.to_tensor(pred_idx)
+            ...     mark = paddle.to_tensor(mark)
+            ...     label = paddle.to_tensor(label)
+            ...
+            ...     model = SimpleNet()
+            ...     pred_idx, mark, label= model(pred_idx, mark, label)
+            ...     print(pred_idx.item(), mark.item(), label.item())
+            >>> # doctest: +SKIP('label will change')
+            65840 5 1991
+            92560 5 3686
+            99120 5 457
+            121960 5 3945
+            4774 5 2378
+            14973 5 1938
+            36921 5 1090
+            26908 5 2329
+            62965 5 2968
+            97755 5 2674
 
     """
 
@@ -334,10 +345,11 @@ class Conll05st(Dataset):
 
             .. code-block:: python
 
-                from paddle.text.datasets import Conll05st
+                >>> from paddle.text.datasets import Conll05st
 
-                conll05st = Conll05st()
-                word_dict, predicate_dict, label_dict = conll05st.get_dict()
+                >>> conll05st = Conll05st()
+                >>> word_dict, predicate_dict, label_dict = conll05st.get_dict()
+
         """
         return self.word_dict, self.predicate_dict, self.label_dict
 
@@ -349,9 +361,10 @@ class Conll05st(Dataset):
 
             .. code-block:: python
 
-                from paddle.text.datasets import Conll05st
+                >>> from paddle.text.datasets import Conll05st
 
-                conll05st = Conll05st()
-                emb_file = conll05st.get_embedding()
+                >>> conll05st = Conll05st()
+                >>> emb_file = conll05st.get_embedding()
+
         """
         return self.emb_file

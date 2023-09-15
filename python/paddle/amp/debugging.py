@@ -20,8 +20,8 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle.fluid import core
-from paddle.fluid.framework import dygraph_only
+from paddle.base import core
+from paddle.base.framework import dygraph_only
 
 from ..framework import LayerHelper, in_dynamic_mode
 
@@ -35,6 +35,7 @@ __all__ = [
     "enable_tensor_checker",
     "disable_tensor_checker",
     "compare_accuracy",
+    "check_layer_numerics",
 ]
 
 
@@ -60,12 +61,78 @@ class DebugMode(Enum):
     # DUMP_ALL = 5
 
 
+def check_layer_numerics(func):
+    """
+    This decorator is used to check the numerical values of the layer's input and output data.
+
+    Args:
+        func (callable): The function to be decorated.
+
+    Examples:
+
+        ..  code-block:: python
+
+            >>> import paddle
+            >>> class MyLayer(paddle.nn.Layer):
+            ...     def __init__(self, dtype):
+            ...         super().__init__()
+            ...         self._w = self.create_parameter([2, 3], dtype=dtype)
+            ...         self._b = self.create_parameter([2, 3], dtype=dtype)
+            ...     @paddle.amp.debugging.check_layer_numerics
+            ...     def forward(self, x):
+            ...         # return 1/x * self._w + self._b   open it you will see the error log
+            ...         return x * self._w + self._b
+            >>> dtype = 'float32'
+            >>> x = paddle.rand([10, 2, 3], dtype=dtype)
+            >>> model = MyLayer(dtype)
+            >>> x[0] = float(0)
+            >>> loss = model(x)
+            >>> adam = paddle.optimizer.Adam(parameters=model.parameters())
+            >>> loss.backward()
+            >>> adam.step()
+            >>> # error log
+            >>> # [PRECISION] [ERROR] in [device=gpu:0, op=divide, tensor=, dtype=fp32], numel=40, num_nan=0, num_inf=4, num_zero=0, max=inf, min=1.048930e+00, mean=inf
+            >>> # Traceback (most recent call last):
+            >>> #  File "tmp.py", line 16, in <module>
+            >>> #    loss = model(x)
+            >>> #  File "/paddle/nn/layer/layers.py", line 1254, in __call__
+            >>> #    return self.forward(*inputs, **kwargs)
+            >>> #  File "/paddle/amp/debugging.py", line 116, in wrapper
+            >>> #    out_data = func(self, *modified_args, **kwargs)
+            >>> #  File "test.py", line 10, in forward
+            >>> #    return 1/x *  self._w+ self._b
+            >>> # RuntimeError: (PreconditionNotMet) There are NAN or INF (num_nan=0, num_inf=4, num_zero=0) in [device=gpu:0, op=divide, tensor=, dtype=fp32].
+    """
+
+    def wrapper(self, *args, **kwargs):
+        if args:
+            # Set temp data and temp.gradient = False
+            start_data = args[0]
+            if not isinstance(start_data, paddle.Tensor):
+                raise RuntimeError("First input of this layer must be tensor.")
+            start_data.stop_gradient = False
+            modified_args = list(args)  # Convert args to a mutable list
+            # Set FLAGS_check_nan_inf = 1
+            modified_args[0] = _C_ops.enable_check_model_nan_inf(start_data, 1)
+            # Call the forward function
+            out_data = func(self, *modified_args, **kwargs)
+            # Set FLAGS_check_nan_inf = 0
+            out = _C_ops.disable_check_model_nan_inf(out_data, 0)
+            return out
+        else:
+            raise RuntimeError("No elements found in args.")
+        out = func(self, *args, **kwargs)
+        return out
+
+    return wrapper
+
+
 def set_checked_op_list(checked_op_list):
     # check checked_op_list
     if checked_op_list is not None:
         if isinstance(checked_op_list, (list, tuple)):
             check_op_list = ",".join(value for value in checked_op_list)
-            paddle.fluid.core.set_checked_op_list(check_op_list)
+            paddle.base.core.set_checked_op_list(check_op_list)
         else:
             raise ValueError("checked_op_list must be list or tuple")
 
@@ -75,7 +142,7 @@ def set_skipped_op_list(skipped_op_list):
     if skipped_op_list is not None:
         if isinstance(skipped_op_list, (list, tuple)):
             skip_op_list = ",".join(value for value in skipped_op_list)
-            paddle.fluid.core.set_skipped_op_list(skip_op_list)
+            paddle.base.core.set_skipped_op_list(skip_op_list)
         else:
             raise ValueError("skipped_op_list must be list or tuple")
 
@@ -231,11 +298,11 @@ class TensorCheckerConfig:
 
             # set output_dir
             if self.output_dir is not None:
-                paddle.fluid.core.set_nan_inf_debug_path(self.output_dir)
+                paddle.base.core.set_nan_inf_debug_path(self.output_dir)
 
             # set stack_height_limit
             if isinstance(self.stack_height_limit, (int)):
-                paddle.fluid.core.set_nan_inf_stack_limit(
+                paddle.base.core.set_nan_inf_stack_limit(
                     self.stack_height_limit
                 )
             else:
@@ -414,7 +481,7 @@ def enable_operator_stats_collection():
 
     """
     # Clear the previous stats.
-    paddle.fluid.core.clear_low_precision_op_list()
+    paddle.base.core.clear_low_precision_op_list()
     paddle.set_flags({'FLAGS_low_precision_op_list': 1})
 
 
@@ -454,7 +521,7 @@ def disable_operator_stats_collection():
     if not _get_operator_stats_flag():
         return
 
-    op_count_dict = paddle.fluid.core.get_low_precision_op_list()
+    op_count_dict = paddle.base.core.get_low_precision_op_list()
     _print_operator_stats(op_count_dict)
     paddle.set_flags({'FLAGS_low_precision_op_list': 0})
 
@@ -518,7 +585,7 @@ def compare_accuracy(
         ..  code-block:: python
 
             import paddle
-            from paddle.fluid import core
+            from paddle.base import core
             try:
                 import xlsxwriter as xlw
             except ImportError:
@@ -534,7 +601,7 @@ def compare_accuracy(
                     {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
                 )
                 path = "workerlog_log_dir"
-                paddle.fluid.core.set_nan_inf_debug_path(path)
+                paddle.base.core.set_nan_inf_debug_path(path)
                 x = paddle.to_tensor(
                     [2, 3, 4, 0], dtype="float32"
                 )
@@ -608,25 +675,25 @@ def disable_tensor_checker():
 
     Examples:
 
-        ..  code-block:: python
+        .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
-            paddle.amp.debugging.enable_tensor_checker(checker_config)
+            >>> checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
+            >>> paddle.amp.debugging.enable_tensor_checker(checker_config)
 
-            x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)
-            y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
-            res = paddle.pow(x, y)
-            paddle.autograd.backward(res, retain_graph=True)
-            paddle.amp.debugging.disable_tensor_checker()
-            #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
+            >>> x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)
+            >>> y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
+            >>> res = paddle.pow(x, y)
+            >>> paddle.autograd.backward(res, retain_graph=True)
+            >>> paddle.amp.debugging.disable_tensor_checker()
+            >>> #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
 
-            # when DebugMode.CHECK_NAN_INF_AND_ABORT and stack_height_limit = 1
-            # Traceback (most recent call last):
-            #     res = paddle.pow(x, y)
-            #   File "/usr/local/lib/python3.8/dist-packages/paddle/tensor/math.py", line 447, in pow
-            #     return _C_ops.elementwise_pow(x, y)
+            >>> # when DebugMode.CHECK_NAN_INF_AND_ABORT and stack_height_limit = 1
+            >>> # Traceback (most recent call last):
+            >>> #     res = paddle.pow(x, y)
+            >>> #   File "/usr/local/lib/python3.8/dist-packages/paddle/tensor/math.py", line 447, in pow
+            >>> #     return _C_ops.elementwise_pow(x, y)
 
     """
     paddle.set_flags({"FLAGS_check_nan_inf": 0})

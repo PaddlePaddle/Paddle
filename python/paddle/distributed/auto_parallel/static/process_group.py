@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import hashlib
+import os
 from collections import OrderedDict
 
 import paddle
@@ -146,9 +148,6 @@ class ProcessGroup:
         global_rank = genv.rank
 
         if self.nranks >= 2 and global_rank in self.ranks:
-            logger.info(
-                f"group_id: {self.id}, ranks: {self.ranks}, nranks: {self.nranks}, trainer_endpoints: {genv.current_endpoint}"
-            )
             strategy = core.ParallelStrategy()
             strategy.nranks = self.nranks
             strategy.local_rank = self.local_rank(global_rank)
@@ -159,9 +158,31 @@ class ProcessGroup:
             strategy.nrings = 1
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(genv.device_id)
-                core.NCCLParallelContext(strategy, place).init_with_ring_id(
-                    ring_id
+                use_new_comm = os.getenv(
+                    "FLAGS_dynamic_static_unified_comm", "0"
                 )
+                if use_new_comm in ["1", "True", "true"]:
+                    store = core.create_or_get_global_tcp_store()
+                    endpoints_str = ""
+                    for endpoint in strategy.trainer_endpoints:
+                        endpoints_str += endpoint
+                    endpoints_str += f"ring_id:{ring_id}"
+                    endpoints_str_hash = hashlib.md5(
+                        endpoints_str.encode(encoding='UTF-8')
+                    ).hexdigest()
+
+                    core.CommContextManager.set_device_id(genv.device_id)
+                    core.CommContextManager.create_nccl_comm_context(
+                        store,
+                        str(ring_id),
+                        strategy.local_rank,
+                        strategy.nranks,
+                        endpoints_str_hash,
+                    )
+                else:
+                    core.NCCLParallelContext(strategy, place).init_with_ring_id(
+                        ring_id
+                    )
             elif core.is_compiled_with_xpu():
                 place = core.XPUPlace(genv.device_id)
                 core.BKCLParallelContext(strategy, place).init_with_ring_id(

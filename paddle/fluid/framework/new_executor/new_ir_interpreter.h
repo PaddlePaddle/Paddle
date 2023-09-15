@@ -16,7 +16,7 @@
 #include <memory>
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
-#include "paddle/ir/core/value.h"
+#include "paddle/pir/core/value.h"
 
 namespace ir {
 class Program;
@@ -36,7 +36,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
  public:
   NewIRInterpreter(const platform::Place& place,
                    const std::vector<std::string>& fetch_var_names,
-                   std::unique_ptr<::ir::Program> ir_prog,
+                   std::unique_ptr<::pir::Program> ir_prog,
                    Scope* scope,
                    const ExecutionConfig& execution_config = ExecutionConfig());
 
@@ -53,12 +53,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   void ShareBuildResultsFrom(const InterpreterBaseImpl& src) override;
 
-  // op dependences
-  const interpreter::DependencyBuilder& GetDependencyBuilder() const override;
-
   std::shared_ptr<std::vector<size_t>> GetDependencyCount() const override;
-
-  const interpreter::StreamAnalyzer& GetStreamAnalyzer() const override;
 
   bool IsSharedResultsBuild() const override;
 
@@ -89,6 +84,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
  private:
   // build graph
   void UpdateSyncOpNum();
+  void UpdateNcclOpNum();
   void AnalyseExecuteOrderForTrace(
       std::map<size_t, std::set<size_t>> op_downstream_map,
       InstructionSchedulingPriorityLess compare);
@@ -153,6 +149,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   // used for Trace
   int64_t sync_op_num_{-1};
+  int64_t nccl_op_num_{-1};
   std::vector<size_t> trace_execute_order_;
 
   std::vector<HookFunc> hookfuncs_;
@@ -187,7 +184,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   void RecordMemcpyD2H(InstructionBase* instr_node);
 
-  ::ir::Value GetValueByName(const std::string& var_name);
+  ::pir::Value GetValueByName(const std::string& var_name);
 
   void CheckGC(InstructionBase* instr);
 
@@ -195,24 +192,23 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   void SolvePersisableVarNames();
 
-  const interpreter::NewIrDependencyBuilder& GetNewIrDependencyBuilder()
-      const override;
+  const interpreter::NewIrDependencyBuilder& GetNewIrDependencyBuilder() const;
 
-  const interpreter::NewIrStreamAnalyzer& GetNewIrStreamAnalyzer()
-      const override;
+  const interpreter::NewIrStreamAnalyzer& GetNewIrStreamAnalyzer() const;
 
   InstructionSchedulingPriorityLess ir_instruction_scheduling_priority_less;
 
-  std::unique_ptr<::ir::Program> ir_program_{nullptr};
+  std::unique_ptr<::pir::Program> ir_program_{nullptr};
 
   std::vector<std::unique_ptr<InstructionBase>> vec_instruction_base_;
 
-  std::unordered_map<::ir::Value, std::string> value_2_var_name_;
+  std::unordered_map<::pir::Value, std::string> value_2_var_name_;
 
   std::unordered_map<const paddle::framework::Variable*, std::string>
       variable_2_var_name_;
 
   std::map<std::string, int> var_name_2_id_;
+  std::unordered_map<int, std::string> id_2_var_name_;
 
   std::vector<Variable*> variable_list_;
 

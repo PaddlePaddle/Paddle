@@ -21,19 +21,21 @@ from paddle import _C_ops
 from paddle.tensor import fill_constant
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..fluid.data_feeder import (
+from ..base.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
     convert_dtype,
 )
-from ..fluid.framework import Variable
+from ..base.framework import Variable
 from ..framework import (
     LayerHelper,
     convert_np_dtype_to_dtype_,
     core,
     dygraph_only,
     in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
 )
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
@@ -178,9 +180,9 @@ def cast(x, dtype):
             x = paddle.to_tensor([2, 3, 4], 'float64')
             y = paddle.cast(x, 'uint8')
     """
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.cast(x, dtype)
     else:
         check_variable_and_dtype(
@@ -228,6 +230,18 @@ def cast(x, dtype):
             attrs={'in_dtype': x.dtype, 'out_dtype': out.dtype},
         )
         return out
+
+
+@inplace_apis_in_dygraph_only
+def cast_(x, dtype):
+    """
+    Inplace version of ``cast`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_cast`.
+    """
+    if in_dynamic_mode():
+        if not isinstance(dtype, core.VarDesc.VarType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+        return _C_ops.cast_(x, dtype)
 
 
 def slice(input, axes, starts, ends):
@@ -1119,6 +1133,10 @@ def concat(x, axis=0, name=None):
         if not isinstance(input, Variable):
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
+    elif in_pir_mode():
+        if not isinstance(input, paddle.ir.Value):
+            input = [t for t in input if t.shape.count(0) == 0]
+        return _C_ops.concat(input, axis)
     else:
         check_type(input, 'input', (list, tuple, Variable), 'concat')
         if not isinstance(input, Variable):
@@ -1972,6 +1990,14 @@ def split(x, num_or_sections, axis=0, name=None):
         else:
             return _C_ops.split(input, num_or_sections, dim)
     else:
+        if paddle.ir.core._use_new_ir_api():
+            if not isinstance(num_or_sections, int):
+                return paddle._ir_ops.split(input, num_or_sections, dim)
+            else:
+                raise NotImplementedError(
+                    "_ir_ops.split_with_num is not implemented, please change sections as list"
+                )
+
         check_variable_and_dtype(
             input,
             'input',
@@ -3573,7 +3599,7 @@ def reshape(x, shape, name=None):
             # the value is [10.]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(shape, (list, tuple)):
             new_shape = []
             for ele in shape:
@@ -5009,7 +5035,7 @@ def as_strided(x, shape, stride, offset=0, name=None):
         .. code-block:: python
 
             import paddle
-            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
+            paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
 
             x = paddle.rand([2, 4, 6], dtype="float32")
 
@@ -5041,7 +5067,7 @@ def view(x, shape_or_dtype, name=None):
         .. code-block:: python
 
             import paddle
-            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
+            paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
 
             x = paddle.rand([2, 4, 6], dtype="float32")
 
@@ -5050,7 +5076,7 @@ def view(x, shape_or_dtype, name=None):
 
 
             import paddle
-            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
+            paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
 
             x = paddle.rand([2, 4, 6], dtype="float32")
 
@@ -5085,7 +5111,7 @@ def view_as(x, other, name=None):
         .. code-block:: python
 
             import paddle
-            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
+            paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
 
             x = paddle.rand([2, 4, 6], dtype="float32")
             y = paddle.rand([8, 6], dtype="float32")
@@ -5118,7 +5144,7 @@ def unfold(x, axis, size, step, name=None):
         .. code-block:: python
 
             import paddle
-            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
+            paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
 
             x = paddle.arange(9, dtype="float64")
 

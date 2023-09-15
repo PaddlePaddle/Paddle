@@ -29,12 +29,35 @@ struct CastOpTransformFunctor {
 template <typename InT, typename OutT>
 void CastKernelImpl(const CPUContext& dev_ctx,
                     const DenseTensor& x,
+                    DataType out_dtype,
                     DenseTensor* out) {
   auto* in_begin = x.data<InT>();
   auto numel = x.numel();
   auto* in_end = in_begin + numel;
 
   auto* out_begin = dev_ctx.Alloc<OutT>(out);
+  out->set_type(out_dtype);
+
+  phi::Transform<CPUContext> trans;
+  trans(dev_ctx,
+        in_begin,
+        in_end,
+        out_begin,
+        CastOpTransformFunctor<InT, OutT>());
+}
+
+template <typename InT, typename OutT>
+void CastInplaceKernelImpl(const CPUContext& dev_ctx,
+                           const DenseTensor& x,
+                           DataType out_dtype,
+                           DenseTensor* out) {
+  auto x_origin = x;
+  auto* in_begin = x_origin.data<InT>();
+  auto numel = x_origin.numel();
+  auto* in_end = in_begin + numel;
+
+  auto* out_begin = dev_ctx.Alloc<OutT>(out);
+  out->set_type(out_dtype);
 
   phi::Transform<CPUContext> trans;
   trans(dev_ctx,
