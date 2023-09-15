@@ -380,7 +380,11 @@ PyObject* tensor_properties_get_dist_attr(TensorObject* self, void* closure) {
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
     return ToPyObject(&dist_tensor->dist_attr());
 #else
-    RETURN_PY_NONE
+    PADDLE_THROW(platform::errors::Unavailable(
+        "The `dist_attr()` property of (Dist)Tensor is not supported in the "
+        "current PaddlePaddle, please recompile and installPaddlePaddle with "
+        "the "
+        "option of `WITH_DISTRIBUTE=ON`."));
 #endif
   } else {
     RETURN_PY_NONE
@@ -523,7 +527,7 @@ PyObject* tensor_properties_get_strides(TensorObject* self, void* closure) {
   size_t rank = static_cast<size_t>(stride.size());
   value.resize(rank);
 
-  for (size_t i = 0; i < rank; i++) {
+  for (int i = 0; i < static_cast<int>(rank); i++) {
     value[i] = stride[i];
   }
 

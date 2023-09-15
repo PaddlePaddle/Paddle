@@ -15,7 +15,7 @@ import collections
 import re
 from enum import Enum
 
-from paddle.fluid.core import TracerEventType, TracerMemEventType
+from paddle.base.core import TracerEventType, TracerMemEventType
 from paddle.utils.flops import flops
 
 from .statistic_helper import (

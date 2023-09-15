@@ -16,11 +16,11 @@ import platform
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 def linear_interp_np(
@@ -255,8 +255,8 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
             align_corners=False,
             data_format='NCW',
         )
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(x_data)
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(x_data)
             interp = us_1(x)
 
             expect = linear_interp_np(

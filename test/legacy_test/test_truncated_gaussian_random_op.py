@@ -17,9 +17,9 @@ import unittest
 import numpy
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.executor import Executor
+from paddle import base
+from paddle.base import core
+from paddle.base.executor import Executor
 
 
 class TestTrunctedGaussianRandomOp(unittest.TestCase):
@@ -36,35 +36,35 @@ class TestTrunctedGaussianRandomOp(unittest.TestCase):
 
     def test_cpu_fp32(self):
         self._gaussian_random_test(
-            place=fluid.CPUPlace(), dtype=core.VarDesc.VarType.FP32
+            place=base.CPUPlace(), dtype=core.VarDesc.VarType.FP32
         )
         self._gaussian_random_test(
-            place=fluid.CPUPlace(), dtype=core.VarDesc.VarType.FP64
+            place=base.CPUPlace(), dtype=core.VarDesc.VarType.FP64
         )
         self._gaussian_random_test_eager(
-            place=fluid.CPUPlace(), dtype=core.VarDesc.VarType.FP32
+            place=base.CPUPlace(), dtype=core.VarDesc.VarType.FP32
         )
         self._gaussian_random_test_eager(
-            place=fluid.CPUPlace(), dtype=core.VarDesc.VarType.FP64
+            place=base.CPUPlace(), dtype=core.VarDesc.VarType.FP64
         )
 
     def test_gpu_fp32(self):
         if core.is_compiled_with_cuda():
             self._gaussian_random_test(
-                place=fluid.CUDAPlace(0), dtype=core.VarDesc.VarType.FP32
+                place=base.CUDAPlace(0), dtype=core.VarDesc.VarType.FP32
             )
             self._gaussian_random_test(
-                place=fluid.CUDAPlace(0), dtype=core.VarDesc.VarType.FP64
+                place=base.CUDAPlace(0), dtype=core.VarDesc.VarType.FP64
             )
             self._gaussian_random_test_eager(
-                place=fluid.CUDAPlace(0), dtype=core.VarDesc.VarType.FP32
+                place=base.CUDAPlace(0), dtype=core.VarDesc.VarType.FP32
             )
             self._gaussian_random_test_eager(
-                place=fluid.CUDAPlace(0), dtype=core.VarDesc.VarType.FP64
+                place=base.CUDAPlace(0), dtype=core.VarDesc.VarType.FP64
             )
 
     def _gaussian_random_test(self, place, dtype):
-        program = fluid.Program()
+        program = base.Program()
         block = program.global_block()
         vout = block.create_var(name="Out")
         op = block.append_op(
@@ -89,7 +89,7 @@ class TestTrunctedGaussianRandomOp(unittest.TestCase):
     # TruncatedNormal.__call__ has no return value, so here call _C_ops api
     # directly
     def _gaussian_random_test_eager(self, place, dtype):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             out = paddle._C_ops.truncated_gaussian_random(
                 self.attrs["shape"],
                 self.attrs["mean"],

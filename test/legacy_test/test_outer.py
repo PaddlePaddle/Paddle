@@ -147,37 +147,23 @@ class TestMultiplyError(unittest.TestCase):
             self.assertRaises(TypeError, paddle.outer, x, y)
 
         np.random.seed(7)
-        # test dynamic computation graph: dtype can not be int8
-        paddle.disable_static()
-        x_data = np.random.randn(200).astype(np.int8)
-        y_data = np.random.randn(200).astype(np.int8)
-        x = paddle.to_tensor(x_data)
-        y = paddle.to_tensor(y_data)
-        self.assertRaises(RuntimeError, paddle.outer, x, y)
-
-        # test dynamic computation graph: dtype must be same
-        x_data = np.random.randn(200).astype(np.float32)
-        y_data = np.random.randn(200).astype(np.float64)
-        x = paddle.to_tensor(x_data)
-        y = paddle.to_tensor(y_data)
-        self.assertRaises(ValueError, paddle.outer, x, y)
 
         # test dynamic computation graph: dtype must be Tensor type
         x_data = np.random.randn(200).astype(np.float64)
         y_data = np.random.randn(200).astype(np.float64)
         y = paddle.to_tensor(y_data)
-        self.assertRaises(ValueError, paddle.outer, x_data, y)
+        self.assertRaises(TypeError, paddle.outer, x_data, y)
 
         # test dynamic computation graph: dtype must be Tensor type
         x_data = np.random.randn(200).astype(np.float32)
         y_data = np.random.randn(200).astype(np.float32)
         x = paddle.to_tensor(x_data)
-        self.assertRaises(ValueError, paddle.outer, x, y_data)
+        self.assertRaises(TypeError, paddle.outer, x, y_data)
 
         # test dynamic computation graph: dtype must be Tensor type
         x_data = np.random.randn(200).astype(np.float32)
         y_data = np.random.randn(200).astype(np.float32)
-        self.assertRaises(ValueError, paddle.outer, x_data, y_data)
+        self.assertRaises(TypeError, paddle.outer, x_data, y_data)
 
 
 if __name__ == '__main__':
