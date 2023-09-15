@@ -43,8 +43,20 @@
 #include "glog/logging.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 
 namespace pir {
+
+const std::unordered_set<std::string> SpecialOps = {"pd_op.feed",
+                                                    "pd_op.fetch",
+                                                    "builtin.combine",
+                                                    "builtin.set_parameter",
+                                                    "builtin.get_parameter",
+                                                    "builtin.slice",
+                                                    "builtin.split",
+                                                    "pd_op.data",
+                                                    "pd_op.shadow_output",
+                                                    "pd_op.if"};
 
 void AddNewData(pir::Value value,
                 std::string name,
@@ -226,7 +238,8 @@ void HandleForSpecialOp(
     std::unordered_map<const paddle::framework::Variable*, std::string>*
         variable_2_var_name,
     std::map<std::string, int>* var_name_2_id,
-    std::vector<paddle::framework::Variable*>* variable_list) {
+    std::vector<paddle::framework::Variable*>* variable_list,
+    std::map<pir::Block*, paddle::framework::Scope*>* sub_blocks) {
   std::string op_name = op->name();
   if (op->attributes().count("op_name")) {
     op_name =
@@ -425,6 +438,33 @@ void HandleForSpecialOp(
       value_2_var_name->emplace(out_value, var_name);
     }
   }
+
+  if (op_name == "pd_op.if") {
+    auto if_op = op->dyn_cast<paddle::dialect::IfOp>();
+
+    auto true_block = if_op.true_block();
+
+    auto false_block = if_op.false_block();
+
+    auto& true_branch_scope = inner_scope->NewScope();
+    sub_blocks->emplace(true_block, &true_branch_scope);
+
+    auto& false_branch_scope = inner_scope->NewScope();
+    sub_blocks->emplace(false_block, &false_branch_scope);
+
+    for (size_t i = 0; i < if_op->num_results(); ++i) {
+      // auto true_value = true_yeid_op->operand_source(i);
+
+      auto if_op_out_value = if_op->result(i);
+      BuildValue(if_op_out_value,
+                 inner_scope,
+                 var_name_prefix,
+                 value_2_var_name,
+                 variable_2_var_name,
+                 var_name_2_id,
+                 variable_list);
+    }
+  }
 }
 
 void HandleForInplaceOp(
@@ -483,8 +523,8 @@ void HandleForInplaceOp(
   }
 }
 
-// NOTE(zhiqiu): the persistable is created in inner_scope's root, and other is
-// created in inner_scope.
+// NOTE(zhiqiu): the persistable is created in inner_scope's root, and other
+// is created in inner_scope.
 void BuildScope(const pir::Block& block,
                 paddle::framework::Scope* inner_scope,
                 const std::string& var_name_prefix,
@@ -492,7 +532,8 @@ void BuildScope(const pir::Block& block,
                 std::unordered_map<const paddle::framework::Variable*,
                                    std::string>* variable_2_var_name,
                 std::map<std::string, int>* var_name_2_id,
-                std::vector<paddle::framework::Variable*>* variable_list) {
+                std::vector<paddle::framework::Variable*>* variable_list,
+                std::map<pir::Block*, paddle::framework::Scope*>* sub_blocks) {
   VLOG(4) << "***** [before build] scope"
           << "(" << inner_scope << ") ******\n"
           << paddle::framework::GenScopeTreeDebugInfo(
@@ -507,19 +548,15 @@ void BuildScope(const pir::Block& block,
                     .AsString();
     }
     VLOG(4) << "build op:" << op_name;
-
-    if (op_name == "pd_op.feed" || op_name == "pd_op.fetch" ||
-        op_name == "builtin.combine" || op_name == "builtin.set_parameter" ||
-        op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
-        op_name == "builtin.split" || op_name == "pd_op.data" ||
-        op_name == "pd_op.shadow_output") {
+    if (SpecialOps.count(op_name)) {
       HandleForSpecialOp(op,
                          inner_scope,
                          var_name_prefix,
                          value_2_var_name,
                          variable_2_var_name,
                          var_name_2_id,
-                         variable_list);
+                         variable_list,
+                         sub_blocks);
       continue;
     }
 
