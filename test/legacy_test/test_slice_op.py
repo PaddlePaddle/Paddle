@@ -17,7 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest, convert_float_to_uint16, paddle_static_guard
+from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
 import paddle
 from paddle import base
@@ -67,7 +67,7 @@ class TestSliceOp(OpTest):
         self.out = self.input[1:3, 0:3, 2:4, :]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -121,7 +121,7 @@ class TestSliceZerosShapeTensor(OpTest):
         self.out = self.input[1:2]
 
     def test_check_output(self):
-        self.check_output_with_place(paddle.CPUPlace())
+        self.check_output_with_place(paddle.CPUPlace(), check_new_ir=True)
 
 
 # 1.2 with attr(decrease)
@@ -153,7 +153,7 @@ class TestSliceOp_decs_dim(OpTest):
         self.out = self.input[1:2, 0:3, 2:4, :]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -486,7 +486,9 @@ class TestFP16(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place, check_prim=True)
+            self.check_output_with_place(
+                place, check_prim=True, check_new_ir=True
+            )
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
@@ -531,7 +533,9 @@ class TestFP16_2(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place, check_prim=True)
+            self.check_output_with_place(
+                place, check_prim=True, check_new_ir=True
+            )
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
@@ -571,7 +575,7 @@ class TestBF16(OpTest):
         self.infer_flags = [1, 1, 1]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(['Input'], 'Out', check_prim=True)

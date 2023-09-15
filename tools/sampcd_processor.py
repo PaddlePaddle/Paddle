@@ -23,13 +23,11 @@ for example, you can run cpu version testing like this:
 """
 
 import functools
-import logging
 import multiprocessing
 import os
 import platform
 import queue
 import re
-import sys
 import threading
 import time
 import typing
@@ -39,6 +37,7 @@ from sampcd_processor_utils import (
     TEST_TIMEOUT,
     DocTester,
     TestResult,
+    log_exit,
     logger,
     parse_args,
     run_doctest,
@@ -247,6 +246,7 @@ class Xdoctester(DocTester):
         self.mode = mode
         self.verbose = verbose
         self.config = {**XDOCTEST_CONFIG, **(config or {})}
+        self._test_capacity = set()
 
         self._patch_global_state = patch_global_state
         self._patch_tensor_place = patch_tensor_place
@@ -327,6 +327,8 @@ class Xdoctester(DocTester):
         logger.info("API check using Xdoctest prepared!-- Example Code")
         logger.info("running under python %s", platform.python_version())
         logger.info("running under xdoctest %s", xdoctest.__version__)
+
+        self._test_capacity = test_capacity
 
     def run(self, api_name: str, docstring: str) -> typing.List[TestResult]:
         """Run the xdoctest with a docstring."""
@@ -443,29 +445,31 @@ class Xdoctester(DocTester):
         summary_timeout = []
         summary_nocodes = []
 
-        stdout_handler = logging.StreamHandler(stream=sys.stdout)
-        logger.addHandler(stdout_handler)
-        logger.info("----------------End of the Check--------------------")
+        logger.warning("----------------Check results--------------------")
+        logger.warning(">>> Sample code test capacity: %s", self._test_capacity)
+
         if whl_error is not None and whl_error:
-            logger.info("%s is not in whl.", whl_error)
-            logger.info("")
-            logger.info("Please check the whl package and API_PR.spec!")
-            logger.info(
+            logger.warning("%s is not in whl.", whl_error)
+            logger.warning("")
+            logger.warning("Please check the whl package and API_PR.spec!")
+            logger.warning(
                 "You can follow these steps in order to generate API.spec:"
             )
-            logger.info("1. cd ${paddle_path}, compile paddle;")
-            logger.info("2. pip install build/python/dist/(build whl package);")
-            logger.info(
+            logger.warning("1. cd ${paddle_path}, compile paddle;")
+            logger.warning(
+                "2. pip install build/python/dist/(build whl package);"
+            )
+            logger.warning(
                 "3. run 'python tools/print_signatures.py paddle > paddle/fluid/API.spec'."
             )
             for test_result in test_results:
                 if test_result.failed:
-                    logger.info(
+                    logger.error(
                         "In addition, mistakes found in sample codes: %s",
                         test_result.name,
                     )
-            logger.info("----------------------------------------------------")
-            sys.exit(1)
+            log_exit(1)
+
         else:
             for test_result in test_results:
                 if not test_result.nocode:
@@ -490,45 +494,60 @@ class Xdoctester(DocTester):
 
             if len(summary_success):
                 logger.info(
-                    ">>> %d sample codes ran success", len(summary_success)
+                    ">>> %d sample codes ran success in env: %s",
+                    len(summary_success),
+                    self._test_capacity,
                 )
                 logger.info('\n'.join(summary_success))
 
             if len(summary_skiptest):
-                logger.info(
-                    ">>> %d sample codes skipped", len(summary_skiptest)
+                logger.warning(
+                    ">>> %d sample codes skipped in env: %s",
+                    len(summary_skiptest),
+                    self._test_capacity,
                 )
-                logger.info('\n'.join(summary_skiptest))
+                logger.warning('\n'.join(summary_skiptest))
 
             if len(summary_nocodes):
-                logger.info(
-                    ">>> %d apis could not run test or don't have sample codes",
+                logger.error(
+                    ">>> %d apis don't have sample codes or could not run test in env: %s",
                     len(summary_nocodes),
+                    self._test_capacity,
                 )
-                logger.info('\n'.join(summary_nocodes))
+                logger.error('\n'.join(summary_nocodes))
 
             if len(summary_timeout):
-                logger.info(
-                    ">>> %d sample codes ran timeout", len(summary_timeout)
+                logger.error(
+                    ">>> %d sample codes ran timeout or error in env: %s",
+                    len(summary_timeout),
+                    self._test_capacity,
                 )
                 for _result in summary_timeout:
-                    logger.info(
+                    logger.error(
                         f"{_result['api_name']} - more than {_result['run_time']}s"
                     )
 
             if len(summary_failed):
-                logger.info(
-                    ">>> %d sample codes ran failed", len(summary_failed)
+                logger.error(
+                    ">>> %d sample codes ran failed in env: %s",
+                    len(summary_failed),
+                    self._test_capacity,
                 )
-                logger.info('\n'.join(summary_failed))
+                logger.error('\n'.join(summary_failed))
 
             if summary_failed or summary_timeout or summary_nocodes:
-                logger.info(
-                    "Mistakes found in sample codes. Please recheck the sample codes."
+                logger.warning(
+                    ">>> Mistakes found in sample codes in env: %s!",
+                    self._test_capacity,
                 )
-                sys.exit(1)
+                logger.warning(">>> Please recheck the sample codes.")
+                log_exit(1)
 
-        logger.info("Sample code check is successful!")
+        logger.warning(
+            ">>> Sample code check is successful in env: %s!",
+            self._test_capacity,
+        )
+        logger.warning("----------------End of the Check--------------------")
 
 
 if __name__ == '__main__':

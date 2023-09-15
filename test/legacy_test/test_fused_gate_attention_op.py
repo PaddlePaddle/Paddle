@@ -20,11 +20,7 @@ os.environ['FLAGS_new_einsum'] = "0"
 import unittest
 
 import numpy as np
-from eager_op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    convert_uint16_to_float,
-)
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 from test_sparse_attention_op import get_cuda_version
 
 import paddle

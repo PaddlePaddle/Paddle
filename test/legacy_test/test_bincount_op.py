@@ -17,7 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 import paddle.inference as paddle_infer
@@ -218,6 +218,14 @@ class TestCase5(TestBincountOp):
     def init_test_case(self):
         self.minlength = 20
         self.np_input = np.random.randint(low=0, high=10, size=10)
+        self.Out = np.bincount(self.np_input, minlength=self.minlength)
+
+
+class TestCase6(TestBincountOp):
+    # with bigger input size
+    def init_test_case(self):
+        self.minlength = 0
+        self.np_input = np.random.randint(low=0, high=10, size=1024)
         self.Out = np.bincount(self.np_input, minlength=self.minlength)
 
 
