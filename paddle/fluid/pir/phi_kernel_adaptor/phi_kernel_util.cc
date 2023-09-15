@@ -273,7 +273,7 @@ void HandleForSpecialOp(
 
     std::string name =
         op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
-    paddle::framework::Variable* var = inner_scope->FindVar(name);
+    paddle::framework::Variable* var = inner_scope->Var(name);
     PADDLE_ENFORCE(var,
                    paddle::platform::errors::InvalidArgument(
                        "The variable %s shoud exist", name));

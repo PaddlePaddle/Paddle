@@ -44,6 +44,8 @@ class CondInstruction : public InstructionBase {
 
   const std::string& Name() const override { return cond_name_; }
 
+  ::pir::Operation* Operation() const override { return op_; }
+
  private:
   void CopyBranchOutput(const std::vector<std::string>& var_names,
                         const NewIRInterpreter* inter);
@@ -59,6 +61,8 @@ class CondInstruction : public InstructionBase {
 
   std::vector<std::string> true_skip_gc_names_;
   std::vector<std::string> false_skip_gc_names_;
+
+  ::pir::Operation* op_;
 };
 
 }  // namespace framework

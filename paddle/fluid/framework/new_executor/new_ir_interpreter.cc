@@ -590,7 +590,7 @@ std::string NewIRInterpreter::DebugValueInfo() {
      << "\n";
 
   interpreter::PrintValuesAndVariables(
-      *ir_program_->block(), &value_2_var_name_, &variable_2_var_name_);
+      *ir_block_, &value_2_var_name_, &variable_2_var_name_);
 
   for (auto kv : value_2_var_name_) {
     PADDLE_ENFORCE((bool)kv.first,

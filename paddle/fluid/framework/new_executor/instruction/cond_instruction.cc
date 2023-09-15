@@ -63,6 +63,7 @@ CondInstruction::CondInstruction(
         variable_2_var_name,
     const std::map<pir::Block*, paddle::framework::Scope*>& sub_blocks)
     : InstructionBase(id, place) {
+  op_ = op;
   // Todo: support paddle::dialect::DistAttribute
   //   if (op_attributes.count("dist_attr") != 0) {
   //     if (op_attributes.count("execution_stream") != 0) {
@@ -136,7 +137,6 @@ CondInstruction::CondInstruction(
     true_branch_inter =
         new NewIRInterpreter(place, {}, true_branch_block, true_scope, {});
 
-    std::cerr << "11" << std::endl;
     std::set<std::string> true_skip_gc_names_set;
     for (auto value : true_branch_yied_inputs) {
       true_skip_gc_names_.push_back(true_branch_inter->GetNameByValue(value));
