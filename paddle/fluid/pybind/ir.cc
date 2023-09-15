@@ -338,7 +338,15 @@ void BindValue(py::module *m) {
              return self.impl() == other.Value::impl();
            })
       .def("__hash__",
-           [](const Value &self) { return std::hash<pir::Value>{}(self); });
+           [](const Value &self) { return std::hash<pir::Value>{}(self); })
+      .def("print_value_info", [](const Value &self) -> py::list {
+        py::list value_info_list;
+        auto value_info_vec = self.PrintValueInfo(self);
+        for (auto &value_info : value_info_vec) {
+          value_info_list.append(value_info);
+        }
+        return value_info_list;
+      });
 }
 
 void BindOpOperand(py::module *m) {
@@ -474,19 +482,27 @@ void BindOpResult(py::module *m) {
       .def("has_one_use", &Value::HasOneUse)
       .def("use_empty", &OpResult::use_empty)
       .def("type", &OpResult::type)
-      .def_property(
-          "stop_gradient",
-          [](OpResult &self) {
-            return GetOpResultBoolAttr(self, kAttrStopGradients);
-          },
-          [](OpResult &self, bool stop_gradient) {
-            // NOTE(Aurelius84): For other OpResult, set theirs stop_gradient
-            // default value as true.
-            SetOpResultBoolAttr(self,
-                                kAttrStopGradients,
-                                stop_gradient,
-                                /*default_value=*/true);
-          })
+      .def("print_value_info", [](const OpResult &self) -> py::list {
+        py::list value_info_list;
+        auto value_info_vec = self.PrintValueInfo(self);
+        for (auto &value_info : value_info_vec) {
+          value_info_list.append(value_zinfo);
+        }
+        return value_info_list;
+      });
+  .def_property(
+      "stop_gradient",
+      [](OpResult &self) {
+        return GetOpResultBoolAttr(self, kAttrStopGradients);
+      },
+      [](OpResult &self, bool stop_gradient) {
+        // NOTE(Aurelius84): For other OpResult, set theirs stop_gradient
+        // default value as true.
+        SetOpResultBoolAttr(self,
+                            kAttrStopGradients,
+                            stop_gradient,
+                            /*default_value=*/true);
+      })
       .def_property(
           "is_persistable",
           [](OpResult &self) {
