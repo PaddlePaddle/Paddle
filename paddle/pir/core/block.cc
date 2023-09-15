@@ -22,8 +22,11 @@
 
 namespace pir {
 Block::~Block() {
-  assert(use_empty() && "block destroyed still has uses.");
+  if (!use_empty()) {
+    LOG(FATAL) << "Destoryed a block that is still in use.";
+  }
   clear();
+  ClearArguments();
 }
 void Block::push_back(Operation *op) { insert(ops_.end(), op); }
 
@@ -33,13 +36,13 @@ Operation *Block::GetParentOp() const {
   return parent_ ? parent_->GetParent() : nullptr;
 }
 
-Block::iterator Block::insert(const_iterator iterator, Operation *op) {
-  Block::iterator iter = ops_.insert(iterator, op);
+Block::Iterator Block::insert(ConstIterator iterator, Operation *op) {
+  Block::Iterator iter = ops_.insert(iterator, op);
   op->SetParent(this, iter);
   return iter;
 }
 
-Block::iterator Block::erase(const_iterator position) {
+Block::Iterator Block::erase(ConstIterator position) {
   IR_ENFORCE((*position)->GetParent() == this, "iterator not own this block.");
   (*position)->Destroy();
   return ops_.erase(position);
@@ -73,6 +76,16 @@ void Block::ResetOpListOrder(const OpListType &new_op_list) {
   for (Operation *op : new_op_list) {
     push_back(op);
   }
+}
+
+void Block::ClearArguments() {
+  for (auto &argument : arguments_) {
+    argument.Destroy();
+  }
+  arguments_.clear();
+}
+void Block::AddArgument(Type type) {
+  arguments_.emplace_back(BlockArgument::Create(type, this, arguments_.size()));
 }
 
 bool Block::TopoOrderCheck(const OpListType &op_list) {

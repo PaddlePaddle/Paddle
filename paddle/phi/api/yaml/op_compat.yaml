@@ -810,6 +810,7 @@
   backward : dropout_grad
   inputs :
     x : X
+    seed_tensor : Seed
   outputs :
     out : Out
     mask : Mask
@@ -2428,6 +2429,8 @@
     out : Out
 
 - op : seed
+  outputs :
+    out : Out
   extra :
     attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
 
@@ -3048,6 +3051,18 @@
     yolo_loss : GetYoloLossExpectedKernelType
     yolo_loss_grad : GetYoloLossExpectedKernelType
 
+- op: c_allgather
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_allreduce_max
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_allreduce_sum
   inputs :
     x : X
@@ -3061,6 +3076,12 @@
     out : Out
 
 - op: c_identity
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_reduce_sum
   inputs :
     x : X
   outputs :

@@ -13,14 +13,21 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
-#include "build/paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_op.h"
 
 namespace paddle {
 namespace dialect {
+
+pir::OpResult builtin_combine(std::vector<pir::OpResult> x) {
+  auto combine_op =
+      APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(x);
+  return combine_op.out();
+}
+
 pir::OpResult get_parameter(const std::string& name,
                             phi::DataType dtype,
                             const std::vector<int64_t>& shape) {

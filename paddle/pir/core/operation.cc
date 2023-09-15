@@ -131,7 +131,7 @@ void Operation::Destroy() {
 
   // 2. Deconstruct Result.
   for (size_t idx = 0; idx < num_results_; ++idx) {
-    detail::OpResultImpl *impl = result(idx).impl();
+    detail::ValueImpl *impl = result(idx).impl();
     if (detail::OpOutlineResultImpl::classof(*impl)) {
       static_cast<detail::OpOutlineResultImpl *>(impl)->~OpOutlineResultImpl();
     } else {
@@ -275,7 +275,7 @@ const Region &Operation::region(unsigned index) const {
   return regions_[index];
 }
 
-void Operation::SetParent(Block *parent, const Block::iterator &position) {
+void Operation::SetParent(Block *parent, const Block::Iterator &position) {
   parent_ = parent;
   position_ = position;
 }
