@@ -166,6 +166,8 @@ bool PyObject_CheckIRVectorOfOpResult(PyObject* obj) {
       }
     }
     return true;
+  } else if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
+    return true;
   } else {
     return false;
   }
