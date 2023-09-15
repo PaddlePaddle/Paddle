@@ -13,19 +13,27 @@
 # limitations under the License
 
 import abc
+import logging
 
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
 from ..dist_attribute import OperatorDistAttr
 from ..process_group import new_process_group
-from ..utils import _get_comm_group, _get_corresponding_rank, is_optimize_op
+from ..utils import (
+    _get_comm_group,
+    _get_corresponding_rank,
+    get_logger,
+    is_optimize_op,
+)
+
+distop_logger = get_logger(logging.INFO, "DistOpst")
 
 _g_distributed_operator_impl_containers = {}
 
 _g_elementwise_ops = [
     "elementwise",
     "gelu",
-    "dropout",
+    # "dropout",
     "cast",
     "gather",
     "concat",
@@ -272,86 +280,33 @@ def find_compatible_distributed_operator_impls(dist_op, fwd=True, partial=True):
     return best_compatible_impl
 
 
-def find_distributed_operator_container(dist_op, partial, fwd):
+def find_distributed_operator_impl_container(dist_op):
     """
     Return a unique container for dist op.
     If not specific container found, default container will be return.
     """
-
     op_type = dist_op.serial_op.type
+
+    # Op has a  match container
     dist_op_impl_container = get_distributed_operator_impl_container(op_type)
-    dist_op_eltwise_impl_container = get_distributed_operator_impl_container(
-        "elementwise"
-    )
-    dist_op_default_impl_container = get_distributed_operator_impl_container(
-        "default"
-    )
-    compatible_impls = []
-    if partial:
-        if fwd:
-            # First, find impls in the corresponding container
-            if dist_op_impl_container:
-                compatible_impls.extend(
-                    dist_op_impl_container.get_input_compatible_impls(dist_op)
-                )
-            # Second, find impls in the elementwise container
-            if dist_op_eltwise_impl_container and is_elementwise_op(op_type):
-                compatible_impls.extend(
-                    dist_op_eltwise_impl_container.get_input_compatible_impls(
-                        dist_op
-                    )
-                )
-            # Third, find impls in the default container
-            if dist_op_default_impl_container:
-                compatible_impls.extend(
-                    dist_op_default_impl_container.get_input_compatible_impls(
-                        dist_op
-                    )
-                )
+    if dist_op_impl_container is None:
+        # if op is register to elemwise spmd rule and has NO specific container implemented
+        if op_type in _g_elementwise_ops:
+            dist_op_impl_container = get_distributed_operator_impl_container(
+                "elementwise"
+            )
+        # default container for all bottom line cases
         else:
-            # First, find impls in the corresponding container
-            if dist_op_impl_container:
-                compatible_impls.extend(
-                    dist_op_impl_container.get_output_compatible_impls(dist_op)
-                )
-            # Second, find impls in the elementwise container
-            if dist_op_eltwise_impl_container and is_elementwise_op(op_type):
-                compatible_impls.extend(
-                    dist_op_eltwise_impl_container.get_output_compatible_impls(
-                        dist_op
-                    )
-                )
-            # Third, find impls in the default container
-            if dist_op_default_impl_container:
-                compatible_impls.extend(
-                    dist_op_default_impl_container.get_output_compatible_impls(
-                        dist_op
-                    )
-                )
-    else:
-        # First, find impls in the corresponding container
-        if dist_op_impl_container:
-            compatible_impls.extend(
-                dist_op_impl_container.get_compatible_impls(dist_op)
-            )
-        # Second, find impls in the elementwise container
-        if dist_op_eltwise_impl_container and is_elementwise_op(op_type):
-            compatible_impls.extend(
-                dist_op_eltwise_impl_container.get_compatible_impls(dist_op)
-            )
-        # Third, find impls in the default container
-        if dist_op_default_impl_container:
-            compatible_impls.extend(
-                dist_op_default_impl_container.get_compatible_impls(dist_op)
+            dist_op_impl_container = get_distributed_operator_impl_container(
+                "default"
             )
 
-    if compatible_impls:
-        # For now, just return the first compatible impl
-        # best_compatible_impl = compatible_impls[0]
-        best_compatible_impl = compatible_impls
-    else:
-        best_compatible_impl = None
-    return best_compatible_impl
+    distop_logger.debug(
+        "Op [{}] Complete DistAttr using {}".format(
+            op_type, type(dist_op_impl_container).__name__
+        )
+    )
+    return dist_op_impl_container
 
 
 def is_parameter_related(varname, block, dist_context=None):

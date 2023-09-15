@@ -12,11 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import logging
-
-from ....utils.log_utils import get_logger
-
-_logger = get_logger(logging.INFO)
 from ...random import determinate_rng, is_enable_auto_rand_ctrl
 from .common import (
     DistributedOperatorImplContainer,

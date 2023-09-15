@@ -12,15 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import logging
-
 import paddle
 from paddle.framework import core
 from paddle.utils import unique_name
 
-from ....utils.log_utils import get_logger
-
-_logger = get_logger(logging.INFO)
 from ...random import determinate_rng, is_enable_auto_rand_ctrl
 from ..utils import (
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
@@ -28,6 +23,7 @@ from ..utils import (
 )
 from .common import (
     DistributedOperatorImplContainer,
+    distop_logger,
     register_distributed_operator_impl,
     register_distributed_operator_impl_container,
 )
@@ -85,7 +81,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                 and src_op.has_attr("seed")
                 and src_op.attr("seed")
             ):
-                _logger.info(
+                distop_logger.info(
                     "Auto Parallel Random Control Skipped Since manul seed is set by user: {}".format(
                         src_op
                     )
@@ -118,7 +114,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                     pre_op._set_attr("deterministic", True)
                     pre_op._set_attr("force_cpu", True)
                 else:
-                    _logger.info(
+                    distop_logger.info(
                         "Auto Parallel Random Control Skipped Since manul seed is set by user: {}".format(
                             src_op
                         )
