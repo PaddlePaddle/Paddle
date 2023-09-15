@@ -112,5 +112,6 @@ std::vector<std::string> PrintValueInfo(Value new_value) {
   ret_str.emplace_back(ss.str());
   ss << new_value.PrintUdChain();
   ret_str.emplace_back(ss.str());
+  return ret_str;
 }
 }  // namespace pir

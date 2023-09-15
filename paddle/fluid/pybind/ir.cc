@@ -339,6 +339,16 @@ void BindValue(py::module *m) {
            })
       .def("__hash__",
            [](const Value &self) { return std::hash<pir::Value>{}(self); })
+      .def("__str__",
+           [](const Value &self) -> py::str {
+             py::str value_info_string = "";
+             auto value_info_vec = self.PrintValueInfo(self);
+             for (auto &value_info : value_info_vec) {
+               value_info_string += value_info;
+               value_info_string += ", ";
+             }
+             return value_info_string;
+           })
       .def("print_value_info", [](const Value &self) -> py::list {
         py::list value_info_list;
         auto value_info_vec = self.PrintValueInfo(self);
