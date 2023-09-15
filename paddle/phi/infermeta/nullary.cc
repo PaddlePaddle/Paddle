@@ -23,10 +23,7 @@ void AssignValueInferMeta(const std::vector<int>& shape,
   out->set_dtype(dtype);
 }
 
-void CreateInferMeta(const IntArray& shape,
-                     DataType dtype,
-                     MetaTensor* out,
-                     MetaConfig config) {
+void CreateInferMeta(const IntArray& shape, DataType dtype, MetaTensor* out) {
   if (!shape.FromTensor()) {
     const auto& data = shape.GetData();
     for (size_t i = 0; i < data.size(); ++i) {
