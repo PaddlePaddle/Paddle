@@ -566,7 +566,7 @@ MultiplyGradNode::operator()(
         "op. If you don't intend calculating higher order"
         "derivatives, please set `create_graph`to False."));
   }
-  VLOG(6) << "Finish AD API GRAD: multiply_grad";
+  VLOG(4) << "Finish AD API GRAD: multiply_grad";
   // LOG IF DEBUG
 
   if (VLOG_IS_ON(4)) {
