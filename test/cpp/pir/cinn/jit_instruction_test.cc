@@ -83,8 +83,7 @@ TEST(CinnJitInstruction, Run) {
   platform::Place place = platform::CUDAPlace(0);
   Scope exe_scope;
 
-  InterpreterCore executor(
-      place, {}, std::move(ir_runtime_program), &exe_scope);
+  InterpreterCore executor(place, {}, ir_runtime_program->block(), &exe_scope);
   executor.SetSkipGcVars(out_names);
   executor.Run({});
 
