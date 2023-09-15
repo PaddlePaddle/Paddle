@@ -4543,6 +4543,160 @@ def moveaxis(x, source, destination, name=None):
         return out
 
 
+def masked_fill(x, mask, value, name=None):
+    """
+    Fills elements of self tensor with value where mask is True. The shape of mask must be broadcastable with the shape of the underlying tensor.
+
+    Args:
+        x (Tensor) : The Destination Tensor. Supported data types are int32,
+            int64, float32, float64.
+        mask (Tensor): The boolean tensor indicate the position to be filled.
+            The data type of mask must be bool.
+        value (Scaler or 0-D Tensor): The value used to fill the target tensor.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, same dimention and dtype with x.
+    Examples:
+        .. code-block:: python
+            >>> import paddle
+            >>> x = paddle.ones((3, 3), dtype="float32")
+            >>> # doctest: +SKIP
+            >>> mask = paddle.randint(0, 2, [3, 3]).astype('bool')
+            >>> print(mask)
+            Tensor(shape=[3, 3], dtype=bool, place=Place(gpu:0), stop_gradient=True,
+                   [[False, True , False],
+                    [False, False, False],
+                    [True , True , False]])
+            >>> out = paddle.masked_fill(x, mask, 2)
+            >>> print(out)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[1., 2., 1.],
+                    [1., 1., 1.],
+                    [2., 2., 1.]])
+    """
+    check_variable_and_dtype(
+        x,
+        'x',
+        [
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+        ],
+        'paddle.tensor.manipulation.masked_fill',
+    )
+    check_variable_and_dtype(
+        mask,
+        'mask',
+        ['bool'],
+        'paddle.tensor.manipulation.masked_fill',
+    )
+
+    if in_dynamic_mode():
+        value_tensor = paddle.full_like(x, value)
+        out = paddle.where(mask, value_tensor, x)
+        return out
+    else:
+        helper = LayerHelper("masked_fill", **locals())
+
+        dtype = x.dtype
+        check_dtype(
+            dtype,
+            'dtype',
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+                'uint16',
+            ],
+            'full_like',
+        )
+
+        value_tensor = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type='fill_any_like',
+            inputs={'X': [x]},
+            attrs={'value': value, "dtype": x.dtype},
+            outputs={'Out': [value_tensor]},
+        )
+
+        out = helper.create_variable_for_type_inference(x.dtype)
+
+        mask_shape = list(mask.shape)
+        value_shape = list(value_tensor.shape)
+        x_shape = list(x.shape)
+
+        if value_shape == x_shape and mask_shape == value_shape:
+            broadcast_mask = mask
+            broadcast_value = value_tensor
+            broadcast_x = x
+        else:
+            zeros_like_value = paddle.zeros_like(value_tensor)
+            zeros_like_x = paddle.zeros_like(x)
+            zeros_like_mask = paddle.zeros_like(mask)
+            zeros_like_mask = paddle.cast(zeros_like_mask, value_tensor.dtype)
+            cast_cond = paddle.cast(mask, x.dtype)
+
+            broadcast_zeros = paddle.add(zeros_like_value, zeros_like_x)
+            broadcast_zeros = paddle.add(broadcast_zeros, zeros_like_mask)
+            broadcast_value = paddle.add(value_tensor, broadcast_zeros)
+            broadcast_x = paddle.add(x, broadcast_zeros)
+            broadcast_mask = paddle.add(cast_cond, broadcast_zeros)
+            broadcast_mask = paddle.cast(broadcast_mask, 'bool')
+
+        helper.append_op(
+            type='where',
+            inputs={
+                'Condition': broadcast_mask,
+                'X': broadcast_value,
+                'Y': broadcast_x,
+            },
+            outputs={'Out': [out]},
+        )
+
+        return out
+
+
+@inplace_apis_in_dygraph_only
+def masked_fill_(x, mask, value, name=None):
+    """
+    Inplace version of ``masked_fill`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_masked_fill`.
+    Examples:
+        .. code-block:: python
+            >>> import paddle
+            >>> input_tensor = paddle.ones((3, 3), dtype="float32")
+            >>> mask_tensor = paddle.to_tensor([[True, False, True],
+            ... [False, True, False],
+            ... [True, False, True]])
+            >>> inplace_res = paddle.masked_fill_(input_tensor, mask_tensor, 0)
+            >>> print(inplace_res)
+    """
+    if in_dynamic_mode():
+        check_variable_and_dtype(
+            x,
+            'x',
+            ['float32', 'float64', 'int32', 'int64'],
+            'paddle.tensor.manipulation.masked_fill',
+        )
+        check_variable_and_dtype(
+            mask,
+            'mask',
+            ['bool'],
+            'paddle.tensor.manipulation.masked_fill',
+        )
+        value_tensor = paddle.full_like(x, value)
+        out = paddle.where(mask, value_tensor, x)
+        return out
+
+
 def non_negative_axis(arr, axis):
     ndim = len(arr.shape)
     if axis >= 0:
