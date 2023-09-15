@@ -157,7 +157,6 @@ equation::GraphView MakeEquationGraphView(const std::shared_ptr<IGroup>& igroup,
   return GenerateSdEquationGraphView(igroup, sd);
 }
 
-using TensorIndex = equation::Variable;
 using TensorIndexExpr = equation::Value;
 
 std::unordered_map<equation::Variable, const equation::Value>

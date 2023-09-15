@@ -53,6 +53,6 @@ MapIrList GenerateMapIrListForLoopFuse(
     const std::function<const LoopDescriptor&(const equation::IterVar&)>&
         GetLoopDescriptor,
     const std::function<const m_expr::TensorIndexExpr&(const m_expr::Tensor&)>&
-        TensorIndexExpr4Tensor)
+        TensorIndexExpr4Tensor);
 
 }  // namespace cinn::adt::m_ir
