@@ -1013,15 +1013,14 @@ class DistForwardAPI(ForwardAPI):
         if inplace_flag and api_func_name[-1] != '_':
             api_func_name += '_'
 
+        # All apis contains auto parallel branch default.
+        # Auto parallel branch has following restrictions:
+        # 1. doesn't support initialize ops now
+        # 2. doesn't support stride/view api
+        # 3. only for general forward and backward
+        # 4. doesn't support double grad and triple grad
+        # 5. for multi kernels functions, doesn't support sparse kernel
         if len(self.kernel['func']) > 1:
-            # auto parallel branch, all apis contains this branch default
-            # 1. only works for the ops contains single kernel
-            # 2. doesn't support initialize ops now
-            # 3. doesn't support view api
-            # 4. only for general forward and backward
-            # 5. only support single tensor input and output
-            # 6. doesn't support double grad and triple grad
-            # 7. for multi kernels functions, doesn't support sparse kernel
             kernel_dispatch_code = ''
             dist_branch_code = ""
             for kernel_name in self.kernel['func']:
@@ -1050,13 +1049,6 @@ class DistForwardAPI(ForwardAPI):
                 + DIPATCH_END_GUARD_TEMPLATE.format(self.api),
             )
         else:
-            # auto parallel branch, all apis contains this branch default
-            # 1. only works for the ops contains single kernel
-            # 2. doesn't support initialize ops now
-            # 3. doesn't support view api
-            # 4. only for general forward and backward
-            # 5. only support single tensor input and output
-            # 6. doesn't support double grad and triple grad
             dist_branch_code = ""
             if (
                 len(self.inputs['names']) > 0
