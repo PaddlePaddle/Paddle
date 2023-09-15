@@ -65,7 +65,6 @@ class ParserTest {
 };
 
 TestTask* ParserTest::GetTestTask() {
-  std::string test_info;
   while (test_text.peek() == '\n' || test_text.peek() == ' ') {
     test_text.get();
   }
@@ -85,12 +84,15 @@ TestTask* ParserTest::GetTestTask() {
   test_text.get();
 
   std::string test_type_info;
-  while (test_text.peek() != '\n') {
+  while (test_text.peek() != '\n' && test_text.peek() != ' ') {
     test_type_info += test_text.get();
   }
 
-  test_text.get();
+  while (test_text.peek() == '\n' || test_text.peek() == ' ') {
+    test_text.get();
+  }
 
+  std::string test_info;
   while (Peek(5) != "//END") {
     test_info += test_text.get();
   }
@@ -154,10 +156,11 @@ bool ParserTest::ConsumeTestTask(TestTask* test_task, pir::IrContext* ctx) {
 std::string ParserTest::Peek(const size_t len) {
   std::string str;
   str = Get(len);
+  int actual_length = str.size();
   if (test_text.eof()) {
     test_text.clear();
   }
-  test_text.seekg(-str.length(), std::ios::cur);
+  test_text.seekg(-actual_length, std::ios::cur);
   return str;
 }
 
