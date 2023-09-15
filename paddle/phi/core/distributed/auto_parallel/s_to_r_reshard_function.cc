@@ -44,9 +44,7 @@ bool SToRReshardFunction::IsSuitable(const DistTensor& in,
 
   // Ensure the tensor is balanced split, or we need send/recv rather than
   // all_gather
-  std::map<int64_t, int64_t> split_axis_to_mesh_axis =
-      GetSplitAxisWithDimsMapping(in_dims_mapping);
-  int64_t split_axis = split_axis_to_mesh_axis.begin()->first;
+  int split_axis = GetSplitAxisWithDimsMapping(in_dims_mapping).begin()->first;
   int64_t num_of_process = in_process_mesh.size();
   flag &= (in.local_dims()[static_cast<int>(split_axis)] * num_of_process ==
            in.dims()[static_cast<int>(split_axis)]);
@@ -74,9 +72,7 @@ void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
                             in.value(),
                             in_process_ids.size(),
                             GetMutableTensor(out));
-  std::map<int64_t, int64_t> split_axis_to_mesh_axis =
-      GetSplitAxisWithDimsMapping(in_dims_mapping);
-  int64_t split_axis = split_axis_to_mesh_axis.begin()->first;
+  int split_axis = GetSplitAxisWithDimsMapping(in_dims_mapping).begin()->first;
 
   if (split_axis == 0) {
     // If the input dist tensor is shard(0), the subsequent split

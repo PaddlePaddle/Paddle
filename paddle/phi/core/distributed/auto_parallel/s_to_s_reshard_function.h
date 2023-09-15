@@ -14,23 +14,24 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
 
 namespace phi {
+namespace distributed {
 
-template <typename T, typename Context>
-void AllToAllKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    DenseTensor* out);
+class SToSReshardFunction final : public ReshardFunction {
+ public:
+  SToSReshardFunction() = default;
+  ~SToSReshardFunction() = default;
 
-template <typename T, typename Context>
-void AllToAll(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
-  MetaTensor out_meta(*out);
-  MetaTensor* out_meta_ptr = &out_meta;
+  bool IsSuitable(const DistTensor& in,
+                  const TensorDistAttr& out_dist_attr) override;
 
-  AllToAllInferMeta(phi::MetaTensor(x), out_meta_ptr);
-  AllToAllKernel<T, Context>(dev_ctx, x, out);
-}
+  void Eval(DeviceContext* dev_ctx,
+            const DistTensor& in,
+            const TensorDistAttr& out_dist_attr,
+            DistTensor* out) override;
+};
 
+}  // namespace distributed
 }  // namespace phi
