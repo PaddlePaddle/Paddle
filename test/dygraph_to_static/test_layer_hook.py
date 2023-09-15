@@ -17,6 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
 
@@ -65,6 +66,7 @@ class TestNestLayerHook(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_and_compare_with_new_ir(True)
     def train_net(self, to_static=False):
         paddle.seed(2022)
         net = SimpleNet()

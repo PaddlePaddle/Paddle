@@ -14,7 +14,7 @@
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle.framework import core
+from paddle.framework import core, in_dynamic_or_pir_mode
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ...base.data_feeder import check_dtype, check_variable_and_dtype
@@ -189,7 +189,7 @@ def gelu(x, approximate=False, name=None):
              [ 0.84119201,  1.39957154]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.gelu(x, approximate)
     else:
         check_variable_and_dtype(
@@ -1053,7 +1053,7 @@ def silu(x, name=None):
             [0.73105860, 1.76159406, 2.85772228, 3.92805505])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.silu(x)
     else:
         check_variable_and_dtype(

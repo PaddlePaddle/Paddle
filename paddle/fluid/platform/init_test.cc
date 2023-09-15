@@ -55,6 +55,6 @@ TEST(InitDevices, XPU) {
 #ifndef _WIN32
 TEST(SignalHandle, SignalHandle) {
   std::string msg = "Signal raises";
-  paddle::framework::SignalHandle(msg.c_str(), msg.size());
+  paddle::framework::SignalHandle(msg.c_str(), static_cast<int>(msg.size()));
 }
 #endif
