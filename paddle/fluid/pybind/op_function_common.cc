@@ -245,7 +245,7 @@ phi::dtype::complex<float> CastPyArg2Complex(PyObject* obj,
   if (PyComplex_Check(obj)) {
     double real = PyComplex_RealAsDouble(obj);
     double imag = PyComplex_ImagAsDouble(obj);
-    return phi::dtype::complex<float>(real, imag);
+    return phi::dtype::complex<float>(real, imag);  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
