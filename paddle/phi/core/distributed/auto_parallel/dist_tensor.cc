@@ -63,6 +63,14 @@ void DistTensor::unsafe_set_dims(const DDim& dims) {
   dims_ = dims;
 }
 
+void DistTensor::unsafe_set_dist_attr(const TensorDistAttr& dist_attr) {
+  if (this->initialized()) {
+    VLOG(3) << "You try to set an initialized DistTensor's dist attr. "
+               "Make sure you are aware of where you change its dist attr.";
+  }
+  dist_attr_ = dist_attr;
+}
+
 int64_t DistTensor::numel() const {
   check_defined(*this, "numel");
   return value_.numel();

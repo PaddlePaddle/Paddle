@@ -67,6 +67,12 @@ SINGLE_DIST_META_IN_TEMPLATE = """
 INFER_SPMD_TEMPLATE = """
     auto spmd_info = phi::distributed::{}({});
 """
+GENERAL_INFER_SPMD_TEMPLATE = """
+    auto spmd_info = phi::distributed::PhiReplicatedSpmdInferForward({});
+"""
+UNSUPPORTED_INFER_SPMD_COMMENT_TEMPLATE = """
+    // API `{}` does not support InferSpmd now
+"""
 
 # 2. Create API Outputs
 API_OUT_CREATION_TEMPLATE = """
@@ -176,6 +182,9 @@ KERNEL_SELECTION_TEMPLATE = """
 # 5. Reshard Input
 SINGLE_INPUT_RESHARD_TEMPLATE = """
     auto dist_input_{arg} = ReshardApiInputToKernelInput(dev_ctx, {arg}, spmd_info.first[{idx}]);"""
+UNSUPPORTED_RESHARD_INPUT_COMMENT_TEMPLATE = """
+    // API `{}` does not need to support ReshardInput at this time
+"""
 
 # 6. PrepareData
 SINGLE_PREPARE_DATA_TEMPLATE = """
@@ -286,6 +295,9 @@ RESHARD_P2R_SINGLE_OUTPUT_TEMPLATE = """
     ReshardOutputPartialAxisToReplicated(dev_ctx, dist_out);"""
 RESHARD_P2R_MULTI_SINGLE_OUTPUT_TEMPLATE = """
     ReshardOutputPartialAxisToReplicated(dev_ctx, dist_out_{});"""
+UNSUPPORTED_RESHARD_OUTPUT_COMMENT_TEMPLATE = """
+    // API `{}` does not need to support ReshardOutput now
+"""
 
 # BaseAPI members:
 # inputs:
@@ -335,6 +347,8 @@ class DistForwardAPI(ForwardAPI):
         self.inplace_flag = False
         self.dist_output_args = []
         self.dense_output_args = []
+        self.generate_infer_spmd = False
+        self.generate_general_infer_spmd = False
 
     # override BaseAPI's method
     def parse_infer_meta(self, infer_meta_config):
@@ -382,48 +396,103 @@ class DistForwardAPI(ForwardAPI):
             input_args = input_args[:-2]
         return AUTO_PARALLEL_COND_TEMPLATE.format(input_args)
 
+    def generate_specialized_infer_spmd_code(self) -> str:
+        input_names = self.inputs['names']
+        attr_names = self.attrs['names']
+
+        # TODO(chenweihang): here we need use infer_meta params,
+        # if it is inconsistent, you need to change the infermeta func
+        kernel_param = self.kernel['param']
+        if kernel_param is None:
+            kernel_param = input_names + attr_names
+
+        input_decl_code = ""
+        input_args_code = ""
+        for param in kernel_param:
+            if param in input_names:
+                if self.inputs['input_info'][param] == "const Tensor&":
+                    input_decl_code += SINGLE_DIST_META_IN_TEMPLATE.format(
+                        param, param
+                    )
+                    input_args_code += "meta_dist_" + param + ", "
+                else:
+                    raise ValueError(
+                        f"{self.api} : Param of infer_spmd error : {self.inputs['input_info'][param]} type is not supported."
+                    )
+            elif param in attr_names:
+                input_args_code = input_args_code + param + ", "
+            elif isinstance(param, str):
+                input_args_code = input_args_code + "\"" + param + "\", "
+            elif isinstance(param, bool):
+                input_args_code = input_args_code + str(param).lower() + ", "
+            else:
+                input_args_code = input_args_code + str(param) + ", "
+
+        infer_spmd_code = ""
+        infer_spmd_func_code = self.infer_meta['spmd_rule']
+        infer_spmd_code = INFER_SPMD_TEMPLATE.format(
+            infer_spmd_func_code, input_args_code[:-2]
+        )
+        self.generate_infer_spmd = True
+
+        return input_decl_code + infer_spmd_code
+
+    def generate_general_infer_spmd_code(self) -> str:
+        input_names = self.inputs['names']
+        attr_names = self.attrs['names']
+
+        infer_meta_params = (
+            self.infer_meta['param']
+            if self.infer_meta['param'] is not None
+            else input_names + attr_names
+        )
+
+        input_decl_code = ""
+        input_args_code = ""
+        for param in infer_meta_params:
+            if param in input_names:
+                if self.inputs['input_info'][param] == "const Tensor&":
+                    input_decl_code += SINGLE_DIST_META_IN_TEMPLATE.format(
+                        param, param
+                    )
+                    input_args_code += "meta_dist_" + param + ", "
+                elif (
+                    self.inputs['input_info'][param]
+                    == "const std::vector<Tensor>&"
+                    or self.inputs['input_info'][param]
+                    == "const paddle::optional<Tensor>&"
+                    or self.inputs['input_info'][param]
+                    == "const paddle::optional<std::vector<Tensor>>&"
+                ):
+                    # TODO(chenweihang): support other input type later,
+                    # now only support single tensor input api
+                    input_decl_code = ""
+                    input_args_code = ""
+                    break
+                else:
+                    raise ValueError(
+                        f"{self.api} : Param of infer_spmd error : {self.inputs['input_info'][param]} type is not supported."
+                    )
+            else:
+                # do nothing
+                pass
+
+        if input_decl_code == "":
+            return UNSUPPORTED_INFER_SPMD_COMMENT_TEMPLATE.format(self.api)
+
+        infer_spmd_code = GENERAL_INFER_SPMD_TEMPLATE.format(
+            input_args_code[:-2]
+        )
+        self.generate_infer_spmd = True
+        self.generate_general_infer_spmd = True
+
+        return input_decl_code + infer_spmd_code
+
     def generate_infer_spmd_code(self) -> str:
         if self.infer_meta['spmd_rule'] is not None:
-            input_names = self.inputs['names']
-            attr_names = self.attrs['names']
-            kernel_param = self.kernel['param']
-            if kernel_param is None:
-                kernel_param = input_names + attr_names
-
-            input_decl_code = ""
-            input_args_code = ""
-            for param in kernel_param:
-                if param in input_names:
-                    if self.inputs['input_info'][param] == "const Tensor&":
-                        input_decl_code += SINGLE_DIST_META_IN_TEMPLATE.format(
-                            param, param
-                        )
-                        input_args_code += "meta_dist_" + param + ", "
-                    else:
-                        raise ValueError(
-                            f"{self.api} : Param of infer_spmd error : {self.inputs['input_info'][param]} type is not supported."
-                        )
-                elif param in attr_names:
-                    input_args_code = input_args_code + param + ", "
-                elif isinstance(param, str):
-                    input_args_code = input_args_code + "\"" + param + "\", "
-                elif isinstance(param, bool):
-                    input_args_code = (
-                        input_args_code + str(param).lower() + ", "
-                    )
-                else:
-                    input_args_code = input_args_code + str(param) + ", "
-
-            # TODO(chenweihang): add general spmd rule later
-            infer_spmd_code = ""
-            infer_spmd_func_code = self.infer_meta['spmd_rule']
-            infer_spmd_code = INFER_SPMD_TEMPLATE.format(
-                infer_spmd_func_code, input_args_code[:-2]
-            )
-
-            return input_decl_code + infer_spmd_code
+            return self.generate_specialized_infer_spmd_code()
         else:
-            return ""
+            return self.generate_general_infer_spmd_code()
 
     def generate_output_creation_code(self) -> str:
         # forward api need to generate api and kernel outputs
@@ -634,15 +703,16 @@ class DistForwardAPI(ForwardAPI):
 
     def generate_reshard_input_code(self) -> str:
         input_reshard_code = ""
-        if self.infer_meta['spmd_rule'] is not None:
+        if self.generate_infer_spmd is True:
             input_names = self.inputs['names']
 
-            kernel_params = (
-                self.kernel['param']
-                if self.kernel['param'] is not None
+            infer_meta_params = (
+                self.infer_meta['param']
+                if self.infer_meta['param'] is not None
                 else input_names
             )
-            for i, param in enumerate(kernel_params):
+
+            for i, param in enumerate(infer_meta_params):
                 if param in input_names:
                     if self.inputs['input_info'][param] == "const Tensor&":
                         input_reshard_code += (
@@ -658,8 +728,10 @@ class DistForwardAPI(ForwardAPI):
                     # do nothing
                     pass
         else:
-            # do nothingd
-            pass
+            input_reshard_code = (
+                UNSUPPORTED_RESHARD_INPUT_COMMENT_TEMPLATE.format(self.api)
+            )
+
         return input_reshard_code
 
     def generate_single_dense_input(
@@ -802,7 +874,6 @@ class DistForwardAPI(ForwardAPI):
     def generate_infer_meta_code(self) -> str:
         input_names = self.inputs['names']
         attr_names = self.attrs['names']
-        output_names = self.outputs['names']
 
         # 1. get infer meta func name
         infer_meta = self.infer_meta
@@ -989,8 +1060,9 @@ class DistForwardAPI(ForwardAPI):
                     )
                 )
         else:
-            # do nothing
-            pass
+            reshard_p2r_code = (
+                UNSUPPORTED_RESHARD_OUTPUT_COMMENT_TEMPLATE.format(self.api)
+            )
 
         return reshard_p2r_code
 
