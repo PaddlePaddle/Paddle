@@ -292,7 +292,7 @@ def search_all(tuner_cfg):
     return new_all_cfgs
 
 
-def gen_new_args(raw_args, cfg, tuner_cfg):
+def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
     """Generate new script args."""
 
     def _gen_new_arg(arg, cmd, cfg, res_args, tuner_cfg):
@@ -455,6 +455,86 @@ def gen_new_args(raw_args, cfg, tuner_cfg):
     _gen_new_arg("recompute_granularity", cmd, cfg, res_args, tuner_cfg)
     _gen_new_arg("local_batch_size", cmd, cfg, res_args, tuner_cfg)
     _gen_new_arg("gradient_accumulation_steps", cmd, cfg, res_args, tuner_cfg)
+
+    if tuner_cfg["run_cmd"].get("search_stage", None) and not run_best:
+        cmd = copy.deepcopy(tuner_cfg["run_cmd"]["search_stage"])
+        for arg in cmd:
+            if "--" in cmd[arg][0]:
+                res_args.extend(cmd[arg])
+            elif "-o" in cmd[arg][0]:
+                res_args.extend(cmd[arg])
+            elif ".json" in cmd[arg][0]:
+                import json
+
+                file_path = cmd[arg][0]
+                try:
+                    with open(file_path, "r") as f:
+                        cmd_cfg = json.load(f)
+                except:
+                    raise ValueError(
+                        "Please check your auto tuner json whether valid."
+                    )
+                keys = cmd[arg][1].split(".")
+                for key in keys[: len(keys) - 1]:
+                    cmd_cfg = cmd_cfg[key]
+                cmd_cfg[keys[-1]] = cmd[arg][2]
+                json.dump(cmd_cfg, open(cmd[arg][0], "w"))
+            elif ".yaml" in cmd[arg][0]:
+                import yaml
+
+                file_path = cmd[arg][0]
+                try:
+                    with open(file_path, "r") as f:
+                        cmd_cfg = yaml.safe_load(f)
+                except:
+                    raise ValueError(
+                        "Please check your auto tuner json whether valid."
+                    )
+                keys = cmd[arg][1].split(".")
+                for key in keys[: len(keys) - 1]:
+                    cmd_cfg = cmd_cfg[key]
+                cmd_cfg[keys[-1]] = cmd[arg][2]
+                yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
+
+    if tuner_cfg["run_cmd"].get("run_best_stage", None) and run_best:
+        cmd = copy.deepcopy(tuner_cfg["run_cmd"]["run_best_stage"])
+        for arg in cmd:
+            if "--" in cmd[arg][0]:
+                res_args.extend(cmd[arg])
+            elif "-o" in cmd[arg][0]:
+                res_args.extend(cmd[arg])
+            elif ".json" in cmd[arg][0]:
+                import json
+
+                file_path = cmd[arg][0]
+                try:
+                    with open(file_path, "r") as f:
+                        cmd_cfg = json.load(f)
+                except:
+                    raise ValueError(
+                        "Please check your auto tuner json whether valid."
+                    )
+                keys = cmd[arg][1].split(".")
+                for key in keys[: len(keys) - 1]:
+                    cmd_cfg = cmd_cfg[key]
+                cmd_cfg[keys[-1]] = cmd[arg][2]
+                json.dump(cmd_cfg, open(cmd[arg][0], "w"))
+            elif ".yaml" in cmd[arg][0]:
+                import yaml
+
+                file_path = cmd[arg][0]
+                try:
+                    with open(file_path, "r") as f:
+                        cmd_cfg = yaml.safe_load(f)
+                except:
+                    raise ValueError(
+                        "Please check your auto tuner json whether valid."
+                    )
+                keys = cmd[arg][1].split(".")
+                for key in keys[: len(keys) - 1]:
+                    cmd_cfg = cmd_cfg[key]
+                cmd_cfg[keys[-1]] = cmd[arg][2]
+                yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
 
     return res_args
 

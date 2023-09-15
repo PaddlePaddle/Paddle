@@ -789,7 +789,7 @@ def launch():
         ctx.logger.info(f"AutoTuner ends in {end_time-start_time}s.")
         logger.info(f"AutoTuner ends in {end_time-start_time}s.")
         # launch best cfg
-        new_args = gen_new_args(raw_args, best_cfg, tuner_cfg)
+        new_args = gen_new_args(raw_args, best_cfg, tuner_cfg, run_best=True)
         ctx.run_best = True
         ctx.args.training_script_args = new_args
         ctx.args.job_id = "best_cfg"
