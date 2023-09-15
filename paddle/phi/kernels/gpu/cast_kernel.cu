@@ -17,7 +17,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/gpu/cast_impl.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -26,18 +25,12 @@ void CastKernel(const Context& dev_ctx,
                 DataType out_dtype,
                 DenseTensor* out) {
   if (out->IsSharedWith(x)) {
-    PD_VISIT_ALL_TYPES(out_dtype, "CastInplaceCUDAKernelImpl", ([&] {
-                         CastInplaceCUDAKernelImpl<T, data_t>(
-                             dev_ctx, x, out_dtype, out);
-                       }));
+    auto x_origin = x;
+    CastCUDAKernel<T>(dev_ctx, x_origin, out_dtype, out);
   } else {
-    PD_VISIT_ALL_TYPES(out_dtype, "CastCUDAKernelImpl", ([&] {
-                         CastCUDAKernelImpl<T, data_t>(
-                             dev_ctx, x, out_dtype, out);
-                       }));
+    CastCUDAKernel<T>(dev_ctx, x, out_dtype, out);
   }
 }
-
 }  // namespace phi
 
 #define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...)        \
