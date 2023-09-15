@@ -87,9 +87,7 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
     difference = x - mean_
     var_tmp1 = difference * difference
     variance = mean(var_tmp1, axis=axis, keepdim=True)
-    ep = full(variance.shape, epsilon, variance.dtype)
-    var_tmp3 = variance + ep
-    # var_tmp3 = variance + epsilon
+    var_tmp3 = variance + epsilon
     rsqrt_var = rsqrt(var_tmp3)
     out = difference * rsqrt_var
 
