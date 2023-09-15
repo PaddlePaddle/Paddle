@@ -84,7 +84,7 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
                                        uint64_t end_id,
                                        pir::Block* dest_block) {
   PADDLE_ENFORCE(
-      (src_block.OpSize() > end_id) && (start_id < = end_id),
+      (src_block.OpSize() > end_id) && (start_id <= end_id),
       platform::errors::NotFound(
           "Translation of Block needs to meet the requirements of start_id < "
           "end_id < block_size, but get start_id=%d, end_id=%d, block_size=%d",
@@ -246,8 +246,11 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
           }
 
           if (param_map_[var_name].generated_by_vector) {
-            InsertSliceOperationForTarget(
-                ctx_, &param_map_, program_, param_map_[var_name], var_name);
+            InsertSliceOperationForTarget(ctx_,
+                                          &param_map_,
+                                          program_->block(),
+                                          param_map_[var_name],
+                                          var_name);
             defining_op_result = param_map_.at(var_name).value;
           }
 
