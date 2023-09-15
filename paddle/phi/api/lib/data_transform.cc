@@ -16,22 +16,22 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#endif
 
-DECLARE_bool(use_stride_kernel);
+PHI_DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace experimental {
@@ -157,6 +157,26 @@ inline phi::DenseTensor TransDataType(const phi::DenseTensor& tensor,
   } else if (tensor.place().GetType() == phi::AllocationType::GPU) {
     auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(tensor.place()));
     return CastDataType(*dev_ctx, tensor, dtype);
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  } else if (tensor.place().GetType() == phi::AllocationType::CUSTOM) {
+    phi::DenseTensor out;
+    out.Resize(tensor.dims());
+    auto* dev_ctx = static_cast<phi::CustomContext*>(pool.Get(tensor.place()));
+    auto kernel_result =
+        phi::KernelFactory::Instance().SelectKernelOrThrowError(
+            "cast",
+            {phi::TransToPhiBackend(tensor.place()),
+             phi::DataLayout::ALL_LAYOUT,
+             tensor.dtype()});
+    using kernel_signature = void (*)(const phi::DeviceContext&,
+                                      const phi::DenseTensor&,
+                                      phi::DataType,
+                                      phi::DenseTensor*);
+    const auto& kernel = kernel_result.kernel;
+    auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+    (*kernel_fn)(*dev_ctx, tensor, dtype, &out);
+    return out;
 #endif
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
@@ -577,18 +597,47 @@ void TransDataBackend(const phi::SelectedRows* tensor,
   }
 }
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 /* ------------------ for auto parallel ----------------------- */
+
+std::shared_ptr<phi::distributed::DistTensor> ReshardDistTensor(
+    phi::DeviceContext* dev_ctx,
+    const Tensor& tensor,
+    const phi::distributed::TensorDistAttr& dist_attr) {
+  auto tensor_in = tensor.impl();
+  if (tensor_in) {
+    phi::distributed::DistTensor* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(tensor_in.get());
+    if (dist_tensor->dist_attr() != dist_attr) {
+      VLOG(6) << "Reshard tensor from " << dist_tensor->dist_attr() << " to "
+              << dist_attr;
+      auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
+                                                                 dist_attr);
+      return func->Eval(dev_ctx, *dist_tensor, dist_attr);
+    }
+    return std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in);
+  }
+  return nullptr;
+}
 
 std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
     const Tensor& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag,
     bool is_stride_kernel) {
-  const auto& tensor_in = input.impl();
-  if (tensor_in) {
-    phi::distributed::DistTensor* dist_tensor =
-        static_cast<phi::distributed::DistTensor*>(tensor_in.get());
+  return PrepareDataForDistTensor(
+      std::static_pointer_cast<phi::distributed::DistTensor>(input.impl()),
+      target_args_def,
+      transform_flag,
+      is_stride_kernel);
+}
+
+std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
+    const std::shared_ptr<phi::distributed::DistTensor>& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel) {
+  if (input) {
+    phi::distributed::DistTensor* dist_tensor = input.get();
     const phi::DenseTensor& dense_tensor = dist_tensor->value();
     if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
         (!NeedTransformPlace(
@@ -601,20 +650,87 @@ std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
                               transform_flag) &&
          !NeedTransform2Contiguous(is_stride_kernel,
                                    dense_tensor.meta().is_contiguous()))) {
-      return std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in);
+      return input;
     }
-    phi::DenseTensor out = TransformData(
-        dense_tensor, target_args_def, transform_flag, is_stride_kernel);
     // TODO(chenweihang): The global meta in DistTensor is not changed,
     // but the local meta in DenseTensor maybe changed, such as layout
     // change(NCHW->NHWC), so the new DistTensor's meta maybe not unified.
     VLOG(6) << "PrepareDataForDistTensor return transformed dist tensor";
-    return std::make_shared<phi::distributed::DistTensor>(
-        out, dist_tensor->dist_attr());
+    auto dist_out = std::make_shared<phi::distributed::DistTensor>(
+        dist_tensor->dims(), dist_tensor->dist_attr());
+    auto* out = dist_out->unsafe_mutable_value();
+    *out = TransformData(
+        dense_tensor, target_args_def, transform_flag, is_stride_kernel);
+    return dist_out;
   }
   return nullptr;
 }
-#endif
+
+std::vector<std::shared_ptr<phi::distributed::DistTensor>>
+PrepareDataForDistTensor(const std::vector<Tensor>& input,
+                         const phi::TensorArgDef& target_args_def,
+                         const TransformFlag& transform_flag,
+                         bool is_stride_kernel) {
+  std::vector<std::shared_ptr<phi::distributed::DistTensor>> out;
+  for (auto& x : input) {
+    const auto& tensor_in = x.impl();
+    if (tensor_in) {
+      phi::distributed::DistTensor* dist_tensor =
+          static_cast<phi::distributed::DistTensor*>(tensor_in.get());
+      const phi::DenseTensor& dense_tensor = dist_tensor->value();
+      if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
+          (!NeedTransformPlace(
+               dense_tensor.place(), target_args_def.backend, transform_flag) &&
+           !NeedTransformDataType(
+               dense_tensor.dtype(), target_args_def.dtype, transform_flag) &&
+           !NeedTransformLayout(dense_tensor.layout(),
+                                target_args_def.layout,
+                                dense_tensor.place(),
+                                transform_flag) &&
+           !NeedTransform2Contiguous(is_stride_kernel,
+                                     dense_tensor.meta().is_contiguous()))) {
+        out.push_back(
+            std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in));
+      } else {
+        phi::DenseTensor trans_in_tensor = TransformData(
+            dense_tensor, target_args_def, transform_flag, is_stride_kernel);
+        // TODO(GhostScreaming): The global meta in DistTensor is not changed,
+        // but the local meta in DenseTensor maybe changed, such as layout
+        // change(NCHW->NHWC), so the new DistTensor's meta maybe not unified.
+        VLOG(6) << "PrepareDataForDistTensor return transformed dist tensor";
+        out.push_back(std::make_shared<phi::distributed::DistTensor>(
+            trans_in_tensor, dist_tensor->dist_attr()));
+      }
+    } else {
+      out.push_back(nullptr);
+    }
+  }
+  return out;
+}
+
+paddle::optional<phi::distributed::DistTensor> PrepareDataForDistTensor(
+    const paddle::optional<Tensor>& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel) {
+  if (input) {
+    return {*PrepareDataForDistTensor(
+        *input, target_args_def, transform_flag, is_stride_kernel)};
+  }
+  return paddle::none;
+}
+
+paddle::optional<std::vector<std::shared_ptr<phi::distributed::DistTensor>>>
+PrepareDataForDistTensor(const paddle::optional<std::vector<Tensor>>& input,
+                         const phi::TensorArgDef& target_args_def,
+                         const TransformFlag& transform_flag,
+                         bool is_stride_kernel) {
+  if (input) {
+    return PrepareDataForDistTensor(
+        *input, target_args_def, transform_flag, is_stride_kernel);
+  }
+  return paddle::none;
+}
 
 }  // namespace experimental
 }  // namespace paddle

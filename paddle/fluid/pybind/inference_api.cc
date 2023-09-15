@@ -245,6 +245,8 @@ paddle_infer::PlaceType ToPaddleInferPlace(
     return paddle_infer::PlaceType::kGPU;
   } else if (allocation_type == phi::AllocationType::XPU) {
     return paddle_infer::PlaceType::kXPU;
+  } else if (allocation_type == phi::AllocationType::CUSTOM) {
+    return paddle_infer::PlaceType::kCUSTOM;
   } else {
     return paddle_infer::PlaceType::kCPU;
   }
@@ -254,7 +256,7 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
                                   phi::DenseTensor input_tensor) {
   std::vector<int> shape;
   for (int i = 0; i < input_tensor.dims().size(); ++i) {
-    shape.push_back(input_tensor.dims()[i]);
+    shape.push_back(input_tensor.dims()[i]);  // NOLINT
   }
   if (input_tensor.dtype() == phi::DataType::FLOAT64) {
     tensor.ShareExternalData(
@@ -302,7 +304,7 @@ void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
                                    paddle::Tensor &&paddle_tensor) {
   std::vector<int> shape;
   for (int i = 0; i < paddle_tensor.dims().size(); ++i) {
-    shape.push_back(paddle_tensor.dims()[i]);
+    shape.push_back(paddle_tensor.dims()[i]);  // NOLINT
   }
 
   if (paddle_tensor.dtype() == phi::DataType::FLOAT64) {
@@ -544,7 +546,8 @@ void BindInferenceApi(py::module *m) {
          py::arg("mixed_precision"),
          py::arg("backend"),
          py::arg("keep_io_types") = true,
-         py::arg("black_list") = std::unordered_set<std::string>());
+         py::arg("black_list") = std::unordered_set<std::string>(),
+         py::arg("white_list") = std::unordered_set<std::string>());
 }
 
 namespace {
@@ -777,6 +780,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("exp_enable_use_cutlass", &AnalysisConfig::Exp_EnableUseCutlass)
       .def("exp_disable_mixed_precision_ops",
            &AnalysisConfig::Exp_DisableMixedPrecisionOps)
+      .def("exp_enable_mixed_precision_ops",
+           &AnalysisConfig::Exp_EnableMixedPrecisionOps)
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def("set_exec_stream",
            [](AnalysisConfig &self, phi::CUDAStream &stream) {
@@ -893,7 +898,8 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::tensorrt_dynamic_shape_enabled)
       .def("mark_trt_engine_outputs",
            &AnalysisConfig::MarkTrtEngineOutputs,
-           py::arg("output_tensor_names") = std::vector<std::string>({}))
+           py::arg("output_tensor_names") = std::vector<std::string>({}),
+           py::arg("mark_output_with_id") = false)
       .def("enable_tensorrt_varseqlen", &AnalysisConfig::EnableVarseqlen)
       .def("tensorrt_varseqlen_enabled",
            &AnalysisConfig::tensorrt_varseqlen_enabled)
@@ -971,19 +977,19 @@ void BindAnalysisConfig(py::module *m) {
       .def("disable_mkldnn_fc_passes",
            &AnalysisConfig::DisableMkldnnFcPasses,
            R"DOC(
-           Disable Mkldnn FC
-           Args:
+            Disable Mkldnn FC
+            Returns:
                 None.
-           Returns:
-                None.
-           Examples:
-               .. code-block:: python
-                from paddle.inference import Config
 
-                config = Config("")
-                config.enable_mkldnn()
-                config.disable_mkldnn_fc_passes()
-           )DOC")
+            Examples:
+                .. code-block:: python
+
+                    >>> from paddle.inference import Config
+
+                    >>> config = Config("")
+                    >>> config.enable_mkldnn()
+                    >>> config.disable_mkldnn_fc_passes()
+            )DOC")
 #endif
       .def("set_mkldnn_op", &AnalysisConfig::SetMKLDNNOp)
       .def("set_model_buffer", &AnalysisConfig::SetModelBuffer)

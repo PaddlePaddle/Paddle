@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, OpTestTool, skip_check_grad_ci
+from op_test import OpTest, OpTestTool, skip_check_grad_ci
 
 import paddle
 
@@ -29,12 +29,12 @@ class TestReduceSumDefaultOneDNNOp(OpTest):
         self.attrs = {'use_mkldnn': self.use_mkldnn}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output(check_dygraph=False, check_new_ir=False)
 
 
 class TestReduceDefaultWithGradOneDNNOp(TestReduceSumDefaultOneDNNOp):
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_dygraph=False)
+        self.check_grad(['X'], 'Out', check_dygraph=False, check_new_ir=False)
 
 
 class TestReduceSum4DOneDNNOp(TestReduceDefaultWithGradOneDNNOp):

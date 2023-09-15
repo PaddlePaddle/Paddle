@@ -105,12 +105,12 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
     for (size_t i = 1; i < n; i++) {
       for (size_t j = 0; j < in_zero_dims_size; j++) {
         if (j == static_cast<size_t>(axis)) {
-          out_dims[axis] += inx[i].dims()[j];
+          out_dims[axis] += inx[i].dims()[static_cast<int>(j)];
         }
       }
     }
     auto vec = phi::vectorize<int>(out_dims);
-    vec.insert(vec.begin() + axis, inx.size());
+    vec.insert(vec.begin() + axis, inx.size());  // NOLINT
     out.Resize(phi::make_ddim(vec));
 
     LodTensorArray2LodTensorVector(scope, base_name, Input("X"), &names);

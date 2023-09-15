@@ -19,8 +19,8 @@ import numpy as np
 from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def fc_with_batchnorm(use_feed):
@@ -33,7 +33,7 @@ def fc_with_batchnorm(use_feed):
             hidden,
             size=200,
             activation='tanh',
-            bias_attr=fluid.ParamAttr(
+            bias_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=1.0)
             ),
         )

@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
 
@@ -42,6 +43,7 @@ class TestTrainEval(unittest.TestCase):
     def tearDown(self):
         pass
 
+    @test_and_compare_with_new_ir(False)
     def test_train_and_eval(self):
         x = paddle.to_tensor([1, 2, 3]).astype("int64")
         eval_out = x.numpy()

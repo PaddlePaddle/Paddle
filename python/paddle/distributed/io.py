@@ -15,7 +15,7 @@
 import os
 
 import paddle
-from paddle.fluid.framework import Program, static_only
+from paddle.base.framework import Program, static_only
 from paddle.framework import core, dygraph_not_support
 
 
@@ -38,10 +38,10 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
+            import paddle.base as base
 
             paddle.enable_static()
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             param_path = "./my_paddle_model"
             t = paddle.distributed.transpiler.DistributeTranspiler()
             t.transpile(...)
@@ -161,12 +161,12 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
+            import paddle.base as base
 
             paddle.enable_static()
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             param_path = "./my_paddle_model"
-            prog = fluid.default_main_program()
+            prog = base.default_main_program()
             paddle.distributed.io.load_persistables(executor=exe, dirname=param_path,
                                        main_program=None)
     """
@@ -367,11 +367,11 @@ def is_persistable(var):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
+            import paddle.base as base
 
             paddle.enable_static()
-            param = fluid.default_main_program().global_block().var('fc.b')
-            res = fluid.io.is_persistable(param)
+            param = base.default_main_program().global_block().var('fc.b')
+            res = base.io.is_persistable(param)
     """
     if (
         var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH
@@ -465,7 +465,7 @@ def load_inference_model_distributed(
     """
     Load the inference model from a given directory. By this API, you can get the model
     structure(Inference Program) and model parameters. If you just want to load
-    parameters of the pre-trained model, please use the :ref:`api_fluid_io_load_params` API.
+    parameters of the pre-trained model, please use the :ref:`api_base_io_load_params` API.
     You can refer to :ref:`api_guide_model_save_reader_en` for more details.
 
     Args:
@@ -505,26 +505,26 @@ def load_inference_model_distributed(
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
+            import paddle.base as base
             import numpy as np
 
             paddle.enable_static()
             # Build the model
-            main_prog = fluid.Program()
-            startup_prog = fluid.Program()
-            with fluid.program_guard(main_prog, startup_prog):
-                data = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
+            main_prog = base.Program()
+            startup_prog = base.Program()
+            with base.program_guard(main_prog, startup_prog):
+                data = base.layers.data(name="img", shape=[64, 784], append_batch_size=False)
                 w = paddle.create_parameter(shape=[784, 200], dtype='float32')
                 b = paddle.create_parameter(shape=[200], dtype='float32')
                 hidden_w = paddle.matmul(x=data, y=w)
-                hidden_b = fluid.layers.elementwise_add(hidden_w, b)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+                hidden_b = base.layers.elementwise_add(hidden_w, b)
+            place = base.CPUPlace()
+            exe = base.Executor(place)
             exe.run(startup_prog)
 
             # Save the inference model
             path = "./infer_model"
-            fluid.io.save_inference_model(dirname=path, feeded_var_names=['img'],
+            base.io.save_inference_model(dirname=path, feeded_var_names=['img'],
                          target_vars=[hidden_b], executor=exe, main_program=main_prog)
 
             # Demo one. Not need to set the distributed look up table, because the

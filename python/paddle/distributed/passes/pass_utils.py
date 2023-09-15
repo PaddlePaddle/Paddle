@@ -15,6 +15,8 @@
 from collections import OrderedDict
 from typing import List
 
+from paddle.base import core
+from paddle.base.framework import Parameter, Program
 from paddle.distributed.auto_parallel.static.utils import (
     is_backward_op,
     is_forward_op,
@@ -22,8 +24,6 @@ from paddle.distributed.auto_parallel.static.utils import (
     is_optimize_op,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.fluid import core
-from paddle.fluid.framework import Parameter, Program
 
 __not_shape_var_type__ = [
     core.VarDesc.VarType.READER,
@@ -332,7 +332,7 @@ def _create_program(src_block, dst_block, src_op, force_create=False):
 
 def _insert_sync_for_fthenb_1f1b(program):
     """
-    This implementation refers to lots of Paddle/python/paddle/fluid/optimizer.py.
+    This implementation refers to lots of Paddle/python/paddle/base/optimizer.py.
     The difference between this function with 'PipelineOptimizer' is that
     'send_v2' op and 'recv_v2' op have been inserted in program by 'reshard'.
     """
@@ -441,7 +441,7 @@ def _program_for_fthenb_and_1f1b(program):
         for op in src_block.ops:
             if is_lr_sched_op(op):
                 lr_ops.append(op)
-            if is_forward_op(op):
+            elif is_forward_op(op):
                 fwd_ops.append(op)
             elif is_backward_op(op):
                 bwd_ops.append(op)
@@ -502,6 +502,17 @@ def _program_for_fthenb_and_1f1b(program):
                 opt_block._set_forward_block_idx(src_block.forward_block_idx)
                 _add_ops_into_block(src_block, opt_block, opt_ops)
 
+        for fetch_op in src_block.ops:
+            if fetch_op.type in ["fetch", "fetch_v2"]:
+                in_name = fetch_op.input_arg_names[0]
+                dst_block = None
+                for block in [lr_block, fwd_block, bwd_block, opt_block]:
+                    if block._find_var_recursive(in_name):
+                        dst_block = block
+                        break
+                if dst_block:
+                    _create_program(src_block, dst_block, fetch_op)
+
     lr_prog._sync_with_cpp()
     fwd_prog._sync_with_cpp()
     bwd_prog._sync_with_cpp()
@@ -514,3 +525,20 @@ def _program_for_fthenb_and_1f1b(program):
 
     # It MUST return in this order
     return [lr_prog, fwd_prog, bwd_prog, opt_prog]
+
+
+def _add_event_dependency(recorder_op_desc, waiter_op_desc):
+    '''
+    Add the extra event dependcy of the two operators.
+    This function mainly aims for the cross-programs in pipeline parallelism,
+    especial for the 'send_v2' 'recv_v2' etc.
+    '''
+    if not recorder_op_desc.dist_attr.force_record_event:
+        recorder_op_desc.dist_attr.force_record_event = True
+    # NOTE(lizhiyu): Here is the copy of 'waiter_op_desc.dist_attr.events_to_wait' not the reference,
+    #                because the type of 'events_to_wait' is 'const vector<string>&' while the type of
+    #                'waiter_wait_list' is python list.
+    waiter_wait_list = waiter_op_desc.dist_attr.events_to_wait
+    if recorder_op_desc.dist_attr.event_to_record not in waiter_wait_list:
+        waiter_wait_list.append(recorder_op_desc.dist_attr.event_to_record)
+        waiter_op_desc.dist_attr.events_to_wait = waiter_wait_list
