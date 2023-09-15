@@ -28,8 +28,8 @@ PHI_DECLARE_bool(check_nan_inf);
 
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 AddNGradNodeFinal::operator()(
-    paddle::small_vector<std::vector<paddle::Tensor>,
-                         egr::kSlotSmallVectorSize>& grads,
+    paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
+        &grads,
     bool create_graph,
     bool is_new_grad) {
   // Fill Zero For GradIn Tensors
@@ -39,10 +39,10 @@ AddNGradNodeFinal::operator()(
 
   // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
   auto x = egr::EagerUtils::RecoverTensorWrapper(&this->x_);
-  auto& out_grad = hooked_grads[0][0];
+  auto &out_grad = hooked_grads[0][0];
   // Prepare Grad function call
 
-  const auto& out_metas = OutputMeta();
+  const auto &out_metas = OutputMeta();
   paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
       returns(1);
   for (int i = 0; i < 1; ++i) {
@@ -50,7 +50,7 @@ AddNGradNodeFinal::operator()(
                          : returns[i].resize(out_metas[i].size());
   }
 
-  std::vector<paddle::Tensor*> api_output_0;
+  std::vector<paddle::Tensor *> api_output_0;
   api_output_0.reserve(returns[0].size());
   for (size_t i = 0; i < returns[0].size(); ++i) {
     if (out_metas[0].empty() || out_metas[0][i].IsStopGradient()) {
@@ -78,13 +78,13 @@ AddNGradNodeFinal::operator()(
     std::string output_str = "";
 
     const char *TENSOR_INPUT_TEMPLATE = " \n( x , [%s]), ";
-    std::string input_x_str =
-        paddle::string::Sprintf(TENSOR_INPUT_TEMPLATE, egr::EagerUtils::TensorStr(x));
+    std::string input_x_str = paddle::string::Sprintf(
+        TENSOR_INPUT_TEMPLATE, egr::EagerUtils::TensorStr(x));
     input_str += input_x_str;
 
     const char *TENSOR_OUT_GRAD_TEMPLATE = " \n( out_grad , [%s]), ";
-    std::string input_out_grad_str =
-        paddle::string::Sprintf(TENSOR_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(out_grad));
+    std::string input_out_grad_str = paddle::string::Sprintf(
+        TENSOR_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(out_grad));
     input_str += input_out_grad_str;
 
     const char *TENSOR_OUTPUT_TEMPLATE = " \n ( returns , [%s]), ";
@@ -92,8 +92,11 @@ AddNGradNodeFinal::operator()(
         TENSOR_OUTPUT_TEMPLATE, egr::EagerUtils::TensorStr(returns[0][0]));
     output_str += output_returns_str;
 
-    VLOG(4) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
-    VLOG(6) << "gradnode_ptr = " << this << ", " << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
+    VLOG(4) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, input_str, output_str);
+    VLOG(6) << "gradnode_ptr = " << this << ", "
+            << paddle::string::Sprintf(
+                   INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
 
   if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
