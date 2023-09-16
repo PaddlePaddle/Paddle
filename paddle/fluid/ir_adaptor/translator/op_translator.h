@@ -66,7 +66,7 @@ struct OpTranscriber {
 
  public:
   virtual pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx, const OpDesc& op_desc);
-  virtual std::vector<pir::OpResult> GenerateOperationInput(
+  virtual std::vector<pir::Value> GenerateOperationInput(
       pir::IrContext* ctx,
       TranslationContext* param_map,
       const OpDesc& op_desc,

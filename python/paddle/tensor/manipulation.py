@@ -35,7 +35,6 @@ from ..framework import (
     dygraph_only,
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
-    in_pir_mode,
 )
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
@@ -1127,14 +1126,10 @@ def concat(x, axis=0, name=None):
             #  [14 15 16]]
     """
     input = x
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(axis, Variable):
             axis = axis.item(0)
-        if not isinstance(input, Variable):
-            input = [t for t in input if t.shape.count(0) == 0]
-        return _C_ops.concat(input, axis)
-    elif in_pir_mode():
-        if not isinstance(input, paddle.ir.Value):
+        if not isinstance(input, (Variable, paddle.ir.Value)):
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
     else:
