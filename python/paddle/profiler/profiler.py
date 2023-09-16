@@ -294,11 +294,12 @@ def export_protobuf(
             >>> import paddle
             >>> paddle.device.set_device('gpu')
             >>> with profiler.Profiler(
-            ...         targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
-            ...         scheduler = (3, 10),
-            ...         on_trace_ready = profiler.export_protobuf('./log')) as p:
+            ...     targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
+            ...     scheduler = (3, 10),
+            ...     on_trace_ready = profiler.export_protobuf('./log')
+            ... ) as p:
             ...     for iter in range(10):
-            ...         #train()
+            ...         # train()
             ...         p.step()
     """
     if not os.path.exists(dir_name):
@@ -379,11 +380,12 @@ class Profiler:
                 >>> import paddle
                 >>> paddle.device.set_device('gpu')
                 >>> with profiler.Profiler(
-                ...         targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
-                ...         scheduler = (2, 5),
-                ...         on_trace_ready = profiler.export_chrome_tracing('./log')) as p:
+                ...     targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
+                ...     scheduler = (2, 5),
+                ...     on_trace_ready = profiler.export_chrome_tracing('./log')
+                ... ) as p:
                 ...     for iter in range(10):
-                ...         #train()
+                ...         # train()
                 ...         p.step()
 
         2. profiling range [2,4], [7, 9], [11,13].
@@ -396,11 +398,12 @@ class Profiler:
                 >>> import paddle
                 >>> paddle.device.set_device('gpu')
                 >>> with profiler.Profiler(
-                ...         targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
-                ...         scheduler = profiler.make_scheduler(closed=1, ready=1, record=3, repeat=3),
-                ...         on_trace_ready = profiler.export_chrome_tracing('./log')) as p:
+                ...     targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
+                ...     scheduler = profiler.make_scheduler(closed=1, ready=1, record=3, repeat=3),
+                ...     on_trace_ready = profiler.export_chrome_tracing('./log')
+                ... ) as p:
                 ...     for iter in range(10):
-                ...         #train()
+                ...         # train()
                 ...         p.step()
 
         3. Use profiler without context manager, and use default parameters.
@@ -581,7 +584,7 @@ class Profiler:
                 ...     on_trace_ready = profiler.export_chrome_tracing('./log'))
                 >>> prof.start()
                 >>> for iter in range(10):
-                ...     #train()
+                ...     # train()
                 ...     prof.step()
                 >>> prof.stop()
 
@@ -630,7 +633,7 @@ class Profiler:
                 ...     on_trace_ready = profiler.export_chrome_tracing('./log'))
                 >>> prof.start()
                 >>> for iter in range(10):
-                ...     #train()
+                ...     # train()
                 ...     prof.step()
                 ... prof.stop()
         '''
@@ -845,7 +848,7 @@ class Profiler:
                 ...     scheduler = (3, 7))
                 >>> prof.start()
                 >>> for iter in range(10):
-                ...     #train()
+                ...     # train()
                 ...     prof.step()
                 >>> prof.stop()
                 >>> prof.export(path="./profiler_data.json", format="json")
@@ -884,7 +887,7 @@ class Profiler:
                 ...     on_trace_ready = profiler.export_chrome_tracing('./log'))
                 >>> prof.start()
                 >>> for iter in range(10):
-                ...     #train()
+                ...     # train()
                 ...     prof.step()
                 >>> prof.stop()
                 >>> prof.summary(sorted_by=profiler.SortedKeys.CPUTotal, op_detail=True, thread_sep=False, time_unit='ms')
