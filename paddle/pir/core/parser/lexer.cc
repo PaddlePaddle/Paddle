@@ -33,6 +33,16 @@ Token Lexer::ConsumeToken() {
   }
 }
 
+Token Lexer::PeekToken() {
+  auto pos = is.tellg();
+  auto token = ConsumeToken();
+  if (is.eof()) {
+    is.clear();
+  }
+  is.seekg(pos);
+  return token;
+}
+
 char Lexer::GetChar() {
   char c = is.get();
   if (c == '\n') {

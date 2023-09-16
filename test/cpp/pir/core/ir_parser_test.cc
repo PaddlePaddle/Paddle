@@ -160,12 +160,12 @@ bool ParserTest::ConsumeTestTask(TestTask* test_task, pir::IrContext* ctx) {
 
 std::string ParserTest::Peek(const size_t len) {
   std::string str;
+  auto pos = test_text.tellg();
   str = Get(len);
-  int actual_length = str.size();
   if (test_text.eof()) {
     test_text.clear();
   }
-  test_text.seekg(-actual_length, std::ios::cur);
+  test_text.seekg(pos);
   return str;
 }
 

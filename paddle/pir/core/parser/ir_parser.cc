@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
-
 #include "paddle/pir/core/parser/ir_parser.h"
 
 #include "paddle/pir/core/builtin_dialect.h"
@@ -26,27 +24,14 @@ IrParser::IrParser(IrContext* ctx, std::istream& is) {
   builder.reset(new Builder{ctx});
 }
 
-Token IrParser::ConsumeToken() {
-  auto token = lexer->ConsumeToken();
-  return token;
-}
+Token IrParser::ConsumeToken() { return lexer->ConsumeToken(); }
 
 std::string IrParser::GetErrorLocationInfo() {
   return "The error occurred in line " + std::to_string(lexer->GetLine()) +
          ", column " + std::to_string(lexer->GetColumn());
 }
 
-Token IrParser::PeekToken() {
-  auto token = lexer->ConsumeToken();
-  size_t len = token.val_.size();
-  if (token.token_type_ == STRING) {
-    len += std::count(token.val_.begin(), token.val_.end(), '\"') - 2;
-  }
-  if (token.token_type_ != EOF_) {
-    lexer->Unget(len);
-  }
-  return token;
-}
+Token IrParser::PeekToken() { return lexer->PeekToken(); }
 
 void IrParser::ConsumeAToken(std::string expect_token_val) {
   std::string token_val = ConsumeToken().val_;
