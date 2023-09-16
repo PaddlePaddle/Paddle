@@ -38,7 +38,7 @@ class OpResultImpl : public ValueImpl {
   ///
   /// \brief Get the result index of the operation result.
   ///
-  uint32_t GetResultIndex() const;
+  uint32_t index() const;
 
   ///
   /// \brief Get the maximum number of results that can be stored inline.
@@ -67,7 +67,7 @@ class OpInlineResultImpl : public OpResultImpl {
     return value.kind() < OUTLINE_OP_RESULT_INDEX;
   }
 
-  uint32_t GetResultIndex() const { return kind(); }
+  uint32_t index() const { return kind(); }
 };
 
 ///
@@ -84,7 +84,7 @@ class OpOutlineResultImpl : public OpResultImpl {
     return value.kind() == OUTLINE_OP_RESULT_INDEX;
   }
 
-  uint32_t GetResultIndex() const { return outline_index_; }
+  uint32_t index() const { return outline_index_; }
 
   uint32_t outline_index_;
 };

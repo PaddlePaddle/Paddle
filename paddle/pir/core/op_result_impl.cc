@@ -18,11 +18,11 @@
 namespace pir {
 namespace detail {
 
-uint32_t OpResultImpl::GetResultIndex() const {
+uint32_t OpResultImpl::index() const {
   if (const auto *outline_result = dyn_cast<OpOutlineResultImpl>(this)) {
-    return outline_result->GetResultIndex();
+    return outline_result->index();
   }
-  return dyn_cast<OpInlineResultImpl>(this)->GetResultIndex();
+  return dyn_cast<OpInlineResultImpl>(this)->index();
 }
 
 OpResultImpl::~OpResultImpl() { assert(use_empty()); }
@@ -30,7 +30,7 @@ OpResultImpl::~OpResultImpl() { assert(use_empty()); }
 Operation *OpResultImpl::owner() const {
   // For inline result, pointer offset index to obtain the address of op.
   if (const auto *result = dyn_cast<OpInlineResultImpl>(this)) {
-    result += result->GetResultIndex() + 1;
+    result += result->index() + 1;
     return reinterpret_cast<Operation *>(
         const_cast<OpInlineResultImpl *>(result));
   }
