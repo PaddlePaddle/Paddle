@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.base import core
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.utils import deprecated
 
 from .streams import Stream  # noqa: F401
@@ -509,7 +509,7 @@ def get_device_name(device=None):
 
 
 def get_device_capability(device=None):
-    '''
+    """
     Return the major and minor revision numbers defining the device's compute capability which are got from CUDA function `cudaDeviceProp <https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g1bf9d625a931d657e08db2b4391170f0>`_.
 
     Parameters:
@@ -522,16 +522,16 @@ def get_device_capability(device=None):
 
         .. code-block:: python
 
-            # required: gpu
+            >>> # doctest: +REQUIRES(env:GPU)
 
-            import paddle
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> paddle.device.cuda.get_device_capability()
 
-            paddle.device.cuda.get_device_capability()
+            >>> paddle.device.cuda.get_device_capability(0)
 
-            paddle.device.cuda.get_device_capability(0)
+            >>> paddle.device.cuda.get_device_capability(paddle.CUDAPlace(0))
 
-            paddle.device.cuda.get_device_capability(paddle.CUDAPlace(0))
-
-    '''
+    """
     prop = get_device_properties(device)
     return prop.major, prop.minor

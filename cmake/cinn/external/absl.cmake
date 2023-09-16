@@ -8,24 +8,6 @@ set(ABSL_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 set(ABSL_REPOSITORY "https://github.com/abseil/abseil-cpp.git")
 set(ABSL_TAG "20210324.2")
 
-if(NOT EXISTS ${ABSL_SOURCES_DIR})
-  message(
-    STATUS "Download absl source from ${ABSL_REPOSITORY} to ABSL_SOURCES_DIR")
-  execute_process(COMMAND ${GIT_EXECUTABLE} clone -b ${ABSL_TAG}
-                          ${ABSL_REPOSITORY} ${ABSL_SOURCES_DIR})
-else()
-  # check git tag
-  execute_process(
-    COMMAND ${GIT_EXECUTABLE} -C ${ABSL_SOURCES_DIR} describe --tags
-    OUTPUT_VARIABLE CURRENT_TAG
-    OUTPUT_STRIP_TRAILING_WHITESPACE)
-  if(NOT ${CURRENT_TAG} STREQUAL ${ABSL_TAG})
-    message(STATUS "Checkout absl to ${ABSL_TAG}")
-    execute_process(COMMAND ${GIT_EXECUTABLE} -C ${ABSL_SOURCES_DIR} checkout
-                            -q ${ABSL_TAG})
-  endif()
-endif()
-
 set(OPTIONAL_ARGS
     "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
     "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}"

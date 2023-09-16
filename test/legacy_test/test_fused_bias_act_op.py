@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import convert_float_to_uint16
+from op_test import convert_float_to_uint16
 from scipy.special import erf, expit
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.base import core
 
 
 def round_type_1_process(val):

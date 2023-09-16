@@ -17,11 +17,11 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 
+#include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
-#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 
 namespace phi {
 namespace distributed {
@@ -127,7 +127,8 @@ TEST(DistAttr, ctor) {
   EXPECT_EQ(out_dist_attr.verify(get_tensor_shape(out)), true);
 
   OperatorDistAttr mul_dist_attr(*op);
-  EXPECT_EQ(mul_dist_attr.impl_type(), kDefault);
+  EXPECT_EQ(mul_dist_attr.impl_type(),
+            paddle::distributed::auto_parallel::kDefault);
   EXPECT_EQ(mul_dist_attr.impl_idx(), 0);
   EXPECT_EQ(mul_dist_attr.is_recompute(), false);
   EXPECT_EQ(mul_dist_attr.is_annotated("process_mesh"), false);

@@ -130,10 +130,11 @@ class Instruction {
     }
   }
 
-  int size() { return fn_ptrs_.size(); }
+  int size() const { return fn_ptrs_.size(); }
 
   std::string DumpInstruction() const;
 
+  const std::string& function_name() const { return function_name_; }
   const std::vector<std::vector<std::string>>& GetInArgs() const {
     return in_args_;
   }

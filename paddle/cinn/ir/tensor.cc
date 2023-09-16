@@ -16,6 +16,7 @@
 
 #include <cstring>
 
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/common/arithmatic.h"
 #include "paddle/cinn/common/axis.h"
@@ -248,6 +249,11 @@ Expr *_Tensor_::mutable_body() {
   if (is_compute_node()) return &operation->as<ir::ComputeOp>()->body.front();
   if (is_call_node()) return &operation->as<ir::CallOp>()->call_expr;
   CINN_NOT_IMPLEMENTED
+}
+
+ir::Tensor _Tensor_::InitReduction(
+    ast_gen_ius::TensorGroup *tensor_group) const {
+  return tensor_group->MarkReduceInit(this->name);
 }
 
 ir::Tensor _Tensor_::InitReduction(poly::StageMap stages,
@@ -599,8 +605,26 @@ Shared<poly::Stage> CreateStage(Tensor tensor) {
   return poly::Stage::New(isl_domain, tensor->body(), tensor.self());
 }
 
+static constexpr char kReduceInitSuffix[] = "__reduce_init";
+
 std::string GenReduceInitTensorNameOf(const std::string &tensor_name) {
-  return tensor_name + "__reduce_init";
+  return tensor_name + kReduceInitSuffix;
+}
+
+bool IsReduceInitTensorName(const std::string &tensor_name) {
+  std::string reduce_init_suffix(kReduceInitSuffix);
+  return tensor_name.length() > reduce_init_suffix.size() &&
+         tensor_name.substr(tensor_name.length() - reduce_init_suffix.size(),
+                            reduce_init_suffix.size()) == reduce_init_suffix;
+}
+
+std::string GetOriginalReduceTensorName(const std::string &tensor_name) {
+  std::string reduce_init_suffix(kReduceInitSuffix);
+  if (IsReduceInitTensorName(tensor_name)) {
+    return tensor_name.substr(0,
+                              tensor_name.length() - reduce_init_suffix.size());
+  }
+  return tensor_name;
 }
 
 bool _Tensor_::is_reduce_sum() const {

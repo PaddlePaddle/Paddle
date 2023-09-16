@@ -17,19 +17,20 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    convert_uint16_to_float,
-)
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 def cast_wrapper(x, out_dtype=None):
-    return paddle.cast(x, paddle.dtype(out_dtype))
+    paddle_dtype = paddle.dtype(out_dtype)
+    # unify dtype to numpy_type for pir and dygraph
+    numpy_dtype = paddle.base.data_feeder._PADDLE_DTYPE_2_NUMPY_DTYPE[
+        paddle_dtype
+    ]
+    return paddle.cast(x, numpy_dtype)
 
 
 class TestCastOpFp32ToFp64(OpTest):
@@ -51,10 +52,10 @@ class TestCastOpFp32ToFp64(OpTest):
         self.input_shape = [10, 10]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_grad(self):
-        self.check_grad(['X'], ['Out'], check_prim=True)
+        self.check_grad(['X'], ['Out'], check_prim=True, check_new_ir=True)
 
 
 class TestCastOpFp32ToFp64_ZeroDim(TestCastOpFp32ToFp64):
@@ -166,15 +167,15 @@ class TestCastOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of cast_op must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            x1 = base.create_lod_tensor(
+                np.array([[-1]]), [[1]], base.CPUPlace()
             )
             self.assertRaises(TypeError, paddle.cast, x1, 'int32')
 
 
 class TestCastOpEager(unittest.TestCase):
     def test_eager(self):
-        with paddle.fluid.dygraph.base.guard():
+        with paddle.base.dygraph.base.guard():
             x = paddle.ones([2, 2], dtype="float16")
             x.stop_gradient = False
             out = paddle.cast(x, "float32")
@@ -210,9 +211,9 @@ class TestCastDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -241,9 +242,9 @@ class TestCastTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 

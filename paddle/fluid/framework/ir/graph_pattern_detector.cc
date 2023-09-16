@@ -24,9 +24,6 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-using string::PrettyLog;
-using string::Style;
-
 size_t PDPattern::id_ = 0UL;
 
 #ifdef PADDLE_WITH_TENSORRT
@@ -75,10 +72,12 @@ PDNode *PDPattern::RetrieveNode(const std::string &id) const {
 }
 
 void PDPattern::AddEdge(PDNode *a, PDNode *b) {
-  PADDLE_ENFORCE_NOT_NULL(
-      a, platform::errors::NotFound("PDNode %s is not found.", a->name()));
-  PADDLE_ENFORCE_NOT_NULL(
-      b, platform::errors::NotFound("PDNode %s is not found.", b->name()));
+  PADDLE_ENFORCE_NOT_NULL(a,
+                          platform::errors::NotFound("PDNode %s is not found.",
+                                                     a->name()));  // NOLINT
+  PADDLE_ENFORCE_NOT_NULL(b,
+                          platform::errors::NotFound("PDNode %s is not found.",
+                                                     b->name()));  // NOLINT
   PADDLE_ENFORCE_NE(a,
                     b,
                     platform::errors::PermissionDenied(
@@ -2879,10 +2878,10 @@ PDNode *patterns::MultipleQuantize::operator()() {
 
   // find nodes that are inputs to quantize operators
   prev_out->assert_more([&](Node *node) {
-    int counter = std::count_if(
+    int counter = static_cast<int>(std::count_if(
         node->outputs.begin(), node->outputs.end(), [&](Node const *iter) {
           return iter && iter->IsOp() && iter->Op()->Type() == "quantize";
-        });
+        }));
     return (counter > 1);
   });
 

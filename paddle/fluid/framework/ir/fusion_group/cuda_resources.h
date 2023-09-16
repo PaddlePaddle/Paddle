@@ -34,7 +34,13 @@ __device__ inline double Log(double x) { return log(x); }
 __device__ inline double Sqrt(double x) { return sqrt(x); }
 
 )";
-
+#ifdef PADDLE_WITH_HIP
+static constexpr char predefined_cuda_functions_fp16[] = R"(
+__device__ inline __half Exp(const __half x) { return hexp(x); }
+__device__ inline __half Log(const __half x) { return hlog(x); }
+__device__ inline __half Sqrt(const __half x) { return hsqrt(x); }
+)";
+#else
 // List some built-in functions of __half implemented in cuda_fp16.hpp
 static constexpr char predefined_cuda_functions_fp16[] = R"(
 #define __HALF_TO_US(var) *(reinterpret_cast<unsigned short *>(&(var)))
@@ -306,7 +312,7 @@ __device__ inline __half Sqrt(const __half x) { return hsqrt(x); }
 typedef __half float16;
 
 )";
-
+#endif
 static constexpr char cuda_kernel_template_1d[] = R"(
 extern "C" __global__ void $func_name($parameters) {
   for(int idx = blockIdx.x * blockDim.x + threadIdx.x;

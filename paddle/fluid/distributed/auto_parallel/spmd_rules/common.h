@@ -51,7 +51,7 @@ class SPMDRuleBase {
   InferForward(const std::vector<DistTensorSpec>& input_specs,
                const paddle::framework::AttributeMap& attrs);
 
-  // Based on the information of Output Tensors and Op Attribute:
+  // Based on the information of Input & Output Tensors and Op Attribute:
   // 1. Merge the Sharding (dims_mapping) among Output Tensors.
   // 2. Infer the Sharding (dims_mapping) for Input Tensors.
   // The Info of output tensors (Shape and DistAttr) are wrapped as
@@ -59,6 +59,12 @@ class SPMDRuleBase {
   // Output is a pair consist of two vectors:
   // 1. The first vector: the merged DistAttr of output tensors.
   // 2. The infered DistAttr of Input tensors.
+  virtual std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+  InferBackward(const std::vector<DistTensorSpec>& input_specs,
+                const std::vector<DistTensorSpec>& output_specs,
+                const paddle::framework::AttributeMap& attrs);
+
+  // deprecated, to be remove in future
   virtual std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
   InferBackward(const std::vector<DistTensorSpec>& output_specs,
                 const paddle::framework::AttributeMap& attrs);
@@ -125,14 +131,14 @@ std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
 TensorDistAttr ReplicatedOnMesh(const TensorDistAttr& src_dist_attr);
 
 // Check whether the given DistTensorSpec objects are valid. For each
-// DistTensorSpec, the rank of its dimsmapping must be equal to the rank of its
+// DistTensorSpec, the rank of its dims mapping must be equal to the rank of its
 // corresponding tensor shape. the parameter op_name is used for logging error
 // message.
 void VerifySpecs(const std::vector<DistTensorSpec>& specs,
                  const std::string& op_name);
 
-// Get dimsmapping for the given tensors. Return the pair of each
-// tensor's einsum notation and the corresponding dimsmapping.
+// Get dims mapping for the given tensors. Return the pair of each
+// tensor's einsum notation and the corresponding dims mapping.
 std::vector<std::pair<std::string, std::vector<int64_t>>>
 GetAxesDimsMappingPair(const std::vector<std::string>& tensor_axes,
                        const std::vector<DistTensorSpec>& specs);
@@ -141,9 +147,12 @@ GetAxesDimsMappingPair(const std::vector<std::string>& tensor_axes,
 // the annotated axes after inferring forward or backward. The parameter axis
 // stores the axes of the tensor. "1" is a special axis, for the axis "1", set
 // its dims mapping to -1.
+// if unsharded_miss_axis, "-1" is assigend to axes that has no key in
+// axis_to_dim_map.
 std::vector<int64_t> GetDimsMappingForAxes(
     const std::string& axes,
-    const std::unordered_map<std::string, int64_t>& axis_to_dim_map);
+    const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
+    const bool unsharded_miss_axis = false);
 
 // The static map that stores and initializes all the registered SPMD rules.
 class SPMDRuleMap {

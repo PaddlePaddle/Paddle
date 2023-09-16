@@ -151,8 +151,11 @@ function(cinn_nv_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cinn_nv_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
-    cuda_add_executable(${TARGET_NAME} ${cinn_nv_test_SRCS} OPTIONS
-                        "-std=c++${CMAKE_CUDA_STANDARD}")
+    # Attention:
+    # 1. cuda_add_executable is deprecated after cmake v3.10, use cuda_add_executable for CUDA please.
+    # 2. cuda_add_executable does not support ccache.
+    # Reference: https://cmake.org/cmake/help/v3.10/module/FindCUDA.html
+    add_executable(${TARGET_NAME} ${cinn_nv_test_SRCS})
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(
       ${TARGET_NAME}
@@ -165,7 +168,6 @@ function(cinn_nv_test TARGET_NAME)
       ${CUDA_LIBRARIES})
     add_dependencies(${TARGET_NAME} ${cinn_nv_test_DEPS} cinn_gtest_main gtest)
     common_link(${TARGET_NAME})
-    # add_test(${TARGET_NAME} ${TARGET_NAME})
     add_test(
       NAME ${TARGET_NAME}
       COMMAND ${TARGET_NAME} "${cinn_nv_test_ARGS}"

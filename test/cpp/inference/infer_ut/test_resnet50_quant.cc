@@ -171,6 +171,6 @@ TEST(DISABLED_tensorrt_tester_resnet50_quant, multi_thread_multi_instance) {
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
-  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   return RUN_ALL_TESTS();
 }

@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, skip_check_grad_ci
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 

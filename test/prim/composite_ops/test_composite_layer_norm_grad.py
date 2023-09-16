@@ -21,7 +21,7 @@ from prim.composite_ops.utils import SUB_TOLERANCE
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.base import core
 from paddle.incubate.autograd import primapi
 
 TOLERANCE_NUMPY = {

@@ -23,14 +23,14 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 #include "paddle/fluid/framework/new_executor/new_ir_interpreter.h"
-#include "paddle/fluid/ir/dialect/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/pd_op.h"
-#include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
-#include "paddle/ir/core/builder.h"
-#include "paddle/ir/core/ir_context.h"
-#include "paddle/ir/core/program.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
+#include "paddle/pir/core/builder.h"
+#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/core/program.h"
 
-#include "paddle/fluid/ir/dialect/pd_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 
 #include "paddle/fluid/platform/init_phi.h"
 
@@ -48,12 +48,12 @@ namespace paddle {
 namespace framework {
 
 TEST(StandaloneExecutor, run) {
-  ir::IrContext* ctx = ir::IrContext::Instance();
-  ir::Program program((ctx));
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::Program program((ctx));
 
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
-  ir::Builder builder = ir::Builder(ctx, program.block());
+  pir::Builder builder = pir::Builder(ctx, program.block());
 
   paddle::dialect::FullOp op1 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
@@ -69,7 +69,7 @@ TEST(StandaloneExecutor, run) {
   Scope scope;
 
   ProgramDesc prog_desc;
-  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
+  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
 
   std::stringstream os;
   os << reinterpret_cast<NewIRInterpreter*>(
@@ -77,7 +77,7 @@ TEST(StandaloneExecutor, run) {
   std::string out_name = os.str() + "_inner_var_2";
   test_core.SetSkipGcVars({out_name});
 
-  test_core.BetaRun({});
+  test_core.Run({});
 
   auto out_tensor =
       test_core.local_scope() == nullptr
@@ -96,10 +96,10 @@ TEST(StandaloneExecutor, run) {
 }
 
 TEST(StandaloneExecutor, run_inplace_sqrt) {
-  ir::IrContext* ctx = ir::IrContext::Instance();
-  ir::Program program((ctx));
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ir::Builder builder = ir::Builder(ctx, program.block());
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::Program program((ctx));
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  pir::Builder builder = pir::Builder(ctx, program.block());
 
   paddle::dialect::FullOp full = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2, 2}, 4.0, phi::DataType::FLOAT32, phi::CPUPlace());
@@ -110,7 +110,7 @@ TEST(StandaloneExecutor, run_inplace_sqrt) {
 
   auto place = platform::CPUPlace();
   Scope scope;
-  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
+  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
 
   std::stringstream os;
   os << reinterpret_cast<NewIRInterpreter*>(
@@ -118,7 +118,7 @@ TEST(StandaloneExecutor, run_inplace_sqrt) {
   std::string out_name = os.str() + "_inner_var_0";
   test_core.SetSkipGcVars({out_name});
 
-  test_core.BetaRun({});
+  test_core.Run({});
 
   auto out_tensor =
       test_core.local_scope() == nullptr

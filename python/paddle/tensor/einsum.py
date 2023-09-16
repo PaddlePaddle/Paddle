@@ -22,9 +22,9 @@ import opt_einsum
 
 from paddle import _C_ops
 
-from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from ..fluid.framework import in_dygraph_mode
-from ..fluid.layer_helper import LayerHelper
+from ..base.data_feeder import check_type, check_variable_and_dtype
+from ..base.framework import in_dygraph_mode
+from ..base.layer_helper import LayerHelper
 from .linalg import matmul, transpose
 from .manipulation import reshape, squeeze, unsqueeze
 from .math import multiply
@@ -953,73 +953,69 @@ def einsum(equation, *operands):
     Examples:
         .. code-block:: python
 
-            import paddle
-            paddle.seed(102)
-            x = paddle.rand([4])
-            y = paddle.rand([5])
+            >>> import paddle
+            >>> paddle.seed(102)
+            >>> x = paddle.rand([4])
+            >>> y = paddle.rand([5])
 
-            # sum
-            print(paddle.einsum('i->', x))
-            # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #   1.95791852)
+            >>> # sum
+            >>> print(paddle.einsum('i->', x))
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            1.81225157)
 
-            # dot
-            print(paddle.einsum('i,i->', x, x))
-            # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #   1.45936954)
+            >>> # dot
+            >>> print(paddle.einsum('i,i->', x, x))
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            1.13530672)
 
-            # outer
-            print(paddle.einsum("i,j->ij", x, y))
-            # Tensor(shape=[4, 5], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #   [[0.00079869, 0.00120950, 0.00136844, 0.00187187, 0.00192194],
-            #    [0.23455200, 0.35519385, 0.40186870, 0.54970956, 0.56441545],
-            #    [0.11773264, 0.17828843, 0.20171674, 0.27592498, 0.28330654],
-            #    [0.32897076, 0.49817693, 0.56364071, 0.77099484, 0.79162055]])
+            >>> # outer
+            >>> print(paddle.einsum("i,j->ij", x, y))
+            Tensor(shape=[4, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[0.26443148, 0.05962684, 0.25360870, 0.21900642, 0.56994802],
+                    [0.20955276, 0.04725220, 0.20097610, 0.17355499, 0.45166403],
+                    [0.35836059, 0.08080698, 0.34369346, 0.29680005, 0.77240014],
+                    [0.00484230, 0.00109189, 0.00464411, 0.00401047, 0.01043695]])
 
-            A = paddle.rand([2, 3, 2])
-            B = paddle.rand([2, 2, 3])
+            >>> A = paddle.rand([2, 3, 2])
+            >>> B = paddle.rand([2, 2, 3])
 
-            # transpose
-            print(paddle.einsum('ijk->kji', A))
-            #  Tensor(shape=[2, 3, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #   [[[0.95649719, 0.49684682],
-            #     [0.80071914, 0.46258664],
-            #     [0.49814570, 0.33383518]],
-            #
-            #    [[0.07637714, 0.29374704],
-            #     [0.51470858, 0.51907635],
-            #     [0.99066722, 0.55802226]]])
+            >>> # transpose
+            >>> print(paddle.einsum('ijk->kji', A))
+            Tensor(shape=[2, 3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[[0.50882483, 0.56067896],
+                     [0.84598064, 0.36310029],
+                     [0.55289471, 0.33273944]],
+                    [[0.04836850, 0.73811269],
+                     [0.29769155, 0.28137168],
+                     [0.84636718, 0.67521429]]])
 
-            # batch matrix multiplication
-            print(paddle.einsum('ijk, ikl->ijl', A,B))
-            # Tensor(shape=[2, 3, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #   [[[0.32172769, 0.50617385, 0.41394392],
-            #     [0.51736701, 0.49921003, 0.38730967],
-            #     [0.69078457, 0.42282537, 0.30161136]],
-            #
-            #    [[0.32043904, 0.18164253, 0.27810261],
-            #     [0.50226176, 0.24512935, 0.39881429],
-            #     [0.51476848, 0.23367381, 0.39229113]]])
+            >>> # batch matrix multiplication
+            >>> print(paddle.einsum('ijk, ikl->ijl', A,B))
+            Tensor(shape=[2, 3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[[0.36321065, 0.42009076, 0.40849245],
+                     [0.74353045, 0.79189068, 0.81345987],
+                     [0.90488225, 0.79786193, 0.93451476]],
+                    [[0.12680580, 1.06945944, 0.79821426],
+                     [0.07774551, 0.55068684, 0.44512171],
+                     [0.08053084, 0.80583858, 0.56031936]]])
 
-            # Ellipsis transpose
-            print(paddle.einsum('...jk->...kj', A))
-            # Tensor(shape=[2, 2, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #   [[[0.95649719, 0.80071914, 0.49814570],
-            #     [0.07637714, 0.51470858, 0.99066722]],
-            #
-            #    [[0.49684682, 0.46258664, 0.33383518],
-            #     [0.29374704, 0.51907635, 0.55802226]]])
+            >>> # Ellipsis transpose
+            >>> print(paddle.einsum('...jk->...kj', A))
+            Tensor(shape=[2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[[0.50882483, 0.84598064, 0.55289471],
+                     [0.04836850, 0.29769155, 0.84636718]],
+                    [[0.56067896, 0.36310029, 0.33273944],
+                     [0.73811269, 0.28137168, 0.67521429]]])
 
-            # Ellipsis batch matrix multiplication
-            print(paddle.einsum('...jk, ...kl->...jl', A,B))
-            # Tensor(shape=[2, 3, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #   [[[0.32172769, 0.50617385, 0.41394392],
-            #     [0.51736701, 0.49921003, 0.38730967],
-            #     [0.69078457, 0.42282537, 0.30161136]],
-            #
-            #    [[0.32043904, 0.18164253, 0.27810261],
-            #     [0.50226176, 0.24512935, 0.39881429],
-            #     [0.51476848, 0.23367381, 0.39229113]]])
+            >>> # Ellipsis batch matrix multiplication
+            >>> print(paddle.einsum('...jk, ...kl->...jl', A,B))
+            Tensor(shape=[2, 3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[[0.36321065, 0.42009076, 0.40849245],
+                     [0.74353045, 0.79189068, 0.81345987],
+                     [0.90488225, 0.79786193, 0.93451476]],
+                    [[0.12680580, 1.06945944, 0.79821426],
+                     [0.07774551, 0.55068684, 0.44512171],
+                     [0.08053084, 0.80583858, 0.56031936]]])
 
     """
     import os

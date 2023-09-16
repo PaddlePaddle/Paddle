@@ -44,17 +44,17 @@ void AllReduceKernel(const Context& dev_ctx,
                           errors::NotFound("Should initialize NCCL firstly."));
 
   ncclRedOp_t red_type = ncclSum;
-  switch (reduce_type) {
-    case distributed::kRedSum:
+  switch (static_cast<ReduceType>(reduce_type)) {
+    case ReduceType::kRedSum:
       red_type = ncclSum;
       break;
-    case distributed::kRedMax:
+    case ReduceType::kRedMax:
       red_type = ncclMax;
       break;
-    case distributed::kRedMin:
+    case ReduceType::kRedMin:
       red_type = ncclMin;
       break;
-    case distributed::kRedProd:
+    case ReduceType::kRedProd:
       red_type = ncclProd;
       break;
   }
@@ -78,6 +78,7 @@ PD_REGISTER_KERNEL(all_reduce,
                    bool,
                    int8_t,
                    uint8_t,
+                   int16_t,
                    int64_t,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
@@ -92,6 +93,7 @@ PD_REGISTER_KERNEL(all_reduce,
                    bool,
                    int8_t,
                    uint8_t,
+                   int16_t,
                    int64_t,
                    phi::dtype::float16) {}
 #endif
