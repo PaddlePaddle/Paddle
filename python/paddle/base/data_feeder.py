@@ -354,24 +354,25 @@ class DataFeeder:
 
             >>> import numpy as np
             >>> import paddle
-            >>> import paddle.base as base
+            >>> from paddle import base
 
-            >>> place = base.CPUPlace()
+            >>> paddle.enable_static()
+            >>> place = paddle.CPUPlace()
             >>> def reader():
             ...     for _ in range(4):
             ...         yield np.random.random([4]).astype('float32'), np.random.random([3]).astype('float32'),
-            ... 
-            >>> main_program = base.Program()
-            >>> startup_program = base.Program()
+            ...
+            >>> main_program = paddle.static.Program()
+            >>> startup_program = paddle.static.Program()
 
-            >>> with base.program_guard(main_program, startup_program):
+            >>> with paddle.static.program_guard(main_program, startup_program):
             ...     data_1 = paddle.static.data(name='data_1', shape=[None, 2, 2], dtype='float32')
             ...     data_2 = paddle.static.data(name='data_2', shape=[None, 1, 3], dtype='float32')
             ...     out = paddle.static.nn.fc(x=[data_1, data_2], size=2)
             ...     # ...
             >>> feeder = base.DataFeeder([data_1, data_2], place)
 
-            >>> exe = base.Executor(place)
+            >>> exe = paddle.static.Executor(place)
             >>> exe.run(startup_program)
 
             >>> feed_data = feeder.feed(reader())
@@ -380,9 +381,11 @@ class DataFeeder:
             >>> # print(feed_data['data_1'])
             >>> # print(feed_data['data_2'])
 
-            >>> outs = exe.run(program=main_program,
-            ...                 feed=feed_data,
-            ...                 fetch_list=[out])
+            >>> outs = exe.run(
+            ...     program=main_program,
+            ...     feed=feed_data,
+            ...     fetch_list=[out]
+            ... )
             >>> print(outs)
 
     """
@@ -426,17 +429,19 @@ class DataFeeder:
                 >>> # result['data_1']  a LoD-Tensor with shape of  [5, 2, 1, 3]. 5 is batch size, and [2, 1, 3] is the real shape of data_1.
                 >>> # result['data_2'], result['data_3'] are similar.
                 >>> import numpy as np
-                >>> import paddle.base as base
+                >>> import paddle
+                >>> from paddle import base
+
+                >>> paddle.enable_static()
 
                 >>> def reader(limit=5):
                 ...     for i in range(1, limit + 1):
                 ...         yield np.ones([6]).astype('float32') * i , np.ones([1]).astype('int64') * i, np.random.random([9]).astype('float32')
-                ... 
+                ...
                 >>> data_1 = paddle.static.data(name='data_1', shape=[None, 2, 1, 3])
                 >>> data_2 = paddle.static.data(name='data_2', shape=[None, 1], dtype='int64')
                 >>> data_3 = paddle.static.data(name='data_3', shape=[None, 3, 3], dtype='float32')
-                >>> feeder = base.DataFeeder(['data_1','data_2', 'data_3'], base.CPUPlace())
-
+                >>> feeder = base.DataFeeder(['data_1','data_2', 'data_3'], paddle.CPUPlace())
 
                 >>> result = feeder.feed(reader())
                 >>> print(result['data_1'])
