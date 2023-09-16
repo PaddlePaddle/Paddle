@@ -23,19 +23,23 @@ limitations under the License. */
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/proto_desc.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace framework {
 
 class BlockDesc;
 
-class ProgramDesc {
+class TEST_API ProgramDesc {
  public:
   ProgramDesc();
 
   explicit ProgramDesc(const proto::ProgramDesc &desc);
 
   ProgramDesc(const ProgramDesc &o);
+
+  ProgramDesc &operator=(const ProgramDesc &) = delete;
+  ProgramDesc &operator=(ProgramDesc &&) = delete;
 
   explicit ProgramDesc(const std::string &binary_str);
 
