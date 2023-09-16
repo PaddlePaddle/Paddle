@@ -68,24 +68,23 @@ class AmpScaler:
 
     Examples:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        >>> import numpy as np
-        >>> import paddle
+            >>> import numpy as np
+            >>> import paddle
 
-        >>> paddle.seed(2023)
-        >>> data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
-        >>> model = paddle.nn.Conv2D(3, 2, 3)
-        >>> optimizer = paddle.optimizer.SGD(
-        ...         learning_rate=0.01, parameters=model.parameters())
-        >>> scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
-        >>> data = paddle.to_tensor(data)
-        >>> with paddle.amp.amp_guard():
-        ...     conv = model(data)
-        ...     loss = paddle.mean(conv)
-        ...     scaled = scaler.scale(loss)
-        ...     scaled.backward()
-        ...     scaler.minimize(optimizer, scaled)
+            >>> data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
+            >>> model = paddle.nn.Conv2D(3, 2, 3)
+            >>> optimizer = paddle.optimizer.SGD(
+            ...         learning_rate=0.01, parameters=model.parameters())
+            >>> scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
+            >>> data = paddle.to_tensor(data)
+            >>> with paddle.amp.amp_guard():
+            ...     conv = model(data)
+            ...     loss = paddle.mean(conv)
+            ...     scaled = scaler.scale(loss)
+            ...     scaled.backward()
+            ...     scaler.minimize(optimizer, scaled)
     """
 
     @dygraph_only
@@ -167,7 +166,6 @@ class AmpScaler:
                 >>> import numpy as np
                 >>> import paddle
 
-                >>> paddle.seed(2023)
                 >>> data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
                 >>> model = paddle.nn.Conv2D(3, 2, 3)
                 >>> optimizer = paddle.optimizer.SGD(
@@ -221,11 +219,12 @@ class AmpScaler:
                 >>> import numpy as np
                 >>> import paddle
 
-                >>> paddle.seed(2023)
                 >>> data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
                 >>> model = paddle.nn.Conv2D(3, 2, 3)
                 >>> optimizer = paddle.optimizer.SGD(
-                ...         learning_rate=0.01, parameters=model.parameters())
+                ...     learning_rate=0.01,
+                ...     parameters=model.parameters()
+                ... )
                 >>> scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
                 >>> data = paddle.to_tensor(data)
                 >>> with paddle.amp.amp_guard():
@@ -616,7 +615,6 @@ class GradScaler(AmpScaler):
             >>> model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
             >>> optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
             >>> scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-            >>> paddle.seed(2023)
             >>> data = paddle.rand([10, 3, 32, 32])
 
             >>> with paddle.amp.auto_cast():
@@ -668,7 +666,6 @@ class GradScaler(AmpScaler):
                 >>> model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
                 >>> optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
                 >>> scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-                >>> paddle.seed(2023)
                 >>> data = paddle.rand([10, 3, 32, 32])
 
                 >>> with paddle.amp.auto_cast():
@@ -739,7 +736,6 @@ class GradScaler(AmpScaler):
                 >>> model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
                 >>> optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
                 >>> scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-                >>> paddle.seed(2023)
                 >>> data = paddle.rand([10, 3, 32, 32])
                 >>> with paddle.amp.auto_cast():
                 ...     conv = model(data)
@@ -794,7 +790,6 @@ class GradScaler(AmpScaler):
                 >>> model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
                 >>> optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
                 >>> scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-                >>> paddle.seed(2023)
                 >>> data = paddle.rand([10, 3, 32, 32])
                 >>> with paddle.amp.auto_cast():
                 ...     conv = model(data)
@@ -834,7 +829,6 @@ class GradScaler(AmpScaler):
                 >>> model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
                 >>> optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
                 >>> scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-                >>> paddle.seed(2023)
                 >>> data = paddle.rand([10, 3, 32, 32])
                 >>> with paddle.amp.auto_cast():
                 ...     conv = model(data)
@@ -860,13 +854,15 @@ class GradScaler(AmpScaler):
 
                 >>> # doctest: +REQUIRES(env:GPU, env:XPU)
                 >>> import paddle
-                >>> scaler = paddle.amp.GradScaler(enable=True,
-                ...                                init_loss_scaling=1024,
-                ...                                incr_ratio=2.0,
-                ...                                decr_ratio=0.5,
-                ...                                incr_every_n_steps=1000,
-                ...                                decr_every_n_nan_or_inf=2,
-                ...                                use_dynamic_loss_scaling=True)
+                >>> scaler = paddle.amp.GradScaler(
+                ...     enable=True,
+                ...     init_loss_scaling=1024,
+                ...     incr_ratio=2.0,
+                ...     decr_ratio=0.5,
+                ...     incr_every_n_steps=1000,
+                ...     decr_every_n_nan_or_inf=2,
+                ...     use_dynamic_loss_scaling=True
+                ... )
                 >>> enable = scaler.is_enable()
                 >>> print(enable)
                 True
@@ -885,13 +881,15 @@ class GradScaler(AmpScaler):
 
                 >>> # doctest: +REQUIRES(env:GPU, env:XPU)
                 >>> import paddle
-                >>> scaler = paddle.amp.GradScaler(enable=True,
-                ...                                init_loss_scaling=1024,
-                ...                                incr_ratio=2.0,
-                ...                                decr_ratio=0.5,
-                ...                                incr_every_n_steps=1000,
-                ...                                decr_every_n_nan_or_inf=2,
-                ...                                use_dynamic_loss_scaling=True)
+                >>> scaler = paddle.amp.GradScaler(
+                ...     enable=True,
+                ...     init_loss_scaling=1024,
+                ...     incr_ratio=2.0,
+                ...     decr_ratio=0.5,
+                ...     incr_every_n_steps=1000,
+                ...     decr_every_n_nan_or_inf=2,
+                ...     use_dynamic_loss_scaling=True
+                ... )
                 >>> use_dynamic_loss_scaling = scaler.is_use_dynamic_loss_scaling()
                 >>> print(use_dynamic_loss_scaling)
                 True
@@ -910,13 +908,15 @@ class GradScaler(AmpScaler):
 
                 >>> # doctest: +REQUIRES(env:GPU, env:XPU)
                 >>> import paddle
-                >>> scaler = paddle.amp.GradScaler(enable=True,
-                ...                                init_loss_scaling=1024,
-                ...                                incr_ratio=2.0,
-                ...                                decr_ratio=0.5,
-                ...                                incr_every_n_steps=1000,
-                ...                                decr_every_n_nan_or_inf=2,
-                ...                                use_dynamic_loss_scaling=True)
+                >>> scaler = paddle.amp.GradScaler(
+                ...     enable=True,
+                ...     init_loss_scaling=1024,
+                ...     incr_ratio=2.0,
+                ...     decr_ratio=0.5,
+                ...     incr_every_n_steps=1000,
+                ...     decr_every_n_nan_or_inf=2,
+                ...     use_dynamic_loss_scaling=True
+                ... )
                 >>> init_loss_scaling = scaler.get_init_loss_scaling()
                 >>> print(init_loss_scaling)
                 1024
@@ -935,13 +935,15 @@ class GradScaler(AmpScaler):
 
                 >>> # doctest: +REQUIRES(env:GPU, env:XPU)
                 >>> import paddle
-                >>> scaler = paddle.amp.GradScaler(enable=True,
-                ...                                init_loss_scaling=1024,
-                ...                                incr_ratio=2.0,
-                ...                                decr_ratio=0.5,
-                ...                                incr_every_n_steps=1000,
-                ...                                decr_every_n_nan_or_inf=2,
-                ...                                use_dynamic_loss_scaling=True)
+                >>> scaler = paddle.amp.GradScaler(
+                ...     enable=True,
+                ...     init_loss_scaling=1024,
+                ...     incr_ratio=2.0,
+                ...     decr_ratio=0.5,
+                ...     incr_every_n_steps=1000,
+                ...     decr_every_n_nan_or_inf=2,
+                ...     use_dynamic_loss_scaling=True
+                ... )
                 >>> print(scaler.get_init_loss_scaling())
                 1024
                 >>> new_init_loss_scaling = 1000
@@ -963,13 +965,15 @@ class GradScaler(AmpScaler):
 
                 >>> # doctest: +REQUIRES(env:GPU, env:XPU)
                 >>> import paddle
-                >>> scaler = paddle.amp.GradScaler(enable=True,
-                ...                                init_loss_scaling=1024,
-                ...                                incr_ratio=2.0,
-                ...                                decr_ratio=0.5,
-                ...                                incr_every_n_steps=1000,
-                ...                                decr_every_n_nan_or_inf=2,
-                ...                                use_dynamic_loss_scaling=True)
+                >>> scaler = paddle.amp.GradScaler(
+                ...     enable=True,
+                ...     init_loss_scaling=1024,
+                ...     incr_ratio=2.0,
+                ...     decr_ratio=0.5,
+                ...     incr_every_n_steps=1000,
+                ...     decr_every_n_nan_or_inf=2,
+                ...     use_dynamic_loss_scaling=True
+                ... )
                 >>> incr_ratio = scaler.get_incr_ratio()
                 >>> print(incr_ratio)
                 2.0
@@ -988,13 +992,15 @@ class GradScaler(AmpScaler):
 
                 >>> # doctest: +REQUIRES(env:GPU, env:XPU)
                 >>> import paddle
-                >>> scaler = paddle.amp.GradScaler(enable=True,
-                ...                                init_loss_scaling=1024,
-                ...                                incr_ratio=2.0,
-                ...                                decr_ratio=0.5,
-                ...                                incr_every_n_steps=1000,
-                ...                                decr_every_n_nan_or_inf=2,
-                ...                                use_dynamic_loss_scaling=True)
+                >>> scaler = paddle.amp.GradScaler(
+                ...     enable=True,
+                ...     init_loss_scaling=1024,
+                ...     incr_ratio=2.0,
+                ...     decr_ratio=0.5,
+                ...     incr_every_n_steps=1000,
+                ...     decr_every_n_nan_or_inf=2,
+                ...     use_dynamic_loss_scaling=True
+                ... )
                 >>> print(scaler.get_incr_ratio())
                 2.0
                 >>> new_incr_ratio = 3.0
@@ -1016,13 +1022,15 @@ class GradScaler(AmpScaler):
 
                 >>> # doctest: +REQUIRES(env:GPU, env:XPU)
                 >>> import paddle
-                >>> scaler = paddle.amp.GradScaler(enable=True,
-                ...                                init_loss_scaling=1024,
-                ...                                incr_ratio=2.0,
-                ...                                decr_ratio=0.5,
-                ...                                incr_every_n_steps=1000,
-                ...                                decr_every_n_nan_or_inf=2,
-                ...                                use_dynamic_loss_scaling=True)
+                >>> scaler = paddle.amp.GradScaler(
+                ...     enable=True,
+                ...     init_loss_scaling=1024,
+                ...     incr_ratio=2.0,
+                ...     decr_ratio=0.5,
+                ...     incr_every_n_steps=1000,
+                ...     decr_every_n_nan_or_inf=2,
+                ...     use_dynamic_loss_scaling=True
+                ... )
                 >>> decr_ratio = scaler.get_decr_ratio()
                 >>> print(decr_ratio)
                 0.5
@@ -1041,13 +1049,15 @@ class GradScaler(AmpScaler):
 
                 >>> # doctest: +REQUIRES(env:GPU, env:XPU)
                 >>> import paddle
-                >>> scaler = paddle.amp.GradScaler(enable=True,
-                ...                                init_loss_scaling=1024,
-                ...                                incr_ratio=2.0,
-                ...                                decr_ratio=0.5,
-                ...                                incr_every_n_steps=1000,
-                ...                                decr_every_n_nan_or_inf=2,
-                ...                                use_dynamic_loss_scaling=True)
+                >>> scaler = paddle.amp.GradScaler(
+                ...     enable=True,
+                ...     init_loss_scaling=1024,
+                ...     incr_ratio=2.0,
+                ...     decr_ratio=0.5,
+                ...     incr_every_n_steps=1000,
+                ...     decr_every_n_nan_or_inf=2,
+                ...     use_dynamic_loss_scaling=True
+                ... )
                 >>> print(scaler.get_decr_ratio())
                 0.5
                 >>> new_decr_ratio = 0.1
@@ -1069,13 +1079,15 @@ class GradScaler(AmpScaler):
 
                 >>> # doctest: +REQUIRES(env:GPU, env:XPU)
                 >>> import paddle
-                >>> scaler = paddle.amp.GradScaler(enable=True,
-                ...                                init_loss_scaling=1024,
-                ...                                incr_ratio=2.0,
-                ...                                decr_ratio=0.5,
-                ...                                incr_every_n_steps=1000,
-                ...                                decr_every_n_nan_or_inf=2,
-                ...                                use_dynamic_loss_scaling=True)
+                >>> scaler = paddle.amp.GradScaler(
+                ...     enable=True,
+                ...     init_loss_scaling=1024,
+                ...     incr_ratio=2.0,
+                ...     decr_ratio=0.5,
+                ...     incr_every_n_steps=1000,
+                ...     decr_every_n_nan_or_inf=2,
+                ...     use_dynamic_loss_scaling=True
+                ... )
                 >>> incr_every_n_steps = scaler.get_incr_every_n_steps()
                 >>> print(incr_every_n_steps)
                 1000
@@ -1094,13 +1106,15 @@ class GradScaler(AmpScaler):
 
                 >>> # doctest: +REQUIRES(env:GPU, env:XPU)
                 >>> import paddle
-                >>> scaler = paddle.amp.GradScaler(enable=True,
-                ...                                init_loss_scaling=1024,
-                ...                                incr_ratio=2.0,
-                ...                                decr_ratio=0.5,
-                ...                                incr_every_n_steps=1000,
-                ...                                decr_every_n_nan_or_inf=2,
-                ...                                use_dynamic_loss_scaling=True)
+                >>> scaler = paddle.amp.GradScaler(
+                ...     enable=True,
+                ...     init_loss_scaling=1024,
+                ...     incr_ratio=2.0,
+                ...     decr_ratio=0.5,
+                ...     incr_every_n_steps=1000,
+                ...     decr_every_n_nan_or_inf=2,
+                ...     use_dynamic_loss_scaling=True
+                ... )
                 >>> print(scaler.get_incr_every_n_steps())
                 1000
                 >>> new_incr_every_n_steps = 2000
@@ -1122,13 +1136,15 @@ class GradScaler(AmpScaler):
 
                 >>> # doctest: +REQUIRES(env:GPU, env:XPU)
                 >>> import paddle
-                >>> scaler = paddle.amp.GradScaler(enable=True,
-                ...                                init_loss_scaling=1024,
-                ...                                incr_ratio=2.0,
-                ...                                decr_ratio=0.5,
-                ...                                incr_every_n_steps=1000,
-                ...                                decr_every_n_nan_or_inf=2,
-                ...                                use_dynamic_loss_scaling=True)
+                >>> scaler = paddle.amp.GradScaler(
+                ...     enable=True,
+                ...     init_loss_scaling=1024,
+                ...     incr_ratio=2.0,
+                ...     decr_ratio=0.5,
+                ...     incr_every_n_steps=1000,
+                ...     decr_every_n_nan_or_inf=2,
+                ...     use_dynamic_loss_scaling=True
+                ... )
                 >>> decr_every_n_nan_or_inf = scaler.get_decr_every_n_nan_or_inf()
                 >>> print(decr_every_n_nan_or_inf)
                 2
@@ -1147,13 +1163,15 @@ class GradScaler(AmpScaler):
 
                 >>> # doctest: +REQUIRES(env:GPU, env:XPU)
                 >>> import paddle
-                >>> scaler = paddle.amp.GradScaler(enable=True,
-                ...                                init_loss_scaling=1024,
-                ...                                incr_ratio=2.0,
-                ...                                decr_ratio=0.5,
-                ...                                incr_every_n_steps=1000,
-                ...                                decr_every_n_nan_or_inf=2,
-                ...                                use_dynamic_loss_scaling=True)
+                >>> scaler = paddle.amp.GradScaler(
+                ...     enable=True,
+                ...     init_loss_scaling=1024,
+                ...     incr_ratio=2.0,
+                ...     decr_ratio=0.5,
+                ...     incr_every_n_steps=1000,
+                ...     decr_every_n_nan_or_inf=2,
+                ...     use_dynamic_loss_scaling=True
+                ... )
                 >>> print(scaler.get_decr_every_n_nan_or_inf())
                 2
                 >>> new_decr_every_n_nan_or_inf = 3
@@ -1167,7 +1185,7 @@ class GradScaler(AmpScaler):
         """
         Returns the state of the scaler as a `dict`, If this instance is not enabled, returns an empty dict.
 
-        Reurns:
+        Returns:
             A dict of scaler includes:
             scale (tensor): The loss scaling factor.
             incr_ratio(float): The multiplier to use when increasing the loss scaling.
@@ -1186,13 +1204,15 @@ class GradScaler(AmpScaler):
                 >>> # doctest: +REQUIRES(env:GPU, env:XPU)
                 >>> import paddle
 
-                >>> scaler = paddle.amp.GradScaler(enable=True,
-                ...                                init_loss_scaling=1024,
-                ...                                incr_ratio=2.0,
-                ...                                decr_ratio=0.5,
-                ...                                incr_every_n_steps=1000,
-                ...                                decr_every_n_nan_or_inf=2,
-                ...                                use_dynamic_loss_scaling=True)
+                >>> scaler = paddle.amp.GradScaler(
+                ...     enable=True,
+                ...     init_loss_scaling=1024,
+                ...     incr_ratio=2.0,
+                ...     decr_ratio=0.5,
+                ...     incr_every_n_steps=1000,
+                ...     decr_every_n_nan_or_inf=2,
+                ...     use_dynamic_loss_scaling=True
+                ... )
                 >>> scaler_state = scaler.state_dict()
         """
         return super().state_dict()
@@ -1202,7 +1222,7 @@ class GradScaler(AmpScaler):
         Loads the scaler state.
 
         Args:
-           state_dict(dict): scaler state.  Should be an object returned from a call to `GradScaler.state_dict()`.
+            state_dict(dict): scaler state.  Should be an object returned from a call to `GradScaler.state_dict()`.
 
         Examples:
 
@@ -1211,13 +1231,15 @@ class GradScaler(AmpScaler):
                 >>> # doctest: +REQUIRES(env:GPU, env:XPU)
                 >>> import paddle
 
-                >>> scaler = paddle.amp.GradScaler(enable=True,
-                ...                               init_loss_scaling=1024,
-                ...                               incr_ratio=2.0,
-                ...                               decr_ratio=0.5,
-                ...                               incr_every_n_steps=1000,
-                ...                               decr_every_n_nan_or_inf=2,
-                ...                               use_dynamic_loss_scaling=True)
+                >>> scaler = paddle.amp.GradScaler(
+                ...     enable=True,
+                ...     init_loss_scaling=1024,
+                ...     incr_ratio=2.0,
+                ...     decr_ratio=0.5,
+                ...     incr_every_n_steps=1000,
+                ...     decr_every_n_nan_or_inf=2,
+                ...     use_dynamic_loss_scaling=True
+                ... )
                 >>> scaler_state = scaler.state_dict()
                 >>> scaler.load_state_dict(scaler_state)
         """
