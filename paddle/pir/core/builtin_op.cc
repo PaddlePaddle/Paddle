@@ -35,7 +35,7 @@ void PassStopGradientsDefaultly(OperationArgument &argument) {  // NOLINT
                        .dyn_cast<pir::ArrayAttribute>()
                        .AsVector();
       input_stop_gradient =
-          attrs[input.GetResultIndex()].dyn_cast<pir::BoolAttribute>().data();
+          attrs[input.index()].dyn_cast<pir::BoolAttribute>().data();
     }
     if (!input_stop_gradient) {
       stop_gradient = false;
@@ -317,10 +317,9 @@ void SplitOp::PassStopGradients(OperationArgument &argument) {
           auto attrs = oprand_defining_op->attribute(kStopGradientAttrName)
                            .dyn_cast<pir::ArrayAttribute>()
                            .AsVector();
-          defaut_stop_gradients[i] =
-              attrs[value.dyn_cast<OpResult>().GetResultIndex()]
-                  .dyn_cast<pir::BoolAttribute>()
-                  .data();
+          defaut_stop_gradients[i] = attrs[value.dyn_cast<OpResult>().index()]
+                                         .dyn_cast<pir::BoolAttribute>()
+                                         .data();
         }
       }
     } else if (defining_op &&
