@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-from functools import partial
 
 import numpy as np
 import op_test
@@ -71,26 +70,6 @@ class TestAssignValueOp4(TestAssignValueOp):
             np.bool_
         )
         self.attrs["bool_values"] = [int(v) for v in self.value.flat]
-
-
-class TestAssignValueOp5(TestAssignValueOp):
-    def setUp(self):
-        self.op_type = "assign_value"
-        self.python_api = partial(
-            assign_value_wrapper, dtype=base.core.VarDesc.VarType.FP64
-        )
-        self.inputs = {}
-        self.attrs = {}
-        self.init_data()
-        self.attrs["shape"] = self.value.shape
-        self.attrs["dtype"] = framework.convert_np_dtype_to_dtype_(
-            self.value.dtype
-        )
-        self.outputs = {"Out": self.value}
-
-    def init_data(self):
-        self.value = np.random.random(size=(2, 5)).astype(np.float64)
-        self.attrs["float64_values"] = [float(v) for v in self.value.flat]
 
 
 class TestAssignApi(unittest.TestCase):
