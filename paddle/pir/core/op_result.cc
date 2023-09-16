@@ -47,12 +47,6 @@ bool OpResult::operator==(const OpResult &other) const {
   return impl_ == other.impl_;
 }
 
-// OpResult::OpResult(const detail::OpResultImpl *impl) : Value(impl) {}
-
-uint32_t OpResult::GetValidInlineIndex(uint32_t index) {
-  uint32_t max_inline_index =
-      pir::detail::OpResultImpl::GetMaxInlineResultIndex();
-  return index <= max_inline_index ? index : max_inline_index;
-}
+OpResult::OpResult(const detail::OpResultImpl *impl) : Value(impl) {}
 
 }  // namespace pir

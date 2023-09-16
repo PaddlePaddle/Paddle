@@ -586,7 +586,7 @@ bool SymbolicDimMgr::SaveShapeConstraintGraph() {
 
   Builder builder = Builder(m_->ir_context(), funcOp.block());
   auto build_operands = [&](const SymbolicDimProduct& prod) {
-    std::vector<OpResult> values;
+    std::vector<Value> values;
 
     if (prod.factor != 1) {
       values.push_back(
