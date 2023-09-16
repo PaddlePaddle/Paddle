@@ -29,10 +29,6 @@ class Program;
 class OpOperand;
 class OpResult;
 
-namespace detial {
-class BlockOperandImpl;
-}  // namespace detial
-
 class IR_API alignas(8) Operation final {
  public:
   ///
@@ -41,7 +37,7 @@ class IR_API alignas(8) Operation final {
   /// NOTE: Similar to new and delete, the destroy() and the create() need to be
   /// used in conjunction.
   ///
-  static Operation *Create(const std::vector<pir::OpResult> &inputs,
+  static Operation *Create(const std::vector<pir::Value> &inputs,
                            const AttributeMap &attributes,
                            const std::vector<pir::Type> &output_types,
                            pir::OpInfo op_info,
@@ -142,9 +138,9 @@ class IR_API alignas(8) Operation final {
         const_cast<const Operation *>(this)->GetParentProgram());
   }
 
-  operator Block::iterator() { return position_; }
+  operator Block::Iterator() { return position_; }
 
-  operator Block::const_iterator() const { return position_; }
+  operator Block::ConstIterator() const { return position_; }
 
   /// Replace all uses of results of this operation with the provided 'values'.
   void ReplaceAllUsesWith(const std::vector<Value> &values);
@@ -179,7 +175,7 @@ class IR_API alignas(8) Operation final {
 
   // Allow access to 'SetParent'.
   friend class Block;
-  void SetParent(Block *parent, const Block::iterator &position);
+  void SetParent(Block *parent, const Block::Iterator &position);
 
   template <typename T>
   struct CastUtil<
@@ -200,7 +196,7 @@ class IR_API alignas(8) Operation final {
   detail::BlockOperandImpl *block_operands_{nullptr};
   Region *regions_{nullptr};
   Block *parent_{nullptr};
-  Block::iterator position_;
+  Block::Iterator position_;
 };
 
 }  // namespace pir

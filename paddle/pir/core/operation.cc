@@ -27,7 +27,11 @@
 
 namespace pir {
 Operation *Operation::Create(OperationArgument &&argument) {
-  return Create(argument.inputs,
+  std::vector<Value> inputs;
+  for (auto op_result : argument.inputs) {
+    inputs.emplace_back(op_result);
+  }
+  return Create(inputs,
                 argument.attributes,
                 argument.output_types,
                 argument.info,
@@ -38,7 +42,7 @@ Operation *Operation::Create(OperationArgument &&argument) {
 // Allocate the required memory based on the size and number of inputs, outputs,
 // and operators, and construct it in the order of: OpOutlineResult,
 // OpInlineResult, Operation, operand.
-Operation *Operation::Create(const std::vector<pir::OpResult> &inputs,
+Operation *Operation::Create(const std::vector<Value> &inputs,
                              const AttributeMap &attributes,
                              const std::vector<Type> &output_types,
                              pir::OpInfo op_info,
@@ -89,7 +93,7 @@ Operation *Operation::Create(const std::vector<pir::OpResult> &inputs,
     IR_THROW("The address of OpOperandImpl must be divisible by 8.");
   }
   for (size_t idx = 0; idx < num_operands; idx++) {
-    new (base_ptr) detail::OpOperandImpl(inputs[idx].impl_, op);
+    new (base_ptr) detail::OpOperandImpl(inputs[idx], op);
     base_ptr += sizeof(detail::OpOperandImpl);
   }
   // 3.4. Construct BlockOperands.
@@ -131,7 +135,7 @@ void Operation::Destroy() {
 
   // 2. Deconstruct Result.
   for (size_t idx = 0; idx < num_results_; ++idx) {
-    detail::OpResultImpl *impl = result(idx).impl();
+    detail::ValueImpl *impl = result(idx).impl();
     if (detail::OpOutlineResultImpl::classof(*impl)) {
       static_cast<detail::OpOutlineResultImpl *>(impl)->~OpOutlineResultImpl();
     } else {
@@ -275,7 +279,7 @@ const Region &Operation::region(unsigned index) const {
   return regions_[index];
 }
 
-void Operation::SetParent(Block *parent, const Block::iterator &position) {
+void Operation::SetParent(Block *parent, const Block::Iterator &position) {
   parent_ = parent;
   position_ = position;
 }

@@ -134,7 +134,7 @@ inline pir::Operation* InsertCombineOperationForTarget(
   std::string combine_op_name(pir::CombineOp::name());
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(combine_op_name);
 
-  std::vector<pir::OpResult> src_values;
+  std::vector<pir::Value> src_values;
   std::vector<pir::Type> types_in_vec;
   for (const auto& arg_name : args) {
     auto defining_info = param_map->at(arg_name);
@@ -299,7 +299,7 @@ pir::OpResult OpTranscriber::GetAttributeAsInput(
   return defining_op->result(0);
 }
 
-std::vector<pir::OpResult> OpTranscriber::GenerateOperationInput(
+std::vector<pir::Value> OpTranscriber::GenerateOperationInput(
     pir::IrContext* ctx,
     TranslationContext* param_map,
     const OpDesc& op_desc,
@@ -314,7 +314,7 @@ std::vector<pir::OpResult> OpTranscriber::GenerateOperationInput(
 
   VLOG(10) << "[op:" << op_desc.Type() << "][input] start";
 
-  std::vector<pir::OpResult> op_inputs;
+  std::vector<pir::Value> op_inputs;
 
   for (const auto& info : input_infos) {
     if (auto special_handler = this->GetSpecialInputHandlers(info.name)) {
@@ -389,6 +389,10 @@ std::vector<pir::OpResult> OpTranscriber::GenerateOperationInput(
     if (!is_vector) {
       IR_ENFORCE(legacy_input_vars.size() == 1u,
                  "Input %s not found when parsing op %s",
+                 info.name,
+                 op_desc.Type());
+      IR_ENFORCE(param_map->count(legacy_input_vars[0]),
+                 "Input [%s] of op [%s] not found in param map",
                  info.name,
                  op_desc.Type());
       auto defining_info = (*param_map)[legacy_input_vars[0]];
@@ -586,7 +590,9 @@ void OpTranscriber::RecordOpResultMapping(pir::IrContext* ctx,
     bool generated_by_vector = value.type().isa<pir::VectorType>();
 
     (*param_map)[arg_name] = VariableDefiningInfo(
-        value, generated_by_vector, generated_by_vector ? idx_in_vec : -1);
+        value,
+        generated_by_vector,
+        static_cast<int>(generated_by_vector ? idx_in_vec : -1));
   }
 }
 
@@ -773,7 +779,7 @@ struct AssignValueOpTranscriber : public OpTranscriber {
 
     VLOG(10) << "[op assign_value] attribute translation done";
 
-    std::vector<pir::OpResult> op_inputs = {};
+    std::vector<pir::Value> op_inputs = {};
 
     OpOutputMapping arg_to_idx;
     OpOutputTypeList op_output_types;
@@ -898,7 +904,7 @@ struct FeedOpTranscriber : public OpTranscriber {
     return attribute_map;
   }
 
-  std::vector<pir::OpResult> GenerateOperationInput(
+  std::vector<pir::Value> GenerateOperationInput(
       pir::IrContext* ctx,
       TranslationContext* param_map,
       const OpDesc& op_desc,
@@ -936,7 +942,7 @@ struct DataOpTranscriber : public FeedOpTranscriber {
 };
 
 struct SplitOpTranscriber : public OpTranscriber {
-  std::vector<pir::OpResult> GenerateOperationInput(
+  std::vector<pir::Value> GenerateOperationInput(
       pir::IrContext* ctx,
       TranslationContext* param_map,
       const OpDesc& op_desc,
@@ -947,7 +953,7 @@ struct SplitOpTranscriber : public OpTranscriber {
 
     VLOG(10) << "[op:split][input] start";
 
-    std::vector<pir::OpResult> op_inputs;
+    std::vector<pir::Value> op_inputs;
     // process first input
     auto x_input_vars = op_desc.Input("X");
     IR_ENFORCE(x_input_vars.size() == 1, "x input of split MUST be a tensor");
@@ -1079,7 +1085,7 @@ struct ShadowOutputOpTranscriber : public OpTranscriber {
                              pir::Program* program) override {
     auto op_info = ctx->GetRegisteredOpInfo(pir::SetParameterOp::name());
 
-    std::vector<pir::OpResult> op_inputs;
+    std::vector<pir::Value> op_inputs;
     auto legacy_input_vars = op_desc.Input("x", true);
 
     auto defining_info = (*param_map)[legacy_input_vars[0]];
@@ -1157,7 +1163,7 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
     return op_info;
   }
 
-  std::vector<pir::OpResult> GenerateOperationInput(
+  std::vector<pir::Value> GenerateOperationInput(
       pir::IrContext* ctx,
       TranslationContext* param_map,
       const OpDesc& op_desc,
@@ -1190,14 +1196,6 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
              paddle::dialect::VarTypeToDataType(
                  static_cast<paddle::framework::proto::VarType_Type>(dtype)))}};
 
-    if (op_desc.HasAttr("force_cpu")) {
-      bool force_cpu = PADDLE_GET_CONST(bool, op_desc.GetAttr("force_cpu"));
-      if (force_cpu) {
-        attribute_map["place"] =
-            paddle::dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
-      }
-    }
-
     int place_type = PADDLE_GET_CONST(int, op_desc.GetAttr("place_type"));
     switch (place_type) {
       case -1:
@@ -1221,6 +1219,15 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
             paddle::dialect::PlaceAttribute::get(ctx, phi::XPUPlace());
         break;
     }
+
+    if (op_desc.HasAttr("force_cpu")) {
+      bool force_cpu = PADDLE_GET_CONST(bool, op_desc.GetAttr("force_cpu"));
+      if (force_cpu) {
+        attribute_map["place"] =
+            paddle::dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
+      }
+    }
+
     return attribute_map;
   }
 };
@@ -1238,14 +1245,14 @@ struct FillConstant2FullWithTensorTranscriber : public OpTranscriber {
     return op_info;
   }
 
-  std::vector<pir::OpResult> GenerateOperationInput(
+  std::vector<pir::Value> GenerateOperationInput(
       pir::IrContext* ctx,
       TranslationContext* param_map,
       const OpDesc& op_desc,
       const std::string& normalized_op_name,
       const OpInputInfoList& input_infos,
       pir::Program* program) override {
-    std::vector<pir::OpResult> op_inputs;
+    std::vector<pir::Value> op_inputs;
     if (op_desc.HasInput("ShapeTensor", true) &&
         op_desc.Input("ShapeTensor", true).size() > 0) {
       auto shape_tensor_vars = op_desc.Input("ShapeTensor", true);
@@ -1402,7 +1409,7 @@ struct ReduceOpTranscriber : public OpTranscriber {
 };
 
 struct ElementwiseTranscriber : public OpTranscriber {
-  std::vector<pir::OpResult> GenerateOperationInput(
+  std::vector<pir::Value> GenerateOperationInput(
       pir::IrContext* ctx,
       TranslationContext* param_map,
       const OpDesc& op_desc,
@@ -1479,10 +1486,11 @@ struct ElementwiseTranscriber : public OpTranscriber {
     std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
 
     if (axis < 0) {
-      axis += x_shape.size();
+      axis += static_cast<int>(x_shape.size());
     }
 
-    int append_size = x_shape.size() - axis - 1 - y_shape.size();
+    int append_size =
+        static_cast<int>(x_shape.size() - axis - 1 - y_shape.size());
     if (append_size < 0) {  // which means x.rank <= y.rank, mostly
                             // x.rank=y.rank
       return {x_value, y_value};

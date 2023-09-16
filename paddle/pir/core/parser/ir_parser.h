@@ -51,13 +51,11 @@ class IrParser {
 
   std::vector<std::string> ParseOpResultList();
 
-  std::vector<OpResult> ParseOperandList();
+  std::vector<Value> ParseOperandList();
 
   AttributeMap ParseAttributeMap();
 
   std::vector<Type> ParseTypeList();
-
-  OpResult GetNullValue();
 
   Type ParseType();
 
