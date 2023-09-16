@@ -23,21 +23,21 @@ local_logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
-from .trainer_desc import (
-    MultiTrainer,  # noqa: F401
-    DistMultiTrainer,  # noqa: F401
-    PipelineTrainer,  # noqa: F401
-    HeterXpuTrainer,  # noqa: F401
-    PSGPUTrainer,  # noqa: F401
-    HeterPipelineTrainer,  # noqa: F401
+from .trainer_desc import (  # noqa: F401
+    MultiTrainer,
+    DistMultiTrainer,
+    PipelineTrainer,
+    HeterXpuTrainer,
+    PSGPUTrainer,
+    HeterPipelineTrainer,
 )
-from .device_worker import (
-    Hogwild,  # noqa: F401
-    DownpourSGD,  # noqa: F401
-    DownpourLite,  # noqa: F401
-    Section,  # noqa: F401
-    DownpourSGDOPT,  # noqa: F401
-    HeterSection,  # noqa: F401
+from .device_worker import (  # noqa: F401
+    Hogwild,
+    DownpourSGD,
+    DownpourLite,
+    Section,
+    DownpourSGDOPT,
+    HeterSection,
 )
 from .framework import Variable
 
