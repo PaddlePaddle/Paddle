@@ -304,12 +304,21 @@ def amp_guard(
             >>> import paddle
 
             >>> data = paddle.uniform([10, 3, 32, 32], paddle.float32, -1, 1)
-            >>> conv2d = paddle.nn.Conv2D(3, 2, 3)
+            >>> conv2d = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
             >>> conv2d = paddle.amp.amp_decorate(models=conv2d, level='O2')
             >>> with paddle.amp.amp_guard():
             ...     conv = conv2d(data)
-            ...     assert conv.dtype == paddle.float16
-
+            ...     print(conv.dtype)
+            >>> # doctest: +SKIP("This has diff in xdoctest env")
+            paddle.float16
+            >>> # doctest: -SKIP
+            ...
+            >>> with paddle.amp.amp_guard(enable=False):
+            ...     conv = conv2d(data)
+            ...     print(conv.dtype)
+            >>> # doctest: +SKIP("This has diff in xdoctest env")
+            paddle.float32
+            >>> # doctest: -SKIP
     """
     amp_state = locals()
     global _g_amp_state_
@@ -528,7 +537,8 @@ def amp_decorate(
 
             >>> with paddle.amp.amp_guard(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
             ...     output = model(data)
-            ...     assert output.dtype == paddle.float16
+            ...     print(output.dtype)
+            paddle.float16
 
             >>> # Demo2: multi models and optimizers:
             >>> model2 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
@@ -541,8 +551,10 @@ def amp_decorate(
             >>> with paddle.amp.amp_guard(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
             ...     output = models[0](data)
             ...     output2 = models[1](data)
-            ...     assert output.dtype == paddle.float16
-            ...     assert output2.dtype == paddle.float16
+            ...     print(output.dtype)
+            ...     print(output2.dtype)
+            paddle.float16
+            paddle.float16
 
             >>> # Demo3: optimizers is None:
             >>> model3 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
@@ -554,7 +566,8 @@ def amp_decorate(
 
             >>> with paddle.amp.amp_guard(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
             ...     output = model(data)
-            ...     assert output.dtype == paddle.float16
+            ...     print(output.dtype)
+            paddle.float16
     """
     if not (level in ['O1', 'O2']):
         raise ValueError(
@@ -723,25 +736,40 @@ def auto_cast(
 
             >>> with paddle.amp.auto_cast():
             ...     conv = conv2d(data)
-            ...     assert conv.dtype == paddle.float16
+            ...     print(conv.dtype)
+            >>> # doctest: +SKIP("This has diff in xdoctest env")
+            paddle.float16
+            >>> # doctest: -SKIP
 
             >>> with paddle.amp.auto_cast(enable=False):
             ...     conv = conv2d(data)
-            ...     assert conv.dtype == paddle.float32
+            ...     print(conv.dtype)
+            >>> # doctest: +SKIP("This has diff in xdoctest env")
+            paddle.float32
+            >>> # doctest: -SKIP
 
             >>> with paddle.amp.auto_cast(custom_black_list={'conv2d'}):
             ...     conv = conv2d(data)
-            ...     assert conv.dtype == paddle.float32
+            ...     print(conv.dtype)
+            >>> # doctest: +SKIP("This has diff in xdoctest env")
+            paddle.float32
+            >>> # doctest: -SKIP
 
-            >>> a = paddle.rand([2,3])
-            >>> b = paddle.rand([2,3])
+            >>> a = paddle.rand([2, 3])
+            >>> b = paddle.rand([2, 3])
             >>> with paddle.amp.auto_cast(custom_white_list={'elementwise_add'}):
             ...     c = a + b
-            ...     assert c.dtype == paddle.float16
+            ...     print(c.dtype)
+            >>> # doctest: +SKIP("This has diff in xdoctest env")
+            paddle.float16
+            >>> # doctest: -SKIP
 
             >>> with paddle.amp.auto_cast(custom_white_list={'elementwise_add'}, level='O2'):
             ...     d = a + b
-            ...     assert d.dtype == paddle.float16
+            ...     print(d.dtype)
+            >>> # doctest: +SKIP("This has diff in xdoctest env")
+            paddle.float16
+            >>> # doctest: -SKIP
 
     """
     return amp_guard(
@@ -797,7 +825,8 @@ def decorate(
 
             >>> with paddle.amp.auto_cast(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
             ...     output = model(data)
-            ...     assert output.dtype == paddle.float16
+            ...     print(output.dtype)
+            paddle.float16
 
             >>> # Demo2: multi models and optimizers:
             >>> model2 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
@@ -808,10 +837,12 @@ def decorate(
             >>> data = paddle.rand([10, 3, 32, 32])
 
             >>> with paddle.amp.auto_cast(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
-            ...    output = models[0](data)
-            ...    output2 = models[1](data)
-            ...    assert output.dtype == paddle.float16
-            ...    assert output2.dtype == paddle.float16
+            ...     output = models[0](data)
+            ...     output2 = models[1](data)
+            ...     print(output.dtype)
+            ...     print(output2.dtype)
+            paddle.float16
+            paddle.float16
 
             >>> # Demo3: optimizers is None:
             >>> model3 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
@@ -822,8 +853,9 @@ def decorate(
             >>> data = paddle.rand([10, 3, 32, 32])
 
             >>> with paddle.amp.auto_cast(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
-            ...    output = model(data)
-            ...    assert output.dtype == paddle.float16
+            ...     output = model(data)
+            ...     print(output.dtype)
+            paddle.float16
 
     """
     return amp_decorate(
