@@ -266,14 +266,15 @@ class PostTrainingQuantization:
                 >>> # sample generator must return a sample every time. The reference
                 >>> # document: https://www.paddlepaddle.org.cn/documentation/docs/zh
                 >>> # /user_guides/howto/prepare_data/use_py_reader.html
-                >>> sample_generator = your_sample_generator
+                >>> data_loader = your_data_loader
                 >>> batch_size = 10
                 >>> batch_nums = 10
                 >>> algo = "KL"
                 >>> quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
                 >>> ptq = PostTrainingQuantization(
                 ...     executor=exe,
-                ...     sample_generator=sample_generator,
+                ...     sample_generator=None,
+                ...     data_loader=data_loader,
                 ...     model_dir=model_dir,
                 ...     model_filename=model_filename,
                 ...     params_filename=params_filename,
