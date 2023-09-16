@@ -279,12 +279,45 @@ try:
     libpaddle.LoDTensor = libpaddle.Tensor
 
     from .libpaddle import *
-    from .libpaddle import (
+    from .libpaddle import (  # noqa: F401
+        __doc__,
+        __file__,
+        __name__,
+        __package__,
+        __unittest_throw_exception__,
+        _append_python_callable_object_and_return_id,
+        _cleanup,
+        _Scope,
+        _get_use_default_grad_op_desc_maker_ops,
+        _get_all_register_op_kernels,
+        _get_registered_phi_kernels,
+        _is_program_version_supported,
+        _set_eager_deletion_mode,
+        _get_eager_deletion_vars,
+        _set_fuse_parameter_group_size,
+        _set_fuse_parameter_memory_size,
+        _is_dygraph_debug_enabled,
+        _dygraph_debug_level,
+        _switch_tracer,
         _set_paddle_lib_path,
-    )  # noqa: F401
+        _create_loaded_parameter,
+        _cuda_synchronize,
+        _test_enforce_gpu_success,
+        _is_compiled_with_heterps,
+        _promote_types_if_complex_exists,
+        _set_cached_executor_build_strategy,
+        _device_synchronize,
+        _xpu_device_synchronize,
+        _get_current_stream,
+        _Profiler,
+        _ProfilerResult,
+        _RecordEvent,
+        _set_current_stream,
+        _get_phi_kernel_name,
+    )
 
     # prim controller flags
-    from .libpaddle import (
+    from .libpaddle import (  # noqa: F401
         __set_bwd_prim_enabled,
         _is_bwd_prim_enabled,
         __set_fwd_prim_enabled,
@@ -292,13 +325,33 @@ try:
         __set_all_prim_enabled,
         _is_eager_prim_enabled,
         __set_eager_prim_enabled,
+        _set_prim_target_grad_name,
+        _add_skip_comp_ops,
         _set_bwd_prim_blacklist,
-    )  # noqa: F401
+        _remove_skip_comp_ops,
+    )
 
     # custom devivce
+    from .libpaddle import (  # noqa: F401
+        _get_current_custom_device_stream,
+        _set_current_custom_device_stream,
+        _synchronize_custom_device,
+        CustomDeviceStream,
+        CustomDeviceEvent,
+    )
 
     if sys.platform != 'win32':
-        pass  # noqa: F401
+        from .libpaddle import (  # noqa: F401
+            _set_process_pids,
+            _erase_process_pids,
+            _set_process_signal_handler,
+            _throw_error_if_process_failed,
+            _convert_to_tensor_list,
+            _array_to_share_memory_tensor,
+            _cleanup_mmap_fds,
+            _remove_tensor_list_mmap_fds,
+            _set_max_memory_map_allocation_pool_size,
+        )
 
     # CINN
     from .libpaddle import is_run_with_cinn  # noqa: F401
