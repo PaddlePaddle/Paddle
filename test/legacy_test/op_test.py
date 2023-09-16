@@ -1624,9 +1624,7 @@ class OpTest(unittest.TestCase):
             if fwd_var_name is None:
                 fwd_var_name = arg
             fwd_var = fwd_program.global_block().vars.get(fwd_var_name)
-            assert fwd_var is not None, "{} cannot be found".format(
-                fwd_var_name
-            )
+            assert fwd_var is not None, f"{fwd_var_name} cannot be found"
             grad_var = grad_block.create_var(
                 name=arg,
                 dtype=fwd_var.dtype,

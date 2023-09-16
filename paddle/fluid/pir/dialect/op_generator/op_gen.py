@@ -1017,11 +1017,7 @@ def OpGenerator(
                         muta_attr_is_input=False,
                         attr_args_is_map=True,
                     )
-                    build_attr_num_over_1 = (
-                        "static void Build({build_args});".format(
-                            build_args=build_args_with_attr_is_map_for_declare
-                        )
-                    )
+                    build_attr_num_over_1 = f"static void Build({build_args_with_attr_is_map_for_declare});"
 
                 if len(op_mutable_attribute_name_list) > 0:
                     (
