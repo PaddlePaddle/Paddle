@@ -215,7 +215,6 @@ Operation* IrParser::ParseOperation() {
 
   OpInfo opinfo = ParseOpInfo();
 
-
   std::vector<Value> inputs = ParseOperandList();
 
   pir::AttributeMap attributeMap = ParseAttributeMap();
