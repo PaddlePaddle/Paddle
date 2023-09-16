@@ -1448,5 +1448,29 @@ class TestDygrapInplaceMultiply(TestDygraphInplaceWithContinuous):
         return paddle.multiply(var, self.y)
 
 
+class TestDygraphInplaceIndexFill(TestDygraphInplace):
+    def init_data(self):
+        self.input_var_numpy = np.random.random((20, 40))
+        self.dtype = "float32"
+        self.axis = 0
+        self.index = paddle.to_tensor([0, 2])
+        self.value = -1
+
+    def inplace_api_processing(self, var):
+        return paddle.index_fill_(var, self.index, self.axis, self.value)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.index_fill(var, self.index, self.axis, self.value)
+
+    def test_backward_error(self):
+        pass
+
+    def test_forward_version(self):
+        pass
+
+    def test_leaf_inplace_var_error(self):
+        pass
+
+
 if __name__ == '__main__':
     unittest.main()

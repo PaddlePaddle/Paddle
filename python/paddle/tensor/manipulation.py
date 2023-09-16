@@ -5160,3 +5160,94 @@ __METHODS = {
 }
 for name, func in __METHODS.items():
     setattr(core.eager.Tensor, name, func)
+
+
+def index_fill(x, index, axis, value, name=None):
+    """
+    Outplace version of ``index_fill_`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_index_fill`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            arr = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]).astype('int64')
+            input_tensor = paddle.to_tensor(arr)
+            index = paddle.to_tensor([0, 2], dtype="int32")
+            value = -1
+            res = paddle.index_fill(input_tensor, 0, index, value)
+            print(input_tensor)
+            # Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [[1, 2, 3],
+            #         [4, 5, 6],
+            #         [7, 8, 9]])
+            print(res)
+            # Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [[-1, -1, -1],
+            #         [ 4,  5,  6],
+            #         [-1, -1, -1]])
+    """
+    if not isinstance(index, (paddle.Tensor, Variable)):
+        raise ValueError("index must be Tensor")
+
+    perm = [i for i in range(len(x.shape))]
+    perm[0] = axis
+    perm[axis] = 0
+
+    out = paddle.clone(x)
+    out = paddle.transpose(out, perm)
+    if in_dynamic_mode():
+        out[index] = value
+    else:
+        out = paddle.static.setitem(out, index, value)
+    return paddle.transpose(out, perm)
+
+
+@inplace_apis_in_dygraph_only
+def index_fill_(x, index, axis, value, name=None):
+    """
+    Fill the elements of the input tensor with value by the spcific axis and index.
+
+    Args:
+        x (Tensor) : The Destination Tensor. Supported data types are int32, int64, float16, float32, float64.
+        axis (int): The dimension along which to index.
+        index (Tensor): The 1-D Tensor containing the indices to index.
+            The data type of ``index`` must be int32 or int64.
+        value (float): The tensor used to fill with.
+        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor, same dimention and dtype with x.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            arr = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]).astype('int64')
+            input_tensor = paddle.to_tensor(arr)
+            index = paddle.to_tensor([0, 2], dtype="int32")
+            value = -1
+            res = paddle.index_fill(input_tensor, 0, index, value)
+            print(input_tensor)
+            # Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [[-1, -1, -1],
+            #         [ 4,  5,  6],
+            #         [-1, -1, -1]])
+            print(res)
+            # Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [[-1, -1, -1],
+            #         [ 4,  5,  6],
+            #         [-1, -1, -1]])
+    """
+    if not isinstance(index, (paddle.Tensor, Variable)):
+        raise ValueError("index must be Tensor")
+
+    perm = [i for i in range(len(x.shape))]
+    perm[0] = axis
+    perm[axis] = 0
+
+    out = paddle.transpose(x, perm)
+    out[index] = value
+    return x
