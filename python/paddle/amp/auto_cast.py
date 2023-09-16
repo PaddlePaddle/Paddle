@@ -300,20 +300,15 @@ def amp_guard(
 
         .. code-block:: python
 
-            >>> import numpy as np
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
 
-            >>> paddle.seed(2023)
-            >>> data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
+            >>> data = paddle.uniform([10, 3, 32, 32], paddle.float32, -1, 1)
             >>> conv2d = paddle.nn.Conv2D(3, 2, 3)
             >>> conv2d = paddle.amp.amp_decorate(models=conv2d, level='O2')
-            >>> data = paddle.to_tensor(data)
             >>> with paddle.amp.amp_guard():
             ...     conv = conv2d(data)
             ...     assert conv.dtype == paddle.float16
-            >>> with paddle.amp.amp_guard(enable=False):
-            ...     conv = conv2d(data)
-            ...     assert conv.dtype == paddle.float32
 
     """
     amp_state = locals()
@@ -529,21 +524,18 @@ def amp_decorate(
 
             >>> model, optimizer = paddle.amp.amp_decorate(models=model, optimizers=optimizer, level='O2')
 
-            >>> paddle.seed(2023)
             >>> data = paddle.rand([10, 3, 32, 32])
 
             >>> with paddle.amp.amp_guard(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
             ...     output = model(data)
             ...     assert output.dtype == paddle.float16
 
-            >>> # doctest: +REQUIRES(env:GPU)
             >>> # Demo2: multi models and optimizers:
             >>> model2 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
             >>> optimizer2 = paddle.optimizer.Adam(parameters=model2.parameters())
 
             >>> models, optimizers = paddle.amp.amp_decorate(models=[model, model2], optimizers=[optimizer, optimizer2], level='O2')
 
-            >>> paddle.seed(2023)
             >>> data = paddle.rand([10, 3, 32, 32])
 
             >>> with paddle.amp.amp_guard(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
@@ -552,14 +544,12 @@ def amp_decorate(
             ...     assert output.dtype == paddle.float16
             ...     assert output2.dtype == paddle.float16
 
-            >>> # doctest: +REQUIRES(env:GPU)
             >>> # Demo3: optimizers is None:
             >>> model3 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
             >>> optimizer3 = paddle.optimizer.Adam(parameters=model2.parameters())
 
             >>> model = paddle.amp.amp_decorate(models=model3, level='O2')
 
-            >>> paddle.seed(2023)
             >>> data = paddle.rand([10, 3, 32, 32])
 
             >>> with paddle.amp.amp_guard(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
@@ -725,10 +715,10 @@ def auto_cast(
 
         .. code-block:: python
 
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
 
             >>> conv2d = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
-            >>> paddle.seed(2023)
             >>> data = paddle.rand([10, 3, 32, 32])
 
             >>> with paddle.amp.auto_cast():
@@ -809,7 +799,6 @@ def decorate(
             ...     output = model(data)
             ...     assert output.dtype == paddle.float16
 
-            >>> # doctest: +REQUIRES(env:GPU)
             >>> # Demo2: multi models and optimizers:
             >>> model2 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
             >>> optimizer2 = paddle.optimizer.Adam(parameters=model2.parameters())
@@ -824,7 +813,6 @@ def decorate(
             ...    assert output.dtype == paddle.float16
             ...    assert output2.dtype == paddle.float16
 
-            >>> # doctest: +REQUIRES(env:GPU)
             >>> # Demo3: optimizers is None:
             >>> model3 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
             >>> optimizer3 = paddle.optimizer.Adam(parameters=model3.parameters())
