@@ -1213,6 +1213,22 @@ function check_coverage() {
     fi
 }
 
+function check_cpp_python_coverage() {
+    if [ ${WITH_COVERAGE:-ON} == "ON" ] ; then
+        /bin/bash ${PADDLE_ROOT}/tools/coverage/get_coverage.sh combine_cov_info
+    else
+        echo "WARNING: check_coverage need to compile with WITH_COVERAGE=ON, but got WITH_COVERAGE=OFF"
+    fi
+}
+
+
+function get_cpp_and_python_coverage_info() {
+    if [ ${WITH_COVERAGE:-ON} == "ON" ] ; then
+        /bin/bash ${PADDLE_ROOT}/tools/coverage/get_coverage.sh get_cov_info
+    else
+        echo "WARNING: check_coverage need to compile with WITH_COVERAGE=ON, but got WITH_COVERAGE=OFF"
+    fi
+}
 
 function single_test() {
     TEST_NAME=$1
@@ -4034,9 +4050,10 @@ function main() {
       gpu_coverage_ci_test)
         export FLAGS_NEW_IR_OPTEST=True
         parallel_test
+        get_cpp_and_python_coverage_info
       ;;
      gpu_get_coverage_info)
-        check_coverage
+        check_cpp_python_coverage
       ;;
       nv_cicheck_coverage)
         parallel_test
