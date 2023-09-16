@@ -17,7 +17,6 @@ import sys
 import os
 import warnings
 import platform
-import logging
 
 has_paddle_dy_lib = False
 
@@ -280,68 +279,29 @@ try:
     libpaddle.LoDTensor = libpaddle.Tensor
 
     from .libpaddle import *
-    from .libpaddle import __doc__, __file__, __name__, __package__
-    from .libpaddle import __unittest_throw_exception__
-    from .libpaddle import _append_python_callable_object_and_return_id
-    from .libpaddle import _cleanup, _Scope
-    from .libpaddle import _get_use_default_grad_op_desc_maker_ops
-    from .libpaddle import _get_all_register_op_kernels
-    from .libpaddle import _get_registered_phi_kernels
-    from .libpaddle import _is_program_version_supported
-    from .libpaddle import _set_eager_deletion_mode
-    from .libpaddle import _get_eager_deletion_vars
-    from .libpaddle import _set_fuse_parameter_group_size
-    from .libpaddle import _set_fuse_parameter_memory_size
-    from .libpaddle import _is_dygraph_debug_enabled
-    from .libpaddle import _dygraph_debug_level
-    from .libpaddle import _switch_tracer
-    from .libpaddle import _set_paddle_lib_path
-    from .libpaddle import _create_loaded_parameter
-    from .libpaddle import _cuda_synchronize
-    from .libpaddle import _test_enforce_gpu_success
-    from .libpaddle import _is_compiled_with_heterps
-    from .libpaddle import _promote_types_if_complex_exists
-    from .libpaddle import _set_cached_executor_build_strategy
-    from .libpaddle import _device_synchronize
-    from .libpaddle import _xpu_device_synchronize
-    from .libpaddle import _get_current_stream
-    from .libpaddle import _Profiler, _ProfilerResult, _RecordEvent
-    from .libpaddle import _set_current_stream
-    from .libpaddle import _get_phi_kernel_name
+    from .libpaddle import (
+        _set_paddle_lib_path,
+    )  # noqa: F401
 
     # prim controller flags
-    from .libpaddle import __set_bwd_prim_enabled
-    from .libpaddle import _is_bwd_prim_enabled
-    from .libpaddle import __set_fwd_prim_enabled
-    from .libpaddle import _is_fwd_prim_enabled
-    from .libpaddle import __set_all_prim_enabled
-    from .libpaddle import _is_eager_prim_enabled
-    from .libpaddle import __set_eager_prim_enabled
-    from .libpaddle import _set_prim_target_grad_name
-    from .libpaddle import _add_skip_comp_ops
-    from .libpaddle import _set_bwd_prim_blacklist
-    from .libpaddle import _remove_skip_comp_ops
+    from .libpaddle import (
+        __set_bwd_prim_enabled,
+        _is_bwd_prim_enabled,
+        __set_fwd_prim_enabled,
+        _is_fwd_prim_enabled,
+        __set_all_prim_enabled,
+        _is_eager_prim_enabled,
+        __set_eager_prim_enabled,
+        _set_bwd_prim_blacklist,
+    )  # noqa: F401
 
     # custom devivce
-    from .libpaddle import _get_current_custom_device_stream
-    from .libpaddle import _set_current_custom_device_stream
-    from .libpaddle import _synchronize_custom_device
-    from .libpaddle import CustomDeviceStream
-    from .libpaddle import CustomDeviceEvent
 
     if sys.platform != 'win32':
-        from .libpaddle import _set_process_pids
-        from .libpaddle import _erase_process_pids
-        from .libpaddle import _set_process_signal_handler
-        from .libpaddle import _throw_error_if_process_failed
-        from .libpaddle import _convert_to_tensor_list
-        from .libpaddle import _array_to_share_memory_tensor
-        from .libpaddle import _cleanup_mmap_fds
-        from .libpaddle import _remove_tensor_list_mmap_fds
-        from .libpaddle import _set_max_memory_map_allocation_pool_size
+        pass  # noqa: F401
 
     # CINN
-    from .libpaddle import is_run_with_cinn
+    from .libpaddle import is_run_with_cinn  # noqa: F401
 
 except Exception as e:
     if has_paddle_dy_lib:

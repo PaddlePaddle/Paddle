@@ -91,7 +91,6 @@ ignore = [
 [tool.ruff.per-file-ignores]
 # Ignore unused imports in some files
 "__init__.py" = ["F401"]
-"python/paddle/base/core.py" = ["F401"]
 # Ignore undefined variables in CMake config and some dygraph_to_static tests
 ".cmake-format.py" = ["F821"]
 "test/dygraph_to_static/test_closure_analysis.py" = ["F821"]
