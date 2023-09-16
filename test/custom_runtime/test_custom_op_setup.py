@@ -123,9 +123,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         # only valid in current process
         os.environ['CUSTOM_DEVICE_ROOT'] = os.path.join(
             self.cur_dir,
-            '{}/PaddleCustomDevice/backends/custom_cpu/build'.format(
-                self.temp_dir.name
-            ),
+            f'{self.temp_dir.name}/PaddleCustomDevice/backends/custom_cpu/build',
         )
 
         # `import paddle` loads custom_cpu.so, hence we must import paddle after finishing build PaddleCustomDevice
@@ -185,9 +183,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             np.testing.assert_array_equal(
                 out,
                 pd_out,
-                err_msg="custom op out: {},\n paddle api out: {}".format(
-                    out, pd_out
-                ),
+                err_msg=f"custom op out: {out},\n paddle api out: {pd_out}",
             )
 
     def _test_dynamic(self):
@@ -202,16 +198,12 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             np.testing.assert_array_equal(
                 out,
                 pd_out,
-                err_msg="custom op out: {},\n paddle api out: {}".format(
-                    out, pd_out
-                ),
+                err_msg=f"custom op out: {out},\n paddle api out: {pd_out}",
             )
             np.testing.assert_array_equal(
                 x_grad,
                 pd_x_grad,
-                err_msg="custom op x grad: {},\n paddle api x grad: {}".format(
-                    x_grad, pd_x_grad
-                ),
+                err_msg=f"custom op x grad: {x_grad},\n paddle api x grad: {pd_x_grad}",
             )
 
     def _test_double_grad_dynamic(self):
@@ -226,9 +218,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             np.testing.assert_array_equal(
                 out,
                 pd_out,
-                err_msg="custom op out: {},\n paddle api out: {}".format(
-                    out, pd_out
-                ),
+                err_msg=f"custom op out: {out},\n paddle api out: {pd_out}",
             )
             np.testing.assert_array_equal(
                 dx_grad,
@@ -264,9 +254,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             np.testing.assert_array_equal(
                 out,
                 pd_out,
-                err_msg="custom op out: {},\n paddle api out: {}".format(
-                    out, pd_out
-                ),
+                err_msg=f"custom op out: {out},\n paddle api out: {pd_out}",
             )
 
             if batch_id == 5:

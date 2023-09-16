@@ -107,10 +107,8 @@ def transpose(x, perm, name=None):
             raise ValueError(
                 "Input(perm) is the permutation of dimensions of Input(x), "
                 "its length should be equal to dimensions of Input(x), "
-                "but received dimension of Input(x) is {}, "
-                "the length of Input(perm) is {}.".format(
-                    len(x.shape), len(perm)
-                )
+                f"but received dimension of Input(x) is {len(x.shape)}, "
+                f"the length of Input(perm) is {len(perm)}."
             )
         for idx, dim in enumerate(perm):
             if dim >= len(x.shape):
@@ -594,9 +592,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             )
         else:
             raise ValueError(
-                "unspport p for p-order vector norm. except float, found {}".format(
-                    p
-                )
+                f"unspport p for p-order vector norm. except float, found {p}"
             )
     # calculate matrix norm, where axis is list with two integers
     elif isinstance(axis, list) and len(axis) == 2:
@@ -616,9 +612,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             )
     else:
         raise ValueError(
-            "except axis type int or list (length of list <=2), found {}".format(
-                axis
-            )
+            f"except axis type int or list (length of list <=2), found {axis}"
         )
 
 
@@ -1255,7 +1249,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
         if fweights.min() < 0:
             raise ValueError(
                 "The value of Input(fweights) cannot be negtive, but received "
-                "min of Input(fweights) is {}.".format(fweights.min())
+                f"min of Input(fweights) is {fweights.min()}."
             )
         if not paddle.all(fweights == paddle.round(fweights.astype('float64'))):
             raise ValueError("Input(fweights) must be integer ")
@@ -1280,7 +1274,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
         if aweights.min() < 0:
             raise ValueError(
                 "The value of Input(aweights) cannot be negtive, but received "
-                "min of Input(aweights) is {}.".format(aweights.min())
+                f"min of Input(aweights) is {aweights.min()}."
             )
         if w is not None:
             w = w * aw
@@ -1834,9 +1828,7 @@ def mv(x, vec, name=None):
             vec_shape = list(vec.shape)
             if len(x_shape) != 2:
                 raise ValueError(
-                    "x should be 2-dimensional. But received x's dimention: {}".format(
-                        x_shape
-                    )
+                    f"x should be 2-dimensional. But received x's dimention: {x_shape}"
                 )
             if len(vec_shape) != 1:
                 raise ValueError(
@@ -2192,8 +2184,8 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
         q = min(6, m, n)
     elif not (q >= 0 and q <= min(m, n)):
         raise ValueError(
-            'q(={}) must be non-negative integer'
-            ' and not greater than min(m, n)={}'.format(q, min(m, n))
+            f'q(={q}) must be non-negative integer'
+            f' and not greater than min(m, n)={min(m, n)}'
         )
     if not (niter >= 0):
         raise ValueError(f'niter(={niter}) must be non-negative integer')
@@ -3669,8 +3661,8 @@ def cdist(
     )
     assert x_shape[-1] == y_shape[-1], (
         "The x and y must have same last dimension, "
-        "But received Input x's last dimension is {}, "
-        "Input y's last dimension is {}.\n".format(x_shape[-1], y_shape[-1])
+        f"But received Input x's last dimension is {x_shape[-1]}, "
+        f"Input y's last dimension is {y_shape[-1]}.\n"
     )
     assert p >= 0, (
         "The p must be greater than or equal to 0, "

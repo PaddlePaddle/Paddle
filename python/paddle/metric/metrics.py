@@ -120,9 +120,7 @@ class Metric(metaclass=abc.ABCMeta):
         Reset states and result
         """
         raise NotImplementedError(
-            "function 'reset' not implemented in {}.".format(
-                self.__class__.__name__
-            )
+            f"function 'reset' not implemented in {self.__class__.__name__}."
         )
 
     @abc.abstractmethod
@@ -138,9 +136,7 @@ class Metric(metaclass=abc.ABCMeta):
         see :code:`Metric.compute`
         """
         raise NotImplementedError(
-            "function 'update' not implemented in {}.".format(
-                self.__class__.__name__
-            )
+            f"function 'update' not implemented in {self.__class__.__name__}."
         )
 
     @abc.abstractmethod
@@ -149,9 +145,7 @@ class Metric(metaclass=abc.ABCMeta):
         Accumulates statistics, computes and returns the metric value
         """
         raise NotImplementedError(
-            "function 'accumulate' not implemented in {}.".format(
-                self.__class__.__name__
-            )
+            f"function 'accumulate' not implemented in {self.__class__.__name__}."
         )
 
     @abc.abstractmethod
@@ -160,9 +154,7 @@ class Metric(metaclass=abc.ABCMeta):
         Returns metric name
         """
         raise NotImplementedError(
-            "function 'name' not implemented in {}.".format(
-                self.__class__.__name__
-            )
+            f"function 'name' not implemented in {self.__class__.__name__}."
         )
 
     def compute(self, *args):

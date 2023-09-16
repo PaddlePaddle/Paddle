@@ -120,9 +120,7 @@ def apply_pass(main_program, startup_program, pass_name, pass_attr={}):
     assert pass_name in [
         "FThenB",
         "1F1B",
-    ], "pipeline scheduler only support FThenB and 1F1B, but recieve {}".format(
-        pass_name
-    )
+    ], f"pipeline scheduler only support FThenB and 1F1B, but recieve {pass_name}"
     pipeline_pass = new_pass("pipeline_scheduler_" + pass_name, pass_attr)
     pass_context = PassContext()
     pipeline_pass.apply([main_program], [startup_program], pass_context)

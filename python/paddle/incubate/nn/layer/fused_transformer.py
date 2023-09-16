@@ -125,7 +125,7 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
         super().__init__()
         assert embed_dim > 0, (
             "Expected embed_dim to be greater than 0, "
-            "but received {}".format(embed_dim)
+            f"but received {embed_dim}"
         )
         self._dtype = self._helper.get_default_dtype()
         self._bias_attr = bias_attr
@@ -303,12 +303,10 @@ class FusedMultiHeadAttention(Layer):
 
         assert embed_dim > 0, (
             "Expected embed_dim to be greater than 0, "
-            "but received {}".format(embed_dim)
+            f"but received {embed_dim}"
         )
-        assert (
-            num_heads > 0
-        ), "Expected nhead to be greater than 0, " "but received {}".format(
-            num_heads
+        assert num_heads > 0, (
+            "Expected nhead to be greater than 0, " f"but received {num_heads}"
         )
 
         self.normalize_before = normalize_before
@@ -587,9 +585,7 @@ class FusedFeedForward(Layer):
         super().__init__()
         assert (
             d_model > 0
-        ), "Expected d_model to be greater than 0, but received {}".format(
-            d_model
-        )
+        ), f"Expected d_model to be greater than 0, but received {d_model}"
         assert (
             dim_feedforward > 0
         ), "Expected dim_feedforward to be greater than 0, but received {}".format(
@@ -809,19 +805,15 @@ class FusedTransformerEncoderLayer(Layer):
         self._config.pop("__class__", None)  # py3
 
         super().__init__()
-        assert (
-            d_model > 0
-        ), "Expected d_model to be greater than 0, " "but received {}".format(
-            d_model
+        assert d_model > 0, (
+            "Expected d_model to be greater than 0, " f"but received {d_model}"
         )
-        assert (
-            nhead > 0
-        ), "Expected nhead to be greater than 0, " "but received {}".format(
-            nhead
+        assert nhead > 0, (
+            "Expected nhead to be greater than 0, " f"but received {nhead}"
         )
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
-            "but received {}".format(dim_feedforward)
+            f"but received {dim_feedforward}"
         )
         attn_dropout_rate = (
             dropout_rate if attn_dropout_rate is None else attn_dropout_rate
@@ -1225,12 +1217,10 @@ class FusedMultiTransformer(Layer):
 
         assert embed_dim > 0, (
             "Expected embed_dim to be greater than 0, "
-            "but received {}".format(embed_dim)
+            f"but received {embed_dim}"
         )
-        assert (
-            num_heads > 0
-        ), "Expected nhead to be greater than 0, " "but received {}".format(
-            num_heads
+        assert num_heads > 0, (
+            "Expected nhead to be greater than 0, " f"but received {num_heads}"
         )
         assert (
             dim_feedforward > 0

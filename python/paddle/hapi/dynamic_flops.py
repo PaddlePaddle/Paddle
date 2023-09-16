@@ -312,8 +312,6 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
     if print_detail:
         table.print_table()
     print(
-        'Total Flops: {}     Total Params: {}'.format(
-            int(total_ops), int(total_params)
-        )
+        f'Total Flops: {int(total_ops)}     Total Params: {int(total_params)}'
     )
     return int(total_ops)

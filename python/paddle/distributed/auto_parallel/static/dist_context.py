@@ -1209,9 +1209,9 @@ class BlockState:
         assert self.nblock >= 1
 
     def parse_backward_blocks(self, program):
-        assert 0 in self.forward_indices, "forward block idx are{}".format(
-            self.forward_indices
-        )
+        assert (
+            0 in self.forward_indices
+        ), f"forward block idx are{self.forward_indices}"
         self.backward_to_forward_index_map[0] = 0
 
         for idx, block in enumerate(program.blocks):

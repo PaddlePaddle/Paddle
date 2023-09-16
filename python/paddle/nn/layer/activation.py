@@ -693,9 +693,7 @@ class SELU(Layer):
 
     def extra_repr(self):
         name_str = f', name={self._name}' if self._name else ''
-        return 'scale={:.16f}, alpha={:.16f}{}'.format(
-            self._scale, self._alpha, name_str
-        )
+        return f'scale={self._scale:.16f}, alpha={self._alpha:.16f}{name_str}'
 
 
 class LeakyReLU(Layer):
@@ -890,9 +888,7 @@ class Softplus(Layer):
 
     def extra_repr(self):
         name_str = f', name={self._name}' if self._name else ''
-        return 'beta={}, threshold={}{}'.format(
-            self._beta, self._threshold, name_str
-        )
+        return f'beta={self._beta}, threshold={self._threshold}{name_str}'
 
 
 class Softshrink(Layer):
@@ -1546,9 +1542,7 @@ class Softmax2D(Layer):
     def forward(self, x):
         assert (
             x.ndim == 3 or x.ndim == 4
-        ), "Softmax2D requires a 3D or 4D tensor as input. Received: {}D.".format(
-            x.ndim
-        )
+        ), f"Softmax2D requires a 3D or 4D tensor as input. Received: {x.ndim}D."
         return F.softmax(x, axis=-3, dtype=self._dtype, name=self._name)
 
     def extra_repr(self):

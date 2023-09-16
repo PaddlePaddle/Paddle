@@ -211,9 +211,7 @@ class TestSeq2seq(unittest.TestCase):
         result = np.allclose(dygraph_loss, static_loss)
         self.assertTrue(
             result,
-            msg="\ndygraph_loss = {} \nstatic_loss = {}".format(
-                dygraph_loss, static_loss
-            ),
+            msg=f"\ndygraph_loss = {dygraph_loss} \nstatic_loss = {static_loss}",
         )
 
     def _test_predict(self, attn_model=False):
@@ -222,9 +220,7 @@ class TestSeq2seq(unittest.TestCase):
         result = np.allclose(pred_static, pred_dygraph)
         self.assertTrue(
             result,
-            msg="\npred_dygraph = {} \npred_static = {}".format(
-                pred_dygraph, pred_static
-            ),
+            msg=f"\npred_dygraph = {pred_dygraph} \npred_static = {pred_static}",
         )
 
     def test_base_model(self):

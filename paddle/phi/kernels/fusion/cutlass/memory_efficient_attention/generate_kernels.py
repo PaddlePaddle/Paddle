@@ -445,13 +445,13 @@ void dispatch_{family_name}(const ::phi::GPUContext &ctx, T cb) {{
 
 
 def write_main_header(forward_impl, backward_impl):
-    main_header_content = '''
+    main_header_content = f'''
 #pragma once
 
-#ifdef {}
+#ifdef {ENABLE_MACRO}
 
-#include "{}"
-#include "{}"
+#include "{forward_impl}"
+#include "{backward_impl}"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -528,11 +528,7 @@ inline int64_t DimStride(const phi::DDim &dims, int n) {{
 #include "./cutlass_backward.h"
 
 #endif
-'''.format(
-        ENABLE_MACRO,
-        forward_impl,
-        backward_impl,
-    )
+'''
 
     path = Path(args.dst_path) / "autogen"
     os.makedirs(path, exist_ok=True)

@@ -71,9 +71,7 @@ def test_mode(ctx):
         ctx.logger.info('Paddle Distributed Test begin...')
         if int(ctx.args.nnodes) < 2:
             ctx.args.nnodes = 2
-        ctx.args.training_script = '{}/test.py'.format(
-            os.path.dirname(__file__)
-        )
+        ctx.args.training_script = f'{os.path.dirname(__file__)}/test.py'
 
 
 enabled_plugins = [

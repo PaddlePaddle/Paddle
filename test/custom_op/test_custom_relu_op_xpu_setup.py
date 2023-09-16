@@ -64,8 +64,8 @@ def custom_relu_static(
 class TestNewCustomOpXpuSetUpInstall(unittest.TestCase):
     def setUp(self):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
-        cmd = 'cd {} && {} custom_relu_xpu_setup.py install'.format(
-            cur_dir, sys.executable
+        cmd = (
+            f'cd {cur_dir} && {sys.executable} custom_relu_xpu_setup.py install'
         )
         run_cmd(cmd)
 

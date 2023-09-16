@@ -507,9 +507,7 @@ def check_old_style(docstrings_to_test: typing.Dict[str, str]):
                 codeblock_name = codeblock['name']
                 codeblock_id = codeblock['id']
 
-                docstring_name = '{}:{}'.format(
-                    api_name, codeblock_name or codeblock_id
-                )
+                docstring_name = f'{api_name}:{codeblock_name or codeblock_id}'
 
                 old_style_apis.append(docstring_name)
 
@@ -591,9 +589,7 @@ def get_test_results(
                 docstring = doctester.ensemble_docstring(
                     codeblock=codeblock['codes']
                 )
-                docstring_name = '{}:{}'.format(
-                    api_name, codeblock_name or codeblock_id
-                )
+                docstring_name = f'{api_name}:{codeblock_name or codeblock_id}'
 
                 docstrings_extracted.append(
                     {'name': docstring_name, 'docstring': docstring}

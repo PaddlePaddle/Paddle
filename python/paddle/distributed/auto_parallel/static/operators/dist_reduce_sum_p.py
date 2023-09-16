@@ -86,21 +86,15 @@ class DistributedReduceSumPrimtiveImpl0(DistributedOperatorImpl):
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
-            assert input_name in kwargs, "input [{}] is not given".format(
-                input_name
-            )
+            assert input_name in kwargs, f"input [{input_name}] is not given"
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
             ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
-            assert output_name in kwargs, "input [{}] is not given".format(
-                output_name
-            )
+            assert output_name in kwargs, f"input [{output_name}] is not given"
             assert len(kwargs[output_name]) == len(
                 src_op.desc.output(output_name)
-            ), "number of tensor for input [{}] is not match".format(
-                output_name
-            )
+            ), f"number of tensor for input [{output_name}] is not match"
 
         # replicate op in dist program
         dist_op = main_block.append_op(type='nop')

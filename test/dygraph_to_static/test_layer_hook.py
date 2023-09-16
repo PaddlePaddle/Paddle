@@ -93,9 +93,7 @@ class TestNestLayerHook(unittest.TestCase):
             st_out,
             dy_out,
             rtol=1e-05,
-            err_msg='dygraph_res is {}\nstatic_res is {}'.format(
-                dy_out, st_out
-            ),
+            err_msg=f'dygraph_res is {dy_out}\nstatic_res is {st_out}',
         )
         np.testing.assert_allclose(
             st_out,

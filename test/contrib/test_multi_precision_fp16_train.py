@@ -217,22 +217,14 @@ class TestImageMultiPrecision(unittest.TestCase):
             else:
                 suffix = "with Nesterov" if use_nesterov else "without Nesterov"
             with self.scope_prog_guard():
-                print(
-                    "-----------------FP16 Train {}-----------------".format(
-                        suffix
-                    )
-                )
+                print(f"-----------------FP16 Train {suffix}-----------------")
                 train_loss_fp16, test_loss_fp16 = train(
                     use_pure_fp16=True,
                     use_nesterov=use_nesterov,
                     optimizer=optimizer,
                 )
             with self.scope_prog_guard():
-                print(
-                    "-----------------FP32 Train {}-----------------".format(
-                        suffix
-                    )
-                )
+                print(f"-----------------FP32 Train {suffix}-----------------")
                 train_loss_fp32, test_loss_fp32 = train(
                     use_pure_fp16=False,
                     use_nesterov=use_nesterov,

@@ -109,9 +109,7 @@ class TestRecursiveCall1(unittest.TestCase):
             dygraph_res,
             static_res,
             rtol=1e-05,
-            err_msg='dygraph res is {}\nstatic_res is {}'.format(
-                dygraph_res, static_res
-            ),
+            err_msg=f'dygraph res is {dygraph_res}\nstatic_res is {static_res}',
         )
 
 

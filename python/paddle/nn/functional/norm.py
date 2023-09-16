@@ -183,7 +183,7 @@ def batch_norm(
     if data_format not in true_data_format:
         raise ValueError(
             "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCDHW', "
-            "'NLC', 'NHWC', 'NDHWC' but receive {}".format(data_format)
+            f"'NLC', 'NHWC', 'NDHWC' but receive {data_format}"
         )
 
     data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
@@ -545,23 +545,21 @@ def local_response_norm(
     if data_format not in ['NCL', 'NLC', 'NCHW', 'NHWC', 'NCDHW', 'NDHWC']:
         raise ValueError(
             "data_format should be in one of [NCL, NCHW, NCDHW, NLC, NHWC, NDHWC], "
-            "but got {}".format(data_format)
+            f"but got {data_format}"
         )
 
     sizes = x.shape
     dim = len(sizes)
     if dim < 3:
         raise ValueError(
-            'Expected 3D or higher dimensionality input, but got {} dimensions'.format(
-                dim
-            )
+            f'Expected 3D or higher dimensionality input, but got {dim} dimensions'
         )
 
     for i, sz in enumerate(sizes):
         if not sz > 0 and i > 0:
             raise ValueError(
                 "Expected every dim's size to be larger than 0, "
-                "but the size of the {}-th dim is {}".format(i, sz)
+                f"but the size of the {i}-th dim is {sz}"
             )
 
     channel_last = True if data_format[-1] == "C" else False

@@ -203,9 +203,7 @@ class TestDictPop(unittest.TestCase):
             dygraph_res,
             static_res,
             rtol=1e-05,
-            err_msg='dygraph result is {}\nstatic result is {}'.format(
-                dygraph_res, static_res
-            ),
+            err_msg=f'dygraph result is {dygraph_res}\nstatic result is {static_res}',
         )
 
 
@@ -247,9 +245,7 @@ class TestDictPop3(TestNetWithDict):
 
         self.assertTrue(
             (dygraph_result == static_result).all(),
-            msg="dygraph result: {}\nstatic result: {}".format(
-                dygraph_result, static_result
-            ),
+            msg=f"dygraph result: {dygraph_result}\nstatic result: {static_result}",
         )
 
 

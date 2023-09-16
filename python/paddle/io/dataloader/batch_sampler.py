@@ -112,9 +112,7 @@ class BatchSampler(Sampler):
             ), "either dataset or sampler should be set"
             assert isinstance(
                 sampler, Sampler
-            ), "sampler should be a paddle.io.Sampler, but got {}".format(
-                type(sampler)
-            )
+            ), f"sampler should be a paddle.io.Sampler, but got {type(sampler)}"
             assert not shuffle, "shuffle should be False when sampler is set"
             self.sampler = sampler
         else:
@@ -124,9 +122,7 @@ class BatchSampler(Sampler):
             assert sampler is None, "should not set both dataset and sampler"
             assert isinstance(
                 shuffle, bool
-            ), "shuffle should be a boolean value, but got {}".format(
-                type(shuffle)
-            )
+            ), f"shuffle should be a boolean value, but got {type(shuffle)}"
             if shuffle:
                 self.sampler = RandomSampler(dataset)
             else:
@@ -134,15 +130,11 @@ class BatchSampler(Sampler):
 
         assert (
             isinstance(batch_size, int) and batch_size > 0
-        ), "batch_size should be a positive integer, but got {}".format(
-            batch_size
-        )
+        ), f"batch_size should be a positive integer, but got {batch_size}"
         self.batch_size = batch_size
         assert isinstance(
             drop_last, bool
-        ), "drop_last should be a boolean value, but got {}".format(
-            type(drop_last)
-        )
+        ), f"drop_last should be a boolean value, but got {type(drop_last)}"
         self.drop_last = drop_last
 
     def __iter__(self):

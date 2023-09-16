@@ -155,9 +155,7 @@ def sparse_coo_tensor(
             shape = list(shape)
             if shape < min_shape:
                 raise ValueError(
-                    "the minimun shape required is {}, but get {}".format(
-                        min_shape, shape
-                    )
+                    f"the minimun shape required is {min_shape}, but get {shape}"
                 )
             if len(shape) != sparse_dim + dense_dim:
                 raise ValueError(
@@ -247,9 +245,7 @@ def sparse_csr_tensor(
 
     if len(shape) != 2 and len(shape) != 3:
         raise ValueError(
-            "SparseCsrTensor only support 2-D or 3-D matrix. but get shape {}".format(
-                shape
-            )
+            f"SparseCsrTensor only support 2-D or 3-D matrix. but get shape {shape}"
         )
     rows = shape[len(shape) - 2]
 

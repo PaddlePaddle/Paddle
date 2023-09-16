@@ -69,7 +69,7 @@ class Converter:
         if not isinstance(pre_strategy, dict):
             raise TypeError(
                 "The type of 'pre_strategy' should be 'dict', "
-                "but got '{}'.".format(str(type(pre_strategy)))
+                f"but got '{str(type(pre_strategy))}'."
             )
         return pre_strategy
 
@@ -82,7 +82,7 @@ class Converter:
         if not isinstance(cur_strategy, dict):
             raise TypeError(
                 "The type of 'cur_strategy' should be 'dict', "
-                "but got '{}'.".format(str(type(cur_strategy)))
+                f"but got '{str(type(cur_strategy))}'."
             )
         return cur_strategy
 
@@ -229,9 +229,7 @@ class Converter:
                                 + str(err)
                             )
                         self._logger.info(
-                            "tensor [{}] is matched with tensor [{}]".format(
-                                cur_name, pre_name
-                            )
+                            f"tensor [{cur_name}] is matched with tensor [{pre_name}]"
                         )
                         tensor_match_with_pre.append(cur_name)
                         tensor_match_with_cur.append(pre_name)
@@ -309,9 +307,7 @@ class Converter:
 
         if len(partition_tensor_list) != 1:
             raise ValueError(
-                "Fail to merge tensor with dist_attr '{}'.".format(
-                    str(dist_attr)
-                )
+                f"Fail to merge tensor with dist_attr '{str(dist_attr)}'."
             )
         complete_tensor = partition_tensor_list[0][0]
         return complete_tensor
@@ -336,9 +332,7 @@ class Converter:
         )
         if sliced_tensor_index not in range(len(sliced_tensor_list)):
             raise ValueError(
-                "Fail to slice tensor with dist_attr '{}'.".format(
-                    str(dist_attr)
-                )
+                f"Fail to slice tensor with dist_attr '{str(dist_attr)}'."
             )
         sliced_tensor = sliced_tensor_list[sliced_tensor_index]
         return sliced_tensor

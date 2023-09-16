@@ -564,7 +564,7 @@ def prelu(x, weight, data_format="NCHW", name=None):
         if data_format not in true_data_format:
             raise ValueError(
                 "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCDHW', "
-                "'NLC', 'NHWC', 'NDHWC' but receive {}".format(data_format)
+                f"'NLC', 'NHWC', 'NDHWC' but receive {data_format}"
             )
 
         data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
@@ -700,9 +700,7 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
 
     if upper > 1:
         raise ValueError(
-            "The upper value must be no greater than one. Received: {}.".format(
-                upper
-            )
+            f"The upper value must be no greater than one. Received: {upper}."
         )
 
     is_test = not training
@@ -1344,9 +1342,7 @@ def softshrink(x, threshold=0.5, name=None):
     """
     if threshold < 0:
         raise ValueError(
-            "The threshold must be no less than zero. Received: {}.".format(
-                threshold
-            )
+            f"The threshold must be no less than zero. Received: {threshold}."
         )
 
     if in_dynamic_mode():

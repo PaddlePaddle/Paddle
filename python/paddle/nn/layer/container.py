@@ -505,9 +505,7 @@ class LayerList(Layer):
         """
         assert isinstance(index, int) and -len(self._sub_layers) <= index < len(
             self._sub_layers
-        ), "index should be an integer in range [{}, {})".format(
-            -len(self), len(self)
-        )
+        ), f"index should be an integer in range [{-len(self)}, {len(self)})"
 
         index = self._get_abs_idx(index)
         for i in range(len(self._sub_layers), index, -1):

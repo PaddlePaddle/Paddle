@@ -167,11 +167,7 @@ class CodeGen:
             if with_default and default_value is not None:
                 if type in ['float', 'double']:
                     default_value = default_value.strip('"')
-                no_mutable_attr.append(
-                    '{type} {name} = {default_value}'.format(
-                        type=type, name=name, default_value=default_value
-                    )
-                )
+                no_mutable_attr.append(f'{type} {name} = {default_value}')
             else:
                 no_mutable_attr.append(f'{type} {name}')
         return ', '.join(mutable_attr + no_mutable_attr)

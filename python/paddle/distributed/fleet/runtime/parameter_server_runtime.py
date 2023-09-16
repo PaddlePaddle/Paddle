@@ -111,9 +111,7 @@ class ParameterServerRuntime(RuntimeBase):
             var_path = os.path.join(dirname, origin_varname)
             if not os.path.exists(var_path):
                 raise ValueError(
-                    "SelectedRows var {} can not find at {}".format(
-                        new_var.name, var_path
-                    )
+                    f"SelectedRows var {new_var.name} can not find at {var_path}"
                 )
 
             if os.path.isfile(var_path):
@@ -309,9 +307,7 @@ class ParameterServerRuntime(RuntimeBase):
             )
             if heter_worker_device_guard not in ["GPU", "XPU", "CPU"]:
                 raise ValueError(
-                    "Heter Worker Not Support Device {}".format(
-                        heter_worker_device_guard
-                    )
+                    f"Heter Worker Not Support Device {heter_worker_device_guard}"
                 )
             if self.role_maker._is_heter_worker():
                 if heter_worker_device_guard == "GPU":

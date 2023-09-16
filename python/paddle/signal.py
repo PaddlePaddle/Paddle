@@ -374,9 +374,7 @@ def stft(
         assert pad_mode in [
             'constant',
             'reflect',
-        ], 'pad_mode should be "reflect" or "constant", but got "{}".'.format(
-            pad_mode
-        )
+        ], f'pad_mode should be "reflect" or "constant", but got "{pad_mode}".'
 
         pad_length = n_fft // 2
         # FIXME: Input `x` can be a complex tensor but pad does not support complex input.
@@ -517,9 +515,7 @@ def istft(
     assert x_rank in [
         2,
         3,
-    ], 'x should be a 2D or 3D complex tensor, but got rank of x is {}'.format(
-        x_rank
-    )
+    ], f'x should be a 2D or 3D complex tensor, but got rank of x is {x_rank}'
 
     if x_rank == 2:  # (batch, n_fft, n_frames)
         x = x.unsqueeze(0)
@@ -533,15 +529,11 @@ def istft(
     # Assure no gaps between frames.
     assert (
         0 < hop_length <= win_length
-    ), 'hop_length should be in (0, win_length({})], but got {}.'.format(
-        win_length, hop_length
-    )
+    ), f'hop_length should be in (0, win_length({win_length})], but got {hop_length}.'
 
     assert (
         0 < win_length <= n_fft
-    ), 'win_length should be in (0, n_fft({})], but got {}.'.format(
-        n_fft, win_length
-    )
+    ), f'win_length should be in (0, n_fft({n_fft})], but got {win_length}.'
 
     n_frames = x.shape[-1]
     fft_size = x.shape[-2]

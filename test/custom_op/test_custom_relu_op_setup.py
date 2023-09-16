@@ -147,12 +147,10 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         # compile, install the custom op egg into site-packages under background
         if os.name == 'nt':
-            cmd = 'cd /d {} && python custom_relu_setup.py install'.format(
-                cur_dir
-            )
+            cmd = f'cd /d {cur_dir} && python custom_relu_setup.py install'
         else:
-            cmd = 'cd {} && {} custom_relu_setup.py install'.format(
-                cur_dir, sys.executable
+            cmd = (
+                f'cd {cur_dir} && {sys.executable} custom_relu_setup.py install'
             )
         run_cmd(cmd)
 

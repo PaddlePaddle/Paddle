@@ -167,9 +167,7 @@ class TestProcessGroup(TestMultipleCustomCPU):
         # only valid in current process
         os.environ['CUSTOM_DEVICE_ROOT'] = os.path.join(
             cur_dir,
-            '{}/PaddleCustomDevice/backends/custom_cpu/build'.format(
-                self.temp_dir.name
-            ),
+            f'{self.temp_dir.name}/PaddleCustomDevice/backends/custom_cpu/build',
         )
         os.environ['FLAGS_selected_custom_cpus'] = '0,1'
         os.environ['CUSTOM_CPU_VISIBLE_DEVICES'] = '0,1'

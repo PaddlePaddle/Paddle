@@ -80,7 +80,7 @@ class KernelRegistryStatistics:
                     percent = float(self.num_ops_for_dtypes[dtype]) / float(
                         num_floats
                     )
-                    res += "({:.2f}%)".format(percent * 100)
+                    res += f"({percent * 100:.2f}%)"
                 else:
                     res += f"({0:.2f}%)"
             res += " "

@@ -239,6 +239,4 @@ class PPGroup(StrategyGroupBase):
             and self._send_prev_group
             and self._recv_next_group
             and self._recv_prev_group
-        ), "Error occurs while creating p2p group for rank {}.".format(
-            self._rank
-        )
+        ), f"Error occurs while creating p2p group for rank {self._rank}."

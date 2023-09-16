@@ -650,9 +650,7 @@ class BuildExtension(build_ext):
         if self.no_python_abi_suffix:
             assert (
                 len(name_items) > 2
-            ), "Expected len(name_items) > 2, but received {}".format(
-                len(name_items)
-            )
+            ), f"Expected len(name_items) > 2, but received {len(name_items)}"
             name_items.pop(-2)
             ext_name = split_str.join(name_items)
 
@@ -909,9 +907,7 @@ def load(
         extra_cuda_cflags = []
     assert isinstance(
         extra_cxx_cflags, list
-    ), "Required type(extra_cxx_cflags) == list[str], but received {}".format(
-        extra_cxx_cflags
-    )
+    ), f"Required type(extra_cxx_cflags) == list[str], but received {extra_cxx_cflags}"
     assert isinstance(
         extra_cuda_cflags, list
     ), "Required type(extra_cuda_cflags) == list[str], but received {}".format(

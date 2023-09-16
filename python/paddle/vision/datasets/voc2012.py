@@ -122,9 +122,7 @@ class VOC2012(Dataset):
             backend = paddle.vision.get_image_backend()
         if backend not in ['pil', 'cv2']:
             raise ValueError(
-                "Expected backend are one of ['pil', 'cv2'], but got {}".format(
-                    backend
-                )
+                f"Expected backend are one of ['pil', 'cv2'], but got {backend}"
             )
         self.backend = backend
 

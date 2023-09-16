@@ -27,9 +27,7 @@ def get_nccl_version_str(ver):
     NCCL_MINOR_VERSION = int(ver // 100)
     NCCL_PATCH_VERSION = int(ver % 100)
 
-    return "{}.{}.{}".format(
-        NCCL_MAJOR_VERSION, NCCL_MINOR_VERSION, NCCL_PATCH_VERSION
-    )
+    return f"{NCCL_MAJOR_VERSION}.{NCCL_MINOR_VERSION}.{NCCL_PATCH_VERSION}"
 
 
 def check_nccl_version_for_p2p():

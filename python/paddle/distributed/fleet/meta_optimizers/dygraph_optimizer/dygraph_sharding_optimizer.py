@@ -206,9 +206,7 @@ class DygraphShardingOptimizer:
             numel = reduce(lambda x, y: x * y, param.shape, 1)
             assert (
                 numel > 0
-            ), "param [{}] should larger than 0, but it is [{}]".format(
-                param.name, numel
-            )
+            ), f"param [{param.name}] should larger than 0, but it is [{numel}]"
             sizes[rank] += numel
 
         return mapping
@@ -341,9 +339,7 @@ class DygraphShardingOptimizer:
                     and param.regularizer is not None
                 ):
                     raise ValueError(
-                        "param {} should not has the regularizer attribute".format(
-                            param.name
-                        )
+                        f"param {param.name} should not has the regularizer attribute"
                     )
                 if param.stop_gradient:
                     continue
@@ -406,9 +402,7 @@ class DygraphShardingOptimizer:
         inner_opt_name = '_inner_opt'
         if not isinstance(attr_name, str):
             raise TypeError(
-                "attr_name should be str type, but is {}".format(
-                    type(attr_name)
-                )
+                f"attr_name should be str type, but is {type(attr_name)}"
             )
         while hasattr(inner_opt, attr_name):
             setattr(inner_opt, attr_name, value)

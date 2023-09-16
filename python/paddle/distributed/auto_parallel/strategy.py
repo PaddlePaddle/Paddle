@@ -26,9 +26,7 @@ class BaseConfig:
                 self._config_dict = config_dict
             else:
                 raise ValueError(
-                    "Expected a dictionary. But received: {}".format(
-                        config_dict
-                    )
+                    f"Expected a dictionary. But received: {config_dict}"
                 )
         # Initialize attributes by the default config
         config = constants.get_category_default_config(self._category)

@@ -107,9 +107,7 @@ def get_rng_state(device=None):
             )
     else:
         raise ValueError(
-            "get_rng_state is not implemented for current device: {}".format(
-                place
-            )
+            f"get_rng_state is not implemented for current device: {place}"
         )
 
     return state_list
@@ -203,9 +201,7 @@ def set_rng_state(state_list, device=None):
         core.default_cpu_generator().set_state(state_list[0])
     else:
         raise ValueError(
-            "set_rng_state is not implemented for current device: {}".format(
-                place
-            )
+            f"set_rng_state is not implemented for current device: {place}"
         )
 
 

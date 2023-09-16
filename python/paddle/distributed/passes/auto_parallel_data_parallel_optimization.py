@@ -217,7 +217,7 @@ class DataParallelOptimizationPass(PassBase):
             if is_loss_grad_op(op):
                 assert op.type == 'fill_constant', (
                     "loss_grad_op must be fill_constant op, "
-                    "but this op is {}".format(op.type)
+                    f"but this op is {op.type}"
                 )
                 assert op.has_attr('value')
                 loss_scale = float(op.attr('value'))
@@ -498,9 +498,7 @@ class DataParallelOptimizationPass(PassBase):
             allreduce_op = block.ops[group.allreduce_op_idx]
             assert (
                 allreduce_op.type == 'c_allreduce_sum'
-            ), "should found c_allreduce_sum op but found {}".format(
-                str(allreduce_op)
-            )
+            ), f"should found c_allreduce_sum op but found {str(allreduce_op)}"
             allreduce_op_dist_attr = (
                 self.dist_context.get_op_dist_attr_for_program(allreduce_op)
             )
@@ -699,9 +697,7 @@ class DataParallelOptimizationPass(PassBase):
                 fused_grads
             )
             self._logger.debug(
-                "the following [{}] gradients are not fused: ".format(
-                    len(individual_grads)
-                )
+                f"the following [{len(individual_grads)}] gradients are not fused: "
             )
             self._logger.debug(f"individual gradient {individual_grads}")
 
@@ -764,9 +760,7 @@ class GradientsGroup:
             grad_op = self.ops[grad_op_idx]
             assert (
                 grad_var.name in grad_op.output_arg_names
-            ), "grad [{}] should be output of {}".format(
-                grad_var.name, str(grad_op)
-            )
+            ), f"grad [{grad_var.name}] should be output of {str(grad_op)}"
             self.coalesce_op_idx = grad_op_idx
 
     def finalize(self):

@@ -245,9 +245,7 @@ class DenseNet(nn.Layer):
         supported_layers = [121, 161, 169, 201, 264]
         assert (
             layers in supported_layers
-        ), "supported layers are {} but input layer is {}".format(
-            supported_layers, layers
-        )
+        ), f"supported layers are {supported_layers} but input layer is {layers}"
         densenet_spec = {
             121: (64, 32, [6, 12, 24, 16]),
             161: (96, 48, [6, 12, 36, 24]),

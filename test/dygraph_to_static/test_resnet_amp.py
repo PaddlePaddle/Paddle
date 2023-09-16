@@ -124,9 +124,7 @@ class TestResnet(unittest.TestCase):
             static_loss,
             dygraph_loss,
             rtol=1e-05,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
 
     def test_resnet_composite(self):
@@ -138,9 +136,7 @@ class TestResnet(unittest.TestCase):
             static_loss,
             dygraph_loss,
             rtol=1e-05,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
 
 

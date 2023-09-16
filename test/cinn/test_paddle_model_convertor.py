@@ -166,9 +166,7 @@ class TestPaddleModel(OpMapperTest):
         logger.debug(msg=f"Param List: {self.param_vars.keys()}")
         logger.debug(msg=f"Feed List: {self.feed_names}")
         logger.debug(
-            msg="Fetch List: {}".format(
-                [var.name for var in self.fetch_targets]
-            )
+            msg=f"Fetch List: {[var.name for var in self.fetch_targets]}"
         )
 
         self.feed_shapes = []
