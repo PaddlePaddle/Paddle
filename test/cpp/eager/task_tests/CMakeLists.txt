@@ -27,11 +27,12 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   cc_test(
     test_egr_task_hook_intermidiate
     SRCS hook_test_intermidiate.cc
-    DEPS ${eager_deps} ${fluid_deps} ${generated_deps} dygraph_node)
+    DEPS dygraph_function ${eager_deps} ${fluid_deps} ${generated_deps}
+         dygraph_node)
   cc_test(
     test_egr_task_autocodegen
     SRCS generated_test.cc
-    DEPS ${eager_deps} ${fluid_deps} ${generated_deps})
+    DEPS dygraph_function ${eager_deps} ${fluid_deps} ${generated_deps})
   cc_test(
     test_egr_task_tensor_utils
     SRCS tensor_utils_test.cc
