@@ -32,7 +32,9 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     dygraph_function
     ${eager_deps}
     dygraph_node
-    paddle)
+    paddle
+    python
+    pybind)
   cc_test_old(
     test_egr_task_autocodegen
     SRCS
@@ -41,7 +43,9 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     dygraph_function
     ${eager_deps}
     dygraph_node
-    paddle)
+    paddle
+    python
+    pybind)
   cc_test(
     test_egr_task_tensor_utils
     SRCS tensor_utils_test.cc
