@@ -446,9 +446,9 @@ def is_same_shape(x, y):
             >>> z = paddle.rand([2, 5])
 
             >>> paddle.sparse.is_same_shape(x, y)
-            >>> True
+            True
             >>> paddle.sparse.is_same_shape(x, z)
-            >>> False
+            False
 
     """
     return x.is_same_shape(y)
