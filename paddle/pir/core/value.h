@@ -33,7 +33,7 @@ class IR_API Value {
  public:
   Value() = default;
 
-  Value(const detail::ValueImpl *impl);  // NOLINT
+  Value(detail::ValueImpl *impl) : impl_(impl) {}  // NOLINT
 
   Value(const Value &other) = default;
 

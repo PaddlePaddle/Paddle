@@ -89,8 +89,8 @@ void AddOp::Build(pir::Builder &,
                   pir::OpResult l_operand,
                   pir::OpResult r_operand,
                   pir::Type sum_type) {
-  argument.AddOperand(l_operand);
-  argument.AddOperand(r_operand);
+  argument.AddInput(l_operand);
+  argument.AddInput(r_operand);
   argument.AddOutput(sum_type);
 }
 IR_DECLARE_EXPLICIT_TYPE_ID(AddOp)
