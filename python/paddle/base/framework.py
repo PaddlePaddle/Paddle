@@ -310,7 +310,7 @@ def in_pir_mode():
             False
 
             >>> paddle.enable_static()
-            >>> with paddle.pir_utils.IrGuard():
+            >>> with paddle.new_ir_utils.IrGuard():
             >>>     print(paddle.framework.in_pir_mode())
             True
 
