@@ -35,7 +35,7 @@ class IR_API OpResult : public Value {
 
  private:
   friend Operation;
-  OpResult(const detail::OpResultImpl *impl);  // NOLINT
+  OpResult(detail::OpResultImpl *impl);  // NOLINT
   // Access classof annd dyn_cast_from.
   friend Value;
   static bool classof(Value value);
