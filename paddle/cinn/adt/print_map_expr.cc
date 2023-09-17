@@ -14,6 +14,7 @@
 
 #include <string>
 
+#include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/adt/print_map_expr.h"
 
 namespace cinn::adt {
@@ -25,10 +26,10 @@ void VisitEachArg(const List<Arg>& out_args,
                   const List<Arg>& in_args,
                   const DoEachT& DoEach) {
   for (const auto& out_arg : *out_args) {
-    DoEach(out_arg, kOut<bool>{true});
+    DoEach(out_arg, tOut<bool>{true});
   }
   for (const auto& in_arg : *in_args) {
-    DoEach(out_arg, kOut<bool>{false});
+    DoEach(in_arg, tOut<bool>{false});
   }
 }
 
@@ -42,10 +43,11 @@ void ToTxtString(const OpStmt& op_stmt,
                  std::size_t indent_size,
                  std::string* string) {
   const auto& [op, in_args, out_args] = op_stmt.tuple();
-  CHECK(op->Has<const hlir::framework::Node*>());
+  CHECK(op.Has<const hlir::framework::Node*>());
   *string += std::string(" ", indent_size * kIndentSpaceSize);
-  *string += op->Get<const hlir::framework::Node*>()->op()->name;
-  *string += "(" std::size_t count = 0;
+  *string += op.Get<const hlir::framework::Node*>()->op()->name;
+  *string += "(";
+  std::size_t count = 0;
   VisitEachArg(out_args.value(),
                in_args.value(),
                [&](const auto& arg, const auto& as_output) {
@@ -63,19 +65,20 @@ void ToTxtString(const OpStmt& op_stmt,
 void ToTextString(const LoopType& loop_type,
                   std::size_t indent_size,
                   std::string* string) {
-  loop_type >> match {
-    [&](const S0x&) { *string += "blockIdx.x"; },
-        [&](const S0y&) { *string += "blockIdx.y"; },
-        [&](const S0z&) { *string += "blockIdx.z"; },
-        [&](const S1x&) { *string += "threadIdx.x"; },
-        [&](const S1y&) { *string += "threadIdx.y"; },
-        [&](const S1z&) { *string += "threadIdx.z"; },
-        [&](const Temporal& temporal) { *string += temporal.iter_var_name(); },
-        [&](const Vectorize& vectorize) {
-          *string += vectorize.iter_var_name();
-        },
-        [&](const Unroll& unroll) { *string += unroll.iter_var_name(); }
-  }
+  loop_type >>
+      match{[&](const S0x&) { *string += "blockIdx.x"; },
+            [&](const S0y&) { *string += "blockIdx.y"; },
+            [&](const S0z&) { *string += "blockIdx.z"; },
+            [&](const S1x&) { *string += "threadIdx.x"; },
+            [&](const S1y&) { *string += "threadIdx.y"; },
+            [&](const S1z&) { *string += "threadIdx.z"; },
+            [&](const Temporal& temporal) {
+              *string += temporal.iter_var_name();
+            },
+            [&](const Vectorize& vectorize) {
+              *string += vectorize.iter_var_name();
+            },
+            [&](const Unroll& unroll) { *string += unroll.iter_var_name(); }};
 }
 
 void ToTextString(const ScheduleDescriptor& schedule_descriptor,
@@ -122,7 +125,11 @@ void ToTextString(const AnchoredMapStmt& anchored_map_stmt,
 
 void ToTextString(const List<Tensor>& tensors,
                   std::size_t indent_size,
-                  std::string* string) {}
+                  std::string* string) {
+  for (const auto& tensor : *tensors) {
+    ToTxtString(tensor, string);
+  }
+}
 
 void ToTextString(const MapExpr& map_expr,
                   std::size_t indent_size,
@@ -130,13 +137,13 @@ void ToTextString(const MapExpr& map_expr,
   const auto& [anchored_map_stmts, inputs, outputs] = map_expr.tuple();
 
   *txt_string += "Input tensors: \n";
-  ToTextString(inputs.value(), 0, &txt_string);
+  ToTextString(inputs.value(), 0, txt_string);
   *txt_string += "Output tensors: \n";
-  ToTextString(outputs.value(), 0, &txt_string);
+  ToTextString(outputs.value(), 0, txt_string);
 
   for (const auto& anchored_map_stmt : *anchored_map_stmts) {
     *txt_string += "\n";
-    ToTextString(anchored_map_stmts, 0, &txt_string);
+    ToTextString(anchored_map_stmt, 0, txt_string);
   }
 }
 

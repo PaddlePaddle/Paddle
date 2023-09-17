@@ -359,8 +359,8 @@ std::unordered_map<Variable, const Value> MakeAnchorIndex2Ok(
 }
 
 template <typename DoEachT>
-tBreak<bool> AgregateAnchorGroupOpStmt(const AnchorGroup& igroup_spec,
-                                       const DoEachT& DoEach) {
+tBreak<bool> AggregateAnchorGroupOpStmt(const AnchorGroup& igroup_spec,
+                                        const DoEachT& DoEach) {
   for (const auto& op_stmt : *igroup_spec.op_stmts) {
     tBreak<bool> ret = DoEach(op_stmt);
     if (ret.value()) {
@@ -386,7 +386,7 @@ bool IsEquationSolvable(const AnchorGroup& igroup_spec) {
   bool is_solvable =
       TrySolveEquations(equation_graph_view, igroup_spec.anchor_index, &ctx)
           .value();
-  AgregateAnchorGroupOpStmt(igroup_spec, [&](const auto& op_stmt) {
+  AggregateAnchorGroupOpStmt(igroup_spec, [&](const auto& op_stmt) {
     if (!IsOpSolved(op_stmt)) {
       is_solvable = false;
       return tBreak<bool>{true};

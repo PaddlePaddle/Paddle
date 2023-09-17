@@ -14,10 +14,11 @@
 
 #pragma once
 
-#include "paddle/cinn/adt/m_expr.h"
-
 namespace cinn::adt {
+
+class Kernel;
+using MapExpr = Kernel;
 
 void PrintMapExpr(const MapExpr& map_expr);
 
-}
+}  // namespace cinn::adt
