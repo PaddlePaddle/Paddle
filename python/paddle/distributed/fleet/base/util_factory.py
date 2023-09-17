@@ -68,7 +68,7 @@ class UtilBase:
         All reduce `input` between specified collection. This is a distributed API.
 
         Args:
-            input (list|numpy.array): The input variable to do all_reduce between specified collection.
+            input (list|tuple|numpy.array): The input variable to do all_reduce between specified collection.
             mode (str): "sum" or "min" or "max".
             comm_world (str, optional): Collection used to execute all_reduce operation. Supported collections incude `worker` , `server` and `all` . The default is `worker` .
 
@@ -109,6 +109,8 @@ class UtilBase:
                 >>> if __name__ == "__main__":
                 ...     train()
         """
+        if isinstance(input, tuple):
+            input = list(input)
         return self.role_maker._all_reduce(input, mode, comm_world)
 
     def barrier(self, comm_world="worker"):
