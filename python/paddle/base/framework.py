@@ -27,7 +27,8 @@ import subprocess
 import multiprocessing
 import sys
 
-from .proto import framework_pb2, data_feed_pb2
+from .proto import framework_pb2
+from .proto import data_feed_pb2  # noqa: F401
 
 from . import core
 from . import unique_name
@@ -63,7 +64,6 @@ __all__ = [
     'device_guard',
     'set_flags',
     'get_flags',
-    'data_feed_pb2',
     '_stride_in_no_check_dy2st_diff',
 ]
 
