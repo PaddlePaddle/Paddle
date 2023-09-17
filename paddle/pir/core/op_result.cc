@@ -30,9 +30,9 @@ Operation *OpResult::owner() const {
   return IMPL_->owner();
 }
 
-uint32_t OpResult::GetResultIndex() const {
-  CHECK_OPRESULT_NULL_IMPL(GetResultIndex);
-  return IMPL_->GetResultIndex();
+uint32_t OpResult::index() const {
+  CHECK_OPRESULT_NULL_IMPL(index);
+  return IMPL_->index();
 }
 
 OpResult OpResult::dyn_cast_from(Value value) {
@@ -47,6 +47,6 @@ bool OpResult::operator==(const OpResult &other) const {
   return impl_ == other.impl_;
 }
 
-OpResult::OpResult(const detail::OpResultImpl *impl) : Value(impl) {}
+OpResult::OpResult(detail::OpResultImpl *impl) : Value(impl) {}
 
 }  // namespace pir
