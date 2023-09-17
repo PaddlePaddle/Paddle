@@ -408,7 +408,7 @@ class PrimForwardChecker:
         ):
             return
         self.eager_desire = self.get_eager_desire()
-        if not paddle.ir.core._use_new_ir_api():
+        if not paddle.pir.core._use_pir_api():
             if self.enable_check_static_comp:
                 self.check_static_comp()
             if self.enable_check_jit_comp:
@@ -610,12 +610,12 @@ class PrimForwardChecker:
                     args, len(inputs_sig)
                 )
                 ret = flatten(_as_list(self.public_python_api(*args)))
-                if not paddle.ir.core._use_new_ir_api():
+                if not paddle.pir.core._use_pir_api():
                     primapi.to_prim(main_program.blocks)
                 else:
                     ret = decompose(main_program, ret)
                 # ensure the operator not in program if check_prim is True
-                if not paddle.ir.core._use_new_ir_api():
+                if not paddle.pir.core._use_pir_api():
                     forward_ops = [op.type for op in main_program.blocks[0].ops]
                     assert self.op_type not in forward_ops, (
                         "%s shouldn't appear in program when check_prim is True"
@@ -863,7 +863,7 @@ class PrimGradChecker(PrimForwardChecker):
         ):
             return
         self.eager_desire = self.get_eager_desire()
-        if not paddle.ir.core._use_new_ir_api():
+        if not paddle.pir.core._use_pir_api():
             if self.enable_check_eager_comp:
                 self.check_eager_comp()
             if self.enable_check_static_comp:
@@ -1067,7 +1067,7 @@ class PrimGradChecker(PrimForwardChecker):
                     args, len(inputs_sig)
                 )
                 fw_outs = _as_list(self.public_python_api(*args))
-                if not paddle.ir.core._use_new_ir_api():
+                if not paddle.pir.core._use_pir_api():
                     primapi.to_prim(main_program.blocks)
                 else:
                     fw_outs = decompose(main_program, fw_outs)
@@ -1091,14 +1091,14 @@ class PrimGradChecker(PrimForwardChecker):
                 no_grad_vars = self.gen_no_grad_set(
                     var_dict={**inputs_dict, **outputs_dict}
                 )
-                if not paddle.ir.core._use_new_ir_api():
+                if not paddle.pir.core._use_pir_api():
                     ret = paddle.static.gradients(
                         ys, xs, vs, no_grad_set=no_grad_vars
                     )
                 else:
                     ret = ir_grad(ys, xs, vs, no_grad_vars=no_grad_vars)
                 # check the backward operator not in program when check_prim is True
-                if not paddle.ir.core._use_new_ir_api():
+                if not paddle.pir.core._use_pir_api():
                     ops = [op.type for op in main_program.blocks[0].ops]
                     backward_op_type = self.op_type + "_grad"
                     assert backward_op_type not in ops, (

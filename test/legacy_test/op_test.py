@@ -1348,7 +1348,7 @@ class OpTest(unittest.TestCase):
                             else:
                                 fetch_list.append(var)
                     elif isinstance(
-                        ret_tuple, paddle.base.libpaddle.ir.OpResult
+                        ret_tuple, paddle.base.libpaddle.pir.OpResult
                     ):
                         fetch_list.append(ret_tuple)
                     else:

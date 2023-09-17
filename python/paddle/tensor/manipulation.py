@@ -3596,7 +3596,7 @@ def reshape(x, shape, name=None):
             for ele in shape:
                 if isinstance(ele, core.eager.Tensor):
                     new_shape.append(ele.item())
-                elif isinstance(ele, paddle.ir.OpResult):
+                elif isinstance(ele, paddle.pir.OpResult):
                     new_shape.append(-1)
                 else:
                     new_shape.append(ele)
@@ -3606,7 +3606,7 @@ def reshape(x, shape, name=None):
             else:
                 out = _C_ops.reshape(x, new_shape)
         elif isinstance(shape, core.eager.Tensor) or isinstance(
-            shape, paddle.ir.OpResult
+            shape, paddle.pir.OpResult
         ):
             shape.stop_gradient = True
             out = _C_ops.reshape(x, shape)
