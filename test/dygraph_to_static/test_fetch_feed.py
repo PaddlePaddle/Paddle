@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.jit.api import to_static
 
 SEED = 2020
@@ -69,15 +70,16 @@ class TestPool2D(unittest.TestCase):
     def train(self, to_static=False):
         paddle.jit.enable_to_static(to_static)
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             dy_layer = self.dygraph_class()
-            x = fluid.dygraph.to_variable(self.data)
+            x = base.dygraph.to_variable(self.data)
             prediction = dy_layer(x)
             if isinstance(prediction, (list, tuple)):
                 prediction = prediction[0]
 
             return prediction.numpy()
 
+    @test_and_compare_with_new_ir(True)
     def train_static(self):
         return self.train(to_static=True)
 

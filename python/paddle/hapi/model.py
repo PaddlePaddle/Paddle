@@ -24,16 +24,16 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle import fluid
+from paddle import base
 from paddle.autograd import no_grad
+from paddle.base import core
+from paddle.base.dygraph.base import to_variable
+from paddle.base.executor import global_scope
+from paddle.base.framework import Variable
+from paddle.base.framework import _current_expected_place as _get_device
+from paddle.base.framework import _get_paddle_place
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
-from paddle.fluid import core
-from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.executor import global_scope
-from paddle.fluid.framework import Variable
-from paddle.fluid.framework import _current_expected_place as _get_device
-from paddle.fluid.framework import _get_paddle_place
 from paddle.framework import in_dynamic_mode
 from paddle.framework.io_utils import is_belong_to_optimizer
 from paddle.io import DataLoader, Dataset, DistributedBatchSampler
@@ -58,10 +58,8 @@ def to_list(value):
 
 
 def to_numpy(var):
-    assert isinstance(
-        var, (Variable, fluid.core.eager.Tensor)
-    ), "not a variable"
-    if isinstance(var, fluid.core.eager.Tensor):
+    assert isinstance(var, (Variable, base.core.eager.Tensor)), "not a variable"
+    if isinstance(var, base.core.eager.Tensor):
         return np.array(var)
     t = global_scope().find_var(var.name).get_tensor()
     return np.array(t)
@@ -131,9 +129,9 @@ def init_communicator(
         wait_server_ready(other_endpoints)
     if core.is_compiled_with_cuda():
         nccl_id_var = block.create_var(
-            name=fluid.unique_name.generate('nccl_id'),
+            name=base.unique_name.generate('nccl_id'),
             persistable=True,
-            type=fluid.core.VarDesc.VarType.RAW,
+            type=base.core.VarDesc.VarType.RAW,
         )
 
         block.append_op(
@@ -159,9 +157,9 @@ def init_communicator(
         )
     elif core.is_compiled_with_xpu():
         bkcl_id_var = block.create_var(
-            name=fluid.unique_name.generate('bkcl_id'),
+            name=base.unique_name.generate('bkcl_id'),
             persistable=True,
-            type=fluid.core.VarDesc.VarType.RAW,
+            type=base.core.VarDesc.VarType.RAW,
         )
 
         block.append_op(
@@ -190,9 +188,9 @@ def init_communicator(
         in paddle.device.get_all_custom_device_type()
     ):
         xccl_id_var = block.create_var(
-            name=fluid.unique_name.generate('xccl_id'),
+            name=base.unique_name.generate('xccl_id'),
             persistable=True,
-            type=fluid.core.VarDesc.VarType.RAW,
+            type=base.core.VarDesc.VarType.RAW,
         )
 
         block.append_op(
@@ -221,9 +219,9 @@ def init_communicator(
 def prepare_distributed_context(place=None):
     if place is None:
         place = (
-            fluid.CUDAPlace(paddle.distributed.ParallelEnv().dev_id)
+            base.CUDAPlace(paddle.distributed.ParallelEnv().dev_id)
             if paddle.distributed.ParallelEnv().nranks > 1
-            else fluid.CUDAPlace(0)
+            else base.CUDAPlace(0)
         )
 
     place = _get_paddle_place(place)
@@ -242,10 +240,10 @@ def prepare_distributed_context(place=None):
 
     global _parallel_context_initialized
 
-    if not _parallel_context_initialized and isinstance(place, fluid.CUDAPlace):
+    if not _parallel_context_initialized and isinstance(place, base.CUDAPlace):
 
         def _init_context():
-            communicator_prog = fluid.Program()
+            communicator_prog = base.Program()
             init_communicator(
                 communicator_prog,
                 strategy.local_rank,
@@ -254,13 +252,13 @@ def prepare_distributed_context(place=None):
                 strategy.current_endpoint,
                 strategy.trainer_endpoints,
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             exe.run(communicator_prog)
 
         if in_dynamic_mode():
-            fluid.disable_dygraph()
+            base.disable_dygraph()
             _init_context()
-            fluid.enable_dygraph(place)
+            base.enable_dygraph(place)
 
     else:
         assert "Only support CUDAPlace for now."
@@ -299,8 +297,8 @@ class StaticGraphAdapter:
         self.model = model
         # with `_build_once` gone, parameters are now created in `__init__`
         # so we need to keep track of the parameters already created
-        self._startup_prog = fluid.default_startup_program()
-        self._orig_prog = fluid.default_main_program()
+        self._startup_prog = base.default_startup_program()
+        self._orig_prog = base.default_main_program()
 
         self._label_vars = {}  # label variables
         self._input_vars = {}  # label variables
@@ -388,12 +386,12 @@ class StaticGraphAdapter:
     # TODO: Support save/load scaler state in static graph
     def load(self, param_state_pairs, optim_state):
         if self._executor is None:
-            executor = fluid.Executor(fluid.CPUPlace())._default_executor
+            executor = base.Executor(base.CPUPlace())._default_executor
         else:
             executor = self._executor._default_executor
 
         # restore parameter states
-        fluid.core._create_loaded_parameter(
+        base.core._create_loaded_parameter(
             [param for param, state in param_state_pairs],
             global_scope(),
             executor,
@@ -413,7 +411,7 @@ class StaticGraphAdapter:
         if not optim:
             return
 
-        fluid.core._create_loaded_parameter(optim, global_scope(), executor)
+        base.core._create_loaded_parameter(optim, global_scope(), executor)
 
         converted_state = dict(state)
         for var in optim:
@@ -506,13 +504,13 @@ class StaticGraphAdapter:
         t = global_scope().find_var(var.name).get_tensor()
         p = t._place()
         if p.is_cpu_place():
-            place = fluid.CPUPlace()
+            place = base.CPUPlace()
         elif p.is_cuda_pinned_place():
-            place = fluid.CUDAPinnedPlace()
+            place = base.CUDAPinnedPlace()
         else:
-            p = fluid.core.Place()
+            p = base.core.Place()
             p.set_place(t._place())
-            place = fluid.CUDAPlace(p.gpu_device_id())
+            place = base.CUDAPlace(p.gpu_device_id())
 
         t.set(ndarray, place)
 
@@ -651,7 +649,7 @@ class StaticGraphAdapter:
 
         losses = []
         metrics = []
-        with fluid.program_guard(prog, self._startup_prog):
+        with base.program_guard(prog, self._startup_prog):
             inputs = self.model._inputs
             labels = self.model._labels if self.model._labels else []
             inputs = [k._create_feed_layer() for k in to_list(inputs)]
@@ -732,11 +730,11 @@ class StaticGraphAdapter:
         # even if `forward()` may run different code path for different mode
         # therefore startup program only needs to run once
         if self._executor is None:
-            self._executor = fluid.Executor(place)
+            self._executor = base.Executor(place)
             # XXX incremental initialization
             uninitialized = []
             for var_py in self._startup_prog.list_vars():
-                var = fluid.global_scope().find_var(var_py.name)
+                var = base.global_scope().find_var(var_py.name)
                 if (
                     not var_py.name.startswith('nccl_id')
                     and var
@@ -766,7 +764,7 @@ class StaticGraphAdapter:
             self.model._optimizer.amp_init(place)
 
         if self._nranks < 2:
-            compiled_prog = fluid.CompiledProgram(prog)
+            compiled_prog = base.CompiledProgram(prog)
         else:
             compiled_prog = prog
 
@@ -935,7 +933,7 @@ class DynamicGraphAdapter:
         inputs = [to_variable(x) for x in to_list(inputs)]
         self._input_info = _update_input_info(inputs)
         outputs = self.model.network(*inputs)
-        if self._nranks > 1 and isinstance(self.model._place, fluid.CUDAPlace):
+        if self._nranks > 1 and isinstance(self.model._place, base.CUDAPlace):
             outputs = [_all_gather(o) for o in to_list(outputs)]
 
         return [to_numpy(o) for o in to_list(outputs)]
@@ -1026,7 +1024,7 @@ class DynamicGraphAdapter:
 
         if not hasattr(self.model._optimizer, 'set_state_dict'):
             warnings.warn(
-                "paddle.fluid.optimizer is deprecated in API 2.0, please use paddle.optimizer instead."
+                "paddle.base.optimizer is deprecated in API 2.0, please use paddle.optimizer instead."
             )
             self.model._optimizer.set_dict(converted_state)
         else:
@@ -1708,23 +1706,23 @@ class Model:
 
         """
         self._place = _get_device()
-        if isinstance(self._place, fluid.CUDAPlace):
+        if isinstance(self._place, base.CUDAPlace):
             global _parallel_context_initialized
             if (
                 paddle.distributed.ParallelEnv().nranks > 1
                 and not _parallel_context_initialized
             ):
                 if in_dynamic_mode():
-                    main_prog_seed = fluid.default_main_program().random_seed
+                    main_prog_seed = base.default_main_program().random_seed
                     startup_prog_seed = (
-                        fluid.default_startup_program().random_seed
+                        base.default_startup_program().random_seed
                     )
-                    fluid.disable_dygraph()
+                    base.disable_dygraph()
                     paddle.disable_static(self._place)
                     # enable_dygraph would create and switch to a new program,
                     # thus also copy seed to the new program
-                    fluid.default_main_program().random_seed = main_prog_seed
-                    fluid.default_startup_program().random_seed = (
+                    base.default_main_program().random_seed = main_prog_seed
+                    base.default_startup_program().random_seed = (
                         startup_prog_seed
                     )
                 else:
@@ -2233,7 +2231,7 @@ class Model:
         """
 
         if in_dynamic_mode():
-            with fluid.framework._dygraph_guard(None):
+            with base.framework._dygraph_guard(None):
                 layer = self.network
                 if self._input_info is None:  # No provided or inferred
                     raise RuntimeError(

@@ -21,15 +21,15 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.fluid import core, unique_name
-from paddle.fluid.data_feeder import (
+from paddle.base import core, unique_name
+from paddle.base.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
 )
-from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.param_attr import ParamAttr
+from paddle.base.framework import Variable, convert_np_dtype_to_dtype_
+from paddle.base.layer_helper import LayerHelper
+from paddle.base.param_attr import ParamAttr
 
 __all__ = []
 
@@ -54,37 +54,40 @@ def fused_embedding_seq_pool(
         size (tuple|list): The shape of the lookup_table parameter. It should
             have two elements which indicate the size of the dictionary of
             embedding and the size of each embedding vector respectively.
-        is_sparse (bool): The flag indicating whether to use sparse update.
+        is_sparse (bool, optional): The flag indicating whether to use sparse update.
             Default: False.
-        padding_idx (int|long|None): It will output all-zero padding data whenever
+        padding_idx (int|long|None, optional): It will output all-zero padding data whenever
             lookup encounters :math:`padding\_idx` in Ids. If set :attr:`None`, it makes
             no effect to output. If :math:`padding\_idx < 0`, the :math:`padding\_idx`
             will automatically be converted to :math:`size[0] + padding\_idx` to use.
             Default: None.
-        combiner (str): The pooling type of sequence_pool, and only support `sum`.
+        combiner (str, optional): The pooling type of sequence_pool, and only support `sum`.
             Default: sum.
-        param_attr (ParamAttr): Parameters for this layer.
-        dtype (np.dtype|core.VarDesc.VarType|str): The dtype refers to the data type of output
-            tensor. It can be float32, float_16, int etc.
+        param_attr (ParamAttr, optional): Parameters for this layer. Default: None.
+        dtype (np.dtype|core.VarDesc.VarType|str, optional): The dtype refers to the data type of output
+            tensor. It can be float32, float_16, int etc. Default: float32.
+
     Returns:
         The Tensor of sequence pooling.
+
     Examples:
         .. code-block:: python
-            import numpy as np
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
 
-            dict_size = 20
-            data_t = paddle.static.data(
-                name='word', shape=[-1, 1], dtype='int64', lod_level=1)
-            padding_idx = np.random.randint(1, 10)
-            out = paddle.incubate.layers.fused_embedding_seq_pool(
-                input=data_t,
-                size=[dict_size, 32],
-                param_attr='w',
-                padding_idx=padding_idx,
-                is_sparse=False)
+            >>> import numpy as np
+            >>> import paddle
+            >>> paddle.enable_static()
+
+            >>> dict_size = 20
+            >>> data_t = paddle.static.data(
+            ...     name='word', shape=[-1, 1], dtype='int64', lod_level=1)
+            >>> padding_idx = np.random.randint(1, 10)
+            >>> out = paddle.incubate.layers.fused_embedding_seq_pool(
+            ...     input=data_t,
+            ...     size=[dict_size, 32],
+            ...     param_attr='w',
+            ...     padding_idx=padding_idx,
+            ...     is_sparse=False)
+
     """
     helper = LayerHelper('fused_embedding_seq_pool', **locals())
     w = helper.create_parameter(
@@ -130,27 +133,25 @@ def fused_seqpool_cvm(
         cvm_offset(int, optional): cvm offset. Default: 2, which means cvm contains show, click.
 
     Returns:
-        Tensor : The tensor storing sequence pool and cvm
-        of input.
+        Tensor : The tensor storing sequence pool and cvm of input.
 
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.fluid as fluid
-            paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-            data = paddle.static.data(name='x', shape=[-1, 1], dtype='int64', lod_level=1)
-            data2 = paddle.static.data(name='y', shape=[-1, 1], dtype='int64', lod_level=1)
-            inputs = [data, data2]
-            embs = paddle.incubate.layers.nn._pull_box_sparse(input=inputs, size=11, is_distributed=True, is_sparse=True)
+            >>> data = paddle.static.data(name='x', shape=[-1, 1], dtype='int64', lod_level=1)
+            >>> data2 = paddle.static.data(name='y', shape=[-1, 1], dtype='int64', lod_level=1)
+            >>> inputs = [data, data2]
+            >>> embs = paddle.incubate.layers.nn._pull_box_sparse(input=inputs, size=11, is_distributed=True, is_sparse=True)
 
-            label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64", lod_level=1)
-            ones = fluid.layers.fill_constant_batch_size_like(input=label, shape=[-1, 1], dtype="int64", value=1)
-            show_clk = paddle.cast(paddle.concat([ones, label], axis=1), dtype='float32')
-            show_clk.stop_gradient = True
+            >>> label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64", lod_level=1)
+            >>> ones = paddle.static.data(name="ones", shape=[-1, 1], dtype="int64", lod_level=1)
+            >>> show_clk = paddle.cast(paddle.concat([ones, label], axis=1), dtype='float32')
+            >>> show_clk.stop_gradient = True
 
-            cvms = paddle.incubate.layers.fused_seqpool_cvm(embs, 'sum', show_clk)
+            >>> cvms = paddle.incubate.layers.fused_seqpool_cvm(embs, 'sum', show_clk)
 
 
     """
@@ -212,10 +213,10 @@ def multiclass_nms2(
     In the NMS step, this operator greedily selects a subset of detection bounding
     boxes that have high scores larger than score_threshold, if providing this
     threshold, then selects the largest nms_top_k confidences scores if nms_top_k
-    is larger than -1. Then this operator pruns away boxes that have high IOU
+    is larger than -1. Then this operator prunes away boxes that have high IOU
     (intersection over union) overlap with already selected boxes by adaptive
     threshold NMS based on parameters of nms_threshold and nms_eta.
-    Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
+    After NMS step, at most keep_top_k number of total bboxes are to be kept
     per image if keep_top_k is larger than -1.
 
     Args:
@@ -228,7 +229,7 @@ def multiclass_nms2(
                            [xmin, ymin, xmax, ymax], when box size equals to 4.
                            2. (LoDTensor) A 3-D Tensor with shape [M, C, 4]
                            M is the number of bounding boxes, C is the
-                           class number
+                           class number.
         scores (Tensor): Two types of scores are supported:
                            1. (Tensor) A 3-D Tensor with shape [N, C, M]
                            represents the predicted confidence predictions.
@@ -241,22 +242,22 @@ def multiclass_nms2(
                            M is the number of bbox, C is the class number.
                            In this case, input BBoxes should be the second
                            case with shape [M, C, 4].
-        background_label (int): The index of background label, the background
-                                label will be ignored. If set to -1, then all
-                                categories will be considered. Default: 0
         score_threshold (float): Threshold to filter out bounding boxes with
                                  low confidence score. If not provided,
                                  consider all boxes.
         nms_top_k (int): Maximum number of detections to be kept according to
                          the confidences after the filtering detections based
                          on score_threshold.
-        nms_threshold (float): The threshold to be used in NMS. Default: 0.3
-        nms_eta (float): The threshold to be used in NMS. Default: 1.0
         keep_top_k (int): Number of total bboxes to be kept per image after NMS
                           step. -1 means keeping all bboxes after NMS step.
-        normalized (bool): Whether detections are normalized. Default: True
-        return_index(bool): Whether return selected index. Default: False
-        name(str): Name of the multiclass nms op. Default: None.
+        nms_threshold (float, optional): The threshold to be used in NMS. Default: 0.3.
+        normalized (bool, optional): Whether detections are normalized. Default: True.
+        nms_eta (float, optional): The threshold to be used in NMS. Default: 1.0.
+        background_label (int, optional): The index of background label, the background
+                                label will be ignored. If set to -1, then all
+                                categories will be considered. Default: 0.
+        return_index(bool, optional): Whether return selected index. Default: False.
+        name(str, optional): Name of the multiclass nms op. Default: None.
 
     Returns:
         A tuple with two dimensions of the tensor: (Out, Index) if return_index is True,
@@ -279,23 +280,21 @@ def multiclass_nms2(
     Examples:
         .. code-block:: python
 
-
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-            boxes = paddle.static.data(name='bboxes', shape=[-1, 81, 4],
-                                      dtype='float32', lod_level=1)
-            scores = paddle.static.data(name='scores', shape=[-1, 81],
-                                      dtype='float32', lod_level=1)
-            out, index = paddle.incubate.layers.multiclass_nms2(bboxes=boxes,
-                                              scores=scores,
-                                              background_label=0,
-                                              score_threshold=0.5,
-                                              nms_top_k=400,
-                                              nms_threshold=0.3,
-                                              keep_top_k=200,
-                                              normalized=False,
-                                              return_index=True)
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> boxes = paddle.static.data(name='bboxes', shape=[-1, 81, 4],
+            ...                           dtype='float32', lod_level=1)
+            >>> scores = paddle.static.data(name='scores', shape=[-1, 81],
+            ...                           dtype='float32', lod_level=1)
+            >>> out, index = paddle.incubate.layers.multiclass_nms2(bboxes=boxes,
+            ...                                   scores=scores,
+            ...                                   background_label=0,
+            ...                                   score_threshold=0.5,
+            ...                                   nms_top_k=400,
+            ...                                   nms_threshold=0.3,
+            ...                                   keep_top_k=200,
+            ...                                   normalized=False,
+            ...                                   return_index=True)
     """
     helper = LayerHelper('multiclass_nms2', **locals())
 
@@ -353,26 +352,27 @@ def search_pyramid_hash(
         pyramid_layer (int): The number of pyramid layers. It should be greater than 2.
         rand_len (int): The minimum length of pyramid hash cell.
         drop_out_percent (float): The probability of dropping out the input token randomly.
-            It should satisfy: [0., 1.]
+            It should satisfy: [0., 1.].
         is_training (bool): Whether in training or testing phrase.
-        use_filter(bool): If set True, the white filter and black filter should be given by
+        use_filter (bool): If set True, the white filter and black filter should be given by
             :attr:`param_attr_wl` and :attr:`param_attr_bl` .
-        white_list_len(int): If set :math:`white_list_len>0` , white filter with shape [white_list_len, 1]
+        white_list_len (int): If set :math:`white_list_len>0` , white filter with shape [white_list_len, 1]
             should be provided by param_attr_wl.
-        black_list_len(int): If set :math:`black_list_len>0` , black filter with shape [black_list_len, 1]
+        black_list_len (int): If set :math:`black_list_len>0` , black filter with shape [black_list_len, 1]
             should be provided by param_attr_bl.
-        seed(int): The number of random seed.
-        lr(float): The learning rate of weight created by :attr:`param_attr` with shape [space_len+rand_len, 1]
+        seed (int): The number of random seed.
+        lr (float): The learning rate of weight created by :attr:`param_attr` with shape [space_len+rand_len, 1]
             in this layer.
-        param_attr(ParamAttr): To specify the weight parameter property. Default: None, which means the
+        param_attr (ParamAttr, optional): To specify the weight parameter property. Default: None, which means the
             default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
-        param_attr_wl(ParamAttr): Specified parameters of white filter.
-        param_attr_bl(ParamAttr): Specified parameters of black filter.
-        distribute_update_vars(list[ParamAttr.name]): Decided which params should be updated in distribute training.
-            Used in Distribute Transpiler to create a trainer/server program.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
-        dtype(str): The data type of output Tensor, float32.
+        param_attr_wl (ParamAttr, optional): Specified parameters of white filter. Default: None.
+        param_attr_bl (ParamAttr, optional): Specified parameters of black filter. Default: None.
+        distribute_update_vars(list[ParamAttr.name], optional): Decided which params should be updated in distribute training.
+            Used in Distribute Transpiler to create a trainer/server program. Default: None.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` . Default: None.
+        dtype (str, optional): The data type of output Tensor, float32. Default: float32.
+
     Returns:
         Tensor: LoDTensor of pyramid hash embedding.
     """
@@ -451,25 +451,25 @@ def shuffle_batch(x, seed=None):
     :attr:`x` is a LoDTensor to be shuffled with shape :math:`[N_1, N_2, ..., N_k, D]` . Note that the last dim of input will not be shuffled.
     :math:`N_1 * N_2 * ... * N_k` numbers of elements with length :math:`D` will be shuffled randomly.
 
-    For Example:
+    Examples:
 
-    .. code-block:: text
+        .. code-block:: text
 
-      Input:
-        x.data = [[1, 2], [3, 4], [5, 6], [7, 8]]
-        x.dims = [4, 2]
+            Input:
+              x.data = [[1, 2], [3, 4], [5, 6], [7, 8]]
+              x.dims = [4, 2]
 
-      Attrs:
-        seed = 2019
+            Attrs:
+              seed = 2019
 
-      Output:
-        Out.data =[[7, 8], [1, 2], [3, 4], [5, 6]]
-        Out.dims = [4, 2]
+            Output:
+              Out.data =[[7, 8], [1, 2], [3, 4], [5, 6]]
+              Out.dims = [4, 2]
 
     Args:
         x (Tensor): The input Tensor. The input Tensor is a N-D LoDTensor with type int, float32 or float64.
-        seed (None|int|Tensor): The start up seed. If set, seed will be set as the start up seed of shuffle engine.
-                If not set(Default), start up seed of shuffle engine will be generated randomly.
+        seed (None|int|Tensor, optional): The start up seed. If set, seed will be set as the start up seed of shuffle engine.
+            If not set(Default), start up seed of shuffle engine will be generated randomly. Default: None.
 
     Returns:
         Tensor: The shuffled LoDTensor with the same shape and lod as input.
@@ -478,11 +478,10 @@ def shuffle_batch(x, seed=None):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-            x = paddle.static.data(name="x", shape=[-1, 4])
-            out = paddle.incubate.layers.shuffle_batch(x)
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> x = paddle.static.data(name="x", shape=[-1, 4])
+            >>> out = paddle.incubate.layers.shuffle_batch(x)
     """
     helper = LayerHelper('shuffle_batch', **locals())
 
@@ -526,7 +525,7 @@ def partial_concat(input, start_index=0, length=-1):
                  [9, 10, 11]]
             output = partial_concat([x, y], start_index=0, length=2)
 
-          we get:
+        We get:
 
             output = [[0, 1, 6, 7],
                       [3, 4, 9, 10]]
@@ -534,20 +533,22 @@ def partial_concat(input, start_index=0, length=-1):
     Args:
         input(list): List of input Tensors with data type float32, float64, int32,
             int64.
-        start_index(int32): The start index of each instance for partial concatenation.
+        start_index(int32, optional): The start index of each instance for partial concatenation.
             Default is 0.
-        length(int32): The length of each instance for partial concatenation. Default is -1.
+        length(int32, optional): The length of each instance for partial concatenation. Default is -1.
             Negative values for all elements after start_index.
+
     Returns:
         Tensor: A Tensor with the same data type as input's.
+
     Examples:
         .. code-block:: python
-            import paddle.fluid as fluid
-            import paddle
-            x = paddle.randn(name="x", shape=[1,3], dtype="float32")
-            y = paddle.randn(name="y", shape=[1,3], dtype="float32")
-            concat = paddle.incubate.layers.partial_concat(
-                [x, y], start_index=0, length=2)
+
+            >>> import paddle
+            >>> x = paddle.randn(name="x", shape=[1,3], dtype="float32")
+            >>> y = paddle.randn(name="y", shape=[1,3], dtype="float32")
+            >>> concat = paddle.incubate.layers.partial_concat(
+            ...     [x, y], start_index=0, length=2)
     """
     if not isinstance(input, list):
         warnings.warn(
@@ -584,6 +585,7 @@ def partial_sum(input, start_index=0, length=-1):
     This Op exists in incubate layers, which means that it is not shown to the public.
     Only 2-D Tensor or LodTensor input is supported. Slice and concat can only be
     performed along the second dimension.
+
     .. code-block:: text
 
         Given:
@@ -592,30 +594,29 @@ def partial_sum(input, start_index=0, length=-1):
             y = [[6, 7 ,8],
                  [9, 10, 11]]
             output = partial_sum([x, y], start_index=0, length=2)
-          we get:
+
+        We get:
 
             output = [[6, 8],
                       [12, 14]]
     Args:
-        input(list): List of input Tensors with data type float32, float64, int32,
+        input (list): List of input Tensors with data type float32, float64, int32,
             int64.
+        start_index (int32, optional): The start index of each instance for partial sum. Default is 0.
+        length (int32, optional): The length of each instance for partial sum. Default is -1.
+
     Returns:
         Tensor: A Tensor with the same data type as input's.
+
     Examples:
         .. code-block:: python
-        import paddle.fluid as fluid
-        import numpy as np
-        import paddle
-        paddle.enable_static()
 
-        x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
-        y = paddle.static.data(name="y", shape=[2, 3], dtype="float32")
-        sum = paddle.incubate.layers.partial_sum([x,y], start_index=0, length=2)
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        xx = np.array([1,2,3,4,5,6]).reshape((2,3)).astype("float32")
-        yy = np.array([6,5,4,4,5,6]).reshape((2,3)).astype("float32")
-        out = exe.run(feed={"x":xx, "y":yy}, fetch_list=[sum])
+            >>> import paddle
+            >>> paddle.enable_static()
+
+            >>> x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
+            >>> y = paddle.static.data(name="y", shape=[2, 3], dtype="float32")
+            >>> sum = paddle.incubate.layers.partial_sum([x,y], start_index=0, length=2)
     """
     for id, x in enumerate(input):
         check_variable_and_dtype(
@@ -642,6 +643,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
     **Tdm Child**
      According to the input node_id on the given tree, return the corresponding child node_id and
       whether child is a leaf node by leaf_mask value.
+
     .. code-block:: text
 
         Given:
@@ -650,25 +652,26 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
             node_nums = 7
             child_nums = 2
 
-          we get:
+        We get:
             child = [[5, 6],
                      [0, 0]]
             leaf_mask = [[1, 1],
                          [0, 0]]
+
     Args:
-        x(Tensor): Tensor contained the node_id information, dtype support int32/int64.
-        node_nums(int): Number of total nodes.
-        child_nums(int): Maximum number of child nodes per node.
-        param_attr(ParamAttr): To specify the tdm-tree-info parameter property. Default: None, which means the
+        x (Tensor): Tensor contained the node_id information, dtype support int32/int64.
+        node_nums (int): Number of total nodes.
+        child_nums (int): Maximum number of child nodes per node.
+        param_attr (ParamAttr, optional): To specify the tdm-tree-info parameter property. Default: None, which means the
             default weight parameter property is used. See usage for details in: ref: `api_fluid_ParamAttr`, should
-            has shape(node_nums, 3 + child_nums), dtype support int32/int64.
+            has shape (node_nums, 3 + child_nums), dtype support int32/int64.
             The dimension[1] of tdm-tree-info contains the following:
-            1. Item_id(int, shape(1)), if node is a leaf node, give its item_id corresponding to node_id, else give 0.
-            2. Layer_id(int, shape(1)), indicates which layer the node is on.
-            3. Parent_id(int, shape(1)), node's parent node.
-            4. Child_id(int, shape(child_nums)), all child node's node_id of this node should be given.
-            If the number of child nodes is insufficient, padding 0 until child nums equal to child_nums
-        dtype(str): The data type of output child and leaf_mask, support int32/int64.
+            1. Item_id (int, shape(1)), if node is a leaf node, give its item_id corresponding to node_id, else give 0.
+            2. Layer_id (int, shape(1)), indicates which layer the node is on.
+            3. Parent_id (int, shape(1)), node's parent node.
+            4. Child_id (int, shape(child_nums)), all child node's node_id of this node should be given.
+            If the number of child nodes is insufficient, padding 0 until child nums equal to child_nums.
+        dtype (str, optional): The data type of output child and leaf_mask, support int32/int64. Default: int32.
 
     Returns:
         tuple: A tuple including input node's child(Tensor) and leaf_mask(Tensor).
@@ -676,27 +679,23 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
 
     Examples:
         .. code-block:: python
-        import paddle
-        import paddle.fluid as fluid
-        import numpy as np
-        paddle.enable_static()
-        x = paddle.static.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
-        tree_info = [[0,0,0,1,2],
-                     [0,1,0,3,4],[0,1,0,5,6],
-                     [0,2,1,0,0],[1,2,1,0,0],[2,2,2,0,0],[3,2,2,0,0]]
-        tree_info_np = np.array(tree_info)
-        tree_info_np = np.reshape(tree_info_np, (7,5))
-        node_nums = 7
-        child_nums = 2
-        child, leaf_mask  = paddle.incubate.layers.tdm_child(x, node_nums, child_nums,
-                                param_attr=fluid.ParamAttr(
-                                    initializer=paddle.nn.initializer.Assign(
-                                                                            tree_info_np)))
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        xx = np.array([[2],[3]]).reshape((2,1)).astype("int32")
-        child_res, leaf_mask_res = exe.run(feed={"x":xx}, fetch_list=[child, leaf_mask])
+
+            >>> import paddle
+            >>> import numpy as np
+            >>> paddle.enable_static()
+
+            >>> x = paddle.static.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
+            >>> tree_info = [[0,0,0,1,2],
+            ...             [0,1,0,3,4],[0,1,0,5,6],
+            ...             [0,2,1,0,0],[1,2,1,0,0],[2,2,2,0,0],[3,2,2,0,0]]
+            >>> tree_info_np = np.array(tree_info)
+            >>> tree_info_np = np.reshape(tree_info_np, (7,5))
+            >>> node_nums = 7
+            >>> child_nums = 2
+            >>> child, leaf_mask  = paddle.incubate.layers.tdm_child(x, node_nums, child_nums,
+            ...                     param_attr=paddle.ParamAttr(
+            ...                     initializer=paddle.nn.initializer.Assign(tree_info_np)))
+
     """
     helper = LayerHelper("tdm_child", **locals())
     check_dtype(
@@ -740,6 +739,7 @@ def tdm_sampler(
     """
     **Tdm Sampler**
     According to the input positive samples at leaf node(x), do negative sampling layer by layer on the given tree.
+
     .. code-block:: text
 
         Given:
@@ -753,7 +753,7 @@ def tdm_sampler(
             leaf_node_num = 4
             output_list = False
 
-          we get:
+        We get:
             out = [[1, 3], [1, 4], [2, 5], [2, 6]]
             labels = [[1, 1], [1, 1], [1, 1], [1, 1]]
             mask = [[1, 1], [1, 1], [1, 1], [1, 1]]
@@ -763,21 +763,21 @@ def tdm_sampler(
         neg_samples_num_list (list(int)): Number of negative samples per layer.
         layer_node_num_list (list(int)): Number of nodes per layer, must has same shape with neg_samples_num_list.
         leaf_node_num (int): Number of leaf nodes.
-        tree_travel_attr (ParamAttr): To specify the tdm-travel parameter property. Default: None, which means the
+        tree_travel_attr (ParamAttr, optional): To specify the tdm-travel parameter property. Default: None, which means the
             default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr`, should
             has shape (leaf_node_num, len(layer_node_num_list)), dtype support int32/int64.
-        tree_layer_attr (ParamAttr): To specify the tdm-layer parameter property. Default: None, which means the
+        tree_layer_attr (ParamAttr, optional): To specify the tdm-layer parameter property. Default: None, which means the
             default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr`, should
             has shape (node_num, 1), dtype support int32/int64.
-        output_positive (bool): Whether to output positive samples (includ label and mask )at the same time.
-        output_list (bool): Whether to divide the output into layers and organize it into list format.
-        seed (int): The number of random seed.
-        tree_dtype(np.dtype|core.VarDesc.VarType|str): The dtype of tdm-travel and tdm-layer, support int32/int64
-        dtype(np.dtype|core.VarDesc.VarType|str): The dtype of output(sampling results, labels and masks)
+        output_positive (bool, optional): Whether to output positive samples (include label and mask )at the same time. Default: True.
+        output_list (bool, optional): Whether to divide the output into layers and organize it into list format. Default: True.
+        seed (int, optional): The number of random seed. Default: 0.
+        tree_dtype (np.dtype|core.VarDesc.VarType|str, optional): The dtype of tdm-travel and tdm-layer, support int32/int64. Default: int32.
+        dtype (np.dtype|core.VarDesc.VarType|str, optional): The dtype of output(sampling results, labels and masks). Default: int32.
 
     Returns:
         tuple: A tuple including sampling results, corresponding labels and masks. if output_positive = True, sampling
-            result  will include both positive and negative samples. If sampling reseult is a positive sample, the label is 1,
+            result  will include both positive and negative samples. If sampling result is a positive sample, the label is 1,
             and if it is a negative sample, it is 0. If the tree is unbalanced, in order to ensure the consistency of the
             sampling result shape, the padding sample's mask = 0, the real sample's mask value = 1.
             If output_list = True, the result will organize into list format specified by layer information.
@@ -785,43 +785,37 @@ def tdm_sampler(
 
     Examples:
         .. code-block:: python
-        import paddle
-        import paddle.fluid as fluid
-        import numpy as np
-        paddle.enable_static()
-        x = paddle.static.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
-        travel_list = [[1, 3], [1, 4], [2, 5], [2, 6]] # leaf node's travel path, shape(leaf_node_num, layer_num)
-        layer_list_flat = [[1], [2], [3], [4], [5], [6]] # shape(node_nums, 1)
 
-        neg_samples_num_list = [0, 0] # negative sample nums = 0
-        layer_node_num_list = [2, 4] #two layer (exclude root node)
-        leaf_node_num = 4
+            >>> import paddle
+            >>> import numpy as np
+            >>> paddle.enable_static()
 
-        travel_array = np.array(travel_list)
-        layer_array = np.array(layer_list_flat)
+            >>> x = paddle.static.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
+            >>> travel_list = [[1, 3], [1, 4], [2, 5], [2, 6]] # leaf node's travel path, shape(leaf_node_num, layer_num)
+            >>> layer_list_flat = [[1], [2], [3], [4], [5], [6]] # shape(node_nums, 1)
 
-        sample, label, mask = paddle.incubate.layers.tdm_sampler(
-            x,
-            neg_samples_num_list,
-            layer_node_num_list,
-            leaf_node_num,
-            tree_travel_attr=fluid.ParamAttr(
-                initializer=paddle.nn.initializer.Assign(
-                    travel_array)),
-            tree_layer_attr=fluid.ParamAttr(
-                initializer=paddle.nn.initializer.Assign(
-                    layer_array)),
-            output_positive=True,
-            output_list=True,
-            seed=0,
-            tree_dtype='int32')
+            >>> neg_samples_num_list = [0, 0] # negative sample nums = 0
+            >>> layer_node_num_list = [2, 4] #two layer (exclude root node)
+            >>> leaf_node_num = 4
 
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        xx = np.array([[0],[1]]).reshape((2,1)).astype("int32")
+            >>> travel_array = np.array(travel_list)
+            >>> layer_array = np.array(layer_list_flat)
 
-        exe.run(feed={"x":xx})
+            >>> sample, label, mask = paddle.incubate.layers.tdm_sampler(
+            ...     x,
+            ...     neg_samples_num_list,
+            ...     layer_node_num_list,
+            ...     leaf_node_num,
+            ...     tree_travel_attr=paddle.ParamAttr(
+            ...         initializer=paddle.nn.initializer.Assign(
+            ...            travel_array)),
+            ...     tree_layer_attr=paddle.ParamAttr(
+            ...         initializer=paddle.nn.initializer.Assign(
+            ...             layer_array)),
+            ...     output_positive=True,
+            ...     output_list=True,
+            ...     seed=0,
+            ...     tree_dtype='int32')
 
     """
     helper = LayerHelper("tdm_sampler", **locals())
@@ -968,30 +962,33 @@ def rank_attention(
     rank_param gives the organization of data. Notice: It currently supports
     GPU device.
     This Op exists in incubate layers, which means that it is not shown to the public.
+
     Args:
-        input: Tensor with data type float32, float64.
-        rank_offset: Tensor with data type int32.
-        rank_para_shape: The shape of rank_param.
-        rank_param_attr: Attribute initializer of rank_param.
-        max_rank: The max rank of input's ranks.
+        input (Tensor): Tensor with data type float32, float64.
+        rank_offset (Tensor): Tensor with data type int32.
+        rank_para_shape (list[int]): The shape of rank_param.
+        rank_param_attr (ParamAttr): Attribute initializer of rank_param.
+        max_rank (int, optional): The max rank of input's ranks. Default is 3.
+        max_size (int, optional): The max size of input's ranks. Default is 0.
     Returns:
         Tensor: A Tensor with the same data type as input's.
+
     Examples:
         .. code-block:: python
-           import paddle.fluid as fluid
-           import paddle
-           paddle.enable_static()
 
-           input = paddle.static.data(name="input", shape=[None, 2], dtype="float32")
-           rank_offset = paddle.static.data(name="rank_offset", shape=[None, 7], dtype="int32")
-           out = paddle.incubate.layers.rank_attention(input=input,
-                                                     rank_offset=rank_offset,
-                                                     rank_param_shape=[18,3],
-                                                     rank_param_attr=
-                                                     paddle.ParamAttr(learning_rate=1.0,
-                                                                     name="ubm_rank_param.w_0"),
-                                                      max_rank=3,
-                                                      max_size=0)
+            >>> import paddle
+            >>> paddle.enable_static()
+
+            >>> input = paddle.static.data(name="input", shape=[None, 2], dtype="float32")
+            >>> rank_offset = paddle.static.data(name="rank_offset", shape=[None, 7], dtype="int32")
+            >>> out = paddle.incubate.layers.rank_attention(input=input,
+            ...                                             rank_offset=rank_offset,
+            ...                                             rank_param_shape=[18,3],
+            ...                                             rank_param_attr=
+            ...                                             paddle.ParamAttr(learning_rate=1.0,
+            ...                                                              name="ubm_rank_param.w_0"),
+            ...                                             max_rank=3,
+            ...                                             max_size=0)
     """
     helper = LayerHelper('rank_attention', **locals())
     dtype = helper.input_dtype(input_param_name='input')
@@ -1027,34 +1024,35 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
     except that the bias and relu activation layers are added.
     Notice: It currently supports GPU device.
     This Op exists in incubate layers, which means that it is not shown to the public.
+
     Args:
-        input: Tensor with data type float32, float64.
-        param_size: The size of w.
-        param_attr: Attribute initializer of w.
-        bias_size: The size of bias.
-        bias_attr: Attribute initializer of bias.
-        act: Activation to be applied to the output of this layer.
+        input (Tensor): Tensor with data type float32, float64.
+        param_size (list[int]): The size of w.
+        param_attr (ParamAttr): Attribute initializer of w.
+        bias_size (list[int]): The size of bias.
+        bias_attr (ParamAttr): Attribute initializer of bias.
+        act (str, optional): Activation to be applied to the output of this layer. Default is None.
 
     Returns:
         Tensor: A Tensor with the same data type as input's.
+
     Examples:
         .. code-block:: python
-           import paddle.fluid as fluid
-           import paddle
 
-           paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-           input = paddle.static.data(name="input", shape=[16, 2, 3], dtype="float32")
-           out = paddle.incubate.layers.batch_fc(input=input,
-                                               param_size=[16, 3, 10],
-                                               param_attr=
-                                               paddle.ParamAttr(learning_rate=1.0,
-                                                               name="w_0"),
-                                               bias_size=[16, 10],
-                                               bias_attr=
-                                               paddle.ParamAttr(learning_rate=1.0,
-                                                               name="b_0"),
-                                               act="relu")
+            >>> input = paddle.static.data(name="input", shape=[16, 2, 3], dtype="float32")
+            >>> out = paddle.incubate.layers.batch_fc(input=input,
+            ...                                     param_size=[16, 3, 10],
+            ...                                     param_attr=
+            ...                                     paddle.ParamAttr(learning_rate=1.0,
+            ...                                                      name="w_0"),
+            ...                                     bias_size=[16, 10],
+            ...                                     bias_attr=
+            ...                                     paddle.ParamAttr(learning_rate=1.0,
+            ...                                                      name="b_0"),
+            ...                                     act="relu")
     """
 
     helper = LayerHelper("batch_fc", **locals())
@@ -1089,23 +1087,26 @@ def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
     This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
     BoxPS lookup table. The result of this lookup is the embedding of each ID in the
     :attr:`input`.
+
     Args:
-        input(Tensor): Input is a Tensor<int64>, which
-            contains the IDs information.
-        size(int): The embedding size parameter, which indicates the size of
+        input (Tensor): Input is a Tensor<int64>, which contains the IDs information.
+        size (int): The embedding size parameter, which indicates the size of
             each embedding vector respectively.
-        extend_size(int): The embedding size parameter in extended dim,
-            which indicates the size of each embedding vector respectively.
-        dtype(str): The dtype refers to the data type of output tensor. Only supports
-      float32 now.
+        extend_size (int, optional): The embedding size parameter in extended dim,
+            which indicates the size of each embedding vector respectively. Default is 64.
+        dtype (str, optional): The dtype refers to the data type of output tensor. Only supports float32 now. Default is float32.
+
     Returns:
-        Tensor: The tensor storing the embeddings of the \
-                  supplied inputs.
+        Tensor: The tensor storing the embeddings of the supplied inputs.
+
     Examples:
         .. code-block:: python
-          import paddle.fluid as fluid
-          data = paddle.static.data(name='sequence', shape=[-1, 1], dtype='int64', lod_level=1)
-          emb, emb_ex = paddle.incubate.layers._pull_box_extended_sparse(input=data, size=8, extend_size=128)
+
+            >>> import paddle
+            >>> paddle.enable_static()
+
+            >>> data = paddle.static.data(name='sequence', shape=[-1, 1], dtype='int64', lod_level=1)
+            >>> emb, emb_ex = paddle.incubate.layers._pull_box_extended_sparse(input=data, size=8, extend_size=128)
     """
     helper = LayerHelper('pull_box_extended_sparse', **locals())
     helper.input_dtype()
@@ -1133,22 +1134,22 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
     """
     :alias_main: paddle.nn.functional.bilateral_slice
         :alias: paddle.nn.functional.bilateral_slice,paddle.nn.functional.vision.bilateral_slice
-        :old_api: paddle.fluid.layers.bilateral_slice
+        :old_api: paddle.base.layers.bilateral_slice
 
     This operation implements bilateral slicing on the input according to the guide map.
     For more information of bilateral slicing, please refer to Deep Bilateral Learning for Real-Time Image Enhancement <https://groups.csail.mit.edu/graphics/hdrnet/data/hdrnet.pdf>_
 
     Args:
-        x(Tensor): The input tensor, which is a 4-D tensor with shape
+        x (Tensor): The input tensor, which is a 4-D tensor with shape
                      [N, C, H, W], N is the batch size, C is the channel
                      number, H and W is the feature height and width.
                      The data type is float32 and float64.
-        guide(Tensor): Input grid tensor of shape [N, H, W]. The
+        guide (Tensor): Input grid tensor of shape [N, H, W]. The
                         data type is float32 and float64.
-        grid(Tensor): Input grid tensor of shape [N, C, D, H, W]. The
+        grid (Tensor): Input grid tensor of shape [N, C, D, H, W]. The
                         data type is float32 and float64.
-        has_offset(bool): Whether to slice with affine offset.
-        name(str, optional): For detailed information, please refer
+        has_offset (bool): Whether to slice with affine offset.
+        name (str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
 
@@ -1159,19 +1160,18 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-            x = paddle.randn(name='x', shape=[1, 3, 101, 60], dtype='float32')
-            guide = paddle.randn(name='guide', shape=[1, 101, 60], dtype='float32')
-            grid = paddle.randn(name='grid', shape=[1, 12, 8, 10, 6], dtype='float32')
+            >>> x = paddle.randn(name='x', shape=[1, 3, 101, 60], dtype='float32')
+            >>> guide = paddle.randn(name='guide', shape=[1, 101, 60], dtype='float32')
+            >>> grid = paddle.randn(name='grid', shape=[1, 12, 8, 10, 6], dtype='float32')
 
-            # without offset
-            output = paddle.incubate.layers.bilateral_slice(x, guide, grid, has_offset=False)
+            >>> # without offset
+            >>> output = paddle.incubate.layers.bilateral_slice(x, guide, grid, has_offset=False)
 
-            # has offset
-            output = paddle.incubate.layers.bilateral_slice(x, guide, grid, has_offset=True)
+            >>> # has offset
+            >>> output = paddle.incubate.layers.bilateral_slice(x, guide, grid, has_offset=True)
 
     """
     if paddle.in_dynamic_mode():
@@ -1215,13 +1215,13 @@ def correlation(
     <https://arxiv.org/pdf/1709.02371.pdf>_
 
     Args:
-        x(Tensor): The input x is 4-D Tensor with shape [N, C, H, W]. The data type is float32 and float64.
-        y(Tensor): The input y is 4-D Tensor with shape [N, C, H, W]. The data type is float32 and float64.
-        pad_size(int): Pad size. The data type is int.
-        max_displacement(int): Max displacement. The data type is int.
-        stride1(int): stride size of x. The data type is int.
-        stride2(int): stride size of y. The data type is int.
-        corr_type_multiply(int, optional): The type of multiply. The data type is int. Default: 1.
+        x (Tensor): The input x is 4-D Tensor with shape [N, C, H, W]. The data type is float32 and float64.
+        y (Tensor): The input y is 4-D Tensor with shape [N, C, H, W]. The data type is float32 and float64.
+        pad_size (int): Pad size. The data type is int.
+        max_displacement (int): Max displacement. The data type is int.
+        stride1 (int): stride size of x. The data type is int.
+        stride2 (int): stride size of y. The data type is int.
+        corr_type_multiply (int, optional): The type of multiply. The data type is int. Default: 1.
 
     Returns:
         Tensor: The data type is same as input tensor.
@@ -1230,25 +1230,24 @@ def correlation(
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-            x1 = paddle.static.data(name='x1',
-                               shape=[2,3,4,5],
-                               dtype="float32")
-            x2 = paddle.static.data(name='x2',
-                                shape=[2,3,4,5],
-                                dtype="float32")
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> x1 = paddle.static.data(name='x1',
+            ...                         shape=[2, 3, 4, 5],
+            ...                         dtype="float32")
+            >>> x2 = paddle.static.data(name='x2',
+            ...                         shape=[2, 3, 4, 5],
+            ...                         dtype="float32")
 
 
-            out = paddle.incubate.layers.correlation(
-                            x1,
-                            x2,
-                            pad_size=4,
-                            kernel_size=1,
-                            max_displacement=4,
-                            stride1=1,
-                            stride2=1)
+            >>> out = paddle.incubate.layers.correlation(
+            ...                 x1,
+            ...                 x2,
+            ...                 pad_size=4,
+            ...                 kernel_size=1,
+            ...                 max_displacement=4,
+            ...                 stride1=1,
+            ...                 stride2=1)
 
     """
 
@@ -1305,105 +1304,97 @@ def fused_bn_add_act(
     `[batch, in_height, in_width, in_channels]`.
 
     Args:
-        x(Tensor): The rank of input tensor can be 2, 3, 4, 5. The data type
+        x (Tensor): The rank of input tensor can be 2, 3, 4, 5. The data type
             is float16.
-        y(Tensor): The rank of input tensor can be 2, 3, 4, 5. The data type
+        y (Tensor): The rank of input tensor can be 2, 3, 4, 5. The data type
             is float16.
-        momentum(float|Tensor, optional): The value used for the moving_mean and
+        momentum (float|Tensor, optional): The value used for the moving_mean and
             moving_var computation. This should be a float number or a tensor with
             shape [1] and data type as float32. The updated formula is:
             :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
             :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
             Default is 0.9.
-        epsilon(float, optional): A value added to the denominator for
-            numerical stability. Default is 1e-5.
-        param_attr(ParamAttr, optional): The parameter attribute for Parameter `scale`
+        epsilon (float, optional): A value added to the denominator for
+            numerical stability. Default is 1e-05.
+        param_attr (ParamAttr, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
-                will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
-                If the Initializer of the param_attr is not set, the parameter is initialized
-                with Xavier. Default: None.
-        bias_attr(ParamAttr, optional): The parameter attribute for the bias of batch_norm.
+            will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+            If the Initializer of the param_attr is not set, the parameter is initialized
+            with Xavier. Default: None.
+        bias_attr (ParamAttr, optional): The parameter attribute for the bias of batch_norm.
             If it is set to None or one attribute of ParamAttr, batch_norm
-                will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
-                If the Initializer of the bias_attr is not set, the bias is initialized zero.
-                Default: None.
-        moving_mean_name(str, optional): The name of moving_mean which store the global Mean. If it
+            will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+            If the Initializer of the bias_attr is not set, the bias is initialized zero.
+            Default: None.
+        moving_mean_name (str, optional): The name of moving_mean which store the global Mean. If it
             is set to None, batch_norm will save global mean with a random name, otherwise, batch_norm
-            will save global mean with the string.
-        moving_variance_name(str, optional): The name of the moving_variance which store the global Variance.
+            will save global mean with the string. Default: None.
+        moving_variance_name (str, optional): The name of the moving_variance which store the global Variance.
             If it is set to None, batch_norm will save global variance with a random name, otherwise, batch_norm
-            will save global variance with the string.
-        act(string, optional): Activation type, linear|relu|prelu|...
-        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
-            Usually name is no need to set and None by default.
+            will save global variance with the string. Default: None.
+        act (string, optional): Activation type, linear|relu|prelu|... Default: None.
+        name (str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no need to set and None by default. Default: None.
 
     Examples:
-            .. code-block:: python
+        .. code-block:: python
 
-            import paddle
-            import paddle.fluid as fluid
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.enable_static()
 
-            paddle.enable_static()
-            # required: gpu
-            def build_program(main_program, startup_program):
-                with fluid.program_guard(main_program, startup_program):
-                    x = paddle.static.data(name='x', shape=[-1, 1, 28, 28], dtype='float32')
-                    y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
-                    conv1_1 = paddle.static.nn.conv2d(
-                        input=x,
-                        filter_size=3,
-                        num_filters=32,
-                        stride=1,
-                        padding=1,
-                        act=None,
-                        bias_attr=False,
-                        data_format='NHWC')
-                    conv1_2 = paddle.static.nn.conv2d(
-                        input=x,
-                        filter_size=3,
-                        num_filters=32,
-                        stride=1,
-                        padding=1,
-                        act=None,
-                        bias_attr=False,
-                        data_format='NHWC')
-                    bn = paddle.static.nn.batch_norm(
-                        input=conv1_1,
-                        act=None,
-                        data_layout='NHWC')
-                    fused_bn_add_act = paddle.incubate.layers.fused_bn_add_act(conv1_2, bn)
-                    prediction = paddle.static.nn.fc(x=fused_bn_add_act, size=10, activation='softmax')
-                    loss = paddle.nn.functional.cross_entropy(
-                        input=prediction, label=y,
-                        reduction='none', use_softmax=False
-                    )
-                    loss = paddle.mean(loss)
-                    sgd = fluid.optimizer.SGD(learning_rate=0.001)
-                    sgd = paddle.static.amp.decorate(
-                        sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0)
-                    sgd.minimize(loss)
+            >>> def build_program(main_program, startup_program):
+            ...     with paddle.static.program_guard(main_program, startup_program):
+            ...         x = paddle.static.data(name='x', shape=[-1, 1, 28, 28], dtype='float32')
+            ...         y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
+            ...         conv1_1 = paddle.static.nn.conv2d(
+            ...             input=x,
+            ...             filter_size=3,
+            ...             num_filters=32,
+            ...             stride=1,
+            ...             padding=1,
+            ...             act=None,
+            ...             bias_attr=False,
+            ...            data_format='NHWC')
+            ...         conv1_2 = paddle.static.nn.conv2d(
+            ...             input=x,
+            ...             filter_size=3,
+            ...             num_filters=32,
+            ...             stride=1,
+            ...             padding=1,
+            ...             act=None,
+            ...             bias_attr=False,
+            ...             data_format='NHWC')
+            ...         bn = paddle.static.nn.batch_norm(
+            ...            input=conv1_1,
+            ...             act=None,
+            ...             data_layout='NHWC')
+            ...         fused_bn_add_act = paddle.incubate.layers.fused_bn_add_act(conv1_2, bn)
+            ...         prediction = paddle.static.nn.fc(x=fused_bn_add_act, size=10, activation='softmax')
+            ...         loss = paddle.nn.functional.cross_entropy(
+            ...             input=prediction, label=y,
+            ...             reduction='none', use_softmax=False
+            ...         )
+            ...         loss = paddle.mean(loss)
+            ...         sgd = paddle.optimizer.SGD(learning_rate=0.001)
+            ...         sgd = paddle.static.amp.decorate(
+            ...             sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0)
+            ...         sgd.minimize(loss)
+            ...
+            ...     return x, y, loss
 
-                return x, y, loss
-
-            iters = 5
-            batch_size = 16
-            support_gpu = fluid.is_compiled_with_cuda()
-            if support_gpu:
-                main_program = fluid.Program()
-                startup_program = fluid.Program()
-                place = fluid.CUDAPlace(0)
-                x, y, loss = build_program(main_program, startup_program)
-
-                feeder = fluid.DataFeeder(feed_list=[x, y], place=place)
-                train_reader = paddle.batch(
-                    paddle.dataset.mnist.train(), batch_size=batch_size)
-                exe = fluid.Executor(place)
-                scope = fluid.Scope()
-                with fluid.scope_guard(scope):
-                    exe.run(startup_program)
-                    for _ in range(iters):
-                        data = next(train_reader())
-                        loss_v = exe.run(main_program, feed=feeder.feed(data), fetch_list=[loss])
+            >>> iters = 5
+            >>> batch_size = 16
+            >>> support_gpu = paddle.is_compiled_with_cuda()
+            >>> if support_gpu:
+            ...     main_program = paddle.static.Program()
+            ...     startup_program = paddle.static.Program()
+            ...     place = paddle.CUDAPlace(0)
+            ...     x, y, loss = build_program(main_program, startup_program)
+            ...
+            ...     feeder = paddle.DataFeeder(feed_list=[x, y], place=place)
+            ...     train_reader = paddle.batch(
+            ...         paddle.dataset.mnist.train(), batch_size=batch_size)
     """
     helper = LayerHelper('fused_bn_add_act', **locals())
 
@@ -1476,6 +1467,8 @@ def fused_bn_add_act(
         "Z": y,
         "Scale": scale,
         "Bias": bias,
+        "Mean": mean,
+        "Variance": variance,
     }
     attrs = {"epsilon": epsilon, 'momentum': momentum}
 
@@ -1548,27 +1541,29 @@ def _pull_gpups_sparse(
     :attr:`input`.
 
     Args:
-        input(Tensor): Input is a Tensor<int64>, which
-            contains the IDs information.
-        size(int|list of int): The embedding size parameter of each input, which indicates the size of
+        input (Tensor): Input is a Tensor<int64>, which contains the IDs information.
+        size (int|list of int): The embedding size parameter of each input, which indicates the size of
             each embedding vector respectively.
-        dtype(str): The dtype refers to the data type of output tensor. Only supports
-        float32 now.
+        dtype (str, optional): The dtype refers to the data type of output tensor. Only supportsfloat32 now. Default is float32.
+        is_distributed (bool, optional): Whether to use distributed mode. Default is False.
+        is_sparse (bool, optional): Whether to use sparse mode. Default is False.
 
     Returns:
-        Tensor: The tensor storing the embeddings of the \
-                  supplied inputs, whose size are indicated by size respectively.
+        Tensor: The tensor storing the embeddings of the supplied inputs, whose size are indicated by size respectively.
 
     Examples:
         .. code-block:: python
 
-          import paddle.incubate as incubate
-          slots = []
-          data_1 = paddle.static.data(name='sequence', shape=[-1,1], dtype='int64', lod_level=1)
-          slots.append(data_1)
-          data_2 = paddle.static.data(name='sequence', shape=[-1,1], dtype='int64', lod_level=1)
-          slots.append(data_2)
-          embs = incubate.layers.pull_gpups_sparse(input=slots, size=[11, 35])
+            >>> import paddle.incubate as incubate
+            >>> import paddle
+            >>> paddle.enable_static()
+
+            >>> slots = []
+            >>> data_1 = paddle.static.data(name='sequence', shape=[-1,1], dtype='int64', lod_level=1)
+            >>> slots.append(data_1)
+            >>> data_2 = paddle.static.data(name='sequence', shape=[-1,1], dtype='int64', lod_level=1)
+            >>> slots.append(data_2)
+            >>> embs = incubate.layers.pull_gpups_sparse(input=slots, size=[11, 35])
     """
     helper = LayerHelper('pull_gpups_sparse', **locals())
     if dtype != 'float32':
@@ -1611,23 +1606,26 @@ def _pull_box_sparse(
     :attr:`input`.
 
     Args:
-        input(Tensor): Input is a Tensor<int64>, which
-            contains the IDs information.
-        size(int): The embedding size parameter, which indicates the size of
+        input (Tensor): Input is a Tensor<int64>, which contains the IDs information.
+        size (int): The embedding size parameter, which indicates the size of
             each embedding vector respectively.
-        dtype(str): The dtype refers to the data type of output tensor. Only supports
-        float32 now.
+        dtype (str, optional): The dtype refers to the data type of output tensor. Only supports float32 now. Default is float32.
+        is_distributed (bool, optional): Whether to use distributed mode. Default is False.
+        is_sparse (bool, optional): Whether to use sparse mode. Default is False.
 
     Returns:
-        Tensor: The tensor storing the embeddings of the \
-                  supplied inputs.
+        Tensor: The tensor storing the embeddings of the supplied inputs.
 
     Examples:
         .. code-block:: python
 
-          import paddle.incubate as incubate
-          data = paddle.static.data(name='sequence', shape=[-1,1], dtype='int64', lod_level=1)
-          emb = incubate.layers.pull_box_sparse(input=data, size=[11])
+            >>> import paddle.incubate as incubate
+            >>> import paddle
+            >>> paddle.enable_static()
+
+            >>> x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64', lod_level=1)
+            >>> y = paddle.static.data(name='y', shape=[-1, 1], dtype='int64', lod_level=1)
+            >>> emb_x, emb_y = incubate.layers._pull_box_sparse([x, y], size=1)
     """
     helper = LayerHelper('pull_box_sparse', **locals())
     if dtype != 'float32':

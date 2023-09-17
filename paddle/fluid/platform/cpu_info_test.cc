@@ -15,10 +15,10 @@
 
 #include <sstream>
 
-#include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/phi/core/flags.h"
+#include "paddle/utils/flags.h"
 
 PHI_DECLARE_double(fraction_of_cpu_memory_to_use);
 
@@ -26,7 +26,7 @@ TEST(CpuMemoryUsage, Print) {
   std::stringstream ss;
   size_t memory_size =
       phi::backends::cpu::CpuMaxAllocSize() / 1024 / 1024 / 1024;
-  float use_percent = FLAGS_fraction_of_cpu_memory_to_use * 100;
+  float use_percent = FLAGS_fraction_of_cpu_memory_to_use * 100;  // NOLINT
 
   std::cout << paddle::string::Sprintf("\n%.2f %% of CPU Memory Usage: %d GB\n",
                                        use_percent,

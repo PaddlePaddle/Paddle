@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class ConvBNLayer(paddle.nn.Layer):
@@ -54,9 +54,9 @@ class ConvBNLayer(paddle.nn.Layer):
 
 
 def create_program(data_format="NCHW"):
-    main = fluid.Program()
-    startup = fluid.Program()
-    with fluid.program_guard(main, startup):
+    main = base.Program()
+    startup = base.Program()
+    with base.program_guard(main, startup):
         x = paddle.static.data(name='img', shape=[-1, 3, 224, 224])
         x.stop_gradient = False
         if data_format == "NHWC":
@@ -84,20 +84,20 @@ class TestInplaceAddto(unittest.TestCase):
             np.random.seed(10)
             paddle.seed(10)
             paddle.framework.random._manual_program_seed(10)
-            if fluid.core.is_compiled_with_cuda():
-                fluid.set_flags({"FLAGS_cudnn_deterministic": True})
-            fluid.set_flags({"FLAGS_max_inplace_grad_add": 2})
+            if base.core.is_compiled_with_cuda():
+                base.set_flags({"FLAGS_cudnn_deterministic": True})
+            base.set_flags({"FLAGS_max_inplace_grad_add": 2})
             loss, main, startup, w = create_program(data_format=data_format)
             place = (
-                fluid.CUDAPlace(0)
-                if fluid.core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                base.CUDAPlace(0)
+                if base.core.is_compiled_with_cuda()
+                else base.CPUPlace()
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
 
-            strategy = fluid.BuildStrategy()
+            strategy = base.BuildStrategy()
             strategy.enable_addto = enable_addto
-            compiled = fluid.CompiledProgram(main, build_strategy=strategy)
+            compiled = base.CompiledProgram(main, build_strategy=strategy)
 
             exe.run(startup)
             img = np.random.uniform(-128, 128, [8, 3, 224, 224]).astype(

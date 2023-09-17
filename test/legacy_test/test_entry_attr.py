@@ -18,7 +18,7 @@ paddle.enable_static()
 
 import unittest
 
-from paddle import fluid
+from paddle import base
 from paddle.distributed import (
     CountFilterEntry,
     ProbabilityEntry,
@@ -62,11 +62,11 @@ class EntryAttrChecks(unittest.TestCase):
         self.assertEqual("show_click_entry:show:click", ss)
 
     def spaese_layer(self):
-        prog = fluid.Program()
-        scope = fluid.core.Scope()
+        prog = base.Program()
+        scope = base.core.Scope()
 
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(prog):
+        with base.scope_guard(scope):
+            with base.program_guard(prog):
                 input = paddle.static.data(
                     name="dnn_data", shape=[-1, 1], dtype="int64", lod_level=1
                 )
@@ -76,7 +76,7 @@ class EntryAttrChecks(unittest.TestCase):
                     size=[100, 10],
                     is_test=False,
                     entry=prob,
-                    param_attr=fluid.ParamAttr(name="deep_embedding"),
+                    param_attr=base.ParamAttr(name="deep_embedding"),
                 )
 
                 pool = paddle.static.nn.sequence_lod.sequence_pool(

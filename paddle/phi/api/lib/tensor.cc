@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
@@ -34,9 +35,6 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/tensor_utils.h"
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#endif
 
 namespace paddle {
 
@@ -49,6 +47,14 @@ using DefaultAllocator = experimental::DefaultAllocator;
 
 Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl)
     : impl_(std::move(tensor_impl)) {
+  PADDLE_ENFORCE_NOT_NULL(
+      impl_,
+      phi::errors::InvalidArgument("TensorImpl with nullptr is not supported"));
+}
+
+Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl,
+               std::shared_ptr<AbstractAutogradMeta> autograd_meta)
+    : impl_(std::move(tensor_impl)), autograd_meta_(std::move(autograd_meta)) {
   PADDLE_ENFORCE_NOT_NULL(
       impl_,
       phi::errors::InvalidArgument("TensorImpl with nullptr is not supported"));
@@ -141,11 +147,7 @@ bool Tensor::is_dense_tensor() const {
   return phi::DenseTensor::classof(impl_.get());
 }
 bool Tensor::is_dist_tensor() const {
-#ifdef PADDLE_WITH_DISTRIBUTE
   return phi::distributed::DistTensor::classof(impl_.get());
-#else
-  return false;
-#endif
 }
 bool Tensor::is_selected_rows() const {
   return phi::SelectedRows::classof(impl_.get());
@@ -405,7 +407,7 @@ void Tensor::reset() {
 
 Tensor &Tensor::operator=(const Tensor &x) & = default;
 
-Tensor &Tensor::operator=(Tensor &&x) & {
+Tensor &Tensor::operator=(Tensor &&x) &noexcept {
   impl_ = std::move(x.impl_);
   autograd_meta_ = std::move(x.autograd_meta_);
   name_ = std::move(x.name_);
