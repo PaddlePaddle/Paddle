@@ -1079,7 +1079,7 @@ class Engine:
         valid_data,
         valid_sample_split=None,
         batch_size=1,
-        steps=None,
+        steps_per_epoch=None,
         log_freq=10,
         collate_fn=None,
         callbacks=None,
@@ -1141,28 +1141,46 @@ class Engine:
         else:
             self._switch_mode(self._mode)
 
-        micro_batch_size = self._validate_batch_size(batch_size)
-        valid_dataloader = self._prepare_dataloader_from_generator(
-            dataset=valid_data,
-            capacity=70,
-            iterable=False,
-            batch_size=micro_batch_size,
-            steps_per_epoch=steps,
-            collate_fn=collate_fn,
-        )
+        if auto_utils.use_new_executor():
+            local_batch_size = self._validate_batch_size(batch_size)
+            valid_dataloader = self._prepare_dataloader(
+                valid_data,
+                return_list=False,
+                batch_size=local_batch_size,
+                collate_fn=collate_fn,
+            )
+            steps_per_epoch = (
+                len(valid_dataloader)
+                if steps_per_epoch is None
+                else steps_per_epoch
+            )
+        else:
+            micro_batch_size = self._validate_batch_size(batch_size)
+            valid_dataloader = self._prepare_dataloader_from_generator(
+                dataset=valid_data,
+                capacity=70,
+                iterable=False,
+                batch_size=micro_batch_size,
+                steps_per_epoch=steps_per_epoch,
+                collate_fn=collate_fn,
+            )
+            steps_per_epoch = valid_dataloader._steps
+            local_batch_size = micro_batch_size
+            if self._strategy.pipeline.enable:
+                local_batch_size = micro_batch_size * self._acc_steps
 
         fetch_names, fetch_indices = self._prepare_fetch(None, mode=self._mode)
 
         cbks = config_callbacks(
             callbacks,
             engine=self,
-            batch_size=micro_batch_size,
+            batch_size=local_batch_size,
             log_freq=log_freq,
             verbose=verbose,
             metrics=self._metrics_name(),
         )
 
-        eval_steps = valid_dataloader._steps
+        eval_steps = steps_per_epoch
         cbks.on_begin(
             'eval', {'steps': eval_steps, 'metrics': self._metrics_name()}
         )
@@ -1191,7 +1209,7 @@ class Engine:
         test_data,
         test_sample_split=None,
         batch_size=1,
-        steps=None,
+        steps_per_epoch=None,
         collate_fn=None,
         callbacks=None,
         verbose=2,
@@ -1249,21 +1267,36 @@ class Engine:
         else:
             self._switch_mode(self._mode)
 
-        micro_batch_size = self._validate_batch_size(batch_size)
-        test_dataloader = self._prepare_dataloader_from_generator(
-            dataset=test_data,
-            capacity=70,
-            iterable=False,
-            batch_size=micro_batch_size,
-            steps_per_epoch=steps,
-            collate_fn=collate_fn,
-        )
+        if auto_utils.use_new_executor():
+            local_batch_size = self._validate_batch_size(batch_size)
+            test_dataloader = self._prepare_dataloader(
+                test_data,
+                return_list=False,
+                batch_size=local_batch_size,
+                collate_fn=collate_fn,
+            )
+            steps_per_epoch = (
+                len(test_dataloader)
+                if steps_per_epoch is None
+                else steps_per_epoch
+            )
+        else:
+            micro_batch_size = self._validate_batch_size(batch_size)
+            test_dataloader = self._prepare_dataloader_from_generator(
+                dataset=test_data,
+                capacity=70,
+                iterable=False,
+                batch_size=micro_batch_size,
+                steps_per_epoch=steps_per_epoch,
+                collate_fn=collate_fn,
+            )
+            steps_per_epoch = test_dataloader._steps
 
         fetch_names, fetch_indices = self._prepare_fetch(None, mode=self._mode)
 
         outputs = []
         cbks = config_callbacks(callbacks, engine=self, verbose=verbose)
-        test_steps = test_dataloader._steps
+        test_steps = steps_per_epoch
         cbks.on_begin('predict', {'steps': test_steps})
         logs = {}
         for step, _ in enumerate(test_dataloader):
