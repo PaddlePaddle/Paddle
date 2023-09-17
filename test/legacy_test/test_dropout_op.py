@@ -16,7 +16,12 @@ import unittest
 
 import numpy as np
 import parameterized as param
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    paddle_static_guard,
+    skip_check_grad_ci,
+)
 
 import paddle
 from paddle import _C_ops, base, static
@@ -1253,8 +1258,9 @@ class TestDropoutWithDeterminateSeedGenerator(unittest.TestCase):
                 np.testing.assert_allclose(out1, out2, rtol=1e-05)
 
     def test_static(self):
-        for place in self.places:
-            self.check_static_result(place=place)
+        with paddle_static_guard():
+            for place in self.places:
+                self.check_static_result(place=place)
 
 
 class TestDropoutBackward(unittest.TestCase):
