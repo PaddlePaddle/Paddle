@@ -46,7 +46,7 @@ from .layers.io import (
 )
 from .unique_name import UniqueNameGenerator
 from .framework import _get_paddle_place, _get_paddle_place_list
-from paddle.base.framework import _set_expected_place, _current_expected_place
+from paddle.base.framework import _set_expected_place
 import logging
 import warnings
 
