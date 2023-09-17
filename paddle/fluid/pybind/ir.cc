@@ -555,7 +555,7 @@ void BindType(py::module *m) {
 }
 
 Operation *BuildOpFrom(
-    const Operation *to_copy_op,
+    Operation *to_copy_op,
     std::unordered_map<pir::Value, pir::Value> &value_map) {  // NOLINT
   pir::OperationArgument to_create_argument(to_copy_op->info());
   to_create_argument.attributes = to_copy_op->attributes();
