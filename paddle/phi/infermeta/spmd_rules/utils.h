@@ -19,6 +19,10 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/phi/core/attribute.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
+#include "paddle/phi/core/distributed/type_defs.h"
+
 namespace phi {
 namespace distributed {
 class TensorDistAttr;
@@ -61,5 +65,78 @@ std::vector<int64_t> ResoluteOutputPartialDimension(
     const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
     const std::string& tensor_axes);
 
+// Construct a DistAttr from the incoming DistAttr corresponding to the
+// Repliacated state
+TensorDistAttr GetReplicatedDistAttr(const TensorDistAttr& dist_attr);
+
+// Adaptor for variadic arguments
+template <typename Functor>
+struct ArgsIterator {
+  template <typename... Args>
+  inline Functor& apply() {
+    return self();
+  }
+
+  template <typename T, typename... Args>
+  inline Functor& apply(T&& arg, Args&&... args) {
+    self()(std::forward<T>(arg));
+    if (self().short_circuit()) {
+      return self();
+    } else {
+      return apply(std::forward<Args>(args)...);
+    }
+  }
+
+  constexpr bool short_circuit() const { return false; }
+
+ private:
+  inline Functor& self() { return *static_cast<Functor*>(this); }
+};
+
+using SpmdFn = SpmdInfo (*)(const std::vector<const DistMetaTensor*>& ins,
+                            const std::vector<const DistMetaTensor*>& outs);
+
+namespace detail {
+template <SpmdFn Fn>
+struct PhiSpmdVariadicArgumentParser
+    : public ArgsIterator<PhiSpmdVariadicArgumentParser<Fn>> {
+  std::vector<const DistMetaTensor*> inputs;
+  std::vector<const DistMetaTensor*> outputs;
+  std::vector<phi::Attribute> attrs;
+
+  // deal with inputs
+  void operator()(const DistMetaTensor& x) { inputs.emplace_back(&x); }
+
+  void operator()(const std::vector<const DistMetaTensor*>& x) {
+    for (auto t : x) {
+      inputs.emplace_back(t);
+    }
+  }
+
+  template <typename AttrType>
+  void operator()(AttrType x) {
+    attrs.emplace_back(x);
+  }
+
+  // deal with outputs
+  void operator()(DistMetaTensor* out) { outputs.emplace_back(out); }
+
+  void operator()(std::vector<DistMetaTensor*> out) {
+    for (auto t : out) {
+      outputs.emplace_back(t);
+    }
+  }
+
+  SpmdInfo InferForward() {
+    return Fn(inputs, outputs);
+    // return Fn(inputs, outputs, attrs);
+  }
+
+  SpmdInfo InferBackward() {
+    return Fn(inputs, outputs);
+    // return Fn(inputs, outputs, attrs);
+  }
+};
+}  // namespace detail
 }  // namespace distributed
 }  // namespace phi

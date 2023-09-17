@@ -29,9 +29,9 @@ import filters as op_gen_filters
 import tests_utils as op_gen_tests
 from parse_utils import to_named_dict
 
-# import from paddle/fluid/ir/dialect/op_generator/api_gen.py
+# import from paddle/fluid/pir/dialect/op_generator/api_gen.py
 sys.path.append(
-    str(pathlib.Path(__file__).resolve().parents[2] / 'ir/dialect/op_generator')
+    str(pathlib.Path(__file__).resolve().parents[2] / 'pir/dialect/op_generator')
 )
 
 # fmt: on
@@ -61,12 +61,20 @@ VJPS = [
     'rsqrt_grad',
     'slice_grad',
     'transpose_grad',
+    'square_grad',
     'dropout_grad',
     'cast_grad',
     'slice_double_grad',
     'layer_norm_grad',
+    'embedding_grad',
+    'scale_grad',
 ]
-VJP_COMPS = ['divide_grad', 'sum_grad', 'gelu_grad']
+
+
+PRIM_VJP = ['divide_grad', 'sum_grad']  # vjp list of primitive op
+CUSTOM_VJP = ['gelu_grad']  # custom vjp list of composite op
+VJP_COMPS = PRIM_VJP + CUSTOM_VJP
+
 BACKENDS = [
     'add_n',
     'mean',
@@ -132,9 +140,12 @@ BACKENDS = [
     'roll',
     'scatter',
     'scatter_nd_add',
+    'square_grad',
     'dropout_grad',
     'slice',
     'layer_norm_grad',
+    'embedding_grad',
+    'uniform',
 ]
 
 

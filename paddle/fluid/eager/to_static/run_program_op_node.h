@@ -19,13 +19,13 @@
 #include "paddle/fluid/eager/tensor_wrapper.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/operators/run_program_op.h"
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/ir/core/program.h"
-#include "paddle/ir/core/value.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
 
@@ -403,8 +403,14 @@ inline void RunProgramAPI(
 
     if (FLAGS_enable_new_ir_in_executor) {
       // build new ir program
-      auto ir_program = paddle::framework::ConstructFowardIrProgram(
-          forward_global_block, backward_global_block, output_names, x, params);
+      auto ir_program =
+          paddle::framework::ConstructFowardIrProgram(forward_global_block,
+                                                      backward_global_block,
+                                                      output_names,
+                                                      x,
+                                                      input_names,
+                                                      params,
+                                                      place);
       interpreter_core =
           paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
               std::move(ir_program),
