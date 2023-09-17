@@ -131,8 +131,9 @@ class TestZeroSizeArangeOp(TestArangeOp):
 
 
 class TestArangeOpError(unittest.TestCase):
-    def test_errors(self):
+    def test_static_errors(self):
         with program_guard(Program(), Program()):
+            paddle.enable_static()
             self.assertRaises(TypeError, paddle.arange, 10, dtype='int8')
 
 

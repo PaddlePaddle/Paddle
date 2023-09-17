@@ -1351,8 +1351,8 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
 
     if dtype is None:
         for val in [start, end, step]:
-            if isinstance(val, Variable):
-                if not val.is_integer():
+            if isinstance(val, (Variable, paddle.ir.OpResult)):
+                if not paddle.is_integer(val):
                     dtype = paddle.get_default_dtype()
                     break
                 else:
@@ -1365,29 +1365,29 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
                     dtype = 'int64'
 
     out_shape = None
-    if not in_dynamic_mode() and (
-        not isinstance(start, Variable)
-        and not isinstance(end, Variable)
-        and not isinstance(step, Variable)
+    if not in_dynamic_or_pir_mode() and (
+        not isinstance(start, (Variable, paddle.ir.OpResult))
+        and not isinstance(end, (Variable, paddle.ir.OpResult))
+        and not isinstance(step, (Variable, paddle.ir.OpResult))
     ):
         out_shape = [int(math.ceil((end - start) / step))]
 
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if not isinstance(start, Variable):
+    if not isinstance(start, (Variable, paddle.ir.OpResult)):
         with device_guard("cpu"):
             start = fill_constant([1], dtype, start, force_cpu=True)
     elif start.dtype != dtype:
         start = paddle.cast(start, dtype)
 
-    if not isinstance(end, Variable):
+    if not isinstance(end, (Variable, paddle.ir.OpResult)):
         with device_guard("cpu"):
             end = fill_constant([1], dtype, end, force_cpu=True)
     elif end.dtype != dtype:
         end = paddle.cast(end, dtype)
 
-    if not isinstance(step, Variable):
+    if not isinstance(step, (Variable, paddle.ir.OpResult)):
         with device_guard("cpu"):
             step = fill_constant([1], dtype, step, force_cpu=True)
     elif step.dtype != dtype:
