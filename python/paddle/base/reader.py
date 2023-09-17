@@ -29,8 +29,10 @@ from .framework import (
 from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider
 from .multiprocess_utils import (
+    multiprocess_queue_set,  # noqa: F401
     CleanupFuncRegistrar,
     _cleanup_mmap,
+    _cleanup,  # noqa: F401
     _set_SIGCHLD_handler,
 )
 from .layers.io import (
