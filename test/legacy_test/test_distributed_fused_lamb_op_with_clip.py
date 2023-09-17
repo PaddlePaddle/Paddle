@@ -41,6 +41,7 @@ def run_test(
     max_global_norm=-1.0,
     gradient_merge_steps=1,
     use_master_acc_grad=True,
+    need_env={},
 ):
     temp_dir = tempfile.TemporaryDirectory()
     if not paddle.is_compiled_with_cuda():
@@ -54,6 +55,8 @@ def run_test(
         '-u',
         '-m',
         'paddle.distributed.launch',
+        '--devices',
+        '0,1',
         '--log_dir',
         log_dir,
         get_test_file(),
@@ -65,6 +68,7 @@ def run_test(
     os.environ['MAX_GLOBAL_NORM'] = str(max_global_norm)
     os.environ['GRADIENT_MERGE_STEPS'] = str(gradient_merge_steps)
     os.environ['USE_MASTER_ACC_GRAD'] = str(1 if use_master_acc_grad else 0)
+    os.environ.update(need_env)
 
     touch_file_env = 'SUCCESS_TOUCH_FILE'
     touch_file_name = os.path.join(
@@ -86,6 +90,20 @@ class TestDistributedFusedLambWithClip(unittest.TestCase):
 
     def test_2(self):
         run_test(clip_after_allreduce=False, max_global_norm=0.01)
+
+    def test_1_new_comm(self):
+        run_test(
+            clip_after_allreduce=True,
+            max_global_norm=0.01,
+            need_env={"FLAGS_dynamic_static_unified_comm": "1"},
+        )
+
+    def test_2_new_comm(self):
+        run_test(
+            clip_after_allreduce=False,
+            max_global_norm=0.01,
+            need_env={"FLAGS_dynamic_static_unified_comm": "1"},
+        )
 
 
 if __name__ == '__main__':

@@ -40,7 +40,9 @@ namespace distributed {
 class NCCLCommContext final : public CommContext {
  public:
   NCCLCommContext(int rank, int size, ncclUniqueId nccl_id);
-  ~NCCLCommContext() {}
+  ~NCCLCommContext() override = default;
+
+  int GetNcclVersion();
 
   ncclComm_t GetNcclComm();
 
@@ -65,6 +67,7 @@ class NCCLCommContext final : public CommContext {
                  const phi::DenseTensor& in_tensor,
                  int root,
                  gpuStream_t stream);
+
   void Send(const phi::DenseTensor& in_tensor,
             const int64_t& count,
             const int& peer,
@@ -95,12 +98,21 @@ class NCCLCommContext final : public CommContext {
               int root,
               gpuStream_t stream);
 
+  void RedOpCreatePreMulSum(ncclRedOp_t* op,
+                            void* scalar,
+                            ncclDataType_t dtype,
+                            ncclScalarResidence_t residence);
+
+  void RedOpDestroy(ncclRedOp_t op);
+
   void GroupStart();
 
   void GroupEnd();
 
  private:
   DISABLE_COPY_AND_ASSIGN(NCCLCommContext);
+
+  int nccl_version_;
 
   ncclComm_t nccl_comm_;
 
