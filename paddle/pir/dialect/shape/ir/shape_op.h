@@ -51,11 +51,11 @@ class IR_API SymbolicDim : public Op<SymbolicDim> {
   void updateKnownNonSizeOne(bool attrValue);
   void updateKnownNonSizeZero(bool attrValue);
 
-  bool isDynamic();
-  bool merge(SymbolicDim other);
+  bool IsDynamic();
+  bool Merge(SymbolicDim other);
 
   static const std::string getSymbolicDimAttrName() {
-    return "SymbolicDimAttr";
+    return "kSymbolicDimAttr";
   }
 
   void Verify() {}
@@ -91,11 +91,11 @@ class IR_API TieProductEqualOp : public Op<TieProductEqualOp> {
                     OperationArgument &argument,  // NOLINT
                     int64_t lhs_len,
                     int64_t rhs_len,
-                    const std::vector<pir::OpResult> &inputs);
+                    const std::vector<Value> &inputs);
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const std::vector<pir::OpResult> &lhs,
-                    const std::vector<pir::OpResult> &rhs);
+                    const std::vector<Value> &lhs,
+                    const std::vector<Value> &rhs);
   std::vector<pir::Value> getLhs();
   std::vector<pir::Value> getRhs();
   void Verify() {}
@@ -111,8 +111,14 @@ class IR_API TieShapeOp : public Op<TieShapeOp> {
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const pir::OpResult &input);
-  pir::Value getValue();
+                    pir::Value input);
+
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    Value input,
+                    const std::vector<Value> &dims);
+  Value getValue();
+  std::vector<Value> getShapeDimIndexes();
   void Verify() {}
 };
 
@@ -129,6 +135,29 @@ class IR_API FuncOp : public Op<FuncOp> {
   pir::Block *block();
   void Verify() {}
 };
+
+class IR_API TensorDimOp : public Op<TensorDimOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "shape.tensor_dim"; }
+
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    Value source,
+                    Value index);
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    Value source,
+                    int64_t index);
+  Value getIndex();
+  Value getSource();
+  OpResult out() { return result(0); }
+  void Verify() {}
+};
+
 }  // namespace dialect
 }  // namespace pir
 
@@ -137,3 +166,4 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::DimOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::TieProductEqualOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::TieShapeOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::FuncOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::TensorDimOp);

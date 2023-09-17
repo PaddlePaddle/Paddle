@@ -104,13 +104,11 @@ class Operation1 : public pir::Op<Operation1> {
   }
   static void Build(const pir::Builder &builder,
                     pir::OperationArgument &argument) {  // NOLINT
-    std::vector<pir::OpResult> inputs = {};
     std::vector<pir::Type> output_types = {
         pir::Float32Type::get(builder.ir_context())};
     std::unordered_map<std::string, pir::Attribute> attributes =
         CreateAttributeMap({"op1_attr1", "op1_attr2"},
                            {"op1_attr1", "op1_attr2"});
-    argument.AddOperands(inputs.begin(), inputs.end());
     argument.AddOutputs(output_types.begin(), output_types.end());
     argument.AddAttributes(attributes.begin(), attributes.end());
   }
@@ -192,7 +190,7 @@ TEST(op_test, op_test) {
   EXPECT_EQ(op2_info.HasInterface<InferShapeInterface>(), true);
 
   // (3) Test uses for op.
-  std::vector<pir::OpResult> op_inputs = {};
+  std::vector<pir::Value> op_inputs = {};
   std::vector<pir::Type> op_output_types = {pir::Float32Type::get(ctx)};
   pir::Operation *op2 =
       pir::Operation::Create(op_inputs,
@@ -263,7 +261,7 @@ TEST(op_test, module_op_death) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(pir::ModuleOp::name());
 
-  std::vector<pir::OpResult> inputs{pir::OpResult()};
+  std::vector<pir::Value> inputs{pir::Value()};
   pir::AttributeMap attrs{{"program", pir::Int32Attribute::get(ctx, 1)}};
   std::vector<pir::Type> output_types = {pir::Float32Type::get(ctx)};
 

@@ -26,26 +26,19 @@ class OpResultImpl : public ValueImpl {
   using ValueImpl::ValueImpl;
 
   static bool classof(const ValueImpl &value) {
-    return value.kind() <= OUTLINE_OP_RESULT_INDEX;
+    return value.kind() <= OUTLINE_RESULT_IDX;
   }
 
   ///
   /// \brief Get the parent operation of this result.(op_ptr = value_ptr +
   /// index)
   ///
-  Operation *owner() const;
+  Operation *owner();
 
   ///
   /// \brief Get the result index of the operation result.
   ///
-  uint32_t GetResultIndex() const;
-
-  ///
-  /// \brief Get the maximum number of results that can be stored inline.
-  ///
-  static uint32_t GetMaxInlineResultIndex() {
-    return OUTLINE_OP_RESULT_INDEX - 1;
-  }
+  uint32_t index() const;
 
   ~OpResultImpl();
 };
@@ -58,16 +51,16 @@ class OpInlineResultImpl : public OpResultImpl {
  public:
   OpInlineResultImpl(Type type, uint32_t result_index)
       : OpResultImpl(type, result_index) {
-    if (result_index > GetMaxInlineResultIndex()) {
+    if (result_index > MAX_INLINE_RESULT_IDX) {
       throw("Inline result index should not exceed MaxInlineResultIndex(5)");
     }
   }
 
-  static bool classof(const OpResultImpl &value) {
-    return value.kind() < OUTLINE_OP_RESULT_INDEX;
+  static bool classof(const ValueImpl &value) {
+    return value.kind() < OUTLINE_RESULT_IDX;
   }
 
-  uint32_t GetResultIndex() const { return kind(); }
+  uint32_t index() const { return kind(); }
 };
 
 ///
@@ -77,15 +70,15 @@ class OpInlineResultImpl : public OpResultImpl {
 class OpOutlineResultImpl : public OpResultImpl {
  public:
   OpOutlineResultImpl(Type type, uint32_t outline_index)
-      : OpResultImpl(type, OUTLINE_OP_RESULT_INDEX),
-        outline_index_(outline_index) {}
+      : OpResultImpl(type, OUTLINE_RESULT_IDX), outline_index_(outline_index) {}
 
-  static bool classof(const OpResultImpl &value) {
-    return value.kind() == OUTLINE_OP_RESULT_INDEX;
+  static bool classof(const ValueImpl &value) {
+    return value.kind() == OUTLINE_RESULT_IDX;
   }
 
-  uint32_t GetResultIndex() const { return outline_index_; }
+  uint32_t index() const { return outline_index_; }
 
+ private:
   uint32_t outline_index_;
 };
 
