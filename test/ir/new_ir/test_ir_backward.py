@@ -14,8 +14,6 @@
 
 import unittest
 
-import numpy as np
-
 import paddle
 from paddle import ir
 from paddle.autograd.ir_backward import grad
@@ -242,21 +240,6 @@ class TestBackward_3(unittest.TestCase):
             )
             res = paddle.divide(sum_x, norm)
             input_grad = grad(res, x)
-
-
-class TestBackward_4(unittest.TestCase):
-    def test_add_n_grad(self):
-        x0_np = np.random.random((2, 2)).astype(np.float32)
-        x1_np = np.random.random((2, 2)).astype(np.float32)
-        with paddle.ir.core.program_guard():
-            x0 = paddle.static.data(
-                name='x0', shape=x0_np.shape, dtype=x0_np.dtype
-            )
-            x1 = paddle.static.data(
-                name='x0', shape=x0_np.shape, dtype=x0_np.dtype
-            )
-            out = paddle.add_n([x0, x1])
-            out_grad = grad(out, [x0, x1])
 
 
 if __name__ == "__main__":

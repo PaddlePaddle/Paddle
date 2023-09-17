@@ -2085,11 +2085,6 @@ class OpTest(unittest.TestCase):
                 if self.op_test.is_compared_with_fp32():
                     expect, expect_np = self.find_expect_value(name)
                 else:
-                    actual_np = (
-                        actual_np[0]
-                        if isinstance(expect, (tuple, list))
-                        else expect
-                    )
                     expect_np = (
                         expect[0]
                         if isinstance(expect, (tuple, list))
