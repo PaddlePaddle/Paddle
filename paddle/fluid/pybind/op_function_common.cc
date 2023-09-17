@@ -34,6 +34,8 @@
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/phi/common/complex.h"
+#include "paddle/pir/core/block.h"
+#include "paddle/pir/core/value.h"
 
 namespace paddle {
 namespace pybind {
@@ -829,6 +831,54 @@ void CastPyArg2AttrBlock(PyObject* obj,
   attrs[key] = reinterpret_cast<paddle::framework::BlockDesc*&>(vh[0]);
 }
 
+void CastPyArg2AttrIRBlock(PyObject* obj,
+                           paddle::framework::AttributeMap& attrs,  // NOLINT
+                           const std::string& key,
+                           const std::string& op_type,
+                           ssize_t arg_pos) {
+  VLOG(1) << "After Process pir::Block*";
+  ::pybind11::detail::instance* inst =
+      (::pybind11::detail::instance*)obj;  // NOLINT
+  void** vh = inst->simple_layout ? inst->simple_value_holder
+                                  : &inst->nonsimple.values_and_holders[0];
+  attrs[key] = reinterpret_cast<::pir::Block*&>(vh[0]);
+}
+
+void CastPyArg2AttrValues(PyObject* obj,
+                          paddle::framework::AttributeMap& attrs,  // NOLINT
+                          const std::string& key,
+                          const std::string& op_type,
+                          ssize_t arg_pos) {
+  std::vector<::pir::Value> results;
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      // TODO(xiongkun): judge OpResult or Value;
+      item = PyList_GetItem(obj, i);
+      ::pybind11::detail::instance* inst =
+          (::pybind11::detail::instance*)item;  // NOLINT
+      void** vh = inst->simple_layout ? inst->simple_value_holder
+                                      : &inst->nonsimple.values_and_holders[0];
+      ::pir::OpResult* opresult = reinterpret_cast<::pir::OpResult*>(vh[0]);
+      if (opresult->impl() == nullptr) {
+        results.emplace_back(pir::Value(nullptr));
+      } else {
+        results.emplace_back(pir::Value(opresult->Value::impl()));
+      }
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "a list of int, float, complex, or bool, but got %s",
+        op_type,
+        arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+  attrs[key] = results;
+  VLOG(1) << "Pybind: Cast " << results.size() << " Value Finished.";
+}
+
 void ConstructAttrMapFromPyArgs(
     const std::string& op_type,
     PyObject* args,
@@ -847,6 +897,7 @@ void ConstructAttrMapFromPyArgs(
 
   PyObject* obj = nullptr;
   for (ssize_t arg_pos = attr_start; arg_pos < attr_end; arg_pos += 2) {
+    VLOG(1) << "Start Process " << arg_pos;
     Py_ssize_t key_len;
     const char* key_ptr;
     obj = PyTuple_GET_ITEM(args, arg_pos);
@@ -862,6 +913,7 @@ void ConstructAttrMapFromPyArgs(
     }
 
     std::string key(key_ptr, (size_t)key_len);  // NOLINT
+    VLOG(1) << "Start Process " << key;
     auto iter = attr_type_map->find(key);
     if (iter == attr_type_map->end()) {
       continue;
@@ -917,6 +969,77 @@ void ConstructAttrMapFromPyArgs(
         break;
       default:
         break;
+    }
+  }
+}
+
+void ConstructAttrMapForRunProgram(
+    const std::string& op_type,
+    PyObject* args,
+    ssize_t attr_start,
+    ssize_t attr_end,
+    paddle::framework::AttributeMap& attrs) {  // NOLINT
+  PADDLE_ENFORCE_EQ((attr_end - attr_start) % 2,
+                    0,
+                    platform::errors::InvalidArgument(
+                        "The number of arguments for attributes should be even "
+                        "but attr_start = %d, attr_end = %d.",
+                        attr_start,
+                        attr_end));
+
+  PyObject* obj = nullptr;
+  for (ssize_t arg_pos = attr_start; arg_pos < attr_end; arg_pos += 2) {
+    VLOG(1) << "Start Process " << arg_pos;
+    Py_ssize_t key_len;
+    const char* key_ptr;
+    obj = PyTuple_GET_ITEM(args, arg_pos);
+    if (PyObject_CheckString(obj)) {
+      key_ptr = PyUnicode_AsUTF8AndSize(obj, &key_len);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument (position %d) must be str, but got "
+          "%s",
+          op_type,
+          arg_pos,
+          ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+    }
+
+    std::string key(key_ptr, (size_t)key_len);  // NOLINT
+    VLOG(1) << "Start Process " << key;
+    obj = PyTuple_GET_ITEM(args, arg_pos + 1);
+
+    if (std::set<std::string>({"cuda_graph_capture_mode"}).count(key)) {
+      CastPyArg2AttrString(obj, attrs, key, op_type, arg_pos);
+    } else if (std::set<std::string>({"global_block",
+                                      "forward_global_block",
+                                      "backward_global_block"})
+                   .count(key)) {
+      CastPyArg2AttrIRBlock(obj, attrs, key, op_type, arg_pos);
+    } else if (std::set<std::string>({"is_test", "use_interpretorcore"})
+                   .count(key)) {
+      CastPyArg2AttrBoolean(obj, attrs, key, op_type, arg_pos);
+    } else if (std::set<std::string>({"start_op_index",
+                                      "end_op_index",
+                                      "program_id",
+                                      "cuda_graph_pool_id"})
+                   .count(key)) {
+      CastPyArg2AttrLong(obj, attrs, key, op_type, arg_pos);
+    } else if (std::set<std::string>({"fx",
+                                      "fp",
+                                      "fm",
+                                      "fo",
+                                      "bx",
+                                      "bp",
+                                      "bm",
+                                      "bo_g",
+                                      "bx_g",
+                                      "bp_g",
+                                      "bo"})
+                   .count(key)) {
+      CastPyArg2AttrValues(obj, attrs, key, op_type, arg_pos);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s is not defined in this function.", key));  // NOLINT
     }
   }
 }

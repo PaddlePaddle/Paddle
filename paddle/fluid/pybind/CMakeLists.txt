@@ -274,8 +274,10 @@ if(WITH_PYTHON)
 
   add_executable(eager_legacy_op_function_generator
                  eager_legacy_op_function_generator.cc)
+  set(EAGER_LEGACY_GENERETOR_DEPS ${OP_FUNCTION_GENERETOR_DEPS})
+  list(REMOVE_ITEM EAGER_LEGACY_GENERETOR_DEPS op_version_registry)
   target_link_libraries(eager_legacy_op_function_generator
-                        ${OP_FUNCTION_GENERETOR_DEPS})
+                        ${EAGER_LEGACY_GENERETOR_DEPS})
   if(NOT WIN32)
     add_executable(kernel_signature_generator kernel_signature_generator.cc)
     target_link_libraries(kernel_signature_generator
