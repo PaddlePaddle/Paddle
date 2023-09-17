@@ -112,22 +112,24 @@ class TestBoxCoderOp(OpTest):
         self.check_output()
 
     def test_support_tuple(self):
+        paddle.disable_static()
         prior_box_encode = paddle.rand((80, 4), dtype=paddle.float32)
         prior_box_var_encode = paddle.rand((80, 4), dtype=paddle.float32)
         target_box_encode = paddle.rand((20, 4), dtype=paddle.float32)
-        encode1 = paddle.vision.ops.box_coder(
+        encode_1 = paddle.vision.ops.box_coder(
             prior_box=prior_box_encode,
             prior_box_var=(1, 2, 3, 4),
             target_box=target_box_encode,
             code_type="encode_center_size",
         )
-        encode2 = paddle.vision.ops.box_coder(
+        encode_2 = paddle.vision.ops.box_coder(
             prior_box=prior_box_encode,
             prior_box_var=[1, 2, 3, 4],
             target_box=target_box_encode,
             code_type="encode_center_size",
         )
-        self.assertTrue(np.allclose(encode1.numpy(), encode2.numpy()))
+        self.assertTrue(np.allclose(encode_1.numpy(), encode_2.numpy()))
+        paddle.enable_static()
 
     def setUp(self):
         self.op_type = "box_coder"
