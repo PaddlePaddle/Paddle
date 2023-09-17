@@ -28,6 +28,7 @@ import multiprocessing
 import sys
 
 from .proto import framework_pb2
+from .proto import data_feed_pb2  # noqa: F401
 
 from . import core
 from . import unique_name
