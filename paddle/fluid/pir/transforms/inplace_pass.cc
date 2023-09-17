@@ -42,7 +42,7 @@ static bool CanBeDeleted(pir::Value value) {
     return !(value.GetDefiningOp()
                  ->attribute(kAttrIsPersisable)
                  .dyn_cast<pir::ArrayAttribute>()
-                 .AsVector()[value.dyn_cast<pir::OpResult>().GetResultIndex()]
+                 .AsVector()[value.dyn_cast<pir::OpResult>().index()]
                  .dyn_cast<pir::BoolAttribute>()
                  .data());
   }
@@ -318,7 +318,7 @@ class InplacePass : public pir::Pass {
                      .at("op_name")
                      .dyn_cast<pir::StrAttribute>()
                      .AsString();
-      pir::Block::iterator insert_pos =
+      pir::Block::Iterator insert_pos =
           std::find(block->begin(), block->end(), kv.first);
       IR_ENFORCE(insert_pos != block->end(),
                  "Operator %s not found in block.",

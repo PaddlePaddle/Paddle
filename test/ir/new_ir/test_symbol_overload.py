@@ -49,6 +49,30 @@ class SimbolNet(nn.Layer):
         return res
 
 
+class CompareNet(nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, y):
+        z1 = _ir_ops.less_equal(x, y)
+        z2 = _ir_ops.greater_equal(x, y)
+        z3 = _ir_ops.less_than(x, y)
+        z4 = _ir_ops.greater_than(x, y)
+        return z1, z2, z3, z4
+
+
+class SimbolCompareNet(nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, y):
+        z1 = x <= y
+        z2 = x >= y
+        z3 = x < y
+        z4 = x > y
+        return z1, z2, z3, z4
+
+
 class TestOpresultSymbol(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
@@ -63,7 +87,8 @@ class TestOpresultSymbol(unittest.TestCase):
             net = Net()
             x = paddle.static.data('x', self.shape_x, dtype='float32')
             y = paddle.static.data('y', self.shape_y, dtype='float32')
-
+            x.stop_gradient = False
+            y.stop_gradient = False
             res = net(x, y)
             gradients = grad(res, (x, y))
 
@@ -84,7 +109,8 @@ class TestOpresultSymbol(unittest.TestCase):
             net = SimbolNet()
             x = paddle.static.data('x', self.shape_x, dtype='float32')
             y = paddle.static.data('y', self.shape_y, dtype='float32')
-
+            x.stop_gradient = False
+            y.stop_gradient = False
             res = net(x, y)
             gradients = grad(res, (x, y))
 
@@ -100,6 +126,62 @@ class TestOpresultSymbol(unittest.TestCase):
         return outs, ops
 
     def test_symbol_overload(self):
+        res_ref, ops_ref = self.base_net()
+        res, ops = self.symbol_net()
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_equal(ref, actual)
+        self.assertEqual(ops_ref, ops)
+
+
+class TestOpresultCompareSymbol(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [2, 1024, 1024]
+        self.shape_y = [2, 1024, 1024]
+        self.x = np.random.random(self.shape_x).astype("float32")
+        self.y = np.random.random(self.shape_y).astype("float32")
+
+    def base_net(self):
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
+            net = CompareNet()
+            x = paddle.static.data('x', self.shape_x, dtype='float32')
+            y = paddle.static.data('y', self.shape_y, dtype='float32')
+
+            res = net(x, y)
+
+            exe = paddle.static.Executor()
+            outs = exe.run(
+                feed={
+                    'x': self.x,
+                    'y': self.y,
+                },
+                fetch_list=[res],
+            )
+            ops = [op.name() for op in main_program.global_block().ops]
+        return outs, ops
+
+    def symbol_net(self):
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
+            net = SimbolCompareNet()
+            x = paddle.static.data('x', self.shape_x, dtype='float32')
+            y = paddle.static.data('y', self.shape_y, dtype='float32')
+
+            res = net(x, y)
+
+            exe = paddle.static.Executor()
+            outs = exe.run(
+                feed={
+                    'x': self.x,
+                    'y': self.y,
+                },
+                fetch_list=[res],
+            )
+            ops = [op.name() for op in main_program.global_block().ops]
+        return outs, ops
+
+    def test_compare_symbol_overload(self):
         res_ref, ops_ref = self.base_net()
         res, ops = self.symbol_net()
         for ref, actual in zip(res_ref, res):

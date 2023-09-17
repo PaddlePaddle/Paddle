@@ -57,7 +57,6 @@ from . import unique_name
 from .reader import *
 from . import core
 from paddle.utils import deprecated
-from paddle.base.framework import static_only
 
 __all__ = reader.__all__
 

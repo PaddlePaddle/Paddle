@@ -7376,6 +7376,22 @@ class EagerParamBase(core.eager.Tensor):
         self._init_func = None
         self._init_op_creator = None
 
+    @classmethod
+    def from_tensor(cls, tensor, **kwargs):
+        # 1. construct EagerParamBase
+        param = cls(tensor.shape, tensor.dtype, **kwargs)
+
+        # 2. transform data if needed
+        dist_attr = kwargs.get('dist_attr', None)
+        src_tensor = tensor
+        if dist_attr is not None:
+            src_tensor = core.eager.Tensor(tensor, dist_attr=dist_attr)
+
+        # 3. set param data
+        param._set_impl(src_tensor)
+
+        return param
+
     def set_init_func(self, obj):
         self._init_func = obj
 

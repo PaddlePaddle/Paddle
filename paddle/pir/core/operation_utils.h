@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <initializer_list>
 #include <memory>
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/op_info.h"
@@ -56,11 +57,28 @@ struct OperationArgument {
         num_regions(num_regions),
         successors(successors) {}
 
-  /// Add Operand.
+  // Will be deleted in the next pr.
   void AddOperand(OpResult operand) { inputs.emplace_back(operand); }
 
+  void AddInput(Value input) {
+    inputs.emplace_back(input.dyn_cast<OpResult>());
+  }
+
+  // Will be deleted in the next pr.
   template <class InputIt>
   void AddOperands(InputIt first, InputIt last);
+
+  template <class InputIt>
+  void AddInputs(InputIt first, InputIt last);
+
+  void AddInputs(std::initializer_list<Value> value_list) {
+    AddInputs(std::begin(value_list), std::end(value_list));
+  }
+
+  template <class ValueContainer>
+  void AddInputs(const ValueContainer& value_container) {
+    AddInputs(std::begin(value_container), std::end(value_container));
+  }
 
   /// Add Output.
   void AddOutput(Type type) { output_types.emplace_back(type); }
@@ -87,6 +105,14 @@ void OperationArgument::AddOperands(InputIt first, InputIt last) {
     inputs.emplace_back(*first++);
   }
 }
+
+template <class InputIt>
+void OperationArgument::AddInputs(InputIt first, InputIt last) {
+  while (first != last) {
+    AddInput(*first++);
+  }
+}
+
 template <class InputIt>
 void OperationArgument::AddOutputs(InputIt first, InputIt last) {
   while (first != last) {
