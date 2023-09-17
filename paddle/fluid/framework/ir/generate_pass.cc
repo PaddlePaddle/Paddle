@@ -15,8 +15,6 @@
 #include "paddle/fluid/framework/ir/generate_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/value.h"
 #include "paddle/utils/blank.h"
 
 namespace paddle {
@@ -48,12 +46,6 @@ class element_visitor {
  private:
   int index_;
 };
-
-template <>
-Attribute element_visitor::operator()(
-    const std::vector<::pir::Value>& attr UNUSED) const {
-  PADDLE_THROW(platform::errors::Unimplemented("Unimplemented operand."));
-}
 
 class operation_visitor {
  public:
