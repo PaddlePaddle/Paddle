@@ -157,7 +157,7 @@ T *Tensor::data(PlaceType *place, int *size) const {
     *place = PlaceType::kUNK;
   }
 
-  *size = tensor->numel();
+  *size = static_cast<int>(tensor->numel());
   return res;
 }
 

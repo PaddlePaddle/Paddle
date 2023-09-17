@@ -306,23 +306,6 @@ struct SimplifyBlocksMutator : public ir::IRMutator<> {
     }
   }
 
-  void Visit(const IfThenElse* op, Expr* expr) override {
-    auto* node = expr->As<IfThenElse>();
-    Visit(&node->condition, &node->condition);
-    if (node->true_case.As<Block>() &&
-        (node->true_case.As<Block>()->stmts.size() == 1)) {
-      node->true_case = node->true_case.As<Block>()->stmts[0];
-    }
-    Visit(&node->true_case, &node->true_case);
-    if (node->false_case.defined()) {
-      if (node->false_case.As<Block>() &&
-          (node->false_case.As<Block>()->stmts.size() == 1)) {
-        node->false_case = node->false_case.As<Block>()->stmts[0];
-      }
-      Visit(&node->false_case, &node->false_case);
-    }
-  }
-
   void Visit(const ScheduleBlock* op, Expr* expr) override {
     auto* node = expr->As<ScheduleBlock>();
     CHECK(node);

@@ -395,7 +395,7 @@ static void TestGradientAccumulatorTestUnchangeInput(
   int seed;
   {
     std::random_device rd;
-    seed = rd();
+    seed = static_cast<int>(rd());
   }
 
   std::mt19937 engine(seed);

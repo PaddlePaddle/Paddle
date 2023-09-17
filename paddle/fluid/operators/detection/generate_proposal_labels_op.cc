@@ -46,7 +46,7 @@ void FilterRoIs(const platform::DeviceContext& ctx,
                 phi::DenseTensor* keep) {
   const T* rpn_rois_dt = rpn_rois.data<T>();
   const T* max_overlap_dt = max_overlap.data<T>();
-  int rois_num = max_overlap.numel();
+  int rois_num = static_cast<int>(max_overlap.numel());
   keep->Resize({rois_num});
   int* keep_data = keep->mutable_data<int>(ctx.GetPlace());
   int keep_len = 0;
@@ -237,14 +237,14 @@ std::vector<std::vector<int>> SampleFgBgGt(const phi::CPUContext& context,
     // Reservoir Sampling
     // sampling fg
     std::uniform_real_distribution<float> uniform(0, 1);
-    int fg_rois_per_im = std::floor(batch_size_per_im * fg_fraction);
-    int fg_rois_this_image = fg_inds.size();
+    int fg_rois_per_im = std::floor(batch_size_per_im * fg_fraction);  // NOLINT
+    int fg_rois_this_image = static_cast<int>(fg_inds.size());
     int fg_rois_per_this_image = std::min(fg_rois_per_im, fg_rois_this_image);
     if (use_random) {
       const int64_t fg_size = static_cast<int64_t>(fg_inds.size());
       if (fg_size > fg_rois_per_this_image) {
         for (int64_t i = fg_rois_per_this_image; i < fg_size; ++i) {
-          int rng_ind = std::floor(uniform(engine) * i);
+          int rng_ind = std::floor(uniform(engine) * i);  // NOLINT
           if (rng_ind < fg_rois_per_this_image) {
             std::iter_swap(fg_inds.begin() + rng_ind, fg_inds.begin() + i);
             std::iter_swap(mapped_gt_inds.begin() + rng_ind,
@@ -260,14 +260,14 @@ std::vector<std::vector<int>> SampleFgBgGt(const phi::CPUContext& context,
         mapped_gt_inds.begin() + fg_rois_per_this_image);
     // sampling bg
     int bg_rois_per_image = batch_size_per_im - fg_rois_per_this_image;
-    int bg_rois_this_image = bg_inds.size();
+    int bg_rois_this_image = static_cast<int>(bg_inds.size());
     int bg_rois_per_this_image =
         std::min(bg_rois_per_image, bg_rois_this_image);
     if (use_random) {
       const int64_t bg_size = static_cast<int64_t>(bg_inds.size());
       if (bg_size > bg_rois_per_this_image) {
         for (int64_t i = bg_rois_per_this_image; i < bg_size; ++i) {
-          int rng_ind = std::floor(uniform(engine) * i);
+          int rng_ind = std::floor(uniform(engine) * i);  // NOLINT
           if (rng_ind < fg_rois_per_this_image)
             std::iter_swap(bg_inds.begin() + rng_ind, bg_inds.begin() + i);
         }
@@ -297,8 +297,8 @@ void GatherBoxesLabels(const phi::CPUContext& context,
                        phi::DenseTensor* sampled_labels,
                        phi::DenseTensor* sampled_gts,
                        phi::DenseTensor* sampled_max_overlap) {
-  int fg_num = fg_inds.size();
-  int bg_num = bg_inds.size();
+  int fg_num = static_cast<int>(fg_inds.size());
+  int bg_num = static_cast<int>(bg_inds.size());
   phi::DenseTensor fg_inds_t, bg_inds_t, gt_box_inds_t, gt_label_inds_t;
   int* fg_inds_data = fg_inds_t.mutable_data<int>({fg_num}, context.GetPlace());
   int* bg_inds_data = bg_inds_t.mutable_data<int>({bg_num}, context.GetPlace());
@@ -375,7 +375,7 @@ std::vector<phi::DenseTensor> SampleRoisForOneImage(
       roi_filter.mutable_data<T>({proposals_num, kBoxDim}, context.GetPlace());
       set_zero(context, &roi_filter, static_cast<T>(0));
     } else {
-      proposals_num = keep.numel();
+      proposals_num = static_cast<int>(keep.numel());
       roi_filter.mutable_data<T>({proposals_num, kBoxDim}, context.GetPlace());
       phi::funcs::CPUGather<T>(context, rpn_rois, keep, &roi_filter);
     }
@@ -383,10 +383,10 @@ std::vector<phi::DenseTensor> SampleRoisForOneImage(
     memcpy(rpn_rois_dt, roi_filter_dt, roi_filter.numel() * sizeof(T));
     rpn_rois.Resize(roi_filter.dims());
   } else {
-    proposals_num = rpn_rois.dims()[0];
+    proposals_num = static_cast<int>(rpn_rois.dims()[0]);
   }
   // 1.2 compute overlaps
-  proposals_num += gt_boxes.dims()[0];
+  proposals_num += static_cast<int>(gt_boxes.dims()[0]);
 
   phi::DenseTensor proposal_to_gt_overlaps;
   proposal_to_gt_overlaps.mutable_data<T>({proposals_num, gt_boxes.dims()[0]},
@@ -424,8 +424,8 @@ std::vector<phi::DenseTensor> SampleRoisForOneImage(
   // Gather boxes and labels
   phi::DenseTensor sampled_boxes, sampled_labels, sampled_gts,
       sampled_max_overlap;
-  int fg_num = fg_inds.size();
-  int bg_num = bg_inds.size();
+  int fg_num = static_cast<int>(fg_inds.size());
+  int bg_num = static_cast<int>(bg_inds.size());
   int boxes_num = fg_num + bg_num;
   framework::DDim bbox_dim({boxes_num, kBoxDim});
   sampled_boxes.mutable_data<T>(bbox_dim, context.GetPlace());
@@ -484,8 +484,8 @@ std::vector<phi::DenseTensor> SampleRoisForOneImage(
       if (is_cls_agnostic) {
         label = 1;
       }
-      int dst_idx = i * width + kBoxDim * label;
-      int src_idx = kBoxDim * i;
+      int dst_idx = static_cast<int>(i * width + kBoxDim * label);
+      int src_idx = static_cast<int>(kBoxDim * i);
       bbox_targets_data[dst_idx] = bbox_targets_single_data[src_idx];
       bbox_targets_data[dst_idx + 1] = bbox_targets_single_data[src_idx + 1];
       bbox_targets_data[dst_idx + 2] = bbox_targets_single_data[src_idx + 2];
@@ -592,7 +592,7 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
 
     std::random_device rnd;
     std::minstd_rand engine;
-    int seed = rnd();
+    int seed = static_cast<int>(rnd());
     engine.seed(seed);
 
     framework::LoD lod;
@@ -611,19 +611,24 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
         continue;
       }
       phi::DenseTensor rpn_rois_slice =
-          rpn_rois->Slice(rpn_rois_lod[i], rpn_rois_lod[i + 1]);
+          rpn_rois->Slice(static_cast<int64_t>(rpn_rois_lod[i]),
+                          static_cast<int64_t>(rpn_rois_lod[i + 1]));
       phi::DenseTensor gt_classes_slice =
-          gt_classes->Slice(gt_classes_lod[i], gt_classes_lod[i + 1]);
+          gt_classes->Slice(static_cast<int64_t>(gt_classes_lod[i]),
+                            static_cast<int64_t>(gt_classes_lod[i + 1]));
       phi::DenseTensor is_crowd_slice =
-          is_crowd->Slice(is_crowd_lod[i], is_crowd_lod[i + 1]);
+          is_crowd->Slice(static_cast<int64_t>(is_crowd_lod[i]),
+                          static_cast<int64_t>(is_crowd_lod[i + 1]));
       phi::DenseTensor gt_boxes_slice =
-          gt_boxes->Slice(gt_boxes_lod[i], gt_boxes_lod[i + 1]);
+          gt_boxes->Slice(static_cast<int64_t>(gt_boxes_lod[i]),
+                          static_cast<int64_t>(gt_boxes_lod[i + 1]));
       phi::DenseTensor im_info_slice = im_info->Slice(i, i + 1);
       phi::DenseTensor max_overlap_slice;
       if (is_cascade_rcnn) {
         auto* max_overlap = context.Input<phi::DenseTensor>("MaxOverlap");
         max_overlap_slice =
-            max_overlap->Slice(rpn_rois_lod[i], rpn_rois_lod[i + 1]);
+            max_overlap->Slice(static_cast<int64_t>(rpn_rois_lod[i]),
+                               static_cast<int64_t>(rpn_rois_lod[i + 1]));
       } else {
         max_overlap_slice.mutable_data<T>({rpn_rois_slice.dims()[0]},
                                           context.GetPlace());

@@ -189,7 +189,9 @@ class TestReduceMeanOp(OpTest):
 
     def test_check_output(self):
         if self.dtype != 'float16':
-            self.check_output(check_prim=True, check_new_ir=True)
+            self.check_output(
+                check_prim=True, check_prim_pir=True, check_new_ir=True
+            )
         else:
             place = paddle.CUDAPlace(0)
             self.check_output_with_place(
@@ -198,7 +200,13 @@ class TestReduceMeanOp(OpTest):
 
     def test_check_grad(self):
         if self.dtype != 'float16':
-            self.check_grad(['X'], ['Out'], check_prim=True, check_new_ir=True)
+            self.check_grad(
+                ['X'],
+                ['Out'],
+                check_prim=True,
+                check_prim_pir=True,
+                check_new_ir=True,
+            )
         else:
             place = paddle.CUDAPlace(0)
             self.check_grad_with_place(
@@ -207,6 +215,7 @@ class TestReduceMeanOp(OpTest):
                 ['Out'],
                 numeric_grad_delta=0.5,
                 check_prim=True,
+                check_prim_pir=True,
                 check_new_ir=True,
             )
 
@@ -267,6 +276,7 @@ class TestReduceMeanBF16Op(OpTest):
             ['Out'],
             numeric_grad_delta=0.05,
             check_prim=True,
+            check_prim_pir=True,
         )
 
 

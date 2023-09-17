@@ -2250,6 +2250,9 @@ def insert_dependencies_for_two_ops(
     dependency: prior_op should be run before posterior_op
     """
 
+    if is_sequential_run():
+        return
+
     assert (
         len(prior_op.output_arg_names) >= 1
     ), "first op of dependency should at least have one output. [{}]".format(
@@ -2319,6 +2322,9 @@ def insert_dependencies_for_vars(
     """
     dependency: op that generates prior_vars should be run before op that generates post_vars
     """
+
+    if is_sequential_run():
+        return
 
     if isinstance(prior_vars, Variable):
         prior_vars = [prior_vars]
@@ -2415,12 +2421,21 @@ def use_new_executor():
         'FLAGS_new_executor_micro_batching', None
     )
     return new_executor_micro_batching in [
+        None,
         1,
         '1',
         True,
         'True',
         'true',
     ]
+
+
+def is_sequential_run():
+    return bool(
+        paddle.get_flags("FLAGS_new_executor_sequential_run")[
+            "FLAGS_new_executor_sequential_run"
+        ]
+    )
 
 
 def get_pp_stage(dist_context, rank):
