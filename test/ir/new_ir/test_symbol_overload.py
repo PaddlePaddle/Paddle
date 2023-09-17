@@ -54,10 +54,10 @@ class CompareNet(nn.Layer):
         super().__init__()
 
     def forward(self, x, y):
-        z1 = _ir_ops.less_equal(x, y)
-        z2 = _ir_ops.greater_equal(x, y)
-        z3 = _ir_ops.less_than(x, y)
-        z4 = _ir_ops.greater_than(x, y)
+        z1 = _pir_ops.less_equal(x, y)
+        z2 = _pir_ops.greater_equal(x, y)
+        z3 = _pir_ops.less_than(x, y)
+        z4 = _pir_ops.greater_than(x, y)
         return z1, z2, z3, z4
 
 
