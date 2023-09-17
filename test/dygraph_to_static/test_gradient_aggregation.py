@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
 
@@ -37,6 +38,7 @@ class SimpleNet(paddle.nn.Layer):
 
 
 class TestGradientAggregationInDy2Static(unittest.TestCase):
+    @test_and_compare_with_new_ir(False)
     def test_to_static(self):
         def simplenet_grad(inp, to_static=False):
             net = SimpleNet()

@@ -153,7 +153,7 @@ def test_and_compare_with_new_ir(need_check_output: bool = True):
             ir_outs = test_with_new_ir(func)(*args, **kwargs)
             if not need_check_output:
                 return outs
-            np.testing.assert_array_equal(
+            np.testing.assert_equal(
                 outs,
                 ir_outs,
                 err_msg='Dy2St Unittest Check ('

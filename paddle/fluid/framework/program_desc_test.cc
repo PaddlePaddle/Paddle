@@ -119,8 +119,8 @@ TEST(ProgramDesc, copy_ctor) {
   bool found_sub_block = false;
   bool found_sub_blocks = false;
   for (size_t i = 0; i < global_block->OpSize(); ++i) {
-    auto op_origin = global_block->Op(i);
-    auto op_copy = global_block_copy->Op(i);
+    auto op_origin = global_block->Op(static_cast<int>(i));
+    auto op_copy = global_block_copy->Op(static_cast<int>(i));
 
     ASSERT_EQ(op_origin->Type(), op_copy->Type());
     ASSERT_EQ(op_origin->Inputs(), op_copy->Inputs());
@@ -204,8 +204,8 @@ TEST(ProgramDescBind, serialize_and_deserialize) {
   assert_same_var("Out", out);
 
   for (size_t i = 0; i < global_block->OpSize(); ++i) {
-    auto op_origin = global_block->Op(i);
-    auto op_restored = global_block_restored->Op(i);
+    auto op_origin = global_block->Op(static_cast<int>(i));
+    auto op_restored = global_block_restored->Op(static_cast<int>(i));
 
     ASSERT_EQ(op_origin->Type(), op_restored->Type());
     ASSERT_EQ(op_origin->Inputs(), op_restored->Inputs());

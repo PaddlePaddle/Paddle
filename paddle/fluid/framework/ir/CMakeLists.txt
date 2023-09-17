@@ -156,6 +156,8 @@ if(WITH_TENSORRT)
   pass_library(preln_elementwise_groupnorm_act_pass inference)
   pass_library(groupnorm_act_pass inference)
   pass_library(trans_layernorm_fuse_pass inference)
+  pass_library(trt_prompt_tuning_embedding_eltwise_layernorm_fuse_pass
+               inference)
   pass_library(trt_embedding_eltwise_layernorm_fuse_pass inference)
   pass_library(preln_embedding_eltwise_layernorm_fuse_pass inference)
   pass_library(split_layernorm_to_math_ops_pass inference)
@@ -241,8 +243,10 @@ if(WITH_XPU)
   pass_library(yolo_box_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(cast_embedding_trans_ids_to_int32_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
-  pass_library(conv1d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(bn_act_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  # pass_library(conv1d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(conv2d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(conv2d_bias_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(redundant_unsqueeze_squeeze_elimination_pass inference DIR xpu
                DEPS ${XPU_PASS_DEPS})
   pass_library(redundant_squeeze_unsqueeze_elimination_pass inference DIR xpu

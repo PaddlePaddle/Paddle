@@ -13,8 +13,6 @@
 # limitations under the License.
 from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import decorator
-import contextlib
-import functools
 import inspect
 import sys
 import numpy as np
@@ -23,12 +21,10 @@ from paddle.base import framework
 from paddle.base.framework import global_var
 from paddle.base.multiprocess_utils import CleanupFuncRegistrar
 from .tracer import Tracer
-import logging
 from ..data_feeder import convert_dtype
 import warnings
 from ..framework import _get_paddle_place
 import paddle
-import warnings
 
 __all__ = [
     'no_grad',
@@ -44,15 +40,19 @@ __all__ = [
 NON_PERSISTABLE_VAR_NAME_SUFFIX = "__non_persistable"
 
 
-def in_declarative_mode():
+def in_to_static_mode():
     """
     Return a bool value that indicates whether running code under `@to_static`
 
     """
-    return global_var._in_declarative_mode_
+    return global_var._in_to_static_mode_
 
 
-def declarative_unsupport_argument_warning(
+# TODO(Aurelius84): Need to remove this alias after clean usage in PaddleX
+in_declarative_mode = in_to_static_mode
+
+
+def to_static_unsupport_argument_warning(
     func_name, input_names, inputs, support_values
 ):
     """
@@ -81,12 +81,12 @@ switch_to_static_graph = wrap_decorator(_switch_to_static_graph_)
 
 
 @signature_safe_contextmanager
-def _switch_declarative_mode_guard_(is_declarative=True):
+def _to_static_mode_guard_(is_to_static=True):
     global global_var
-    original_val = global_var._in_declarative_mode_
-    global_var._in_declarative_mode_ = is_declarative
+    original_val = global_var._in_to_static_mode_
+    global_var._in_to_static_mode_ = is_to_static
     yield
-    global_var._in_declarative_mode_ = original_val
+    global_var._in_to_static_mode_ = original_val
 
 
 @signature_safe_contextmanager
@@ -105,7 +105,7 @@ def program_desc_tracing_guard(enable):
 @signature_safe_contextmanager
 def param_guard(parameters):
     # Note: parameters is a reference of self._parameters or self._buffers
-    if in_declarative_mode() and not paddle.in_dynamic_mode() and parameters:
+    if in_to_static_mode() and not paddle.in_dynamic_mode() and parameters:
         try:
             origin_parameters = parameters.copy()
             for name, var_base in parameters.items():
@@ -322,7 +322,7 @@ def no_grad(func=None):
         test_layer()
 
     """
-    if in_declarative_mode():
+    if in_to_static_mode():
         warnings.warn(
             "paddle.no_grad is only supported for inference model, and not supported for training under @to_static."
         )
@@ -732,12 +732,12 @@ def grad(
             grad_y1 = paddle.to_tensor(3.0)
             print(test_dygraph_grad([grad_y1, grad_value])) # [24.]
     '''
-    if in_declarative_mode():
+    if in_to_static_mode():
         # In dy2static context, we call static interface `gradients`
         # to calculate grads.
         from paddle.static import gradients
 
-        declarative_unsupport_argument_warning(
+        to_static_unsupport_argument_warning(
             "paddle.grad",
             ["retain_graph", "create_grad", "only_inputs", "allow_unused"],
             [retain_graph, create_graph, only_inputs, allow_unused],

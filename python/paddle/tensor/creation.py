@@ -40,6 +40,8 @@ from ..framework import (
     convert_np_dtype_to_dtype_,
     core,
     in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
 )
 
 __all__ = []
@@ -680,8 +682,6 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
                             d, dtype, stop_gradient
                         )
                     data = paddle.stack(to_stack_list)
-                    data = paddle.squeeze(data, -1)
-
             else:
                 raise RuntimeError(
                     f"Do not support transform type `{type(data)}` to tensor"
@@ -822,13 +822,18 @@ def full_like(x, fill_value, dtype=None, name=None):
             [[2. 2. 2.]
              [2. 2. 2.]]
     """
+
     if dtype is None:
         dtype = x.dtype
     else:
-        if not isinstance(dtype, core.VarDesc.VarType):
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
+
     if in_dynamic_mode():
         return _C_ops.full_like(x, fill_value, dtype, x.place)
+    elif in_pir_mode():
+        place = _current_expected_place()
+        return _C_ops.full_like(x, fill_value, dtype, place)
     else:
         helper = LayerHelper("full_like", **locals())
         check_variable_and_dtype(
@@ -874,42 +879,29 @@ def full_like(x, fill_value, dtype=None, name=None):
 
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         place = _current_expected_place()
         if force_cpu:
             place = core.CPUPlace()
         if isinstance(shape, (list, tuple)):
             shape = paddle.utils.convert_shape_to_list(shape)
 
-        if not isinstance(dtype, core.VarDesc.VarType):
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
         if out is None:
-            out = _C_ops.full(shape, float(value), dtype, place)
+            value = float(value) if in_dynamic_mode() else value
+            out = _C_ops.full(shape, value, dtype, place)
             out.stop_gradient = True
             return out
 
         if out is not None:
+            value = float(value) if in_dynamic_mode() else value
             # final state mode is support out is not None.
-            _C_ops.full_(out, shape, float(value), dtype, place)
+            _C_ops.full_(out, shape, value, dtype, place)
             out.stop_gradient = True
             return out
     else:
-        if paddle.ir.core._use_new_ir_api():
-            # Below code will be removed after we can generate IR api automatically
-            place = _current_expected_place()
-            if force_cpu:
-                place = core.CPUPlace()
-            if isinstance(shape, (list, tuple)):
-                shape = paddle.utils.convert_shape_to_list(shape)
-
-            if not isinstance(dtype, core.DataType):
-                dtype = paddle.ir.core.convert_np_dtype_to_dtype_(dtype)
-
-            if out is None:
-                out = paddle._ir_ops.full(shape, float(value), dtype, place)
-                out.stop_gradient = True
-                return out
         attrs = {'force_cpu': force_cpu}
         dtype = convert_dtype(dtype)
         if not isinstance(value, Variable):

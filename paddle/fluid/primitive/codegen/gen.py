@@ -16,7 +16,6 @@ import argparse
 import hashlib
 import pathlib
 import sys
-from typing import Dict, List
 
 import jinja2
 import yaml
@@ -28,10 +27,11 @@ sys.path.append(
 )
 import filters as op_gen_filters
 import tests_utils as op_gen_tests
+from parse_utils import to_named_dict
 
-# import from paddle/fluid/ir/dialect/op_generator/api_gen.py
+# import from paddle/fluid/pir/dialect/op_generator/api_gen.py
 sys.path.append(
-    str(pathlib.Path(__file__).resolve().parents[2] / 'ir/dialect/op_generator')
+    str(pathlib.Path(__file__).resolve().parents[2] / 'pir/dialect/op_generator')
 )
 
 # fmt: on
@@ -61,15 +61,27 @@ VJPS = [
     'rsqrt_grad',
     'slice_grad',
     'transpose_grad',
+    'square_grad',
     'dropout_grad',
+    'cast_grad',
+    'slice_double_grad',
+    'layer_norm_grad',
+    'embedding_grad',
+    'scale_grad',
 ]
-VJP_COMPS = ['divide_grad', 'sum_grad']
+
+
+PRIM_VJP = ['divide_grad', 'sum_grad']  # vjp list of primitive op
+CUSTOM_VJP = ['gelu_grad']  # custom vjp list of composite op
+VJP_COMPS = PRIM_VJP + CUSTOM_VJP
+
 BACKENDS = [
     'add_n',
     'mean',
     'sum',
     'divide',
     'full',
+    'tanh',
     'tanh_grad',
     'mean_grad',
     'concat',
@@ -128,7 +140,12 @@ BACKENDS = [
     'roll',
     'scatter',
     'scatter_nd_add',
+    'square_grad',
     'dropout_grad',
+    'slice',
+    'layer_norm_grad',
+    'embedding_grad',
+    'uniform',
 ]
 
 
@@ -218,21 +235,6 @@ def save(content: str, path: pathlib.Path):
             print(f"Generate source file {path}")
 
 
-def to_compat_dict(items: List[Dict]) -> Dict[str, Dict]:
-    compat_dict = {}
-    for item in items:
-        name = item["op"]
-        compat_dict[name] = item
-    return compat_dict
-
-
-def to_apis_dict(apis):
-    apis_dict = {}
-    for api in apis:
-        apis_dict[api['name']] = api
-    return apis_dict
-
-
 def get_inplace_api(apis):
     inplace_apis = []
     for api in apis:
@@ -270,7 +272,7 @@ def extend_compat_info(apis, compats):
                 attr['typename']
             ) or op_gen_tests.is_intarray(attr['typename']):
                 attr["support_tensor"] = False
-    apis_dict = to_apis_dict(apis)
+    apis_dict = to_named_dict(apis)
     for compat_item in compats:
         fwd_op_name = compat_item["op"]
         if fwd_op_name not in apis_dict:
@@ -321,6 +323,31 @@ def extend_compat_info(apis, compats):
     return apis
 
 
+def process_backward_invoke_info(apis):
+    apis_dict = to_named_dict(apis)
+    for api in apis:
+        if api['is_fwd']:
+            continue
+        if 'invoke' in api and api['invoke']['func'] in apis_dict:
+            args = api['invoke']['args'].split(',')
+            args = [arg.strip() for arg in args]
+            attrs_dict = to_named_dict(api['attrs'])
+            inputs_dict = to_named_dict(api['inputs'])
+            arg_inputs = []
+            arg_attrs = []
+            for arg in args:
+                if arg in inputs_dict:
+                    arg_inputs.append(arg)
+                elif arg in attrs_dict and attrs_dict[arg].get(
+                    "support_tensor", False
+                ):
+                    arg_inputs.append(arg + '_')
+                else:
+                    arg_attrs.append(arg)
+            args = arg_inputs + arg_attrs
+            api['invoke']['args'] = ', '.join(args)
+
+
 def gen(
     prim_path: pathlib.Path,
     fwd_path: pathlib.Path,
@@ -368,6 +395,7 @@ def gen(
     ]
     apis = extend_compat_info(apis, compats)
     apis = apis + get_inplace_api(apis)
+    process_backward_invoke_info(apis)
     render(
         templates_dir,
         destination_dir,

@@ -87,7 +87,7 @@ void FusedEmbeddingFCLSTMOp::InferShape(
   }
 
   auto wh_dims = ctx->GetInputDim("WeightH");
-  int frame_size = wh_dims[1] / 4;
+  int frame_size = static_cast<int>(wh_dims[1] / 4);
   PADDLE_ENFORCE_EQ(
       wh_dims.size(),
       2,
@@ -403,8 +403,8 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
 
     // log(INFO) << "====> SeqCompute" << "\n";
     auto ids_lod = ids->lod();
-    const int total_T = ids_dims[0];
-    const int N = ids_lod[0].size() - 1;
+    const int total_T = static_cast<int>(ids_dims[0]);
+    const int N = static_cast<int>(ids_lod[0].size() - 1);
     const T* h0_data = h0 ? h0->data<T>() : nullptr;
     const T* c0_data = c0 ? c0->data<T>() : nullptr;
     T* xx_data = xx->mutable_data<T>(place);
@@ -545,7 +545,7 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
 
     auto batched_lod = batched_input->lod();
     const auto& seq_order = batched_lod[2];
-    const int max_bs = seq_order.size();
+    const int max_bs = static_cast<int>(seq_order.size());
     reordered_h0->Resize({max_bs, D});
     reordered_c0->Resize({max_bs, D});
 
@@ -589,7 +589,7 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
       prev_c_data = batched_c_out_data;
     }
     const auto& batch_starts = batched_lod[0];
-    const int max_seq_len = batch_starts.size() - 1;
+    const int max_seq_len = static_cast<int>(batch_starts.size() - 1);
     const int offset = tstart * max_bs * D;
     batched_input_data = batched_input_data + offset * 4;
     batched_h_out_data = batched_h_out_data + offset;
@@ -616,7 +616,8 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
 
     if (use_peepholes) {
       for (int step = tstart; step < max_seq_len; ++step) {
-        const int cur_bs = batch_starts[step + 1] - batch_starts[step];
+        const int cur_bs =
+            static_cast<int>(batch_starts[step + 1] - batch_starts[step]);
         GEMM_WH_ADDON(cur_bs, prev_h_data, batched_input_data);
         DEFINE_CUR;
         for (int i = 0; i < cur_bs; ++i) {
@@ -628,7 +629,8 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
       }
     } else {
       for (int step = tstart; step < max_seq_len; ++step) {
-        const int cur_bs = batch_starts[step + 1] - batch_starts[step];
+        const int cur_bs =
+            static_cast<int>(batch_starts[step + 1] - batch_starts[step]);
         GEMM_WH_ADDON(cur_bs, prev_h_data, batched_input_data);
         DEFINE_CUR;
         for (int i = 0; i < cur_bs; ++i) {

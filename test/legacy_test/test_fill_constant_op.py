@@ -15,8 +15,8 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
 from op import Operator
+from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
 import paddle
 from paddle import base
@@ -44,7 +44,7 @@ class TestFillConstantOp(OpTest):
         self.outputs = {'Out': np.full(self.shape, self.value)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -115,7 +115,7 @@ class TestFillConstantBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_new_ir=True)
 
 
 class TestFillConstantOpWithSelectedRows(unittest.TestCase):
@@ -168,7 +168,7 @@ class TestFillConstantOp1_ShapeTensorList(OpTest):
         self.value = 3.8
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestFillConstantOp2_ShapeTensorList(OpTest):
@@ -192,7 +192,7 @@ class TestFillConstantOp2_ShapeTensorList(OpTest):
         self.infer_shape = [-1, -1]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 class TestFillConstantOp3_ShapeTensorList(TestFillConstantOp1_ShapeTensorList):
@@ -226,7 +226,7 @@ class TestFillConstantOp1_ShapeTensor(OpTest):
         self.value = 3.8
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 # Situation 4: value is a tensor
@@ -250,7 +250,7 @@ class TestFillConstantOp1_ValueTensor(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 # Situation 5: value is a tensor
@@ -274,7 +274,7 @@ class TestFillConstantOp2_ValueTensor(OpTest):
         self.dtype = np.int32
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
 
 # Test python API
@@ -417,7 +417,7 @@ class TestFillConstantImperative(unittest.TestCase):
 
 class TestFillConstantOpError(unittest.TestCase):
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle_static_guard(), program_guard(Program(), Program()):
             # for ci coverage
             x1 = paddle.static.data(name='x1', shape=[-1, 1], dtype="int16")
             self.assertRaises(
@@ -512,7 +512,9 @@ class TestFillConstantOp_ValueTensorBf16(OpTest):
 
     def test_check_output(self):
         # no dynamic graph test for mkldnn
-        self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
+        self.check_output_with_place(
+            core.CPUPlace(), check_dygraph=False, check_new_ir=False
+        )
 
 
 if __name__ == "__main__":

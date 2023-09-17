@@ -17,11 +17,7 @@ from functools import reduce
 from operator import mul
 
 import numpy as np
-from eager_op_test import (
-    OpTest,
-    _set_use_system_allocator,
-    convert_float_to_uint16,
-)
+from op_test import OpTest, _set_use_system_allocator, convert_float_to_uint16
 
 import paddle
 import paddle.nn.functional as F
@@ -639,12 +635,15 @@ class TestLayerNormOp(unittest.TestCase):
 
                 program._sync_with_cpp()
                 exe = base.Executor(place)
+                name_list = ['x', 'y@GRAD']
+                if has_scale:
+                    name_list += ['scale']
+                if has_bias:
+                    name_list += ['bias']
+
                 out = exe.run(
                     program,
-                    feed={
-                        name: var_dict[name]
-                        for name in ['x', 'scale', 'bias', 'y@GRAD']
-                    },
+                    feed={name: var_dict[name] for name in name_list},
                     fetch_list=fetch_list,
                 )
                 # print(y)
