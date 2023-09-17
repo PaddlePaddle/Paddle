@@ -70,7 +70,7 @@ ModuleOp ModuleOp::Create(IrContext *context, Program *pointer) {
   OperationArgument argument(info);
   argument.num_regions = 1;
   argument.AddAttribute("program", PointerAttribute::get(context, pointer));
-  Operation *op = Operation::Create(std::move(argument));
+  Operation *op = Operation::Create(argument);
   op->region(0).emplace_back();
   return ModuleOp(op);
 }
@@ -140,7 +140,7 @@ void SetParameterOp::Build(Builder &builder,             // NOLINT
                            OperationArgument &argument,  // NOLINT
                            OpResult parameter,
                            const std::string &name) {
-  argument.AddOperand(parameter);
+  argument.AddInput(parameter);
   argument.AddAttribute(attributes_name[0],
                         pir::StrAttribute::get(builder.ir_context(), name));
 }

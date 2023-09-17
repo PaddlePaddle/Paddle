@@ -103,7 +103,7 @@ void AddNOp::Build(pir::Builder &builder,             // NOLINT
                    pir::OpResult inputs) {
   VLOG(4) << "Builder construction inputs";
   std::vector<pir::OpResult> argument_inputs = {inputs};
-  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInputs(argument_inputs.begin(), argument_inputs.end());
 
   VLOG(4) << "Builder construction attributes";
 
@@ -179,7 +179,7 @@ void AddN_Op::Build(pir::Builder &builder,
                     pir::OpResult inputs_) {
   VLOG(4) << "Builder construction inputs";
   std::vector<pir::OpResult> argument_inputs = {inputs_};
-  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInputs(argument_inputs.begin(), argument_inputs.end());
 
   VLOG(4) << "Builder construction attributes";
 
@@ -307,7 +307,7 @@ void AddNWithKernelOp::Build(pir::Builder &builder,
                              pir::OpResult inputs_) {
   VLOG(4) << "Builder construction inputs";
   std::vector<pir::OpResult> argument_inputs = {inputs_};
-  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInputs(argument_inputs.begin(), argument_inputs.end());
 
   VLOG(4) << "Builder construction attributes";
 
@@ -477,7 +477,7 @@ void FusedGemmEpilogueOp::Build(pir::Builder &builder,
 
   VLOG(4) << "Builder construction inputs";
   std::vector<pir::OpResult> argument_inputs = {x_, y_, bias_};
-  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInputs(argument_inputs.begin(), argument_inputs.end());
 
   VLOG(4) << "Builder construction attributes";
   pir::Attribute attr_trans_x =
@@ -732,7 +732,7 @@ void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
   VLOG(4) << "Builder construction inputs";
   std::vector<pir::OpResult> argument_inputs = {
       x_, y_, reserve_space_, out_grad_};
-  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInputs(argument_inputs.begin(), argument_inputs.end());
 
   VLOG(4) << "Builder construction attributes";
   pir::Attribute attr_trans_x =
@@ -916,7 +916,7 @@ void SplitGradOp::Build(pir::Builder &builder,
 
   VLOG(4) << "Builder construction inputs";
   std::vector<pir::OpResult> argument_inputs = {out_grad_, axis_};
-  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInputs(argument_inputs.begin(), argument_inputs.end());
 
   VLOG(4) << "Builder construction attributes";
 
@@ -974,7 +974,7 @@ void SplitGradOp::Build(pir::Builder &builder,
                         pir::OpResult axis_) {
   VLOG(4) << "Builder construction inputs";
   std::vector<pir::OpResult> argument_inputs = {out_grad_, axis_};
-  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInputs(argument_inputs.begin(), argument_inputs.end());
 
   VLOG(4) << "Builder construction attributes";
 
@@ -1095,7 +1095,7 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
                  pir::OpResult cond,
                  std::vector<pir::Type> &&output_types) {
   argument.num_regions = 2;
-  argument.AddOperand(cond);
+  argument.AddInput(cond);
   argument.output_types.swap(output_types);
 }
 pir::Block *IfOp::true_block() {
