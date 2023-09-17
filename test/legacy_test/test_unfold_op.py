@@ -145,11 +145,13 @@ class TestUnfoldOp(OpTest):
         self.check_grad(['X'], 'Y')
 
     def test_support_tuple(self):
-        try:
-            x = paddle.randn((100, 3, 224, 224))
-            paddle.nn.functional.unfold(x, (3, 3), (1, 1), (1, 1), (1, 1))
-        except Exception as e:
-            raise AssertionError(f"Code raised an exception: {e}")
+        x = paddle.randn((10, 3, 64, 64))
+        paddle.nn.functional.unfold(x, 3, (1, 1), 1, 1)
+        paddle.nn.functional.unfold(x, 3, 1, (1, 1), 1)
+        paddle.nn.functional.unfold(x, 3, 1, 1, (1, 1))
+        out1 = paddle.nn.functional.unfold(x, 3, (1, 1), (1, 1), (1, 1))
+        out2 = paddle.nn.functional.unfold(x, (3, 3), (1, 1), (1, 1), (1, 1))
+        self.assertTrue(np.allclose(out1.numpy(), out2.numpy()))
 
 
 class TestUnfoldFP16Op(TestUnfoldOp):
