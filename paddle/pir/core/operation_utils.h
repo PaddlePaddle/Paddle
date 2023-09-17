@@ -57,16 +57,9 @@ struct OperationArgument {
         num_regions(num_regions),
         successors(successors) {}
 
-  // Will be deleted in the next pr.
-  void AddOperand(OpResult operand) { inputs.emplace_back(operand); }
-
   void AddInput(Value input) {
     inputs.emplace_back(input.dyn_cast<OpResult>());
   }
-
-  // Will be deleted in the next pr.
-  template <class InputIt>
-  void AddOperands(InputIt first, InputIt last);
 
   template <class InputIt>
   void AddInputs(InputIt first, InputIt last);
@@ -98,13 +91,6 @@ struct OperationArgument {
 
   void AddSuccessor(Block* successor) { successors.emplace_back(successor); }
 };
-
-template <class InputIt>
-void OperationArgument::AddOperands(InputIt first, InputIt last) {
-  while (first != last) {
-    inputs.emplace_back(*first++);
-  }
-}
 
 template <class InputIt>
 void OperationArgument::AddInputs(InputIt first, InputIt last) {
