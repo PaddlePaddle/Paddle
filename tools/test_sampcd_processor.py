@@ -157,7 +157,7 @@ class TestXdoctester(unittest.TestCase):
 
                 this is some blabla...
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('skip')
                 >>> print(1+1)
                 2
 
@@ -190,7 +190,7 @@ class TestXdoctester(unittest.TestCase):
 
                 this is some blabla...
 
-                >>> # xdoctest: +SKIP
+                >>> # xdoctest: +SKIP('skip')
                 >>> print(1+1)
                 2
 
@@ -1125,7 +1125,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 this is some blabla...
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('skip')
                 >>> print(1+1)
                 2
 
@@ -1389,7 +1389,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 this is some blabla...
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('skip')
                 >>> print(1+1)
                 2
 
@@ -1484,7 +1484,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 this is some blabla...
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('skip')
                 >>> print(1+1)
                 2
 
@@ -1580,7 +1580,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 this is some blabla...
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('skip')
                 >>> print(1+1)
                 2
 
@@ -1661,7 +1661,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 this is some blabla...
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('skip')
                 >>> print(1+1)
                 2
 
@@ -1766,7 +1766,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 this is some blabla...
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('skip')
                 >>> print(1+1)
                 2
             """,
@@ -1812,7 +1812,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 this is some blabla...
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('skip')
                 >>> print(1+1)
                 2
             """,
@@ -1842,7 +1842,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 this is some blabla...
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('skip')
                 >>> print(1+1)
                 2
             """,
@@ -1888,7 +1888,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 this is some blabla...
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('skip')
                 >>> print(1+1)
                 2
             """,
@@ -2008,7 +2008,7 @@ class TestGetTestResults(unittest.TestCase):
                 .. code-block:: python
 
                     >>> # doctest: +TIMEOUT(2)
-                    >>> # doctest: +SKIP
+                    >>> # doctest: +SKIP('skip')
                     >>> import time
                     >>> time.sleep(0.1)
             """,
@@ -2019,7 +2019,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 .. code-block:: python
 
-                    >>> # doctest: +SKIP
+                    >>> # doctest: +SKIP('skip')
                     >>> # doctest: +TIMEOUT(2)
                     >>> import time
                     >>> time.sleep(0.1)
@@ -2032,7 +2032,7 @@ class TestGetTestResults(unittest.TestCase):
                 .. code-block:: python
 
                     >>> # doctest: +TIMEOUT(2)
-                    >>> # doctest: +SKIP
+                    >>> # doctest: +SKIP('skip')
                     >>> import time
                     >>> time.sleep(3)
             """,
@@ -2043,7 +2043,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 .. code-block:: python
 
-                    >>> # doctest: +SKIP
+                    >>> # doctest: +SKIP('skip')
                     >>> # doctest: +TIMEOUT(2)
                     >>> import time
                     >>> time.sleep(3)
@@ -2161,6 +2161,158 @@ class TestGetTestResults(unittest.TestCase):
         self.assertIn('timeout_more_codes', tr_7.name)
         self.assertFalse(tr_7.passed)
         self.assertTrue(tr_7.timeout)
+
+    def test_bad_statements(self):
+        docstrings_to_test = {
+            'bad_fluid': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import paddle.fluid
+            """,
+            'bad_fluid_from': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import paddle
+                    >>> from paddle import fluid
+            """,
+            'no_bad': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +SKIP('reason')
+                    >>> import os
+            """,
+            'bad_fluid_good_skip': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +SKIP('reason')
+                    >>> import os
+                    >>> from paddle import fluid
+            """,
+            'bad_fluid_bad_skip': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +SKIP('reason')
+                    >>> import os
+                    >>> from paddle import fluid
+                    >>> # doctest: +SKIP
+                    >>> import sys
+            """,
+            'bad_skip_mix': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +SKIP('reason')
+                    >>> import os
+                    >>> # doctest: +SKIP
+                    >>> import sys
+            """,
+            'bad_skip': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +SKIP
+                    >>> import os
+
+            """,
+            'bad_skip_empty': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import os
+                    >>> # doctest: +SKIP()
+                    >>> import sys
+            """,
+            'good_skip': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import os
+                    >>> # doctest: +SKIP('reason')
+                    >>> import sys
+                    >>> # doctest: -SKIP
+                    >>> import math
+            """,
+        }
+
+        _clear_environ()
+
+        test_capacity = {'cpu'}
+        doctester = Xdoctester()
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 9)
+
+        tr_0, tr_1, tr_2, tr_3, tr_4, tr_5, tr_6, tr_7, tr_8 = test_results
+
+        self.assertIn('bad_fluid', tr_0.name)
+        self.assertTrue(tr_0.badstatement)
+        self.assertFalse(tr_0.passed)
+
+        self.assertIn('bad_fluid_from', tr_1.name)
+        self.assertTrue(tr_1.badstatement)
+        self.assertFalse(tr_1.passed)
+
+        self.assertIn('no_bad', tr_2.name)
+        self.assertFalse(tr_2.badstatement)
+        self.assertFalse(tr_2.passed)
+        self.assertTrue(tr_2.skipped)
+
+        self.assertIn('bad_fluid_good_skip', tr_3.name)
+        self.assertTrue(tr_3.badstatement)
+        self.assertFalse(tr_3.passed)
+
+        self.assertIn('bad_fluid_bad_skip', tr_4.name)
+        self.assertTrue(tr_4.badstatement)
+        self.assertFalse(tr_4.passed)
+
+        self.assertIn('bad_skip_mix', tr_5.name)
+        self.assertTrue(tr_5.badstatement)
+        self.assertFalse(tr_5.passed)
+
+        self.assertIn('bad_skip', tr_6.name)
+        self.assertTrue(tr_6.badstatement)
+        self.assertFalse(tr_6.passed)
+
+        self.assertIn('bad_skip_empty', tr_7.name)
+        self.assertTrue(tr_7.badstatement)
+        self.assertFalse(tr_7.passed)
+
+        self.assertIn('good_skip', tr_8.name)
+        self.assertFalse(tr_8.badstatement)
+        self.assertTrue(tr_8.passed)
 
 
 if __name__ == '__main__':
