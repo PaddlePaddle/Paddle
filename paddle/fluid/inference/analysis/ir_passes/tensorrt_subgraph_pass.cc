@@ -569,6 +569,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   auto use_dla = Get<bool>("trt_use_dla");
   auto dla_core = Get<int>("trt_dla_core");
   auto use_inspector = Get<bool>("use_inspector");
+  auto inspector_serialize = Get<bool>("inspector_serialize");
   auto disable_trt_plugin_fp16 = Get<bool>("disable_trt_plugin_fp16");
   auto context_memory_sharing = Get<bool>("context_memory_sharing");
   auto enable_low_precision_io = Get<bool>("enable_low_precision_io");
@@ -592,7 +593,6 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("parameters", parameters);
   op_desc->SetAttr("allow_build_at_runtime", allow_build_at_runtime);
   op_desc->SetAttr("shape_range_info_path", shape_range_info_path);
-  op_desc->SetAttr("use_inspector", use_inspector);
   op_desc->SetAttr("with_dynamic_shape", with_dynamic_shape);
   op_desc->SetAttr("enable_low_precision_io", enable_low_precision_io);
 
@@ -688,6 +688,16 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("context_memory_sharing", context_memory_sharing);
   std::string trt_engine_serialized_data;
   op_desc->SetAttr("engine_serialized_data", trt_engine_serialized_data);
+
+  // serialization engine info
+  std::string engine_info_path;
+  if (inspector_serialize) {
+    engine_info_path = Get<std::string>("model_opt_cache_dir") +
+                       "engine_info_" + engine_key + ".json";
+    LOG(INFO) << "Serialize engine info to " << engine_info_path;
+  }
+  op_desc->SetAttr("use_inspector", use_inspector);
+  op_desc->SetAttr("engine_info_path", engine_info_path);
   op_desc->Flush();
 
   std::unique_ptr<tensorrt::TRTInt8Calibrator> calibrator;
@@ -739,6 +749,8 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
       framework::ir::Agent(node).subgraph()->end());
   framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
 
+  // Adding new parameters must set a new op attribute by "op_desc->SetAttr()"
+  // first and syncing it to tensorrt_engine_op.h
   tensorrt::TensorRTEngine::ConstructionParams params;
   params.max_batch_size = max_batch_size;
   params.max_workspace_size = workspace_size;
@@ -761,6 +773,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   params.tensorrt_transformer_maskid = tensorrt_transformer_maskid;
   params.context_memory_sharing = context_memory_sharing;
   params.use_inspector = use_inspector;
+  params.engine_info_path = engine_info_path;
   params.enable_low_precision_io = enable_low_precision_io;
 
   tensorrt::TensorRTEngine *trt_engine =

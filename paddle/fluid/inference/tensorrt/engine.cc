@@ -393,7 +393,7 @@ void TensorRTEngine::FreezeNetwork() {
                                  predictor_id_per_thread);
   }
   if (params_.use_inspector) {
-    GetEngineInfo();
+    GetEngineInfo(params_.engine_info_path);
   }
 }
 
@@ -608,7 +608,7 @@ void TensorRTEngine::Deserialize(const std::string &engine_serialized_data) {
                                  predictor_id_per_thread);
   }
   if (params_.use_inspector) {
-    GetEngineInfo();
+    GetEngineInfo(params_.engine_info_path);
   }
 }
 
@@ -862,18 +862,34 @@ void TensorRTEngine::FreshDeviceId() {
   platform::SetDeviceId(device_id());
 }
 
-void TensorRTEngine::GetEngineInfo() {
+void TensorRTEngine::GetEngineInfo(const std::string &engine_info_path) {
 #if IS_TRT_VERSION_GE(8200)
-  LOG(INFO) << "====== engine info ======";
   std::unique_ptr<nvinfer1::IEngineInspector> infer_inspector(
       infer_engine_->createEngineInspector());
   auto *infer_context = context();
   infer_inspector->setExecutionContext(infer_context);
-  for (int i = 0; i < infer_engine_->getNbLayers(); ++i) {
-    LOG(INFO) << infer_inspector->getLayerInformation(
-        i, nvinfer1::LayerInformationFormat::kJSON);
+  if (engine_info_path.empty()) {
+    LOG(INFO) << "====== engine info ======";
+    for (int i = 0; i < infer_engine_->getNbLayers(); ++i) {
+      LOG(INFO) << infer_inspector->getLayerInformation(
+          i, nvinfer1::LayerInformationFormat::kJSON);
+    }
+    LOG(INFO) << "====== engine info end ======";
+  } else {
+    std::fstream out_file;
+    out_file.open(engine_info_path, std::ios_base::out);
+    out_file << "[";
+    for (int i = 0; i < infer_engine_->getNbLayers(); ++i) {
+      out_file << infer_inspector->getLayerInformation(
+                      i, nvinfer1::LayerInformationFormat::kJSON)
+               << "\n";
+      if (i != infer_engine_->getNbLayers() - 1) {
+        out_file << ",";
+      }
+    }
+    out_file << "]";
+    out_file.close();
   }
-  LOG(INFO) << "====== engine info end ======";
 #else
   LOG(INFO) << "Inspector needs TensorRT version 8.2 and after.";
 #endif

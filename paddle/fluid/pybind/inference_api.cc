@@ -921,7 +921,8 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("dla_core") = 0)
       .def("tensorrt_dla_enabled", &AnalysisConfig::tensorrt_dla_enabled)
       .def("enable_tensorrt_inspector",
-           &AnalysisConfig::EnableTensorRtInspector)
+           &AnalysisConfig::EnableTensorRtInspector,
+           py::arg("inspector_serialize") = false)
       .def("tensorrt_inspector_enabled",
            &AnalysisConfig::tensorrt_inspector_enabled)
       .def("enable_tensorrt_explicit_quantization",
