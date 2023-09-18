@@ -127,6 +127,7 @@ class TestBoxCoderOp(OpTest):
             target_box=target_box_encode,
             code_type="encode_center_size",
         )
+        paddle.disable_static()
         self.assertTrue(np.allclose(encode_1.numpy(), encode_2.numpy()))
         paddle.enable_static()
 
