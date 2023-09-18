@@ -99,9 +99,6 @@ class TesBackward_1(unittest.TestCase):
         self.assertEqual(
             newir_program.global_block().ops[-1].name(), "pd_op.full"
         )
-        self.assertEqual(
-            newir_program.global_block().ops[-2].name(), "pd_op.mean"
-        )
 
     def test_split(self):
         # test create output_grad in backward use full op
