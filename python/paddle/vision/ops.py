@@ -722,10 +722,11 @@ def box_coder(
         }
         if isinstance(prior_box_var, Variable):
             inputs['PriorBoxVar'] = prior_box_var
-        elif isinstance(prior_box_var, list):
-            attrs['variance'] = prior_box_var
         else:
-            raise TypeError("Input prior_box_var must be Variable or list")
+            attrs['variance'] = list(prior_box_var)
+            assert (
+                len(attrs['variance']) == 4
+            ), "Input prior_box_var must be Variable or list|tuple with 4 elements."
         helper.append_op(
             type="box_coder",
             inputs=inputs,
