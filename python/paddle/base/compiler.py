@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import multiprocessing
-import os
 import sys
 import warnings
 from . import framework
-from .framework import _get_paddle_place, _get_paddle_place_list
 from .framework import cuda_places, cpu_places, xpu_places
 from . import core
 
@@ -209,9 +206,9 @@ class CompiledProgram:
             assert scope is not None, ""
             self._local_scopes = []
 
-        assert isinstance(places, tuple) or isinstance(
-            places, list
-        ), "Currently , The places type can only be list or tuple, but the input type is {}.".format(
+        assert isinstance(
+            places, (list, tuple)
+        ), "Currently, The places type can only be list or tuple, but the input type is {}.".format(
             type(places)
         )
 

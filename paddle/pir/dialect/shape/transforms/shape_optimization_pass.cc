@@ -23,12 +23,12 @@
 
 namespace {
 
-bool InsertTieShapeOnValue(pir::OpResult value,
+bool InsertTieShapeOnValue(pir::Value value,
                            pir::Builder& builder) {  // NOLINT
   auto ty = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
 
   if (!ty || ty.dims().size() == 0) return true;
-  std::vector<pir::OpResult> dimSizes;
+  std::vector<pir::Value> dimSizes;
   for (int64_t dim = 0, rank = ty.dims().size(); dim < rank; ++dim) {
     auto dimOp = builder.Build<pir::dialect::TensorDimOp>(value, dim);
     dimSizes.push_back(dimOp.out());
