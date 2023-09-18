@@ -91,11 +91,11 @@ class IR_API TieProductEqualOp : public Op<TieProductEqualOp> {
                     OperationArgument &argument,  // NOLINT
                     int64_t lhs_len,
                     int64_t rhs_len,
-                    const std::vector<pir::OpResult> &inputs);
+                    const std::vector<Value> &inputs);
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const std::vector<pir::OpResult> &lhs,
-                    const std::vector<pir::OpResult> &rhs);
+                    const std::vector<Value> &lhs,
+                    const std::vector<Value> &rhs);
   std::vector<pir::Value> getLhs();
   std::vector<pir::Value> getRhs();
   void Verify() {}
@@ -111,15 +111,14 @@ class IR_API TieShapeOp : public Op<TieShapeOp> {
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const pir::OpResult &input);
+                    pir::Value input);
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const pir::OpResult &input,
-                    const std::vector<pir::OpResult> &dims);
-
-  pir::Value getValue();
-  std::vector<pir::Value> getShapeDimIndexes();
+                    Value input,
+                    const std::vector<Value> &dims);
+  Value getValue();
+  std::vector<Value> getShapeDimIndexes();
   void Verify() {}
 };
 
@@ -147,15 +146,15 @@ class IR_API TensorDimOp : public Op<TensorDimOp> {
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const pir::OpResult &source,
-                    const pir::OpResult &index);
+                    Value source,
+                    Value index);
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const pir::OpResult &source,
+                    Value source,
                     int64_t index);
-  pir::Value getIndex();
-  pir::Value getSource();
-  pir::OpResult out() { return result(0); }
+  Value getIndex();
+  Value getSource();
+  OpResult out() { return result(0); }
   void Verify() {}
 };
 
