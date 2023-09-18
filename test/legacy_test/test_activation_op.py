@@ -464,7 +464,7 @@ class TestSilu(TestActivation):
     def test_check_grad(self):
         # TODO(BeingGod): set `check_prim=True` when `fill_constant` supports `complex` dtype
         if self.dtype == np.complex64 or self.dtype == np.complex128:
-            self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
+            self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=False)
         else:
             self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 

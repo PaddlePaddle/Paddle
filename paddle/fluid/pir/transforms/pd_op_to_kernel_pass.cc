@@ -720,7 +720,7 @@ void HandleForSpecialOp(
     HandleForIfOp(place, op_item, block, ctx, map_op_pair, map_value_pair);
     return;
   }
-  std::vector<pir::OpResult> vec_inputs;
+  std::vector<pir::Value> vec_inputs;
   std::vector<pir::Type> op_output_types;
   if (op_item->name() == "builtin.combine") {
     // Copy op inputs
@@ -756,8 +756,7 @@ void HandleForSpecialOp(
 
         if (new_in.type().isa<pir::VectorType>()) {
           auto vec_types = new_in.type().dyn_cast<pir::VectorType>().data();
-          auto index = op_item->attributes()
-                           .at("index")
+          auto index = op_item->attribute("index")
                            .dyn_cast<pir::Int32Attribute>()
                            .data();
           op_output_types.push_back(vec_types[index]);
@@ -901,7 +900,7 @@ std::vector<pir::Type> BuildOpOutputType(pir::Operation* op_item,
   return op_output_types;
 }
 
-std::vector<pir::OpResult> BuildOpInputList(
+std::vector<pir::Value> BuildOpInputList(
     pir::Operation* op_item,
     const std::string& kernel_fn_str,
     const phi::KernelKey& kernel_key,
@@ -915,7 +914,7 @@ std::vector<pir::OpResult> BuildOpInputList(
     return {};
   }
 
-  std::vector<pir::OpResult> vec_inputs;
+  std::vector<pir::Value> vec_inputs;
 
   for (size_t i = 0; i < op_item->num_operands(); ++i) {
     auto cur_in = op_item->operand_source(i);
@@ -983,7 +982,7 @@ std::vector<pir::OpResult> BuildOpInputList(
         auto pre_define_op = cur_in.GetDefiningOp();
 
         if (pre_define_op->name() == "builtin.combine") {
-          std::vector<pir::OpResult> inner_inputs;
+          std::vector<pir::Value> inner_inputs;
           std::vector<pir::Type> types_in_vec;
           bool is_trans = false;
           for (size_t j = 0; j < pre_define_op->num_operands(); ++j) {
@@ -1157,7 +1156,7 @@ std::string GetKernelFnStr(const OpYamlInfoParser* op_info_parser,
 pir::Operation* BuildPhiKernelOp(
     const std::string& kernel_fn_str,
     const phi::KernelKey& kernel_key,
-    const std::vector<pir::OpResult>& vec_inputs,
+    const std::vector<pir::Value>& vec_inputs,
     const std::vector<pir::Type>& op_output_types,
     pir::Operation* op_item,
     pir::Block* block,

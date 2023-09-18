@@ -1328,7 +1328,7 @@ void NewIRInterpreter::SolvePersisableVarNames() {
       auto is_persisables = defining_op->attribute(kAttrIsPersisable)
                                 .dyn_cast<::pir::ArrayAttribute>()
                                 .AsVector();
-      if (is_persisables[result.GetResultIndex()]
+      if (is_persisables[result.index()]
               .dyn_cast<::pir::BoolAttribute>()
               .data()) {
         VLOG(6) << "parameter_var_names_ include: " << var_name;

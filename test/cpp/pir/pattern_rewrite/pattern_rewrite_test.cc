@@ -583,7 +583,7 @@ void Conv2dFusionOpTest::Build(pir::Builder &builder,
   VLOG(4) << "Builder construction inputs";
   std::vector<pir::OpResult> argument_inputs = {
       input_, filter_, bias_, residual_};
-  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInputs(argument_inputs.begin(), argument_inputs.end());
 
   VLOG(4) << "Builder construction attributes";
   std::vector<pir::Attribute> vec_strides;

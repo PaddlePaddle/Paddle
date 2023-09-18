@@ -35,7 +35,7 @@ void PassStopGradientsDefaultly(OperationArgument &argument) {  // NOLINT
                        .dyn_cast<pir::ArrayAttribute>()
                        .AsVector();
       input_stop_gradient =
-          attrs[input.GetResultIndex()].dyn_cast<pir::BoolAttribute>().data();
+          attrs[input.index()].dyn_cast<pir::BoolAttribute>().data();
     }
     if (!input_stop_gradient) {
       stop_gradient = false;
@@ -70,7 +70,7 @@ ModuleOp ModuleOp::Create(IrContext *context, Program *pointer) {
   OperationArgument argument(info);
   argument.num_regions = 1;
   argument.AddAttribute("program", PointerAttribute::get(context, pointer));
-  Operation *op = Operation::Create(std::move(argument));
+  Operation *op = Operation::Create(argument);
   op->region(0).emplace_back();
   return ModuleOp(op);
 }
@@ -140,7 +140,7 @@ void SetParameterOp::Build(Builder &builder,             // NOLINT
                            OperationArgument &argument,  // NOLINT
                            OpResult parameter,
                            const std::string &name) {
-  argument.AddOperand(parameter);
+  argument.AddInput(parameter);
   argument.AddAttribute(attributes_name[0],
                         pir::StrAttribute::get(builder.ir_context(), name));
 }
@@ -317,10 +317,9 @@ void SplitOp::PassStopGradients(OperationArgument &argument) {
           auto attrs = oprand_defining_op->attribute(kStopGradientAttrName)
                            .dyn_cast<pir::ArrayAttribute>()
                            .AsVector();
-          defaut_stop_gradients[i] =
-              attrs[value.dyn_cast<OpResult>().GetResultIndex()]
-                  .dyn_cast<pir::BoolAttribute>()
-                  .data();
+          defaut_stop_gradients[i] = attrs[value.dyn_cast<OpResult>().index()]
+                                         .dyn_cast<pir::BoolAttribute>()
+                                         .data();
         }
       }
     } else if (defining_op &&
