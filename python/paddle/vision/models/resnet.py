@@ -438,7 +438,7 @@ def resnet50(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_models_ResNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of ResNet 50-layer model.
