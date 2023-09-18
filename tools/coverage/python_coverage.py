@@ -27,6 +27,7 @@ sources = root.findall('sources/source')
 
 source = sources[-1].text
 
+
 for clazz in root.findall('packages/package/classes/class'):
     clazz_filename = clazz.attrib.get('filename')
     clazz_filename = path.join(source, clazz_filename)
