@@ -69,7 +69,7 @@ select = [
     "PLC3002",
     "PLR0206",
     "PLR0402",
-    # "PLR1701",
+    "PLR1701",
     # "PLR1711",  # Confirmation required
     "PLR1722",
     "PLW3301",  # Confirmation required

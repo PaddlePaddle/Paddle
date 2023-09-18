@@ -45,7 +45,7 @@ class LayerHelper(LayerHelperBase):
     def multiple_input(self, input_param_name='input'):
         inputs = self.kwargs.get(input_param_name, [])
         ret = []
-        if isinstance(inputs, list) or isinstance(inputs, tuple):
+        if isinstance(inputs, (list, tuple)):
             for inp in inputs:
                 ret.append(self.to_variable(inp))
         else:
