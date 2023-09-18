@@ -18,6 +18,7 @@
 
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 #include "paddle/cinn/common/context.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/visualize_helper.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
 #ifdef CINN_WITH_CUDA
@@ -39,6 +40,7 @@ PD_DECLARE_string(cinn_dump_group_instruction);
 namespace cinn {
 namespace backends {
 using ir::Module;
+using CompilationStatus = hlir::framework::CompilationStatus;
 
 static constexpr int DebugLogMaxLen = 30000;
 
@@ -88,9 +90,13 @@ void CompilationInfoDumper::DumpLoweredFunc() {
   if (FLAGS_cinn_dump_group_lowered_func.empty()) {
     return;
   }
-  for (int idx = 0; idx < info_.lowered_funcs.size(); ++idx) {
+  for (int idx = 0; idx < info_.Size(); ++idx) {
     std::stringstream content;
-    content << info_.lowered_funcs[idx].front();
+    if (info_.Status(idx) > CompilationStatus::LOWERING_FAIL) {
+      content << info_.LoweredFuncs(idx).front();
+    } else {
+      content << "[No lowered func generated]\n\n" << info_.Message(idx);
+    }
     Dump(FLAGS_cinn_dump_group_lowered_func,
          idx,
          "lowered_function.txt",
@@ -102,11 +108,14 @@ void CompilationInfoDumper::DumpSourceCode() {
   if (FLAGS_cinn_dump_group_source_code.empty()) {
     return;
   }
-  for (int idx = 0; idx < info_.source_codes.size(); ++idx) {
-    Dump(FLAGS_cinn_dump_group_source_code,
-         idx,
-         "source_code.cu",
-         info_.source_codes[idx]);
+  for (int idx = 0; idx < info_.Size(); ++idx) {
+    std::string dump_str;
+    if (info_.Status(idx) > CompilationStatus::CODEGEN_JIT_FAIL) {
+      dump_str = info_.SourceCode(idx);
+    } else {
+      dump_str = "[No source code generated]\n\n" + info_.Message(idx);
+    }
+    Dump(FLAGS_cinn_dump_group_source_code, idx, "source_code.cu", dump_str);
   }
 }
 
@@ -114,11 +123,14 @@ void CompilationInfoDumper::DumpPtxCode() {
   if (FLAGS_cinn_dump_group_ptx.empty()) {
     return;
   }
-  for (int idx = 0; idx < info_.source_ptxs.size(); ++idx) {
-    Dump(FLAGS_cinn_dump_group_ptx,
-         idx,
-         "source_ptx.ptx",
-         info_.source_ptxs[idx]);
+  for (int idx = 0; idx < info_.Size(); ++idx) {
+    std::string dump_str;
+    if (info_.Status(idx) > CompilationStatus::CODEGEN_JIT_FAIL) {
+      dump_str = info_.SourcePtx(idx);
+    } else {
+      dump_str = "[No source ptxs generated]\n\n" + info_.Message(idx);
+    }
+    Dump(FLAGS_cinn_dump_group_ptx, idx, "source_ptx.ptx", dump_str);
   }
 }
 
@@ -126,11 +138,14 @@ void CompilationInfoDumper::DumpInstruction() {
   if (FLAGS_cinn_dump_group_instruction.empty()) {
     return;
   }
-  for (int idx = 0; idx < info_.instructions.size(); ++idx) {
-    Dump(FLAGS_cinn_dump_group_instruction,
-         idx,
-         "instruction.txt",
-         info_.instructions[idx]->DumpInstruction());
+  for (int idx = 0; idx < info_.RuntimeInstructions().size(); ++idx) {
+    std::string dump_str;
+    if (info_.RuntimeInstruction(idx).get() != nullptr) {
+      dump_str = info_.RuntimeInstruction(idx)->DumpInstruction();
+    } else {
+      dump_str = "[No instruction generated]\n\n" + info_.Message(idx);
+    }
+    Dump(FLAGS_cinn_dump_group_instruction, idx, "instruction.txt", dump_str);
   }
 }
 

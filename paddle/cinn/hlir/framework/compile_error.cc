@@ -12,28 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/ir/schedule/ir_schedule_error.h"
-#include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/hlir/framework/compile_error.h"
+#include "paddle/cinn/utils/enum_string.h"
 
 namespace cinn {
-namespace ir {
+namespace hlir {
+namespace framework {
 
-std::string IRScheduleErrorHandler::GeneralErrorMessage() const {
+std::string CompileErrorHandler::GeneralErrorMessage() const {
   std::ostringstream os;
-  os << "[IRScheduleError] An error occurred in the scheduel primitive < "
-     << this->primitive_ << " >. " << std::endl;
-  os << indent_str_ << "[Error info] " << this->err_msg_;
+  os << "[CompileError] An error occurred during compilation with the error "
+        "code: "
+     << utils::Enum2String(status_) << std::endl;
+  os << "(at " << file_ << " : " << line_ << ")" << std::endl;
+  os << indent_str_ << "[Error info] " << this->err_msg_ << std::endl;
   return os.str();
 }
 
-std::string IRScheduleErrorHandler::DetailedErrorMessage() const {
+std::string CompileErrorHandler::DetailedErrorMessage() const {
   std::ostringstream os;
   os << GeneralErrorMessage();
-  os << indent_str_ << "[Expr info] The Expr of current schedule is:\n"
-     << this->module_expr_.GetExprs() << std::endl;
+  os << indent_str_ << "[Detail info] " << detail_info_ << std::endl;
   return os.str();
 }
 
-}  // namespace ir
+}  // namespace framework
+}  // namespace hlir
 }  // namespace cinn
