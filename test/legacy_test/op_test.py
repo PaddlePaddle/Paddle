@@ -3485,6 +3485,11 @@ class OpTest(unittest.TestCase):
 
         return res
 
+    def _find_var_in_pir(self, output_vars, name):
+        if name in output_vars:
+            return output_vars[name]
+        raise AssertionError(name, " not in outputs:", output_vars.keys())
+
     def _get_ir_gradient(
         self,
         inputs_to_check,
@@ -3571,7 +3576,12 @@ class OpTest(unittest.TestCase):
                             paddle.base.core.DataType.FLOAT32,
                         )
 
-                outputs_valid = outputs
+                outputs_valid = {}
+                for output_name in output_names:
+                    outputs_valid[output_name] = self._find_var_in_pir(
+                        outputs, output_name
+                    )
+
                 loss_inputs = []
                 for input_name in inputs_to_check:
                     loss_inputs.append(inputs_dict[input_name])
