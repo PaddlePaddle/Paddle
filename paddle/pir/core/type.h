@@ -79,6 +79,7 @@ class IR_API Type {
   const void *AsOpaquePointer() const {
     return static_cast<const void *>(storage_);
   }
+
   static Type RecoverFromOpaquePointer(const void *pointer) {
     return Type(reinterpret_cast<Storage *>(const_cast<void *>(pointer)));
   }
@@ -165,8 +166,12 @@ class TypeInterfaceBase : public pir::Type {
   static TypeId GetInterfaceId() { return TypeId::get<ConcreteInterface>(); }
 
   static ConcreteInterface dyn_cast(Type type) {
-    return ConcreteInterface(
-        type, type.abstract_type().GetInterfaceImpl<ConcreteInterface>());
+    if (type &&
+        type.abstract_type().HasInterface(TypeId::get<ConcreteInterface>())) {
+      return ConcreteInterface(
+          type, type.abstract_type().GetInterfaceImpl<ConcreteInterface>());
+    }
+    return ConcreteInterface(Type(), nullptr);
   }
 };
 
