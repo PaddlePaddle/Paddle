@@ -1241,7 +1241,7 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     if (!instr_node->IsArtificial()) {
       instr_node->Run();
       VLOG(4) << __func__ << " OP id:" << instr_node->Id()
-              << " name:" << instr_node->Operation()->name() << " type:"
+              << " name:" << instr_node->Name() << " type:"
               << (instr_node->KernelType() == OpFuncType::kCpuSync
                       ? "kCpuSync"
                       : (instr_node->KernelType() == OpFuncType::kGpuSync
