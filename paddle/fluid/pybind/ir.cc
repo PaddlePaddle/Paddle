@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/ir.h"
-
 #include <Python.h>
 #include <algorithm>
 #include <memory>
@@ -23,6 +22,7 @@
 #include <utility>
 
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
+#include "paddle/pir/core/builtin_op.h"
 
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
@@ -454,7 +454,7 @@ void BindOpResult(py::module *m) {
       .def_property_readonly(
           "name",
           [](OpResult &self) {
-            if (self.GetDefiningOp()->name() == "builtin.get_parameter") {
+            if (self.GetDefiningOp()->isa<::pir::GetParameterOp>()) {
               auto param_name = self.GetDefiningOp()
                                     ->attributes()
                                     .at("parameter_name")

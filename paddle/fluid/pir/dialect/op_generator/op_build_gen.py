@@ -184,7 +184,7 @@ def GenBuildInserFullForMutableAttribute(
 
 def GenBuildInputs(op_input_name_list, op_mutable_attribute_name_list):
     BUILD_INPUT_TEMPLATE = """  std::vector<pir::OpResult> argument_inputs = {{{inputs_args}}};
-  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInputs(argument_inputs.begin(), argument_inputs.end());
 """
     build_input_str = '  VLOG(4) << "Builder construction inputs";\n'
     input_name_list = op_input_name_list + op_mutable_attribute_name_list
