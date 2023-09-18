@@ -91,7 +91,6 @@ class OpCreatorCodeGen:
                 continue
             for phi_op_name in op_info_item.op_phi_name:
                 ir_op_name = self.dialect_name + "." + phi_op_name
-                print("###### ", ir_op_name)
                 params_no_mutable_attr = []
                 for i in range(len(op_info_item.input_name_list)):
                     params_no_mutable_attr.append(
