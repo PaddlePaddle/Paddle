@@ -358,6 +358,7 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     const paddle::framework::BlockDesc *backward_global_block,
     const std::vector<std::string> output_names,
     const std::vector<paddle::Tensor> &x,
+    const std::vector<std::string> &x_names,
     const std::vector<paddle::Tensor> &params,
     const phi::Place &place) {
   auto ir_ctx = ::pir::IrContext::Instance();
@@ -378,8 +379,9 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
 
   // add data op to program
   auto *block = local_program.MutableBlock(0);
-  for (auto &in_t : x) {
-    auto name = in_t.name();
+  for (size_t i = 0; i < x.size(); ++i) {
+    auto &name = x_names[i];
+    auto &in_t = x[i];
     if (block->FindVarRecursive(name) == nullptr) {
       continue;
     }
