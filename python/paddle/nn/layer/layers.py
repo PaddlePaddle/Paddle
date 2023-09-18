@@ -71,8 +71,6 @@ def record_program_ops_pre_hook(layer, inputs):
                 )
             )
 
-    return None
-
 
 def set_op_customized_attrs_post_hook(layer, inputs, outputs):
     """
@@ -94,8 +92,6 @@ def set_op_customized_attrs_post_hook(layer, inputs, outputs):
         # remove pre-hook and post-hook
         for hook_helper in layer._op_recorder.hooks:
             hook_helper.remove()
-
-    return None
 
 
 def _scope_dist2single(dist_scope):

@@ -980,7 +980,6 @@ class ShardingOptimizer(MetaOptimizerBase):
                         ].desc.input_arg_names(),
                     )
                 )
-        return
 
     def _prune_main_program(self, block, shard, rings):
         """
@@ -1096,7 +1095,6 @@ class ShardingOptimizer(MetaOptimizerBase):
                         reserved_x.append(var_name)
                 op.desc.set_input('X', reserved_x)
         block._sync_with_cpp()
-        return
 
     def _add_broadcast_allreduce(self, block):
         """
@@ -1664,8 +1662,6 @@ class ShardingOptimizer(MetaOptimizerBase):
         logger.info(f"pure dp group endpoints: {self.dp_group_endpoints}")
         logger.info(f"pure dp ring id: {self.dp_ring_id}")
         logger.info("#####" * 6)
-
-        return
 
     def _recreate_not_persist_param_as_var(self):
         def recreate_not_persist_param_as_var(program):

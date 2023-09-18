@@ -326,7 +326,6 @@ def _delete_keywords_from(node):
     full_args_name = full_args[0]
 
     node.keywords = [k for k in node.keywords if k.arg in full_args_name]
-    return
 
 
 def to_static_api(dygraph_class):
@@ -361,7 +360,6 @@ def _add_keywords_to(node, dygraph_api_name):
         for ast_keyword in node.keywords:
             if ast_keyword.arg == "input":
                 ast_keyword.arg = "x"
-    return
 
 
 def to_static_ast(node, class_node):
@@ -760,7 +758,6 @@ class IsControlFlowVisitor(gast.NodeVisitor):
     def _visit_If(self, node):
         assert isinstance(node, gast.If)
         self.visit(node.test)
-        return
 
     def _visit_For(self, node):
         assert isinstance(node, gast.For)
@@ -801,7 +798,6 @@ class IsControlFlowVisitor(gast.NodeVisitor):
         for child_node in gast.walk(node):
             if isinstance(child_node, (gast.Continue, gast.Break)):
                 self._visit_break_continue(child_node)
-        return
 
     def _visit_break_continue(self, node):
         assert isinstance(node, (gast.Break, gast.Continue))
