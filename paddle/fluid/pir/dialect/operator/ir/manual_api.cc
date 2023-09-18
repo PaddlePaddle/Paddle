@@ -32,7 +32,10 @@ std::vector<pir::OpResult> add_n_grad(std::vector<pir::Value> inputs,
                                       pir::Value out_grad) {
   std::vector<pir::OpResult> inputs_grad;
   for (size_t i = 0; i < inputs.size(); i++) {
-    inputs_grad.push_back(out_grad.dyn_cast<pir::OpResult>());
+    paddle::dialect::ScaleOp scale_op =
+        APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::ScaleOp>(
+            out_grad, 1.0, 0.0, true);
+    inputs_grad.push_back(scale_op.result(0));
   }
   return inputs_grad;
 }
