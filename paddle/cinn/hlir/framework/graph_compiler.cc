@@ -19,6 +19,7 @@
 #include <memory>
 #include <unordered_set>
 
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/backends/compiler.h"
 #include "paddle/cinn/common/context.h"
@@ -369,17 +370,11 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(
       all_arg_tensors.push_back(temp.as_tensor_ref());
     }
   }
-
-  poly::StageMap stages = C.back();
+  ast_gen_ius::TensorGroup tensor_group(all_arg_tensors);
   std::string func_name_prefix = "fn_";
-  auto funcs = lang::LowerVec(func_name_prefix + node_id,
-                              stages,
-                              all_arg_tensors,
-                              {},
-                              {},
-                              nullptr,
-                              target,
-                              true);
+
+  auto funcs = lang::LowerToAstVec(
+      func_name_prefix + node_id, all_arg_tensors, {&tensor_group}, target);
 
   std::vector<common::CINNValue> schedule_inputs;
   for (int i = 0; i < C.size() - 1; ++i) {
@@ -426,7 +421,7 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(
     optim::OptimizeExprGPU(&(funcs_after_schedule[i]->body));
 #endif
     auto temp_buffers = lang::GetTempBuffers(
-        all_arg_tensors, stages, funcs_after_schedule[i]->body);
+        all_arg_tensors, tensor_group, funcs_after_schedule[i]->body);
     funcs_after_schedule[i]->temp_bufs = temp_buffers;
     funcs_after_schedule[i] =
         ir::_LoweredFunc_::Make(funcs_after_schedule[i]->name,
