@@ -50,7 +50,7 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.x_dist_tensor_spec.set_dims_mapping([0, -1])
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
         result_dist_attrs = self.binary_rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -63,7 +63,7 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.x_dist_tensor_spec.set_dims_mapping([0, -1])
         self.y_dist_tensor_spec.set_dims_mapping([-1, 0])
         result_dist_attrs = self.binary_rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -77,7 +77,7 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
 
         result_dist_attrs = self.binary_rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -90,7 +90,7 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.x_dist_tensor_spec.set_dims_mapping([-1, 0])
 
         result_dist_attrs = self.unary_rule.infer_forward(
-            [self.x_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -107,7 +107,7 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.y_dist_tensor_spec.set_dims_mapping([-1])
 
         resulted_dist_attrs = self.binary_rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec
         )
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
@@ -125,7 +125,7 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.y_dist_tensor_spec.set_dims_mapping([-1])
 
         resulted_dist_attrs = self.binary_rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec
         )
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
@@ -139,7 +139,7 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.y_dist_tensor_spec.set_dims_mapping([-1])
 
         resulted_dist_attrs = self.binary_rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec
         )
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
@@ -152,7 +152,7 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.x_dist_tensor_spec.set_dims_mapping([-1, -1, -1])
         self.y_dist_tensor_spec.set_dims_mapping([0])
         resulted_dist_attrs = self.binary_rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec
         )
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
@@ -168,7 +168,7 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
 
         resulted_dist_attrs = self.binary_rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec
         )
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
@@ -184,7 +184,7 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1, -1])
 
         resulted_dist_attrs = self.binary_rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec
         )
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
@@ -202,7 +202,7 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.y_dist_tensor_spec.set_dims_mapping([0, -1, -1])
 
         resulted_dist_attrs = self.binary_rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec
         )
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
@@ -227,7 +227,7 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1, -1])
 
         resulted_dist_attrs = self.binary_rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec
         )
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
@@ -244,7 +244,7 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.x_dist_tensor_spec.set_dims_mapping([0, -1, -1])
         self.y_dist_tensor_spec.set_dims_mapping([-1, 1, 0])
         resulted_dist_attrs = self.binary_rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec
         )
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
@@ -265,7 +265,7 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.y_dist_tensor_spec.set_dims_mapping([1])
 
         resulted_dist_attrs = self.binary_rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec
         )
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
@@ -283,7 +283,7 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.y_dist_tensor_spec.set_dims_mapping([0])
 
         resulted_dist_attrs = self.binary_rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec
         )
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
@@ -299,7 +299,7 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.y_dist_tensor_spec.set_dims_mapping([0, -1, 1])
 
         resulted_dist_attrs = self.binary_rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec
         )
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
@@ -316,9 +316,9 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         # [0, -1] --> [0, -1], [0, -1], [0, -1] (output --> inputs, output)
         self.out_dist_tensor_spec.set_dims_mapping([0, -1])
         result_dist_attrs = self.binary_rule.infer_backward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            self.attrs,
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.out_dist_tensor_spec,
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -331,9 +331,9 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.out_dist_tensor_spec.set_dims_mapping([-1, -1])
 
         result_dist_attrs = self.binary_rule.infer_backward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            self.attrs,
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.out_dist_tensor_spec,
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -346,7 +346,7 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.out_dist_tensor_spec.set_dims_mapping([-1, 0])
 
         result_dist_attrs = self.unary_rule.infer_backward(
-            [self.x_dist_tensor_spec], [self.out_dist_tensor_spec], self.attrs
+            self.x_dist_tensor_spec, self.out_dist_tensor_spec
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -363,9 +363,9 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.out_dist_tensor_spec.set_dims_mapping([0, -1, -1])
 
         resulted_dist_attrs = self.binary_rule.infer_backward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            self.attrs,
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.out_dist_tensor_spec,
         )
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
@@ -382,9 +382,9 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.out_dist_tensor_spec.set_dims_mapping([-1, 0, -1])
 
         resulted_dist_attrs = self.binary_rule.infer_backward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            self.attrs,
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.out_dist_tensor_spec,
         )
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
@@ -397,9 +397,9 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.out_dist_tensor_spec.set_dims_mapping([-1, -1, 0])
 
         resulted_dist_attrs = self.binary_rule.infer_backward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            self.attrs,
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.out_dist_tensor_spec,
         )
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
@@ -415,9 +415,9 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.out_dist_tensor_spec.set_dims_mapping([-1, 0, -1])
 
         resulted_dist_attrs = self.binary_rule.infer_backward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            self.attrs,
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.out_dist_tensor_spec,
         )
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
@@ -433,9 +433,9 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.out_dist_tensor_spec.set_dims_mapping([0, -1, -1, -1])
 
         resulted_dist_attrs = self.binary_rule.infer_backward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            self.attrs,
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.out_dist_tensor_spec,
         )
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
@@ -452,9 +452,9 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.out_dist_tensor_spec.set_dims_mapping([-1, 0, -1, -1])
 
         resulted_dist_attrs = self.binary_rule.infer_backward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            self.attrs,
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.out_dist_tensor_spec,
         )
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
@@ -479,9 +479,9 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.out_dist_tensor_spec.set_dims_mapping([0, 1, -1])
 
         resulted_dist_attrs = self.binary_rule.infer_backward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            self.attrs,
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.out_dist_tensor_spec,
         )
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
@@ -506,9 +506,9 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.out_dist_tensor_spec.set_dims_mapping([0, -1, 1])
 
         resulted_dist_attrs = self.binary_rule.infer_backward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            self.attrs,
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.out_dist_tensor_spec,
         )
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
@@ -525,9 +525,9 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.out_dist_tensor_spec.set_dims_mapping([0, 1, -1])
 
         resulted_dist_attrs = self.binary_rule.infer_backward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            self.attrs,
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.out_dist_tensor_spec,
         )
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
@@ -544,9 +544,9 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.out_dist_tensor_spec.set_dims_mapping([-1, 0, -1, 1])
 
         resulted_dist_attrs = self.binary_rule.infer_backward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
-            [self.out_dist_tensor_spec],
-            self.attrs,
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.out_dist_tensor_spec,
         )
         infered_input_dist_attrs = resulted_dist_attrs[0]
         infered_output_dist_attrs = resulted_dist_attrs[1]
