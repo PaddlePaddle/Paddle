@@ -150,6 +150,7 @@ void AddNOp::Build(pir::Builder &builder,             // NOLINT
       dense_out.offset());
   argument_outputs.push_back(out_dense_tensor_type);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 void AddNOp::InferMeta(phi::InferMetaContext *infer_meta) {
