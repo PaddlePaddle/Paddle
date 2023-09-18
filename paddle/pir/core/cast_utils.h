@@ -126,7 +126,7 @@ struct cast_impl {
 };
 
 template <typename To, typename From>
-[[nodiscard]] inline decltype(auto) cast(const From &Val) {
+inline decltype(auto) cast(const From &Val) {
   if (!isa<To>(Val)) {
     throw("cast<To>() argument of incompatible type!");
   }
@@ -134,7 +134,7 @@ template <typename To, typename From>
 }
 
 template <typename To, typename From>
-[[nodiscard]] inline decltype(auto) cast(From &Val) {  // NOLINT
+inline decltype(auto) cast(From &Val) {  // NOLINT
   if (!isa<To>(Val)) {
     throw("cast<To>() argument of incompatible type!");
   }
@@ -142,7 +142,7 @@ template <typename To, typename From>
 }
 
 template <typename To, typename From>
-[[nodiscard]] inline decltype(auto) cast(From *Val) {
+inline decltype(auto) cast(From *Val) {
   if (!isa<To>(Val)) {
     throw("cast<To>() argument of incompatible type!");
   }
@@ -150,7 +150,7 @@ template <typename To, typename From>
 }
 
 template <typename To, typename From>
-[[nodiscard]] inline decltype(auto) cast(std::unique_ptr<From> &&Val) {
+inline decltype(auto) cast(std::unique_ptr<From> &&Val) {
   if (!isa<To>(Val)) {
     throw("cast<To>() argument of incompatible type!");
   }
@@ -161,22 +161,22 @@ template <typename To, typename From>
 /// \brief dyn_cast From to To.
 ///
 template <typename To, typename From>
-[[nodiscard]] inline decltype(auto) dyn_cast(const From &Val) {
+inline decltype(auto) dyn_cast(const From &Val) {
   return isa<To>(Val) ? cast<To>(Val) : nullptr;
 }
 
 template <typename To, typename From>
-[[nodiscard]] inline decltype(auto) dyn_cast(From &Val) {  // NOLINT
+inline decltype(auto) dyn_cast(From &Val) {  // NOLINT
   return isa<To>(Val) ? cast<To>(Val) : nullptr;
 }
 
 template <typename To, typename From>
-[[nodiscard]] inline decltype(auto) dyn_cast(From *Val) {
+inline decltype(auto) dyn_cast(From *Val) {
   return isa<To>(Val) ? cast<To>(Val) : nullptr;
 }
 
 template <typename To, typename From>
-[[nodiscard]] inline decltype(auto) dyn_cast(std::unique_ptr<From> &&Val) {
+inline decltype(auto) dyn_cast(std::unique_ptr<From> &&Val) {
   return isa<To>(Val) ? cast<To>(std::forward<std::unique_ptr<From> &&>(Val))
                       : nullptr;
 }
