@@ -79,7 +79,8 @@ std::unordered_map<Variable, Value> InferValues(
 }
 
 std::unordered_map<Variable, Value> InferValues(
-    const InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>,
+    const InMsgBox2OutMsgBox<tOut<FakeOpPlaceHolder>,
+                             tOut<tOutMsgBox<OpArgIndexes>>,
                              tIn<tInMsgBox<OpArgIndexes>>>&
         in_msg_box2out_msg_box,
     IndexExprInferContext* ctx) {
@@ -89,7 +90,7 @@ std::unordered_map<Variable, Value> InferValues(
       out_box_indexes.value().value().tuple();
   const auto& [in_box_in_indexes, in_box_out_indexes] =
       in_box_indexes.value().value().tuple();
-  std::unordered_map<Variable, Value> ret{{op_placeholder, Ok{}}};
+  std::unordered_map<Variable, Value> ret{{op_placeholder.value(), Ok{}}};
   CHECK_EQ(out_box_in_indexes.value()->size(),
            in_box_in_indexes.value()->size());
   CHECK_EQ(out_box_out_indexes.value()->size(),

@@ -44,7 +44,7 @@ std::unordered_set<AnchorIndex> InitCandidateAnchorIndex(
   return ret;
 }
 
-std::function<const OpStmt&(const FakeOpPlaceHolder&)>
+std::function<const OpStmt*(const FakeOpPlaceHolder&)>
 MakeGetterOpStmt4OpPlaceHolder(const EquationCtx4OpStmtT& EquationCtx4OpStmt,
                                const List<OpStmt>& op_stmts) {
   using FakeOpPlaceHolder2OpStmt =
@@ -61,14 +61,14 @@ MakeGetterOpStmt4OpPlaceHolder(const EquationCtx4OpStmtT& EquationCtx4OpStmt,
 
   return [fake_op_placeholder2op_stmt](
              const FakeOpPlaceHolder& fake_op_placeholder) {
-    return fake_op_placeholder2op_stmt->at(fake_op_placeholder);
+    return &fake_op_placeholder2op_stmt->at(fake_op_placeholder);
   };
 }
 
 std::pair<std::optional<OpStmt>, List<OpStmt>> FindVisitedOpStmts(
     const AnchorIndex& anchor_index,
     const GraphView& equation_graph,
-    const std::function<const OpStmt&(const FakeOpPlaceHolder&)>&
+    const std::function<const OpStmt*(const FakeOpPlaceHolder&)>&
         OpStmt4OpPlaceHolder,
     const EquationCtx4OpStmtT& EquationCtx4OpStmt) {
   std::optional<OpStmt> opt_anchor_op_stmt{std::nullopt};
@@ -85,7 +85,7 @@ std::pair<std::optional<OpStmt>, List<OpStmt>> FindVisitedOpStmts(
   const auto& DoEach = [&](const Variable variable) {
     if (variable.Has<FakeOpPlaceHolder>()) {
       const auto& fake_op_placeholder = variable.Get<FakeOpPlaceHolder>();
-      const auto& op_stmt = OpStmt4OpPlaceHolder(fake_op_placeholder);
+      const auto& op_stmt = *OpStmt4OpPlaceHolder(fake_op_placeholder);
       visited_op_stmts->emplace_back(op_stmt);
       TrySetAnchorOpStmt(op_stmt);
     }
@@ -324,7 +324,8 @@ std::unordered_map<AnchorIndex, AnchorGroup> PartitionOpStmtsIntoAnchorGroups(
       MakeGlobalEquationGraphViewForPartition(EquationCtx4OpStmt, op_stmts);
 
   std::unordered_set<OpStmt> all_visited_op_stmts{};
-
+  VLOG(1) << "candidate_anchor_indexes->size() = "
+          << candidate_anchor_indexes->size();
   while (!candidate_anchor_indexes->empty()) {
     AnchorIndex anchor_tensor =
         PickThenEraseAnchorIndex(candidate_anchor_indexes);

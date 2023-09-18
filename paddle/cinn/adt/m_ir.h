@@ -50,9 +50,9 @@ using MapIrList = List<MapIr>;
 MapIrList GenerateMapIrListForLoopFuse(
     const List<OpStmt>& op_stmts,
     const LoopIterators& loop_iters,
-    const std::function<const LoopDescriptor&(const Iterator&)>&
+    const std::function<const LoopDescriptor*(const Iterator&)>&
         GetLoopDescriptor,
-    const std::function<const TensorIndexExpr&(const Tensor&)>&
+    const std::function<const TensorIndexExpr*(const Tensor&)>&
         TensorIndexExpr4Tensor);
 
 }  // namespace cinn::adt

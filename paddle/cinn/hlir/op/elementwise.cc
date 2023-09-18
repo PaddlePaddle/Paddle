@@ -17,6 +17,7 @@
 #include <iostream>
 
 #include "absl/types/optional.h"
+#include "paddle/cinn/adt/naive_op_equation_context.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -411,6 +412,11 @@ std::vector<Type> InferDtypeForFillConstant(
             << common::Type2Str(out_type);
   }
   return {out_type};
+}
+
+void GenerateEquationsForFillConstant(
+    cinn::adt::config::NaiveOpEquationContext *ctx) {
+  // Do nothing
 }
 
 std::vector<std::vector<std::string>> InferLayoutForFillConstant(
@@ -1108,6 +1114,9 @@ CINN_REGISTER_HELPER(elementwise_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForFillConstant))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForFillConstant))
+      .set_attr(
+          "generate_equations",
+          MakeOpFunction(cinn::hlir::op::GenerateEquationsForFillConstant))
 #ifndef CINN_WITH_CUDA
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForFillConstant))

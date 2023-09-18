@@ -168,10 +168,12 @@ class Graph final : public std::enable_shared_from_this<Graph> {
         in_variables.emplace(Variable{in_index.value()});
       },
       [&](const InMsgBox2OutMsgBox<
+                  tOut<FakeOpPlaceHolder>,
                   tOut<tOutMsgBox<OpArgIndexes>>,
                   tIn<tInMsgBox<OpArgIndexes>>>& in_msg_box2out_msg_box) {
-        const auto& [_, out_box_indexes, in_box_indexes] =
+        const auto& [op_placeholder, out_box_indexes, in_box_indexes] =
             in_msg_box2out_msg_box.tuple();
+        out_variables.emplace(Variable{op_placeholder.value()});
         const auto& [out_box_in_indexes, out_box_out_indexes] =
             out_box_indexes.value().value().tuple();
         const auto& [in_box_in_indexes, in_box_out_indexes] =

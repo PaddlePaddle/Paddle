@@ -34,7 +34,7 @@ namespace cinn::adt {
 namespace {
 
 using LoopDescriptor4IterVarT =
-    std::function<const LoopDescriptor&(const Iterator&)>;
+    std::function<const LoopDescriptor*(const Iterator&)>;
 
 using AnchorTensor = Variable;
 using FakeOpPlaceHolders = List<FakeOpPlaceHolder>;
@@ -85,6 +85,7 @@ void VisitEachOpStmt(
     const DoEachT& DoEach) {
   for (const auto* op : group->nodes) {
     // Tuple<Op, In<List<Arg>>, Out<List<Arg>>>
+    VLOG(1) << "MapExpr VisitEachOpStmt begin() " << op->id();
     DoEach(OpStmt{MakeOp(op),
                   MakeOpStmtInputList(op, group->graph_),
                   MakeOpStmtOutputList(op, group->graph_)});
@@ -173,7 +174,7 @@ std::unordered_map<Variable, const Value> MakeSdIterator2LoopDescriptor(
   return ret;
 }
 
-std::function<const TensorIndexExpr&(const Tensor&)> MakeGetterTensorIndexExpr(
+std::function<const TensorIndexExpr*(const Tensor&)> MakeGetterTensorIndexExpr(
     const std::shared_ptr<IGroup>& igroup,
     const GraphView& sd_equation_graph_view,
     const ScheduleDescriptor& sd) {
@@ -191,7 +192,7 @@ std::function<const TensorIndexExpr&(const Tensor&)> MakeGetterTensorIndexExpr(
   return [ctx, igroup](const Tensor& tensor) {
     // All indexes of same tensor have the same Value.
     const auto index = igroup->GetIndexes(tensor).at(0);
-    return ctx->GetValue(index);
+    return &ctx->GetValue(index);
   };
 }
 
@@ -203,7 +204,7 @@ LoopDescriptor4IterVarT MakeGetterLoopDescriptor4IterVar(
   for (std::size_t i = 0; i < loop_iters->size(); ++i) {
     CHECK(sd_iter2sd->emplace(loop_iters->at(i), sd->at(i)).second);
   }
-  return [sd_iter2sd](const auto& sd_iter) { return sd_iter2sd->at(sd_iter); };
+  return [sd_iter2sd](const auto& sd_iter) { return &sd_iter2sd->at(sd_iter); };
 }
 
 using LoopIteratorsAndMapIrList = std::pair<LoopIterators, MapIrList>;
@@ -315,7 +316,7 @@ ScheduleDescriptor MakeScheduleDescriptor(
     const LoopDescriptor4IterVarT& LoopDescriptor4IterVar) {
   ScheduleDescriptor ret{};
   for (const auto& loop_iterator : *first_loop_iters) {
-    ret->emplace_back(LoopDescriptor4IterVar(loop_iterator));
+    ret->emplace_back(*LoopDescriptor4IterVar(loop_iterator));
   }
   return ret;
 }
@@ -438,6 +439,7 @@ namespace {}  // namespace
 void TryGenerateMapExprFromGraph(
     const std::shared_ptr<cinn::hlir::framework::Graph>& graph) {
   if (!FLAGS_cinn_enable_map_expr) {
+    VLOG(1) << "FLAGS_cinn_enable_map_expr=false, break";
     return;
   }
   for (const auto& fusion_group : graph->fusion_groups) {

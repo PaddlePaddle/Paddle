@@ -255,7 +255,8 @@ class NaiveOpEquationContext final : public OpEquationContext {
   FakeOpPlaceHolder GenerateFakeOpPlaceholder() const {
     FakeOpPlaceHolder fake_op_placeholder{UniqueId::New()};
 
-    equations_->emplace_back(InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>,
+    equations_->emplace_back(InMsgBox2OutMsgBox<tOut<FakeOpPlaceHolder>,
+                                                tOut<tOutMsgBox<OpArgIndexes>>,
                                                 tIn<tInMsgBox<OpArgIndexes>>>{
         fake_op_placeholder,
         MakeOutMsgBoxOpArgIndexes(),

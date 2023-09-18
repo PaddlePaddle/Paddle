@@ -133,18 +133,19 @@ struct OpArgIndexes final : public Tuple<tIn<List<Index>>, tOut<List<Index>>> {
   using Tuple<tIn<List<Index>>, tOut<List<Index>>>::Tuple;
 };
 
-template <typename OutT, typename InT>
+template <typename FakeOpT, typename OutT, typename InT>
 struct InMsgBox2OutMsgBox;
 
-// InMsgBox2OutMsgBox (tOut (tOutMsgBox OpArgIndexes)) (tIn (tInMsgBox
-// OpArgIndexes))
+// InMsgBox2OutMsgBox (tOut FakeOpPlaceHolder) (tOut (tOutMsgBox OpArgIndexes))
+// (tIn (tInMsgBox OpArgIndexes))
 template <>
-struct InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>,
+struct InMsgBox2OutMsgBox<tOut<FakeOpPlaceHolder>,
+                          tOut<tOutMsgBox<OpArgIndexes>>,
                           tIn<tInMsgBox<OpArgIndexes>>>
-    : public Tuple<FakeOpPlaceHolder,
+    : public Tuple<tOut<FakeOpPlaceHolder>,
                    tOut<tOutMsgBox<OpArgIndexes>>,
                    tIn<tInMsgBox<OpArgIndexes>>> {
-  using Tuple<FakeOpPlaceHolder,
+  using Tuple<tOut<FakeOpPlaceHolder>,
               tOut<tOutMsgBox<OpArgIndexes>>,
               tIn<tInMsgBox<OpArgIndexes>>>::Tuple;
 };
@@ -155,7 +156,8 @@ DEFINE_ADT_UNION(Equation,
                  Identity<tOut<Index>, tIn<Index>>,
                  Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>,
                  UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>,
-                 InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>,
+                 InMsgBox2OutMsgBox<tOut<FakeOpPlaceHolder>,
+                                    tOut<tOutMsgBox<OpArgIndexes>>,
                                     tIn<tInMsgBox<OpArgIndexes>>>);
 
 // Variable = Iterator | Index | FakeOpPlaceHolder
