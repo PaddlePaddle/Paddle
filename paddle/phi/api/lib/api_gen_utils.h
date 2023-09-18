@@ -159,5 +159,9 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistInplaceOutput(
 std::vector<phi::distributed::DistTensor*> SetKernelDistInplaceOptionalOutput(
     size_t out_size, paddle::optional<std::vector<Tensor>> out);
 
+// DistTensor need to set initial dist attr after the dims setted, it is
+// constructed based dims
+void SetReplicatedDistAttrForOutput(phi::distributed::DistTensor* out);
+
 }  // namespace experimental
 }  // namespace paddle

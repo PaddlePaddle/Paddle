@@ -618,5 +618,14 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistInplaceOptionalOutput(
   return results;
 }
 
+void SetReplicatedDistAttrForOutput(phi::distributed::DistTensor* out) {
+  PADDLE_ENFORCE_GT(out->dims().size(),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The output tensor must have a non empty dims."));
+  out->unsafe_set_dist_attr(
+      phi::distributed::TensorDistAttr(phi::vectorize(out->dims())));
+}
+
 }  // namespace experimental
 }  // namespace paddle

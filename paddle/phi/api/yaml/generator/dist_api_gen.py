@@ -46,7 +46,7 @@ MAIN_DIST_BRANCH_TEMPLATE = """
   if ({}) {{
     // 1. InferSpmd (Infer DistAttr of Inputs&Outputs){}
     // 2. Create API Output & Prepare Dist and Dense Output{}
-    // 3. Infer DistTensor's Global Shape{}
+    // 3. Infer DistTensor's Global Shape{}\n
     // 4. Select Kernel{}
     // 5. Reshard Input{}\n
     // 6. PrepareData (DataTransform & Prepare Dense Input){}
@@ -63,7 +63,7 @@ AUTO_PARALLEL_COND_TEMPLATE = """AllInputsAreDistTensor({})"""
 
 # 1. InferSPMD
 SINGLE_DIST_META_IN_TEMPLATE = """
-    auto meta_dist_{} = MakeDistMetaTensor(*{}.impl());"""
+    auto meta_dist_input_{} = MakeDistMetaTensor(*{}.impl());"""
 INFER_SPMD_TEMPLATE = """
     auto spmd_info = phi::distributed::{}({});
 """
@@ -168,6 +168,8 @@ VECTOR_GLOBAL_META_OUT_DECL_TEMPLATE = """
 INFER_GLOBAL_SHAPE_TEMPLATE = """
     phi::{}({}{});
 """
+SET_SINGLE_OUT_REPLICATED_DIST_ATTR = """
+    SetReplicatedDistAttrForOutput({});"""
 
 # 4. Select Kernel
 KERNEL_SELECTION_TEMPLATE = """
@@ -402,19 +404,19 @@ class DistForwardAPI(ForwardAPI):
 
         # TODO(chenweihang): here we need use infer_meta params,
         # if it is inconsistent, you need to change the infermeta func
-        kernel_param = self.kernel['param']
-        if kernel_param is None:
-            kernel_param = input_names + attr_names
+        kernel_params = self.kernel['param']
+        if kernel_params is None:
+            kernel_params = input_names + attr_names
 
         input_decl_code = ""
         input_args_code = ""
-        for param in kernel_param:
+        for param in kernel_params:
             if param in input_names:
                 if self.inputs['input_info'][param] == "const Tensor&":
                     input_decl_code += SINGLE_DIST_META_IN_TEMPLATE.format(
                         param, param
                     )
-                    input_args_code += "meta_dist_" + param + ", "
+                    input_args_code += "meta_dist_input_" + param + ", "
                 else:
                     raise ValueError(
                         f"{self.api} : Param of infer_spmd error : {self.inputs['input_info'][param]} type is not supported."
@@ -441,21 +443,21 @@ class DistForwardAPI(ForwardAPI):
         input_names = self.inputs['names']
         attr_names = self.attrs['names']
 
-        infer_meta_params = (
-            self.infer_meta['param']
-            if self.infer_meta['param'] is not None
-            else input_names + attr_names
-        )
+        # TODO(chenweihang): here we need use infer_meta params,
+        # if it is inconsistent, you need to change the infermeta func
+        kernel_params = self.kernel['param']
+        if kernel_params is None:
+            kernel_params = input_names + attr_names
 
         input_decl_code = ""
         input_args_code = ""
-        for param in infer_meta_params:
+        for param in kernel_params:
             if param in input_names:
                 if self.inputs['input_info'][param] == "const Tensor&":
                     input_decl_code += SINGLE_DIST_META_IN_TEMPLATE.format(
                         param, param
                     )
-                    input_args_code += "meta_dist_" + param + ", "
+                    input_args_code += "meta_dist_input_" + param + ", "
                 elif (
                     self.inputs['input_info'][param]
                     == "const std::vector<Tensor>&"
@@ -670,6 +672,7 @@ class DistForwardAPI(ForwardAPI):
         # 3. get meta tensor output args
         output_decl_code = ""
         output_args_code = ""
+        set_out_dist_attr_code = ""
         for i, out_name in enumerate(self.dist_output_args):
             if self.outputs['types'][i] == 'std::vector<Tensor>':
                 output_decl_code += VECTOR_GLOBAL_META_OUT_DECL_TEMPLATE.format(
@@ -682,6 +685,10 @@ class DistForwardAPI(ForwardAPI):
                 )
                 if len(self.dense_output_args) == 1:
                     output_args_code += f"&meta_{out_name}, "
+                    if self.generate_general_infer_spmd is True:
+                        set_out_dist_attr_code += (
+                            SET_SINGLE_OUT_REPLICATED_DIST_ATTR.format(out_name)
+                        )
                 else:
                     output_args_code += (
                         f"{out_name} ? &meta_{out_name} : nullptr, "
@@ -694,6 +701,7 @@ class DistForwardAPI(ForwardAPI):
             + INFER_GLOBAL_SHAPE_TEMPLATE.format(
                 infer_meta_func_code, input_args_code, output_args_code
             )
+            + set_out_dist_attr_code
         )
 
     def generate_kernel_selection_code(self) -> str:
@@ -706,13 +714,13 @@ class DistForwardAPI(ForwardAPI):
         if self.generate_infer_spmd is True:
             input_names = self.inputs['names']
 
-            infer_meta_params = (
-                self.infer_meta['param']
-                if self.infer_meta['param'] is not None
+            kernel_params = (
+                self.kernel['param']
+                if self.kernel['param'] is not None
                 else input_names
             )
 
-            for i, param in enumerate(infer_meta_params):
+            for i, param in enumerate(kernel_params):
                 if param in input_names:
                     if self.inputs['input_info'][param] == "const Tensor&":
                         input_reshard_code += (
@@ -746,7 +754,7 @@ class DistForwardAPI(ForwardAPI):
         if kernel_param is None:
             kernel_param = input_names + attr_names
 
-        if self.infer_meta['spmd_rule'] is not None:
+        if self.generate_infer_spmd is True:
             input_tensor_code += SINGLE_PREPARE_DATA_TEMPLATE.format(
                 arg=input_name,
                 idx=kernel_param.index(input_name),
