@@ -572,18 +572,4 @@ std::string KernelSelectionErrorMessage(const std::string& kernel_name,
   return message;
 }
 
-template <typename Func>
-void InsertKernel(const std::string& name,
-                  Func kernel_fn,
-                  phi::Backend backend,
-                  phi::DataType data_type,
-                  phi::DataLayout data_layout) {
-  phi::KernelKey kernel_key(backend, data_layout, data_type);
-  phi::Kernel kernel(PHI_KERNEL(kernel_fn), nullptr);
-
-  phi::KernelArgsParseFunctor<Func>::Parse(kernel_key,
-                                           kernel.mutable_args_def());
-  phi::KernelFactory::Instance().kernels()[name][kernel_key] = kernel;
-}
-
 }  // namespace phi

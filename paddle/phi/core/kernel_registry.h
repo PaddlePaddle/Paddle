@@ -202,52 +202,54 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
                                default_tensor_layout,
                                default_key.dtype(),
                                arg_type);
-      } else if (arg_type == std::type_index(typeid(bool))) {
-        args_def->AppendAttribute(AttributeType::BOOL);
-      } else if (arg_type == std::type_index(typeid(int))) {
-        args_def->AppendAttribute(AttributeType::INT32);
-      } else if (arg_type == std::type_index(typeid(int64_t))) {
-        args_def->AppendAttribute(AttributeType::INT64);
-      } else if (arg_type == std::type_index(typeid(float))) {
-        args_def->AppendAttribute(AttributeType::FLOAT32);
-      } else if (arg_type == std::type_index(typeid(double))) {
-        args_def->AppendAttribute(AttributeType::FLOAT64);
-      } else if (arg_type == std::type_index(typeid(std::string))) {
-        args_def->AppendAttribute(AttributeType::STRING);
-      } else if (arg_type ==
-                 std::type_index(typeid(const std::vector<bool>&))) {
-        args_def->AppendAttribute(AttributeType::BOOLS);
-      } else if (arg_type == std::type_index(typeid(const std::vector<int>&))) {
-        args_def->AppendAttribute(AttributeType::INT32S);
-      } else if (arg_type ==
-                 std::type_index(typeid(const std::vector<int64_t>&))) {
-        args_def->AppendAttribute(AttributeType::INT64S);
-      } else if (arg_type ==
-                 std::type_index(typeid(const std::vector<float>&))) {
-        args_def->AppendAttribute(AttributeType::FLOAT32S);
-      } else if (arg_type ==
-                 std::type_index(typeid(const std::vector<double>&))) {
-        args_def->AppendAttribute(AttributeType::FLOAT64S);
-      } else if (arg_type ==
-                 std::type_index(typeid(const std::vector<std::string>&))) {
-        args_def->AppendAttribute(AttributeType::STRINGS);
-      } else if (arg_type == std::type_index(typeid(const Scalar&))) {
-        args_def->AppendAttribute(AttributeType::SCALAR);
-      } else if (arg_type ==
-                 std::type_index(typeid(const std::vector<Scalar>&))) {
-        args_def->AppendAttribute(AttributeType::SCALARS);
-      } else if (arg_type == std::type_index(typeid(const IntArray&))) {
-        args_def->AppendAttribute(AttributeType::INT_ARRAY);
-      } else if (arg_type == std::type_index(typeid(DataType))) {
-        args_def->AppendAttribute(AttributeType::DATA_TYPE);
-      } else if (arg_type == std::type_index(typeid(DataLayout))) {
-        args_def->AppendAttribute(AttributeType::DATA_LAYOUT);
-      } else if (arg_type == std::type_index(typeid(Place))) {
-        args_def->AppendAttribute(AttributeType::PLACE);
-      } else {
-        PADDLE_THROW(phi::errors::Unavailable(
-            "Unsupported kernel argument type `%s`.", arg_type.name()));
       }
+      // else if (arg_type == std::type_index(typeid(bool))) {
+      //   args_def->AppendAttribute(AttributeType::BOOL);
+      // } else if (arg_type == std::type_index(typeid(int))) {
+      //   args_def->AppendAttribute(AttributeType::INT32);
+      // } else if (arg_type == std::type_index(typeid(int64_t))) {
+      //   args_def->AppendAttribute(AttributeType::INT64);
+      // } else if (arg_type == std::type_index(typeid(float))) {
+      //   args_def->AppendAttribute(AttributeType::FLOAT32);
+      // } else if (arg_type == std::type_index(typeid(double))) {
+      //   args_def->AppendAttribute(AttributeType::FLOAT64);
+      // } else if (arg_type == std::type_index(typeid(std::string))) {
+      //   args_def->AppendAttribute(AttributeType::STRING);
+      // } else if (arg_type ==
+      //            std::type_index(typeid(const std::vector<bool>&))) {
+      //   args_def->AppendAttribute(AttributeType::BOOLS);
+      // } else if (arg_type == std::type_index(typeid(const
+      // std::vector<int>&))) {
+      //   args_def->AppendAttribute(AttributeType::INT32S);
+      // } else if (arg_type ==
+      //            std::type_index(typeid(const std::vector<int64_t>&))) {
+      //   args_def->AppendAttribute(AttributeType::INT64S);
+      // } else if (arg_type ==
+      //            std::type_index(typeid(const std::vector<float>&))) {
+      //   args_def->AppendAttribute(AttributeType::FLOAT32S);
+      // } else if (arg_type ==
+      //            std::type_index(typeid(const std::vector<double>&))) {
+      //   args_def->AppendAttribute(AttributeType::FLOAT64S);
+      // } else if (arg_type ==
+      //            std::type_index(typeid(const std::vector<std::string>&))) {
+      //   args_def->AppendAttribute(AttributeType::STRINGS);
+      // } else if (arg_type == std::type_index(typeid(const Scalar&))) {
+      //   args_def->AppendAttribute(AttributeType::SCALAR);
+      // } else if (arg_type ==
+      //            std::type_index(typeid(const std::vector<Scalar>&))) {
+      //   args_def->AppendAttribute(AttributeType::SCALARS);
+      // } else if (arg_type == std::type_index(typeid(const IntArray&))) {
+      //   args_def->AppendAttribute(AttributeType::INT_ARRAY);
+      // } else if (arg_type == std::type_index(typeid(DataType))) {
+      //   args_def->AppendAttribute(AttributeType::DATA_TYPE);
+      // } else if (arg_type == std::type_index(typeid(DataLayout))) {
+      //   args_def->AppendAttribute(AttributeType::DATA_LAYOUT);
+      // } else if (arg_type == std::type_index(typeid(Place))) {
+      //   args_def->AppendAttribute(AttributeType::PLACE);
+      // } else {
+      //   PADDLE_THROW(phi::errors::Unavailable(
+      //       "Unsupported kernel argument type `%s`.", arg_type.name()));
+      // }
     }
   }
 
@@ -1565,5 +1567,19 @@ struct KernelRegistrar {
                       PHI_KERNEL,                      \
                       PHI_VARIADIC_KERNEL,             \
                       __VA_ARGS__)
+
+template <typename Func>
+void InsertKernel(const std::string& name,
+                  phi::KernelFn kernel_fn,
+                  phi::Backend backend,
+                  phi::DataType data_type,
+                  phi::DataLayout data_layout = phi::DataLayout::ALL_LAYOUT) {
+  phi::KernelKey kernel_key(backend, data_layout, data_type);
+  phi::Kernel kernel(kernel_fn, nullptr);
+
+  phi::KernelArgsParseFunctor<Func>::Parse(kernel_key,
+                                           kernel.mutable_args_def());
+  phi::KernelFactory::Instance().kernels()[name][kernel_key] = kernel;
+}
 
 }  // namespace phi

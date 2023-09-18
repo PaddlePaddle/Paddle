@@ -23,6 +23,7 @@
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
+#include "paddle/phi/core/kernel_utils.h"
 #include "paddle/phi/core/type_defs.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/utils/flat_hash_map.h"
@@ -366,12 +367,5 @@ std::ostream& operator<<(std::ostream& os, AttributeType attr_type);
 std::ostream& operator<<(std::ostream& os, const Kernel& kernel);
 
 std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory);
-
-template <typename Func>
-void InsertKernel(const std::string& name,
-                  Func kernel_fn,
-                  phi::Backend backend,
-                  phi::DataType data_type,
-                  phi::DataLayout data_layout = phi::DataLayout::ALL_LAYOUT);
 
 }  // namespace phi

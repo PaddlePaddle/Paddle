@@ -16,9 +16,9 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/complex.h"
-// #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/kernel_utils.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
@@ -37,32 +37,63 @@ void AbsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   for_range(functor);
 }
 
-void f1() {
-  phi::InsertKernel("abs",
-                    phi::AbsKernel<float, phi::CPUContext>,
-                    phi::Backend::CPU,
-                    phi::DataType::FLOAT32);
-  phi::InsertKernel("abs",
-                    phi::AbsKernel<double, phi::CPUContext>,
-                    phi::Backend::CPU,
-                    phi::DataType::FLOAT64);
-  phi::InsertKernel("abs",
-                    phi::AbsKernel<int, phi::CPUContext>,
-                    phi::Backend::CPU,
-                    phi::DataType::INT32);
-  phi::InsertKernel("abs",
-                    phi::AbsKernel<int64_t, phi::CPUContext>,
-                    phi::Backend::CPU,
-                    phi::DataType::INT64);
-  phi::InsertKernel("abs",
-                    phi::AbsKernel<phi::dtype::complex<float>, phi::CPUContext>,
-                    phi::Backend::CPU,
-                    phi::DataType::COMPLEX64);
-  phi::InsertKernel(
-      "abs",
-      phi::AbsKernel<phi::dtype::complex<double>, phi::CPUContext>,
-      phi::Backend::CPU,
-      phi::DataType::COMPLEX128);
-}
+// void f1() {
+//   phi::InsertKernel<decltype(&phi::AbsKernel<float, phi::CPUContext>)
+//   >("abs",
+//                     PHI_KERNEL(phi::AbsKernel<float, phi::CPUContext>),
+//                     phi::Backend::CPU,
+//                     phi::DataType::FLOAT32);
+//   // phi::InsertKernel<phi::AbsKernel<double, phi::CPUContext> >("abs",
+//   //                   PHI_KERNEL(phi::AbsKernel<double, phi::CPUContext>),
+//   //                   phi::Backend::CPU,
+//   //                   phi::DataType::FLOAT64);
+//   // phi::InsertKernel<phi::AbsKernel<int, phi::CPUContext> >("abs",
+//   //                   PHI_KERNEL(phi::AbsKernel<int, phi::CPUContext>),
+//   //                   phi::Backend::CPU,
+//   //                   phi::DataType::INT32);
+//   // phi::InsertKernel<phi::AbsKernel<int, phi::CPUContext> >("abs",
+//   //                   PHI_KERNEL(phi::AbsKernel<int, phi::CPUContext>),
+//   //                   phi::Backend::CPU,
+//   //                   phi::DataType::INT64);
+//   // phi::InsertKernel<phi::AbsKernel<phi::dtype::complex<float>,
+//   phi::CPUContext> >("abs",
+//   //                   PHI_KERNEL(phi::AbsKernel<phi::dtype::complex<float>,
+//   phi::CPUContext>),
+//   //                   phi::Backend::CPU,
+//   //                   phi::DataType::COMPLEX64);
+//   // phi::InsertKernel<phi::AbsKernel<phi::dtype::complex<double>,
+//   phi::CPUContext> >(
+//   //     "abs",
+//   //     PHI_KERNEL(phi::AbsKernel<phi::dtype::complex<double>,
+//   phi::CPUContext>),
+//   //     phi::Backend::CPU,
+//   //     phi::DataType::COMPLEX128);
+// }
+
+// template void phi::AbsKernel<float, phi::CPUContext>(const phi::CPUContext&
+// ctx, const DenseTensor& x, DenseTensor* out); template void
+// phi::AbsKernel<double, phi::CPUContext>(const phi::CPUContext& ctx, const
+// DenseTensor& x, DenseTensor* out); template void phi::AbsKernel<int,
+// phi::CPUContext>(const phi::CPUContext& ctx, const DenseTensor& x,
+// DenseTensor* out); template void phi::AbsKernel<int64_t,
+// phi::CPUContext>(const phi::CPUContext& ctx, const DenseTensor& x,
+// DenseTensor* out); template void phi::AbsKernel<phi::dtype::complex<float>,
+// phi::CPUContext>(const phi::CPUContext& ctx, const DenseTensor& x,
+// DenseTensor* out); template void phi::AbsKernel<phi::dtype::complex<double>,
+// phi::CPUContext>(const phi::CPUContext& ctx, const DenseTensor& x,
+// DenseTensor* out);
 
 }  // namespace phi
+
+PD_REGISTER_KERNEL(abs,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::AbsKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}
