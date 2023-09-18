@@ -17,9 +17,9 @@
 #include <atomic>
 #include <condition_variable>
 #include <iostream>
-#include <list>
 #include <memory>
 #include <mutex>
+#include <list>
 #include <thread>
 #include <unordered_map>
 
@@ -46,7 +46,7 @@ class CommTaskManager {
     return instance;
   }
 
-  void CommTaskEnqueue(std::unique_ptr<CommTask> comm_task);
+  void CommTaskEnqueue(std::shared_ptr<CommTask> comm_task);
 
  private:
   void CommTaskLoop();
@@ -58,13 +58,13 @@ class CommTaskManager {
 
   static std::mutex comm_task_list_mutex_;
   static std::condition_variable comm_task_list_cv_;
-  static std::list<std::unique_ptr<CommTask>> comm_task_list_;
+  static std::list<std::shared_ptr<CommTask>> comm_task_list_;
+  static std::unordered_map<std::string, std::shared_ptr<CommTask>>
+      wait_comm_task_map_;
   std::shared_ptr<Store> store_;
   bool store_error_{false};
 
   int comm_seq_;
-  // timeout count, only check first timeout task
-  static int check_timeout_count;
 };
 
 }  // namespace distributed

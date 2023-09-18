@@ -135,9 +135,9 @@ std::string NCCLCommTask::GetCommErrors() {
       phi::dynload::ncclCommGetAsyncError(nccl_comm_, &nccl_async_error));
   if (nccl_async_error != ncclSuccess) {
     comm_error_ =
-        "\n\t Find nccl comm error: " ++GetNCCLErrorDetail(nccl_async_error);
+        "\n\t Find nccl comm error: " + GetNCCLErrorDetail(nccl_async_error);
   }
-  return comm_error_
+  return comm_error_;
 }
 
 bool NCCLCommTask::IsStarted() { return CudaEventQuery(nccl_start_event_); }
@@ -166,7 +166,7 @@ std::string NCCLCommTask::GetTraceMsg() {
   auto current_timepoint = std::chrono::steady_clock::now();
   auto time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
       current_timepoint - start_time_);
-  return "\n\t Find Timeout task :"
+  return "Find timeout task :"
          " comm_type: " +
          CommTypeToString(comm_type_) +
          ", global_rank: " + std::to_string(global_rank_) +

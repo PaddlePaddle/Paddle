@@ -37,8 +37,6 @@
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
-DECLARE_int32(async_trace_count);
-
 namespace phi {
 namespace distributed {
 
@@ -48,14 +46,14 @@ const int64_t CommTaskManager::loop_thread_sleep_millis = 10000;
 std::atomic<bool> CommTaskManager::terminated_;
 std::mutex CommTaskManager::comm_task_list_mutex_;
 std::condition_variable CommTaskManager::comm_task_list_cv_;
-std::list<std::unique_ptr<CommTask>> CommTaskManager::comm_task_list_;
-int CommTaskManager::check_timeout_count = 0;
+std::list<std::shared_ptr<CommTask>> CommTaskManager::comm_task_list_;
+std::unordered_map<std::string, std::shared_ptr<CommTask>>
+    CommTaskManager::wait_comm_task_map_;
 
 CommTaskManager::CommTaskManager() {
   terminated_.store(false);
   comm_task_loop_thread_ = std::thread(&CommTaskManager::CommTaskLoop, this);
-  LOG(INFO) << "CommTaskManager init success. FLAGS_async_trace_count: "
-            << FLAGS_async_trace_count;
+  LOG(INFO) << "CommTaskManager init success.";
 }
 CommTaskManager::~CommTaskManager() {
   terminated_.store(true);
@@ -67,7 +65,7 @@ CommTaskManager::~CommTaskManager() {
   LOG(INFO) << "CommTaskManager destruct success.";
 }
 
-void CommTaskManager::CommTaskEnqueue(std::unique_ptr<CommTask> comm_task) {
+void CommTaskManager::CommTaskEnqueue(std::shared_ptr<CommTask> comm_task) {
   if (!terminated_.load()) {
     std::lock_guard<std::mutex> lock(comm_task_list_mutex_);
     comm_task_list_.emplace_back(std::move(comm_task));
@@ -81,28 +79,38 @@ void CommTaskManager::CommTaskLoop() {
     comm_task_list_cv_.wait_for(
         lock,
         std::chrono::milliseconds(loop_thread_sleep_millis),
-        [&]() -> bool {
-          return terminated_.load() &&
-                 check_timeout_count <= FLAGS_async_trace_count;
-        });
-    for (auto task = comm_task_list_.begin();
-         task != comm_task_list_.end() &&
-         check_timeout_count <= FLAGS_async_trace_count;) {
-      if ((*task)->IsIimeout()) {
-        LOG(WARN) << "Detected timeout process_group: " << (*task)->GetGid();
-        std::string error_msg =
-            (*task)->GetTraceMsg() + (*task)->GetCommErrors();
+        [&]() -> bool { return terminated_.load(); });
+    for (auto iter = comm_task_list_.begin(); iter != comm_task_list_.end();) {
+      auto task = *iter;
+      if (task->IsTimeout()) {
+        LOG(WARNING) << "Detected timeout process_group: " << task->GetGid();
+        std::string error_msg = task->GetTraceMsg();
         LOG(ERROR) << error_msg;
-      }
-      if ((*task)->IsCompleted()) {
-        task = comm_task_list_.erase(task);
+
+        error_msg = task->GetCommErrors();
+        if (!error_msg.empty()) {
+          LOG(ERROR) << error_msg;
+        }
+        std::string task_key = task->UniqueKey();
+        wait_comm_task_map_[task_key] = task;
+        iter = comm_task_list_.erase(iter);
       } else {
-        ++task;
+         ++iter;
       }
     }
-    if (comm_task_list_.empty()) {
+
+    for (auto iter = wait_comm_task_map_.begin();
+         iter != wait_comm_task_map_.end();) {
+      auto task = iter->second;
+      if (task->IsCompleted()) {
+        iter = wait_comm_task_map_.erase(iter);
+        LOG(INFO) << "Finish timeout task: " << task->UniqueKey();
+      } else {
+        ++iter;
+      }
+    }
+    if (comm_task_list_.empty() && wait_comm_task_map_.empty()) {
       done = true;
-      check_timeout_count = 0;
     }
   }
 }

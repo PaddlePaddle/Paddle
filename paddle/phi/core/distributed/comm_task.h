@@ -54,6 +54,10 @@ class CommTask {
   }
   virtual ~CommTask() = default;
 
+  std::string UniqueKey() {
+    return "op:" + CommTypeToString(comm_type_) + ",gid:" + std::to_string(gid_) + ",seq:" +
+           std::to_string(seq_);
+  }
   std::string GetBackend() { return backend_; }
   phi::Place GetPlace() { return place_; }
   int GetGlobalRank() { return global_rank_; }
@@ -90,7 +94,7 @@ class CommTask {
   virtual std::string GetCommErrors() {
     PADDLE_THROW(
         phi::errors::Unimplemented("%s is not implemented.", __func__));
-    return;
+    return "";
   }
   virtual bool IsStarted() {
     PADDLE_THROW(
