@@ -318,7 +318,7 @@ class DrrRewritePattern : public pir::RewritePattern {
     return output_op_bind_map;
   }
 
-  bool DfsVisitor(
+  void DfsVisitor(
       const OpCall* drr_op,
       pir::Operation* ir_op,
       const std::unordered_set<const OpCall*>& drr_output_op_set,
@@ -328,25 +328,25 @@ class DrrRewritePattern : public pir::RewritePattern {
     VLOG(6) << "DfsVisitor Start: drr op(" << drr_op->name() << ")"
             << "ir op(" << ir_op->name() << ")";
     if (drr_op->name() != ir_op->name()) {
-      return false;
+      return;
     }
     // check input's size
     const auto& drr_op_input_tensors = drr_op->inputs();
     auto ir_op_input_value_size = ir_op->num_operands();
     if (drr_op_input_tensors.size() != ir_op_input_value_size) {
-      return false;
+      return;
     }
     // check output's size
     const auto& drr_op_output_tensors = drr_op->outputs();
     auto ir_op_output_value_size = ir_op->num_results();
     if (drr_op_output_tensors.size() != ir_op_output_value_size) {
-      return false;
+      return;
     }
     // check producer op
     for (size_t i = 0; i < drr_op_input_tensors.size(); ++i) {
       // case 1: drr_op_input_tensor is the input tensor of source pattern
       if (drr_op_input_tensors[i]->producer() == nullptr) {
-        // dfs source pattern input tensor orther child op
+        // dfs source pattern input tensor other child op
         auto ir_input_tensor = ir_op->operand(i).source();
         for (auto drr_bro_op : drr_op_input_tensors[i]->consumers()) {
           if (drr_visited_ops->count(drr_bro_op)) {
@@ -377,7 +377,7 @@ class DrrRewritePattern : public pir::RewritePattern {
       auto ir_operand_value = ir_op->operand(i).source();
       if (drr_op_input_tensors[i]->consumers().size() !=
           ir_operand_value.use_count()) {
-        return false;
+        return;
       }
       auto* ir_producer_op = ir_operand_value.GetDefiningOp();
       drr_visited_ops->insert(drr_producer_op);
@@ -391,14 +391,14 @@ class DrrRewritePattern : public pir::RewritePattern {
     }
     if (drr_output_op_set.count(drr_op)) {
       (*output_op_bind_map)[drr_op].insert(ir_op);
-      return true;
+      return;
     }
     // check child ops
     for (size_t i = 0; i < drr_op_output_tensors.size(); ++i) {
       const auto& drr_child_ops = drr_op_output_tensors[i]->consumers();
       auto ir_output_value = ir_op->result(i);
       if (drr_child_ops.size() != ir_output_value.use_count()) {
-        return false;
+        return;
       }
       for (auto* drr_child_op : drr_child_ops) {
         for (auto it = ir_output_value.use_begin();
@@ -420,15 +420,15 @@ class DrrRewritePattern : public pir::RewritePattern {
         }
       }
     }  // check child ops
-    return false;
+    return;
   }
 
-  bool MatchFromBackToFront(
+  bool MatchFromOutputToInput(
       std::vector<const OpCall*> drr_output_sequence,
       std::vector<pir::Operation*> ir_output_sequence,
       const SourcePatternGraph& source_pattern_graph,
       const std::shared_ptr<MatchContextImpl>& source_pattern_match_ctx) const {
-    VLOG(6) << "MatchFromBackToFront Start";
+    VLOG(6) << "MatchFromOutputToInput Start";
     IR_ENFORCE(drr_output_sequence.size() == ir_output_sequence.size());
     std::unordered_set<const OpCall*> drr_visited;
     std::unordered_set<Operation*> ir_visited;
@@ -528,15 +528,16 @@ class DrrRewritePattern : public pir::RewritePattern {
     for (auto pair : bind_map) {
       drr_output_sequence.push_back(pair.first);
     }
+    // using dfs to obtain the arrangement of all candidate ir ops
     auto permute = [&](auto&& permute, size_t index) -> bool {
       if (index == drr_output_sequence.size()) {
         // new match_ctx
         std::shared_ptr<MatchContextImpl> match_ctx =
             std::make_shared<MatchContextImpl>();
-        if (MatchFromBackToFront(drr_output_sequence,
-                                 ir_output_sequence,
-                                 *(source_pattern_graph_.get()),
-                                 match_ctx)) {
+        if (MatchFromOutputToInput(drr_output_sequence,
+                                   ir_output_sequence,
+                                   *(source_pattern_graph_.get()),
+                                   match_ctx)) {
           *source_pattern_match_ctx = *match_ctx;
           return true;
         }
