@@ -16,6 +16,7 @@ import unittest
 from copy import deepcopy
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 from test_rollback import Net, foo
 
 import paddle
@@ -23,6 +24,7 @@ from paddle.jit.dy2static.program_translator import StaticFunction
 
 
 class TestDeepCopy(unittest.TestCase):
+    @test_and_compare_with_new_ir(False)
     def test_net(self):
         net = Net()
         net = paddle.jit.to_static(net)
@@ -38,6 +40,7 @@ class TestDeepCopy(unittest.TestCase):
         self.assertTrue(id(copy_net), id(copy_net.forward.__self__))
         np.testing.assert_array_equal(src_out.numpy(), copy_out.numpy())
 
+    @test_and_compare_with_new_ir(False)
     def test_func(self):
         st_foo = paddle.jit.to_static(foo)
         x = paddle.randn([3, 4])

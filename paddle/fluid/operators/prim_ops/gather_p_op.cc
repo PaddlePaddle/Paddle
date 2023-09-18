@@ -76,7 +76,8 @@ class GatherPrimOpShapeInference : public framework::InferShapeBase {
                             index_shape.size()));
       num_index = index_shape[0];
     } else {
-      num_index = ctx->Attrs().Get<std::vector<int64_t>>("index").size();
+      num_index = static_cast<int>(
+          ctx->Attrs().Get<std::vector<int64_t>>("index").size());
     }
     auto axis = ctx->Attrs().Get<int64_t>("axis");
 

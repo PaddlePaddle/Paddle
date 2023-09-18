@@ -304,7 +304,7 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     framework::Scope *scope) {
   auto &interpretercore_info_cache =
       framework::InterpreterCoreInfoCache::Instance();
-  if (interpretercore_info_cache.Size() > 10u /* max_cached_size*/) {
+  if (interpretercore_info_cache.Size() > 256u /* max_cached_size*/) {
     VLOG(2) << "The cached info size has exceeded max_cached_size: 4, clear "
                "all cache!";
     interpretercore_info_cache.Finalize();
@@ -332,7 +332,7 @@ std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
     framework::Scope *scope) {
   auto &interpretercore_info_cache =
       framework::InterpreterCoreInfoCache::Instance();
-  if (interpretercore_info_cache.Size() > 10u /* max_cached_size*/) {
+  if (interpretercore_info_cache.Size() > 256u /* max_cached_size*/) {
     VLOG(2) << "The cached info size has exceeded max_cached_size: 4, clear "
                "all cache!";
     interpretercore_info_cache.Finalize();
@@ -344,11 +344,12 @@ std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
   std::shared_ptr<InterpreterCore> core = nullptr;
 
   core.reset(new InterpreterCore(
-      place, {}, std::move(ir_program), scope, execution_config));
+      place, {}, ir_program->block(), scope, execution_config));
 
   auto &cached_value =
       interpretercore_info_cache.GetMutable(program_id, scope, is_grad);
   cached_value.core_ = core;
+  cached_value.ir_prog_ = std::move(ir_program);
   return core;
 }
 
@@ -357,6 +358,7 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     const paddle::framework::BlockDesc *backward_global_block,
     const std::vector<std::string> output_names,
     const std::vector<paddle::Tensor> &x,
+    const std::vector<std::string> &x_names,
     const std::vector<paddle::Tensor> &params,
     const phi::Place &place) {
   auto ir_ctx = ::pir::IrContext::Instance();
@@ -377,8 +379,9 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
 
   // add data op to program
   auto *block = local_program.MutableBlock(0);
-  for (auto &in_t : x) {
-    auto name = in_t.name();
+  for (size_t i = 0; i < x.size(); ++i) {
+    auto &name = x_names[i];
+    auto &in_t = x[i];
     if (block->FindVarRecursive(name) == nullptr) {
       continue;
     }

@@ -21,9 +21,33 @@ void set_output<LazyTensor>(const paddle::Tensor& x_tmp, paddle::Tensor* x) {
   x->set_impl(x_tmp.impl());
 }
 
+/**
+ * @brief set output with empty grads in pir.
+ *
+ *  In pir, we use None type to express
+ *  that value is not available.
+ *  Some outputs in vjp are marked as unnecessary
+ *  by stop_gradient with True. Therefore the
+ *  type of those outputs that are unnecessary will
+ *  be set with None.
+ *
+ */
+void SetEmptyGrad(const std::vector<std::vector<Tensor>>& outputs,
+                  const std::vector<std::vector<bool>>& stop_gradients) {
+  for (size_t i = 0; i < outputs.size(); ++i) {
+    for (size_t j = 0; j < outputs[i].size(); ++j) {
+      if (stop_gradients[i][j]) {
+        std::static_pointer_cast<primitive::LazyTensor>(outputs[i][j].impl())
+            ->set_empty();
+      }
+    }
+  }
+}
+
 std::vector<std::vector<Tensor>> ConstructVjpResultByStopGradients(
     const std::vector<std::vector<Tensor>>& outputs,
     const std::vector<std::vector<bool>>& stop_gradients) {
+  SetEmptyGrad(outputs, stop_gradients);
   std::vector<std::vector<Tensor>> vjp_results(outputs.size());
   for (size_t i = 0; i < outputs.size(); ++i) {
     vjp_results[i].reserve(outputs[i].size());

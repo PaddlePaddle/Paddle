@@ -21,6 +21,7 @@ namespace pir {
 
 class Program;
 class Block;
+constexpr char kStopGradientAttrName[] = "stop_gradient";
 ///
 /// \brief ModuleOp
 ///
@@ -56,6 +57,9 @@ class IR_API GetParameterOp : public pir::Op<GetParameterOp> {
                     const std::string &name,
                     Type type);
   void Verify() const;
+
+ private:
+  static void PassStopGradients(OperationArgument &argument);  // NOLINT
 };
 
 ///
@@ -70,7 +74,7 @@ class IR_API SetParameterOp : public pir::Op<SetParameterOp> {
   static const char *attributes_name[attributes_num];
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    OpResult parameter,
+                    Value parameter,
                     const std::string &name);
   void Verify() const;
 };
@@ -90,7 +94,7 @@ class IR_API CombineOp : public pir::Op<CombineOp> {
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const std::vector<pir::OpResult> &inputs);
+                    const std::vector<Value> &inputs);
 
   void Verify() const;
   std::vector<pir::Value> inputs() {
@@ -118,11 +122,15 @@ class IR_API SliceOp : public pir::Op<SliceOp> {
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const pir::OpResult &input,
+                    Value input,
                     int index);
 
   void Verify() const;
   pir::Value input() { return operand_source(0); }
+
+ private:
+  static void PassStopGradients(OperationArgument &argument,  // NOLINT
+                                int index);
 };
 
 ///
@@ -140,17 +148,20 @@ class IR_API SplitOp : public pir::Op<SplitOp> {
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const pir::OpResult &input);
+                    Value input);
 
   void Verify() const;
   pir::Value input() { return operand_source(0); }
-  std::vector<pir::OpResult> outputs() {
-    std::vector<pir::OpResult> outputs;
+  std::vector<OpResult> outputs() {
+    std::vector<OpResult> res;
     for (uint32_t idx = 0; idx < num_results(); idx++) {
-      outputs.push_back(result(static_cast<int>(idx)));
+      res.push_back(result(idx));
     }
-    return outputs;
+    return res;
   }
+
+ private:
+  static void PassStopGradients(OperationArgument &argument);  // NOLINT
 };
 
 class IR_API ConstantLikeTrait : public OpTraitBase<ConstantLikeTrait> {
@@ -179,6 +190,8 @@ class IR_API ConstantOp : public Op<ConstantOp, ConstantLikeTrait> {
 
   Attribute value() const;
 };
+
+void PassStopGradientsDefaultly(OperationArgument &argument);  // NOLINT
 
 }  // namespace pir
 

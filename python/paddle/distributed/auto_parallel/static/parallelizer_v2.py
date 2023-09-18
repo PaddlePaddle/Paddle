@@ -25,7 +25,12 @@ from ..random import init_auto_parallel_rng
 from .partitioner import Partitioner
 from .process_group import get_world_process_group
 from .reshard import Resharder
-from .utils import get_pp_stage, set_grad_var_shape, use_new_executor
+from .utils import (
+    get_pp_stage,
+    is_sequential_run,
+    set_grad_var_shape,
+    use_new_executor,
+)
 
 
 class Parallelizer:
@@ -367,6 +372,7 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
 
+        if not is_sequential_run():
             # deps for newexe
             config = {}
             config["dist_context"] = self._dist_context
