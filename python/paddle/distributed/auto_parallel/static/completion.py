@@ -138,12 +138,14 @@ def _can_apply_infer_spmd_rule(dist_op):
 def _update_op_dims_mapping_and_distoperatorimpl(
     dist_op, original_op_dist_attr
 ):
+    changed = False
     dist_op_container = find_distributed_operator_impl_container(dist_op)
-    dist_op_container.update_dims_mapping(dist_op)
+    changed = dist_op_container.update_dims_mapping(dist_op)
     # TODO(ljz) remove the below code once we introduce general reshard to replace specifc distopimpls
     dist_op_container.mapping_to_dist_operator_impl(
         dist_op, original_op_dist_attr
     )
+    return changed
 
 
 class Completer:
@@ -323,7 +325,7 @@ class Completer:
                     dist_op.serial_op.type
                 )
             )
-            _update_op_dims_mapping_and_distoperatorimpl(
+            return _update_op_dims_mapping_and_distoperatorimpl(
                 dist_op, original_op_dist_attr
             )
         else:

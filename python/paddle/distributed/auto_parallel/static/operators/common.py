@@ -22,6 +22,7 @@ from ..process_group import new_process_group
 from ..utils import (
     _get_comm_group,
     _get_corresponding_rank,
+    compute_compatible_dims_mapping,
     get_logger,
     is_optimize_op,
 )
@@ -70,7 +71,7 @@ def is_elementwise_op(op_type):
     return False
 
 
-class DistributedOperatorImplContainer:
+class DistributedOperatorImplContainer(abc.ABC):
     def __init__(self, op_type):
         self._type = op_type
         self._impls = []
@@ -118,6 +119,12 @@ class DistributedOperatorImplContainer:
             if impl.is_auto_compatible(dist_op):
                 compatible_impls.append(impl)
         return compatible_impls
+
+    # (NOTE) Currently, both DistributedOperatorImplContainer and DistributedOperatorImpl have update_dims_mapping method.
+    # But this method is supposed to be maitained by ImplContainer, and we are ongoing adding method to DistributedOperatorImplContainer and removing it from DistributedOperatorImpl.
+    @abc.abstractmethod
+    def update_dims_mapping(self, dist_op):
+        raise NotImplementedError("Please Implement this method in Subclass.")
 
 
 class DistributedOperatorImpl(abc.ABC):
@@ -576,3 +583,72 @@ def is_in_backward_phase(dist_ctx):
     # we use this FLAG to distinguish these two phases temporarily.
 
     return dist_ctx.dist_op_context.in_backward_phase()
+
+
+def merge_forward_backward_dims_mapping(fw_results, bw_results):
+    ninputs = len(fw_results[0])
+    noutputs = len(fw_results[1])
+    infered_input_dims_mappings = []
+    infered_output_dims_mappings = []
+
+    for i in range(ninputs):
+        compatible_dims_mapping = compute_compatible_dims_mapping(
+            [fw_results[0][i].dims_mapping, bw_results[0][i].dims_mapping]
+        )
+        infered_input_dims_mappings.append(compatible_dims_mapping)
+
+    for i in range(noutputs):
+        compatible_dims_mapping = compute_compatible_dims_mapping(
+            [fw_results[1][i].dims_mapping, bw_results[1][i].dims_mapping]
+        )
+        infered_output_dims_mappings.append(compatible_dims_mapping)
+    return infered_input_dims_mappings, infered_output_dims_mappings
+
+
+def update_op_dims_mapping(
+    dist_op,
+    input_arg_names,
+    infered_input_dims_mappings,
+    output_arg_names,
+    infered_output_dims_mappings,
+):
+    op_dist_attr = dist_op.dist_attr
+    changed = False
+    assert len(input_arg_names) == len(
+        infered_input_dims_mappings
+    ), "dims mapping is NOT Match, infered [{}], orignal: [{}]; dist op: [{}]".format(
+        len(infered_input_dims_mappings), len(input_arg_names), str(dist_op)
+    )
+    assert len(output_arg_names) == len(
+        infered_output_dims_mappings
+    ), "dims mapping is NOT Match, infered [{}], orignal: [{}]; dist op: [{}]".format(
+        len(infered_output_dims_mappings), len(output_arg_names), str(dist_op)
+    )
+
+    for i in range(len(input_arg_names)):
+        original_dims_mapping = op_dist_attr.get_input_dims_mapping(
+            input_arg_names[i]
+        )
+        infered_dims_mapping = infered_input_dims_mappings[i]
+        if (infered_dims_mapping is not None) and (
+            original_dims_mapping != infered_dims_mapping
+        ):
+            changed = True
+            op_dist_attr.set_input_dims_mapping(
+                input_arg_names[i], infered_dims_mapping
+            )
+
+    for i in range(len(output_arg_names)):
+        original_dims_mapping = op_dist_attr.get_output_dims_mapping(
+            output_arg_names[i]
+        )
+        infered_dims_mapping = infered_output_dims_mappings[i]
+        if (infered_dims_mapping is not None) and (
+            original_dims_mapping != infered_dims_mapping
+        ):
+            changed = True
+            op_dist_attr.set_output_dims_mapping(
+                output_arg_names[i], infered_dims_mapping
+            )
+
+    return changed
