@@ -498,15 +498,17 @@ def pow(x, y, name=None):
             [1., 4., 9.])
 
     """
+
     # in dynamic graph mode
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(y, (int, float)):
             return _C_ops.pow(x, y)
-        elif isinstance(y, (paddle.Tensor, Variable)):
+        elif isinstance(y, (paddle.Tensor, Variable, paddle.ir.OpResult)):
             return _C_ops.elementwise_pow(x, y)
         else:
             raise TypeError(
-                'y must be scalar or tensor type, but received: %s ' % (y.dtype)
+                'y must be scalar , Tensor(in dygraph mode), OpResult(in pir mode) but received: %s '
+                % (y.dtype)
             )
     else:
         # in static graph mode
