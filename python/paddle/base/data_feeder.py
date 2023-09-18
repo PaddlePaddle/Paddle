@@ -14,8 +14,6 @@
 
 from . import core
 import numpy as np
-import os
-import multiprocessing
 import warnings
 import struct
 
@@ -23,7 +21,6 @@ from .framework import (
     Variable,
     default_main_program,
     in_dygraph_mode,
-    _current_expected_place,
 )
 from .framework import _cpu_num, _cuda_ids
 

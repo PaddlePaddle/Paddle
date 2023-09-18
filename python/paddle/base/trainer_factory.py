@@ -23,7 +23,7 @@ local_logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
-from .trainer_desc import (
+from .trainer_desc import (  # noqa: F401
     MultiTrainer,
     DistMultiTrainer,
     PipelineTrainer,
@@ -31,7 +31,7 @@ from .trainer_desc import (
     PSGPUTrainer,
     HeterPipelineTrainer,
 )
-from .device_worker import (
+from .device_worker import (  # noqa: F401
     Hogwild,
     DownpourSGD,
     DownpourLite,
@@ -40,7 +40,6 @@ from .device_worker import (
     HeterSection,
 )
 from .framework import Variable
-from multiprocessing import Process, Manager
 
 __all__ = ["TrainerFactory", "FetchHandlerMonitor"]
 

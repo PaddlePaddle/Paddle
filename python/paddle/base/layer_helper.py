@@ -18,12 +18,10 @@ from .framework import (
     Parameter,
     dtype_is_floating,
     in_dygraph_mode,
-    OpProtoHolder,
     _global_flags,
 )
 from . import unique_name
 from .param_attr import ParamAttr
-from . import core
 
 from .layer_helper_base import LayerHelperBase
 from .dygraph_utils import _append_activation_in_dygraph
