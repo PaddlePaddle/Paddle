@@ -864,7 +864,7 @@ class TestDygraphInplaceHypot(TestDygraphInplace):
 
             inplace_var = self.inplace_api_processing(inplace_var)
             self.assertEqual(var.inplace_version, 7)
-            
+
     def test_backward_error(self):
         # It raises an error because the inplace operator will result
         # in incorrect gradient computation.
@@ -873,7 +873,6 @@ class TestDygraphInplaceHypot(TestDygraphInplace):
             var_a.stop_gradient = False
 
             var_b = var_a**2
-
             # Here, the gradient computation will use the value of var_b
             var_c = var_b**2
             self.inplace_api_processing(var_b)
@@ -887,6 +886,7 @@ class TestDygraphInplaceHypot(TestDygraphInplace):
                 ),
             ):
                 loss.backward()
+
 
 class TestDygraphInplaceNanToNum(TestDygraphInplace):
     def init_data(self):
