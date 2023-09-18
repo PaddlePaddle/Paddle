@@ -72,7 +72,7 @@ select = [
     "PLR1701",
     # "PLR1711",  # Confirmation required
     "PLR1722",
-    "PLW3301",  # Confirmation required
+    "PLW3301",
 ]
 unfixable = [
     "NPY001"
@@ -111,7 +111,6 @@ ignore = [
     "F403",
     "B010",
     "PLR1722",
-    "C403",
     "UP034",
     "C405",
     "C417",
