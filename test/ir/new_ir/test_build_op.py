@@ -87,7 +87,7 @@ class TestBuildOp3(unittest.TestCase):
             tanh_operand = tanh_op.operands()[0]
 
             with paddle.pir.core.program_guard(newir_program):
-                ir.set_insertion_point(tanh_op)
+                pir.set_insertion_point(tanh_op)
                 full_out = paddle.tensor.fill_constant(
                     shape=[4, 4], dtype="float", value=2
                 )
