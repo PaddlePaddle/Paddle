@@ -171,11 +171,8 @@ TEST(StandaloneExecutor, if_op) {
       std::vector<int64_t>{3}, true, phi::DataType::BOOL);
   builder.Build<pir::YieldOp>(std::vector<pir::OpResult>{full_op_2.out()});
 
-  program.Print(std::cout);
-
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
-  kernel_program->Print(std::cout);
   auto place = platform::CPUPlace();
   Scope scope;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
@@ -184,7 +181,6 @@ TEST(StandaloneExecutor, if_op) {
   os << reinterpret_cast<NewIRInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
   std::string out_name = os.str() + "_inner_var_1";
-  std::cout << "out name " << out_name << std::endl;
   test_core.SetSkipGcVars({out_name});
 
   test_core.Run({});
