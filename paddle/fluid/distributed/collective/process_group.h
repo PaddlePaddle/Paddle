@@ -20,11 +20,11 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/distributed/collective/types.h"
-#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"  // NOTE: this header is required somewhere
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/distributed/types.h"
+#include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
@@ -33,6 +33,16 @@ constexpr auto kWaitTimeout = std::chrono::milliseconds(0);
 namespace paddle {
 namespace distributed {
 
+using phi::distributed::AllreduceOptions;
+using phi::distributed::BarrierOptions;
+using phi::distributed::BroadcastOptions;
+using phi::distributed::CommType;
+using phi::distributed::GatherOptions;
+using phi::distributed::GetPartialTensor;
+using phi::distributed::ReduceOp;
+using phi::distributed::ReduceOptions;
+using phi::distributed::ReduceScatterOptions;
+using phi::distributed::ScatterOptions;
 constexpr int kIgnoreId = -1;
 
 class ProcessGroup {
@@ -79,6 +89,8 @@ class ProcessGroup {
   int GetRank() const { return rank_; }
 
   int GetSize() const { return size_; }
+
+  int GetGid() const { return gid_; }
 
   virtual std::string GetBackendName() const = 0;
 

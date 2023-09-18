@@ -20,7 +20,7 @@
 
 #include "paddle/phi/common/place.h"
 
-namespace paddle {
+namespace phi {
 namespace distributed {
 
 // TODO(shenliang03): To support AVG for reduce
@@ -57,4 +57,4 @@ struct ReduceScatterOptions {
 };
 
 }  //  namespace distributed
-}  //  namespace paddle
+}  // namespace phi

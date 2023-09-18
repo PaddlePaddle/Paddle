@@ -1123,6 +1123,24 @@ PADDLE_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
 #endif
 
 /**
+ * ProcessGroupNCCL related FLAG
+ * Name: enable_async_trace
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note: enable nccl async trace.
+ */
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PADDLE_DEFINE_EXPORTED_bool(enable_async_trace,
+                            false,
+                            "enable collective async trace");
+
+PADDLE_DEFINE_EXPORTED_int32(async_trace_count,
+                             5,
+                             "collective async trace count");
+#endif
+
+/**
  * Autotune related FLAG
  * Name: FLAGS_use_autotune
  * Since Version: 2.3.0
