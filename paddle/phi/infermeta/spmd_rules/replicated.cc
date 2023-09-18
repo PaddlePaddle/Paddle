@@ -32,9 +32,8 @@ std::vector<int64_t> GetReplicatedDimsmapping(const int ndim) {
 }
 
 ////////////////// InferMeta(Contains SPMD) Functions //////////////////
-SpmdInfo ReplicatedSpmdInferForward(
-    const std::vector<const DistMetaTensor*>& ins,
-    const std::vector<const DistMetaTensor*>& outs) {
+SpmdInfo ReplicatedInferSpmd(const std::vector<const DistMetaTensor*>& ins,
+                             const std::vector<const DistMetaTensor*>& outs) {
   // step1: Build Einsum Notation for input tensor's batch axis
   int64_t ninputs = ins.size();
   int64_t noutputs = outs.size();
@@ -83,7 +82,7 @@ SpmdInfo ReplicatedSpmdInferForward(
   return {dst_input_dist_attrs, output_dist_attrs};
 }
 
-SpmdInfo ReplicatedSpmdInferBackward(
+SpmdInfo ReplicatedInferSpmdReverse(
     const std::vector<const DistMetaTensor*>& ins,
     const std::vector<const DistMetaTensor*>& outs) {
   // step1: Build Einsum Notation for input tensor's batch axis
