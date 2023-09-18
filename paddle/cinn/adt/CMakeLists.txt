@@ -5,10 +5,11 @@ gather_srcs(
   SRCS
   equation_solver.cc
   generate_map_expr.cc
-  simplify_value.cc
   kgroup.cc
   m_ir.cc
+  naive_op_equation_context.cc
   partition_op_stmts.cc
-  print_map_expr.cc)
+  print_map_expr.cc
+  simplify_value.cc)
 
 message(STATUS "ADT srcs: ${cinnapi_src}")

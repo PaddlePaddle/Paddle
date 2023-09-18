@@ -39,6 +39,23 @@ void ToTxtString(const Tensor& tensor, std::string* string) {
   *string += tensor.Get<adapter::Tensor>().node_data->id();
 }
 
+void ToTxtString(const List<Arg>& out_args,
+                 const List<Arg>& in_args,
+                 std::string* string) {
+  *string += "(";
+  std::size_t count = 0;
+  VisitEachArg(out_args, in_args, [&](const auto& arg, const auto& as_output) {
+    if (count++ > 0) {
+      *string += ", ";
+    }
+    if (as_output.value()) {
+      *string += "&";
+    }
+    ToTxtString(arg, string);
+  });
+  *string += ")\n";
+}
+
 void ToTxtString(const OpStmt& op_stmt,
                  std::size_t indent_size,
                  std::string* string) {
@@ -46,25 +63,13 @@ void ToTxtString(const OpStmt& op_stmt,
   CHECK(op.Has<const hlir::framework::Node*>());
   *string += std::string(" ", indent_size * kIndentSpaceSize);
   *string += op.Get<const hlir::framework::Node*>()->op()->name;
-  *string += "(";
-  std::size_t count = 0;
-  VisitEachArg(out_args.value(),
-               in_args.value(),
-               [&](const auto& arg, const auto& as_output) {
-                 if (count++ > 0) {
-                   *string += ", ";
-                 }
-                 if (as_output.value()) {
-                   *string += "&";
-                 }
-                 ToTxtString(arg, string);
-               });
-  *string += ")";
+  ToTxtString(out_args.value(), in_args.value(), string);
 }
 
-void ToTextString(const LoopType& loop_type,
+void ToTextString(const LoopDescriptor& loop_descriptor,
                   std::size_t indent_size,
                   std::string* string) {
+  const auto& [loop_type, loop_size] = loop_descriptor.tuple();
   loop_type >>
       match{[&](const S0x&) { *string += "blockIdx.x"; },
             [&](const S0y&) { *string += "blockIdx.y"; },
@@ -79,18 +84,22 @@ void ToTextString(const LoopType& loop_type,
               *string += vectorize.iter_var_name();
             },
             [&](const Unroll& unroll) { *string += unroll.iter_var_name(); }};
+  CHECK(loop_size.Has<std::int64_t>());
+  *string += "=" + std::to_string(loop_size.Get<std::int64_t>());
 }
 
 void ToTextString(const ScheduleDescriptor& schedule_descriptor,
                   std::size_t indent_size,
                   std::string* string) {
-  *string += std::string(" ", indent_size * kIndentSpaceSize);
+  *string += std::string(" ", indent_size * kIndentSpaceSize) + "(";
+  std::size_t count = 0;
   for (const auto& loop_descriptor : *schedule_descriptor) {
-    const auto& [loop_type, loop_size] = loop_descriptor.tuple();
-    ToTextString(loop_type, indent_size, string);
-    CHECK(loop_size.Has<std::int64_t>());
-    *string += ", " + std::to_string(loop_size.Get<std::int64_t>());
+    if (count++ > 0) {
+      *string += ", ";
+    }
+    ToTextString(loop_descriptor, indent_size, string);
   }
+  *string += ")\n";
 }
 
 void ToTextString(const MapStmt<Stmt>& map_stmt,
@@ -123,27 +132,15 @@ void ToTextString(const AnchoredMapStmt& anchored_map_stmt,
   ToTextString(map_stmt, indent_size, string);
 }
 
-void ToTextString(const List<Tensor>& tensors,
-                  std::size_t indent_size,
-                  std::string* string) {
-  for (const auto& tensor : *tensors) {
-    ToTxtString(tensor, string);
-  }
-}
-
 void ToTextString(const MapExpr& map_expr,
                   std::size_t indent_size,
                   std::string* txt_string) {
   const auto& [anchored_map_stmts, inputs, outputs] = map_expr.tuple();
 
-  *txt_string += "Input tensors: \n";
-  ToTextString(inputs.value(), 0, txt_string);
-  *txt_string += "Output tensors: \n";
-  ToTextString(outputs.value(), 0, txt_string);
-
+  *txt_string += "\nMapExpr";
+  ToTxtString(outputs.value(), inputs.value(), txt_string);
   for (const auto& anchored_map_stmt : *anchored_map_stmts) {
-    *txt_string += "\n";
-    ToTextString(anchored_map_stmt, 0, txt_string);
+    ToTextString(anchored_map_stmt, 1, txt_string);
   }
 }
 
