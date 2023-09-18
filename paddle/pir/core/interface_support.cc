@@ -15,18 +15,17 @@
 #include "paddle/pir/core/interface_support.h"
 
 namespace pir {
-detail::InterfaceValue::~InterfaceValue() {
+InterfaceValue::~InterfaceValue() {
   if (model_) free(model_);
 }
 
-detail::InterfaceValue::InterfaceValue(InterfaceValue&& val) noexcept {
+InterfaceValue::InterfaceValue(InterfaceValue&& val) noexcept {
   type_id_ = val.type_id_;
   model_ = val.model_;
   val.model_ = nullptr;
 }
 
-detail::InterfaceValue& detail::InterfaceValue::operator=(
-    InterfaceValue&& val) noexcept {
+InterfaceValue& InterfaceValue::operator=(InterfaceValue&& val) noexcept {
   swap(std::move(val));
   return *this;
 }
