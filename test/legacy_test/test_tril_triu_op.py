@@ -48,7 +48,7 @@ class TrilTriuOpDefaultTest(OpTest):
         self.check_output(check_new_ir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_new_ir=True)
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -90,7 +90,11 @@ class TrilTriuOpDefaultTestBF16(TrilTriuOpDefaultTest):
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            core.CUDAPlace(0), ['X'], 'Out', numeric_grad_delta=0.05
+            core.CUDAPlace(0),
+            ['X'],
+            'Out',
+            numeric_grad_delta=0.05,
+            check_new_ir=True,
         )
 
 
