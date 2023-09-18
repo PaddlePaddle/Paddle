@@ -27,16 +27,12 @@ using LazyTensor = paddle::primitive::LazyTensor;
 template <>
 std::vector<Tensor> add_n_grad<LazyTensor>(const std::vector<Tensor>& x,
                                            const Tensor& out_grad) {
-  std::vector<pir::OpResult> x_res(x.size());
+  std::vector<pir::Value> x_res(x.size());
   std::transform(x.begin(), x.end(), x_res.begin(), [](const Tensor& t) {
-    return std::static_pointer_cast<LazyTensor>(t.impl())
-        ->value()
-        .dyn_cast<pir::OpResult>();
+    return std::static_pointer_cast<LazyTensor>(t.impl())->value();
   });
-  pir::OpResult out_grad_res =
-      std::static_pointer_cast<LazyTensor>(out_grad.impl())
-          ->value()
-          .dyn_cast<pir::OpResult>();
+  pir::Value out_grad_res =
+      std::static_pointer_cast<LazyTensor>(out_grad.impl())->value();
   auto op_res = paddle::dialect::add_n_grad(x_res, out_grad_res);
 
   std::vector<Tensor> x_grad(op_res.size());
