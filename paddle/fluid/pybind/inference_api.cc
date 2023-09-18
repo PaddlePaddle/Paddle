@@ -898,8 +898,7 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::tensorrt_dynamic_shape_enabled)
       .def("mark_trt_engine_outputs",
            &AnalysisConfig::MarkTrtEngineOutputs,
-           py::arg("output_tensor_names") = std::vector<std::string>({}),
-           py::arg("mark_output_with_id") = false)
+           py::arg("output_tensor_names") = std::vector<std::string>({}))
       .def("enable_tensorrt_varseqlen", &AnalysisConfig::EnableVarseqlen)
       .def("tensorrt_varseqlen_enabled",
            &AnalysisConfig::tensorrt_varseqlen_enabled)

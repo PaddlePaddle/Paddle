@@ -241,7 +241,6 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize, int64_t);
   DECL_ARGUMENT_FIELD(tensorrt_min_subgraph_size, TensorRtMinSubgraphSize, int);
   DECL_ARGUMENT_FIELD(trt_mark_output, TRTMarkOutput, bool);
-  DECL_ARGUMENT_FIELD(trt_mark_output_with_id, TRTMarkOutputWithId, bool);
   DECL_ARGUMENT_FIELD(trt_output_tensor_names,
                       TRTOutputTensorNames,
                       std::vector<std::string>);
