@@ -969,6 +969,7 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
           params, dev_ctx.stream(), load_func, store_func);
       break;
     case 96:
+
       fmha_launch_kernel<T, 96, 128>(
           params, dev_ctx.stream(), load_func, store_func);
       break;

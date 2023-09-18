@@ -100,12 +100,11 @@ struct GeluFunctor {
   }
 };
 
-
 template <typename T>
 struct ReluFunctor {
   inline __host__ __device__ T operator()(const T x) const {
-    T zero =  static_cast<T>(0.0);
-    return x >  zero ? x : zero;
+    T zero = static_cast<T>(0.0);
+    return x > zero ? x : zero;
   }
 };
 
