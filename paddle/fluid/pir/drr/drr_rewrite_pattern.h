@@ -424,23 +424,21 @@ class DrrRewritePattern : public pir::RewritePattern {
   }
 
   bool MatchFromOutputToInput(
-      std::vector<const OpCall*> drr_output_sequence,
-      std::vector<pir::Operation*> ir_output_sequence,
+      std::unordered_map<const OpCall*, Operation*> output_op_map,
       const SourcePatternGraph& source_pattern_graph,
       const std::shared_ptr<MatchContextImpl>& source_pattern_match_ctx) const {
     VLOG(6) << "MatchFromOutputToInput Start";
-    IR_ENFORCE(drr_output_sequence.size() == ir_output_sequence.size());
     std::unordered_set<const OpCall*> drr_visited;
     std::unordered_set<Operation*> ir_visited;
     std::queue<const OpCall*> drr_q;
     std::queue<pir::Operation*> ir_q;
     bool matched = true;
     size_t step = 0;
-    for (size_t i = 0; i < ir_output_sequence.size(); ++i) {
-      drr_q.push(drr_output_sequence[i]);
-      drr_visited.insert(drr_output_sequence[i]);
-      ir_q.push(ir_output_sequence[i]);
-      ir_visited.insert(ir_output_sequence[i]);
+    for (auto it = output_op_map.begin(); it != output_op_map.end(); ++it) {
+      drr_q.push(it->first);
+      drr_visited.insert(it->first);
+      ir_q.push(it->second);
+      ir_visited.insert(it->second);
     }
     while (!drr_q.empty()) {
       if (!matched) break;
@@ -524,7 +522,7 @@ class DrrRewritePattern : public pir::RewritePattern {
     }
     std::vector<const OpCall*> drr_output_sequence;
     std::vector<Operation*> ir_output_sequence;
-
+    std::unordered_map<const OpCall*, Operation*> output_op_map;
     for (auto pair : bind_map) {
       drr_output_sequence.push_back(pair.first);
     }
@@ -534,10 +532,16 @@ class DrrRewritePattern : public pir::RewritePattern {
         // new match_ctx
         std::shared_ptr<MatchContextImpl> match_ctx =
             std::make_shared<MatchContextImpl>();
-        if (MatchFromOutputToInput(drr_output_sequence,
-                                   ir_output_sequence,
-                                   *(source_pattern_graph_.get()),
-                                   match_ctx)) {
+        // create output op map
+        std::transform(drr_output_sequence.begin(),
+                       drr_output_sequence.end(),
+                       ir_output_sequence.begin(),
+                       std::inserter(output_op_map, output_op_map.end()),
+                       [](const OpCall* drr_op, Operation* ir_op) {
+                         return std::make_pair(drr_op, ir_op);
+                       });
+        if (MatchFromOutputToInput(
+                output_op_map, *(source_pattern_graph_.get()), match_ctx)) {
           *source_pattern_match_ctx = *match_ctx;
           return true;
         }
