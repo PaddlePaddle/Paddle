@@ -29,7 +29,7 @@ using IntArray = paddle::experimental::IntArray;
 
 std::vector<std::vector<pir::OpResult>> AddNOp::Vjp(
     pir::Operation* op,
-    const std::vector<std::vector<pir::OpResult>>& out_grads,
+    const std::vector<std::vector<pir::Value>>& out_grads,
     const std::vector<std::vector<bool>>& stop_gradients) {
   AddNOp op_obj = op->dyn_cast<AddNOp>();
 

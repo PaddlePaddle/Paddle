@@ -51,7 +51,7 @@ class AddNOp : public pir::Op<AddNOp,
   static void InferMeta(phi::InferMetaContext *infer_meta);
   static std::vector<std::vector<pir::OpResult>> Vjp(
       pir::Operation *op,
-      const std::vector<std::vector<pir::OpResult>> &out_grads,
+      const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
 };
 
