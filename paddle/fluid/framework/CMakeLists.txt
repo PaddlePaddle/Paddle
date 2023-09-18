@@ -526,11 +526,9 @@ add_dependencies(
   ops_extra_info
   shape_inference
   op_info
-  operator
   glog
   version
   xxhash
-  op_dist_attr
   phi)
 
 cc_library(
