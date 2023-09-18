@@ -2379,6 +2379,8 @@ class TestExcludedLayersSupportBool(unittest.TestCase):
             model = MyLayer()
             model.float16(excluded_layers=[paddle.nn.Linear])
             self.assertTrue(model._linear.weight.dtype == paddle.float32)
+            model.bfloat16(excluded_layers=(paddle.nn.Linear))
+            self.assertTrue(model._linear.weight.dtype == paddle.float32)
 
 
 if __name__ == '__main__':
