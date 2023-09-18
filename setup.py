@@ -481,7 +481,7 @@ def show():
 
             >>> import paddle
 
-            Case 1: paddle is tagged with 2.2.0
+            >>> # Case 1: paddle is tagged with 2.2.0
             >>> paddle.version.show()
             full_version: 2.2.0
             major: 2
@@ -494,7 +494,7 @@ def show():
             xpu_xccl: '1.0.7'
             cinn: False
 
-            Case 2: paddle is not tagged
+            >>> # Case 2: paddle is not tagged
             >>> paddle.version.show()
             commit: cfa357e984bfd2ffa16820e354020529df434f7d
             cuda: '10.2'
