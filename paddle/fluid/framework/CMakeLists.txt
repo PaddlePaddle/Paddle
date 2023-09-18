@@ -518,9 +518,12 @@ cc_test(
   SRCS version_test.cc
   DEPS version)
 
+add_library(proto_desc_base OBJECT var_desc.cc op_desc.cc block_desc.cc
+                                   program_desc.cc)
+
 cc_library(
   proto_desc
-  SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc program_converter.cc
+  SRCS $<TARGET_OBJECTS:proto_desc_base> program_converter.cc
   DEPS attribute
        ops_extra_info
        shape_inference

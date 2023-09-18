@@ -24,14 +24,28 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     test_egr_task_cross_batch
     SRCS cross_batch_accumulation_test.cc
     DEPS ${eager_deps} ${fluid_deps} ${generated_deps} eager_scale scale_node)
-  cc_test(
+  cc_test_old(
     test_egr_task_hook_intermidiate
-    SRCS hook_test_intermidiate.cc
-    DEPS ${eager_deps} ${fluid_deps} ${generated_deps} dygraph_node)
-  cc_test(
+    SRCS
+    hook_test_intermidiate.cc
+    DEPS
+    dygraph_function
+    ${eager_deps}
+    dygraph_node
+    paddle
+    python
+    pybind)
+  cc_test_old(
     test_egr_task_autocodegen
-    SRCS generated_test.cc
-    DEPS ${eager_deps} ${fluid_deps} ${generated_deps})
+    SRCS
+    generated_test.cc
+    DEPS
+    dygraph_function
+    ${eager_deps}
+    dygraph_node
+    paddle
+    python
+    pybind)
   cc_test(
     test_egr_task_tensor_utils
     SRCS tensor_utils_test.cc

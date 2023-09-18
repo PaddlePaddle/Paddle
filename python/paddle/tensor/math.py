@@ -690,6 +690,8 @@ def add(x, y, name=None):
     if in_dynamic_or_pir_mode():
         return _C_ops.add(x, y)
     else:
+        if paddle.ir.core._use_new_ir_api():
+            return paddle._ir_ops.add(x, y)
         return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
 

@@ -18,6 +18,7 @@ if(WITH_CUSTOM_DEVICE)
 endif()
 
 add_executable(eager_generator eager_generator.cc)
+list(REMOVE_ITEM EAGER_GENERETOR_DEPS op_version_registry)
 target_link_libraries(eager_generator ${EAGER_GENERETOR_DEPS})
 
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
