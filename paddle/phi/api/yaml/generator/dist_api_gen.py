@@ -1040,8 +1040,29 @@ class DistForwardAPI(ForwardAPI):
         if inplace_flag and api_func_name[-1] != '_':
             api_func_name += '_'
 
+        # All apis contains auto parallel branch default.
+        # Auto parallel branch has following restrictions:
+        # 1. doesn't support initialize ops now
+        # 2. doesn't support stride/view api
+        # 3. only for general forward and backward
+        # 4. doesn't support double grad and triple grad
+        # 5. for multi kernels functions, doesn't support sparse kernel
         if len(self.kernel['func']) > 1:
             kernel_dispatch_code = ''
+            dist_branch_code = ""
+            for kernel_name in self.kernel['func']:
+                # Skip sparse kernels.
+                if (
+                    'sparse' not in kernel_name
+                    and '_sr' not in kernel_name
+                    and len(self.inputs['names']) > 0
+                    and len(self.view_map) == 0
+                    and self.check_argument_whether_support_auto_parallel()
+                    and not self.api.endswith("_double_grad")
+                    and not self.api.endswith("_triple_grad")
+                ):
+                    dist_branch_code += self.generate_auto_paralel_branch()
+            kernel_dispatch_code += dist_branch_code
             for kernel_name in self.kernel['func']:
                 kernel_dispatch_code += self.gene_dispatch_code(
                     kernel_name, inplace_flag
@@ -1055,13 +1076,6 @@ class DistForwardAPI(ForwardAPI):
                 + DIPATCH_END_GUARD_TEMPLATE.format(self.api),
             )
         else:
-            # auto parallel branch, all apis contains this branch default
-            # 1. only works for the ops contains single kernel
-            # 2. doesn't support initialize ops now
-            # 3. doesn't support view api
-            # 4. only for general forward and backward
-            # 5. only support single tensor input and output
-            # 6. doesn't support double grad and triple grad
             dist_branch_code = ""
             if (
                 len(self.inputs['names']) > 0
