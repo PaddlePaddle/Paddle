@@ -196,12 +196,12 @@ class ShapeComputationIRAnalysis {
   bool Run();
 
  private:
-  bool RunOnRegion(Region* region, func f);
-  bool RunOnBlock(Block* block, func f);
-  // bool RunOnOperation(Operation* op);
+  bool RunOnRegion(Region* region, func fn);
+  bool RunOnBlock(Block* block, func fn);
+  bool RunOnOperation(Operation* op, func fn);
 
-  bool BuildSymbolicShape(Operation* op);
-  bool BuildValueShape(Value value);
+  bool BuildShapeOnOperation(Operation* op);
+  bool BuildShapeOnValue(Value value);
 
   bool initialized_ = false;
   ModuleOp m_;

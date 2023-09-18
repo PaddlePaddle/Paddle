@@ -733,7 +733,7 @@ bool ShapeComputationIRAnalysis::Run() {
   // Make sure only run once.
   if (initialized_) return false;
   initialized_ = true;
-  auto fn = std::bind(&ShapeComputationIRAnalysis::BuildSymbolicShape,
+  auto fn = std::bind(&ShapeComputationIRAnalysis::BuildShapeOnOperation,
                       this,
                       std::placeholders::_1);
   if (!RunOnRegion(&(m_->region(0)), fn)) return false;
@@ -754,15 +754,19 @@ bool ShapeComputationIRAnalysis::RunOnBlock(Block* block, func fn) {
   std::vector<Operation*> op_list;
   for (Operation* op : *block) op_list.push_back(op);
   for (Operation* op : op_list) {
-    for (size_t i = 0; i < op->num_regions(); ++i) {
-      if (!RunOnRegion(&(op->region(i)), fn)) return false;
-    }
-    if (!fn(op)) return false;
+    if (!RunOnOperation(op, fn)) return false;
   }
   return true;
 }
 
-bool ShapeComputationIRAnalysis::BuildSymbolicShape(Operation* op) {
+bool ShapeComputationIRAnalysis::RunOnOperation(Operation* op, func fn) {
+  for (size_t i = 0; i < op->num_regions(); ++i) {
+    if (!RunOnRegion(&(op->region(i)), fn)) return false;
+  }
+  return fn(op);
+}
+
+bool ShapeComputationIRAnalysis::BuildShapeOnOperation(Operation* op) {
   if (op->isa<dialect::FuncOp>()) return true;
   if (op->isa<dialect::TieShapeOp>()) {
     Value value = op->operand_source(0);
@@ -793,12 +797,12 @@ bool ShapeComputationIRAnalysis::BuildSymbolicShape(Operation* op) {
     return true;
   }
   for (size_t i = 0; i < op->num_results(); ++i) {
-    if (!BuildValueShape(op->result(i))) return false;
+    if (!BuildShapeOnValue(op->result(i))) return false;
   }
   return true;
 }
 
-bool ShapeComputationIRAnalysis::BuildValueShape(Value value) {
+bool ShapeComputationIRAnalysis::BuildShapeOnValue(Value value) {
   Type ty = value.type();
   if (IsIntOrIndex(ty)) {
     SymbolicDim sym = mgr_.NewSymbolicDim();
