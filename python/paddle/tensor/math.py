@@ -4624,7 +4624,7 @@ def tanh(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.37994900, -0.19737528,  0.09966799,  0.29131261])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.tanh(x)
     else:
         check_variable_and_dtype(

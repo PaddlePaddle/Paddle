@@ -49,10 +49,10 @@ class TestTransposeOp(OpTest):
         self.use_mkldnn = False
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        self.check_output(no_check_set=['XShape'], check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
     def if_enable_cinn(self):
         pass
@@ -205,11 +205,11 @@ class TestAutoTuneTransposeOp(OpTest):
         self.use_mkldnn = False
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        self.check_output(no_check_set=['XShape'], check_new_ir=True)
         base.core.disable_autotune()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
 
 class TestAutoTuneTransposeFP16Op(OpTest):
@@ -242,11 +242,11 @@ class TestAutoTuneTransposeFP16Op(OpTest):
         self.use_mkldnn = False
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        self.check_output(no_check_set=['XShape'], check_new_ir=True)
         base.core.disable_autotune()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
 
 class TestAutoTuneTransposeBF16Op(OpTest):
@@ -286,11 +286,11 @@ class TestAutoTuneTransposeBF16Op(OpTest):
         self.use_mkldnn = False
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        self.check_output(no_check_set=['XShape'], check_new_ir=True)
         base.core.disable_autotune()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
 
 class TestTransposeFP16Op(OpTest):
@@ -322,10 +322,10 @@ class TestTransposeFP16Op(OpTest):
         self.use_mkldnn = False
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        self.check_output(no_check_set=['XShape'], check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
     def initTestCase(self):
         self.shape = (3, 40)
@@ -364,7 +364,7 @@ class TestTransposeBF16Op(OpTest):
         self.use_mkldnn = False
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        self.check_output(no_check_set=['XShape'], check_new_ir=True)
 
     def test_check_grad(self):
         pass
