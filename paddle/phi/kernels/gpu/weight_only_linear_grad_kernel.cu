@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2022-2023, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 // Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,12 +41,13 @@
 #endif
 
 namespace phi {
+
 #if defined(PADDLE_WITH_CUTLASS)
 template <typename T, int WeightBit>
 struct FastWeightOnlyHalfConverter;
 
 template <>
-struct FastWeightOnlyHalfConverter<dtype::float16, 8> {
+struct FastWeightOnlyHalfConverter<half, 8> {
   using Converter =
       cutlass::FastInterleavedAndBiasedNumericArrayConverter<cutlass::half_t,
                                                              uint8_t,
@@ -38,21 +55,21 @@ struct FastWeightOnlyHalfConverter<dtype::float16, 8> {
   static constexpr int kHalfLength = 4;
   static constexpr int kWeightOnlyLength = 4;
 
-  __device__ static inline void convert(dtype::float16 halves[kHalfLength],
+  __device__ static inline void convert(half halves[kHalfLength],
                                         uint8_t chars[kWeightOnlyLength],
                                         float scale) {
     *reinterpret_cast<Converter::result_type*>(halves) =
         Converter::convert(*reinterpret_cast<Converter::source_type*>(chars));
 #pragma unroll
     for (int i = 0; i < kHalfLength; ++i) {
-      halves[i] =
-          static_cast<dtype::float16>(static_cast<float>(halves[i]) * scale);
+      float dequant_value = __half2float(halves[i]) * scale;
+      halves[i] = __float2half_rn(dequant_value);
     }
   }
 };
 
 template <>
-struct FastWeightOnlyHalfConverter<dtype::float16, 4> {
+struct FastWeightOnlyHalfConverter<half, 4> {
   using Converter =
       cutlass::FastInterleavedAndBiasedNumericArrayConverter<cutlass::half_t,
                                                              cutlass::uint4b_t,
@@ -60,22 +77,22 @@ struct FastWeightOnlyHalfConverter<dtype::float16, 4> {
   static constexpr int kHalfLength = 8;
   static constexpr int kWeightOnlyLength = 4;
 
-  __device__ static inline void convert(dtype::float16 halves[kHalfLength],
+  __device__ static inline void convert(half halves[kHalfLength],
                                         uint8_t chars[kWeightOnlyLength],
                                         float scale) {
     *reinterpret_cast<Converter::result_type*>(halves) =
         Converter::convert(*reinterpret_cast<Converter::source_type*>(chars));
 #pragma unroll
     for (int i = 0; i < kHalfLength; ++i) {
-      halves[i] =
-          static_cast<dtype::float16>(static_cast<float>(halves[i]) * scale);
+      float dequant_value = __half2float(halves[i]) * scale;
+      halves[i] = __float2half_rn(dequant_value);
     }
   }
 };
 
 #if defined(PADDLE_CUDA_BF16)
 template <>
-struct FastWeightOnlyHalfConverter<dtype::bfloat16, 8> {
+struct FastWeightOnlyHalfConverter<__nv_bfloat16, 8> {
   using Converter = cutlass::FastInterleavedAndBiasedNumericArrayConverter<
       cutlass::bfloat16_t,
       uint8_t,
@@ -83,21 +100,21 @@ struct FastWeightOnlyHalfConverter<dtype::bfloat16, 8> {
   static constexpr int kHalfLength = 4;
   static constexpr int kWeightOnlyLength = 4;
 
-  __device__ static inline void convert(dtype::bfloat16 halves[kHalfLength],
+  __device__ static inline void convert(__nv_bfloat16 halves[kHalfLength],
                                         uint8_t chars[kWeightOnlyLength],
                                         float scale) {
     *reinterpret_cast<Converter::result_type*>(halves) =
         Converter::convert(*reinterpret_cast<Converter::source_type*>(chars));
 #pragma unroll
     for (int i = 0; i < kHalfLength; ++i) {
-      halves[i] =
-          static_cast<dtype::bfloat16>(static_cast<float>(halves[i]) * scale);
+      float dequant_value = __bfloat162float(halves[i]) * scale;
+      halves[i] = __float2bfloat16_rn(dequant_value);
     }
   }
 };
 
 template <>
-struct FastWeightOnlyHalfConverter<dtype::bfloat16, 4> {
+struct FastWeightOnlyHalfConverter<__nv_bfloat16, 4> {
   using Converter = cutlass::FastInterleavedAndBiasedNumericArrayConverter<
       cutlass::bfloat16_t,
       cutlass::uint4b_t,
@@ -105,44 +122,31 @@ struct FastWeightOnlyHalfConverter<dtype::bfloat16, 4> {
   static constexpr int kHalfLength = 8;
   static constexpr int kWeightOnlyLength = 4;
 
-  __device__ static inline void convert(dtype::bfloat16 halves[kHalfLength],
+  __device__ static inline void convert(__nv_bfloat16 halves[kHalfLength],
                                         uint8_t chars[kWeightOnlyLength],
                                         float scale) {
     *reinterpret_cast<Converter::result_type*>(halves) =
         Converter::convert(*reinterpret_cast<Converter::source_type*>(chars));
 #pragma unroll
     for (int i = 0; i < kHalfLength; ++i) {
-      halves[i] =
-          static_cast<dtype::bfloat16>(static_cast<float>(halves[i]) * scale);
+      float dequant_value = __bfloat162float(halves[i]) * scale;
+      halves[i] = __float2bfloat16_rn(dequant_value);
     }
   }
 };
 #endif
 
-template <typename VecType, typename T0, typename T1>
-__device__ __forceinline__ void load(T0* dst, T1* src, size_t offset = 0) {
-  *reinterpret_cast<VecType*>(dst) =
-      *(reinterpret_cast<const VecType*>(src) + offset);
-}
-
-template <typename VecType, typename T0, typename T1>
-__device__ __forceinline__ void store(T0* src, T1* dst, size_t offset = 0) {
-  *(reinterpret_cast<VecType*>(dst) + offset) =
-      *reinterpret_cast<const VecType*>(src);
-}
-
-template <typename T, int K = 0>
-__global__ void int8_weight_only_dequant(const int8_t* weight,
+template <typename T>
+__global__ void int8_weight_only_dequant(const uint8_t* weight,
                                          const float* scale_list,
                                          T* output,
                                          const int n,
-                                         const int k_) {
-  int k = K != 0 ? K : k_;
+                                         const int k) {
   using Converter = FastWeightOnlyHalfConverter<T, 8>;
-
-  uint8_t vec_weight[16];
+  AlignedVector<uint8_t, 16> vec_weight;
   T vec_weight_f16[16];
-  T vec_out[16];
+  AlignedVector<T, 16> vec_out;
+
   int warp_id = threadIdx.x / 32, lane_id = threadIdx.x % 32;
   int tile_id = blockIdx.x * blockDim.x / 32 + warp_id;
   // Every two rows of the original weights are interleaved into a row with
@@ -158,11 +162,11 @@ __global__ void int8_weight_only_dequant(const int8_t* weight,
   // interleaving.
   int row_id = tile_id * 2 + ((lane_id % 8) > 3 ? 1 : 0);
   weight += tile_id * k * 2;
+  output += tile_id * k * 2;
   float scale = scale_list[row_id];
 #pragma unroll
   for (int i = lane_id * 16; i < k * 2; i += 16 * 32) {
-    load<uint4>(vec_weight, weight + i);
-    int out_idx = i / 128 * 64 + (i % 64);
+    Load<uint8_t, 16>(&weight[i], &vec_weight);
 #pragma unroll
     for (int p = 0; p < 16; p += Converter::kHalfLength) {
       // The rearrangement here counteracts the effect of
@@ -173,33 +177,34 @@ __global__ void int8_weight_only_dequant(const int8_t* weight,
       //      [elt_3  elt_2  elt_1  elt_0] (each elt occupies 16 bits)
       // vec_weight_f16[p] = static_cast<T>(static_cast<float>(vec_weight[p]) *
       // scale);
-      Converter::convert(vec_weight_f16 + p, vec_weight + p, scale);
+      // fast_cvt_4_packed_signed_i8s_to_2_half2s<T>()
+      Converter::convert(vec_weight_f16 + p, &vec_weight[p], scale);
     }
 #pragma unroll
     for (int p = 0; p < 16; ++p) {
       // The index remapping here is to counteracts the effect of
       // cutlass::permute_B_rows_for_mixed_gemm input 0 1 2 3 4 5 6 7 8 9 10 11
       // 12 13 14 15 weight 0 1 8 9 2 3 10 11 4 5 12 13 6 7 14 15
-      vec_out[p] = static_cast<T>(
-          vec_weight_f16[4 * ((p % 8) / 2) + p % 2 + 2 * (p / 8)]);
+      // printf("vec_weight_f16%d:  %f", p, static_cast<float>(vec_weight_f16[4
+      // * ((p % 8) / 2) + p % 2 + 2 * (p / 8)]));
+      vec_out[p] = vec_weight_f16[4 * ((p % 8) / 2) + p % 2 + 2 * (p / 8)];
     }
-    store<T>(vec_out, &output[out_idx]);
-    // Store<OutType, VecSize>(vec_out, &output[out_idx]);
+    Store<T, 16>(vec_out, &output[i]);
   }
 }
 
-template <typename T, int K = 0>
-__global__ void int4_weight_only_dequant(const int8_t* weight,
+template <typename T>
+__global__ void int4_weight_only_dequant(const uint8_t* weight,
                                          const float* scale_list,
                                          T* output,
                                          const int n,
-                                         const int k_) {
-  int k = K != 0 ? K : k_;
+                                         const int k) {
   using Converter = FastWeightOnlyHalfConverter<T, 4>;
 
-  uint8_t vec_weight[16];
+  AlignedVector<uint8_t, 16> vec_weight;
   T vec_weight_f16[32];
-  T vec_out[32];
+  AlignedVector<T, 32> vec_out;
+
   int warp_id = threadIdx.x / 32, lane_id = threadIdx.x % 32;
   int tile_id = blockIdx.x * blockDim.x / 32 + warp_id;
   // Every two rows of the original weights are interleaved into a row with
@@ -215,11 +220,11 @@ __global__ void int4_weight_only_dequant(const int8_t* weight,
   // interleaving.
   int row_id = tile_id * 4 + ((lane_id % 8) / 2);
   weight += tile_id * k / 2 * 4;
+  output += tile_id * k / 2 * 4 * 2;
   float scale = scale_list[row_id];
 #pragma unroll
   for (int i = lane_id * 32; i < k * 4; i += 32 * 32) {
-    load<uint4>(vec_weight, weight + i / 2);
-    int out_idx = i / 256 * 64 + (i % 64);
+    Load<uint8_t, 16>(&weight[i / 2], &vec_weight);
 #pragma unroll
     for (int p = 0; p < 32; p += Converter::kHalfLength) {
       // The rearrangement here counteracts the effect of
@@ -232,7 +237,7 @@ __global__ void int4_weight_only_dequant(const int8_t* weight,
       //      occupies 16 bits)
       // vec_weight_f16[p] =
       //     static_cast<T>(static_cast<float>(vec_weight[p]) * scale);
-      Converter::convert(vec_weight_f16 + p, vec_weight + p, scale);
+      Converter::convert(vec_weight_f16 + p, &vec_weight[p / 2], scale);
     }
 #pragma unroll
     for (int p = 0; p < 32; ++p) {
@@ -240,10 +245,9 @@ __global__ void int4_weight_only_dequant(const int8_t* weight,
       // cutlass::permute_B_rows_for_mixed_gemm input 0 1 2 3 4 5 6 7 8 9 10 11
       // 12 13 14 15 ... 31 weight 0 1 8 9 16 17 24 25 2 3 10 11 18 19 26 27 4 5
       // 12 13 20 21 28 29 6 7 14 15 22 23 30 31
-      vec_out[p] = static_cast<T>(
-          vec_weight_f16[8 * ((p % 8) / 2) + p % 2 + 2 * (p / 8)]);
+      vec_out[p] = vec_weight_f16[8 * ((p % 8) / 2) + p % 2 + 2 * (p / 8)];
     }
-    store<T>(vec_out, &output[out_idx]);
+    Store<T, 32>(vec_out, &output[i]);
   }
 }
 #endif
@@ -258,6 +262,7 @@ void WeightOnlyLinearGradKernel(const Context& dev_ctx,
                                 const std::string& weight_dtype,
                                 DenseTensor* x_grad) {
 #if defined(PADDLE_WITH_CUTLASS)
+  using DataType = typename PDDataTypeTraits<T>::DataType;
   int n = weight_scale.dims()[0];
   int k = weight.dims()[1];
   dim3 block(512);
@@ -267,22 +272,23 @@ void WeightOnlyLinearGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(x_grad);
   DenseTensor weight_dequantized;
   weight_dequantized.Resize({{n, k}});
-  // int size = weight_dequantized.numel() * sizeof(T);
   dev_ctx.template Alloc<T>(&weight_dequantized);
 
+  T* weight_dequantized_data = weight_dequantized.data<T>();
+
   if (weight_dtype == "int8") {
-    int8_weight_only_dequant<<<grid, block, 0, stream>>>(
-        weight.data<int8_t>(),
+    int8_weight_only_dequant<DataType><<<grid, block, 0, stream>>>(
+        reinterpret_cast<const uint8_t*>(weight.data<int8_t>()),
         weight_scale.data<float>(),
-        weight_dequantized.data<T>(),
+        reinterpret_cast<DataType*>(weight_dequantized_data),
         n,
         k);
   } else if (weight_dtype == "int4") {
     grid.x /= 2;
-    int4_weight_only_dequant<<<grid, block, 0, stream>>>(
-        weight.data<int8_t>(),
+    int4_weight_only_dequant<DataType><<<grid, block, 0, stream>>>(
+        reinterpret_cast<const uint8_t*>(weight.data<int8_t>()),
         weight_scale.data<float>(),
-        weight_dequantized.data<T>(),
+        reinterpret_cast<DataType*>(weight_dequantized_data),
         n,
         k);
   }
