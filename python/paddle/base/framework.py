@@ -72,6 +72,83 @@ TEMP_VAR_NAME = core.kTempVarName()
 GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
+_global_flags_ = core.globals()
+
+
+def _global_flags():
+    return _global_flags_
+
+
+def set_flags(flags):
+    """
+    This function sets the GFlags value in Paddle.
+    For FLAGS please refer to :ref:`en_guides_flags_flags`
+
+    Args:
+        flags (dict): A dict contains flags and its value.
+
+    Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.set_flags({'FLAGS_eager_delete_tensor_gb': 1.0})
+    """
+    if not isinstance(flags, dict):
+        raise TypeError('flags in set_flags should be a dict')
+    for key, value in flags.items():
+        if _global_flags().is_public(key):
+            _global_flags()[key] = value
+        else:
+            raise ValueError(
+                "Flag %s cannot set its value through this function." % (key)
+            )
+
+
+def get_flags(flags):
+    """
+    This function gets the GFlags value in Paddle.
+    For FLAGS please refer to :ref:`en_guides_flags_flags`
+
+    Args:
+        flags(list|tuple|str): A list/tuple of string or a string which is the flag's name.
+
+    Returns:
+        flag's value in Paddle.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> flags = ['FLAGS_eager_delete_tensor_gb', 'FLAGS_check_nan_inf']
+            >>> res = paddle.get_flags(flags)
+            >>> print(res)
+            {'FLAGS_eager_delete_tensor_gb': 0.0, 'FLAGS_check_nan_inf': False}
+    """
+    flags_value = {}
+    if isinstance(flags, (list, tuple)):
+        for key in flags:
+            if _global_flags().is_public(key):
+                value = _global_flags()[key]
+                temp = {key: value}
+                flags_value.update(temp)
+            else:
+                raise ValueError(
+                    'Flag %s cannot get its value through this function.'
+                    % (key)
+                )
+    elif isinstance(flags, str):
+        if _global_flags().is_public(flags):
+            value = _global_flags()[flags]
+            temp = {flags: value}
+            flags_value.update(temp)
+        else:
+            raise ValueError(
+                'Flag %s cannot get its value through this function.' % (flags)
+            )
+    else:
+        raise TypeError('Flags in get_flags should be a list, tuple or string.')
+    return flags_value
 
 
 # use thread local to create thread save global variables.
@@ -85,6 +162,9 @@ class GlobalThreadLocal(threading.local):
         self._in_to_static_mode_ = False
         self._functional_dygraph_context_manager = None
         self._dygraph_tracer_ = _dygraph_tracer_
+        self._use_pir_api_ = get_flags("FLAGS_enable_new_ir_api")[
+            'FLAGS_enable_new_ir_api'
+        ]
 
     def __str__(self):
         strings = []
@@ -112,7 +192,6 @@ _current_device = None
 global_prog_seed = 0
 _current_pipeline_stage = None
 _current_cuda_graph_mode = None
-_global_flags_ = core.globals()
 _stride_in_no_check_dy2st_diff_mode = False
 
 # special_op_attrs, extra_op_attrs are prepared for printing warnings
@@ -229,12 +308,12 @@ def in_pir_mode():
             False
 
             >>> paddle.enable_static()
-            >>> paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-            >>> print(paddle.framework.in_pir_mode())
+            >>> with paddle.new_ir_utils.IrGuard():
+            >>>     print(paddle.framework.in_pir_mode())
             True
 
     """
-    return ir.core._use_new_ir_api() and not in_dygraph_mode()
+    return global_var._use_pir_api_ and not in_dygraph_mode()
 
 
 def in_dynamic_or_pir_mode():
@@ -604,10 +683,6 @@ non_static_only = wrap_decorator(_non_static_only_)
 
 def _dygraph_tracer():
     return global_var._dygraph_tracer_
-
-
-def _global_flags():
-    return _global_flags_
 
 
 def _current_expected_place():
@@ -7831,78 +7906,6 @@ def _cuda_graph_guard(cuda_graph_attr=None):
         yield
     finally:
         _switch_cuda_graph_mode(pre_mode)
-
-
-def set_flags(flags):
-    """
-    This function sets the GFlags value in Paddle.
-    For FLAGS please refer to :ref:`en_guides_flags_flags`
-
-    Args:
-        flags (dict): A dict contains flags and its value.
-
-    Examples:
-            .. code-block:: python
-
-                >>> import paddle
-                >>> paddle.set_flags({'FLAGS_eager_delete_tensor_gb': 1.0})
-    """
-    if not isinstance(flags, dict):
-        raise TypeError('flags in set_flags should be a dict')
-    for key, value in flags.items():
-        if _global_flags().is_public(key):
-            _global_flags()[key] = value
-        else:
-            raise ValueError(
-                "Flag %s cannot set its value through this function." % (key)
-            )
-
-
-def get_flags(flags):
-    """
-    This function gets the GFlags value in Paddle.
-    For FLAGS please refer to :ref:`en_guides_flags_flags`
-
-    Args:
-        flags(list|tuple|str): A list/tuple of string or a string which is the flag's name.
-
-    Returns:
-        flag's value in Paddle.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> flags = ['FLAGS_eager_delete_tensor_gb', 'FLAGS_check_nan_inf']
-            >>> res = paddle.get_flags(flags)
-            >>> print(res)
-            {'FLAGS_eager_delete_tensor_gb': 0.0, 'FLAGS_check_nan_inf': False}
-    """
-    flags_value = {}
-    if isinstance(flags, (list, tuple)):
-        for key in flags:
-            if _global_flags().is_public(key):
-                value = _global_flags()[key]
-                temp = {key: value}
-                flags_value.update(temp)
-            else:
-                raise ValueError(
-                    'Flag %s cannot get its value through this function.'
-                    % (key)
-                )
-    elif isinstance(flags, str):
-        if _global_flags().is_public(flags):
-            value = _global_flags()[flags]
-            temp = {flags: value}
-            flags_value.update(temp)
-        else:
-            raise ValueError(
-                'Flag %s cannot get its value through this function.' % (flags)
-            )
-    else:
-        raise TypeError('Flags in get_flags should be a list, tuple or string.')
-    return flags_value
 
 
 def _get_paddle_place(place):
