@@ -74,7 +74,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     std::vector<std::string> fetch_var_names;
     auto block = temp_program->block();
     for (auto it = block->begin(); it != block->end(); ++it) {
-      if ((*it)->name() == "pd_op.fetch") {
+      if ((*it)->isa<paddle::dialect::FetchOp>()) {
         size_t index = (*it)
                            ->attributes()
                            .at("col")
@@ -210,7 +210,7 @@ class ConstantFoldingPass : public pir::Pass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->name() == "builtin.module" && op->num_regions() > 0;
+    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
   }
 
  private:
