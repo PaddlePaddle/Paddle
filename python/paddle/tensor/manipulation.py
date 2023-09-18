@@ -3458,7 +3458,7 @@ def expand(x, shape, name=None):
             print(out)
             # [[1, 2, 3], [1, 2, 3]]
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
@@ -3607,9 +3607,7 @@ def reshape(x, shape, name=None):
                 out = x
             else:
                 out = _C_ops.reshape(x, new_shape)
-        elif isinstance(shape, core.eager.Tensor) or isinstance(
-            shape, paddle.pir.OpResult
-        ):
+        elif isinstance(shape, (core.eager.Tensor, paddle.pir.OpResult)):
             shape.stop_gradient = True
             out = _C_ops.reshape(x, shape)
         else:
