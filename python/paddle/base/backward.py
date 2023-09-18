@@ -439,7 +439,7 @@ def _all_in_set_(cands, s):
     if len(cands) == 0:
         return False
     for c in cands:
-        if not c in s:
+        if c not in s:
             return False
     return True
 
