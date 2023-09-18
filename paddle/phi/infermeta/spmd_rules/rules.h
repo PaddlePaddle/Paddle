@@ -48,14 +48,14 @@ PD_REGISTER_SPMD_RULE(matmul,
 // default data parallel rule
 PD_REGISTER_SPMD_RULE(
     unsqueeze,
-    PD_INFER_SPMD(phi::distributed::DefaultDataParallelSpmdInferForward),
-    PD_INFER_SPMD(phi::distributed::DefaultDataParallelSpmdInferBackward));
+    PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmd),
+    PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmdReverse));
 
 // replicated rule /* for unittest */
 PD_REGISTER_SPMD_RULE(
     replicated,
-    PD_INFER_SPMD(phi::distributed::ReplicatedSpmdInferForward),
-    PD_INFER_SPMD(phi::distributed::ReplicatedSpmdInferBackward));
+    PD_INFER_SPMD(phi::distributed::ReplicatedInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ReplicatedInferSpmdReverse));
 
 }  // namespace distributed
 }  // namespace phi
