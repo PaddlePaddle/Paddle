@@ -33,7 +33,7 @@ struct PrinterOptions {
   PrinterOptions() = default;
   PrinterOptions(const PrinterOptions&) = default;
 
-  bool printRegions = true;
+  bool print_regions = true;
 
   // `custom_attrs` means attributes not in op defintion but added by users
   // by default, we only print attributes in definition
@@ -47,15 +47,15 @@ class BasicIrPrinter {
  public:
   explicit BasicIrPrinter(std::ostream& os,
                           const PrinterOptions& options = PrinterOptions())
-      : os(os), options(options) {}
+      : os_(os), options_(options) {}
 
   void PrintType(Type type);
 
   void PrintAttribute(Attribute attr);
 
  public:
-  std::ostream& os;
-  PrinterOptions options;
+  std::ostream& os_;
+  PrinterOptions options_;
 };
 
 class IR_API IrPrinter : public BasicIrPrinter {
@@ -71,24 +71,24 @@ class IR_API IrPrinter : public BasicIrPrinter {
   /// @brief dispatch to custom printer function or PrintGeneralOperation
   void PrintOperation(Operation* op);
   /// @brief print operation itself without its regions
-  void PrintOperationWithNoRegion(const Operation* op);
+  void PrintOperationWithNoRegion(Operation* op);
   /// @brief print operation and its regions
-  void PrintGeneralOperation(const Operation* op);
+  void PrintGeneralOperation(Operation* op);
 
   void PrintRegion(const Region& Region);
   void PrintBlock(const Block* block);
 
-  void PrintValue(const Value& v);
+  void PrintValue(Value v);
 
-  void PrintOpResult(const Operation* op);
+  void PrintOpResult(Operation* op);
 
-  void PrintAttributeMap(const Operation* op);
+  void PrintAttributeMap(Operation* op);
 
-  void PrintOpOperands(const Operation* op);
+  void PrintOpOperands(Operation* op);
 
-  void PrintOperandsType(const Operation* op);
+  void PrintOperandsType(Operation* op);
 
-  void PrintOpReturnType(const Operation* op);
+  void PrintOpReturnType(Operation* op);
 
  private:
   size_t cur_var_number_{0};

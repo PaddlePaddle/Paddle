@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import defaultdict
-
-import numpy as np
 
 from paddle.base import core
 from paddle.base import framework

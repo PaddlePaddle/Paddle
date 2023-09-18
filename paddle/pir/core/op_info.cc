@@ -34,7 +34,7 @@ Dialect *OpInfo::dialect() const { return impl_ ? impl_->dialect() : nullptr; }
 const char *OpInfo::name() const { return impl_ ? impl_->name() : nullptr; }
 
 uint32_t OpInfo::num_attributes() const {
-  return impl_ ? impl_->num_attributes() : 0;
+  return impl_ ? impl_->num_attributes() : 0u;
 }
 
 const char *OpInfo::attribute_name(size_t idx) const {
