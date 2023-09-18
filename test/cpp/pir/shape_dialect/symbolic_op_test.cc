@@ -45,7 +45,7 @@ pir::Operation *CreateDenseTensorOp(
     const phi::DDim &dims,
     const std::vector<std::string> &attribute_names,
     const std::vector<std::string> &attributes) {
-  std::vector<pir::OpResult> op_inputs = {};
+  std::vector<pir::Value> op_inputs = {};
   pir::Type fp32_dtype = pir::Float32Type::get(ctx);
   phi::DataLayout data_layout = phi::DataLayout::NCHW;
   phi::LoD lod = {{0, 1, 2}};
@@ -219,29 +219,29 @@ TEST(assist_struct_test, symbolic_dim_mgr_complex) {
 
   // Mark S1 == S2.
   builder.Build<pir::dialect::TieProductEqualOp>(
-      2, 2, std::vector<pir::OpResult>{constant, dimOpS1, dimOpS2, constant});
+      2, 2, std::vector<pir::Value>{constant, dimOpS1, dimOpS2, constant});
   // Mark S0 * S1 == S2 * S3, For check S0 == S3.
   builder.Build<pir::dialect::TieProductEqualOp>(
-      2, 2, std::vector<pir::OpResult>{dimOpS0, dimOpS1, dimOpS2, dimOpS3});
+      2, 2, std::vector<pir::Value>{dimOpS0, dimOpS1, dimOpS2, dimOpS3});
   // Mark S4 * S0 * S1 == S2 * S3 * S5, For check S4 == S5.
   builder.Build<pir::dialect::TieProductEqualOp>(
       3,
       3,
-      std::vector<pir::OpResult>{
+      std::vector<pir::Value>{
           dimOpS4, dimOpS0, dimOpS1, dimOpS2, dimOpS3, dimOpS5});
   // For check S6 == C10 * C20.
   builder.Build<pir::dialect::TieProductEqualOp>(
-      1, 2, std::vector<pir::OpResult>{dimOpS6, dimOpC10, dimOpC20});
+      1, 2, std::vector<pir::Value>{dimOpS6, dimOpC10, dimOpC20});
   // Mark C10 * S0 * S1 == S2 * S3 * S7, for check C10 == S7.
   builder.Build<pir::dialect::TieProductEqualOp>(
       3,
       3,
-      std::vector<pir::OpResult>{
+      std::vector<pir::Value>{
           dimOpC10, dimOpS0, dimOpS1, dimOpS2, dimOpS3, dimOpS7});
 
   // For unsimplify product case: S8 * S9 == S10 * S11
   builder.Build<pir::dialect::TieProductEqualOp>(
-      2, 2, std::vector<pir::OpResult>{dimOpS8, dimOpS9, dimOpS10, dimOpS11});
+      2, 2, std::vector<pir::Value>{dimOpS8, dimOpS9, dimOpS10, dimOpS11});
 
   auto op = CreateDenseTensorOp(ctx,
                                 {pir::ShapedTypeInterface::kDynamic,
@@ -427,7 +427,7 @@ TEST(shape_op, tie_product_equal) {
       builder.Build<pir::dialect::TieProductEqualOp>(
           2,
           3,
-          std::vector<pir::OpResult>{dimOp0, dimOp1, dimOp2, dimOp3, dimOp4});
+          std::vector<pir::Value>{dimOp0, dimOp1, dimOp2, dimOp3, dimOp4});
 
   std::vector<pir::Value> lhs = tie_product_equal.lhs();
   std::vector<pir::Value> rhs = tie_product_equal.rhs();

@@ -61,7 +61,7 @@ pir::Operation *CreateDenseTensorOp(
     const phi::DDim &dims,
     const std::vector<std::string> &attribute_names,
     const std::vector<std::string> &attributes) {
-  std::vector<pir::OpResult> op_inputs = {};
+  std::vector<pir::Value> op_inputs = {};
   pir::Type fp32_dtype = pir::Float32Type::get(ctx);
   phi::DataLayout data_layout = phi::DataLayout::NCHW;
   phi::LoD lod = {{0, 1, 2}};

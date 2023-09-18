@@ -496,10 +496,10 @@ TEST(ReplicatedSPMDRule, Ctor) {
   // 2 inputs 2 outputs
   // call in vector arguments format
   auto infered_dist_attrs_st =
-      phi::distributed::ReplicatedSpmdInferForward({&x, &y}, {&out1, &out2});
+      phi::distributed::ReplicatedInferSpmd({&x, &y}, {&out1, &out2});
   // call in variadic arguments format
   auto infered_dist_attrs_dy =
-      phi::distributed::PhiReplicatedSpmdInferForward(x, y, &out1, &out2);
+      phi::distributed::VariadicReplicatedInferSpmd(x, y, &out1, &out2);
 
   size_t input_size = 2;
   size_t output_size = 2;
@@ -527,10 +527,10 @@ TEST(ReplicatedSPMDRule, Ctor) {
   // 3 inputs 1 outputs
   // call in vector arguments format
   infered_dist_attrs_st =
-      phi::distributed::ReplicatedSpmdInferForward({&x, &y, &out1}, {&out2});
+      phi::distributed::ReplicatedInferSpmd({&x, &y, &out1}, {&out2});
   // call in variadic arguments format
   infered_dist_attrs_dy =
-      phi::distributed::PhiReplicatedSpmdInferForward(x, y, out1, &out2);
+      phi::distributed::VariadicReplicatedInferSpmd(x, y, out1, &out2);
 
   input_size = 3;
   output_size = 1;
@@ -554,10 +554,10 @@ TEST(ReplicatedSPMDRule, Ctor) {
   // 1 inputs 3 outputs backward
   // call in vector arguments format
   infered_dist_attrs_st =
-      phi::distributed::ReplicatedSpmdInferBackward({&x}, {&y, &out1, &out2});
+      phi::distributed::ReplicatedInferSpmdReverse({&x}, {&y, &out1, &out2});
   // call in variadic arguments format
   infered_dist_attrs_dy =
-      phi::distributed::PhiReplicatedSpmdInferBackward(x, &y, &out1, &out2);
+      phi::distributed::VariadicReplicatedInferSpmdReverse(x, &y, &out1, &out2);
 
   input_size = 1;
   output_size = 3;
@@ -621,11 +621,10 @@ TEST(DefaultDataParallelSPMDRule, Ctor) {
   // 2 inputs 2 outputs, batch axis sharding is propagatd while other axes are
   // replicatd call in vector arguments format
   auto infered_dist_attrs_st =
-      phi::distributed::DefaultDataParallelSpmdInferForward({&x, &y},
-                                                            {&out1, &out2});
+      phi::distributed::DefaultDataParallelInferSpmd({&x, &y}, {&out1, &out2});
   // call in variadic arguments format
   auto infered_dist_attrs_dy =
-      phi::distributed::PhiDefaultDataParallelSpmdInferForward(
+      phi::distributed::VariadicDefaultDataParallelInferSpmd(
           x, y, &out1, &out2);
 
   size_t input_size = 2;
@@ -653,11 +652,11 @@ TEST(DefaultDataParallelSPMDRule, Ctor) {
 
   // 1 inputs 3 outputs, batch axis is un-sharded
   // call in vector arguments format
-  infered_dist_attrs_st = phi::distributed::DefaultDataParallelSpmdInferForward(
-      {&x}, {&y, &out1, &out2});
+  infered_dist_attrs_st =
+      phi::distributed::DefaultDataParallelInferSpmd({&x}, {&y, &out1, &out2});
   // call in variadic arguments format
   infered_dist_attrs_dy =
-      phi::distributed::PhiDefaultDataParallelSpmdInferForward(
+      phi::distributed::VariadicDefaultDataParallelInferSpmd(
           x, &y, &out1, &out2);
 
   input_size = 1;
@@ -689,11 +688,11 @@ TEST(DefaultDataParallelSPMDRule, Ctor) {
                                           out1_dist_attr);
 
   EXPECT_ANY_THROW(infered_dist_attrs_st =
-                       phi::distributed::DefaultDataParallelSpmdInferForward(
+                       phi::distributed::DefaultDataParallelInferSpmd(
                            {&x, &y, &out1}, {&out2}));
   // call in variadic arguments format
   EXPECT_ANY_THROW(infered_dist_attrs_dy =
-                       phi::distributed::PhiDefaultDataParallelSpmdInferForward(
+                       phi::distributed::VariadicDefaultDataParallelInferSpmd(
                            x, y, out1, &out2));
 
   VLOG(4) << "test3 done." << std::endl << std::endl << std::endl;
@@ -707,12 +706,11 @@ TEST(DefaultDataParallelSPMDRule, Ctor) {
   out2 = phi::distributed::DistMetaTensor(phi::make_ddim(out2_shape),
                                           out2_dist_attr);
 
-  infered_dist_attrs_st =
-      phi::distributed::DefaultDataParallelSpmdInferBackward({&x, &y},
-                                                             {&out1, &out2});
+  infered_dist_attrs_st = phi::distributed::DefaultDataParallelInferSpmdReverse(
+      {&x, &y}, {&out1, &out2});
   // call in variadic arguments format
   infered_dist_attrs_dy =
-      phi::distributed::PhiDefaultDataParallelSpmdInferBackward(
+      phi::distributed::VariadicDefaultDataParallelInferSpmdReverse(
           x, y, &out1, &out2);
 
   input_size = 2;

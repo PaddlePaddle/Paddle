@@ -92,11 +92,11 @@ class IR_API TieProductEqualOp : public Op<TieProductEqualOp> {
                     OperationArgument &argument,  // NOLINT
                     int64_t lhs_len,
                     int64_t rhs_len,
-                    const std::vector<OpResult> &inputs);
+                    const std::vector<Value> &inputs);
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const std::vector<OpResult> &lhs,
-                    const std::vector<OpResult> &rhs);
+                    const std::vector<Value> &lhs,
+                    const std::vector<Value> &rhs);
   std::vector<Value> lhs();
   std::vector<Value> rhs();
   void Verify() {}
@@ -112,13 +112,12 @@ class IR_API TieShapeOp : public Op<TieShapeOp> {
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const OpResult &input);
+                    pir::Value input);
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const OpResult &input,
-                    const std::vector<OpResult> &dims);
-
+                    Value input,
+                    const std::vector<Value> &dims);
   void Print(IrPrinter &printer);  // NOLINT
   Value value();
   std::vector<Value> dims();
@@ -150,11 +149,11 @@ class IR_API TensorDimOp : public Op<TensorDimOp> {
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const OpResult &source,
-                    const OpResult &index);
+                    Value source,
+                    Value index);
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const OpResult &source,
+                    Value source,
                     int64_t index);
   Value index();
   Value source();

@@ -550,6 +550,11 @@ phi::distributed::DistTensor* SetKernelDistOutput(
   return nullptr;
 }
 
+std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
+    const phi::distributed::TensorDistAttr& dist_attr) {
+  return std::make_shared<phi::distributed::DistTensor>(phi::DDim(), dist_attr);
+}
+
 std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
     std::vector<Tensor*> out) {
   std::vector<phi::distributed::DistTensor*> result;

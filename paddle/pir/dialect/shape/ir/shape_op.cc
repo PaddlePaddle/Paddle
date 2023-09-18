@@ -154,18 +154,18 @@ void TieProductEqualOp::Build(Builder &builder,
                               OperationArgument &argument,
                               int64_t lhs_len,
                               int64_t rhs_len,
-                              const std::vector<OpResult> &inputs) {
+                              const std::vector<Value> &inputs) {
   Attribute attr_lhs_len = Int64Attribute::get(IrContext::Instance(), lhs_len);
   argument.AddAttribute("lhs_len", attr_lhs_len);
   Attribute attr_rhs_len = Int64Attribute::get(IrContext::Instance(), rhs_len);
   argument.AddAttribute("rhs_len", attr_rhs_len);
-  argument.inputs = inputs;
+  argument.AddInputs(inputs);
 }
 
 void TieProductEqualOp::Build(Builder &builder,
                               OperationArgument &argument,
-                              const std::vector<OpResult> &lhs,
-                              const std::vector<OpResult> &rhs) {
+                              const std::vector<Value> &lhs,
+                              const std::vector<Value> &rhs) {
   Attribute attr_lhs_len =
       Int64Attribute::get(IrContext::Instance(), lhs.size());
   argument.AddAttribute("lhs_len", attr_lhs_len);
@@ -173,8 +173,8 @@ void TieProductEqualOp::Build(Builder &builder,
       Int64Attribute::get(IrContext::Instance(), rhs.size());
   argument.AddAttribute("rhs_len", attr_rhs_len);
 
-  argument.inputs = lhs;
-  argument.inputs.insert(argument.inputs.end(), rhs.begin(), rhs.end());
+  argument.AddInputs(lhs);
+  argument.AddInputs(rhs);
 }
 
 std::vector<Value> TieProductEqualOp::lhs() {
@@ -200,22 +200,20 @@ const char *TieShapeOp::attributes_name[attributes_num] = {
 
 void TieShapeOp::Build(Builder &builder,
                        OperationArgument &argument,
-                       const OpResult &input) {
-  argument.inputs = {input};
+                       Value input) {
+  argument.AddInput(input);
 }
 void TieShapeOp::Build(Builder &builder,             // NOLINT
                        OperationArgument &argument,  // NOLINT
-                       const OpResult &input,
-                       const std::vector<OpResult> &dims) {
-  argument.inputs = {input};
-  for (auto &dim : dims) {
-    argument.inputs.push_back(dim);
-  }
+                       Value input,
+                       const std::vector<Value> &dims) {
+  argument.AddInput(input);
+  argument.AddInputs(dims);
 }
 
-Value TieShapeOp::value() { return operand_source(0); }
+Value TieShapeOp::getValue() { return operand_source(0); }
 
-std::vector<Value> TieShapeOp::dims() {
+std::vector<Value> TieShapeOp::getShapeDimIndexes() {
   std::vector<Value> res;
   for (uint32_t i = 1; i < num_operands(); i++) {
     res.push_back(operand_source(i));
@@ -246,22 +244,22 @@ void FuncOp::Print(IrPrinter &printer) {
 
 void TensorDimOp::Build(Builder &builder,
                         OperationArgument &argument,
-                        const OpResult &source,
-                        const OpResult &index) {
-  argument.inputs = {source, index};
+                        Value source,
+                        Value index) {
+  argument.AddInputs({source, index});
   argument.output_types.emplace_back(IndexType::get(IrContext::Instance()));
 }
 
 void TensorDimOp::Build(Builder &builder,
                         OperationArgument &argument,
-                        const OpResult &source,
+                        Value source,
                         int64_t index) {
   OpResult indexValue =
       builder
           .Build<ConstantOp>(Int64Attribute::get(IrContext::Instance(), 2),
                              IndexType::get(IrContext::Instance()))
           ->result(0);
-  argument.inputs = {source, indexValue};
+  argument.AddInputs({source, indexValue});
   argument.output_types.emplace_back(IndexType::get(IrContext::Instance()));
 }
 
