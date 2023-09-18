@@ -2660,12 +2660,12 @@ def polar(abs, angle, name=None):
     return paddle.complex(abs * paddle.cos(angle), abs * paddle.sin(angle))
 
 
-def cauchy(shape, dtype, loc=0, scale=1, name=None):
+@dygraph_only
+def cauchy_(x, loc=0, scale=1, name=None):
     """Fills the tensor with numbers drawn from the Cauchy distribution.
 
     Args:
-        shape (tuple|list|Tensor) – Shape of the Tensor to be created. The data type is int32 or int64 . If shape is a list or tuple, each element of it should be integer or 0-D Tensor with shape []. If shape is an Tensor, it should be an 1-D Tensor which represents a list.
-        dtype (str|np.dtype, optional) – The data type of the output Tensor. Supported data types: float32, float64. Default is None, use global default dtype (see get_default_dtype for details).
+        x (Tenosr): the tensor will be filled, The data type is float32 or float64.
         loc (scalar, optional):  Location of the peak of the distribution. The data type is float32 or float64.
         scale (scalar, optional): The half-width at half-maximum (HWHM). The data type is float32 or float64. Must be positive values.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -2677,48 +2677,27 @@ def cauchy(shape, dtype, loc=0, scale=1, name=None):
         .. code-block:: python
 
             >>> import paddle
-
-            >>> x = paddle.cauchy([3, 4], 1, 2)
+            >>> x = paddle.randn([3, 4])
+            >>> x.cauchy_(1, 2)
             >>> print(x)
             Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [[-0.25991905, -0.67726970,  1.05490279, -1.12052715],
                 [-0.67522037, -1.19651091,  2.43438125,  0.46528760],
                 [ 1.23364007, -1.22296286, -1.14138269,  0.17634396]])
     """
-    supported_dtypes = ['float32', 'float64']
-    if dtype is None:
-        dtype = paddle.framework.get_default_dtype()
-        if dtype not in supported_dtypes:
-            raise TypeError(
-                "cauchy only supports {}, but the default dtype is {}".format(
-                    supported_dtypes, dtype
-                )
-            )
-    if not isinstance(dtype, core.VarDesc.VarType):
-        dtype = convert_np_dtype_to_dtype_(dtype)
-
-    normals = paddle.rand(shape, dtype=dtype)
-    out = loc + scale * paddle.tan(np.pi * (normals - 0.5))
-    return out
-
-
-@dygraph_only
-def cauchy_(x, loc=0, scale=1, name=None):
-    r"""
-    Inplace version of ``cauchy`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_cauchy`.
-    """
     x.normal_()
-    x.subtract_(0.5).scale_(np.pi).tan_().scale_(scale).add_(loc)
+    loc = paddle.to_tensor(loc).astype(x.dtype)
+    half = paddle.to_tensor(0.5).astype(x.dtype)
+    x.subtract_(half).scale_(np.pi).tan_().scale_(scale).add_(loc)
     return x
 
 
-def geometric(shape, dtype, probs, name=None):
+@dygraph_only
+def geometric_(x, probs, name=None):
     """Fills the tensor with numbers drawn from the Geometric distribution.
 
     Args:
-        shape (tuple|list|Tensor) – Shape of the Tensor to be created. The data type is int32 or int64 . If shape is a list or tuple, each element of it should be integer or 0-D Tensor with shape []. If shape is an Tensor, it should be an 1-D Tensor which represents a list.
-        dtype (str|np.dtype, optional) – The data type of the output Tensor. Supported data types: float32, float64. Default is None, use global default dtype (see get_default_dtype for details).
+        x (Tenosr): the tensor will be filled, The data type is float32 or float64.
         probs (Real|Tensor): Probability parameter.
             The value of probs must be positive. When the parameter is a tensor, probs is probability of success for each trial.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -2730,45 +2709,16 @@ def geometric(shape, dtype, probs, name=None):
         .. code-block:: python
 
             >>> import paddle
-
-            >>> x = paddle.geometric([3, 4], "float32", 0.3)
+            >>> x = paddle.randn([3, 4])
+            >>> x.geometric_(0.3)
             >>> print(x)
             Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [[ 0.26763591,  0.71750325, -0.77750158, -0.95675719],
                 [-0.22266576, -0.74896884, -0.42946699,  0.89165741],
                 [-0.55211657,  1.60769212, -0.17337820, -0.62538552]])
     """
-    supported_dtypes = ['float32', 'float64']
-    if dtype is None:
-        dtype = paddle.framework.get_default_dtype()
-        if dtype not in supported_dtypes:
-            raise TypeError(
-                "geometric only supports {}, but the default dtype is {}".format(
-                    supported_dtypes, dtype
-                )
-            )
-    if not isinstance(dtype, core.VarDesc.VarType):
-        dtype = convert_np_dtype_to_dtype_(dtype)
-
-    tiny = np.finfo(dtype='float32').tiny
-    probs = paddle.to_tensor(probs)
-
-    uniforms = paddle.uniform(
-        shape=shape, dtype=dtype, min=float(tiny), max=float(1)
-    )
-
-    out = paddle.log(uniforms) / paddle.log1p(-(probs))
-    return out
-
-
-@dygraph_only
-def geometric_(x, probs, name=None):
-    r"""
-    Inplace version of ``cauchy`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_cauchy`.
-    """
-    tiny = np.finfo(dtype='float32').tiny
-    probs = paddle.to_tensor(probs)
+    tiny = np.finfo(dtype=convert_dtype(x.dtype)).tiny
+    probs = paddle.to_tensor(probs).astype(x.dtype)
     x.uniform_(min=float(tiny), max=float(1))
     x.log_().divide_(paddle.log1p(-(probs)))
     return x

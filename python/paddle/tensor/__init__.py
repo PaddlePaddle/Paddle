@@ -44,9 +44,7 @@ from .creation import empty_like  # noqa: F401
 from .creation import complex  # noqa: F401
 from .creation import polar  # noqa: F401
 from .creation import cauchy_  # noqa: F401
-from .creation import cauchy  # noqa: F401
 from .creation import geometric_  # noqa: F401
-from .creation import geometric  # noqa: F401
 from .linalg import matmul  # noqa: F401
 from .linalg import dot  # noqa: F401
 from .linalg import cov  # noqa: F401
@@ -570,9 +568,8 @@ tensor_method_func = [  # noqa
     'transpose',
     'transpose_',
     'cauchy_',
-    'cauchy',
     'geometric_',
-    'geometric',
+    'tan_',
     'unique',
     'unique_consecutive',
     'unsqueeze',
