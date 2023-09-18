@@ -44,10 +44,9 @@ pir::OpResult embedding_grad(pir::OpResult x,
                              int64_t padding_idx = -1,
                              bool sparse = false);
 
-pir::OpResult split_with_num_grad(std::vector<pir::OpResult> out_grad,
-                                  int axis);
+pir::OpResult split_with_num_grad(std::vector<pir::Value> out_grad, int axis);
 
-pir::OpResult split_with_num_grad(std::vector<pir::OpResult> out_grad,
+pir::OpResult split_with_num_grad(std::vector<pir::Value> out_grad,
                                   pir::OpResult axis);
 }  // namespace dialect
 }  // namespace paddle

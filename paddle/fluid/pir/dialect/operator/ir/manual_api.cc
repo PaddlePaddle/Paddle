@@ -85,8 +85,7 @@ pir::OpResult embedding_grad(pir::OpResult x,
   }
 }
 
-pir::OpResult split_with_num_grad(std::vector<pir::OpResult> out_grad,
-                                  int axis) {
+pir::OpResult split_with_num_grad(std::vector<pir::Value> out_grad, int axis) {
   auto out_grad_combine_op =
       APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(out_grad);
   paddle::dialect::SplitGradOp split_grad_op =
@@ -95,8 +94,8 @@ pir::OpResult split_with_num_grad(std::vector<pir::OpResult> out_grad,
   return split_grad_op.result(0);
 }
 
-pir::OpResult split_with_num_grad(std::vector<pir::OpResult> out_grad,
-                                  pir::OpResult axis) {
+pir::OpResult split_with_num_grad(std::vector<pir::Value> out_grad,
+                                  pir::Value axis) {
   auto out_grad_combine_op =
       APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(out_grad);
   paddle::dialect::SplitGradOp split_grad_op =
