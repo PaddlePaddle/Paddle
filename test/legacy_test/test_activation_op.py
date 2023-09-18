@@ -356,6 +356,11 @@ class TestSigmoid(TestActivation):
         self.if_enable_cinn()
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
         out = 1 / (1 + np.exp(-x))
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -373,6 +378,34 @@ class TestSigmoid(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.01, check_prim=True)
+
+
+class TestSigmoid_Complex64(TestSigmoid):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    def test_check_output(self):
+        self.check_output(check_prim=False)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            max_relative_error=0.006,
+            check_prim=False,
+        )
+
+
+class TestSigmoid_Complex128(TestSigmoid_Complex64):
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=False,
+        )
 
 
 class TestSigmoid_ZeroDim(TestSigmoid):
@@ -464,7 +497,7 @@ class TestSilu(TestActivation):
     def test_check_grad(self):
         # TODO(BeingGod): set `check_prim=True` when `fill_constant` supports `complex` dtype
         if self.dtype == np.complex64 or self.dtype == np.complex128:
-            self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
+            self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=False)
         else:
             self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
@@ -651,14 +684,17 @@ class TestTanh(TestActivation, TestParameter):
         self.outputs = {'Out': out}
         self.convert_input_output()
 
+    def test_check_output(self):
+        self.check_output(check_new_ir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         # TODO(ScottWong98): set `check_prim=False` when `fill_any_like` supports `complex` dtype
         if self.dtype == np.complex64 or self.dtype == np.complex128:
-            self.check_grad(['X'], 'Out', check_prim=False)
+            self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
         else:
-            self.check_grad(['X'], 'Out', check_prim=True)
+            self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
     def init_dtype(self):
         # TODO If dtype is float64, the output (Out) has diff at CPUPlace
@@ -3538,12 +3574,12 @@ class TestPow(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_new_ir=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
 
 class TestPow_ZeroDim(TestPow):

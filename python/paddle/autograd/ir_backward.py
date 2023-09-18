@@ -88,8 +88,8 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
         # fwd : op1 -> op2 -> op3 -> output
         # bwd : op1G <- op2G <- op3G <- outputG <- fillop/feedop
         if grad is None:
-            output_grad = paddle.full(
-                output.shape,
+            output_grad = paddle.full_like(
+                output,
                 1.0,
                 dtype=output.dtype,
             )
@@ -133,8 +133,8 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                 visited_output.add(opresult)
                 continue
             else:
-                grad_value = paddle.full(
-                    opresult.shape,
+                grad_value = paddle.full_like(
+                    opresult,
                     0.0,
                     opresult.dtype,
                 )
@@ -393,8 +393,8 @@ def append_backward_ops(
                     # second case:
                     # last bwd_op return None because input in no_grad_set,
                     # but this bwd_op need a input.
-                    grad_value = paddle.full(
-                        value.shape,
+                    grad_value = paddle.full_like(
+                        value,
                         0.0,
                         dtype=value.dtype,
                     )
