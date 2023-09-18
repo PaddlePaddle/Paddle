@@ -312,10 +312,11 @@ def GenBuildOutputs(
 
     CREATE_OPTIONAL_INPUT_METATENSOR_TEMPLATE = """
   phi::MetaTensor meta_{name};
+  paddle::dialect::IrMetaTensor ir_meta_tensor_{name};
   if ({name}_.impl() != nullptr) {{
     paddle::dialect::DenseTensorType {name} = {name}_.type().dyn_cast<paddle::dialect::DenseTensorType>();
     VLOG(4) << "Builder construction  dense_{name}";
-    paddle::dialect::IrMetaTensor ir_meta_tensor_{name}(paddle::dialect::TransToPhiDataType({name}.dtype()),
+    ir_meta_tensor_{name} = paddle::dialect::IrMetaTensor(paddle::dialect::TransToPhiDataType({name}.dtype()),
                                                         {name}.dims(),
                                                         {name}.data_layout(),
                                                         {name}.lod(),
