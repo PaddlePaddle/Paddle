@@ -256,7 +256,7 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
                                   phi::DenseTensor input_tensor) {
   std::vector<int> shape;
   for (int i = 0; i < input_tensor.dims().size(); ++i) {
-    shape.push_back(input_tensor.dims()[i]);
+    shape.push_back(input_tensor.dims()[i]);  // NOLINT
   }
   if (input_tensor.dtype() == phi::DataType::FLOAT64) {
     tensor.ShareExternalData(
@@ -304,7 +304,7 @@ void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
                                    paddle::Tensor &&paddle_tensor) {
   std::vector<int> shape;
   for (int i = 0; i < paddle_tensor.dims().size(); ++i) {
-    shape.push_back(paddle_tensor.dims()[i]);
+    shape.push_back(paddle_tensor.dims()[i]);  // NOLINT
   }
 
   if (paddle_tensor.dtype() == phi::DataType::FLOAT64) {
@@ -921,7 +921,8 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("dla_core") = 0)
       .def("tensorrt_dla_enabled", &AnalysisConfig::tensorrt_dla_enabled)
       .def("enable_tensorrt_inspector",
-           &AnalysisConfig::EnableTensorRtInspector)
+           &AnalysisConfig::EnableTensorRtInspector,
+           py::arg("inspector_serialize") = false)
       .def("tensorrt_inspector_enabled",
            &AnalysisConfig::tensorrt_inspector_enabled)
       .def("enable_tensorrt_explicit_quantization",

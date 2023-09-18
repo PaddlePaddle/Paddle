@@ -29,7 +29,7 @@ namespace translator {
 pir::Operation* InsertSliceOperationForTarget(
     pir::IrContext* ctx,
     TranslationContext* param_map,
-    pir::Program* program,
+    pir::Block* block,
     const VariableDefiningInfo& defining_info,
     const std::string& arg_name);
 
