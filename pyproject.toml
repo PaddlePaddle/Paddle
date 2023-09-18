@@ -69,10 +69,10 @@ select = [
     "PLC3002",
     "PLR0206",
     "PLR0402",
-    # "PLR1701",
+    "PLR1701",
     # "PLR1711",  # Confirmation required
     "PLR1722",
-    # "PLW3301",  # Confirmation required
+    "PLW3301",
 ]
 unfixable = [
     "NPY001"
@@ -104,20 +104,14 @@ ignore = [
 
 # Temporarily ignored
 "python/paddle/base/**" = [
-    "F401",
     "UP032",
     "UP031",
     "C408",
     "UP030",
     "F403",
-    "F522",
     "B010",
     "PLR1722",
-    "UP028",
-    "C403",
-    "F811",
     "UP034",
-    "B011",
     "C405",
     "C417",
     "PLR0402",
@@ -164,12 +158,3 @@ ignore = [
 "test/legacy_test/test_eigvals_op.py" = ["B017"]
 "test/legacy_test/test_tensordot.py" = ["B017"]
 "test/legacy_test/test_top_k_v2_op.py" = ["B017"]
-
-# UP028
-"python/paddle/dataset/cifar.py" = ["UP028"]
-"python/paddle/dataset/common.py" = ["UP028"]
-"python/paddle/io/dataloader/dataset.py" = ["UP028"]
-"python/paddle/nn/layer/layers.py" = ["UP028"]
-"python/paddle/utils/layers_utils.py" = ["UP028"]
-"test/legacy_test/test_lstm_cudnn_op.py" = ["UP028"]
-"test/rnn/rnn_numpy.py" = ["UP028"]

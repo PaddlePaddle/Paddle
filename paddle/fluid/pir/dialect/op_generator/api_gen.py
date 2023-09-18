@@ -84,7 +84,7 @@ SPLIT_OP_TEMPLATE = """
 COMPUTE_OP_TEMPLATE = """
     paddle::dialect::{op_class_name} {op_inst_name} = APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::{op_class_name}>({args});"""
 
-OP_RESULT = 'pir::OpResult'
+OP_INPUT = 'pir::Value'
 VECTOR_TYPE = 'pir::VectorType'
 INTARRAY_ATTRIBUTE = "paddle::dialect::IntArrayAttribute"
 
@@ -96,6 +96,11 @@ def get_op_class_name(op_name):
 class CodeGen:
     def __init__(self) -> None:
         self._type_map = {
+            'paddle::dialect::DenseTensorType': 'pir::Value',
+            'paddle::dialect::SelectedRowsType': 'pir::Value',
+            'pir::VectorType<paddle::dialect::DenseTensorType>': 'std::vector<pir::Value>',
+        }
+        self._ret_type_map = {
             'paddle::dialect::DenseTensorType': 'pir::OpResult',
             'paddle::dialect::SelectedRowsType': 'pir::OpResult',
             'pir::VectorType<paddle::dialect::DenseTensorType>': 'std::vector<pir::OpResult>',
@@ -160,9 +165,9 @@ class CodeGen:
                     == INTARRAY_ATTRIBUTE
                     and is_vector_mutable_attr
                 ):
-                    mutable_attr.append(f'std::vector<{OP_RESULT}> {name}')
+                    mutable_attr.append(f'std::vector<{OP_INPUT}> {name}')
                 else:
-                    mutable_attr.append(f'{OP_RESULT} {name}')
+                    mutable_attr.append(f'{OP_INPUT} {name}')
                 continue
             if with_default and default_value is not None:
                 if type in ['float', 'double']:
@@ -195,7 +200,7 @@ class CodeGen:
             return 'std::tuple<{}>'.format(
                 ', '.join(
                     [
-                        self._type_map[type]
+                        self._ret_type_map[type]
                         for type, intermediate in zip(
                             type_list, intermediate_list
                         )
@@ -205,7 +210,7 @@ class CodeGen:
             )
         elif output_num == 1:
             index = intermediate_list.index('false')
-            return self._type_map[type_list[index]]
+            return self._ret_type_map[type_list[index]]
         elif output_num == 0:
             return 'void'
 

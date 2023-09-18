@@ -109,8 +109,8 @@ class RecomputeOptimizer(Optimizer):
             checkpoints, list
         ), "_checkpoints should be a list of Variable or a list of String"
         for ckpt in checkpoints:
-            assert isinstance(ckpt, str) or isinstance(
-                ckpt, Variable
+            assert isinstance(
+                ckpt, (Variable, str)
             ), "_checkpoints should be a list of Variable or a list of String"
         self._checkpoints = checkpoints
 
