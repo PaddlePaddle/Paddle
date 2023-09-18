@@ -987,7 +987,7 @@ function check_whl_size() {
     fi
 
     set +x
-    pr_whl_size=`du -m ${PADDLE_ROOT}/build/pr_whl/*.whl|awk '{print $1}'`
+    pr_whl_size=`du -m ${PADDLE_ROOT}/build/pr_whl/paddle*.whl|awk '{print $1}'`
     echo "pr_whl_size: ${pr_whl_size}"
 
     dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
