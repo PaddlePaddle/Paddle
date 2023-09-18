@@ -1365,18 +1365,4 @@ struct KernelRegistrar {
                       PHI_VARIADIC_KERNEL,             \
                       __VA_ARGS__)
 
-template <typename Func>
-void InsertKernel(const std::string& name,
-                  phi::KernelFn kernel_fn,
-                  phi::Backend backend,
-                  phi::DataType data_type,
-                  phi::DataLayout data_layout = phi::DataLayout::ALL_LAYOUT) {
-  phi::KernelKey kernel_key(backend, data_layout, data_type);
-  phi::Kernel kernel(kernel_fn, nullptr);
-
-  phi::KernelArgsParseFunctor<Func>::Parse(kernel_key,
-                                           kernel.mutable_args_def());
-  phi::KernelFactory::Instance().kernels()[name][kernel_key] = kernel;
-}
-
 }  // namespace phi
