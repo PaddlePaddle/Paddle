@@ -129,4 +129,5 @@ __all__ = [  # noqa
     "DistAttr",
     "shard_tensor",
     "dtensor_from_fn",
+    "reshard",
 ]
