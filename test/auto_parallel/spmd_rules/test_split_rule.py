@@ -29,8 +29,6 @@ class TestReductionSPMDRule(unittest.TestCase):
     """
 
     def setUp(self):
-        self.rule = core.get_phi_spmd_rule("split")
-
         x_shape = [64, 32, 48]
         process_mesh = auto.ProcessMesh(mesh=[0, 1, 2, 3])
 
@@ -48,7 +46,7 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.attrs['axis'] = 1
         self.x_dist_tensor_spec.set_dims_mapping([0, -1, -1])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec], list(self.attrs.values())
+            self.x_dist_tensor_spec, self.attrs['num'], self.attrs['axis']
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -69,7 +67,7 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.attrs['axis'] = 2
         self.x_dist_tensor_spec.set_dims_mapping([0, -1, -1])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec], list(self.attrs.values())
+            self.x_dist_tensor_spec, self.attrs['sections'], self.attrs['axis']
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -90,7 +88,7 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.attrs['axis'] = 2
         self.x_dist_tensor_spec.set_dims_mapping([-1, -1, 0])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec], list(self.attrs.values())
+            self.x_dist_tensor_spec, self.attrs['sections'], self.attrs['axis']
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -118,7 +116,7 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.attrs['axis'] = -2
         self.x_dist_tensor_spec.set_dims_mapping([0, -1, -1])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec], list(self.attrs.values())
+            self.x_dist_tensor_spec, self.attrs['num'], self.attrs['axis']
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -144,7 +142,7 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.attrs['axis'] = -1
         self.x_dist_tensor_spec.set_dims_mapping([0, 1, -1, -1])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec], list(self.attrs.values())
+            self.x_dist_tensor_spec, self.attrs['num'], self.attrs['axis']
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -174,7 +172,7 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.attrs['axis'] = 0
         self.x_dist_tensor_spec.set_dims_mapping([0, 1, -1, -1])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec], list(self.attrs.values())
+            self.x_dist_tensor_spec, self.attrs['sections'], self.attrs['axis']
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -214,9 +212,10 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.out_spec_list[0].set_dims_mapping([0, -1, -1])
         self.out_spec_list[1].set_dims_mapping([0, -1, -1])
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec],
+            self.x_dist_tensor_spec,
             self.out_spec_list,
-            list(self.attrs.values()),
+            self.attrs['num'],
+            self.attrs['axis'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -248,9 +247,10 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.out_spec_list[1].set_dims_mapping([0, -1, -1])
         self.out_spec_list[2].set_dims_mapping([0, -1, -1])
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec],
+            self.x_dist_tensor_spec,
             self.out_spec_list,
-            list(self.attrs.values()),
+            self.attrs['sections'],
+            self.attrs['axis'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -282,9 +282,10 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.out_spec_list[1].set_dims_mapping([-1, -1, -1])
         self.out_spec_list[2].set_dims_mapping([-1, -1, -1])
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec],
+            self.x_dist_tensor_spec,
             self.out_spec_list,
-            list(self.attrs.values()),
+            self.attrs['sections'],
+            self.attrs['axis'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -319,9 +320,10 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.out_spec_list[0].set_dims_mapping([0, -1, -1])
         self.out_spec_list[1].set_dims_mapping([0, -1, -1])
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec],
+            self.x_dist_tensor_spec,
             self.out_spec_list,
-            list(self.attrs.values()),
+            self.attrs['num'],
+            self.attrs['axis'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -349,9 +351,10 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.out_spec_list[0].set_dims_mapping([-1, 0, -1])
         self.out_spec_list[1].set_dims_mapping([-1, -1, -1])
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec],
+            self.x_dist_tensor_spec,
             self.out_spec_list,
-            list(self.attrs.values()),
+            self.attrs['num'],
+            self.attrs['axis'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -408,9 +411,10 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.out_spec_list[1].set_dims_mapping([0, 1, -1, -1])
         self.out_spec_list[2].set_dims_mapping([0, 1, -1, -1])
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec],
+            self.x_dist_tensor_spec,
             self.out_spec_list,
-            list(self.attrs.values()),
+            self.attrs['num'],
+            self.attrs['axis'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -451,9 +455,10 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.out_spec_list[1].set_dims_mapping([-1, 1, -1, -1])
         self.out_spec_list[2].set_dims_mapping([-1, 1, -1, -1])
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec],
+            self.x_dist_tensor_spec,
             self.out_spec_list,
-            list(self.attrs.values()),
+            self.attrs['sections'],
+            self.attrs['axis'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -494,9 +499,10 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.out_spec_list[1].set_dims_mapping([-1, 1, -1, -1])
         self.out_spec_list[2].set_dims_mapping([-1, -1, -1, -1])
         result_dist_attrs = self.rule.infer_backward(
-            [self.x_dist_tensor_spec],
+            self.x_dist_tensor_spec,
             self.out_spec_list,
-            list(self.attrs.values()),
+            self.attrs['sections'],
+            self.attrs['axis'],
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]

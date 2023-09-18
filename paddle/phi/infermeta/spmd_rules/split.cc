@@ -96,10 +96,11 @@ SpmdInfo SplitWithNumInferSpmd(const DistMetaTensor& x, int num, int axis) {
   return {{x_dist_attr_dst}, out_dist_attrs};
 }
 
-SpmdInfo SplitWithNumInferSpmdReverse(const DistMetaTensor& x,
-                                      const std::vector<DistMetaTensor*>& outs,
-                                      int num,
-                                      int axis) {
+SpmdInfo SplitWithNumInferSpmdReverse(
+    const DistMetaTensor& x,
+    const std::vector<const DistMetaTensor*>& outs,
+    int num,
+    int axis) {
   // Step0: Verify input args based on split logic
   int nouts = outs.size();
   int out_ndim = phi::vectorize(outs[0]->dims()).size();
@@ -204,7 +205,7 @@ SpmdInfo SplitInferSpmd(const DistMetaTensor& x,
 }
 
 SpmdInfo SplitInferSpmdReverse(const DistMetaTensor& x,
-                               const std::vector<DistMetaTensor*>& outs,
+                               const std::vector<const DistMetaTensor*>& outs,
                                const std::vector<int>& sections,
                                int axis) {
   int num = sections.size();

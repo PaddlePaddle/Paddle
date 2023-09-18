@@ -30,16 +30,17 @@ SpmdInfo SplitInferSpmd(const DistMetaTensor& x,
                         int axis);
 
 SpmdInfo SplitInferSpmdReverse(const DistMetaTensor& x,
-                               const std::vector<DistMetaTensor*>& outs,
+                               const std::vector<const DistMetaTensor*>& outs,
                                const std::vector<int>& sections,
                                int axis);
 
 SpmdInfo SplitWithNumInferSpmd(const DistMetaTensor& x, int num, int axis);
 
-SpmdInfo SplitWithNumInferSpmdReverse(const DistMetaTensor& x,
-                                      const std::vector<DistMetaTensor*>& outs,
-                                      int num,
-                                      int axis);
+SpmdInfo SplitWithNumInferSpmdReverse(
+    const DistMetaTensor& x,
+    const std::vector<const DistMetaTensor*>& outs,
+    int num,
+    int axis);
 
 }  // namespace distributed
 }  // namespace phi
