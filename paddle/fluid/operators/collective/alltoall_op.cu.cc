@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/alltoall_op.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/utils.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -25,6 +26,8 @@ PHI_DECLARE_bool(dynamic_static_unified_comm);
 
 namespace paddle {
 namespace operators {
+
+using phi::distributed::GetPartialTensor;
 
 template <typename T, typename DeviceContext>
 class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
