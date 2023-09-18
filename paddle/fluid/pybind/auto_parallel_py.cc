@@ -33,6 +33,7 @@
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/nd_mesh_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/p_to_r_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/r_to_p_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/r_to_s_reshard_function.h"
@@ -171,6 +172,10 @@ void BindAutoParallel(py::module *m) {
 
   py::class_<phi::distributed::SToSReshardFunction>(
       *m, "SToSReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::SameNdMeshReshardFunction>(
+      *m, "SameNdMeshReshardFunction", ReshardFunction)
       .def(py::init<>());
 
   py::class_<ProcessMesh>(*m, "ProcessMesh")
