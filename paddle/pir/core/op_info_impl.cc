@@ -100,7 +100,7 @@ bool OpInfoImpl::HasInterface(TypeId interface_id) const {
 }
 
 void *OpInfoImpl::GetInterfaceImpl(TypeId interface_id) const {
-  return pir::details::LookUp<OpInfoImpl>(
+  return pir::detail::LookUp<OpInfoImpl>(
       interface_id, num_interfaces_, num_traits_, this);
 }
 
@@ -119,7 +119,7 @@ void OpInfoImpl::Destroy() {
   }
   // (2) free memeory
   VLOG(10) << "Free base_ptr " << reinterpret_cast<void *>(base_ptr);
-  free(base_ptr);
+  delete base_ptr;
 }
 
 }  // namespace pir
