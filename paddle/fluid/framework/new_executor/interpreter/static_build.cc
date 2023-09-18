@@ -117,10 +117,11 @@ std::vector<VarMetaInfo> GetVarsInfo(const Scope* scope,
 }
 
 bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
-  // in_black_list = (kernelCode >> 6) & 1
-  // is_operator_base = (kernelCode >> 5) & 1
-  // is_custom_op = (kernelCode >> 4) & 1
-  // use_mkldnn = (kernelCode >> 3) & 1
+  // in_black_list = (kernelCode >> 5) & 1
+  // is_operator_base = (kernelCode >> 4) & 1
+  // is_custom_op = (kernelCode >> 3) & 1
+  // use_mkldnn = (kernelCode >> 2) & 1
+  // sub_block_can_not_static_build = (kernelCode >> 1) & 1
   using KernelCode = int8_t;
   std::set<std::pair<std::string, KernelCode>> invalid_ops;
   for (auto& op : block.AllOps()) {
@@ -140,25 +141,22 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
       use_mkldnn = attr.index() == 1 ? PADDLE_GET_CONST(int, attr)
                                      : PADDLE_GET_CONST(bool, attr);
     }
-    bool has_structured_kernel =
-        phi::KernelFactory::Instance().HasStructuredKernel(op_type);
 
-    bool is_sub_block_static_build = true;
+    bool sub_block_can_not_static_build = true;
     if (op->HasAttr("sub_block")) {
       auto* sub_block =
           PADDLE_GET_CONST(framework::BlockDesc*, op->GetAttr("sub_block"));
-      is_sub_block_static_build = BlockCanBeStaticBuilt(*sub_block);
+      sub_block_can_not_static_build = BlockCanBeStaticBuilt(*sub_block);
     }
 
     KernelCode kernel_code = static_cast<KernelCode>(
-        (in_black_list << 6) + (is_operator_base << 5) + (is_custom_op << 4) +
-        (use_mkldnn << 3) + (has_structured_kernel << 2) +
-        (is_sub_block_static_build << 1));
+        (in_black_list << 5) + (is_operator_base << 4) + (is_custom_op << 3) +
+        (use_mkldnn << 2) + (sub_block_can_not_static_build << 1));
     if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
       if (in_black_list ||
           (is_operator_base &&
            !OperatorBasesHandledInStaticBuild.count(op_type)) ||
-          is_custom_op || use_mkldnn || !is_sub_block_static_build) {
+          is_custom_op || use_mkldnn || !sub_block_can_not_static_build) {
         invalid_ops.insert(std::make_pair(op_type, kernel_code));
       }
     }
@@ -168,11 +166,12 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     std::stringstream ss;
     ss << "The following OPs are unable to static build:\n";
     for (auto& item : invalid_ops) {
-      ss << item.first << " [in_black_list = " << (item.second >> 7 & 1)
-         << ", is_operator_base = " << (item.second >> 6 & 1)
-         << ", is_custom_op = " << (item.second >> 5 & 1)
-         << ", use_mkldnn = " << (item.second >> 4 & 1)
-         << (item.second >> 2 & 1) << "]\n";
+      ss << item.first << " [in_black_list = " << (item.second >> 6 & 1)
+         << ", is_operator_base = " << (item.second >> 5 & 1)
+         << ", is_custom_op = " << (item.second >> 4 & 1)
+         << ", use_mkldnn = " << (item.second >> 3 & 1)
+         << ", sub_block_can_not_static_build = " << (item.second >> 1 & 1)
+         << "]\n";
     }
     VLOG(1) << ss.str();
   }
@@ -468,14 +467,13 @@ void FakeInitializeOutputsForOperatorBase(
         auto var_name = out_var_info_before_build[i].name_;
         if (following_input_vars.count(var_name)) {
           PADDLE_THROW(phi::errors::PreconditionNotMet(
-              "The outputs' dtype/place of conditional_block is "
+              "The output %s s' dtype/place of conditional_block is "
               "changed after static build. Befer static build, the "
-              "output %s's dtype is %s, place is %s. After static "
-              "build, the output %s's dtype is %s, place is %s.",
+              "dtype is %s, place is %s. After static "
+              "build, the dtype is %s, place is %s.",
               var_name,
               out_var_info_before_build[i].dtype_,
               out_var_info_before_build[i].place_,
-              var_name,
               out_var_info_after_build[i].dtype_,
               out_var_info_after_build[i].place_));
         }
