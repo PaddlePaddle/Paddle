@@ -545,30 +545,7 @@ void HandleOperatorBase(
       op->Run(*scope, place);
     }
 
-    bool is_skip_fake_init = false;
-    std::unordered_set<std::string> following_input_vars;
-
-    if (op->Type() == "conditional_block") {
-      // Note(sonder): skip fake init for conditional_block when there is no
-      // op with kernel after it.
-      is_skip_fake_init = true;
-      for (size_t i = 0; i < following_ops.size(); ++i) {
-        if (dynamic_cast<framework::OperatorWithKernel*>(
-                following_ops[i].get()) != nullptr) {
-          VLOG(4) << "Find op with kernel after conditional_block : "
-                  << following_ops[i]->Type();
-          is_skip_fake_init = false;
-          auto input_vars_info = GetVarsInfo(
-              scope, following_ops[i]->Inputs(), *following_ops[i].get());
-          for (auto& input_var_info : input_vars_info) {
-            following_input_vars.insert(input_var_info.name_);
-          }
-        }
-      }
-    }
-
-    FakeInitializeOutputsForOperatorBase(
-        *op, place, scope, is_skip_fake_init, following_input_vars);
+    FakeInitializeOutputsForOperatorBase(*op, place, scope, following_ops);
   } else {
     op->Run(*scope, place);  // Run without data transformer.
   }

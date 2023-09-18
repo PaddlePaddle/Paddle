@@ -56,7 +56,7 @@ void FakeInitializeOutputsForOperatorBase(
     const phi::Place& place,
     Scope* scope,
     bool is_skip_fake_init,
-    const std::unordered_set<std::string> following_input_vars);
+    std::vector<std::shared_ptr<OperatorBase>> following_ops);
 
 void FakeInitializeOutputsForFunctionKernel(
     const framework::OperatorBase& op,

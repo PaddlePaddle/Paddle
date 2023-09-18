@@ -440,10 +440,9 @@ void FakeInitializeOutputsForOperatorBase(
     const OperatorBase& op,
     const phi::Place& place,
     Scope* scope,
-    bool is_skip_fake_init,
-    const std::unordered_set<std::string> following_input_vars) {
+    std::vector<std::shared_ptr<OperatorBase>> following_ops) {
   const std::string& op_type = op.Type();
-  if (OpsCanSkipedFakeAllocInStaticBuild.count(op_type) || is_skip_fake_init) {
+  if (OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
     return;
   }
 
@@ -451,6 +450,29 @@ void FakeInitializeOutputsForOperatorBase(
       platform::DeviceContextPool::Instance().Get(place);
 
   if (op_type == "conditional_block") {
+    // Note(sonder): skip fake init for conditional_block when there is no
+    // op with kernel after it.
+    bool skip_fake_init = true;
+    std::unordered_set<std::string> following_input_vars;
+
+    for (size_t i = 0; i < following_ops.size(); ++i) {
+      if (dynamic_cast<framework::OperatorWithKernel*>(
+              following_ops[i].get()) != nullptr) {
+        VLOG(4) << "Find op with kernel after conditional_block : "
+                << following_ops[i]->Type();
+        skip_fake_init = false;
+        auto input_vars_info = GetVarsInfo(
+            scope, following_ops[i]->Inputs(), *following_ops[i].get());
+        for (auto& input_var_info : input_vars_info) {
+          following_input_vars.insert(input_var_info.name_);
+        }
+      }
+    }
+
+    if (skip_fake_init) {
+      return;
+    }
+
     const std::vector<VarMetaInfo> out_var_info_before_build =
         GetVarsInfo(scope, op.Outputs(), op);
 
