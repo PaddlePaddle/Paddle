@@ -487,11 +487,9 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
   for (auto &var_name : set_parameter_names) {
     if (scope->FindVar(var_name)) {
       auto tensor = scope->FindVar(var_name)->Get<phi::DenseTensor>();
-      phi::AllocationType p(phi::AllocationType::UNDEFINED);
+      phi::AllocationType p = place.GetType();
       if (tensor.initialized()) {
         p = tensor.place().GetType();
-      } else {
-        p = place.GetType();
       }
 
       if (var_name == "@EMPTY@") {
