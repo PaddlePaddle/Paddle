@@ -78,7 +78,6 @@ class CIdentityOpGradMaker : public framework::SingleGradOpMaker<T> {
     retv->SetAttrMap(this->Attrs());
   }
 };
-
 }  // namespace operators
 }  // namespace paddle
 
