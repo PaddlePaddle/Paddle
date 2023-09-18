@@ -24,8 +24,8 @@ from paddle.framework import core
 
 class TestElementwiseSPMDRule(unittest.TestCase):
     def setUp(self):
-        self.unary_rule = core.get_phi_spmd_rule("elementwise_unary")
-        self.rule = core.get_phi_spmd_rule("elementwise_binary")
+        self.unary_rule = core.get_phi_spmd_rule("relu")
+        self.rule = core.get_phi_spmd_rule("add")
 
         x_shape = [64, 36]
         y_shape = [64, 36]
