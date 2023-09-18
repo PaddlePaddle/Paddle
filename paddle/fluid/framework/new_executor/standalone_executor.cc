@@ -12,20 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
-
 #include "paddle/fluid/framework/new_executor/feed_fetch_utils.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/program_interpreter.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/flags.h"
 
-#include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 
-#include "paddle/fluid/ir/transforms/inplace_pass.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
-#include "paddle/ir/core/program.h"
-#include "paddle/ir/pass/pass.h"
-#include "paddle/ir/pass/pass_manager.h"
+#include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/pass/pass.h"
+#include "paddle/pir/pass/pass_manager.h"
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
 PHI_DECLARE_bool(enable_new_ir_api);
@@ -54,7 +54,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
   for (const auto& job : jobs) {
     const std::string& job_type = job->Type();
     std::shared_ptr<ProgramDesc> program = nullptr;
-    std::shared_ptr<::ir::Program> ir_program = nullptr;
+    std::shared_ptr<::pir::Program> ir_program = nullptr;
     if (FLAGS_enable_new_ir_api) {
       ir_program = plan_.IrProgram(job_type);
     } else {
@@ -79,18 +79,18 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
 
     // TODO(phlrain) we only support cpu for now
     if (FLAGS_enable_new_ir_in_executor) {
-      std::shared_ptr<::ir::Program> base_program = ir_program;
+      std::shared_ptr<::pir::Program> base_program = ir_program;
       if (!FLAGS_enable_new_ir_api) {
         VLOG(6) << "begin to translate" << std::endl;
         base_program = paddle::TranslateLegacyProgramToProgram(*program);
       }
       auto block = base_program->block();
       for (auto it = block->begin(); it != block->end(); ++it) {
-        if ((*it)->name() == "pd.fetch") {
+        if ((*it)->isa<paddle::dialect::FetchOp>()) {
           size_t index = (*it)
                              ->attributes()
                              .at("col")
-                             .dyn_cast<ir::Int32Attribute>()
+                             .dyn_cast<pir::Int32Attribute>()
                              .data();
 
           if (fetch_var_names_.size() < index + 1) {
@@ -100,24 +100,26 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
           fetch_var_names_[index] = (*it)
                                         ->attributes()
                                         .at("name")
-                                        .dyn_cast<ir::StrAttribute>()
+                                        .dyn_cast<pir::StrAttribute>()
                                         .AsString() +
                                     "@fetch";
         }
       }
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
+      std::shared_ptr<pir::Program> shared_program = std::move(kernel_program);
+      plan_.UpdateIrProgram("base", shared_program);
 
       if (FLAGS_new_ir_apply_inplace_pass) {
-        ir::PassManager pm(ir::IrContext::Instance(), 3);
-        pm.AddPass(ir::CreateInplacePass());
-        pm.Run(kernel_program.get());
+        pir::PassManager pm(pir::IrContext::Instance(), 3);
+        pm.AddPass(pir::CreateInplacePass());
+        pm.Run(shared_program.get());
       }
 
       interpretercores_.emplace_back(
           std::make_shared<InterpreterCore>(place_,
                                             fetch_var_names_,
-                                            std::move(kernel_program),
+                                            shared_program->block(),
                                             scope_,
                                             execution_config));
     } else {

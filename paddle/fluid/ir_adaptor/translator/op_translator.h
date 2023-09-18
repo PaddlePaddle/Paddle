@@ -20,12 +20,12 @@
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
-#include "paddle/ir/core/ir_context.h"
-#include "paddle/ir/core/operation.h"
-#include "paddle/ir/core/program.h"
-#include "paddle/ir/core/value.h"
+#include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
+#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/core/operation.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
 
 namespace paddle {
 namespace translator {
@@ -41,7 +41,7 @@ struct OpTranscriber {
   using IdxInVector = size_t;
   using ResultIdx = std::tuple<IdxInOp, IdxInVector>;
   using OpDesc = paddle::framework::OpDesc;
-  using OpOutputTypeList = std::vector<ir::Type>;
+  using OpOutputTypeList = std::vector<pir::Type>;
   using OpOutputMapping = std::unordered_map<std::string, ResultIdx>;
   using OpInputInfo = dialect::OpInputInfo;
   using OpInputInfoList = std::vector<dialect::OpInputInfo>;
@@ -49,51 +49,51 @@ struct OpTranscriber {
   using OpAttributeInfoList = std::vector<dialect::OpAttributeInfo>;
   using OpOutputInfo = dialect::OpOutputInfo;
   using OpOutputInfoList = std::vector<dialect::OpOutputInfo>;
-  using InputHandlerFn = std::function<ir::OpResult(ir::IrContext*,
-                                                    TranslationContext*,
-                                                    const OpDesc&,
-                                                    const std::string&,
-                                                    const OpInputInfo&,
-                                                    ir::Program*)>;
-  using AttributeHandlerFn = std::function<ir::Attribute(
-      ir::IrContext*, const OpDesc&, const OpAttributeInfo&)>;
+  using InputHandlerFn = std::function<pir::OpResult(pir::IrContext*,
+                                                     TranslationContext*,
+                                                     const OpDesc&,
+                                                     const std::string&,
+                                                     const OpInputInfo&,
+                                                     pir::Block*)>;
+  using AttributeHandlerFn = std::function<pir::Attribute(
+      pir::IrContext*, const OpDesc&, const OpAttributeInfo&)>;
 
  public:
-  virtual ir::Operation* operator()(ir::IrContext* ctx,
-                                    TranslationContext* param_map,
-                                    const OpDesc& op_desc,
-                                    ir::Program* program);
+  virtual pir::Operation* operator()(pir::IrContext* ctx,
+                                     TranslationContext* param_map,
+                                     const OpDesc& op_desc,
+                                     pir::Block* block);
 
  public:
-  virtual ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc);
-  virtual std::vector<ir::OpResult> GenerateOperationInput(
-      ir::IrContext* ctx,
+  virtual pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx, const OpDesc& op_desc);
+  virtual std::vector<pir::Value> GenerateOperationInput(
+      pir::IrContext* ctx,
       TranslationContext* param_map,
       const OpDesc& op_desc,
       const std::string& normalized_op_name,
       const OpInputInfoList& input_infos,
-      ir::Program* program);
+      pir::Block* block);
   virtual std::tuple<OpOutputTypeList, OpOutputMapping> GenerateOperationOutput(
-      ir::IrContext* ctx,
+      pir::IrContext* ctx,
       const OpDesc& op_desc,
       const OpOutputInfoList& output_infos);
-  virtual void HandleNonexistentAttribute(ir::IrContext*,
-                                          ir::AttributeMap* attribute_map,
+  virtual void HandleNonexistentAttribute(pir::IrContext*,
+                                          pir::AttributeMap* attribute_map,
                                           const OpAttributeInfo& info);
-  virtual ir::AttributeMap TranslateOpAttribute(
-      ir::IrContext* ctx,
+  virtual pir::AttributeMap TranslateOpAttribute(
+      pir::IrContext* ctx,
       const std::string& normalized_op_name,
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc);
-  virtual ir::OpResult GetAttributeAsInput(ir::IrContext* ctx,
-                                           ir::Program* program,
-                                           const OpDesc& op_desc,
-                                           const OpInputInfo& input_info);
+  virtual pir::OpResult GetAttributeAsInput(pir::IrContext* ctx,
+                                            pir::Block* block,
+                                            const OpDesc& op_desc,
+                                            const OpInputInfo& input_info);
 
-  virtual void RecordOpResultMapping(ir::IrContext* ctx,
+  virtual void RecordOpResultMapping(pir::IrContext* ctx,
                                      TranslationContext* param_map,
                                      const OpDesc& op_desc,
-                                     ir::Operation* operation,
+                                     pir::Operation* operation,
                                      const OpOutputMapping& arg_to_idx);
 
  public:
@@ -105,11 +105,11 @@ struct OpTranscriber {
       const std::string& input_name) {
     return nullptr;
   }
-  virtual void InsertSliceOperationForInput(ir::IrContext* ctx,
+  virtual void InsertSliceOperationForInput(pir::IrContext* ctx,
                                             TranslationContext* param_map,
                                             const OpDesc& op_desc,
                                             const OpInputInfoList& input_infos,
-                                            ir::Program* program);
+                                            pir::Block* block);
 };
 
 class OpTranslator {
@@ -118,8 +118,8 @@ class OpTranslator {
   using OpDesc = paddle::framework::OpDesc;
   using BlockDesc = paddle::framework::BlockDesc;
   using VarDesc = paddle::framework::VarDesc;
-  using OpTranslateFn = std::function<ir::Operation*(
-      ir::IrContext*, TranslationContext*, const OpDesc&, ir::Program*)>;
+  using OpTranslateFn = std::function<pir::Operation*(
+      pir::IrContext*, TranslationContext*, const OpDesc&, pir::Block*)>;
 
  private:
   OpTranslator();  // Disallow instantiation outside of the class.

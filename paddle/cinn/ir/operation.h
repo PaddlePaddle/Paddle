@@ -105,6 +105,8 @@ struct BufferShareOp : public _Operation_ {
  */
 struct ComputeOp : public _Operation_ {
   using handle_t = std::function<Expr(const std::vector<Expr> &)>;
+  //! Var on each dimension
+  std::vector<Var> axis;
   //! Var on each reduction axis, if the body is a Reduction.
   std::vector<Var> reduce_axis;
   //! Shape of the output.

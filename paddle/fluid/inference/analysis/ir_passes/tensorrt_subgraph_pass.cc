@@ -327,7 +327,8 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   // The node->inputs contains input tensors and parameters.
   for (auto *x : node->inputs) {
     input_names.insert(x->Name());
-    input_names_with_id.insert(x->Name() + std::to_string(x->id()));
+    input_names_with_id.insert(
+        RenameVarBeUnique(x->Name(), std::to_string(x->id())));
     if (std::count(graph_params.begin(), graph_params.end(), x->Name()) > 0) {
       parameters.push_back(x->Name());
     }
@@ -357,7 +358,8 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   // https://github.com/PaddlePaddle/Paddle/pull/53184
   for (auto *n : graph->Nodes()) {
     if (n->IsVar() && input_names.count(n->Name())) {
-      input_names_with_id.insert(n->Name() + std::to_string(n->id()));
+      input_names_with_id.insert(
+          RenameVarBeUnique(n->Name(), std::to_string(n->id())));
     }
   }
 
@@ -380,7 +382,6 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   auto mark_output = Get<bool>("mark_output");
   auto output_tensor_name =
       Get<std::vector<std::string>>("output_tensor_names");
-  auto mark_output_with_id = Get<bool>("mark_output_with_id");
 
   if (mark_output) {
     VLOG(1) << "begin to mark output ...";
@@ -389,17 +390,14 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
         for (auto *x : node->outputs) {
           if (std::count(parameters.begin(), parameters.end(), x->Name()) > 0)
             continue;
-          std::string name_with_id = x->Name() + std::to_string(x->id());
-          if (((!mark_output_with_id && std::count(output_tensor_name.begin(),
-                                                   output_tensor_name.end(),
-                                                   x->Name()) > 0) ||
-               (mark_output_with_id && std::count(output_tensor_name.begin(),
-                                                  output_tensor_name.end(),
-                                                  name_with_id) > 0)) &&
+          if ((std::count(output_tensor_name.begin(),
+                          output_tensor_name.end(),
+                          x->Name()) > 0) ||
               !x->outputs.empty()) {
             VLOG(3) << "output " << x->Name() << " has been marked";
             output_names.insert(x->Name());
-            output_names_with_id.insert(name_with_id);
+            output_names_with_id.insert(
+                RenameVarBeUnique(x->Name(), std::to_string(x->id())));
             origin_name_output_rank[x->Name()] = x->Var()->GetShape().size();
             trt_outputs.insert(x);
             map_origin_outputs_dtype[x->Name()] =
@@ -412,7 +410,8 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
 
   for (auto *x : node->outputs) {
     output_names.insert(x->Name());
-    output_names_with_id.insert(x->Name() + std::to_string(x->id()));
+    output_names_with_id.insert(
+        RenameVarBeUnique(x->Name(), std::to_string(x->id())));
     origin_name_output_rank[x->Name()] = x->Var()->GetShape().size();
     trt_outputs.insert(x);
     map_origin_outputs_dtype[x->Name()] =
@@ -566,6 +565,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   auto use_dla = Get<bool>("trt_use_dla");
   auto dla_core = Get<int>("trt_dla_core");
   auto use_inspector = Get<bool>("use_inspector");
+  auto inspector_serialize = Get<bool>("inspector_serialize");
   auto disable_trt_plugin_fp16 = Get<bool>("disable_trt_plugin_fp16");
   auto context_memory_sharing = Get<bool>("context_memory_sharing");
   auto enable_low_precision_io = Get<bool>("enable_low_precision_io");
@@ -589,7 +589,6 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("parameters", parameters);
   op_desc->SetAttr("allow_build_at_runtime", allow_build_at_runtime);
   op_desc->SetAttr("shape_range_info_path", shape_range_info_path);
-  op_desc->SetAttr("use_inspector", use_inspector);
   op_desc->SetAttr("with_dynamic_shape", with_dynamic_shape);
   op_desc->SetAttr("enable_low_precision_io", enable_low_precision_io);
 
@@ -685,6 +684,16 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("context_memory_sharing", context_memory_sharing);
   std::string trt_engine_serialized_data;
   op_desc->SetAttr("engine_serialized_data", trt_engine_serialized_data);
+
+  // serialization engine info
+  std::string engine_info_path;
+  if (inspector_serialize) {
+    engine_info_path = Get<std::string>("model_opt_cache_dir") +
+                       "engine_info_" + engine_key + ".json";
+    LOG(INFO) << "Serialize engine info to " << engine_info_path;
+  }
+  op_desc->SetAttr("use_inspector", use_inspector);
+  op_desc->SetAttr("engine_info_path", engine_info_path);
   op_desc->Flush();
 
   std::unique_ptr<tensorrt::TRTInt8Calibrator> calibrator;
@@ -736,6 +745,8 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
       framework::ir::Agent(node).subgraph()->end());
   framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
 
+  // Adding new parameters must set a new op attribute by "op_desc->SetAttr()"
+  // first and syncing it to tensorrt_engine_op.h
   tensorrt::TensorRTEngine::ConstructionParams params;
   params.max_batch_size = max_batch_size;
   params.max_workspace_size = workspace_size;
@@ -758,6 +769,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   params.tensorrt_transformer_maskid = tensorrt_transformer_maskid;
   params.context_memory_sharing = context_memory_sharing;
   params.use_inspector = use_inspector;
+  params.engine_info_path = engine_info_path;
   params.enable_low_precision_io = enable_low_precision_io;
 
   tensorrt::TensorRTEngine *trt_engine =

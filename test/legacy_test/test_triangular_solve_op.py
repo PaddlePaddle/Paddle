@@ -18,11 +18,11 @@ import unittest
 import numpy as np
 
 sys.path.append("..")
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 paddle.enable_static()
 
@@ -257,7 +257,7 @@ class TestTriangularSolveAPI(unittest.TestCase):
             self.place.append(paddle.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             x = paddle.static.data(name="x", shape=[3, 3], dtype=self.dtype)
             y = paddle.static.data(name="y", shape=[3, 2], dtype=self.dtype)
             z = paddle.linalg.triangular_solve(x, y)
@@ -266,9 +266,9 @@ class TestTriangularSolveAPI(unittest.TestCase):
             y_np = np.random.random([3, 2]).astype(self.dtype)
             z_np = np.linalg.solve(np.triu(x_np), y_np)
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"x": x_np, "y": y_np},
                 fetch_list=[z],
             )
@@ -301,11 +301,11 @@ class TestTriangularSolveOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of solve_op must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            x1 = base.create_lod_tensor(
+                np.array([[-1]]), [[1]], base.CPUPlace()
             )
-            y1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            y1 = base.create_lod_tensor(
+                np.array([[-1]]), [[1]], base.CPUPlace()
             )
             self.assertRaises(TypeError, paddle.linalg.triangular_solve, x1, y1)
 

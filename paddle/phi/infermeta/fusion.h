@@ -123,6 +123,26 @@ void MultiEncoderXPUInferMeta(
     MetaTensor* x_fp16,
     MetaTensor* out_fp16);
 
+void FusedGemmEpilogueInferMeta(const MetaTensor& x,
+                                const MetaTensor& y,
+                                const MetaTensor& bias,
+                                bool trans_x,
+                                bool trans_y,
+                                const std::string& activation,
+                                MetaTensor* out,
+                                MetaTensor* reserve_space);
+
+void FusedGemmEpilogueGradInferMeta(const MetaTensor& x,
+                                    const MetaTensor& y,
+                                    const MetaTensor& reserve_space,
+                                    const MetaTensor& out_grad,
+                                    bool trans_x,
+                                    bool trans_y,
+                                    const std::string& activation_grad,
+                                    MetaTensor* x_grad,
+                                    MetaTensor* y_grad,
+                                    MetaTensor* bias_grad);
+
 void FusedMultiTransformerXpuInferMeta(
     const MetaTensor& x,
     const std::vector<const MetaTensor*>& ln_scale,
@@ -200,6 +220,18 @@ void FastLayernormXPUInferMeta(const MetaTensor& x,
                                int begin_norm_axis,
                                float epsilon,
                                MetaTensor* out);
+
+void BNActXPUInferMeta(const MetaTensor& x,
+                       const MetaTensor& mean,
+                       const MetaTensor& variance,
+                       const MetaTensor& scale,
+                       const MetaTensor& bias,
+                       float momentum,
+                       float epsilon,
+                       const std::string& data_layout,
+                       int act_type,
+                       MetaTensor* y,
+                       MetaConfig config = MetaConfig());
 
 void AddCMulXPUInferMeta(const MetaTensor& x,
                          const MetaTensor& y,

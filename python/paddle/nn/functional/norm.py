@@ -16,11 +16,11 @@ import numbers
 
 # TODO: define normalization api
 import paddle
-from paddle import _C_ops, fluid, in_dynamic_mode
-from paddle.fluid.framework import in_dygraph_mode
+from paddle import _C_ops, base, in_dynamic_mode
+from paddle.base.framework import in_dygraph_mode
 
-from ...fluid.data_feeder import check_type, check_variable_and_dtype
-from ...fluid.layer_helper import LayerHelper
+from ...base.data_feeder import check_type, check_variable_and_dtype
+from ...base.layer_helper import LayerHelper
 
 __all__ = []
 
@@ -79,7 +79,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     """
 
     if in_dygraph_mode():
-        eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
+        eps = base.dygraph.base.to_variable([epsilon], dtype=x.dtype)
         out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
         return x / _C_ops.maximum(out, eps)
 
@@ -236,7 +236,7 @@ def batch_norm(
         }
 
         helper = LayerHelper('batch_norm', **locals())
-        from paddle.fluid.data_feeder import convert_dtype
+        from paddle.base.data_feeder import convert_dtype
 
         param_dtype = (
             x.dtype
@@ -361,7 +361,7 @@ def layer_norm(
 
         # create output
         helper = LayerHelper('layer_norm', **locals())
-        from paddle.fluid.data_feeder import convert_dtype
+        from paddle.base.data_feeder import convert_dtype
 
         param_dtype = (
             x.dtype if convert_dtype(x.dtype) != 'float16' else 'float32'

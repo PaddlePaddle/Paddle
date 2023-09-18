@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle import base
+from paddle.base import Program, program_guard
 
 
 class TestRepeatInterleaveOp(OpTest):
@@ -129,7 +129,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             )
             index.desc.set_need_check_feed(False)
             z = paddle.repeat_interleave(x, index, axis=1)
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
                 feed={'x': self.data_x, 'repeats_': self.data_index},
                 fetch_list=[z.name],
@@ -150,7 +150,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             )
             index.desc.set_need_check_feed(False)
             z = paddle.repeat_interleave(x, index, axis=0)
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
                 feed={
                     'x': self.data_x,
@@ -167,7 +167,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             x = paddle.static.data(name='x', shape=[-1, 4], dtype='float32')
             x.desc.set_need_check_feed(False)
             z = paddle.repeat_interleave(x, repeats, axis=0)
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
                 feed={'x': self.data_x}, fetch_list=[z.name], return_numpy=False
             )
@@ -179,7 +179,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             x = paddle.static.data(name='x', shape=[-1], dtype="float32")
             x.desc.set_need_check_feed(False)
             z = paddle.repeat_interleave(x, repeats)
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
                 feed={'x': self.data_zero_dim_x},
                 fetch_list=[z.name],
@@ -199,7 +199,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             )
             index.desc.set_need_check_feed(False)
             z = paddle.repeat_interleave(x, index, axis=-1)
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
                 feed={'x': self.data_x, 'repeats_': self.data_index},
                 fetch_list=[z.name],
@@ -214,17 +214,17 @@ class TestIndexSelectAPI(unittest.TestCase):
         input_x = np.array([[1, 2, 1], [1, 2, 3]]).astype('int32')
         index_x = np.array([1, 1, 2, 1, 2, 2]).astype('int32')
 
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(input_x)
-            index = fluid.dygraph.to_variable(index_x)
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(input_x)
+            index = base.dygraph.to_variable(index_x)
             z = paddle.repeat_interleave(x, index, None)
             np_z = z.numpy()
         expect_out = np.repeat(input_x, index_x, axis=None)
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         # case repeats int
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(input_x)
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(input_x)
             index = 2
             z = paddle.repeat_interleave(x, index, None)
             np_z = z.numpy()
@@ -232,17 +232,17 @@ class TestIndexSelectAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         # case 1:
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(self.data_x)
-            index = fluid.dygraph.to_variable(self.data_index)
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(self.data_x)
+            index = base.dygraph.to_variable(self.data_index)
             z = paddle.repeat_interleave(x, index, -1)
             np_z = z.numpy()
         expect_out = np.repeat(self.data_x, self.data_index, axis=-1)
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(self.data_x)
-            index = fluid.dygraph.to_variable(self.data_index)
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(self.data_x)
+            index = base.dygraph.to_variable(self.data_index)
             z = paddle.repeat_interleave(x, index, 1)
             np_z = z.numpy()
         expect_out = np.repeat(self.data_x, self.data_index, axis=1)
@@ -250,17 +250,17 @@ class TestIndexSelectAPI(unittest.TestCase):
 
         # case 2:
         index_x = np.array([1, 2, 1]).astype('int32')
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(self.data_x)
-            index = fluid.dygraph.to_variable(index_x)
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(self.data_x)
+            index = base.dygraph.to_variable(index_x)
             z = paddle.repeat_interleave(x, index, axis=0)
             np_z = z.numpy()
         expect_out = np.repeat(self.data_x, index, axis=0)
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         # case 3 zero_dim:
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(self.data_zero_dim_x)
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(self.data_zero_dim_x)
             index = 2
             z = paddle.repeat_interleave(x, index, None)
             np_z = z.numpy()

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 def get_nccl_version_str(ver):

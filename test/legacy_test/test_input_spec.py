@@ -19,8 +19,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle.base import core
+from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.jit.dy2static.utils import _compatible_non_tensor_spec
 from paddle.static import InputSpec
 
