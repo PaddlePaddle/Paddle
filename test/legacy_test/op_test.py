@@ -389,7 +389,7 @@ class OpTest(unittest.TestCase):
         cls.input_shape_is_large = True
         cls.is_calc_ref = False
         cls.check_prim = False
-        cls.check_prim_new_ir = False
+        cls.check_prim_pir = False
         cls._check_cinn = False
 
         np.random.seed(123)
@@ -473,7 +473,7 @@ class OpTest(unittest.TestCase):
                 and not is_rocm_op_test()
                 and not is_custom_device_op_test()
                 and not cls.check_prim
-                and not cls.check_prim_new_ir
+                and not cls.check_prim_pir
             ):
                 raise AssertionError(
                     "This test of %s op needs check_grad with fp64 precision."
@@ -1376,7 +1376,7 @@ class OpTest(unittest.TestCase):
             return
         if os.getenv("FLAGS_NEW_IR_OPTEST_WHITE_LIST") is None:
             return
-        if self.check_prim or self.check_prim_new_ir:
+        if self.check_prim or self.check_prim_pir:
             return
         if self._check_cinn:
             return
@@ -1624,9 +1624,7 @@ class OpTest(unittest.TestCase):
             if fwd_var_name is None:
                 fwd_var_name = arg
             fwd_var = fwd_program.global_block().vars.get(fwd_var_name)
-            assert fwd_var is not None, "{} cannot be found".format(
-                fwd_var_name
-            )
+            assert fwd_var is not None, f"{fwd_var_name} cannot be found"
             grad_var = grad_block.create_var(
                 name=arg,
                 dtype=fwd_var.dtype,
@@ -1944,7 +1942,7 @@ class OpTest(unittest.TestCase):
         equal_nan=False,
         check_dygraph=True,
         check_prim=False,
-        check_prim_new_ir=False,
+        check_prim_pir=False,
         only_check_prim=False,
         inplace_atol=None,
         check_cinn=False,
@@ -2503,12 +2501,12 @@ class OpTest(unittest.TestCase):
             self.__class__.check_prim = True
             self.__class__.op_type = self.op_type
 
-        if check_prim_new_ir:
+        if check_prim_pir:
             with paddle.pir_utils.IrGuard():
                 prim_checker = PrimForwardChecker(self, place)
                 prim_checker.check()
                 # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-                self.__class__.check_prim_new_ir = True
+                self.__class__.check_prim_pir = True
                 self.__class__.op_type = self.op_type
         if only_check_prim:
             return
@@ -2636,7 +2634,7 @@ class OpTest(unittest.TestCase):
         equal_nan=False,
         check_dygraph=True,
         check_prim=False,
-        check_prim_new_ir=False,
+        check_prim_pir=False,
         inplace_atol=None,
         check_cinn=False,
         only_check_prim=False,
@@ -2662,7 +2660,7 @@ class OpTest(unittest.TestCase):
                 equal_nan,
                 check_dygraph=check_dygraph,
                 check_prim=check_prim,
-                check_prim_new_ir=check_prim_new_ir,
+                check_prim_pir=check_prim_pir,
                 only_check_prim=only_check_prim,
                 inplace_atol=inplace_atol,
                 check_cinn=check_cinn,
@@ -2830,7 +2828,7 @@ class OpTest(unittest.TestCase):
         user_defined_grad_outputs=None,
         check_dygraph=True,
         check_prim=False,
-        check_prim_new_ir=False,
+        check_prim_pir=False,
         only_check_prim=False,
         atol=1e-5,
         check_cinn=False,
@@ -2854,7 +2852,7 @@ class OpTest(unittest.TestCase):
                 user_defined_grad_outputs,
                 check_dygraph=check_dygraph,
                 check_prim=check_prim,
-                check_prim_new_ir=check_prim_new_ir,
+                check_prim_pir=check_prim_pir,
                 only_check_prim=only_check_prim,
                 atol=atol,
                 check_cinn=check_cinn,
@@ -2874,7 +2872,7 @@ class OpTest(unittest.TestCase):
         user_defined_grad_outputs=None,
         check_dygraph=True,
         check_prim=False,
-        check_prim_new_ir=False,
+        check_prim_pir=False,
         only_check_prim=False,
         numeric_place=None,
         atol=1e-5,
@@ -2900,7 +2898,7 @@ class OpTest(unittest.TestCase):
             # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
             self.__class__.check_prim = True
 
-        if check_prim_new_ir:
+        if check_prim_pir:
             with paddle.pir_utils.IrGuard():
                 self._check_grad_helper()
                 prim_grad_checker = PrimGradChecker(
@@ -2913,7 +2911,7 @@ class OpTest(unittest.TestCase):
                 )
                 prim_grad_checker.check()
                 # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-                self.__class__.check_prim_new_ir = True
+                self.__class__.check_prim_pir = True
 
         if only_check_prim:
             return
@@ -3302,7 +3300,7 @@ class OpTest(unittest.TestCase):
             return
         if os.getenv("FLAGS_NEW_IR_OPTEST_WHITE_LIST") is None:
             return
-        if self.check_prim or self.check_prim_new_ir:
+        if self.check_prim or self.check_prim_pir:
             return
         if self._check_cinn:
             return

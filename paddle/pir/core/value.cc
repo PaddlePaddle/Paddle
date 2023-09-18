@@ -30,10 +30,6 @@
 #define CHECK_VALUE_NULL_IMPL(func_name) CHECK_NULL_IMPL(Value, func_name)
 
 namespace pir {
-
-Value::Value(const detail::ValueImpl *impl)
-    : impl_(const_cast<detail::ValueImpl *>(impl)) {}
-
 bool Value::operator==(const Value &other) const {
   return impl_ == other.impl_;
 }

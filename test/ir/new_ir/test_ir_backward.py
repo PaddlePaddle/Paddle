@@ -69,13 +69,13 @@ class TesBackward_1(unittest.TestCase):
         newir_program = get_ir_program_0()
         input = newir_program.global_block().ops[-1].operand(0).source()
         tanh_out = newir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard():
-            with paddle.ir.core.program_guard(newir_program):
-                out = paddle.mean(tanh_out)
-                input_grad = grad(out, input)
-
+        with paddle.pir_utils.IrGuard(), paddle.ir.core.program_guard(
+            newir_program
+        ):
+            out = paddle.mean(tanh_out)
+            input_grad = grad(out, input)
             self.assertEqual(
-                newir_program.global_block().ops[-3].name(), "pd_op.full"
+                newir_program.global_block().ops[-3].name(), "pd_op.full_like"
             )
             self.assertEqual(
                 input_grad[0].get_defining_op().name(), "pd_op.tanh_grad"
@@ -95,13 +95,13 @@ class TesBackward_1(unittest.TestCase):
         newir_program = get_ir_program_0()
         input = newir_program.global_block().ops[-1].operand(0).source()
         tanh_out = newir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard():
-            with paddle.ir.core.program_guard(newir_program):
-                out = paddle.mean(tanh_out)
-                input_grad = grad(out, input, no_grad_vars=[input])
-
+        with paddle.pir_utils.IrGuard(), paddle.ir.core.program_guard(
+            newir_program
+        ):
+            out = paddle.mean(tanh_out)
+            input_grad = grad(out, input, no_grad_vars=[input])
             self.assertEqual(
-                newir_program.global_block().ops[-1].name(), "pd_op.mean"
+                newir_program.global_block().ops[-1].name(), "pd_op.full"
             )
 
     def test_split(self):
@@ -122,7 +122,9 @@ class TesBackward_1(unittest.TestCase):
                 "pd_op.split",
                 "builtin.split",
                 "pd_op.full",
+                "pd_op.full_like",
                 "pd_op.full",
+                "pd_op.full_like",
                 "builtin.combine",
                 "pd_op.concat",
                 "pd_op.tanh_grad",
@@ -196,6 +198,7 @@ class TesBackward_2(unittest.TestCase):
             "builtin.combine",
             "pd_op.concat",
             "pd_op.full",
+            "pd_op.full_like",
             "builtin.combine",
             "pd_op.concat_grad",
             "builtin.split",

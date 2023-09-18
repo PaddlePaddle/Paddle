@@ -14,9 +14,7 @@
 
 import textwrap
 import collections
-from collections import defaultdict
 from collections.abc import Iterable
-import contextlib
 from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import os
 import re
@@ -28,9 +26,9 @@ import numpy as np
 import subprocess
 import multiprocessing
 import sys
-import logging
 
-from .proto import framework_pb2, data_feed_pb2
+from .proto import framework_pb2
+from .proto import data_feed_pb2  # noqa: F401
 
 from . import core
 from . import unique_name
@@ -3275,7 +3273,7 @@ class Operator:
             if attr_type == core.AttrType.VAR:
                 attr_var_name = self.desc.attr(name, True).name()
                 a = "{name} = Var['{value}']".format(
-                    name=name, type=attr_type, value=attr_var_name
+                    name=name, value=attr_var_name
                 )
                 attrs_str += a
                 if i != len(attr_names) - 1:
@@ -3287,7 +3285,7 @@ class Operator:
                     "'%s'" % var.name() for var in self.desc.attr(name, True)
                 ]
                 a = "{name} = Vars[{value}]".format(
-                    name=name, type=attr_type, value=','.join(attr_var_names)
+                    name=name, value=','.join(attr_var_names)
                 )
                 attrs_str += a
                 if i != len(attr_names) - 1:
@@ -3296,7 +3294,7 @@ class Operator:
 
             if attr_type == core.AttrType.BLOCK:
                 a = "{name} = block[{value}]".format(
-                    name=name, type=attr_type, value=self._block_attr_id(name)
+                    name=name, value=self._block_attr_id(name)
                 )
                 attrs_str += a
                 if i != len(attr_names) - 1:
@@ -3305,7 +3303,7 @@ class Operator:
 
             if attr_type == core.AttrType.BLOCKS:
                 a = "{name} = blocks{value}".format(
-                    name=name, type=attr_type, value=self._blocks_attr_ids(name)
+                    name=name, value=self._blocks_attr_ids(name)
                 )
                 attrs_str += a
                 if i != len(attr_names) - 1:
@@ -3329,9 +3327,7 @@ class Operator:
             else:
                 value = self.desc.attr(name)
 
-            a = "{name} = {value}".format(
-                name=name, type=attr_type, value=value
-            )
+            a = "{name} = {value}".format(name=name, value=value)
 
             attrs_str += a
             if i != len(attr_names) - 1:
@@ -3509,9 +3505,7 @@ class Operator:
             self.desc.set_block_attr(name, val.desc)
         elif isinstance(val, list) and val and _all_is_type(val, Block):
             self.desc.set_blocks_attr(name, [v.desc for v in val])
-        elif isinstance(val, core.BlockDesc) or isinstance(
-            val, core.ProgramDesc
-        ):
+        elif isinstance(val, (core.BlockDesc, core.ProgramDesc)):
             self.desc.set_serialized_attr(name, val.serialize_to_string())
         else:
             self._update_desc_plain_attr(name, val)
@@ -5147,9 +5141,7 @@ class IrOpNode(IrNode):
             desc.set_block_attr(name, val.desc)
         elif isinstance(val, list) and val and _all_is_type(val, Block):
             desc.set_blocks_attr(name, [v.desc for v in val])
-        elif isinstance(val, core.BlockDesc) or isinstance(
-            val, core.ProgramDesc
-        ):
+        elif isinstance(val, (core.BlockDesc, core.ProgramDesc)):
             desc.set_serialized_attr(name, val.serialize_to_string())
         else:
             desc._set_attr(name, val)
@@ -5626,9 +5618,7 @@ class IrGraph:
             desc.set_block_attr(name, val.desc)
         elif isinstance(val, list) and val and _all_is_type(val, Block):
             desc.set_blocks_attr(name, [v.desc for v in val])
-        elif isinstance(val, core.BlockDesc) or isinstance(
-            val, core.ProgramDesc
-        ):
+        elif isinstance(val, (core.BlockDesc, core.ProgramDesc)):
             desc.set_serialized_attr(name, val.serialize_to_string())
         else:
             desc._set_attr(name, val)
@@ -7031,8 +7021,7 @@ class Program:
                 >>> # var label : LOD_TENSOR.shape(-1, 1).dtype(int64).stop_gradient(True)
         """
         for each_block in self.blocks:
-            for each_var in list(each_block.vars.values()):
-                yield each_var
+            yield from list(each_block.vars.values())
 
     def all_parameters(self):
         """
@@ -7450,6 +7439,22 @@ class EagerParamBase(core.eager.Tensor):
         # hook functions for lazy initialization
         self._init_func = None
         self._init_op_creator = None
+
+    @classmethod
+    def from_tensor(cls, tensor, **kwargs):
+        # 1. construct EagerParamBase
+        param = cls(tensor.shape, tensor.dtype, **kwargs)
+
+        # 2. transform data if needed
+        dist_attr = kwargs.get('dist_attr', None)
+        src_tensor = tensor
+        if dist_attr is not None:
+            src_tensor = core.eager.Tensor(tensor, dist_attr=dist_attr)
+
+        # 3. set param data
+        param._set_impl(src_tensor)
+
+        return param
 
     def set_init_func(self, obj):
         self._init_func = obj
