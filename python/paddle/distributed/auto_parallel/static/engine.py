@@ -1079,7 +1079,7 @@ class Engine:
         valid_data,
         valid_sample_split=None,
         batch_size=1,
-        steps_per_epoch=None,
+        steps=None,
         log_freq=10,
         collate_fn=None,
         callbacks=None,
@@ -1149,11 +1149,7 @@ class Engine:
                 batch_size=local_batch_size,
                 collate_fn=collate_fn,
             )
-            steps_per_epoch = (
-                len(valid_dataloader)
-                if steps_per_epoch is None
-                else steps_per_epoch
-            )
+            steps_per_epoch = len(valid_dataloader) if steps is None else steps
         else:
             micro_batch_size = self._validate_batch_size(batch_size)
             valid_dataloader = self._prepare_dataloader_from_generator(
@@ -1161,7 +1157,7 @@ class Engine:
                 capacity=70,
                 iterable=False,
                 batch_size=micro_batch_size,
-                steps_per_epoch=steps_per_epoch,
+                steps_per_epoch=steps,
                 collate_fn=collate_fn,
             )
             steps_per_epoch = valid_dataloader._steps
@@ -1209,7 +1205,7 @@ class Engine:
         test_data,
         test_sample_split=None,
         batch_size=1,
-        steps_per_epoch=None,
+        steps=None,
         collate_fn=None,
         callbacks=None,
         verbose=2,
@@ -1275,11 +1271,7 @@ class Engine:
                 batch_size=local_batch_size,
                 collate_fn=collate_fn,
             )
-            steps_per_epoch = (
-                len(test_dataloader)
-                if steps_per_epoch is None
-                else steps_per_epoch
-            )
+            steps_per_epoch = len(test_dataloader) if steps is None else steps
         else:
             micro_batch_size = self._validate_batch_size(batch_size)
             test_dataloader = self._prepare_dataloader_from_generator(
@@ -1287,7 +1279,7 @@ class Engine:
                 capacity=70,
                 iterable=False,
                 batch_size=micro_batch_size,
-                steps_per_epoch=steps_per_epoch,
+                steps_per_epoch=steps,
                 collate_fn=collate_fn,
             )
             steps_per_epoch = test_dataloader._steps
