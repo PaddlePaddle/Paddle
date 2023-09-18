@@ -306,52 +306,6 @@ static void ShareTensorsFromScopeByValue(
   }
 }
 
-static void ShareTensorsIntoScopeByValue(
-    const ::pir::Block *block,
-    const std::vector<Tensor> &tensors,
-    const std::vector<::pir::Value> &values,
-    paddle::framework::Scope *scope) {
-  auto names = GetNameFromValue(block, values);
-  ShareTensorsIntoScopeWithName(tensors, names, scope);
-}
-
-static void ShareTensorsFromScopeByValue(
-    const ::pir::Block *block,
-    const std::vector<Tensor *> &tensors,
-    const std::vector<::pir::Value> &values,
-    paddle::framework::Scope *scope) {
-  auto names = GetNameFromValue(block, values);
-  for (size_t i = 0; i < tensors.size(); ++i) {
-    auto &name = names[i];
-    auto &value = values[i];
-    if (value.impl() == nullptr) {
-      // skip stop_gradient.
-      continue;
-    }
-    auto *var = scope->FindVar(name);
-    PADDLE_ENFORCE_NOT_NULL(
-        var,
-        paddle::platform::errors::NotFound("The output tensor %s is not in "
-                                           "RunProgram(Grad)Op'"
-                                           "s internal scope.",
-                                           name));
-    CheckOutputVarStatus(*var, *tensors[i]);
-    // share tensor
-    if (var->IsType<phi::DenseTensor>()) {
-      auto &src_tensor = var->Get<phi::DenseTensor>();
-      auto *dst_tensor = const_cast<phi::DenseTensor *>(
-          dynamic_cast<const phi::DenseTensor *>(tensors[i]->impl().get()));
-      VLOG(2) << "share " << name << " from scope";
-      *dst_tensor = src_tensor;
-    } else if (var->IsType<phi::SelectedRows>()) {
-      auto &src_tensor = var->Get<phi::SelectedRows>();
-      auto *dst_tensor = const_cast<phi::SelectedRows *>(
-          dynamic_cast<const phi::SelectedRows *>(tensors[i]->impl().get()));
-      *dst_tensor = src_tensor;
-    }
-  }
-}
-
 static void ShareTensorsFromScopeWithPartialBlock(
     const std::vector<Tensor *> &tensors,
     const paddle::framework::BlockDesc &forward_global_block,

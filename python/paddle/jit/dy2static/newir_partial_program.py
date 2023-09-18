@@ -696,6 +696,8 @@ class PartialProgramLayer:
         )
         hash_id = paddle.utils._hash_with_id(program, self)
         extra_info = self._program_extra_info.get(hash_id, {})
+        extra_info['forward_inputs'] = inputs
+        extra_info['forward_outputs'] = targets
         extra_info['forward_end_op_idx'] = forward_end_idx
         inputs_size = len(self._inputs.tolist())
         extra_info['forward_inputs_grads'] = list(
@@ -720,21 +722,15 @@ class PartialProgramLayer:
         `run_program_op`.
         """
         required_params = []
-        for param in self._params:
-            found_param = False
-            for block in program.blocks:
-                for op in block.ops:
-                    if (
-                        param.name in op.input_arg_names
-                        or param.name in op.output_arg_names
-                    ):
-                        required_params.append(param)
-                        found_param = True
-                        break
-                if found_param:
-                    break
+        required_param_values = []
+        block = program.global_block()
+        for param, param_value in zip(self._params, self._param_values):
+            if param_value.has_one_use():
+                required_params.append(param)
+                required_param_values.append(param_value)
 
         self._params = required_params
+        self._param_values = required_param_values
 
     def _cast_fp16_if_pure_fp16(self, in_vars):
         if _in_pure_fp16_guard():
@@ -799,9 +795,11 @@ class PartialProgramLayer:
         forward_inputs_grads = self.get_program_extra(whole_program)[
             'forward_inputs_grads'
         ]
-        forward_inputs = self._inputs.tolist()
+        forward_inputs = self.get_program_extra(whole_program)['forward_inputs']
+        forward_outputs = self.get_program_extra(whole_program)[
+            'forward_outputs'
+        ]
         forward_parameters = self._param_values
-        forward_outputs = self._outputs.tolist()
         forward_outputs_grads = self.get_program_extra(whole_program)[
             'forward_outputs_grads'
         ]

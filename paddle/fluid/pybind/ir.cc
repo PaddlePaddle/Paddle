@@ -769,7 +769,7 @@ SplitedResult ForwardBackwardSplit(
     auto value_type = v.type().dyn_cast<DenseTensorType>();
     auto dtype = paddle::dialect::TransToPhiDataType(value_type.dtype());
     auto shape = phi::vectorize(value_type.dims());
-    auto place = phi::CPUPlace();  // TODO(xiongkun): how to get default places.
+    auto place = phi::Place();
 
     paddle::dialect::DataOp op =
         backward_builder.Build<paddle::dialect::DataOp>(
