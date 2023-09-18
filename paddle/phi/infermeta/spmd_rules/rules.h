@@ -19,8 +19,8 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/default_data_parallel.h"
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 #include "paddle/phi/infermeta/spmd_rules/matmul.h"
-#include "paddle/phi/infermeta/spmd_rules/replicated.h"
 #include "paddle/phi/infermeta/spmd_rules/reduction.h"
+#include "paddle/phi/infermeta/spmd_rules/replicated.h"
 
 /**
  * Design Notes:
