@@ -162,6 +162,7 @@ TensorDistAttr GetReplicatedDistAttr(const TensorDistAttr& dist_attr) {
   std::vector<int64_t> dims_mapping(dist_attr.dims_mapping().size(), -1);
   dst_dist_attr.set_dims_mapping(dims_mapping);
   return dst_dist_attr;
+}
 
 std::vector<int64_t> GetDimsMappingForAxes(
     const std::string& axes,
