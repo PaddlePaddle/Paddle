@@ -18,10 +18,23 @@
 
 #include "paddle/fluid/ir_adaptor/translator/op_translator.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/utils.h"
+
+namespace paddle {
+namespace dialect {
+bool HaveLegacyOpToPdOpsMap(std::string op_name) {
+  return legacy_op_to_pd_ops_map.find(op_name) != legacy_op_to_pd_ops_map.end();
+}
+
+const std::vector<PdOpSig>& LegacyOpToPdOpsMapping(std::string op_name) {
+  return legacy_op_to_pd_ops_map[op_name];
+}
+}  // namespace dialect
+}  // namespace paddle
 
 namespace paddle {
 namespace translator {

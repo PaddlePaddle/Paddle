@@ -43,7 +43,7 @@ OpInfoTuple AddNOp::GetOpInfo() {
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       OpOutputInfo("out", "paddle::dialect::DenseTensorType", false, false)};
   paddle::dialect::OpRunTimeInfo run_time_info = OpRunTimeInfo(
-      "AddNInferMeta", {"inputs"}, {"add_n"}, {"inputs"}, {}, {}, {}, {});
+      "AddNInferMeta", {"inputs"}, "add_n", {"inputs"}, {}, {}, {}, {});
 
   return std::make_tuple(inputs, attributes, outputs, run_time_info, "add_n");
 }
@@ -169,7 +169,7 @@ OpInfoTuple AddN_Op::GetOpInfo() {
       paddle::dialect::OpOutputInfo(
           "out", "paddle::dialect::DenseTensorType", false, false)};
   paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo(
-      "AddNInferMeta", {"inputs"}, {"add_n"}, {"inputs"}, {}, {}, {}, {});
+      "AddNInferMeta", {"inputs"}, "add_n", {"inputs"}, {}, {}, {}, {});
   return std::make_tuple(inputs, attributes, outputs, run_time_info, "add_n_");
 }
 
@@ -295,7 +295,7 @@ OpInfoTuple AddNWithKernelOp::GetOpInfo() {
       paddle::dialect::OpOutputInfo(
           "out", "paddle::dialect::DenseTensorType", false, false)};
   paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo(
-      "AddNInferMeta", {"inputs"}, {"add_n"}, {"inputs"}, {}, {}, {}, {});
+      "AddNInferMeta", {"inputs"}, "add_n", {"inputs"}, {}, {}, {}, {});
   return std::make_tuple(
       inputs, attributes, outputs, run_time_info, "add_n_with_kernel");
 }
@@ -436,7 +436,7 @@ OpInfoTuple FusedGemmEpilogueOp::GetOpInfo() {
   paddle::dialect::OpRunTimeInfo run_time_info(
       "FusedGemmEpilogueInferMeta",
       {"x", "y", "bias", "trans_x", "trans_y", "activation"},
-      {""},
+      "",
       {""},
       {""},
       {},
@@ -688,7 +688,7 @@ OpInfoTuple FusedGemmEpilogueGradOp::GetOpInfo() {
                                                 "trans_x",
                                                 "trans_y",
                                                 "activation_grad"},
-                                               {""},
+                                               "",
                                                {""},
                                                {""},
                                                {},
@@ -888,7 +888,7 @@ OpInfoTuple SplitGradOp::GetOpInfo() {
   paddle::dialect::OpRunTimeInfo run_time_info =
       OpRunTimeInfo("ConcatInferMeta",
                     {"out_grad", "axis"},
-                    {"concat"},
+                    "concat",
                     {"out_grad", "axis"},
                     {"out_grad"},
                     {},

@@ -1144,7 +1144,7 @@ std::string GetKernelFnStr(const OpYamlInfoParser* op_info_parser,
                            pir::Operation* op_item) {
   std::string kernel_fn_str;
   if (op_info_parser != nullptr) {
-    kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func[0];
+    kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func;
   }
 
   if (op_item->isa<paddle::dialect::AddN_Op>() ||
