@@ -85,57 +85,16 @@ void CommTaskManager::CommTaskLoop() {
           return terminated_.load() &&
                  check_timeout_count <= FLAGS_async_trace_count;
         });
-    for (auto task = comm_task_list_.begin(); task != comm_task_list_.end();) {
-      (*task)->CheckAndSetException();
-      if ((*task)->IsTimeout()) {
-        std::string exception_msg = (*task)->GetTraceMsg();
-        exception_msg += GenerateTraceMsg((*task)->GetStore(),
-                                          (*task)->GetBackend(),
-                                          (*task)->GetRank(),
-                                          (*task)->GetGid(),
-                                          (*task)->GetSize());
-        LOG(ERROR) << exception_msg;
-        std::exception_ptr exception_ptr =
-            std::make_exception_ptr(std::runtime_error(exception_msg));
-        (*task)->SetException(exception_ptr);
-        (*task)->AbortComm();
-
-        ++check_timeout_count;
+    for (auto task = comm_task_list_.begin();
+         task != comm_task_list_.end() &&
+         check_timeout_count <= FLAGS_async_trace_count;) {
+      if ((*task)->IsIimeout()) {
+        LOG(WARN) << "Detected timeout process_group: " << (*task)->GetGid();
+        std::string error_msg =
+            (*task)->GetTraceMsg() + (*task)->GetCommErrors();
+        LOG(ERROR) << error_msg;
       }
-
-      if (!(*task)->GetTraceUpdated() && (*task)->IsStarted() &&
-          !terminated_.load() && !store_error_) {
-        std::string trace_key = GetTraceStartKey(
-            (*task)->GetBackend(), (*task)->GetRank(), (*task)->GetGid());
-        store_error_ =
-            !UpdateTraceMsg((*task)->GetStore(),
-                            trace_key,
-                            (*task)->GetSeq(),
-                            CommTypeToString((*task)->GetCommType()));
-        (*task)->SetTraceUpdated();
-      }
-
       if ((*task)->IsCompleted()) {
-        if (!(*task)->GetTraceUpdated() && !terminated_.load() &&
-            !store_error_) {
-          std::string trace_key = GetTraceStartKey(
-              (*task)->GetBackend(), (*task)->GetRank(), (*task)->GetGid());
-          store_error_ =
-              !UpdateTraceMsg((*task)->GetStore(),
-                              trace_key,
-                              (*task)->GetSeq(),
-                              CommTypeToString((*task)->GetCommType()));
-          (*task)->SetTraceUpdated();
-        }
-        if (!terminated_.load() && !store_error_) {
-          std::string trace_key = GetTraceEndKey(
-              (*task)->GetBackend(), (*task)->GetRank(), (*task)->GetGid());
-          store_error_ =
-              !UpdateTraceMsg((*task)->GetStore(),
-                              trace_key,
-                              (*task)->GetSeq(),
-                              CommTypeToString((*task)->GetCommType()));
-        }
         task = comm_task_list_.erase(task);
       } else {
         ++task;

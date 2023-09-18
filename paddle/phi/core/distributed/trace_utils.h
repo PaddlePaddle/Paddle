@@ -139,8 +139,8 @@ inline std::string GenerateTraceMsg(std::shared_ptr<Store> store,
   std::string result;
   TraceMap trace_map;
 
-  uint64_t curr_seq;
-  std::string curr_comm_type;
+  uint64_t curr_seq = 0;
+  std::string curr_comm_type = "";
 
   for (int rank = 0; rank < world_size; ++rank) {
     uint64_t seq_start = 0;
@@ -177,11 +177,13 @@ inline std::string GenerateTraceMsg(std::shared_ptr<Store> store,
       }
     }
   }
-  result += "\n\t Problem summary: rank: " + std::to_string(curr_rank) +
-            " timeout at collective: " + curr_comm_type +
-            ", group_id: " + std::to_string(group_id) +
-            ", seq: " + std::to_string(curr_seq);
-  result += AnalyzeTraceMsg(trace_map, group_id);
+  if (!trace_map.empty()) {
+    result += "\n\t Problem summary: rank: " + std::to_string(curr_rank) +
+              " timeout at collective: " + curr_comm_type +
+              ", group_id: " + std::to_string(group_id) +
+              ", seq: " + std::to_string(curr_seq);
+    result += AnalyzeTraceMsg(trace_map, group_id);
+  }
   return result;
 }
 

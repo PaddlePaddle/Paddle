@@ -51,13 +51,9 @@ class NCCLCommTask : public CommTask {
   bool IsStarted() override;
   bool IsTimeout() override;
   bool IsCompleted() override;
-  bool IsSuccess() override;
 
   std::string GetTraceMsg() override;
-  void SetException(std::exception_ptr exception) override;
-  void CheckAndSetException() override;
-  std::exception_ptr CheckCommErrors() override;
-  std::exception_ptr GetException() override;
+  std::string GetCommErrors() override;
   void AbortComm() override;
 
   void StartRecord();
@@ -82,7 +78,7 @@ class NCCLCommTask : public CommTask {
   cudaEvent_t nccl_start_event_;
   cudaEvent_t nccl_end_event_;
 
-  std::exception_ptr exception_;
+  std::string comm_error_;
 
  private:
   DISABLE_COPY_AND_ASSIGN(NCCLCommTask);

@@ -79,25 +79,12 @@ bool NCCLCommTask::CudaEventQuery(cudaEvent_t event) {
   return false;
 }
 
-void NCCLCommTask::CheckAndSetException() {
-  if (GetException()) {
-    return;
-  }
-  auto exception_ptr = CheckCommErrors();
-  std::unique_lock<std::mutex> lock(mutex_);
-  exception_ = exception_ptr;
-  if (exception_) {
-    LOG(ERROR) << "Found async exception when checking for nccl errors: " +
-                      GetExceptionMsgFromExceptionPtr(exception_);
-  }
-}
-
 std::string GetNCCLErrorDetail(ncclResult_t result) {
   std::string detail;
   std::string last_error;
 #ifdef ENABLE_NCCL_GET_LAST_ERROR
   last_error =
-      "\nLast error:\n" + std::string(phi::dynload::ncclGetLastError(NULL));
+      ", Last error: " + std::string(phi::dynload::ncclGetLastError(NULL));
 #endif
   switch (result) {
     case ncclUnhandledCudaError:
@@ -137,45 +124,30 @@ std::string GetNCCLErrorDetail(ncclResult_t result) {
   return detail + last_error;
 }
 
-std::exception_ptr NCCLCommTask::CheckCommErrors() {
-  ncclResult_t nccl_async_error;
+std::string NCCLCommTask::GetCommErrors() {
   std::unique_lock<std::mutex> lock(mutex_);
+  if (!comm_error_.empty()) {
+    return comm_error_;
+  }
+
+  ncclResult_t nccl_async_error;
   NCCL_CHECK(
       phi::dynload::ncclCommGetAsyncError(nccl_comm_, &nccl_async_error));
   if (nccl_async_error != ncclSuccess) {
-    return std::make_exception_ptr(std::runtime_error(
-        "NCCL communicator has error: " + GetNCCLErrorDetail(nccl_async_error) +
-        "task info: " + GetTraceMsg()));
+    comm_error_ =
+        "\n\t Find nccl comm error: " ++GetNCCLErrorDetail(nccl_async_error);
   }
-  return nullptr;
+  return comm_error_
 }
 
 bool NCCLCommTask::IsStarted() { return CudaEventQuery(nccl_start_event_); }
 
 bool NCCLCommTask::IsCompleted() { return CudaEventQuery(nccl_end_event_); }
 
-bool NCCLCommTask::IsSuccess() {
-  if (GetException()) {
-    return false;
-  }
-
-  return !CheckCommErrors() && CudaEventQuery(nccl_end_event_);
-}
-
 bool NCCLCommTask::IsTimeout() {
   auto current_timepoint = std::chrono::steady_clock::now();
   return std::chrono::duration_cast<std::chrono::milliseconds>(
              current_timepoint - start_time_) >= timeout_;
-}
-
-void NCCLCommTask::SetException(std::exception_ptr exception) {
-  std::unique_lock<std::mutex> lock(mutex_);
-  exception_ = exception;
-}
-
-std::exception_ptr NCCLCommTask::GetException() {
-  std::unique_lock<std::mutex> lock(mutex_);
-  return exception_;
 }
 
 void NCCLCommTask::AbortComm() {
