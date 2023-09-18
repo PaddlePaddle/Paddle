@@ -117,7 +117,7 @@ class TestSplitWithNumOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], ['out0', 'out1', 'out2'], check_prim=True, check_new_ir=False
+            ['X'], ['out0', 'out1', 'out2'], check_prim=True, check_new_ir=True
         )
 
 
