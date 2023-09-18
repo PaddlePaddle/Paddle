@@ -15,7 +15,6 @@
 import inspect
 import numpy as np
 import warnings
-import weakref
 import sys
 
 import paddle
@@ -30,7 +29,6 @@ from ..framework import (
     _setitem_static,
     _setitem_impl_,
     EagerParamBase,
-    in_dygraph_mode,
 )
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_tensor
@@ -41,9 +39,7 @@ from paddle.base.data_feeder import (
 import paddle.utils.deprecated as deprecated
 import paddle.profiler as profiler
 from paddle.profiler.utils import in_profiler_mode
-from paddle import _C_ops, _legacy_C_ops
-from paddle.device import get_all_custom_device_type
-from paddle.base.framework import _global_flags
+from paddle import _C_ops
 
 _grad_scalar = None
 
