@@ -16,9 +16,9 @@ import numpy as np
 from seq2seq_utils import Seq2SeqModelHyperParams as args
 
 import paddle
-from paddle import fluid
-from paddle.fluid import ParamAttr
-from paddle.fluid.dygraph.base import to_variable
+from paddle import base
+from paddle.base import ParamAttr
+from paddle.base.dygraph.base import to_variable
 from paddle.jit.api import to_static
 from paddle.nn import Embedding, Layer
 
@@ -120,7 +120,7 @@ class BaseModel(paddle.nn.Layer):
         self.src_embeder = Embedding(
             self.src_vocab_size,
             self.hidden_size,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=uniform_initializer(init_scale)
             ),
         )
@@ -129,7 +129,7 @@ class BaseModel(paddle.nn.Layer):
             self.tar_vocab_size,
             self.hidden_size,
             sparse=False,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=uniform_initializer(init_scale)
             ),
         )
@@ -547,7 +547,7 @@ class AttentionModel(paddle.nn.Layer):
         self.src_embeder = Embedding(
             self.src_vocab_size,
             self.hidden_size,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name='source_embedding',
                 initializer=uniform_initializer(init_scale),
             ),
@@ -557,7 +557,7 @@ class AttentionModel(paddle.nn.Layer):
             self.tar_vocab_size,
             self.hidden_size,
             sparse=False,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name='target_embedding',
                 initializer=uniform_initializer(init_scale),
             ),

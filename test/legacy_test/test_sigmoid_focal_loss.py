@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 def call_sfl_functional(
@@ -130,9 +130,9 @@ class TestSigmoidFocalLoss(unittest.TestCase):
             np.asarray([np.sum(label_np > 0)], dtype=label_np.dtype),
             None,
         ]
-        places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
         reductions = ['sum', 'mean', 'none']
         alphas = [0.25, 0.5]
         gammas = [3, 0.0]

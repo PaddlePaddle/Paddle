@@ -21,7 +21,7 @@ import shutil
 import time
 
 # (TODO: GhostScreaming) It will be removed later.
-from paddle.fluid import core
+from paddle.base import core
 
 from .log_util import logger
 

@@ -38,6 +38,15 @@ class TestCollectiveGlobalGatherAPI(TestDistBase):
             eager_mode=True,
         )
 
+    def test_global_gather_nccl_new_comm(self):
+        paddle.enable_static()
+        self.check_with_place(
+            "collective_global_gather.py",
+            "global_gather",
+            "nccl",
+            need_envs={"FLAGS_dynamic_static_unified_comm": "1"},
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

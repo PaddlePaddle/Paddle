@@ -132,7 +132,7 @@ void InterpreterCoreEventGarbageCollector::Add(
   } else {
     {  // lock guard
       std::lock_guard<memory::SpinLock> guard(spinlock_);
-      cur_memory_size_ += garbage->size();
+      cur_memory_size_ += static_cast<int64_t>(garbage->size());
       garbages_->push_back(std::move(garbage));
       events_[ctx] = event;
 

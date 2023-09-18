@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
-DEFINE_bool(profile, false, "Turn on profiler for fluid");  // NOLINT
+PD_DEFINE_bool(profile, false, "Turn on profiler for fluid");  // NOLINT
 
 namespace paddle {
 namespace {
@@ -287,7 +287,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     input.set_lod(lod);
     int idx = -1;
     if (config_.specify_input_name) {
-      idx = feed_names_[inputs[i].name];
+      idx = static_cast<int>(feed_names_[inputs[i].name]);
     } else {
       idx = PADDLE_GET_CONST(int, feeds_[i]->GetAttr("col"));
     }
@@ -373,7 +373,6 @@ CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
     std::vector<std::string> flags;
     if (config.fraction_of_gpu_memory >= 0.0f ||
         config.fraction_of_gpu_memory <= 0.95f) {
-      flags.emplace_back("dummpy");
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
                          num2str<float>(config.fraction_of_gpu_memory);
       flags.push_back(flag);

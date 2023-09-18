@@ -128,7 +128,7 @@ framework::ProgramDesc Deserializer::LoadProgram(const std::string& file_name) {
   fin.seekg(0, std::ios::end);
   std::string buffer(fin.tellg(), ' ');
   fin.seekg(0, std::ios::beg);
-  fin.read(&buffer[0], buffer.size());
+  fin.read(&buffer[0], buffer.size());  // NOLINT
   fin.close();
   return framework::ProgramDesc(buffer);
 }

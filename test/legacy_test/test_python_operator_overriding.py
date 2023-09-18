@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import framework
+from paddle import base
+from paddle.base import framework
 
 paddle.enable_static()
 
@@ -39,16 +39,16 @@ class TestPythonOperatorOverride(unittest.TestCase):
         )
         out = fn(x_var, y_var)
 
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
 
-        exe.run(fluid.default_startup_program())
-        fluid_out = exe.run(
-            fluid.default_main_program(),
+        exe.run(base.default_startup_program())
+        base_out = exe.run(
+            base.default_main_program(),
             feed={'x': x_data, 'y': y_data},
             fetch_list=[out],
         )
 
-        np.testing.assert_array_equal(python_out, fluid_out[0])
+        np.testing.assert_array_equal(python_out, base_out[0])
 
     def test_override(self):
         # compare func to check
@@ -62,9 +62,9 @@ class TestPythonOperatorOverride(unittest.TestCase):
         ]
 
         # places to check
-        places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
 
         # dtypes to check
         dtypes = ['int32', 'float32']

@@ -306,7 +306,6 @@ ir::LoweredFunc LowerToAst(const std::string& name,
   std::set<ir::Tensor> ctrl_deps =
       CollectTempTensorsFromCtrlDepends(tensor_group, tensor_args);
   std::vector<ast_gen_ius::TensorGroup*> group_vec = {tensor_group};
-  VLOG(6) << "Before detail::LowerTensorGroup";
   auto lower_instance = detail::LowerTensorGroup(
       name,
       tensor_args,
@@ -314,7 +313,6 @@ ir::LoweredFunc LowerToAst(const std::string& name,
       group_vec,
       std::vector<Tensor>(ctrl_deps.begin(), ctrl_deps.end()),
       target);
-  VLOG(6) << "After detail::LowerTensorGroup";
   std::vector<ir::LoweredFunc> result = lower_instance();
   for (auto& res : result) {
     if (target == common::DefaultNVGPUTarget()) {

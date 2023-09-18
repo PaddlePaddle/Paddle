@@ -34,7 +34,8 @@ void SplitKernel(const Context& dev_ctx,
   for (size_t j = 0; j < outs.size(); ++j) {
     dev_ctx.template Alloc<T>(outs[j]);
     out_ptrs.push_back(reinterpret_cast<XPUType*>(outs[j]->data<T>()));
-    split_lists.push_back(outs[j]->dims()[axis]);
+    split_lists.push_back(axis < outs[j]->dims().size() ? outs[j]->dims()[axis]
+                                                        : 1);
   }
   if (x.numel() == 0) {
     return;

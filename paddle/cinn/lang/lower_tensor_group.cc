@@ -26,8 +26,9 @@
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/optim/remove_nested_block.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
 #include "paddle/cinn/poly/stage.h"
@@ -134,7 +135,7 @@ std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
         actual_fn_name, func_args, func_body, temp_buffers);
 
     // 6. Final clean up
-    optim::RemoveNestedBlock(&func->body);
+    optim::SimplifyBlocks(&func->body);
     func->body = ir::Block::Make({func->body});
     result.push_back(ir::LoweredFunc(func.get()));
     num_func++;
@@ -145,8 +146,7 @@ std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
 std::vector<ir::Argument> LowerTensorGroup::GenerateFunctionArgumentList(
     Expr fn_body) {
   std::vector<ir::Argument> args;
-  optim::TensorWriteTeller teller;
-  teller.Collect(&fn_body);
+  auto teller = ir::CollectTensorNeedsWrite(&fn_body);
 
   std::set<std::string> arg_names;
 
@@ -161,7 +161,7 @@ std::vector<ir::Argument> LowerTensorGroup::GenerateFunctionArgumentList(
 
   for (auto& tensor : tensor_args_) {
     auto* tensor_node = tensor.As<ir::_Tensor_>();
-    bool is_output = teller.IsWrite(tensor->name);
+    bool is_output = teller.count(tensor->name);
     VLOG(6) << "tensor argument " << tensor->name << ", buffer "
             << tensor->buffer->name << ", is output: " << is_output;
 
@@ -169,8 +169,8 @@ std::vector<ir::Argument> LowerTensorGroup::GenerateFunctionArgumentList(
     if (!tensor_node->buffer.defined()) {
       continue;
     }
-    // if a argument is already marked as kInput, mark it as kOutput and move it
-    // to the back.
+    // if a argument is already marked as kInput, mark it as kOutput and move
+    // it to the back.
     if (arg_names.count(tensor_node->buffer->name)) {
       auto it =
           std::find_if(args.begin(), args.end(), [&](const ir::Argument& x) {

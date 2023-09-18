@@ -18,10 +18,128 @@
 #include "paddle/phi/common/float16.h"
 #endif
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
 #include "paddle/phi/kernels/legacy/elementwise_kernel.h"
 
 namespace phi {
+
+template <typename T, typename Context>
+void SubtractKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs;
+  inputs.reserve(2);
+  std::vector<DenseTensor*> outputs;
+  outputs.reserve(1);
+  inputs.emplace_back(&x);
+  inputs.emplace_back(&y);
+  outputs.emplace_back(out);
+  dev_ctx.template Alloc<T>(out);
+  funcs::BroadcastKernel<T>(
+      dev_ctx, inputs, &outputs, funcs::SubtractFunctor<T>(), -1);
+}
+
+template <typename T, typename Context>
+void MultiplyKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs;
+  inputs.reserve(2);
+  std::vector<DenseTensor*> outputs;
+  outputs.reserve(1);
+  inputs.emplace_back(&x);
+  inputs.emplace_back(&y);
+  outputs.emplace_back(out);
+  dev_ctx.template Alloc<T>(out);
+  funcs::BroadcastKernel<T>(
+      dev_ctx, inputs, &outputs, funcs::MultiplyFunctor<T>(), -1);
+}
+
+template <typename T, typename Context>
+void DivideKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const DenseTensor& y,
+                  DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs;
+  inputs.reserve(2);
+  std::vector<DenseTensor*> outputs;
+  outputs.reserve(1);
+  inputs.emplace_back(&x);
+  inputs.emplace_back(&y);
+  outputs.emplace_back(out);
+  dev_ctx.template Alloc<T>(out);
+  funcs::BroadcastKernel<T>(
+      dev_ctx, inputs, &outputs, funcs::DivideFunctor<T>(), -1);
+}
+
+template <typename T, typename Context>
+void AddKernelImpl(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   int axis,
+                   DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs = {&x, &y};
+  std::vector<DenseTensor*> outputs = {out};
+  dev_ctx.template Alloc<T>(out);
+  funcs::BroadcastKernel<T>(
+      dev_ctx, inputs, &outputs, funcs::AddFunctor<T>(), axis);
+}
+
+template <typename T, typename Context>
+void MultiPrecisionAddKernelImpl(const Context& dev_ctx,
+                                 const DenseTensor& x,
+                                 const DenseTensor& y,
+                                 DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs = {&x, &y};
+  std::vector<DenseTensor*> outputs = {out};
+  if (y.dtype() == phi::DataType::BFLOAT16) {
+    funcs::ElementwiseKernel<T>(
+        dev_ctx,
+        inputs,
+        &outputs,
+        funcs::MultiPrecisionAddFunctor<T, phi::bfloat16>());
+  } else if (y.dtype() == phi::DataType::FLOAT16) {
+    funcs::ElementwiseKernel<T>(
+        dev_ctx,
+        inputs,
+        &outputs,
+        funcs::MultiPrecisionAddFunctor<T, phi::float16>());
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Unsupport x dtype:%s, y dtype:%s for add(x, y) operation",
+        phi::DataTypeToString(x.type()),
+        phi::DataTypeToString(y.type())));
+  }
+}
+
+template <typename T, typename Context>
+void AddKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               const DenseTensor& y,
+               DenseTensor* out) {
+#ifdef PADDLE_WITH_CUDA
+  if (x.dtype() == phi::DataType::FLOAT32 &&
+      (y.dtype() == phi::DataType::BFLOAT16 ||
+       y.dtype() == phi::DataType::FLOAT16)) {
+    MultiPrecisionAddKernelImpl<float, Context>(dev_ctx, x, y, out);
+  } else {
+#endif
+    AddKernelImpl<T, Context>(dev_ctx, x, y, -1, out);
+#ifdef PADDLE_WITH_CUDA
+  }
+#endif
+}
+
+template <typename T, typename Context>
+void GradAddKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   DenseTensor* out) {
+  AddKernelImpl<T>(dev_ctx, x, y, -1, out);
+}
 
 template <typename T, typename Context>
 void MaximumKernel(const Context& dev_ctx,
@@ -58,6 +176,7 @@ void FloorDivideKernel(const Context& dev_ctx,
   int axis = -1;
   FloorDivideRawKernel<T>(dev_ctx, x, y, axis, out);
 }
+
 // Create the definition of Heaviside
 template <typename T, typename Context>
 void HeavisideKernel(const Context& dev_ctx,
@@ -148,6 +267,10 @@ PD_REGISTER_KERNEL(elementwise_pow,
 #ifdef PADDLE_WITH_XPU_KP
 PD_REGISTER_KERNEL(maximum, KPS, ALL_LAYOUT, phi::MaximumKernel, float) {}
 PD_REGISTER_KERNEL(minimum, KPS, ALL_LAYOUT, phi::MinimumKernel, float) {}
+PD_REGISTER_KERNEL(divide, KPS, ALL_LAYOUT, phi::DivideKernel, float) {}
+PD_REGISTER_KERNEL(multiply, KPS, ALL_LAYOUT, phi::MultiplyKernel, float) {}
+PD_REGISTER_KERNEL(add, KPS, ALL_LAYOUT, phi::AddKernel, float) {}
+PD_REGISTER_KERNEL(subtract, KPS, ALL_LAYOUT, phi::SubtractKernel, float) {}
 PD_REGISTER_KERNEL(floor_divide, KPS, ALL_LAYOUT, phi::FloorDivideKernel, int) {
 }
 PD_REGISTER_KERNEL(
@@ -191,4 +314,74 @@ PD_REGISTER_KERNEL(heaviside,
                    float16,
                    bfloat16,
                    int64_t) {}
+
+PD_REGISTER_KERNEL(add,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::AddKernel,
+                   float,
+                   double,
+                   int16_t,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   complex64,
+                   complex128) {}
+
+PD_REGISTER_KERNEL(grad_add,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::GradAddKernel,
+                   float,
+                   double,
+                   int16_t,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   complex64,
+                   complex128) {}
+
+PD_REGISTER_KERNEL(divide,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::DivideKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   float16,
+                   bfloat16,
+                   complex64,
+                   complex128) {}
+
+PD_REGISTER_KERNEL(multiply,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::MultiplyKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   float16,
+                   complex64,
+                   complex128,
+                   bfloat16) {}
+
+PD_REGISTER_KERNEL(subtract,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::SubtractKernel,
+                   float,
+                   double,
+                   int16_t,
+                   int,
+                   int64_t,
+                   float16,
+                   bfloat16,
+                   complex64,
+                   complex128) {}
+
 #endif

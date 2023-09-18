@@ -130,8 +130,9 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
   if (no_cvm_) {
     return;
   }
-  uint64_t table_id = static_cast<uint64_t>(
-      param_.program_config(0).pull_sparse_table_id(table_idx));
+  uint64_t table_id =
+      static_cast<uint64_t>(param_.program_config(0).pull_sparse_table_id(
+          static_cast<int>(table_idx)));
 
   TableParameter table;
   for (auto i : param_.sparse_table()) {
@@ -185,8 +186,9 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
 }
 
 void DownpourWorker::FillSparseValue(size_t table_idx) {
-  uint64_t table_id = static_cast<uint64_t>(
-      param_.program_config(0).pull_sparse_table_id(table_idx));
+  uint64_t table_id =
+      static_cast<uint64_t>(param_.program_config(0).pull_sparse_table_id(
+          static_cast<int>(table_idx)));
 
   TableParameter table;
   for (auto i : param_.sparse_table()) {
@@ -210,7 +212,7 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     CHECK(tensor != nullptr) << "tensor of var " << slot_name << " is null";
     int64_t* ids = tensor->data<int64_t>();
-    int len = tensor->numel();
+    int len = static_cast<int>(tensor->numel());
     Variable* var_emb = thread_scope_->FindVar(emb_slot_name);
     if (var_emb == nullptr) {
       continue;
@@ -354,8 +356,8 @@ void DownpourWorker::AdjustInsWeight() {
 
 void DownpourWorker::CopySparseTable() {
   for (auto& copy_sparse_table : copy_sparse_tables_) {
-    int64_t src_table = copy_sparse_table.first;
-    int64_t dest_table = copy_sparse_table.second;
+    int64_t src_table = static_cast<int64_t>(copy_sparse_table.first);
+    int64_t dest_table = static_cast<int64_t>(copy_sparse_table.second);
     int32_t feanum = 0;
     if (src_table == dest_table) {
       continue;
@@ -768,7 +770,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
         fprintf(stderr,
                 "push dense time percent: %f\n",
                 push_dense_time / total_time * 100);
-        fprintf(stderr, "%6.2f instances/s\n", total_inst / total_time);
+        fprintf(
+            stderr, "%6.2f instances/s\n", total_inst / total_time);  // NOLINT
       }
     }
     timeline.Start();
@@ -984,7 +987,7 @@ void DownpourWorker::TrainFiles() {
               param_.program_config(0).push_dense_table_id(i));
           if (condvalue_set_.find(tid) != condvalue_set_.end()) {
             // common dense table must push dense
-            if (cond2table_map_[cond_value_batch[0]] != tid) {
+            if (cond2table_map_[static_cast<int>(cond_value_batch[0])] != tid) {
               // can't push dense
               continue;
             }

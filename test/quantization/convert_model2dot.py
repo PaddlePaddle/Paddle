@@ -18,7 +18,7 @@ import sys
 import unittest
 
 import paddle
-from paddle.fluid.framework import IrGraph
+from paddle.base.framework import IrGraph
 from paddle.framework import core
 
 paddle.enable_static()

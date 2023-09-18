@@ -13,7 +13,7 @@
 # limitations under the License.
 import unittest
 
-from eager_op_test import OpTest
+from op_test import OpTest
 
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 

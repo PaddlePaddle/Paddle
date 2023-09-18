@@ -60,12 +60,11 @@ ir::Expr ConvertReduceBody(ir::Expr body,
 }
 
 ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
-  VLOG(6) << "Huihuang in AstGen::Build on " << tensor;
   const std::vector<ir::Var>& axis = tensor->axis();
   const std::vector<ir::Expr>& shape = tensor->shape;
   size_t axis_len = axis.size();
-  CHECK_EQ(shape.size(), axis_len)
-      << "Internal Error: Tensor has different shape and axis length in AstGen";
+  CHECK_EQ(shape.size(), axis_len) << "Internal Error: Tensor has different "
+                                      "shape and axis length in AstGen";
   std::vector<ir::Expr> axis_exprs;
   for (const auto& a : axis) {
     axis_exprs.push_back(a);

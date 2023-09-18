@@ -261,10 +261,6 @@ function matmul (_A, _B, _C)
 }
 )ROC";
   TEST_SOUTPUT(lower_func, out);
-
-  // auto stages = CreateStages({A, B, C});
-  // auto check = Lower("matmul", stages, {A, B, C});
-  // LOG(INFO) << "matmul_func:\n" << Expr(check->self()) << std::endl;
 }
 
 }  // namespace lang

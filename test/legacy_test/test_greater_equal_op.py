@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 from paddle import static
-from paddle.fluid import core
+from paddle.base import core
 
 
 class Test_Greater_Equal_Op_Fp16(unittest.TestCase):

@@ -20,6 +20,7 @@ from paddle.distributed.auto_parallel.static.operators.common import (
 from paddle.distributed.auto_parallel.static.utils import (
     OpRole,
     insert_dependencies_for_vars,
+    is_comm_op,
 )
 
 from .auto_parallel_sharding import ShardingPass, _supported_optimizer_type
@@ -109,7 +110,11 @@ class AutoParalSupplementDepPass(PassBase):
         for idx, op in enumerate(main_block.ops):
             if op.type == "check_finite_and_unscale":
                 if first_check_op:
-                    last_backward_op = main_block.ops[idx - 1]
+                    last_backward_op = None
+                    for last_idx in range(idx - 1, 0, -1):
+                        if not is_comm_op(main_block.ops[last_idx]):
+                            last_backward_op = main_block.ops[last_idx]
+                            break
                     prior_varname = last_backward_op.output_arg_names[0]
                     first_check_op = False
                 deps_map[idx] = (

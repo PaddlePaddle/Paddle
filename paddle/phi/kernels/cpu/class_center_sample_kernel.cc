@@ -63,7 +63,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
   auto* label_ptr = label.data<T>();
 
   // get unique positive class center by ascending
-  std::set<T, std::less<T>> unique_label;
+  std::set<T, std::less<T>> unique_label;  // NOLINT
   for (int64_t i = 0; i < numel; ++i) {
     unique_label.insert(label_ptr[i]);
   }
@@ -80,7 +80,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
 
   if (!fix_seed) {
     std::random_device rnd;
-    seed = rnd();
+    seed = static_cast<int>(rnd());
   }
   std::uniform_int_distribution<T> dist(0, num_classes - 1);
   std::shared_ptr<std::mt19937_64> engine;

@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.vision.models import resnet50
 
 SEED = 2020
@@ -43,20 +43,21 @@ epoch_num = 1
 #     9.919631958007812,
 # ]
 
-# note: Version 2.0 momentum is fused to OP when L2Decay is available, and the results are different from the fluid version.
+# note: Version 2.0 momentum is fused to OP when L2Decay is available, and the results are different from the base version.
 # The results in ci as as follows:
 DY2ST_PRIM_CINN_GT = [
-    5.828786849975586,
-    8.332863807678223,
-    5.041562080383301,
-    8.514982223510742,
-    7.9860992431640625,
-    7.491837501525879,
-    9.559739112854004,
-    8.430597305297852,
-    8.109201431274414,
-    10.224763870239258,
+    5.847333908081055,
+    8.342670440673828,
+    5.130363941192627,
+    8.511886596679688,
+    8.13458251953125,
+    7.35969352722168,
+    9.874241828918457,
+    8.126291275024414,
+    8.637175559997559,
+    10.385666847229004,
 ]
+
 if core.is_compiled_with_cuda():
     paddle.set_flags({'FLAGS_cudnn_deterministic': True})
 
@@ -170,7 +171,7 @@ def train(to_static, enable_prim, enable_cinn):
     np.random.seed(SEED)
     paddle.seed(SEED)
     paddle.framework.random._manual_program_seed(SEED)
-    fluid.core._set_prim_all_enabled(enable_prim)
+    base.core._set_prim_all_enabled(enable_prim)
 
     dataset = TransedFlowerDataSet(
         reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),

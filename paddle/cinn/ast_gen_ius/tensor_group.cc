@@ -91,17 +91,12 @@ std::vector<ir::Tensor> TensorGroup::GetGenFuncTopoOrder(
   for (const std::string& name : output_tensor_names_) {
     input_arg_names.erase(name);
   }
-  for (const std::string& name : input_arg_names) {
-    VLOG(6) << "input_arg_name = " << name;
-  }
 
   while (!node_set.empty()) {
     const std::string cur = *(node_set.begin());
     node_set.erase(node_set.begin());
 
-    VLOG(6) << "cur = " << cur;
     if (!input_arg_names.count(cur)) {
-      VLOG(6) << "push_back cur = " << cur;
       ret.push_back(name_to_tensor_[cur]);
     }
 

@@ -32,13 +32,10 @@ limitations under the License. */
 #endif
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/os_info.h"
-PADDLE_DEFINE_EXPORTED_bool(enable_rpc_profiler,
-                            false,
-                            "Enable rpc profiler or not.");
+#include "paddle/phi/core/flags.h"
 
-DEFINE_bool(enable_record_memory, false, "enable memory recorder");  // NOLINT
+PHI_DECLARE_bool(enable_record_memory);
 
 #if defined(_WIN32) && defined(PHI_SHARED)
 phi::ProfilerState phi::ProfilerHelper::g_state = phi::ProfilerState::kDisabled;
@@ -591,7 +588,7 @@ MemEvenRecorder::RecordMemEvent::RecordMemEvent(const Place &place,
   PushMemEvent(start_ns_, end_ns_, bytes_, place_, alloc_in_);
 }
 
-MemEvenRecorder::RecordMemEvent::~RecordMemEvent() {
+MemEvenRecorder::RecordMemEvent::~RecordMemEvent() {  // NOLINT
   phi::DeviceTracer *tracer = phi::GetDeviceTracer();
   end_ns_ = PosixInNsec();
 
@@ -607,12 +604,6 @@ MemEvenRecorder::RecordMemEvent::~RecordMemEvent() {
   }
   PopMemEvent(start_ns_, end_ns_, bytes_, place_, annotation_free);
 }
-
-/*RecordRPCEvent::RecordRPCEvent(const std::string &name) {
-  if (FLAGS_enable_rpc_profiler) {
-    event_.reset(new platform::RecordEvent(name));
-  }
-}*/
 
 RecordBlock::RecordBlock(int block_id)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
@@ -815,7 +806,7 @@ std::string OpName(const framework::VariableNameMap &name_map,
   for (const auto &map_item : name_map) {
     auto name_outputs = map_item.second;
     if (!name_outputs.empty()) {
-      ret = ret + name_outputs[0];
+      ret.append(name_outputs[0]);
       break;
     }
   }
@@ -868,8 +859,8 @@ std::string PrintHostEvents() {
     oss << thr_evt_sec.thread_id << std::endl;
     for (const auto &evt : thr_evt_sec.events) {
       oss << "{ " << evt.name << " | " << evt.start_ns << "ns | " << evt.end_ns
-          << "ns | " << (evt.end_ns - evt.start_ns) / 1000.000 << "us }"
-          << std::endl;
+          << "ns | " << (evt.end_ns - evt.start_ns) / 1000.000  // NOLINT
+          << "us }" << std::endl;
     }
   }
   return oss.str();
@@ -906,7 +897,8 @@ static void EmulateEventPushAndPop(
           evt_stk.push(iter->second);
           std::string prefix = thr_evts[iter->second].name;
           if (!prefix_stk.empty()) {
-            prefix = prefix_stk.top() + "/" + prefix;
+            // prefix = prefix_stk.top() + "/" + prefix;
+            prefix.insert(0, "/").insert(0, prefix_stk.top());
           }
           prefix_stk.push(prefix);
         }
