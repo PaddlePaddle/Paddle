@@ -232,21 +232,21 @@ void IrPrinter::PrintAttributeMap(Operation* op) {
   for (size_t i = 0u; i < op->info().num_attributes(); i++) {
     attribute_will_be_printed.push_back(op->info().attribute_name(i));
   }
-  for (const auto& attr_name : options.custom_attrs_white_list) {
+  for (const auto& attr_name : options_.custom_attrs_white_list) {
     if (attributes.count(attr_name) == 0) {
       continue;
     }
     attribute_will_be_printed.push_back(attr_name);
   }
 
-  os << " {";
+  os_ << " {";
 
   PrintInterleave(
       attribute_will_be_printed.begin(),
       attribute_will_be_printed.end(),
       [this, &attributes](std::string attr_name) {
-        this->os << attr_name;
-        this->os << ":";
+        this->os_ << attr_name;
+        this->os_ << ":";
         this->PrintAttribute(attributes.at(attr_name));
       },
       [this]() { this->os_ << ","; });
@@ -255,7 +255,7 @@ void IrPrinter::PrintAttributeMap(Operation* op) {
 }
 
 void IrPrinter::PrintOpOperands(Operation* op) {
-  os << " (";
+  os_ << " (";
   auto num_op_operands = op->num_operands();
   std::vector<Value> op_operands;
   op_operands.reserve(num_op_operands);
