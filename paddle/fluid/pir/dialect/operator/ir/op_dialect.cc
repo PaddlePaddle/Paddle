@@ -32,6 +32,7 @@ OperatorDialect::OperatorDialect(pir::IrContext *context)
 }
 
 void OperatorDialect::initialize() {
+  RegisterTypes<paddle::dialect::DenseTensorType>();
   RegisterTypes<paddle::dialect::SelectedRowsType>();
 
   RegisterAttributes<paddle::dialect::IntArrayAttribute,
