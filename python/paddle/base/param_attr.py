@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
-from paddle.regularizer import WeightDecayRegularizer
 from paddle.base.data_feeder import check_type
+from paddle.regularizer import WeightDecayRegularizer
 
 __all__ = [
     'ParamAttr',

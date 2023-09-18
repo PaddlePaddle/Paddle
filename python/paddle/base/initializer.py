@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .data_feeder import check_type
 import paddle
+
+from .data_feeder import check_type
 
 __all__ = ['set_global_initializer']
 

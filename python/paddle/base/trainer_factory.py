@@ -13,33 +13,35 @@
 # limitations under the License.
 """Definition of TrainerFactory."""
 
+import logging
 import threading
 import time
-import logging
+
 import numpy as np
+
 from paddle.base.log_helper import get_logger
 
 local_logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
-from .trainer_desc import (  # noqa: F401
-    MultiTrainer,
-    DistMultiTrainer,
-    PipelineTrainer,
-    HeterXpuTrainer,
-    PSGPUTrainer,
-    HeterPipelineTrainer,
-)
 from .device_worker import (  # noqa: F401
-    Hogwild,
-    DownpourSGD,
     DownpourLite,
-    Section,
+    DownpourSGD,
     DownpourSGDOPT,
     HeterSection,
+    Hogwild,
+    Section,
 )
 from .framework import Variable
+from .trainer_desc import (  # noqa: F401
+    DistMultiTrainer,
+    HeterPipelineTrainer,
+    HeterXpuTrainer,
+    MultiTrainer,
+    PipelineTrainer,
+    PSGPUTrainer,
+)
 
 __all__ = ["TrainerFactory", "FetchHandlerMonitor"]
 

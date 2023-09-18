@@ -13,21 +13,22 @@
 # limitations under the License.
 
 import re
-import warnings
 import string
-
+import warnings
 from io import StringIO
-from ..proto import framework_pb2
+
+from paddle import _C_ops, _legacy_C_ops
+
+from ..data_feeder import check_variable_and_dtype
 from ..framework import (
     OpProtoHolder,
     Variable,
-    core,
     convert_np_dtype_to_dtype_,
+    core,
     in_dygraph_mode,
 )
 from ..layer_helper import LayerHelper
-from ..data_feeder import check_variable_and_dtype
-from paddle import _C_ops, _legacy_C_ops
+from ..proto import framework_pb2
 
 __all__ = [
     'generate_layer_fn',

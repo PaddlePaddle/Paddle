@@ -11,20 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
-import decorator
 import inspect
 import sys
+import warnings
+
+import decorator
 import numpy as np
-from paddle.base import core
-from paddle.base import framework
+
+import paddle
+from paddle.base import core, framework
 from paddle.base.framework import global_var
 from paddle.base.multiprocess_utils import CleanupFuncRegistrar
-from .tracer import Tracer
+
 from ..data_feeder import convert_dtype
-import warnings
 from ..framework import _get_paddle_place
-import paddle
+from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
+from .tracer import Tracer
 
 __all__ = [
     'no_grad',

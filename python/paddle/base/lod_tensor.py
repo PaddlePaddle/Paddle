@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 from . import core
 from .data_feeder import DataToLoDTensorConverter
-import numpy as np
 
 __all__ = ['create_lod_tensor', 'create_random_int_lodtensor']
 

@@ -14,12 +14,8 @@
 
 from .. import core
 from ..executor import global_scope
-from ..framework import (
-    default_main_program,
-    default_startup_program,
-)
+from ..framework import default_main_program, default_startup_program
 from ..unique_name import generate as unique_name
-
 
 __all__ = []
 
