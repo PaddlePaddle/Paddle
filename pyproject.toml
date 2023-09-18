@@ -72,7 +72,7 @@ select = [
     # "PLR1701",
     # "PLR1711",  # Confirmation required
     "PLR1722",
-    # "PLW3301",  # Confirmation required
+    "PLW3301",  # Confirmation required
 ]
 unfixable = [
     "NPY001"
@@ -104,7 +104,6 @@ ignore = [
 
 # Temporarily ignored
 "python/paddle/base/**" = [
-    "F401",
     "UP032",
     "UP031",
     "C408",
@@ -116,7 +115,6 @@ ignore = [
     "UP028",
     "C403",
     "UP034",
-    "B011",
     "C405",
     "C417",
     "PLR0402",
