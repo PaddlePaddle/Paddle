@@ -51,6 +51,72 @@ std::vector<pir::Value> GetYiedOpInputs(pir::Block* block) {
   return vec_res;
 }
 
+void GetInputIds(
+    pir::Operation* op,
+    Scope* inner_scope,
+    const std::unordered_map<::pir::Value, std::string>& value_2_var_name,
+    const std::map<std::string, int>& var_name_2_id,
+    const std::unordered_map<const paddle::framework::Variable*, std::string>&
+        variable_2_var_name,
+    std::unordered_map<pir::Value, std::vector<int>>* input_ids) {
+  for (size_t i = 0; i < op->num_operands(); i++) {
+    pir::Value value = op->operand_source(i);
+    if (value) {
+      PADDLE_ENFORCE_NE(
+          value_2_var_name.find(value),
+          value_2_var_name.end(),
+          phi::errors::PreconditionNotMet(
+              "input should in name map, [%d] 'th input of [%s] op",
+              i,
+              "if op"));
+      std::vector<int> inputs_id = GetValueIds(value,
+                                               inner_scope,
+                                               value_2_var_name,
+                                               var_name_2_id,
+                                               variable_2_var_name);
+      input_ids->emplace(value, inputs_id);
+    }
+  }
+}
+
+void GetOutsideOpInputs(
+    pir::Block* block,
+    Scope* inner_scope,
+    const std::unordered_map<::pir::Value, std::string>& value_2_var_name,
+    const std::map<std::string, int>& var_name_2_id,
+    const std::unordered_map<const paddle::framework::Variable*, std::string>&
+        variable_2_var_name,
+    std::unordered_map<pir::Value, std::vector<int>>* input_ids) {
+  std::unordered_set<pir::Value> inner_outputs;
+  for (auto op : (*block)) {
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      inner_outputs.insert(op->result(i));
+    }
+  }
+
+  for (auto op : (*block)) {
+    for (size_t i = 0; i < op->num_operands(); ++i) {
+      pir::Value value = op->operand_source(i);
+      if (value && (!inner_outputs.count(value))) {
+        PADDLE_ENFORCE_NE(
+            value_2_var_name.find(value),
+            value_2_var_name.end(),
+            phi::errors::PreconditionNotMet(
+                "input should in name map, [%d] 'th input of [%s] op",
+                i,
+                "if op"));
+        std::vector<int> inputs_id = GetValueIds(value,
+                                                 inner_scope,
+                                                 value_2_var_name,
+                                                 var_name_2_id,
+                                                 variable_2_var_name);
+
+        input_ids->emplace(value, inputs_id);
+      }
+    }
+  }
+}
+
 CondInstruction::CondInstruction(
     size_t id,
     const platform::Place& place,
@@ -96,90 +162,75 @@ CondInstruction::CondInstruction(
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
 
-  // TODO(phlrain): is nupptr ok?
-  // SetDeviceContext(ParseDeviceContext(
-  //     op, nullptr, place, GetExecutionStream(), GetStreamPriority()));
-  VLOG(6) << "finish process device context";
-
   Scope* inner_scope = local_scope == nullptr ? scope : local_scope;
-  // InitInputsOutputsIds(
-  //     op, inner_scope, value_2_var_name, var_name_2_id, variable_2_var_name);
+
   VLOG(6) << "finish process inputs outputs index";
 
-  //   auto& no_need_buffer_ids = yaml_info_parser.NoNeedBufferIds();
-  //   std::unordered_set<::ir::Value> no_need_buffer_values;
-  //   for (size_t id = 0; id < no_need_buffer_ids.size(); id++) {
-  //     no_need_buffer_values.insert(op->operand_source(no_need_buffer_ids[id]));
-  //   }
-  //   SetNoNeedBuffer(no_need_buffer_values);
-  //   VLOG(6) << "finish process no need buffer";
+  PADDLE_ENFORCE(
+      op->isa<paddle::dialect::IfOp>(),
+      phi::errors::PreconditionNotMet("Cond instruction only support if op"));
 
-  if (op->isa<paddle::dialect::IfOp>()) {
-    auto if_op = op->dyn_cast<paddle::dialect::IfOp>();
+  auto if_op = op->dyn_cast<paddle::dialect::IfOp>();
 
-    for (size_t i = 0; i < if_op.num_results(); ++i) {
-      if_op_outputs_.push_back(
-          inner_scope->GetVar(value_2_var_name.at(if_op.result(i))));
-    }
-
-    auto cond_value = if_op.operand_source(0);
-    auto var_name = value_2_var_name.at(cond_value);
-    std::cerr << "var name " << var_name << std::endl;
-    cond_var = inner_scope->FindVar(var_name);
-
-    auto true_branch_block = if_op.true_block();
-    auto false_branch_block = if_op.false_block();
-
-    auto true_branch_yied_inputs = GetYiedOpInputs(true_branch_block);
-    auto false_branch_yied_inputs = GetYiedOpInputs(false_branch_block);
-
-    auto true_scope = sub_blocks.at(true_branch_block);
-    true_branch_inter =
-        new NewIRInterpreter(place, {}, true_branch_block, true_scope, {});
-
-    std::set<std::string> true_skip_gc_names_set;
-    for (auto value : true_branch_yied_inputs) {
-      true_skip_gc_names_.push_back(true_branch_inter->GetNameByValue(value));
-      true_skip_gc_names_set.insert(true_branch_inter->GetNameByValue(value));
-    }
-    true_branch_inter->SetSkipGcVars(true_skip_gc_names_set);
-    // true_branch_iter->SetSkipGcVars( )
-    std::cerr << "12" << std::endl;
-    auto false_scope = sub_blocks.at(false_branch_block);
-    false_branch_inter =
-        new NewIRInterpreter(place, {}, false_branch_block, false_scope, {});
-
-    std::set<std::string> false_skip_gc_names_set;
-    for (auto value : false_branch_yied_inputs) {
-      false_skip_gc_names_.push_back(false_branch_inter->GetNameByValue(value));
-      false_skip_gc_names_set.insert(false_branch_inter->GetNameByValue(value));
-    }
-    false_branch_inter->SetSkipGcVars(false_skip_gc_names_set);
+  for (size_t i = 0; i < if_op.num_results(); ++i) {
+    if_op_outputs_.push_back(
+        inner_scope->GetVar(value_2_var_name.at(if_op.result(i))));
   }
 
-  std::cerr << "13" << std::endl;
+  auto cond_value = if_op.operand_source(0);
+  auto var_name = value_2_var_name.at(cond_value);
+  cond_var = inner_scope->FindVar(var_name);
 
-  // InitInputsOutputsIds(
-  //     op, inner_scope, value_2_var_name, var_name_2_id, variable_2_var_name);
+  auto true_branch_block = if_op.true_block();
+  auto false_branch_block = if_op.false_block();
+
+  auto true_branch_yied_inputs = GetYiedOpInputs(true_branch_block);
+  auto false_branch_yied_inputs = GetYiedOpInputs(false_branch_block);
+
+  auto true_scope = sub_blocks.at(true_branch_block);
+  true_branch_inter =
+      new NewIRInterpreter(place, {}, true_branch_block, true_scope, {});
+
+  std::set<std::string> true_skip_gc_names_set;
+  for (auto value : true_branch_yied_inputs) {
+    true_skip_gc_names_.push_back(true_branch_inter->GetNameByValue(value));
+    true_skip_gc_names_set.insert(true_branch_inter->GetNameByValue(value));
+  }
+  true_branch_inter->SetSkipGcVars(true_skip_gc_names_set);
+
+  auto false_scope = sub_blocks.at(false_branch_block);
+  false_branch_inter =
+      new NewIRInterpreter(place, {}, false_branch_block, false_scope, {});
+
+  std::set<std::string> false_skip_gc_names_set;
+  for (auto value : false_branch_yied_inputs) {
+    false_skip_gc_names_.push_back(false_branch_inter->GetNameByValue(value));
+    false_skip_gc_names_set.insert(false_branch_inter->GetNameByValue(value));
+  }
+  false_branch_inter->SetSkipGcVars(false_skip_gc_names_set);
+
+  // the true branch and false branch input will be the if_op inputs
+
   std::unordered_map<pir::Value, std::vector<int>> inputs;
-  for (size_t i = 0; i < op->num_operands(); i++) {
-    pir::Value value = op->operand_source(i);
-    if (value) {
-      PADDLE_ENFORCE_NE(
-          value_2_var_name.find(value),
-          value_2_var_name.end(),
-          phi::errors::PreconditionNotMet(
-              "input should in name map, [%d] 'th input of [%s] op",
-              i,
-              "if op"));
-      std::vector<int> inputs_id = GetValueIds(value,
-                                               inner_scope,
-                                               value_2_var_name,
-                                               var_name_2_id,
-                                               variable_2_var_name);
-      inputs.emplace(value, inputs_id);
-    }
-  }
+  GetInputIds(op,
+              inner_scope,
+              value_2_var_name,
+              var_name_2_id,
+              variable_2_var_name,
+              &inputs);
+  GetOutsideOpInputs(true_branch_block,
+                     inner_scope,
+                     value_2_var_name,
+                     var_name_2_id,
+                     variable_2_var_name,
+                     &inputs);
+
+  GetOutsideOpInputs(false_branch_block,
+                     inner_scope,
+                     value_2_var_name,
+                     var_name_2_id,
+                     variable_2_var_name,
+                     &inputs);
   SetInputs(inputs);
 
   std::unordered_map<pir::Value, std::vector<int>> outputs;
