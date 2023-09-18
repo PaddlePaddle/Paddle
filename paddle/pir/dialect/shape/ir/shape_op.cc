@@ -211,9 +211,9 @@ void TieShapeOp::Build(Builder &builder,             // NOLINT
   argument.AddInputs(dims);
 }
 
-Value TieShapeOp::getValue() { return operand_source(0); }
+Value TieShapeOp::value() { return operand_source(0); }
 
-std::vector<Value> TieShapeOp::getShapeDimIndexes() {
+std::vector<Value> TieShapeOp::dims() {
   std::vector<Value> res;
   for (uint32_t i = 1; i < num_operands(); i++) {
     res.push_back(operand_source(i));
