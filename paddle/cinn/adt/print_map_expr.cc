@@ -147,6 +147,7 @@ void ToTextString(const MapExpr& map_expr,
 void PrintMapExpr(const MapExpr& map_expr) {
   std::string txt_string{};
   ToTextString(map_expr, 0, &txt_string);
+  VLOG(1) << "MapExpr PrintMapExpr: " << txt_string;
 }
 
 }  // namespace cinn::adt

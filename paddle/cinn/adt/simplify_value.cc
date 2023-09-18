@@ -20,7 +20,7 @@
 #include "paddle/cinn/adt/match.h"
 #include "paddle/cinn/adt/simplify_value.h"
 
-namespace cinn::adt::equation {
+namespace cinn::adt {
 
 template <typename T, typename ExprT>
 ExprT MatchAndRewrite(const ExprT& expr) {
@@ -104,4 +104,4 @@ Value SimplifyValue(Value value) {
   return value;
 }
 
-}  // namespace cinn::adt::equation
+}  // namespace cinn::adt

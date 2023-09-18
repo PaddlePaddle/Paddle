@@ -1018,18 +1018,6 @@ PHI_DEFINE_EXPORTED_bool(enable_cinn_auto_tune,
 
 /*
  * CINN related FLAG
- * Name: FLAGS_enable_map_expr
- * Since Version: 2.5
- * Value Range: bool, default=false
- * Example: FLAGS_enable_map_expr=true would use CINN with its
- * map_expr feature enabled
- */
-PHI_DEFINE_EXPORTED_bool(enable_map_expr,
-                         false,
-                         "It controls whether to use cinn with map_expr");
-
-/*
- * CINN related FLAG
  * Name: FLAGS_cinn_subgraph_graphviz_dir
  * Since Version: 2.3
  * Value Range: string, default=""

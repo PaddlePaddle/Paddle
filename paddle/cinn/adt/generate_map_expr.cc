@@ -23,11 +23,11 @@
 #include "paddle/cinn/adt/partition_op_stmts.h"
 #include "paddle/cinn/adt/print_map_expr.h"
 #include "paddle/cinn/adt/schedule_descriptor.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/cinn/runtime/flags.h"
 
 #include "glog/logging.h"
 
-PHI_DECLARE_bool(enable_map_expr);
+DECLARE_bool(cinn_enable_map_expr);
 
 namespace cinn::adt {
 
@@ -425,6 +425,7 @@ MapExpr GenerateMapExpr(const std::shared_ptr<KGroup>& kgroup) {
 
 MapExpr GenerateMapExpr(
     const std::shared_ptr<hlir::framework::Graph::Group>& group) {
+  VLOG(1) << "MapExpr GenerateMapExpr begin()";
   const auto& igroups = GenerateIGroups(group);
 
   const auto& kgroup = GenerateKGroups(group, igroups);
@@ -436,7 +437,7 @@ namespace {}  // namespace
 
 void TryGenerateMapExprFromGraph(
     const std::shared_ptr<cinn::hlir::framework::Graph>& graph) {
-  if (!FLAGS_enable_map_expr) {
+  if (!FLAGS_cinn_enable_map_expr) {
     return;
   }
   for (const auto& fusion_group : graph->fusion_groups) {
