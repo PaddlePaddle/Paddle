@@ -490,6 +490,8 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
       phi::AllocationType p(phi::AllocationType::UNDEFINED);
       if (tensor.initialized()) {
         p = tensor.place().GetType();
+      } else {
+        p = place.GetType();
       }
 
       if (var_name == "@EMPTY@") {
