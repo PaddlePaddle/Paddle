@@ -210,7 +210,7 @@ void IrPrinter::PrintValue(Value v) {
 }
 
 void IrPrinter::PrintOpResult(Operation* op) {
-  os << " (";
+  os_ << " (";
   auto num_op_result = op->num_results();
   std::vector<OpResult> op_results;
   op_results.reserve(num_op_result);
