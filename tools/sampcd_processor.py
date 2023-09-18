@@ -232,7 +232,7 @@ class Fluid(BadStatement):
 
     _pattern = re.compile(
         r"""
-        (\>{3}|.{3})
+        (\>{3}|\.{3})
         (?P<comment>.*)
         import
         .*
