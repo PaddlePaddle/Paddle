@@ -520,7 +520,6 @@ void NewIRInterpreter::BuildInstruction() {
   size_t op_idx = 0;
   for (auto& op : *ir_block_) {
     VLOG(6) << "Build Instruction for op: " << op_idx;
-    std::cerr << "op->dialect()->name() " << op->dialect()->name() << std::endl;
     if (op->dialect()->name() == "builtin") {
       if (interpreter::GetSpecialOpNames().count(op->name())) {
         VLOG(6) << "skip process " << op->name();
@@ -993,7 +992,6 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
     }
   }
 
-  std::cerr << "begin clear" << std::endl;
   if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
   }

@@ -189,13 +189,11 @@ TEST(StandaloneExecutor, if_op) {
 
   test_core.Run({});
 
-  std::cerr << "fin run" << std::endl;
   auto out_tensor =
       test_core.local_scope() == nullptr
           ? scope.FindVar(out_name)->Get<phi::DenseTensor>()
           : test_core.local_scope()->FindVar(out_name)->Get<phi::DenseTensor>();
 
-  std::cerr << out_tensor << std::endl;
   bool res0 = out_tensor.data<bool>()[0] == true;
   bool res1 = out_tensor.data<bool>()[1] == true;
 

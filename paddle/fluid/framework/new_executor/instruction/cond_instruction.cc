@@ -266,17 +266,11 @@ void CondInstruction::CopyBranchOutput(
 }
 
 void CondInstruction::Run() {
-  std::cerr << "cond run" << std::endl;
   if (cond_var->Get<phi::DenseTensor>().data<bool>()[0]) {
-    std::cerr << "true  " << std::endl;
     true_branch_inter->Run({}, false);
-    std::cerr << "true  fin" << std::endl;
     CopyBranchOutput(true_skip_gc_names_, true_branch_inter);
   } else {
-    std::cerr << "false  " << std::endl;
     false_branch_inter->Run({}, false);
-    std::cerr << "false fin  " << std::endl;
-
     CopyBranchOutput(false_skip_gc_names_, false_branch_inter);
   }
 
