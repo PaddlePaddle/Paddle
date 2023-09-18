@@ -318,6 +318,17 @@ def linspace(start, stop, num, dtype=None, name=None):
             >>> print(data.numpy())
             [0.]
 
+        .. code-block:: python
+            :name: comment_fluid
+
+            >>> import paddle
+            >>> data = paddle.linspace(0, 10, 5, 'float32')
+            >>> print(data.numpy())
+            [0. 2.5 5. 7.5 10.]
+            >>> # import paddle.fluid
+            >>> data = paddle.linspace(0, 10, 1, 'float32')
+            >>> print(data.numpy())
+            [0.]
 
     """
     # TODO

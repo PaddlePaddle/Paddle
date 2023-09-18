@@ -233,8 +233,8 @@ class Fluid(BadStatement):
     _pattern = re.compile(
         r"""
         (\>{3}|.{3})
-        \s*
-        (import|from)
+        (?P<comment>.*)
+        import
         .*
         (\bfluid\b)
         """,
@@ -242,7 +242,12 @@ class Fluid(BadStatement):
     )
 
     def check(self, docstring):
-        return bool(self._pattern.search(docstring))
+        for match_obj in self._pattern.finditer(docstring):
+            comment = match_obj.group('comment').strip()
+            if not comment.startswith('#'):
+                return True
+
+        return False
 
 
 class SkipNoReason(BadStatement):
@@ -404,7 +409,7 @@ class Xdoctester(DocTester):
         if bad_results:
             for name in bad_results:
                 logger.warning(
-                    "%s %s", api_name, str(self.bad_statements[name][0].msg)
+                    "%s >>> %s", api_name, str(self.bad_statements[name][0].msg)
                 )
 
             return [

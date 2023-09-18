@@ -2264,6 +2264,16 @@ class TestGetTestResults(unittest.TestCase):
                     >>> # doctest: -SKIP
                     >>> import math
             """,
+            'comment_fluid': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # import paddle.fluid
+                    >>> import os
+            """,
         }
 
         _clear_environ()
@@ -2273,9 +2283,20 @@ class TestGetTestResults(unittest.TestCase):
         doctester.prepare(test_capacity)
 
         test_results = get_test_results(doctester, docstrings_to_test)
-        self.assertEqual(len(test_results), 9)
+        self.assertEqual(len(test_results), 10)
 
-        tr_0, tr_1, tr_2, tr_3, tr_4, tr_5, tr_6, tr_7, tr_8 = test_results
+        (
+            tr_0,
+            tr_1,
+            tr_2,
+            tr_3,
+            tr_4,
+            tr_5,
+            tr_6,
+            tr_7,
+            tr_8,
+            tr_9,
+        ) = test_results
 
         self.assertIn('bad_fluid', tr_0.name)
         self.assertTrue(tr_0.badstatement)
@@ -2313,6 +2334,10 @@ class TestGetTestResults(unittest.TestCase):
         self.assertIn('good_skip', tr_8.name)
         self.assertFalse(tr_8.badstatement)
         self.assertTrue(tr_8.passed)
+
+        self.assertIn('comment_fluid', tr_9.name)
+        self.assertFalse(tr_9.badstatement)
+        self.assertTrue(tr_9.passed)
 
 
 if __name__ == '__main__':
