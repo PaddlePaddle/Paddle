@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Callable
 
 import paddle
+import paddle.distributed as dist
+from paddle import nn
 from paddle.base.framework import EagerParamBase
 from paddle.distributed.auto_parallel.interface import (
     shard_tensor as shard_tensor_static,
@@ -148,6 +151,95 @@ def shard_tensor(
         return shard_tensor_static(
             tensor, dist_attr.process_mesh, dist_attr.sharding_specs
         )
+
+
+def shard_layer(
+    model: nn.Layer,
+    process_mesh: dist.ProcessMesh,
+    shard_fn: Callable = None,
+    input_fn: Callable = None,
+    output_fn: Callable = None,
+) -> nn.Layer:
+    """
+    This function converts all model parameters to DistTensor parameters
+    according to the `shard_fn` specified. It could also control the input or
+    output of the module by specifying the `input_fn` and `output_fn`.
+    Args:
+        model(nn.Layer): Model constructed by users using paddle.nn.Layer.
+        process_mesh(ProcessMesh): ProcessMesh information to be placed in this model.
+        shard_fn(Callable): Function for splitting model parameters. If not specified, by default we copy all parameters of the model across ProcessMesh.
+        input_fn(Callable): Specify the partition distribution of the input, input_fn will serve for the Layer as forward_pre_hook.By default we do not do any partitioning.
+        ouput_fn(Callable): Specify the partition distribution of the output, output_fn will serve for the Layer as forward_post_hook. By default we do not do any partitioning.
+    Returns:
+        model:model with DistTensor parameters
+    Examples:
+        ..code-block:: python
+
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+            >>> class MLP(paddle.nn.Layer):
+            ...     def __init__(self, ):
+            ...         super.__init__()
+            ...         self.fc1 = nn.Linear(8, 8)
+            ...         self.fc2 = nn.Linear(8, 8)
+            ...     def forward(self, input):
+            ...         return self.fc2(self.fc1(input))
+            >>> def shard_params_func(model_name, model):
+            ...     dist_attr = dist.DistAttr(sharding_specs=['x', 'y'], mesh=mesh)
+            ...     if model_name == 'fc1':
+            ...         model.weight = dist.shard_tensor(model.weight, dist_attr)
+            >>> model = MLP()
+            >>> model = dist.shard_layer(model, shard_params_func)
+            >>> print(model)
+    """
+    # Ensure that process_mesh is not an empty object
+    if process_mesh is None:
+        raise ValueError("process_mesh parameter cannot be empty")
+
+    # Check the legality of process_mesh
+    if not isinstance(process_mesh, dist.ProcessMesh):
+        raise ValueError(
+            "process_mesh parameter must be of type dist.ProcessMesh"
+        )
+
+    def replicate_layer_params_buffers(
+        m: nn.Layer, mesh: dist.ProcessMesh
+    ) -> None:
+        # dist_attr = dist.DistAttr(mesh=mesh)
+        for key, param in m._parameters.items():
+            if param is not None:
+                m.add_parameter(
+                    key,
+                    shard_tensor(param.data, dist_attr=None),
+                )
+            else:
+                raise ValueError("param cannot be none")
+        for key, buffer in m._buffers.items():
+            if buffer is not None:
+                m._buffers[key] = shard_tensor(buffer)
+            else:
+                raise ValueError("buffer cannot be none")
+
+    if shard_fn is None:
+        # if shard_fn not specified, by default replicate
+        # all model params
+        for name, sublayers in model.named_sublayers():
+            replicate_layer_params_buffers(sublayers, process_mesh)
+    else:
+        # apply shard_fn to sublayers
+        for name, sublayers in model.named_sublayers():
+            shard_fn(name, sublayers, process_mesh)
+            replicate_layer_params_buffers(sublayers, process_mesh)
+
+    # register input_fn as model forward pre hook
+    if input_fn is not None:
+        model.register_forward_pre_hook(input_fn)
+    # register input_fn as model forward hook
+    if output_fn is not None:
+        model.register_forward_post_hook(output_fn)
+
+    return model
 
 
 def dtensor_from_fn(fn, dist_attr, *args, **kwargs):
