@@ -1143,7 +1143,12 @@ class PipelineParallelWithInterleave(PipelineParallel):
             if self.is_pipeline_last_stage():
                 output_tensor = None
 
-            if micro_step == (startup_steps - 1) and not forward_only:
+            # prepare for the first steady step
+            if (
+                micro_step == (startup_steps - 1)
+                and (not forward_only)
+                and steady_steps
+            ):
                 input_tensor_grad = None
                 recv_next = True
                 if self.is_pipeline_last_stage(ignore_virtual=True):
@@ -1297,6 +1302,14 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         # remaining backward steps
         if not forward_only:
+            # no steady steps, which only occurs when accumulate_step == num_stage
+            if not steady_steps:
+                output_tensor_grad = p2p.recv_backward(
+                    self.is_pipeline_last_stage()
+                )
+                self.output_tensor_grads[self.num_model_chunks - 1].append(
+                    output_tensor_grad
+                )
             for micro_step in range(steady_steps, num_steps):
                 if static_scheduler:
                     virtual_pp_rank = self._get_virtual_pp_rank(
