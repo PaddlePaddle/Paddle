@@ -139,7 +139,7 @@ void IrPrinter::PrintOperation(Operation* op) {
   PrintGeneralOperation(op);
 }
 
-void IrPrinter::PrintGeneralOperation(const Operation* op) {
+void IrPrinter::PrintGeneralOperation(Operation* op) {
   // TODO(lyk): add API to get opresults directly
   PrintOpResult(op);
   os << " =";
@@ -160,7 +160,7 @@ void IrPrinter::PrintGeneralOperation(const Operation* op) {
   PrintOpReturnType(op);
 }
 
-void IrPrinter::PrintFullOperation(const Operation* op) {
+void IrPrinter::PrintFullOperation(Operation* op) {
   PrintGeneralOperation(op);
   if (op->num_regions() > 0) {
     os << newline;
@@ -186,7 +186,7 @@ void IrPrinter::PrintBlock(const Block* block) {
   os << "}\n";
 }
 
-void IrPrinter::PrintValue(const Value& v) {
+void IrPrinter::PrintValue(Value v) {
   if (!v) {
     os << "<<NULL VALUE>>";
     return;
@@ -204,7 +204,7 @@ void IrPrinter::PrintValue(const Value& v) {
   os << new_name;
 }
 
-void IrPrinter::PrintOpResult(const Operation* op) {
+void IrPrinter::PrintOpResult(Operation* op) {
   os << " (";
   auto num_op_result = op->num_results();
   std::vector<OpResult> op_results;
@@ -220,7 +220,7 @@ void IrPrinter::PrintOpResult(const Operation* op) {
   os << ")";
 }
 
-void IrPrinter::PrintAttributeMap(const Operation* op) {
+void IrPrinter::PrintAttributeMap(Operation* op) {
   AttributeMap attributes = op->attributes();
   std::map<std::string, Attribute, std::less<std::string>> order_attributes(
       attributes.begin(), attributes.end());
@@ -239,7 +239,7 @@ void IrPrinter::PrintAttributeMap(const Operation* op) {
   os << "}";
 }
 
-void IrPrinter::PrintOpOperands(const Operation* op) {
+void IrPrinter::PrintOpOperands(Operation* op) {
   os << " (";
   auto num_op_operands = op->num_operands();
   std::vector<Value> op_operands;
@@ -255,7 +255,7 @@ void IrPrinter::PrintOpOperands(const Operation* op) {
   os << ")";
 }
 
-void IrPrinter::PrintOperandsType(const Operation* op) {
+void IrPrinter::PrintOperandsType(Operation* op) {
   auto num_op_operands = op->num_operands();
   std::vector<Type> op_operand_types;
   op_operand_types.reserve(num_op_operands);
@@ -276,7 +276,7 @@ void IrPrinter::PrintOperandsType(const Operation* op) {
   os << ")";
 }
 
-void IrPrinter::PrintOpReturnType(const Operation* op) {
+void IrPrinter::PrintOpReturnType(Operation* op) {
   auto num_op_result = op->num_results();
   std::vector<Type> op_result_types;
   op_result_types.reserve(num_op_result);
