@@ -23,6 +23,21 @@ from .._ir_ops import get_parameter, set_parameter
 from ..base import unique_name
 from ..base.wrapped_decorator import signature_safe_contextmanager
 
+ir_dtype_2_tensor_dtype = {
+    DataType.FLOAT32: VarDesc.VarType.FP32,
+    DataType.FLOAT64: VarDesc.VarType.FP64,
+    DataType.FLOAT16: VarDesc.VarType.FP16,
+    DataType.BFLOAT16: VarDesc.VarType.BF16,
+    DataType.INT32: VarDesc.VarType.INT32,
+    DataType.INT16: VarDesc.VarType.INT16,
+    DataType.INT64: VarDesc.VarType.INT64,
+    DataType.BOOL: VarDesc.VarType.BOOL,
+    DataType.UINT8: VarDesc.VarType.UINT8,
+    DataType.INT8: VarDesc.VarType.INT8,
+    DataType.COMPLEX64: VarDesc.VarType.COMPLEX64,
+    DataType.COMPLEX128: VarDesc.VarType.COMPLEX128,
+}
+
 vartype_to_datatype = {
     VarDesc.VarType.FP32: DataType.FLOAT32,
     VarDesc.VarType.FP64: DataType.FLOAT64,

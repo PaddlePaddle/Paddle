@@ -704,6 +704,8 @@ class PartialProgramLayer:
         )
         hash_id = paddle.utils._hash_with_id(program, self)
         extra_info = self._program_extra_info.get(hash_id, {})
+        extra_info['forward_inputs'] = inputs
+        extra_info['forward_outputs'] = targets
         extra_info['forward_end_op_idx'] = forward_end_idx
         extra_info['forward_inputs_grads'] = list(
             map(mapping_op_result, grad_info_map)
@@ -803,8 +805,10 @@ class PartialProgramLayer:
         forward_inputs_grads = self.get_program_extra(whole_program)[
             'forward_inputs_grads'
         ]
-        forward_inputs = self._inputs.tolist()
-        forward_outputs = self._outputs.tolist()
+        forward_inputs = self.get_program_extra(whole_program)['forward_inputs']
+        forward_outputs = self.get_program_extra(whole_program)[
+            'forward_outputs'
+        ]
         forward_outputs_grads = self.get_program_extra(whole_program)[
             'forward_outputs_grads'
         ]
@@ -819,7 +823,6 @@ class PartialProgramLayer:
         # backward_skip_vars = self._parse_skip_gc_vars(
         # whole_program
         # ) + self._grad_var_names.get('param', [])
-
         (
             forward_program,
             backward_program,
@@ -959,11 +962,8 @@ class PartialProgramLayer:
                 tensor_type = paddle.dtype(8)  # SELECT ROW TENSOR
 
             # TODO(xiongkun): more elegent way to do it.
-            ir_dtype_2_tensor_dtype = {
-                10: paddle.dtype(5),
-            }
             out = core.eager.Tensor(
-                ir_dtype_2_tensor_dtype[int(var.dtype)],
+                ir_static.ir_dtype_2_tensor_dtype[var.dtype],
                 var.shape,
                 "",
                 tensor_type,

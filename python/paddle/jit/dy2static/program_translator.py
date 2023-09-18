@@ -44,20 +44,18 @@ from .function_spec import (
     get_buffers,
     get_parameters,
 )
+from .newir_partial_program import (
+    PartialProgramLayerHook as PirPartialProgramLayerHook,
+)
+from .newir_partial_program import (
+    partial_program_from as pir_partial_program_from,
+)
 from .origin_info import (
     attach_origin_info,
     create_and_update_origin_info_map,
     update_op_callstack_with_origin_info,
 )
-
-if ir_static._use_new_ir_api():
-    from .newir_partial_program import (
-        PartialProgramLayerHook,
-        partial_program_from,
-    )
-else:
-    from .partial_program import PartialProgramLayerHook, partial_program_from
-
+from .partial_program import PartialProgramLayerHook, partial_program_from
 from .utils import (
     ALREADY_D2S,
     NO_SHAPE_VAR_TYPE,
@@ -1553,7 +1551,7 @@ class ProgramCache:
                     )
 
         if ir_static._use_new_ir_api():
-            partial_program = partial_program_from(
+            partial_program = pir_partial_program_from(
                 concrete_program, cache_key.class_instance is not None
             )
         else:  # TODO(new_ir): remove later.
@@ -1671,7 +1669,7 @@ class PrimHooker(PartialProgramLayerHook):
             return infer_program
 
 
-class PirPrimHooker(PartialProgramLayerHook):
+class PirPrimHooker(PirPartialProgramLayerHook):
     def __init__(self, original_program, backend):
         # if len(original_program.blocks) > 1:
         #     raise ValueError(

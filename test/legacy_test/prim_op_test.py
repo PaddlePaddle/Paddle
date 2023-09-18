@@ -418,6 +418,8 @@ class PrimForwardChecker:
         else:
             if self.enable_check_static_comp:
                 self.check_static_comp()
+            if self.enable_check_jit_comp:
+                self.check_jit_comp()
 
         self.recover_eager_or_static_status()
 
@@ -690,15 +692,16 @@ class PrimForwardChecker:
         net = PrimNet(self.public_python_api)
         net = apply_to_static(net, False)
         # ensure the operator not in program if check_prim is True
-        forward_ops = [
-            op.type
-            for op in net.forward.get_concrete_program(args)[1]
-            .forward_program.block(0)
-            .ops
-        ]
-        assert self.op_type not in forward_ops, (
-            "%s shouldn't appear in program when check_prim is True"
-        ) % (self.op_type)
+        if not paddle.ir.core._use_new_ir_api():
+            forward_ops = [
+                op.type
+                for op in net.forward.get_concrete_program(args)[1]
+                .forward_program.block(0)
+                .ops
+            ]
+            assert self.op_type not in forward_ops, (
+                "%s shouldn't appear in program when check_prim is True"
+            ) % (self.op_type)
         ret = flatten(_as_list(net(args)))
         ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
@@ -875,6 +878,8 @@ class PrimGradChecker(PrimForwardChecker):
         else:
             if self.enable_check_static_comp:
                 self.check_static_comp()
+            if self.enable_check_jit_comp:
+                self.check_jit_comp()
         self.recover_eager_or_static_status()
 
     def get_output_dict(self, np_outputs, api_outputs, outputs_sig):
@@ -1189,16 +1194,17 @@ class PrimGradChecker(PrimForwardChecker):
         net = PrimNet(self.public_python_api)
         net = apply_to_static(net, False)
         # check the backward operator not in program when check_prim is True
-        ops = [
-            op.type
-            for op in net.forward.get_concrete_program(args)[1]
-            .backward_program.block(0)
-            .ops
-        ]
-        backward_op_type = self.op_type + "_grad"
-        assert backward_op_type not in ops, (
-            "%s shouldn't appear in program when check_prim is True"
-        ) % (backward_op_type)
+        if not paddle.ir.core._use_new_ir_api():
+            ops = [
+                op.type
+                for op in net.forward.get_concrete_program(args)[1]
+                .backward_program.block(0)
+                .ops
+            ]
+            backward_op_type = self.op_type + "_grad"
+            assert backward_op_type not in ops, (
+                "%s shouldn't appear in program when check_prim is True"
+            ) % (backward_op_type)
         out = _as_list(net(args))
         if hasattr(self.op_test, "python_out_sig"):
             outputs_sig = self.op_test.python_out_sig
