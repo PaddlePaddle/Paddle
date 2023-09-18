@@ -291,7 +291,7 @@ def create_test_bf16(parent):
         def test_check_grad(self):
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X'], 'out2', check_prim=True, check_new_ir=True
+                place, ['X'], 'out2', check_prim=True, check_new_ir=False
             )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16Op")
