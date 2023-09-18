@@ -1327,6 +1327,88 @@ class TestTruncatedNormalInitializerDygraph:
         paddle.enable_static()
 
 
+class TestAssignInitializerDygraph:
+    def test_assign_initializer_cpu_fp32(self):
+        """
+        In dygraph mode, we can use initializer directly to initialize a tensor.
+        """
+        paddle.disable_static()
+        paddle.set_device("cpu")
+        paddle.set_default_dtype("float32")
+
+        tensor = paddle.zeros([1024, 1024, 8], dtype=paddle.get_default_dtype())
+        tensor.stop_gradient = False
+        array = np.random.randn(*tensor.shape).astype(
+            paddle.get_default_dtype()
+        )
+
+        assign_ = paddle.nn.initializer.Assign(array)
+        assign_(tensor)
+
+        np.testing.assert_allclose(array, tensor, rtol=1e-6, atol=1e-6)
+        paddle.enable_static()
+
+    def test_assign_initializer_cpu_fp64(self):
+        """
+        In dygraph mode, we can use initializer directly to initialize a tensor.
+        """
+        paddle.disable_static()
+        paddle.set_device("cpu")
+        paddle.set_default_dtype("float64")
+
+        tensor = paddle.zeros([1024, 1024, 8], dtype=paddle.get_default_dtype())
+        tensor.stop_gradient = False
+        array = np.random.randn(*tensor.shape).astype(
+            paddle.get_default_dtype()
+        )
+
+        assign_ = paddle.nn.initializer.Assign(array)
+        assign_(tensor)
+
+        np.testing.assert_allclose(array, tensor, rtol=1e-6, atol=1e-6)
+        paddle.enable_static()
+
+    def test_assign_initializer_gpu_fp32(self):
+        """
+        In dygraph mode, we can use initializer directly to initialize a tensor.
+        """
+        paddle.disable_static()
+        paddle.set_device("gpu")
+        paddle.set_default_dtype("float32")
+
+        tensor = paddle.zeros([1024, 1024, 8], dtype=paddle.get_default_dtype())
+        tensor.stop_gradient = False
+        array = np.random.randn(*tensor.shape).astype(
+            paddle.get_default_dtype()
+        )
+
+        assign_ = paddle.nn.initializer.Assign(array)
+        assign_(tensor)
+
+        np.testing.assert_allclose(array, tensor, rtol=1e-6, atol=1e-6)
+        paddle.enable_static()
+
+    def test_assign_initializer_gpu_fp64(self):
+        """
+        In dygraph mode, we can use initializer directly to initialize a tensor.
+        """
+        paddle.disable_static()
+        paddle.set_device("gpu")
+        paddle.set_default_dtype("float64")
+
+        tensor = paddle.zeros([1024, 1024, 8], dtype=paddle.get_default_dtype())
+        tensor.stop_gradient = False
+        array = np.random.randn(*tensor.shape).astype(
+            paddle.get_default_dtype()
+        )
+
+        assign_ = paddle.nn.initializer.Assign(array)
+        assign_(tensor)
+
+        np.testing.assert_allclose(array, tensor, rtol=1e-6, atol=1e-6)
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
