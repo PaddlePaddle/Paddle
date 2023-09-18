@@ -174,12 +174,10 @@ def create_parameter(
     Examples:
         .. code-block:: python
 
-            >>> from paddle import fluid
             >>> import paddle
             >>> paddle.enable_static()
             >>> W = paddle.create_parameter(shape=[784, 200], dtype='float32')
     """
-    # TODO
     check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_parameter')
     for item in shape:
         check_type(
@@ -247,11 +245,9 @@ def create_tensor(dtype, name=None, persistable=False):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP
             >>> import paddle
             >>> tensor = paddle.tensor.create_tensor(dtype='float32')
     """
-    # TODO
     check_dtype(
         dtype,
         'dtype',
@@ -295,43 +291,16 @@ def linspace(start, stop, num, dtype=None, name=None):
 
     Examples:
         .. code-block:: python
-            :name: bad_skip
 
             >>> import paddle
             >>> data = paddle.linspace(0, 10, 5, 'float32')
             >>> print(data.numpy())
             [0. 2.5 5. 7.5 10.]
-            >>> # doctest: +SKIP
-            >>> data = paddle.linspace(0, 10, 1, 'float32')
-            >>> print(data.numpy())
-            [0.]
-
-        .. code-block:: python
-            :name: bad_skip_empty
-
-            >>> import paddle
-            >>> data = paddle.linspace(0, 10, 5, 'float32')
-            >>> print(data.numpy())
-            [0. 2.5 5. 7.5 10.]
-            >>> # doctest: +SKIP()
-            >>> data = paddle.linspace(0, 10, 1, 'float32')
-            >>> print(data.numpy())
-            [0.]
-
-        .. code-block:: python
-            :name: comment_fluid
-
-            >>> import paddle
-            >>> data = paddle.linspace(0, 10, 5, 'float32')
-            >>> print(data.numpy())
-            [0. 2.5 5. 7.5 10.]
-            >>> # import paddle.fluid
             >>> data = paddle.linspace(0, 10, 1, 'float32')
             >>> print(data.numpy())
             [0.]
 
     """
-    # TODO
     if dtype is None:
         dtype = 'float32'
     tensor_num = num
@@ -459,13 +428,10 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
             >>> data = paddle.logspace(0, 10, 5, 2, 'float32')
             >>> print(data.numpy())
             [1.0000000e+00 5.6568542e+00 3.2000000e+01 1.8101933e+02 1.0240000e+03]
-
-            >>> # doctest: +SKIP('good skip')
             >>> data = paddle.logspace(0, 10, 1, 2, 'float32')
             >>> print(data.numpy())
             [1.]
     """
-    # TODO
     if dtype is None:
         dtype = 'float32'
     tensor_num = num
