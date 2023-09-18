@@ -40,7 +40,7 @@ struct CompatibleInfo {
   static std::vector<std::string> InputNames(const ::pir::Operation& op,
                                              bool allow_duplicate = false);
 
-  static std::vector<std::string> OutputNames(const ::pir::Operation& op);
+  static std::vector<std::string> OutputNames(::pir::Operation& op);  // NOLINT
 };
 
 }  // namespace newir
