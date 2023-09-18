@@ -86,6 +86,14 @@ class IR_API AbstractType {
   template <typename InterfaceT>
   typename InterfaceT::Concept *GetInterfaceImpl() const;
 
+  ///
+  /// \brief Returns true if the type has the interface with the given ID.
+  /// \param interface_id The interface ID of the type.
+  ///
+  bool HasInterface(TypeId interface_id) const {
+    return GetInterfaceImpl(interface_id);
+  }
+
  private:
   ///
   /// \brief The constructor is set to private and provides the user with the
