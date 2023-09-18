@@ -588,7 +588,7 @@ class OpInfoParser:
         if self.kernel_map is None or len(self.kernel_map['func']) == 1:
             input_types_map = {
                 'Tensor': 'paddle::dialect::DenseTensorType',
-                'Tensor[]': 'ir::VectorType<paddle::dialect::DenseTensorType>',
+                'Tensor[]': 'pir::VectorType<paddle::dialect::DenseTensorType>',
             }
             type_list = []
             for input_info in self.op_yaml_item['inputs']:
@@ -665,7 +665,7 @@ class OpInfoParser:
         if self.kernel_map is None or len(self.kernel_map['func']) == 1:
             output_type_map = {
                 'Tensor': 'paddle::dialect::DenseTensorType',
-                'Tensor[]': 'ir::VectorType<paddle::dialect::DenseTensorType>',
+                'Tensor[]': 'pir::VectorType<paddle::dialect::DenseTensorType>',
                 'SelectedRows': 'paddle::dialect::SelectedRowsType',
             }
             type_list = []
