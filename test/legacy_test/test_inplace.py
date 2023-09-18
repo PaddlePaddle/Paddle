@@ -864,7 +864,29 @@ class TestDygraphInplaceHypot(TestDygraphInplace):
 
             inplace_var = self.inplace_api_processing(inplace_var)
             self.assertEqual(var.inplace_version, 7)
+            
+    def test_backward_error(self):
+        # It raises an error because the inplace operator will result
+        # in incorrect gradient computation.
+        with paddle.base.dygraph.guard():
+            var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            var_a.stop_gradient = False
 
+            var_b = var_a**2
+
+            # Here, the gradient computation will use the value of var_b
+            var_c = var_b**2
+            self.inplace_api_processing(var_b)
+            var_c = paddle.cast(var_c, "float32")
+
+            loss = paddle.nn.functional.relu(var_c)
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
+                    1, 0
+                ),
+            ):
+                loss.backward()
 
 class TestDygraphInplaceNanToNum(TestDygraphInplace):
     def init_data(self):
