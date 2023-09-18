@@ -438,3 +438,19 @@ class Parallelizer:
                 "pp_degree": len(self._dist_context.process_meshes),
                 "pp_stage": get_pp_stage(self._dist_context, rank),
             }
+
+        from paddle.distributed.auto_parallel.static.cost import (
+            calc_time_by_cost_model,
+        )
+
+        for op in main_program.global_block().ops:
+            cost = 0.0
+            try:
+                # TODO(Ruibiao): c_identity is redundant in auto parallel, it is temporarily set as inplace-op and do nothing in kernel, remove it later.
+                if op.type == "c_identity" or op.type == "recv_v2":
+                    cost = 0.0
+                cost = calc_time_by_cost_model(op)
+            except Exception as e:
+                print(f"The cost of {op} is unknown since {repr(e)}.")
+
+            print(f"op : {op}, cost = {cost}")

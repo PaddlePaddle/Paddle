@@ -100,8 +100,6 @@ class Pipeline1F1BPass(PipelinePassBase):
     #
     def _backward_forward_overlap(self, backward_program, forward_program):
         logger.info("Backward forward overlap enabled in 1F1B.")
-        print(f"backward_program :: {backward_program}")
-        print(f"forward_program :: {forward_program}")
         # Split program
         backward_ops, forward_ops = (
             backward_program.global_block().ops,
@@ -128,34 +126,39 @@ class Pipeline1F1BPass(PipelinePassBase):
                 break
 
             backward_op_to_overlap = backward_ops[backward_op_id]
-            backward_cost_to_overlap = self._op_cost(backward_op_to_overlap)
+            backward_cost_to_overlap = 400
             backward_op_id += 1
 
             forward_op_to_overlap = forward_ops[forward_op_id]
             forward_cost_to_overlap = self._op_cost(forward_op_to_overlap)
-            print(
+            '''
+            # Debug messages:
+            logger.info(
                 f"backward_op_to_overlap : {backward_op_to_overlap}, cost = {backward_cost_to_overlap}"
             )
-            print(
+            logger.info(
                 f"forward_op_to_overlap : {forward_op_to_overlap}, cost = {forward_cost_to_overlap}"
             )
+            '''
 
             while (
                 forward_op_id < num_forward_ops
                 and backward_cost_to_overlap >= forward_cost_to_overlap
-                and (
-                    forward_op_id <= 0
-                    or not self.is_comm_op_valid_to_overlap(
-                        forward_ops[forward_op_id - 1]
-                    )
-                )
             ):
                 forward_op_id += 1
                 forward_op_to_overlap = forward_ops[forward_op_id]
                 forward_cost_to_overlap += self._op_cost(forward_op_to_overlap)
-                print(
+                '''
+                # Debug messages:
+                logger.info(
                     f"forward_op_to_overlap : {forward_op_to_overlap}, cost = {self._op_cost(forward_op_to_overlap)}"
                 )
+                '''
+
+                if self.is_comm_op_valid_to_overlap(
+                    forward_ops[forward_op_id - 1]
+                ):
+                    break
 
             if (
                 not forward_split_points
@@ -177,8 +180,10 @@ class Pipeline1F1BPass(PipelinePassBase):
             FORWARD, forward_program, forward_split_points
         )
 
-        self._multistreaming_for_overlapping(splitted_backward_programs)
-        self._multistreaming_for_overlapping(splitted_forward_programs)
+        self._multistreaming_for_overlapping(
+            splitted_backward_programs, BACKWARD
+        )
+        self._multistreaming_for_overlapping(splitted_forward_programs, FORWARD)
 
         # Rearrange splitted chunks for BACKWARD and FORWARD
         self.jobs_in_stable_phase.clear()
@@ -252,14 +257,17 @@ class Pipeline1F1BPass(PipelinePassBase):
         job_list.append(opt_job)
         return job_list
 
-    def _multistreaming_for_overlapping(self, programs):
+    def _multistreaming_for_overlapping(self, programs, job_type):
         num_programs = len(programs)
+        higher_stream_priority = -1
         for program_id, program in enumerate(programs):
             last_op = program.global_block().ops[-1]
             if self.is_comm_op_valid_to_overlap(last_op):
+                # TODO(Ruibiao): Assign different stream to FORWAD and BACKWARD CommOps, and set a lower priority for FORWARD Comm stream. It can reduce the impact of FORWARD Comm on BACKWARD Comp. Now the defalut stream prirotiy in standalone executor is already the lowest priority (correspongding to 0 in V100), cannot set a lower one. Maybe we need to support setting default stream for executor.
                 last_op.dist_attr.execution_stream = (
                     AutoParallelStreamType.MP_STREAM.value
                 )
+                last_op.dist_attr.stream_priority = higher_stream_priority
                 # Add cross-program event dependency
                 prior_op_input_arg_names = last_op.input_arg_names
                 prior_op_output_arg_names = last_op.output_arg_names
@@ -284,14 +292,52 @@ class Pipeline1F1BPass(PipelinePassBase):
                         ):
                             _add_event_dependency(last_op, posterior_op)
 
+    # TODO(Ruibiao): The cost here is just the experience value for a specific task (GPT-3-6.7B-MP2-PP4). A more genereal cost estimation scheme is required.
     def _op_cost(self, op):
+        handwritten_cost_map = {
+            "c_allreduce_sum": 0,
+            "elementwise_add": 40,
+            "split": 76,
+            "transpose2": 40,
+            "fused_softmax_mask_upper_triangle": 94,
+            "layer_norm": 55,
+            "gelu": 180,
+            "dropout": 160,
+            "c_identity": 0,
+            "recv_v2": 0,
+        }
+
+        op_type = op.type
+        if op_type in handwritten_cost_map.keys():
+            return handwritten_cost_map[op_type]
+
+        if op_type == "matmul_v2":
+            var_name = op.output_arg_names[0]
+            shape = op.block._var_recursive(var_name).shape
+            if shape == (1, 1024, 6144):
+                return 399
+            elif shape == (1, 16, 1024, 1024):
+                return 112
+            elif shape == (1, 16, 1024, 128):
+                return 95
+            elif shape == (1, 1024, 4096):
+                return 244
+
+        if op_type == "scale":
+            var_name = op.output_arg_names[0]
+            shape = op.block._var_recursive(var_name).shape
+            if shape == (1, 16, 1024, 128):
+                return 20
+            if shape == (1, 16, 1024, 1024):
+                return 90
+
         try:
-            # TODO(Ruibiao): c_identity is redundant in auto parallel, it is temporarily set as inplace-op and do nothing in kernel, remove it later.
-            if op.type == "c_identity" or op.type == "recv_v2":
-                return 0
-            return calc_time_by_cost_model(op)
-        except:
-            logger.info(f"The cost of {op} is unknown.")
+            time = calc_time_by_cost_model(op)
+            if op.type == "c_allreduce_sum":
+                time *= 8
+            return time
+        except Exception as e:
+            logger.info(f"The cost of {op} is unknown since {repr(e)}.")
             return 0.0
 
     def _partial_programs(self, program):
@@ -319,7 +365,9 @@ class Pipeline1F1BPass(PipelinePassBase):
             )
 
         for i in range(len(types)):
-            print(f"type = {types[i]}, sub_programs = {sub_programs[i]}\n")
+            logger.info(
+                f"type = {types[i]}, sub_programs = {sub_programs[i]}\n"
+            )
         logger.info(f"jobs_in_stable_phase = {self.jobs_in_stable_phase}")
 
         return types, sub_programs
