@@ -66,8 +66,6 @@ TEST(CodeGenC, module) {
   target.os = Target::OS ::Linux;
   Module::Builder builder("module1", target);
 
-  // auto stages = CreateStages({A, B, C});
-  // auto func = Lower("add1", stages, {A, B, C});
   ast_gen_ius::TensorGroup tensor_group({A, B, C});
   auto func = lang::LowerToAst("add1", {A, B, C}, &tensor_group);
 

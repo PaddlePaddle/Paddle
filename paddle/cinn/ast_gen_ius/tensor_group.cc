@@ -113,15 +113,6 @@ std::vector<ir::Tensor> TensorGroup::GetGenFuncTopoOrder(
   return ret;
 }
 
-bool TensorGroup::HasMarkedReduceInit(const std::string& tensor_name) const {
-  return tensor_name_needs_reduce_init_.count(tensor_name);
-}
-
-ir::Tensor TensorGroup::MarkReduceInit(const std::string& tensor_name) {
-  // TODO(zhhsplendid): add check
-  tensor_name_needs_reduce_init_.insert(tensor_name);
-}
-
 void TensorGroup::CtrlDepend(const ir::Tensor& tensor,
                              const ir::Tensor& to_dep) {
   ctrl_dep_[tensor->name].insert(to_dep->name);
@@ -158,8 +149,8 @@ std::string TensorGroup::GetShareMemRootName(const std::string& tensor_name) {
   return share_memory_tensor_[tensor_name];
 }
 
-void TensorGroup::ShareMemoryBuffer(const ir::Tensor& tensor,
-                                    const ir::Tensor& to_share) {
+void TensorGroup::MarkShareMemBuffer(const ir::Tensor& tensor,
+                                     const ir::Tensor& to_share) {
   share_memory_tensor_[GetShareMemRootName(to_share->name)] =
       GetShareMemRootName(tensor->name);
 }

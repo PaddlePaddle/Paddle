@@ -71,7 +71,6 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
   }
 
   if (tensor->is_reduce_tensor()) {
-    VLOG(6) << "Huihuang is reduce tensor \n";
     // Make an init Tensor for domain without reduce axis
     Expr init_value = tensor->GetReduceInitVal();
     // TODO(zhhsplendid): Clean the handcoded "__reduce_init" string
@@ -82,10 +81,9 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
         [=](const std::vector<Expr>& axis) { return init_value; },
         reduce_init_name);
     tensor_group->Insert(init_tensor);
-    tensor_group->ShareMemoryBuffer(tensor, init_tensor);
+    tensor_group->MarkShareMemBuffer(tensor, init_tensor);
     tensor_group->CtrlDepend(tensor, init_tensor);
     Expr init_body = ir::Store::Make(init_tensor, init_value, axis_exprs);
-    VLOG(6) << "Huihuang init_body = \n" << init_body;
 
     // For the remaining reduce axis, make reduce body
     const std::vector<ir::Var>& reduce_axis = tensor->reduce_axis;
@@ -99,7 +97,6 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
                                   ir::DeviceAPI::Host,
                                   ir::Block::Make({reduce_body}));
     }
-    VLOG(6) << "Huihuang red_body = \n" << reduce_body;
 
     // Put the two parts together
     ir::Expr body = ir::Block::Make({init_body, reduce_body});
@@ -114,10 +111,8 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
           ir::DeviceAPI::Host,
           i == static_cast<int>(axis_len) - 1 ? body : ir::Block::Make({body}));
     }
-    VLOG(6) << "Huihuang debug reduce = \n" << body;
     return body;
   } else {
-    VLOG(6) << "Huihuang is non-reduce tensor \n";
     ir::Expr body = ir::Store::Make(tensor, tensor->body(), axis_exprs);
     for (int i = static_cast<int>(axis_len) - 1; i >= 0; --i) {
       ir::Var loop_var = axis[i];
@@ -129,7 +124,6 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
                            ir::DeviceAPI::Host,
                            ir::Block::Make({body}));
     }
-    VLOG(6) << "Huihuang debug non-reduce = \n" << body;
     return body;
   }
 }

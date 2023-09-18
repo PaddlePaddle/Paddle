@@ -59,7 +59,7 @@ TEST(TensorGroup, Easy) {
 
   ASSERT_EQ(tensor_group.GetShareMemRootName("A"), "A");
   ASSERT_EQ(tensor_group.GetShareMemRootName("B"), "B");
-  tensor_group.ShareMemoryBuffer(tensor_group.Get("A"), tensor_group.Get("B"));
+  tensor_group.MarkShareMemBuffer(tensor_group.Get("A"), tensor_group.Get("B"));
 
   absl::flat_hash_map<std::string, ir::Tensor> buffered_tensors =
       tensor_group.AllocateBuffers();
@@ -122,9 +122,9 @@ TEST(TensorGroup, GraphTopo) {
   for (size_t i = 0; i < check_names.size(); ++i) {
     ASSERT_EQ(tensor_group.GetShareMemRootName(check_names[i]), check_names[i]);
   }
-  tensor_group.ShareMemoryBuffer(tensor_group.Get("A"), tensor_group.Get("B"));
-  tensor_group.ShareMemoryBuffer(tensor_group.Get("B"), tensor_group.Get("C"));
-  tensor_group.ShareMemoryBuffer(tensor_group.Get("C"), tensor_group.Get("D"));
+  tensor_group.MarkShareMemBuffer(tensor_group.Get("A"), tensor_group.Get("B"));
+  tensor_group.MarkShareMemBuffer(tensor_group.Get("B"), tensor_group.Get("C"));
+  tensor_group.MarkShareMemBuffer(tensor_group.Get("C"), tensor_group.Get("D"));
 
   ASSERT_EQ(tensor_group.GetShareMemRootName("A"),
             tensor_group.GetShareMemRootName("D"));
