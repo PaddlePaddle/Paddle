@@ -31,10 +31,10 @@ def get_uniform_min_and_max(weight):
     return min_value, max_value
 
 
-def check_cast_op(op, in_dtype=VarDesc.VarType.FP32):
+def check_cast_op(op):
     return (
         op.type == 'cast'
-        and op.attr('in_dtype') == in_dtype
+        and op.attr('in_dtype') == VarDesc.VarType.FP32
         and op.attr('out_dtype') in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]
     )
 

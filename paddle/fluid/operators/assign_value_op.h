@@ -121,7 +121,7 @@ class AssignValueKernel : public framework::OpKernel<T> {
       default:
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported data type(code %d) for AssignValue operator, only "
-            "supports bool, int32, float32, int8 and int64.",
+            "supports bool, int32, float32, float64, int8 and int64.",
             dtype));
         break;
     }
