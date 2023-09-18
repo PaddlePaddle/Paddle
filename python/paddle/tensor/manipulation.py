@@ -970,8 +970,10 @@ def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
         if i != dim1 and i != dim2:
             predshape.append(inshape[i])
     diaglen = min(
-        min(inshape[dim1], inshape[dim1] + offset),
-        min(inshape[dim2], inshape[dim2] - offset),
+        inshape[dim1],
+        inshape[dim1] + offset,
+        inshape[dim2],
+        inshape[dim2] - offset,
     )
     predshape.append(diaglen)
     assert tuple(predshape) == tuple(

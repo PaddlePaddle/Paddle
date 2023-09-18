@@ -405,7 +405,7 @@ class DistributedOpsPass(PassBase):
                 gpups_outputs.extend(outputs)
                 gpups_w_size.extend([w.shape[1]] * len(inputs))
                 gpups_min_distributed_idx = min(
-                    min(op_idxs), gpups_min_distributed_idx
+                    *op_idxs, gpups_min_distributed_idx
                 )
                 continue
 
