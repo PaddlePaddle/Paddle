@@ -45,7 +45,7 @@ class LayerHelper(LayerHelperBase):
     def multiple_input(self, input_param_name='input'):
         inputs = self.kwargs.get(input_param_name, [])
         ret = []
-        if isinstance(inputs, list) or isinstance(inputs, tuple):
+        if isinstance(inputs, (list, tuple)):
             for inp in inputs:
                 ret.append(self.to_variable(inp))
         else:
@@ -84,8 +84,7 @@ class LayerHelper(LayerHelperBase):
     def iter_inputs_and_params(self, input_param_name='input'):
         inputs = self.multiple_input(input_param_name)
         param_attrs = self.multiple_param_attr(len(inputs))
-        for ipt, param_attr in zip(inputs, param_attrs):
-            yield ipt, param_attr
+        yield from zip(inputs, param_attrs)
 
     def input_dtype(self, input_param_name='input'):
         inputs = self.multiple_input(input_param_name)
