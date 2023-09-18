@@ -141,7 +141,7 @@ class FusedLinearGradPattern
 };
 
 class FusedLinearGeluGradPattern
-    : public pir::drr::DrrPatternBase<FusedLinearPattern> {
+    : public pir::drr::DrrPatternBase<FusedLinearGeluGradPattern> {
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
     pir::drr::SourcePattern pat = ctx->SourcePattern();
@@ -155,15 +155,15 @@ class FusedLinearGeluGradPattern
                {{{"trans_x", pat.Attr("trans_x2")},
                  {"trans_y", pat.Attr("trans_y2")},
                  {"activation_grad", pat.Attr("act2")}}});
-
+    // TODO(gst): don't have reserve_space
     fused_gemm_epilogue(
         {&pat.Tensor("x"), &pat.Tensor("w"), &pat.Tensor("bias")},
-        {&pat.Tensor("fuse_out")});
+        {&pat.Tensor("fuse_out"), &pat.Tensor("reserve_space")});
     pat.Tensor("out") = pat.Op("pd_op.gelu")(pat.Tensor("fuse_out"));
 
     fused_gemm_epilogue_grad1({&pat.Tensor("x1"),
                                &pat.Tensor("w1"),
-                               &pat.Tensor("reserve_space"),
+                               &pat.Tensor("reserve_space1"),
                                &pat.Tensor("out_grad")},
                               {&pat.Tensor("x1_grad"),
                                &pat.Tensor("w1_grad"),
@@ -184,8 +184,8 @@ class FusedLinearGeluGradPattern
         });
     const auto &fused_gemm_epilogue_new =
         res.Op("pd_op.fused_gemm_epilogue",
-               {{{"trans_x", pat.Attr("trans_x")},
-                 {"trans_y", pat.Attr("trans_y")},
+               {{{"trans_x", pat.Attr("trans_x1")},
+                 {"trans_y", pat.Attr("trans_y1")},
                  {"activation", act_attr}}});
     const auto &act_grad_attr =
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
@@ -193,19 +193,19 @@ class FusedLinearGeluGradPattern
         });
     const auto &fused_gemm_epilogue_grad_new =
         res.Op("pd_op.fused_gemm_epilogue_grad",
-               {{{"trans_x", pat.Attr("trans_x")},
-                 {"trans_y", pat.Attr("trans_y")},
+               {{{"trans_x", pat.Attr("trans_x2")},
+                 {"trans_y", pat.Attr("trans_y2")},
                  {"activation_grad", act_grad_attr}}});
     fused_gemm_epilogue_new(
         {&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
-        {&res.Tensor("out"), &res.Tensor("reserve_space")});
-    fused_gemm_epilogue_grad_new({&res.Tensor("x"),
-                                  &res.Tensor("w"),
-                                  &res.Tensor("reserve_space"),
+        {&res.Tensor("out"), &res.Tensor("reserve_space2")});
+    fused_gemm_epilogue_grad_new({&res.Tensor("x1"),
+                                  &res.Tensor("w1"),
+                                  &res.Tensor("reserve_space2"),
                                   &res.Tensor("out_grad")},
-                                 {&res.Tensor("x_grad"),
-                                  &res.Tensor("w_grad"),
-                                  &res.Tensor("bias_grad")});
+                                 {&res.Tensor("gelu_dx"),
+                                  &res.Tensor("w1_grad"),
+                                  &res.Tensor("bias1_grad")});
   }
 };
 
@@ -355,5 +355,5 @@ TEST(DrrTest, FusedLinear) {
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
-  EXPECT_EQ(program.block()->size(), 26u);
+  EXPECT_EQ(program.block()->size(), 24u);
 }

@@ -74,7 +74,7 @@ class SourcePatternGraph : public PatternGraph {
  public:
   OpCall* AnchorNode() const;
 
-  std::vector<OpCall*> OutputNodes() const;
+  std::unordered_set<const OpCall*> OutputNodes() const;
 
  private:
   friend class DrrPatternContext;

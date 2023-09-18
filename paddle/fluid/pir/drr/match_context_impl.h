@@ -83,6 +83,11 @@ class MatchContextImpl final {
     return attr_map_;
   }
 
+  const std::unordered_map<std::string, std::shared_ptr<IrValue>>& tensor_map()
+      const {
+    return tensor_map_;
+  }
+
   void BindIrValue(const std::string& value_name,
                    const std::shared_ptr<IrValue>& value) {
     tensor_map_.emplace(value_name, value);
