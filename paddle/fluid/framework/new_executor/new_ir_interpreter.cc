@@ -1253,6 +1253,8 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
       VLOG(4) << "done CheckGC";
       interpreter::LogDeviceMemoryStats(place_);
     }
+    VLOG(4) << place_ << " "
+            << instr_node->DebugStringEx(scope_, value_2_var_name_);
     VLOG(5) << "after run kernel";
     instr_node->RecordEvent(place_);
   } catch (platform::EnforceNotMet& ex) {
