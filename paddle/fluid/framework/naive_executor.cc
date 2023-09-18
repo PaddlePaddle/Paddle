@@ -172,7 +172,7 @@ if (FLAGS_naive_executor_sync_op)
         std::cout << std::endl;
         // 是否打印值
         if (FLAGS_naive_executor_print_value_after_op) {
-          int want_num = std::min(1000000000, (int)(tensor->numel()));
+          int want_num = std::min(1000, (int)(tensor->numel()));
           if (tensor->dtype() == paddle::DataType::FLOAT32) {
             float *cpu_data = new float[tensor->numel()];
             float *tensor_data = tensor->data<float>();
@@ -185,7 +185,7 @@ if (FLAGS_naive_executor_sync_op)
             
             for(int i = 0; i < want_num; i++) {
               if(cpu_data[i] > 10000 || cpu_data[i] < -10000)
-              std::cout << "异常数字" << cpu_data[i] << std::endl;
+              std::cout << "float32 异常数字" << cpu_data[i] << std::endl;
             }
             delete[] cpu_data;
           }
@@ -202,7 +202,22 @@ if (FLAGS_naive_executor_sync_op)
             }
             
             for(int i = 0; i < want_num; i++) {
-              std::cout << "异常数字" << cpu_data[i] << std::endl;
+              std::cout << "int32 数字" << cpu_data[i] << std::endl;
+            }
+            delete[] cpu_data;
+          }
+          if (tensor->dtype() == paddle::DataType::INT64) {
+            int64_t *cpu_data = new int64_t[want_num];
+            int64_t *tensor_data = tensor->data<int64_t>();
+            if (tensor->place() == platform::CPUPlace()) {
+              memcpy(cpu_data, tensor_data, sizeof(int64_t) * want_num);
+            } else {
+              cudaMemcpy(cpu_data, tensor_data, sizeof(int64_t) * want_num,
+                        cudaMemcpyDeviceToHost);
+            }
+            
+            for(int i = 0; i < want_num; i++) {
+              std::cout << "int64 数字" << cpu_data[i] << std::endl;
             }
             delete[] cpu_data;
           }

@@ -66,7 +66,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
 
   std::vector<std::string> blacklist{"feed", "fetch", "ms_deform_attn", "matrix_multiply", "save", 
                                     // 这俩个主要是给显示量化用的
-                                    "quantize_linear", "dequantize_linear"};
+                                    "quantize_linear1", "dequantize_linear1"};
 
   int folded_op_num = 0;
 
