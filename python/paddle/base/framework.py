@@ -3198,7 +3198,7 @@ class Operator:
             if attr_type == core.AttrType.VAR:
                 attr_var_name = self.desc.attr(name, True).name()
                 a = "{name} = Var['{value}']".format(
-                    name=name, type=attr_type, value=attr_var_name
+                    name=name, value=attr_var_name
                 )
                 attrs_str += a
                 if i != len(attr_names) - 1:
@@ -3210,7 +3210,7 @@ class Operator:
                     "'%s'" % var.name() for var in self.desc.attr(name, True)
                 ]
                 a = "{name} = Vars[{value}]".format(
-                    name=name, type=attr_type, value=','.join(attr_var_names)
+                    name=name, value=','.join(attr_var_names)
                 )
                 attrs_str += a
                 if i != len(attr_names) - 1:
@@ -3219,7 +3219,7 @@ class Operator:
 
             if attr_type == core.AttrType.BLOCK:
                 a = "{name} = block[{value}]".format(
-                    name=name, type=attr_type, value=self._block_attr_id(name)
+                    name=name, value=self._block_attr_id(name)
                 )
                 attrs_str += a
                 if i != len(attr_names) - 1:
@@ -3228,7 +3228,7 @@ class Operator:
 
             if attr_type == core.AttrType.BLOCKS:
                 a = "{name} = blocks{value}".format(
-                    name=name, type=attr_type, value=self._blocks_attr_ids(name)
+                    name=name, value=self._blocks_attr_ids(name)
                 )
                 attrs_str += a
                 if i != len(attr_names) - 1:
@@ -3252,9 +3252,7 @@ class Operator:
             else:
                 value = self.desc.attr(name)
 
-            a = "{name} = {value}".format(
-                name=name, type=attr_type, value=value
-            )
+            a = "{name} = {value}".format(name=name, value=value)
 
             attrs_str += a
             if i != len(attr_names) - 1:
