@@ -41,13 +41,6 @@
 namespace phi {
 namespace distributed {
 
-struct P2POption {
-  bool is_p2p_op;
-  int p2p_rank;
-  int num_ranks;
-  int rank;
-};
-
 int CommContextManager::device_id = -1;
 
 void CommContextManager::SetDeviceId(int dev_id) {

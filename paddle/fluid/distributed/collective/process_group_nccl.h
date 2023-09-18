@@ -187,14 +187,14 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   void SyncCalcStream(const Place& place, const std::string& place_key);
 
   std::shared_ptr<ProcessGroup::Task> Collective(
-      std::function<void(ncclComm_t, gpuStream_t)> fn,
+      std::function<void(gpuStream_t)> fn,
       const phi::DenseTensor& tensor,
       CommType comm_type,
       bool sync_op,
       bool use_calc_stream);
 
   std::shared_ptr<ProcessGroup::Task> Point2Point(
-      std::function<void(ncclComm_t, gpuStream_t, int)> fn,
+      std::function<void(gpuStream_t, int)> fn,
       int peer,
       const phi::DenseTensor& tensor,
       CommType comm_type,

@@ -25,7 +25,13 @@
 namespace phi {
 namespace distributed {
 
-struct P2POption;
+struct P2POption {
+  bool is_p2p_op;
+  int p2p_rank;
+  int num_ranks;
+  int rank;
+};
+
 class Store;
 
 class CommContextManager {

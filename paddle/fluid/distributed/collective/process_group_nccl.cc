@@ -30,10 +30,10 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
 
-DECLARE_bool(benchmark);
-DECLARE_bool(nccl_blocking_wait);
-DECLARE_bool(use_stream_safe_cuda_allocator);
-DECLARE_bool(enable_async_trace);
+PHI_DECLARE_bool(benchmark);
+PHI_DECLARE_bool(nccl_blocking_wait);
+PHI_DECLARE_bool(use_stream_safe_cuda_allocator);
+PHI_DECLARE_bool(enable_async_trace);
 
 // set this flag to `true` and recompile to enable dynamic checks
 constexpr bool FLAGS_enable_nccl_dynamic_check = false;
@@ -49,6 +49,8 @@ using phi::distributed::NCCLDTypeToString;
 using phi::distributed::NCCLRedTypeToString;
 using phi::distributed::SerializeNCCLUniqueId;
 using phi::distributed::ToNCCLRedType;
+using phi::distributed::CheckSizeOnEachRank;
+
 uint64_t ProcessGroupNCCL::s_group_call_counter = 0;
 
 ProcessGroupNCCL::NCCLTask::NCCLTask(const Place& place,
@@ -253,16 +255,16 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
                                                 /*in_size_factor*/ 0);
   return Collective(
       [&](gpuStream_t stream) {
+        auto comm_context = this->GetCommContext();
         if (FLAGS_enable_nccl_dynamic_check) {
           phi::distributed::NCCLDynamicCheck::CheckShape(
-              *out_tensor, in_tensor, in_size_each_rank, rank_, size_, comm);
+              *out_tensor, in_tensor, in_size_each_rank, rank_, size_, comm_context->GetNcclComm());
         }
         int64_t in_row_size = in_tensor.numel() / in_dim[0],
                 out_row_size = out_tensor->numel() / out_dim[0];
         int64_t in_offset = 0, in_numel = 0, out_offset = 0, out_numel = 0;
         phi::DenseTensor input_partial, output_partial;
 
-        auto comm_context = this->GetCommContext();
         VLOG(3) << "[AllToAll] "
                 << "sendbuff: " << in_tensor.data()
                 << ", recvbuff: " << out_tensor->data()
@@ -286,7 +288,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
 
           out_numel = out_size_each_rank[i] * out_row_size;
           output_partial = GetPartialTensor(*out_tensor, out_offset, out_numel);
-          comm_context->Recv(&output_data, count, i, stream);
+          comm_context->Recv(&output_partial, out_numel, i, stream);
           out_offset += out_numel;
         }
         GroupEnd();
@@ -639,7 +641,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   if (!is_p2p_op) {
     store_key = "nccl_ids/" + std::to_string(gid_) + "/0";
   } else {
-    store_key = "nccl_ids/" + std::to_string(gid_) + "/" + p2p_key;
+    store_key = "nccl_ids/" + std::to_string(gid_) + "/" + place_key;
   }
 
   VLOG(3) << "init nccl rank_in_group: " << rank_ << ", nranks: " << size_
@@ -655,13 +657,14 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
 
   NCCL_CHECK(phi::dynload::ncclGroupStart());
 
-  CommContextManager::CreateNCCLCommContext(
+  phi::distributed::P2POption p2p_opts({is_p2p_op, p2p_rank, num_ranks, rank});
+  phi::distributed::CommContextManager::CreateNCCLCommContext(
       store_,
       store_key,
-      rank,
-      world_size,
+      rank_,
+      size_,
       "",
-      {is_p2p_op, p2p_rank, num_ranks, rank});
+      &p2p_opts);
 
   NCCL_CHECK(phi::dynload::ncclGroupEnd());
 
@@ -694,7 +697,7 @@ void ProcessGroupNCCL::SyncCalcStream(const Place& place,
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
-    std::function<void(ncclComm_t, gpuStream_t)> fn,
+    std::function<void(gpuStream_t)> fn,
     const phi::DenseTensor& tensor,
     CommType comm_type,
     bool sync_op,
@@ -721,7 +724,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
   auto nccl_stream = use_calc_stream ? calc_ctx->stream() : comm_ctx->stream();
 
   if (!FLAGS_enable_async_trace) {
-    fn(nccl_comm, nccl_stream);
+    fn(nccl_stream);
   } else {
     auto comm_task =
         std::make_unique<phi::distributed::NCCLCommTask>(place,
@@ -737,7 +740,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
                                                          comm_type,
                                                          pg_timeout_);
     comm_task->StartRecord();
-    fn(nccl_comm, nccl_stream);
+    fn(nccl_stream);
     comm_task->EndRecord();
     comm_task->SetStore(store_);
 
@@ -769,7 +772,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
-    std::function<void(ncclComm_t, gpuStream_t, int)> fn,
+    std::function<void(gpuStream_t, int)> fn,
     int peer,
     const phi::DenseTensor& tensor,
     CommType comm_type,
@@ -824,10 +827,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
                                                        comm_type);
 
   if (!FLAGS_enable_async_trace) {
-    fn(nccl_comm, nccl_stream, p2p_target_rank);
+    fn(nccl_stream, p2p_target_rank);
   } else {
     comm_task->StartRecord();
-    fn(nccl_comm, nccl_stream, p2p_target_rank);
+    fn(nccl_stream, p2p_target_rank);
     comm_task->EndRecord();
     comm_task->SetStore(store_);
 
@@ -873,7 +876,7 @@ std::shared_ptr<ProcessGroupNCCL> ProcessGroupNCCL::CreateProcessGroupNCCL(
 phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetCommContext(
     std::string* key) {
   std::string store_key = std::to_string(this->gid_);
-  if (!key.empty()) {
+  if (key && !key->empty()) {
     store_key = *key;
   }
   const auto& comm_context_manager =

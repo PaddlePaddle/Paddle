@@ -1350,3 +1350,21 @@ PHI_DEFINE_EXPORTED_bool(dynamic_static_unified_comm,
                          "Whether to use new communication library in auto "
                          "parallel and static mode.");
 #endif  // FLAGS_dynamic_static_unified_comm
+
+
+/**
+ * ProcessGroupNCCL related FLAG
+ * Name: enable_async_trace
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note: enable nccl async trace.
+ */
+
+PHI_DEFINE_EXPORTED_bool(enable_async_trace,
+                         false,
+                         "enable collective async trace");
+
+PHI_DEFINE_EXPORTED_int32(async_trace_count,
+                          5,
+                          "collective async trace count");

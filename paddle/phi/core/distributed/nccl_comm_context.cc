@@ -19,6 +19,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/check/nccl_dynamic_check.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
+#include "paddle/phi/core/distributed/nccl_tools.h"
 #include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"

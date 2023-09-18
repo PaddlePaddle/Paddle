@@ -19,7 +19,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"

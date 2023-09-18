@@ -36,6 +36,8 @@
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/fluid/framework/scope.h"
 
 #define NCCL_ID_VARNAME "NCCLID"
 
