@@ -174,7 +174,7 @@ class ParamAttr:
         """
         if arg is None:
             return ParamAttr()
-        elif isinstance(arg, list) or isinstance(arg, tuple):
+        elif isinstance(arg, (list, tuple)):
             return [ParamAttr._to_attr(a) for a in arg]
         elif isinstance(arg, ParamAttr):
             return arg
