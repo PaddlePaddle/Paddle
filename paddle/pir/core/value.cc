@@ -100,4 +100,12 @@ void Value::ReplaceAllUsesWith(Value new_value) const {
   }
 }
 
+std::vector<std::string> Value::GetValueInfoList() const {
+  std::vector<std::string> ret_str;
+  std::stringstream ss;
+  Type new_type = type();
+  new_type.Print(ss);
+  ret_str.emplace_back(ss.str());
+  return ret_str;
+}
 }  // namespace pir

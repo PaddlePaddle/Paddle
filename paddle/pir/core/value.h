@@ -88,6 +88,8 @@ class IR_API Value {
   void ReplaceAllUsesWith(Value new_value) const;
   detail::ValueImpl *impl() const { return impl_; }
 
+  std::vector<std::string> GetValueInfoList() const;
+
  protected:
   detail::ValueImpl *impl_{nullptr};
 };
