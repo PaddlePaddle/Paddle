@@ -24,6 +24,7 @@ void ScatterKernel(const Context &ctx,
                    const DenseTensor &index,
                    const DenseTensor &updates,
                    bool overwrite,
+                   const std::string &reduce,
                    DenseTensor *out);
 
 }  // namespace phi

@@ -1195,6 +1195,7 @@ void scatter_grad(const Tensor& index,
                   const Tensor& updates,
                   const Tensor& out_grad,
                   bool overwrite,
+                  const std::string& reduce,
                   Tensor* x_grad,
                   Tensor* updates_grad) {
   if (x_grad) {

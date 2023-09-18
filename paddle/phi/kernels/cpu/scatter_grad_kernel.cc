@@ -28,6 +28,7 @@ void ScatterGradKernel(const Context &ctx,
                        const DenseTensor &updates UNUSED,
                        const DenseTensor &out_grad,
                        bool overwrite UNUSED,
+                       const std::string &reduce,
                        DenseTensor *x_grad,
                        DenseTensor *updates_grad) {
   const auto &index_type = index.dtype();

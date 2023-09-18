@@ -23,6 +23,7 @@ void ScatterGradKernel(const Context &ctx,
                        const DenseTensor &updates,
                        const DenseTensor &out_grad,
                        bool overwrite,
+                       const std::string &reduce,
                        DenseTensor *x_grad,
                        DenseTensor *updates_grad);
 

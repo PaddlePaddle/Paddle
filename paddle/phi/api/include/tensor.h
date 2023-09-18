@@ -700,7 +700,8 @@ class PADDLE_API Tensor final {
               const std::vector<int64_t>& axis = {}) const;
   Tensor scatter(const Tensor& index,
                  const Tensor& updates,
-                 bool overwrite = true) const;
+                 bool overwrite = true,
+                 const std::string& reduce = "sum") const;
   Tensor scatter_nd_add(const Tensor& index, const Tensor& updates) const;
   Tensor abs() const;
   Tensor assign() const;

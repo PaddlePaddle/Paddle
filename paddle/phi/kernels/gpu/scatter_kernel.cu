@@ -28,6 +28,7 @@ void ScatterKernel(const Context &ctx,
                    const DenseTensor &index,
                    const DenseTensor &updates,
                    bool overwrite,
+                   const std::string &reduce,
                    DenseTensor *out) {
   phi::Copy(ctx, x, ctx.GetPlace(), false, out);
   // use template class to support int32_t and int64_t
@@ -42,12 +43,21 @@ void ScatterKernel(const Context &ctx,
                         index_type,
                         phi::DataType::INT32,
                         phi::DataType::INT64));
+  PADDLE_ENFORCE_EQ(reduce == "sum" || reduce == "mul",
+                    true,
+                    phi::errors::InvalidArgument(
+                        "scatter_op Reduce holds the wrong val, it holds [%s],"
+                        "but desires to be [%s] or [%s].",
+                        index_type,
+                        "sum",
+                        "mul"));
+  int reduce_type = reduce == "sum" ? 0 : 1;
   if (index_type == phi::DataType::INT32) {
     phi::funcs::GPUScatterAssign<T, int32_t>(
-        ctx, updates, index, out, overwrite);
+        ctx, updates, index, out, overwrite, reduce_type);
   } else {
     phi::funcs::GPUScatterAssign<T, int64_t>(
-        ctx, updates, index, out, overwrite);
+        ctx, updates, index, out, overwrite, reduce_type);
   }
 }
 

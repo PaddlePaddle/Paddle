@@ -27,6 +27,8 @@ void ScatterKernel(const Context &ctx,
                    const DenseTensor &index,
                    const DenseTensor &updates,
                    bool overwrite,
+
+                   const std::string &reduce,
                    DenseTensor *out) {
   // In place output: Out = X, Out[Ids] = Updates
   phi::Copy(ctx, x, ctx.GetPlace(), false, out);
@@ -42,6 +44,17 @@ void ScatterKernel(const Context &ctx,
                                    index_type,
                                    phi::DataType::INT32,
                                    phi::DataType::INT64));
+
+  bool reduce_value_match = reduce == "sum" || reduce == "mul";
+  PADDLE_ENFORCE_EQ(reduce_value_match,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Reduce holds the wrong value, it holds [%s],"
+                        "but desires to be [%s] or [%s].",
+                        reduce,
+                        "sum",
+                        "mul"));
+
   if (overwrite) {
     if (index_type == phi::DataType::INT32) {
       phi::funcs::ScatterAssign<T, int32_t>(ctx, updates, index, out);
@@ -50,9 +63,17 @@ void ScatterKernel(const Context &ctx,
     }
   } else {
     if (index_type == phi::DataType::INT32) {
-      phi::funcs::ScatterAssignAdd<T, int32_t>(ctx, updates, index, out);
+      if (reduce == "sum") {
+        phi::funcs::ScatterAssignAdd<T, int32_t>(ctx, updates, index, out);
+      } else {
+        phi::funcs::ScatterAssignMul<T, int32_t>(ctx, updates, index, out);
+      }
     } else {
-      phi::funcs::ScatterAssignAdd<T, int64_t>(ctx, updates, index, out);
+      if (reduce == "sum") {
+        phi::funcs::ScatterAssignAdd<T, int64_t>(ctx, updates, index, out);
+      } else {
+        phi::funcs::ScatterAssignMul<T, int64_t>(ctx, updates, index, out);
+      }
     }
   }
 }

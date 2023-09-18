@@ -178,6 +178,8 @@ void ScatterInferMeta(const MetaTensor& x,
                       const MetaTensor& index,
                       const MetaTensor& updates,
                       bool overwrite,
+
+                      const std::string& reduce,
                       MetaTensor* out);
 
 void ScatterNdAddInferMeta(const MetaTensor& x,

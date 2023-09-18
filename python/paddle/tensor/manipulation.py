@@ -2871,7 +2871,7 @@ def unbind(input, axis=0):
         return outs
 
 
-def scatter(x, index, updates, overwrite=True, name=None):
+def scatter(x, index, updates, overwrite=True, reduce='sum', name=None):
     """
     **Scatter Layer**
     Output is obtained by updating the input on selected indices based on updates.
@@ -2912,6 +2912,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
             If True, use the overwrite mode to update the output of the same index,
             if False, use the accumulate mode to update the output of the same index. Default value is True.
 
+        reduce (str, optional): Reduction operation to apply, can be either 'sum' or 'multiply'.
         name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
@@ -2947,7 +2948,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
             #  [1., 1.]]
     """
     if in_dynamic_mode():
-        return _C_ops.scatter(x, index, updates, overwrite)
+        return _C_ops.scatter(x, index, updates, overwrite, reduce)
     else:
         check_variable_and_dtype(
             x,
@@ -2961,19 +2962,19 @@ def scatter(x, index, updates, overwrite=True, name=None):
         helper.append_op(
             type="scatter",
             inputs={"X": x, "Ids": index, "Updates": updates},
-            attrs={'overwrite': overwrite},
+            attrs={'overwrite': overwrite, 'reduce': reduce},
             outputs={"Out": out},
         )
         return out
 
 
 @inplace_apis_in_dygraph_only
-def scatter_(x, index, updates, overwrite=True, name=None):
+def scatter_(x, index, updates, overwrite=True, reduce='sum', name=None):
     """
     Inplace version of ``scatter`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_tensor_scatter`.
     """
-    return _C_ops.scatter_(x, index, updates, overwrite)
+    return _C_ops.scatter_(x, index, updates, overwrite, reduce)
 
 
 def scatter_nd_add(x, index, updates, name=None):

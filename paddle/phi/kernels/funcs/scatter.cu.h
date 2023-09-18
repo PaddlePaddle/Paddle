@@ -30,7 +30,8 @@ __global__ void ScatterInitCUDAKernel(const IndexT* indices,
                                       T* output,
                                       size_t output_count,
                                       size_t index_size,
-                                      size_t slice_size) {
+                                      size_t slice_size,
+                                      int init_val) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
@@ -46,8 +47,176 @@ __global__ void ScatterInitCUDAKernel(const IndexT* indices,
         scatter_i);
 
     int64_t out_i = scatter_i * slice_size + slice_i;
-    *(output + out_i) = static_cast<T>(0);
+    *(output + out_i) = static_cast<T>(init_val);
   }
+}
+
+template <typename T>
+struct AtomicFPOp;
+
+template <>
+struct AtomicFPOp<phi::dtype::float16> {
+  template <typename func_t>
+  inline __device__ phi::dtype::float16 operator()(phi::dtype::float16* address,
+                                                   phi::dtype::float16 val,
+                                                   const func_t& func) {
+    unsigned int* address_as_ui =
+        (unsigned int*)((char*)address - ((size_t)address & 2));
+    unsigned int old = *address_as_ui;
+    unsigned int assumed;
+
+    phi::dtype::float16 hsum;
+    do {
+      assumed = old;
+      hsum.x = (size_t)address & 2 ? (old >> 16) : (old & 0xffff);
+      hsum = func(hsum, val);
+      old = (size_t)address & 2 ? (old & 0xffff) | (hsum.x << 16)
+                                : (old & 0xffff0000) | hsum.x;
+      old = atomicCAS(address_as_ui, assumed, old);
+    } while (assumed != old);
+    hsum.x = (size_t)address & 2 ? (old >> 16) : (old & 0xffff);
+    return hsum;
+  }
+};
+
+template <>
+struct AtomicFPOp<phi::dtype::bfloat16> {
+  template <typename func_t>
+  inline __device__ phi::dtype::bfloat16 operator()(
+      phi::dtype::bfloat16* address,
+      phi::dtype::bfloat16 val,
+      const func_t& func) {
+    unsigned int* address_as_ui =
+        (unsigned int*)((char*)address - ((size_t)address & 2));
+    unsigned int old = *address_as_ui;
+    unsigned int assumed;
+
+    phi::dtype::bfloat16 bsum;
+    do {
+      assumed = old;
+      bsum.x = (size_t)address & 2 ? (old >> 16) : (old & 0xffff);
+      bsum = func(bsum, val);
+      old = (size_t)address & 2 ? (old & 0xffff) | (bsum.x << 16)
+                                : (old & 0xffff0000) | bsum.x;
+      old = atomicCAS(address_as_ui, assumed, old);
+    } while (assumed != old);
+    bsum.x = (size_t)address & 2 ? (old >> 16) : (old & 0xffff);
+    return bsum;
+  }
+};
+
+template <>
+struct AtomicFPOp<double> {
+  template <typename func_t>
+  inline __device__ double operator()(double* address,
+                                      double val,
+                                      const func_t& func) {
+    unsigned long long int* address_as_ull = (unsigned long long int*)address;
+    unsigned long long int old = *address_as_ull;
+    unsigned long long int assumed;
+
+    do {
+      assumed = old;
+      old = atomicCAS(address_as_ull, assumed, func(val, assumed));
+      // Note: uses integer comparison to avoid hang in case of NaN (since NaN
+      // != NaN)
+    } while (assumed != old);
+
+    return __longlong_as_double(old);
+  }
+};
+
+template <>
+struct AtomicFPOp<int64_t> {
+  template <typename func_t>
+  inline __device__ int64_t operator()(int64_t* address,
+                                       int64_t val,
+                                       const func_t& func) {
+    // Here, we check long long int must be int64_t.
+    static_assert(sizeof(int64_t) == sizeof(long long int),  // NOLINT
+                  "long long should be int64");
+    unsigned long long int* address_as_ull = (unsigned long long int*)address;
+    unsigned long long int old = *address_as_ull;
+    unsigned long long int assumed;
+
+    do {
+      assumed = old;
+      old = atomicCAS(address_as_ull, assumed, func(val, assumed));
+      // Note: uses integer comparison to avoid hang in case of NaN (since NaN
+      // != NaN)
+    } while (assumed != old);
+
+    return static_cast<int64_t>(old);
+  }
+};
+
+// Atomic multiplication implementation.
+
+inline __device__ phi::dtype::float16 gpuAtomicMul(phi::dtype::float16* address,
+                                                   phi::dtype::float16 val) {
+  return AtomicFPOp<phi::dtype::float16>()(
+      address, val, [](phi::dtype::float16 bsum, phi::dtype::float16 val) {
+        return bsum * val;
+      });
+}
+
+inline __device__ phi::dtype::bfloat16 gpuAtomicMul(
+    phi::dtype::bfloat16* address, phi::dtype::bfloat16 val) {
+  return AtomicFPOp<phi::dtype::bfloat16>()(
+      address, val, [](phi::dtype::bfloat16 bsum, phi::dtype::bfloat16 val) {
+        return bsum * val;
+      });
+}
+
+inline __device__ double gpuAtomicMul(double* address, double val) {
+  return AtomicFPOp<double>()(
+      address, val, [](double val, unsigned long long int assumed) {
+        return __double_as_longlong(val * __longlong_as_double(assumed));
+      });
+}
+
+inline __device__ int64_t gpuAtomicMul(int64_t* address, int64_t val) {
+  return AtomicFPOp<int64_t>()(
+      address, val, [](int64_t val, unsigned long long int assumed) {
+        return static_cast<unsigned long long int>(
+            val * static_cast<int64_t>(assumed));
+      });
+}
+
+// Dont use a templated function for this since the addition function defaults
+// to the CUDA built-in.
+inline __device__ float gpuAtomicMul(float* address, float val) {
+  unsigned int* address_as_ull = (unsigned int*)address;
+  unsigned int old = *address_as_ull;
+  unsigned int assumed;
+
+  do {
+    assumed = old;
+    old = atomicCAS(
+        address_as_ull, assumed, __float_as_int(val * __int_as_float(assumed)));
+
+    // Note: uses integer comparison to avoid hang in case of NaN (since NaN !=
+    // NaN)
+  } while (assumed != old);
+
+  return __int_as_float(old);
+}
+
+// Dont use a templated function for this since the addition function defaults
+// to the CUDA built-in.
+inline __device__ int gpuAtomicMul(int* address, int val) {
+  int old = *address;
+  int assumed;
+
+  do {
+    assumed = old;
+    old = atomicCAS(address, assumed, val * assumed);
+
+    // Note: uses integer comparison to avoid hang in case of NaN (since NaN !=
+    // NaN)
+  } while (assumed != old);
+
+  return old;
 }
 
 template <typename T, typename IndexT = int>
@@ -57,7 +226,8 @@ __global__ void ScatterCUDAKernel(const T* params,
                                   size_t output_count,
                                   size_t index_size,
                                   size_t slice_size,
-                                  bool overwrite) {
+                                  bool overwrite,
+                                  int reduce) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
@@ -76,7 +246,13 @@ __global__ void ScatterCUDAKernel(const T* params,
     if (overwrite) {
       *(output + out_i) = *(params + i);
     } else {
-      phi::CudaAtomicAdd(output + out_i, *(params + i));
+      if (reduce == 0) {
+        // sum
+        phi::CudaAtomicAdd(output + out_i, *(params + i));
+      } else if (reduce == 1) {
+        // mul
+        gpuAtomicMul(output + out_i, *(params + i));
+      }
     }
   }
 }
@@ -127,7 +303,8 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
                       const DenseTensor& src,
                       const DenseTensor& index,
                       DenseTensor* output,
-                      bool overwrite = true) {
+                      bool overwrite = true,
+                      int reduce = 0) {
   if (index.dims().size() == 2) {
     PADDLE_ENFORCE_EQ(
         index.dims()[1],
@@ -145,6 +322,13 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
             "But received value is [%d]",
             index.dims().size()));
   }
+
+  PADDLE_ENFORCE_EQ(
+      reduce == 0 || reduce == 1,
+      true,
+      phi::errors::InvalidArgument("reduce should be 0, or 1 in scatter_op."
+                                   "But received value is [%d]",
+                                   reduce));
 
   int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
 
@@ -173,8 +357,15 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
 
   // if not overwrite mode, init data
   if (!overwrite) {
-    ScatterInitCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
-        p_index, p_output, output_dims[0], index_size, slice_size);
+    if (reduce == 0) {
+      // sum
+      ScatterInitCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
+          p_index, p_output, output_dims[0], index_size, slice_size, 0);
+    } else if (reduce == 1) {
+      // mul
+      ScatterInitCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
+          p_index, p_output, output_dims[0], index_size, slice_size, 1);
+    }
   }
 
   ScatterCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(p_src,
@@ -183,7 +374,8 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
                                                                  output_dims[0],
                                                                  index_size,
                                                                  slice_size,
-                                                                 overwrite);
+                                                                 overwrite,
+                                                                 reduce);
 }
 
 // The function is only for scatter grad x,
@@ -209,7 +401,7 @@ void GPUScatterGradForX(const phi::GPUContext& ctx,
   phi::backends::gpu::LimitGridDim(ctx, &grid);
 
   ScatterInitCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
-      p_index, p_output, dst_dims[0], index_size, slice_size);
+      p_index, p_output, dst_dims[0], index_size, slice_size, 0);
 }
 
 template <typename T, typename IndexT = int>
