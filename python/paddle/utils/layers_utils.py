@@ -158,8 +158,7 @@ def _yield_value(iterable):
 def _yield_flat_nest(nest):
     for n in _yield_value(nest):
         if is_sequence(n):
-            for ni in _yield_flat_nest(n):
-                yield ni
+            yield from _yield_flat_nest(n)
         else:
             yield n
 

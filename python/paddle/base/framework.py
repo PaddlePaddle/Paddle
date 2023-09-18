@@ -6954,8 +6954,7 @@ class Program:
                 >>> # var label : LOD_TENSOR.shape(-1, 1).dtype(int64).stop_gradient(True)
         """
         for each_block in self.blocks:
-            for each_var in list(each_block.vars.values()):
-                yield each_var
+            yield from list(each_block.vars.values())
 
     def all_parameters(self):
         """

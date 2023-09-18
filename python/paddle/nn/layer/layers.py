@@ -1110,10 +1110,9 @@ class Layer:
             if layer is None:
                 continue
             layer_prefix = prefix + ('.' if prefix else '') + key
-            for p, l in layer.named_sublayers(
+            yield from layer.named_sublayers(
                 prefix=layer_prefix, include_self=True, layers_set=layers_set
-            ):
-                yield p, l
+            )
 
     def register_buffer(self, name, tensor, persistable=True):
         """
