@@ -518,13 +518,9 @@ cc_test(
   SRCS version_test.cc
   DEPS version)
 
-add_library(
-  proto_desc_base OBJECT
-  var_desc.cc
-  op_desc.cc
-  block_desc.cc
-  program_desc.cc
-  DEPS
+add_library(proto_desc_base OBJECT var_desc.cc op_desc.cc block_desc.cc
+                                   program_desc.cc)
+add_dependencies(
   attribute
   ops_extra_info
   shape_inference
