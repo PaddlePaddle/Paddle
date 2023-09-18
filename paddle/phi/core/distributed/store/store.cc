@@ -33,7 +33,6 @@ bool Store::check(const std::string& key) {
       errors::InvalidArgument("Implement the get method in the subclass."));
 }
 
-
 void Store::wait(const std::string& key) {
   PADDLE_THROW(
       errors::InvalidArgument("Implement the wait method in the subclass."));

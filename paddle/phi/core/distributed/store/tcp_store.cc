@@ -111,15 +111,16 @@ void MasterDaemon::_do_get(SocketType socket) {
 }
 
 void MasterDaemon::_do_check(SocketType socket) {
-    std::string key = tcputils::receive_string(socket);
-    VLOG(4) << "MasterDaemon::_do_check key(" << key << ") " << GetSockName(socket);
+  std::string key = tcputils::receive_string(socket);
+  VLOG(4) << "MasterDaemon::_do_check key(" << key << ") "
+          << GetSockName(socket);
 
-    auto iter = _store.find(key);
-    if (iter != _store.end()) {
-        tcputils::send_value<ReplyType>(socket, ReplyType::READY);
-    } else {
-        tcputils::send_value<ReplyType>(socket, ReplyType::NOT_READY);
-    }
+  auto iter = _store.find(key);
+  if (iter != _store.end()) {
+    tcputils::send_value<ReplyType>(socket, ReplyType::READY);
+  } else {
+    tcputils::send_value<ReplyType>(socket, ReplyType::NOT_READY);
+  }
 }
 
 #ifndef _WIN32
@@ -445,7 +446,6 @@ bool TCPStore::check(const std::string& key) {
     return false;
   }
 }
-
 
 void TCPStore::wait(const std::string& key) {
   ReplyType reply;

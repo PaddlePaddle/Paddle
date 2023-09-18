@@ -42,6 +42,7 @@ constexpr int64_t kWaitBlockTImeout = 10;
 namespace paddle {
 namespace distributed {
 
+using phi::distributed::CheckSizeOnEachRank;
 using phi::distributed::GetTraceEndKey;
 using phi::distributed::GetTraceStartKey;
 using phi::distributed::IsP2POP;
@@ -49,7 +50,6 @@ using phi::distributed::NCCLDTypeToString;
 using phi::distributed::NCCLRedTypeToString;
 using phi::distributed::SerializeNCCLUniqueId;
 using phi::distributed::ToNCCLRedType;
-using phi::distributed::CheckSizeOnEachRank;
 
 uint64_t ProcessGroupNCCL::s_group_call_counter = 0;
 
@@ -258,7 +258,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
         auto comm_context = this->GetCommContext();
         if (FLAGS_enable_nccl_dynamic_check) {
           phi::distributed::NCCLDynamicCheck::CheckShape(
-              *out_tensor, in_tensor, in_size_each_rank, rank_, size_, comm_context->GetNcclComm());
+              *out_tensor,
+              in_tensor,
+              in_size_each_rank,
+              rank_,
+              size_,
+              comm_context->GetNcclComm());
         }
         int64_t in_row_size = in_tensor.numel() / in_dim[0],
                 out_row_size = out_tensor->numel() / out_dim[0];
@@ -659,12 +664,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
 
   phi::distributed::P2POption p2p_opts({is_p2p_op, p2p_rank, num_ranks, rank});
   phi::distributed::CommContextManager::CreateNCCLCommContext(
-      store_,
-      store_key,
-      rank_,
-      size_,
-      "",
-      &p2p_opts);
+      store_, store_key, rank_, size_, "", &p2p_opts);
 
   NCCL_CHECK(phi::dynload::ncclGroupEnd());
 
