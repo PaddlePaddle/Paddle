@@ -23,7 +23,6 @@ import paddle.distributed as dist
 class TestMatmulApiForSemiAutoParallel:
     def __init__(self):
         self._dtype = os.getenv("dtype")
-        self._seeds = eval(os.getenv("seeds"))
         self._backend = os.getenv("backend")
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 

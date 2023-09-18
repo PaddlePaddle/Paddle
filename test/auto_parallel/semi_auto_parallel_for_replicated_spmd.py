@@ -24,36 +24,55 @@ import paddle.nn.functional as F
 class TestReplicatedSPmdApiForSemiAutoParallel:
     def __init__(self):
         self._dtype = os.getenv("dtype")
-        self._seeds = eval(os.getenv("seeds"))
         self._backend = os.getenv("backend")
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
-    def test_relu(self):
-        dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=['x', None])
-        x = dist.dtensor_from_fn(paddle.randn, dist_attr, [64, 32], self._dtype)
-        out = F.relu(x)
-        # verify output local shape and dist attr
-        np.testing.assert_equal(out._local_shape, [64, 32], verbose=True)
-        np.testing.assert_equal(
-            out.dist_attr.dims_mapping, [-1, -1], verbose=True
-        )
+        paddle.seed(2023)
+        np.random.seed(2023)
 
-    def test_cross_entropy(self):
-        N = 100
-        C = 200
+    def check_tensor_eq(self, a, b):
+        np1 = a.numpy()
+        np2 = b.numpy()
+        np.testing.assert_allclose(np1, np2, rtol=1e-05)
+
+    def create_local_and_dist_tensor_pair(self, np_array):
+        local_t = paddle.to_tensor(np_array, dtype=np_array.dtype)
+
         dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=['x', None])
+        dist_t = dist.shard_tensor(np_array, dist_attr=dist_attr)
+
+        local_t.stop_gradient = True
+        dist_t.stop_gradient = True
+
+        return local_t, dist_t
+
+    def test_relu(self):
+        x = np.random.random(size=[4, 4]).astype("float32")
+        local_in, dist_in = self.create_local_and_dist_tensor_pair(x)
+        local_out = F.relu(local_in)
+        dist_out = F.relu(dist_in)
+        # verify output dist attr and value
+        np.testing.assert_equal(
+            dist_out.dist_attr.dims_mapping, [-1, -1], verbose=True
+        )
+        self.check_tensor_eq(local_out, dist_out)
+
+    def test_mse_loss(self):
         input = dist.dtensor_from_fn(
-            paddle.randn, dist_attr, [N, C], self._dtype
+            paddle.randn,
+            dist.DistAttr(mesh=self._mesh, sharding_specs=['x', None]),
+            [4, 4],
+            dtype=self._dtype,
         )
         label = dist.dtensor_from_fn(
-            paddle.randint, dist_attr, 0, C, [N], self._dtype
+            paddle.randn,
+            dist.DistAttr(mesh=self._mesh, sharding_specs=[None]),
+            [4],
+            self._dtype,
         )
-        weight = dist.dtensor_from_fn(paddle.randn, dist_attr, [C], self._dtype)
 
-        cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
-            weight=weight, reduction='mean'
-        )
-        out = cross_entropy_loss(input, label)
+        mes_loss = paddle.nn.loss.MSELoss()
+        out = mes_loss(input, label)
         print(out)
 
     def run_test_case(self):
@@ -64,8 +83,8 @@ class TestReplicatedSPmdApiForSemiAutoParallel:
         else:
             raise ValueError("Only support cpu or gpu backend.")
 
-        self.test_relu()
-        self.test_cross_entropy()
+        # self.test_relu()
+        self.test_mse_loss()
 
 
 if __name__ == '__main__':

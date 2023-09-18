@@ -14,6 +14,8 @@
 
 #include "paddle/phi/core/distributed/auto_parallel/r_to_p_reshard_function.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
@@ -45,6 +47,7 @@ void RToPReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                const DistTensor& in,
                                const TensorDistAttr& out_dist_attr,
                                DistTensor* out) {
+  VLOG(3) << "Call RToPReshardFunction Eval";
   const auto& out_process_mesh = out_dist_attr.process_mesh();
   int64_t local_rank = GetCurRankCoordInMesh(out_process_mesh)[0];
   IntArray shape(in.dims().Get(), in.dims().size());

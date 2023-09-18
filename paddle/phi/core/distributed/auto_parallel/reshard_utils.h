@@ -59,12 +59,14 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
 #define RESHARD_FUNCTOR_IMPL(dev_ctx, fn_name, dtype, ...)            \
   do {                                                                \
     if (phi::CPUContext::classof(dev_ctx)) {                          \
+      VLOG(4) << "Call `" << #fn_name << "` in Resharding on GPU.";   \
       PD_VISIT_FLOATING_AND_INTEGRAL_TYPES(                           \
           dtype, #fn_name, ([&] {                                     \
             fn_name<data_t>(static_cast<const CPUContext&>(*dev_ctx), \
                             __VA_ARGS__);                             \
           }));                                                        \
     } else if (phi::GPUContext::classof(dev_ctx)) {                   \
+      VLOG(4) << "Call `" << #fn_name << "` in Resharding on CPU.";   \
       PD_VISIT_FLOATING_AND_INTEGRAL_TYPES(                           \
           dtype, #fn_name, ([&] {                                     \
             fn_name<data_t>(static_cast<const GPUContext&>(*dev_ctx), \
@@ -80,6 +82,7 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
 #define RESHARD_FUNCTOR_IMPL(dev_ctx, fn_name, dtype, ...)                \
   do {                                                                    \
     if (phi::CPUContext::classof(dev_ctx)) {                              \
+      VLOG(4) << "Call `" << #fn_name << "` in Resharding on CPU.";       \
       PD_VISIT_FLOATING_AND_INTEGRAL_TYPES(                               \
           dtype, #fn_name, ([&] {                                         \
             fn_name<data_t>(static_cast<const CPUContext&>(*dev_ctx),     \
@@ -108,8 +111,12 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
 #define RESHARD_FUNCTOR_WITHOUT_DTYPE(dev_ctx, fn_name, ...)          \
   do {                                                                \
     if (phi::CPUContext::classof(dev_ctx)) {                          \
+      VLOG(4) << "Call `" << #fn_name                                 \
+              << "`without DType in Resharding on CPU.";              \
       fn_name(static_cast<const CPUContext&>(*dev_ctx), __VA_ARGS__); \
     } else if (phi::GPUContext::classof(dev_ctx)) {                   \
+      VLOG(4) << "Call `" << #fn_name                                 \
+              << "`without DType in Resharding on GPU.";              \
       fn_name(static_cast<const GPUContext&>(*dev_ctx), __VA_ARGS__); \
     } else {                                                          \
       PADDLE_THROW(phi::errors::Unimplemented(                        \
@@ -121,6 +128,8 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
 #define RESHARD_FUNCTOR_WITHOUT_DTYPE(dev_ctx, fn_name, ...)              \
   do {                                                                    \
     if (phi::CPUContext::classof(dev_ctx)) {                              \
+      VLOG(4) << "Call `" << #fn_name                                     \
+              << "`without DType in Resharding on CPU.";                  \
       fn_name(static_cast<const CPUContext&>(*dev_ctx), __VA_ARGS__);     \
     } else {                                                              \
       PADDLE_THROW(phi::errors::Unimplemented(                            \
