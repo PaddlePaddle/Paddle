@@ -404,6 +404,7 @@ def apply_pass(main_program, startup_program, pass_name, pass_attr={}):
     )
 
     if pass_name == "1F1B":
+        # TODO(Ruibiao): Move FLAGS_1f1b_backward_forward_overlap and FLAGS_mp_async_allreduce_in_backward to auto parallel Strategy after these two optimizations are available.
         pass_attr["enable_backward_forward_overlap"] = int(
             os.environ.get("FLAGS_1f1b_backward_forward_overlap", 0)
         )
