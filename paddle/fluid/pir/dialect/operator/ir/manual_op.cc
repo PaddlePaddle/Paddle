@@ -1100,7 +1100,7 @@ pir::Block *IfOp::false_block() {
   return false_region.front();
 }
 void IfOp::Print(pir::IrPrinter &printer) {
-  auto &os = printer.os;
+  auto &os = printer.os_;
   auto op = operation();
   printer.PrintOpResult(op);
   os << " = pd_op.if";
