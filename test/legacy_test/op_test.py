@@ -1369,7 +1369,7 @@ class OpTest(unittest.TestCase):
                             result[key][0][
                                 i
                             ].name = self.python_out_sig_sub_name[key][i]
-            return result
+                return result
 
     def _check_ir_output(self, place, program, feed_map, fetch_list, outs):
         if os.getenv("FLAGS_NEW_IR_OPTEST") is None:
@@ -1624,9 +1624,7 @@ class OpTest(unittest.TestCase):
             if fwd_var_name is None:
                 fwd_var_name = arg
             fwd_var = fwd_program.global_block().vars.get(fwd_var_name)
-            assert fwd_var is not None, "{} cannot be found".format(
-                fwd_var_name
-            )
+            assert fwd_var is not None, f"{fwd_var_name} cannot be found"
             grad_var = grad_block.create_var(
                 name=arg,
                 dtype=fwd_var.dtype,
@@ -2088,14 +2086,16 @@ class OpTest(unittest.TestCase):
                     expect, expect_np = self.find_expect_value(name)
                 else:
                     expect_np = (
-                        expect[0] if isinstance(expect, tuple) else expect
+                        expect[0]
+                        if isinstance(expect, (tuple, list))
+                        else expect
                     )
                 actual_np, expect_np = self.convert_uint16_to_float_ifneed(
                     actual_np, expect_np
                 )
                 # modify there for fp32 check
                 self._compare_numpy(name, actual_np, expect_np)
-                if isinstance(expect, tuple):
+                if isinstance(expect, (tuple, list)):
                     self._compare_list(name, actual, expect)
 
             def compare_outputs_with_expects(self):
