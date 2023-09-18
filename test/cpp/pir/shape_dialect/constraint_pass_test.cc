@@ -28,6 +28,7 @@
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type.h"
+#include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/core/cast_utils.h"
 #include "paddle/pir/core/dialect.h"
 #include "paddle/pir/core/enforce.h"
@@ -37,6 +38,7 @@
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
+#include "paddle/pir/dialect/shape/ir/shape_op.h"
 #include "paddle/pir/dialect/shape/transforms/shape_optimization_pass.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
@@ -75,22 +77,32 @@ pir::Operation *CreateDenseTensorOp(
   return op;
 }
 
-TEST(constraint_pass, materialize_shape) {
+TEST(constraint_pass, materialize_and_build_shape) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Program program(ctx);
   pir::PassManager pm(ctx);
   ctx->GetOrRegisterDialect<pir::dialect::ShapeDialect>();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-  pir::Operation *op0 =
-      CreateDenseTensorOp(ctx, {-100000, 2}, {"op0_attr"}, {"op0_name"});
+  pir::Operation *op0 = CreateDenseTensorOp(
+      ctx, {pir::ShapedTypeInterface::kDynamic, 2}, {"op0_attr"}, {"op0_name"});
   program.block()->push_back(op0);
   pir::Operation *op1 =
-      CreateDenseTensorOp(ctx, {-100000, 2, 2}, {"op1_attr"}, {"op1_name"});
+      CreateDenseTensorOp(ctx,
+                          {pir::ShapedTypeInterface::kDynamic, 2, 2},
+                          {"op1_attr"},
+                          {"op1_name"});
   program.block()->push_back(op1);
 
   EXPECT_EQ(program.block()->size(), static_cast<size_t>(2));
   pm.AddPass(pir::CreateShapeOptimizationPass());
+
   EXPECT_TRUE(pm.Run(&program));
-  // 5 ConstantOp + 5 TensorDim + 2 TieShape + op0 + op1 == 14 Ops.
-  EXPECT_EQ(program.block()->size(), static_cast<size_t>(14));
+
+  // 5 ConstantOp + 5 TensorDim + 2 TieShape + op0 + op1 + funcOp == 15 Ops.
+  EXPECT_EQ(program.block()->size(), static_cast<size_t>(15));
+
+  std::stringstream ss;
+  program.Print(ss);
+
+  LOG(INFO) << ss.str();
 }

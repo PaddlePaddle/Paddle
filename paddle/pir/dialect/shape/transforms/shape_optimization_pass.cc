@@ -24,7 +24,8 @@
 #include "paddle/pir/pass/pass_registry.h"
 
 namespace {
-using PassPipelineRunner = std::function<bool(OpPassManager&, ModuleOp)>;
+using PassPipelineRunner =
+    std::function<bool(pir::PassManager&, pir::ModuleOp)>;
 
 bool InsertTieShapeOnValue(pir::OpResult value,
                            pir::Builder& builder) {  // NOLINT
@@ -59,7 +60,7 @@ bool InsertTieShapeOnOperation(pir::Operation* op,
   return true;
 }
 
-bool insertTieShapeOnBlock(pir::Block* block) {
+bool InsertTieShapeOnBlock(pir::Block* block) {
   pir::Builder builder =
       pir::Builder(pir::IrContext::Instance(), block, block->begin());
   // TODO(liujinnan): mapping block arguments
@@ -74,7 +75,7 @@ bool insertTieShapeOnBlock(pir::Block* block) {
 
 bool InsertTieShapeOnRegion(pir::Region* region) {
   for (pir::Block* block : *region) {
-    if (!insertTieShapeOnBlock(block)) return false;
+    if (!InsertTieShapeOnBlock(block)) return false;
   }
   return true;
 }
@@ -85,13 +86,14 @@ bool MaterializeShapeComputation(pir::ModuleOp m) {
   return true;
 }
 
-bool optimizeShapeComputation(pir::ModuleOp m, PassPipelineRunner runner) {
+bool OptimizeShapeComputation(pir::ModuleOp m, PassPipelineRunner runner) {
   // TODO(liujinnan): Do some Canonicalizer.
   pir::SymbolicDimMgr mgr(m);
-  if (!mgr.load()) return false;
+  if (!mgr.Load()) return false;
   pir::ShapeComputationIRAnalysis analysis(m, mgr);
-  if (!analysis.run()) return false;
-  if (!mgr.save()) return false;
+  if (!analysis.Run()) return false;
+  if (!mgr.Save()) return false;
+  return true;
 }
 
 class ShapeOptimizationPass : public pir::Pass {
@@ -101,11 +103,11 @@ class ShapeOptimizationPass : public pir::Pass {
   void Run(pir::Operation* op) override {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     IR_ENFORCE(module_op, "ShapeOptimizationPass should run on module op.");
-    materializeShapeComputation(module_op);
+    MaterializeShapeComputation(module_op);
     PassPipelineRunner runner = [this](pir::PassManager& pm, pir::ModuleOp m) {
-      return pm.Run(&(m.program()));
+      return pm.Run(m.program());
     };
-    if (!optimizeShapeComputation(m, runner)) {
+    if (!OptimizeShapeComputation(module_op, runner)) {
       return;
     }
   }

@@ -191,17 +191,17 @@ class SymbolicDimShapeAnalysis : public ShapeAnalysis {
 class ShapeComputationIRAnalysis {
  public:
   using func = std::function<bool(Operation* op)>;
-  explicit ShapeComputationIRAnalysis(ModuleOp m, const SymbolicDimMgr& mgr);
+  explicit ShapeComputationIRAnalysis(ModuleOp m,
+                                      SymbolicDimMgr& mgr);  // NOLINT
   bool Run();
 
  private:
-  bool RunOnRegion(Region* region);
-  bool RunOnBlock(Block* block);
+  bool RunOnRegion(Region* region, func f);
+  bool RunOnBlock(Block* block, func f);
   // bool RunOnOperation(Operation* op);
 
   bool BuildSymbolicShape(Operation* op);
-  bool BuildSymbolicShape(Value value);
-  bool BuildSymbolicShapeForResultsOfOp(Operation* op);
+  bool BuildValueShape(Value value);
 
   bool initialized_ = false;
   ModuleOp m_;

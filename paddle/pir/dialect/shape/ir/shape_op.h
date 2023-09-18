@@ -16,6 +16,7 @@
 
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_type_interfaces.h"
+#include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/op_base.h"
 
 namespace pir {
@@ -118,6 +119,7 @@ class IR_API TieShapeOp : public Op<TieShapeOp> {
                     const OpResult &input,
                     const std::vector<OpResult> &dims);
 
+  void Print(IrPrinter &printer);  // NOLINT
   Value value();
   std::vector<Value> dims();
   void Verify() {}
@@ -133,6 +135,7 @@ class IR_API FuncOp : public Op<FuncOp> {
 
   static void Build(Builder &builder,              // NOLINT
                     OperationArgument &argument);  // NOLINT
+  void Print(IrPrinter &printer);                  // NOLINT
   Block *block();
   void Verify() {}
 };

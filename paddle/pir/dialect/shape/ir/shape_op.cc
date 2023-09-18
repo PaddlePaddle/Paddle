@@ -233,6 +233,17 @@ Block *FuncOp::block() {
   return region.front();
 }
 
+void FuncOp::Print(IrPrinter &printer) {
+  auto &os = printer.os;
+  os << " shape.func () ";
+  os << "{";
+  for (auto item : *block()) {
+    os << "\n  ";
+    printer.PrintOperation(item);
+  }
+  os << "\n }";
+}
+
 void TensorDimOp::Build(Builder &builder,
                         OperationArgument &argument,
                         const OpResult &source,

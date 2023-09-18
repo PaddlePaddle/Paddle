@@ -725,35 +725,39 @@ bool SymbolicDimShapeAnalysis::IsProductEqual(Value lhs,
   return mgr_.IsSymbolicDimProductEqual(lhsProd, rhsProd);
 }
 
-ShapeComputationIRAnalysis::ShapeComputationIRAnalysis(
-    ModuleOp m, const SymbolicDimMgr& mgr)
+ShapeComputationIRAnalysis::ShapeComputationIRAnalysis(ModuleOp m,
+                                                       SymbolicDimMgr& mgr)
     : m_(m), mgr_(mgr) {}
 
 bool ShapeComputationIRAnalysis::Run() {
   // Make sure only run once.
   if (initialized_) return false;
   initialized_ = true;
-  if (!RunOnRegion(&(m_->region(0)), BuildSymbolicShape)) return false;
-  // if(!RunOnRegion(&(m_->region(0)),applyOpConstraint)) return false;
+  auto fn = std::bind(&ShapeComputationIRAnalysis::BuildSymbolicShape,
+                      this,
+                      std::placeholders::_1);
+  if (!RunOnRegion(&(m_->region(0)), fn)) return false;
+  // TODO(zhangbo63): Apply constraints with std::function & bind in Run().
+  return true;
 }
 
-bool ShapeComputationIRAnalysis::RunOnRegion(Region* region, func f) {
-  for (Block& block : *region) {
-    if (!RunOnBlock(&block)) return false;
+bool ShapeComputationIRAnalysis::RunOnRegion(Region* region, func fn) {
+  for (Block* block : *region) {
+    if (!RunOnBlock(block, fn)) return false;
   }
   return true;
 }
 
-bool ShapeComputationIRAnalysis::RunOnBlock(Block* block, func f) {
+bool ShapeComputationIRAnalysis::RunOnBlock(Block* block, func fn) {
   // TODO(liujinnan): mapping block arguments
 
   std::vector<Operation*> op_list;
-  for (Operation& op : *block) op_list.push_back(&op);
+  for (Operation* op : *block) op_list.push_back(op);
   for (Operation* op : op_list) {
     for (size_t i = 0; i < op->num_regions(); ++i) {
-      if (!RunOnRegion(&(op->region(i)), f)) return false;
+      if (!RunOnRegion(&(op->region(i)), fn)) return false;
     }
-    if (!f(op)) return false;
+    if (!fn(op)) return false;
   }
   return true;
 }
@@ -761,63 +765,65 @@ bool ShapeComputationIRAnalysis::RunOnBlock(Block* block, func f) {
 bool ShapeComputationIRAnalysis::BuildSymbolicShape(Operation* op) {
   if (op->isa<dialect::FuncOp>()) return true;
   if (op->isa<dialect::TieShapeOp>()) {
-    Value value = op->getOperand(0);
+    Value value = op->operand_source(0);
     std::vector<SymbolicDim> symbols;
-    auto attrs =
-        op->attribute<ArrayAttribute>(SymbolicDim::getSymbolicDimAttrName())
-            .AsVector();
-    if (!attrs.empty()) {
+    if (op->HasAttribute(SymbolicDim::getSymbolicDimAttrName())) {
+      auto attrs =
+          op->attribute<ArrayAttribute>(SymbolicDim::getSymbolicDimAttrName())
+              .AsVector();
       for (Attribute attr : attrs) {
-        auto sym = fn(attr.dyn_cast<StrAttribute>().AsString());
+        auto sym = mgr_.symbolTable().Lookup<SymbolicDim>(
+            attr.dyn_cast<StrAttribute>().AsString());
         assert(sym);
-        SymbolicDim root = GetRootSymbolicDim(sym);
+        SymbolicDim root = mgr_.GetRootSymbolicDim(sym);
         symbols.push_back(root);
       }
     } else {
       symbols = mgr_.CreateSymbolicDimsForRankedValue(value);
+      std::vector<Attribute> attrs;
+      for (SymbolicDim sym : symbols) {
+        Attribute rootSymbol =
+            StrAttribute::get(m_->ir_context(), sym.getSymName());
+        attrs.push_back(rootSymbol);
+      }
+      op->set_attribute(SymbolicDim::getSymbolicDimAttrName(),
+                        ArrayAttribute::get(m_->ir_context(), attrs));
     }
     rankedTensor2SymDims_[value] = std::move(symbols);
     return true;
   }
-
-  if (!BuildSymbolicShapeForResultsOfOp(op)) return false;
-  // TODO(zhangbo63): apply op's shape constraint
-}
-
-bool ShapeComputationIRAnalysis::BuildSymbolicShapeForResultsOfOp(
-    Operation* op) {
-  // build shapes for the results of op
   for (size_t i = 0; i < op->num_results(); ++i) {
-    if (!BuildSymbolicShape(result)) return false;
+    if (!BuildValueShape(op->result(i))) return false;
   }
   return true;
 }
 
-bool ShapeComputationIRAnalysis::BuildSymbolicShape(Value value) {
+bool ShapeComputationIRAnalysis::BuildValueShape(Value value) {
   Type ty = value.type();
   if (IsIntOrIndex(ty)) {
-    SymbolicDim sym = mgr_.newSymbolicDim();
+    SymbolicDim sym = mgr_.NewSymbolicDim();
     value2SymDim_[value] = sym;
   } else if (IsCandidateShapeTensorType(ty)) {
+    auto shapedTy = ty.dyn_cast_interface<ShapedTypeInterface>();
     std::vector<SymbolicDim> symbols;
-    for (size_t i = 0, d = tensorTy.getShape()[0]; i < d; ++i)
-      symbols.push_back(mgr_.newSymbolicDim());
+    for (size_t i = 0, d = shapedTy.getShape()[0]; i < d; ++i)
+      symbols.push_back(mgr_.NewSymbolicDim());
     shapeTensor2SymDims_[value] = std::move(symbols);
   }
   return true;
 }
 
 bool IsIntOrIndex(Type type) {
-  return type.isa<IndexType> || type.isa<Int8Type>() || type.isa<UInt8Type>() ||
-         type.isa<Int16Type>() || type.isa<Int32Type>() ||
-         type.isa<Int64Type>();
+  return type.isa<IndexType>() || type.isa<Int8Type>() ||
+         type.isa<UInt8Type>() || type.isa<Int16Type>() ||
+         type.isa<Int32Type>() || type.isa<Int64Type>();
 }
 
 bool IsCandidateShapeTensorType(Type ty) {
   if (auto tensorTy = ty.dyn_cast<paddle::dialect::DenseTensorType>()) {
     auto shapedTy = tensorTy.dyn_cast_interface<ShapedTypeInterface>();
     return (shapedTy.getRank() == 1 && shapedTy.hasStaticShape() &&
-            isIntOrIndex(shapedTy.getElementType()) &&
+            IsIntOrIndex(shapedTy.getElementType()) &&
             shapedTy.getShape()[0] < 32);
   }
   return false;
