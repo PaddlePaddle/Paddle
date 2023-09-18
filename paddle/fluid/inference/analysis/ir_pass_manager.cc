@@ -179,6 +179,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("use_cuda_graph",
                 new bool(argument->tensorrt_use_cuda_graph()));
       bool use_static_engine = argument->tensorrt_use_static_engine();
+      bool inspector_serialize = argument->tensorrt_inspector_serialize();
       bool model_from_memory = argument->model_from_memory();
       std::string optim_cache_dir = argument->optim_cache_dir();
       bool int8_valid = !(model_from_memory && optim_cache_dir.empty() &&
@@ -212,7 +213,8 @@ void IRPassManager::CreatePasses(Argument *argument,
                   optim_cache_dir));
         }
         pass->Set("model_opt_cache_dir", new std::string(optim_cache_dir));
-      } else if (use_static_engine || enable_int8 || with_dynamic_shape) {
+      } else if (use_static_engine || enable_int8 || with_dynamic_shape ||
+                 inspector_serialize) {
         std::string model_opt_cache_dir =
             argument->Has("model_dir")
                 ? argument->model_dir()
@@ -224,6 +226,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("use_static_engine", new bool(use_static_engine));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
       pass->Set("use_inspector", new bool(argument->tensorrt_use_inspector()));
+      pass->Set("inspector_serialize",
+                new bool(argument->tensorrt_inspector_serialize()));
 
       // tuned trt dynamic_shape
       pass->Set("trt_shape_range_info_path",
