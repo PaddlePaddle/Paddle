@@ -45,9 +45,9 @@ bool InsertTieShapeOnRegion(pir::Region* region);
 
 bool InsertTieShapeOnOperation(pir::Operation* op,
                                pir::Builder& builder) {  // NOLINT
-  if (op->isa<pir::dialect::TieShapeOp>()) return true;
-  // TODO(liujinnan): skip more specialized Ops.
-  if (op->isa<pir::dialect::FuncOp>()) return true;
+  // TODO(zhangbo63): skip more specialized Ops.
+  if (op->isa<pir::dialect::TieShapeOp>() || op->isa<pir::dialect::FuncOp>())
+    return true;
 
   for (size_t i = 0; i < op->num_regions(); ++i) {
     if (!InsertTieShapeOnRegion(&(op->region(i)))) return false;
@@ -104,6 +104,7 @@ class ShapeOptimizationPass : public pir::Pass {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     IR_ENFORCE(module_op, "ShapeOptimizationPass should run on module op.");
     MaterializeShapeComputation(module_op);
+    // runner is for Canonicalizer.
     PassPipelineRunner runner = [this](pir::PassManager& pm, pir::ModuleOp m) {
       return pm.Run(m.program());
     };

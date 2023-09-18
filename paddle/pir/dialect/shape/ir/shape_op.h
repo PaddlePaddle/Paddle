@@ -118,7 +118,6 @@ class IR_API TieShapeOp : public Op<TieShapeOp> {
                     OperationArgument &argument,  // NOLINT
                     Value input,
                     const std::vector<Value> &dims);
-  void Print(IrPrinter &printer);  // NOLINT
   Value value();
   std::vector<Value> dims();
   void Verify() {}
