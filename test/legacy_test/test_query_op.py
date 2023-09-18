@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestCudnnVersion(unittest.TestCase):

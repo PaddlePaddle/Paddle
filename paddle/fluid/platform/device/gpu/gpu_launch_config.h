@@ -32,14 +32,9 @@
 
 #include "paddle/fluid/platform/device_context.h"
 
-#ifdef __HIPCC__
-// HIP results in error or nan if > 256
-#define PREDEFINED_BLOCK_SIZE 256
-#else
 /* CUDA performs better as thread_per_block
    num is between [64, 512] */
 #define PREDEFINED_BLOCK_SIZE 512
-#endif
 
 namespace paddle {
 namespace platform {
@@ -58,11 +53,7 @@ static inline int RoundToPowerOfTwo(int n) {
   n |= (n >> 4);
   n |= (n >> 8);
   n |= (n >> 16);
-#ifdef __HIPCC__
-  return std::min(256, std::max(32, (n + 1)));
-#else
   return std::min(1024, std::max(32, (n + 1)));
-#endif
 }
 
 #ifdef WITH_NV_JETSON

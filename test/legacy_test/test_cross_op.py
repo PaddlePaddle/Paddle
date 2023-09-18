@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 class TestCrossOp(OpTest):
@@ -142,7 +142,7 @@ class TestCrossAPI(unittest.TestCase):
             x = paddle.static.data(name='x', shape=[-1, 3], dtype="float32")
             y = paddle.static.data(name='y', shape=[-1, 3], dtype="float32")
             z = paddle.cross(x, y, axis=1)
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
                 feed={'x': self.data_x, 'y': self.data_y},
                 fetch_list=[z.name],
@@ -158,7 +158,7 @@ class TestCrossAPI(unittest.TestCase):
             x = paddle.static.data(name='x', shape=[-1, 3], dtype="float32")
             y = paddle.static.data(name='y', shape=[-1, 3], dtype="float32")
             z = paddle.cross(x, y)
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
                 feed={'x': self.data_x, 'y': self.data_y},
                 fetch_list=[z.name],
@@ -180,9 +180,9 @@ class TestCrossAPI(unittest.TestCase):
     def test_dygraph_api(self):
         self.input_data()
         # case 1:
-        # with fluid.dygraph.guard():
-        #     x = fluid.dygraph.to_variable(self.data_x)
-        #     y = fluid.dygraph.to_variable(self.data_y)
+        # with base.dygraph.guard():
+        #     x = base.dygraph.to_variable(self.data_x)
+        #     y = base.dygraph.to_variable(self.data_y)
         #     z = paddle.cross(x, y)
         #     np_z = z.numpy()
         # expect_out = np.array([[-1.0, -1.0, -1.0], [2.0, 2.0, 2.0],
@@ -190,9 +190,9 @@ class TestCrossAPI(unittest.TestCase):
         # np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         # case 2:
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(self.data_x)
-            y = fluid.dygraph.to_variable(self.data_y)
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(self.data_x)
+            y = base.dygraph.to_variable(self.data_y)
             z = paddle.cross(x, y, axis=1)
             np_z = z.numpy()
         expect_out = np.array(

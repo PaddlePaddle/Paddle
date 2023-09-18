@@ -22,7 +22,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.dataset.common import download
 from paddle.static.quantization import PostTrainingQuantization
 
@@ -97,7 +97,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
                     )
                     lod_feat = [feat.shape[0]]
 
-                    minputs = fluid.create_lod_tensor(feat, [lod_feat], place)
+                    minputs = base.create_lod_tensor(feat, [lod_feat], place)
                     yield [minputs]
 
         return reader
@@ -127,7 +127,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
                     )
                     lod_feat = [feat.shape[0]]
 
-                    minputs = fluid.create_lod_tensor(feat, [lod_feat], place)
+                    minputs = base.create_lod_tensor(feat, [lod_feat], place)
                     yield minputs, label
 
         return reader

@@ -39,7 +39,8 @@ void GenBase::dumpCode(const unsigned char* code) const {
     counter++;
     std::ofstream fout(filename.str(), std::ios::out);
     if (fout.is_open()) {
-      fout.write(reinterpret_cast<const char*>(code), this->getSize());
+      fout.write(reinterpret_cast<const char*>(code),
+                 static_cast<int>(this->getSize()));
       fout.close();
     }
   }
@@ -65,7 +66,9 @@ void* GenBase::operator new(size_t size) {
   return ptr;
 }
 
-void GenBase::operator delete(void* ptr) { posix_memalign_free(ptr); }
+void GenBase::operator delete(void* ptr) {
+  posix_memalign_free(ptr);  // NOLINT
+}
 
 std::vector<int> packed_groups(int n, int k, int* block_out, int* rest_out) {
   int block;

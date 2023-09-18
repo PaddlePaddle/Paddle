@@ -44,16 +44,17 @@ class FusedDropoutAdd(Layer):
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            from paddle.incubate.nn.layer.fused_dropout_add import FusedDropoutAdd
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> from paddle.incubate.nn.layer.fused_dropout_add import FusedDropoutAdd
 
-            x = paddle.to_tensor([[1,2,3], [4,5,6]], dtype="float32")
-            y = paddle.to_tensor([[1,2,3], [4,5,6]], dtype="float32")
+            >>> x = paddle.to_tensor([[1,2,3], [4,5,6]], dtype="float32")
+            >>> y = paddle.to_tensor([[1,2,3], [4,5,6]], dtype="float32")
 
-            m = FusedDropoutAdd(p=0.5)
+            >>> m = FusedDropoutAdd(p=0.5)
 
-            out = m(x, y)
+            >>> out = m(x, y)
     """
 
     def __init__(self, p=0.5, mode="upscale_in_train", name=None):

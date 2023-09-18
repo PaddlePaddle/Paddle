@@ -21,8 +21,8 @@ from paddle.amp.amp_lists import (
     FP16_BLACK_LIST,
     FP16_WHITE_LIST,
 )
-from paddle.fluid import core
-from paddle.fluid.log_helper import get_logger
+from paddle.base import core
+from paddle.base.log_helper import get_logger
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
@@ -98,7 +98,7 @@ def _get_sys_unsupported_list(dtype):
     elif isinstance(
         paddle.framework._current_expected_place(), paddle.CustomPlace
     ):
-        device = 'CUSTOM_DEVICE'
+        device = paddle.framework._current_expected_place().get_device_type()
     else:
         device = 'GPU'
     all_ops, _, sys_unsupported_list = core.op_supported_infos(device, var_type)

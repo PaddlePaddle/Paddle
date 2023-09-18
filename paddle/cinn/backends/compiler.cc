@@ -18,7 +18,9 @@
 
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 #include "paddle/cinn/common/context.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/visualize_helper.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/backends/codegen_cuda_host.h"
@@ -29,25 +31,72 @@
 #include "paddle/cinn/runtime/flags.h"
 #endif
 
-DECLARE_string(cinn_source_code_save_path);
-DECLARE_string(cinn_dump_group_lowered_func);
-DECLARE_string(cinn_dump_group_source_code);
-DECLARE_string(cinn_dump_group_ptx);
-DECLARE_string(cinn_dump_group_instruction);
+PD_DECLARE_string(cinn_source_code_save_path);
+PD_DECLARE_string(cinn_dump_group_lowered_func);
+PD_DECLARE_string(cinn_dump_group_source_code);
+PD_DECLARE_string(cinn_dump_group_ptx);
+PD_DECLARE_string(cinn_dump_group_instruction);
 
 namespace cinn {
 namespace backends {
 using ir::Module;
+using CompilationStatus = hlir::framework::CompilationStatus;
 
 static constexpr int DebugLogMaxLen = 30000;
+
+void CompilationInfoDumper::DumpLoweredFuncByGroupIndex(
+    const ir::LoweredFunc& lowered_func, const int gidx) {
+  if (FLAGS_cinn_dump_group_lowered_func.empty() ||
+      lowered_func.get() == nullptr) {
+    return;
+  }
+  std::stringstream content;
+  content << lowered_func;
+  Dump(FLAGS_cinn_dump_group_lowered_func,
+       gidx,
+       "lowered_function.txt",
+       content.str());
+}
+
+void CompilationInfoDumper::DumpSourceCodeByGroupIndex(
+    const std::string& source_code, const int gidx) {
+  if (FLAGS_cinn_dump_group_source_code.empty()) {
+    return;
+  }
+  Dump(FLAGS_cinn_dump_group_source_code, gidx, "source_code.cu", source_code);
+}
+
+void CompilationInfoDumper::DumpPtxCodeByGroupIndex(
+    const std::string& source_ptx, const int gidx) {
+  if (FLAGS_cinn_dump_group_ptx.empty()) {
+    return;
+  }
+  Dump(FLAGS_cinn_dump_group_ptx, gidx, "source_ptx.ptx", source_ptx);
+}
+
+void CompilationInfoDumper::DumpInstructionByGroupIndex(
+    const std::unique_ptr<cinn::hlir::framework::Instruction>& instr,
+    const int gidx) {
+  if (FLAGS_cinn_dump_group_instruction.empty() || instr.get() == nullptr) {
+    return;
+  }
+  Dump(FLAGS_cinn_dump_group_instruction,
+       gidx,
+       "instruction.txt",
+       instr->DumpInstruction());
+}
 
 void CompilationInfoDumper::DumpLoweredFunc() {
   if (FLAGS_cinn_dump_group_lowered_func.empty()) {
     return;
   }
-  for (int idx = 0; idx < info_.lowered_funcs.size(); ++idx) {
+  for (int idx = 0; idx < info_.Size(); ++idx) {
     std::stringstream content;
-    content << info_.lowered_funcs[idx].front();
+    if (info_.Status(idx) > CompilationStatus::LOWERING_FAIL) {
+      content << info_.LoweredFuncs(idx).front();
+    } else {
+      content << "[No lowered func generated]\n\n" << info_.Message(idx);
+    }
     Dump(FLAGS_cinn_dump_group_lowered_func,
          idx,
          "lowered_function.txt",
@@ -59,11 +108,14 @@ void CompilationInfoDumper::DumpSourceCode() {
   if (FLAGS_cinn_dump_group_source_code.empty()) {
     return;
   }
-  for (int idx = 0; idx < info_.source_codes.size(); ++idx) {
-    Dump(FLAGS_cinn_dump_group_source_code,
-         idx,
-         "source_code.cu",
-         info_.source_codes[idx]);
+  for (int idx = 0; idx < info_.Size(); ++idx) {
+    std::string dump_str;
+    if (info_.Status(idx) > CompilationStatus::CODEGEN_JIT_FAIL) {
+      dump_str = info_.SourceCode(idx);
+    } else {
+      dump_str = "[No source code generated]\n\n" + info_.Message(idx);
+    }
+    Dump(FLAGS_cinn_dump_group_source_code, idx, "source_code.cu", dump_str);
   }
 }
 
@@ -71,11 +123,14 @@ void CompilationInfoDumper::DumpPtxCode() {
   if (FLAGS_cinn_dump_group_ptx.empty()) {
     return;
   }
-  for (int idx = 0; idx < info_.source_ptxs.size(); ++idx) {
-    Dump(FLAGS_cinn_dump_group_ptx,
-         idx,
-         "source_ptx.ptx",
-         info_.source_ptxs[idx]);
+  for (int idx = 0; idx < info_.Size(); ++idx) {
+    std::string dump_str;
+    if (info_.Status(idx) > CompilationStatus::CODEGEN_JIT_FAIL) {
+      dump_str = info_.SourcePtx(idx);
+    } else {
+      dump_str = "[No source ptxs generated]\n\n" + info_.Message(idx);
+    }
+    Dump(FLAGS_cinn_dump_group_ptx, idx, "source_ptx.ptx", dump_str);
   }
 }
 
@@ -83,11 +138,14 @@ void CompilationInfoDumper::DumpInstruction() {
   if (FLAGS_cinn_dump_group_instruction.empty()) {
     return;
   }
-  for (int idx = 0; idx < info_.instructions.size(); ++idx) {
-    Dump(FLAGS_cinn_dump_group_instruction,
-         idx,
-         "instruction.txt",
-         info_.instructions[idx]->DumpInstruction());
+  for (int idx = 0; idx < info_.RuntimeInstructions().size(); ++idx) {
+    std::string dump_str;
+    if (info_.RuntimeInstruction(idx).get() != nullptr) {
+      dump_str = info_.RuntimeInstruction(idx)->DumpInstruction();
+    } else {
+      dump_str = "[No instruction generated]\n\n" + info_.Message(idx);
+    }
+    Dump(FLAGS_cinn_dump_group_instruction, idx, "instruction.txt", dump_str);
   }
 }
 

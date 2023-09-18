@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import core
+from paddle.base import core
 
 from .pass_base import PassContext, new_pass, register_pass
 from .pass_utils import _program_for_fthenb_and_1f1b
@@ -50,6 +50,7 @@ class PipelineFThenBPass(PipelinePassBase):
             job_list.append(backward_job)
 
         opt_job = core.Job("optimizer")
+        opt_job.set_micro_batch_id(0)
         job_list.append(opt_job)
         return job_list
 
@@ -105,6 +106,7 @@ class Pipeline1F1BPass(PipelinePassBase):
             backward_micro_batch_id += 1
 
         opt_job = core.Job("optimizer")
+        opt_job.set_micro_batch_id(0)
         job_list.append(opt_job)
         return job_list
 

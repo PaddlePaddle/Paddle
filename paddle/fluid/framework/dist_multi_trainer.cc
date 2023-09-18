@@ -36,7 +36,7 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
   const std::vector<paddle::framework::DataFeed *> readers =
       dataset->GetReaders();
   RegisterHeterCallback();
-  thread_num_ = readers.size();
+  thread_num_ = static_cast<int>(readers.size());
   workers_.resize(thread_num_);
   for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size();
        i++) {

@@ -49,7 +49,7 @@ void TransferLayoutElimPass::PutTranferlayoutAfterOp(
   std::unordered_set<const Node *> remove_nodes;
   // Ensure op_node has only one output!
   int op_node_useful_output = 0;
-  Node *var2;
+  Node *var2 = nullptr;
   for (auto ele : op_node->outputs) {
     if (!ele->outputs.empty()) {
       op_node_useful_output++;
@@ -153,7 +153,7 @@ bool TransferLayoutElimPass::AllInputIsTransferlayout(
   for (auto var : op_node->inputs) {
     // If this input is a 1D persistable tensor，we allow transfer_layout not
     // appear before this var, but temporarily diasble this if.
-    if (var->Var()->Persistable() && 0) {
+    if (var->Var()->Persistable() && false) {
       auto var_dims =
           scope->FindVar(var->Name())->GetMutable<phi::DenseTensor>()->dims();
       if (var_dims.size() == 1) {

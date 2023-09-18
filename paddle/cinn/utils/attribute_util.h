@@ -18,29 +18,30 @@
 
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/utils/type_defs.h"
-#include "paddle/fluid/ir/dialect/pd_attribute.h"
-#include "paddle/ir/core/builtin_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/core/builtin_type.h"
 
 namespace cinn {
 namespace utils {
 
-using NewIR_AttributeMap = std::unordered_map<std::string, ::ir::Attribute>;
+using NewIR_AttributeMap = std::unordered_map<std::string, ::pir::Attribute>;
 
-Attribute ConvertAttribute(const ::ir::Attribute& src_attr) {
+Attribute ConvertAttribute(const ::pir::Attribute& src_attr) {
   Attribute dst_attr;
-  if (src_attr.isa<::ir::BoolAttribute>()) {
-    dst_attr = src_attr.dyn_cast<::ir::BoolAttribute>().data();
-  } else if (src_attr.isa<::ir::FloatAttribute>()) {
-    dst_attr = src_attr.dyn_cast<::ir::FloatAttribute>().data();
-  } else if (src_attr.isa<::ir::Int32Attribute>()) {
-    dst_attr = src_attr.dyn_cast<::ir::Int32Attribute>().data();
-  } else if (src_attr.isa<::ir::StrAttribute>()) {
-    dst_attr = src_attr.dyn_cast<::ir::StrAttribute>().AsString();
-  } else if (src_attr.isa<::ir::Int64Attribute>()) {
-    dst_attr = src_attr.dyn_cast<::ir::Int64Attribute>().data();
-  } else if (src_attr.isa<::ir::DoubleAttribute>()) {
-    dst_attr = src_attr.dyn_cast<::ir::DoubleAttribute>().data();
+  if (src_attr.isa<::pir::BoolAttribute>()) {
+    dst_attr = src_attr.dyn_cast<::pir::BoolAttribute>().data();
+  } else if (src_attr.isa<::pir::FloatAttribute>()) {
+    dst_attr = src_attr.dyn_cast<::pir::FloatAttribute>().data();
+  } else if (src_attr.isa<::pir::Int32Attribute>()) {
+    dst_attr = src_attr.dyn_cast<::pir::Int32Attribute>().data();
+  } else if (src_attr.isa<::pir::StrAttribute>()) {
+    dst_attr = src_attr.dyn_cast<::pir::StrAttribute>().AsString();
+  } else if (src_attr.isa<::pir::Int64Attribute>()) {
+    dst_attr = src_attr.dyn_cast<::pir::Int64Attribute>().data();
+  } else if (src_attr.isa<::pir::DoubleAttribute>()) {
+    dst_attr = src_attr.dyn_cast<::pir::DoubleAttribute>().data();
   } else if (src_attr.isa<paddle::dialect::IntArrayAttribute>()) {
     auto& arr = src_attr.dyn_cast<paddle::dialect::IntArrayAttribute>()
                     .data()
@@ -61,7 +62,9 @@ AttributeMap ConvertAttributes(const NewIR_AttributeMap& src_attrs) {
   AttributeMap dst_attrs;
   for (auto& item : src_attrs) {
     VLOG(4) << "deal with " << item.first;
-    if (item.second.isa<paddle::dialect::PlaceAttribute>()) {
+    if (item.first == ::pir::kStopGradientAttrName) {
+      continue;
+    } else if (item.second.isa<paddle::dialect::PlaceAttribute>()) {
       auto is_cpu =
           item.second.dyn_cast<paddle::dialect::PlaceAttribute>().data() ==
           phi::CPUPlace();
@@ -75,10 +78,10 @@ AttributeMap ConvertAttributes(const NewIR_AttributeMap& src_attrs) {
 }
 
 #define CASE_TYPE(src, dst) \
-  else if (type.isa<::ir::src>()) return common::dst();
+  else if (type.isa<::pir::src>()) return common::dst();
 
-common::Type ConvertIRType(::ir::Type type) {
-  if (type.isa<::ir::BFloat16Type>()) return common::BF16();
+common::Type ConvertIRType(::pir::Type type) {
+  if (type.isa<::pir::BFloat16Type>()) return common::BF16();
   CASE_TYPE(Float16Type, F16)
   CASE_TYPE(Float32Type, F32)
   CASE_TYPE(Float64Type, F64)

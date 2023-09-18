@@ -83,6 +83,16 @@ if(WITH_CUTLASS)
     )
   endif()
 
+  execute_process(
+    COMMAND
+      ${CMAKE_COMMAND} -E make_directory
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen"
+    COMMAND ${PYTHON_EXECUTABLE} generic_mixed_gemm_kernelLauncher.py
+            --cuda_arch "${NVCC_ARCH_BIN}"
+    WORKING_DIRECTORY
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm"
+  )
+
   file(
     GLOB cutlass_cu
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -90,8 +100,15 @@ if(WITH_CUTLASS)
     "fusion/cutlass/conv2d/*.cu"
     "fusion/cutlass/*.cu"
     "fusion/cutlass/memory_efficient_attention/autogen/impl/*.cu"
-    "fusion/cutlass/memory_efficient_attention/autogen_variable/impl/*.cu")
+    "fusion/cutlass/memory_efficient_attention/autogen_variable/impl/*.cu"
+    "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/*.cu"
+    "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/*.cu")
   list(APPEND kernel_cu ${cutlass_cu})
+endif()
+
+if(NOT WITH_CUDNN_FRONTEND)
+  list(REMOVE_ITEM kernel_cu
+       "fusion/gpu/fused_scale_bias_relu_conv_bnstats_kernel.cu")
 endif()
 
 set(cc_search_pattern

@@ -19,7 +19,7 @@ from functools import wraps
 import numpy as np
 
 from paddle import set_flags, static
-from paddle.fluid import core
+from paddle.base import core
 
 
 @contextlib.contextmanager
@@ -153,19 +153,18 @@ def test_and_compare_with_new_ir(need_check_output: bool = True):
             ir_outs = test_with_new_ir(func)(*args, **kwargs)
             if not need_check_output:
                 return outs
-            for i in range(len(outs)):
-                np.testing.assert_array_equal(
-                    outs[i],
-                    ir_outs[i],
-                    err_msg='Dy2St Unittest Check ('
-                    + func.__name__
-                    + ') has diff '
-                    + '\nExpect '
-                    + str(outs[i])
-                    + '\n'
-                    + 'But Got'
-                    + str(ir_outs[i]),
-                )
+            np.testing.assert_equal(
+                outs,
+                ir_outs,
+                err_msg='Dy2St Unittest Check ('
+                + func.__name__
+                + ') has diff '
+                + '\nExpect '
+                + str(outs)
+                + '\n'
+                + 'But Got'
+                + str(ir_outs),
+            )
             return outs
 
         return impl

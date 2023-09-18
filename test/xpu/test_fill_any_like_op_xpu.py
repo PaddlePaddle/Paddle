@@ -75,6 +75,8 @@ class XPUTestFillAnyLikeOp(XPUOpTestWrapper):
         def set_value(self):
             if self.dtype == "float16":
                 self.value = 0.05
+            elif self.dtype == np.bool_:
+                self.value = 1.0
             else:
                 self.value = 5.0
 
