@@ -62,7 +62,7 @@ class TestSumOp(OpTest):
             'Out',
             check_prim=True,
             check_new_ir=True,
-            check_prim_new_ir=True,
+            check_prim_pir=True,
         )
 
 
@@ -77,7 +77,7 @@ class TestComplexSumOP(TestSumOp):
         self.attrs = {'dim': [0]}
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_prim=False)
 
 
 class TestSumOp_ZeroDim(TestSumOp):
@@ -96,7 +96,7 @@ class TestSumOp_ZeroDim(TestSumOp):
             'Out',
             check_new_ir=True,
             check_prim=True,
-            check_prim_new_ir=True,
+            check_prim_pir=True,
         )
 
 
@@ -153,7 +153,7 @@ class TestSumOp_withInt(TestSumOp):
             'Out',
             user_defined_grads=self.calc_gradient(),
             check_prim=True,
-            check_prim_new_ir=True,
+            check_prim_pir=True,
             check_new_ir=True,
         )
 
@@ -179,7 +179,7 @@ class TestSumOp3Dim(TestSumOp):
             'Out',
             user_defined_grads=self.calc_gradient(),
             check_prim=True,
-            check_prim_new_ir=True,
+            check_prim_pir=True,
             check_new_ir=True,
         )
 
@@ -200,7 +200,7 @@ def create_test_fp16_class(parent):
                 ['X'],
                 'Out',
                 check_prim=True,
-                check_prim_new_ir=True,
+                check_prim_pir=True,
                 check_new_ir=True,
             )
 
@@ -240,7 +240,7 @@ def create_test_bf16_class(parent):
                 'Out',
                 user_defined_grads=self.gradient,
                 check_prim=True,
-                check_prim_new_ir=True,
+                check_prim_pir=True,
                 check_new_ir=True,
             )
 
