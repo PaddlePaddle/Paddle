@@ -59,7 +59,7 @@ class DrrRewritePattern : public pir::RewritePattern {
                        PatternRewriter& rewriter) const override {  // NOLINT
     std::shared_ptr<MatchContextImpl> src_match_ctx =
         std::make_shared<MatchContextImpl>();
-    if (PatternGraphMatchV2(op, src_match_ctx)) {
+    if (PatternGraphMatchV2(op, src_match_ctx.get())) {
       VLOG(4) << "DRR pattern (" << pir::get_type_name<DrrPattern>()
               << ") is matched in program.";
       PatternGraphRewrite(*src_match_ctx, rewriter);
@@ -327,7 +327,6 @@ class DrrRewritePattern : public pir::RewritePattern {
           output_op_bind_map) const {
     VLOG(6) << "DfsVisitor Start: drr op(" << drr_op->name() << ")"
             << "ir op(" << ir_op->name() << ")";
-
     if (drr_op->name() != ir_op->name()) {
       return false;
     }
@@ -335,19 +334,12 @@ class DrrRewritePattern : public pir::RewritePattern {
     const auto& drr_op_input_tensors = drr_op->inputs();
     auto ir_op_input_value_size = ir_op->num_operands();
     if (drr_op_input_tensors.size() != ir_op_input_value_size) {
-      VLOG(6) << "drr_op and ir_op have different input size. "
-              << "drrOp_input_tensors.size():" << drr_op_input_tensors.size()
-              << "ir_op_input_value_size:" << ir_op_input_value_size;
       return false;
     }
     // check output's size
     const auto& drr_op_output_tensors = drr_op->outputs();
     auto ir_op_output_value_size = ir_op->num_results();
     if (drr_op_output_tensors.size() != ir_op_output_value_size) {
-      VLOG(6) << "drr_op : " << drr_op->name() << "and ir_op: " << ir_op->name()
-              << " have different output size. "
-              << " drrOp_input_tensors.size(): " << drr_op_output_tensors.size()
-              << " ir_op_output_value_size: " << ir_op_output_value_size;
       return false;
     }
     // check producer op
@@ -462,20 +454,17 @@ class DrrRewritePattern : public pir::RewritePattern {
       }
       const auto& drr_input_tensors = drr_node->inputs();
       auto ir_input_value_size = ir_node->num_operands();
-      // check input size
       if (drr_input_tensors.size() != ir_input_value_size) {
         matched = false;
         break;
       }
-      // check output size
       if (drr_node->outputs().size() != ir_node->num_results()) {
         matched = false;
         break;
       }
-      // binding op
       source_pattern_match_ctx->BindIrOperation(
           drr_node, std::make_shared<IrOperation>(ir_node));
-      // binding input_tensor of current op
+      // binding input_tensor of current_op
       for (size_t i = 0; i < drr_input_tensors.size(); ++i) {
         source_pattern_match_ctx->BindIrValue(
             drr_input_tensors[i]->name(),
@@ -490,7 +479,7 @@ class DrrRewritePattern : public pir::RewritePattern {
           matched = false;
           break;
         }
-        // bfs producer op
+        // bfs producer_op of current_op
         if (!drr_visited.count(drr_producer_op)) {
           drr_q.push(drr_producer_op);
           ir_q.push(ir_producer_op);
@@ -498,7 +487,7 @@ class DrrRewritePattern : public pir::RewritePattern {
           ir_visited.insert(ir_producer_op);
         }
       }
-      // binding output tensor
+      // binding output tensor of current_op
       auto drr_op_output_tensor = drr_node->outputs();
       for (size_t j = 0; j < drr_op_output_tensor.size(); j++) {
         source_pattern_match_ctx->BindIrValue(
@@ -523,9 +512,8 @@ class DrrRewritePattern : public pir::RewritePattern {
     return matched;
   }
 
-  bool PatternGraphMatchV2(
-      pir::Operation* op,
-      const std::shared_ptr<MatchContextImpl>& source_pattern_match_ctx) const {
+  bool PatternGraphMatchV2(pir::Operation* op,
+                           MatchContextImpl* source_pattern_match_ctx) const {
     VLOG(6) << "PatternGraphMatch Start: op(" << op->name() << ")";
     const OpCall* anchor = source_pattern_graph_->AnchorNode();
     std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>
@@ -549,7 +537,7 @@ class DrrRewritePattern : public pir::RewritePattern {
                                  ir_output_sequence,
                                  *(source_pattern_graph_.get()),
                                  match_ctx)) {
-          source_pattern_match_ctx = match_ctx;
+          *source_pattern_match_ctx = *match_ctx;
           return true;
         }
         return false;

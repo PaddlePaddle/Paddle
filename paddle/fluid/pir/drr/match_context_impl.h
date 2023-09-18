@@ -33,6 +33,15 @@ class MatchContextImpl final {
   MatchContextImpl() = default;
   ~MatchContextImpl() = default;
 
+  MatchContextImpl& operator=(const MatchContextImpl& match_ctx) {
+    if (this != &match_ctx) {
+      this->tensor_map_ = match_ctx.tensor_map();
+      this->attr_map_ = match_ctx.attr_map();
+      this->operation_map_ = match_ctx.operation_map();
+    }
+    return *this;
+  }
+
   const TensorInterface& Tensor(const std::string& tensor_name) const {
     IR_ENFORCE(tensor_map_.count(tensor_name),
                "Drr tensor [%s] must exists in pattern graph.",
@@ -81,6 +90,11 @@ class MatchContextImpl final {
 
   const std::unordered_map<std::string, pir::Attribute>& attr_map() const {
     return attr_map_;
+  }
+
+  const std::unordered_map<std::string, std::shared_ptr<IrValue>>& tensor_map()
+      const {
+    return tensor_map_;
   }
 
   void BindIrValue(const std::string& value_name,
