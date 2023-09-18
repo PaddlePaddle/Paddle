@@ -237,8 +237,7 @@ TEST(op_test, region_test) {
   argument.output_types = {pir::Float32Type::get(ctx)};
   argument.num_regions = 1;
 
-  pir::Operation *op3 = pir::Operation::Create(std::move(argument));
-  // argument.regions.emplace_back(std::make_unique<pir::Region>());
+  pir::Operation *op3 = pir::Operation::Create(argument);
 
   pir::Region &region = op3->region(0);
   EXPECT_EQ(region.empty(), true);

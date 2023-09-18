@@ -12,41 +12,40 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/pir/core/op_result_impl.h"
-
-#include <cassert>
+#include "paddle/pir/core/operation.h"
 
 namespace pir {
 namespace detail {
 
-uint32_t OpResultImpl::GetResultIndex() const {
+uint32_t OpResultImpl::index() const {
   if (const auto *outline_result = dyn_cast<OpOutlineResultImpl>(this)) {
-    return outline_result->GetResultIndex();
+    return outline_result->index();
   }
-  return dyn_cast<OpInlineResultImpl>(this)->GetResultIndex();
+  return static_cast<const OpInlineResultImpl *>(this)->index();
 }
 
-OpResultImpl::~OpResultImpl() { assert(use_empty()); }
+OpResultImpl::~OpResultImpl() {
+  if (!use_empty()) {
+    LOG(FATAL) << "Destoryed a op_result that is still in use. \n"
+               << "The owner op type is:" << owner()->name();
+  }
+}
 
-Operation *OpResultImpl::owner() const {
+Operation *OpResultImpl::owner() {
   // For inline result, pointer offset index to obtain the address of op.
-  if (const auto *result = dyn_cast<OpInlineResultImpl>(this)) {
-    result += result->GetResultIndex() + 1;
-    return reinterpret_cast<Operation *>(
-        const_cast<OpInlineResultImpl *>(result));
+  if (auto *result = dyn_cast<OpInlineResultImpl>(this)) {
+    result += result->index() + 1;
+    return reinterpret_cast<Operation *>(result);
   }
   // For outline result, pointer offset outline_index to obtain the address of
   // maximum inline result.
-  const OpOutlineResultImpl *outline_result =
-      (const OpOutlineResultImpl *)(this);
-  outline_result +=
-      (outline_result->outline_index_ - GetMaxInlineResultIndex());
+  auto *outline_result = static_cast<OpOutlineResultImpl *>(this);
+  outline_result += (outline_result->index() - MAX_INLINE_RESULT_IDX);
   // The offset of the maximum inline result distance op is
   // GetMaxInlineResultIndex.
-  const auto *inline_result =
-      reinterpret_cast<const OpInlineResultImpl *>(outline_result);
-  inline_result += (GetMaxInlineResultIndex() + 1);
-  return reinterpret_cast<Operation *>(
-      const_cast<OpInlineResultImpl *>(inline_result));
+  auto *inline_result = reinterpret_cast<OpInlineResultImpl *>(outline_result);
+  inline_result += OUTLINE_RESULT_IDX;
+  return reinterpret_cast<Operation *>(inline_result);
 }
 
 }  // namespace detail

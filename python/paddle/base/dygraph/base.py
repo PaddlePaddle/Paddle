@@ -25,7 +25,6 @@ from ..data_feeder import convert_dtype
 import warnings
 from ..framework import _get_paddle_place
 import paddle
-import warnings
 
 __all__ = [
     'no_grad',

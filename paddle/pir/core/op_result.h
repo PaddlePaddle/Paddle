@@ -30,12 +30,12 @@ class IR_API OpResult : public Value {
  public:
   OpResult(std::nullptr_t ptr = nullptr) : Value(ptr){};  // NOLINT
   Operation *owner() const;
-  uint32_t GetResultIndex() const;
+  uint32_t index() const;
   bool operator==(const OpResult &other) const;
 
  private:
   friend Operation;
-  OpResult(const detail::OpResultImpl *impl);  // NOLINT
+  OpResult(detail::OpResultImpl *impl);  // NOLINT
   // Access classof annd dyn_cast_from.
   friend Value;
   static bool classof(Value value);
