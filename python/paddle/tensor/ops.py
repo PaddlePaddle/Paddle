@@ -898,7 +898,7 @@ def sigmoid(x, name=None):
        out = \\frac{1}{1 + e^{-x}}
 
     Args:
-        x (Tensor): Input of Sigmoid operator, an N-D Tensor, with data type float32, float64 or float16.
+        x (Tensor): Input of Sigmoid operator, an N-D Tensor, with data type float16, float32, float64, complex64 or complex128.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -920,7 +920,17 @@ def sigmoid(x, name=None):
         return _C_ops.sigmoid(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'sigmoid'
+            x,
+            'x',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'uint16',
+                'complex64',
+                'complex128',
+            ],
+            'sigmoid',
         )
         helper = LayerHelper('sigmoid', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
