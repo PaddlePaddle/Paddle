@@ -985,7 +985,6 @@ def calc_time_by_cost_model(op, cluster=None):
                 f"Unsupported modeling compute time for dtype: {dtype}."
             )
 
-        print(f"flops_count = {flops_count}, gflops = {gflops}")
         utilization_rate = 0.98
         time = flops_count / (utilization_rate * gflops) * 1e-3
 

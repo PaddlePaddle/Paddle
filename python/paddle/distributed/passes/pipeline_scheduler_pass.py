@@ -263,7 +263,12 @@ class Pipeline1F1BPass(PipelinePassBase):
         for program_id, program in enumerate(programs):
             last_op = program.global_block().ops[-1]
             if self.is_comm_op_valid_to_overlap(last_op):
-                # TODO(Ruibiao): Assign different stream to FORWAD and BACKWARD CommOps, and set a lower priority for FORWARD Comm stream. It can reduce the impact of FORWARD Comm on BACKWARD Comp. Now the defalut stream prirotiy in standalone executor is already the lowest priority (correspongding to 0 in V100), cannot set a lower one. Maybe we need to support setting default stream for executor.
+                # TODO(Ruibiao): Assign different stream to FORWAD and BACKWARD CommOps,
+                # and set a lower priority for FORWARD Comm stream. It can reduce the
+                # impact of FORWARD Comm on BACKWARD Comp. Now the defalut stream prirotiy
+                # in standalone executor is already the lowest priority (correspongding to
+                # 0 in V100), cannot set a lower one. Maybe we need to support setting
+                # default stream for executor.
                 last_op.dist_attr.execution_stream = (
                     AutoParallelStreamType.MP_STREAM.value
                 )
@@ -292,7 +297,8 @@ class Pipeline1F1BPass(PipelinePassBase):
                         ):
                             _add_event_dependency(last_op, posterior_op)
 
-    # TODO(Ruibiao): The cost here is just the experience value for a specific task (GPT-3-6.7B-MP2-PP4). A more genereal cost estimation scheme is required.
+    # TODO(Ruibiao): The cost here is just the experience value for a specific task (GPT-3-6.7B-MP2-PP4).
+    # A more genereal cost estimation scheme is required.
     def _op_cost(self, op):
         handwritten_cost_map = {
             "c_allreduce_sum": 0,
@@ -404,7 +410,9 @@ def apply_pass(main_program, startup_program, pass_name, pass_attr={}):
     )
 
     if pass_name == "1F1B":
-        # TODO(Ruibiao): Move FLAGS_1f1b_backward_forward_overlap and FLAGS_mp_async_allreduce_in_backward to auto parallel Strategy after these two optimizations are available.
+        # TODO(Ruibiao): Move FLAGS_1f1b_backward_forward_overlap and
+        # FLAGS_mp_async_allreduce_in_backward to auto parallel Strategy
+        # after these two optimizations are available.
         pass_attr["enable_backward_forward_overlap"] = int(
             os.environ.get("FLAGS_1f1b_backward_forward_overlap", 0)
         )

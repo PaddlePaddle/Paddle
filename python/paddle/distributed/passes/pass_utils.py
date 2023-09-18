@@ -36,7 +36,7 @@ __not_shape_var_type__ = [
 ]
 
 
-# NOTE Here stream is just a presentation with different name,
+# NOTE: Here stream is just a presentation with different name,
 # it is up to executor to create the exact streams given the name.
 class AutoParallelStreamType(Enum):
     CALC_STREAM = "default"
