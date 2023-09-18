@@ -119,7 +119,7 @@ void OpInfoImpl::Destroy() {
   }
   // (2) free memeory
   VLOG(10) << "Free base_ptr " << reinterpret_cast<void *>(base_ptr);
-  free(base_ptr);
+  delete base_ptr;
 }
 
 }  // namespace pir
