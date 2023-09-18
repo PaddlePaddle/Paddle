@@ -28,11 +28,11 @@ pir::OpResult builtin_combine(const std::vector<pir::Value>& x) {
   return combine_op.out();
 }
 
-std::vector<pir::OpResult> add_n_grad(std::vector<pir::OpResult> inputs,
-                                      pir::OpResult out_grad) {
+std::vector<pir::OpResult> add_n_grad(std::vector<pir::Value> inputs,
+                                      pir::Value out_grad) {
   std::vector<pir::OpResult> inputs_grad;
   for (size_t i = 0; i < inputs.size(); i++) {
-    inputs_grad.push_back(out_grad);
+    inputs_grad.push_back(out_grad.dyn_cast<pir::OpResult>());
   }
   return inputs_grad;
 }
