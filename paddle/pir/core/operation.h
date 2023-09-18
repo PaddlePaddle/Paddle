@@ -172,7 +172,7 @@ class IR_API alignas(8) Operation final {
   detail::OpOperandImpl *op_operand_impl(uint32_t index);
   const detail::OpOperandImpl *op_operand_impl(uint32_t index) const;
 
-  template <typename T, typename Enabler = void>
+  template <typename To, typename Enabler = void>
   struct CastUtil {
     static To call(Operation *op) {
       throw("Can't dyn_cast to To, To should be a Op or Trait or Interface");
