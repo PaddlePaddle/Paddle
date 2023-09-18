@@ -126,12 +126,19 @@ OpCall *SourcePatternGraph::AnchorNode() const {
   return id2owned_tensor_.at(*output_tensors_.begin())->producer();
 }
 
-std::vector<OpCall *> SourcePatternGraph::OutputNodes() const {
-  std::vector<OpCall *> output_nodes;
+std::unordered_set<const OpCall *> SourcePatternGraph::OutputNodes() const {
+  std::unordered_set<const OpCall *> output_op_set;
   for (const auto &output_tensor : output_tensors_) {
-    output_nodes.push_back(id2owned_tensor_.at(output_tensor)->producer());
+    OpCall *output_op_candidate =
+        id2owned_tensor_.at(output_tensor)->producer();
+    if (std::all_of(output_op_candidate->outputs().begin(),
+                    output_op_candidate->outputs().end(),
+                    [this](const Tensor *output) -> bool {
+                      return this->output_tensors().count(output->name());
+                    }))
+      output_op_set.insert(output_op_candidate);
   }
-  return output_nodes;
+  return output_op_set;
 }
 
 void ResultPatternGraph::AssignTensor(const Tensor &from, const Tensor &to) {

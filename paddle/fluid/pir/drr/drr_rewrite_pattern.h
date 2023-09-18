@@ -289,21 +289,9 @@ class DrrRewritePattern : public pir::RewritePattern {
       pir::Operation* op,
       const OpCall* anchor,
       const SourcePatternGraph& source_pattern_graph) const {
-    // get all source pattern op
-    std::unordered_set<const OpCall*> drr_output_op_set;
-    auto id2tensor = source_pattern_graph.id2owend_tensor();
-    for (auto output_tensor_name : source_pattern_graph.output_tensors()) {
-      OpCall* output_op_candidate =
-          id2tensor[output_tensor_name].get()->producer();
-      if (std::all_of(output_op_candidate->outputs().begin(),
-                      output_op_candidate->outputs().end(),
-                      [&source_pattern_graph](const Tensor* output) -> bool {
-                        return source_pattern_graph.output_tensors().count(
-                            output->name());
-                      })) {
-        drr_output_op_set.insert(output_op_candidate);
-      }
-    }
+    // get source pattern output op
+    std::unordered_set<const OpCall*> drr_output_op_set =
+        source_pattern_graph.OutputNodes();
     std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>
         output_op_bind_map{{anchor, {op}}};
     if (drr_output_op_set.size() == 1) {
