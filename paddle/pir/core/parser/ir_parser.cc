@@ -119,12 +119,8 @@ Attribute IrParser::ParseAttribute() {
   auto parenthesis_token = ConsumeToken();
   if (parenthesis_token.val_ == "true" || parenthesis_token.val_ == "false") {
     return builder->bool_attr(parenthesis_token.val_ == "true");
-  }
-  std::string attribute_type = PeekToken().val_;
-  if (attribute_type == "String") {
-    ConsumeAToken("String");
-    ConsumeAToken(")");
-    std::string val = ConsumeToken().val_;
+  } else if (parenthesis_token.token_type_ == STRING) {
+    std::string val = parenthesis_token.val_;
     val = val.substr(1, val.size() - 2);
     std::string replacement = "\"";
     std::string search = "\\\"";
@@ -134,7 +130,9 @@ Attribute IrParser::ParseAttribute() {
       found = val.find(search, found + replacement.length());
     }
     return builder->str_attr(val);
-  } else if (attribute_type == "Float") {
+  }
+  std::string attribute_type = PeekToken().val_;
+  if (attribute_type == "Float") {
     ConsumeAToken("Float");
     ConsumeAToken(")");
     std::string val = ConsumeToken().val_;

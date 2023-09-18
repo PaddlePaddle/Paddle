@@ -178,7 +178,7 @@ std::unique_ptr<Token> Lexer::LexString() {
   std::string token_val = "";
   while (is.peek() != '"') {
     char c = GetChar();
-    if (c == '\\') {
+    if (c == '\\' && is.peek() == '\"') {
       c = GetChar();
     }
     token_val += c;

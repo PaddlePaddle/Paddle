@@ -95,8 +95,7 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
       s_val.replace(found, search.length(), replacement);
       found = s_val.find(search, found + replacement.length());
     }
-    os << "(String)"
-       << "\"" << s_val << "\"";
+    os << "\"" << s_val << "\"";
   } else if (auto b = attr.dyn_cast<BoolAttribute>()) {
     if (b.data()) {
       os << "true";
