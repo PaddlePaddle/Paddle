@@ -191,7 +191,7 @@ class TestResult:
 
             setattr(self, name, value)
 
-            if name in MetaResult.cls_map():
+            if name in MetaResult.cls_map() and value:
                 if self.__unique_state is not None:
                     logger.warning('Only one result state should be True.')
 
