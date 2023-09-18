@@ -206,9 +206,9 @@ class CompiledProgram:
             assert scope is not None, ""
             self._local_scopes = []
 
-        assert isinstance(places, tuple) or isinstance(
-            places, list
-        ), "Currently , The places type can only be list or tuple, but the input type is {}.".format(
+        assert isinstance(
+            places, (list, tuple)
+        ), "Currently, The places type can only be list or tuple, but the input type is {}.".format(
             type(places)
         )
 
