@@ -103,10 +103,10 @@ void Value::ReplaceAllUsesWith(Value new_value) const {
 std::vector<std::string> Value::PrintValueInfo() {
   std::vector<std::string> ret_str;
   std::stringstream ss;
-  Type value_type = this->type();
+  Type value_type = type();
   value_type.Print(ss);
   ret_str.emplace_back(ss.str());
-  ss << this->PrintUdChain();
+  ss << PrintUdChain();
   ret_str.emplace_back(ss.str());
   return ret_str;
 }
