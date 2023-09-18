@@ -111,11 +111,6 @@ class IR_API Type {
     return pir::dyn_cast<U>(*this);
   }
 
-  template <typename U>
-  U dyn_cast_interface() const {
-    return CastInfo<U>::call(*this);
-  }
-
   void Print(std::ostream &os) const;
 
   static Type Parse(std::istream &is, IrContext *ctx);
@@ -132,21 +127,6 @@ class IR_API Type {
 
  protected:
   const Storage *storage_{nullptr};
-
- private:
-  template <typename T, typename Enabler = void>
-  struct CastInfo {
-    static T call(Type type) {
-      throw("Can't dyn_cast to T, T should be a Type or Interface");
-    }
-  };
-
-  template <typename T>
-  struct CastInfo<
-      T,
-      typename std::enable_if<std::is_base_of<pir::Type, T>::value>::type> {
-    static inline T call(pir::Type type) { return T::dyn_cast(type); }
-  };
 };
 
 IR_API std::ostream &operator<<(std::ostream &os, Type type);
@@ -159,16 +139,16 @@ class TypeInterfaceBase : public pir::Type {
  public:
   explicit TypeInterfaceBase(Type type) : Type(type) {}
 
-  // Accessor for the ID of this interface.
+  ///
+  /// \brief Accessor for the ID of this interface.
+  ///
   static TypeId GetInterfaceId() { return TypeId::get<ConcreteInterface>(); }
 
-  static ConcreteInterface dyn_cast(Type type) {
-    if (type &&
-        type.abstract_type().HasInterface(TypeId::get<ConcreteInterface>())) {
-      return ConcreteInterface(
-          type, type.abstract_type().GetInterfaceImpl<ConcreteInterface>());
-    }
-    return ConcreteInterface(Type(), nullptr);
+  ///
+  /// \brief Checking if the given object defines the concrete interface.
+  ///
+  static bool classof(Type type) {
+    return type.abstract_type().HasInterface(TypeId::get<ConcreteInterface>());
   }
 };
 

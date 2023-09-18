@@ -59,7 +59,7 @@ class DenseTensorType : public Type::TypeBase<DenseTensorType,
  public:
   using Base::Base;
 
-  const Type &dtype() const;
+  Type dtype() const;
 
   const DenseTensorTypeStorage::Dim &dims() const;
 

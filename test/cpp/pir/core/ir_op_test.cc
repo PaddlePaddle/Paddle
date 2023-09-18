@@ -60,6 +60,15 @@ class InferShapeInterface : public pir::OpInterfaceBase<InferShapeInterface> {
     Model() : Concept(InferShape) {}
   };
 
+  /// Constructor
+  InferShapeInterface(std::nullptr_t)  // NOLINT
+      : pir::OpInterfaceBase<InferShapeInterface>(nullptr), impl_(nullptr) {}
+
+  explicit InferShapeInterface(pir::Operation *op = nullptr)
+      : pir::OpInterfaceBase<InferShapeInterface>(op),
+        impl_(op ? op->info().GetInterfaceImpl<InferShapeInterface>()
+                 : nullptr) {}
+
   InferShapeInterface(pir::Operation *op, Concept *impl)
       : pir::OpInterfaceBase<InferShapeInterface>(op), impl_(impl) {}
 

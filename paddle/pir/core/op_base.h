@@ -91,15 +91,16 @@ class OpInterfaceBase : public OpBase {
  public:
   explicit OpInterfaceBase(Operation *op) : OpBase(op) {}
 
-  // Accessor for the ID of this interface.
+  ///
+  /// \brief Accessor for the ID of this interface.
+  ///
   static TypeId GetInterfaceId() { return TypeId::get<ConcreteInterface>(); }
 
-  static ConcreteInterface dyn_cast(Operation *op) {
-    if (op && op->HasInterface<ConcreteInterface>()) {
-      return ConcreteInterface(
-          op, op->info().GetInterfaceImpl<ConcreteInterface>());
-    }
-    return ConcreteInterface(nullptr, nullptr);
+  ///
+  /// \brief Checking if the given object defines the concrete interface.
+  ///
+  static bool classof(Operation *op) {
+    return op->HasInterface<ConcreteInterface>();
   }
 };
 

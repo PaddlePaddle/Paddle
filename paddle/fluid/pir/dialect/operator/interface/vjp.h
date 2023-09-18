@@ -43,6 +43,14 @@ class VjpInterface : public pir::OpInterfaceBase<VjpInterface> {
     Model() : Concept(Vjp) {}
   };
 
+  /// Constructor
+  VjpInterface(std::nullptr_t)  // NOLINT
+      : pir::OpInterfaceBase<VjpInterface>(nullptr), impl_(nullptr) {}
+
+  explicit VjpInterface(pir::Operation* op = nullptr)
+      : pir::OpInterfaceBase<VjpInterface>(op),
+        impl_(op ? op->info().GetInterfaceImpl<VjpInterface>() : nullptr) {}
+
   VjpInterface(pir::Operation* op, Concept* impl)
       : pir::OpInterfaceBase<VjpInterface>(op), impl_(impl) {}
 

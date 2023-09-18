@@ -21,7 +21,7 @@ const phi::Place& AllocatedDenseTensorType::place() const {
   return storage()->place_;
 }
 
-const pir::Type& AllocatedDenseTensorType::dtype() const {
+pir::Type AllocatedDenseTensorType::dtype() const {
   return storage()->dense_tensor_type_.dtype();
 }
 

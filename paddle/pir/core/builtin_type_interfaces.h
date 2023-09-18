@@ -68,10 +68,10 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
     /// Defined these methods with the interface.
     explicit Concept(DataType (*get_element_type)(Type),
                      DDim (*get_shape)(Type))
-        : get_element_type_(get_element_type), get_shape_(get_shape) {}
+        : get_element_type(get_element_type), get_shape(get_shape) {}
 
-    DataType (*get_element_type_)(Type);
-    DDim (*get_shape_)(Type);
+    DataType (*get_element_type)(Type);
+    DDim (*get_shape)(Type);
   };
 
   template <class ConcreteType>
@@ -88,18 +88,27 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   };
 
   /// Constructor
+  ShapedTypeInterface(std::nullptr_t)  // NOLINT
+      : TypeInterfaceBase<ShapedTypeInterface>(Type()), impl_(nullptr) {}
+
+  explicit ShapedTypeInterface(Type type = Type())
+      : TypeInterfaceBase<ShapedTypeInterface>(type),
+        impl_(type
+                  ? type.abstract_type().GetInterfaceImpl<ShapedTypeInterface>()
+                  : nullptr) {}
+
   ShapedTypeInterface(Type type, Concept *impl)
       : TypeInterfaceBase<ShapedTypeInterface>(type), impl_(impl) {}
 
   ///
   /// \brief Get the element type.
   ///
-  DataType getElementType() const;
+  DataType GetElementType() const;
 
   ///
   /// \brief Get the shape of this type.
   ///
-  DDim getShape() const;
+  DDim GetShape() const;
 
   ///
   /// \brief kDynamic
@@ -109,62 +118,62 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   ///
   /// \brief Check whether this type is ranked, currently return true.
   ///
-  bool hasRank() const { return true; }
+  bool HasRank() const { return true; }
 
   ///
   /// If this is a ranked type, return the rank. Otherwise, abort.
   ///
-  int64_t getRank() const {
-    IR_ENFORCE((*this).hasRank(), "Cannot query rank of unranked shaped type.");
-    return (*this).getShape().size();
+  int64_t GetRank() const {
+    IR_ENFORCE((*this).HasRank(), "Cannot query rank of unranked shaped type.");
+    return (*this).GetShape().size();
   }
 
   ///
   /// \brief Check whether the given dimension size is a dynamic dimension.
   ///
-  static constexpr bool isDynamic(int64_t dValue) { return dValue == kDynamic; }
+  static constexpr bool IsDynamic(int64_t dValue) { return dValue == kDynamic; }
 
   ///
   /// \brief Check whether the given shape has any size indicating a dynamic
   /// dimension.
   ///
-  static bool isDynamicShape(DDim dSizes) {
+  static bool IsDynamicShape(DDim dSizes) {
     return detail::any_of(vectorize(dSizes),
-                          [](int64_t dSize) { return isDynamic(dSize); });
+                          [](int64_t dSize) { return IsDynamic(dSize); });
   }
 
   ///
   /// \brief Check whether shape has any size indicating a dynamic dimension.
   ///
-  bool hasStaticShape() const {
-    return (*this).hasRank() && !isDynamicShape((*this).getShape());
+  bool HasStaticShape() const {
+    return (*this).HasRank() && !IsDynamicShape((*this).GetShape());
   }
 
   ///
   /// \brief Check whether the given dimension has a dynamic size.Aborts for
   /// unranked types.
   ///
-  bool isDynamicDim(unsigned idx) const {
-    IR_ENFORCE(idx < getRank(), "Invalid index for shaped type.");
-    return ShapedTypeInterface::isDynamic((*this).getShape()[idx]);
+  bool IsDynamicDim(unsigned idx) const {
+    IR_ENFORCE(idx < GetRank(), "Invalid index for shaped type.");
+    return ShapedTypeInterface::IsDynamic((*this).GetShape()[idx]);
   }
 
   ///
   /// \brief Get the number of dimensions with dynamic size for a ranked type.
   /// Aborts for unranked types.
   ///
-  int64_t getNumDynamicDims() const {
-    return detail::count_if(vectorize((*this).getShape()),
-                            ShapedTypeInterface::isDynamic);
+  int64_t GetNumDynamicDims() const {
+    return detail::count_if(vectorize((*this).GetShape()),
+                            ShapedTypeInterface::IsDynamic);
   }
 
   ///
   /// \brief Get the size of the specified dimension for a ranked type. Aborts
   /// for unranked types.
   ///
-  int64_t getDimSize(unsigned idx) const {
-    IR_ENFORCE(idx < getRank(), "Invalid index for shaped type.");
-    return (*this).getShape()[idx];
+  int64_t GetDimSize(unsigned idx) const {
+    IR_ENFORCE(idx < GetRank(), "Invalid index for shaped type.");
+    return (*this).GetShape()[idx];
   }
 
  private:

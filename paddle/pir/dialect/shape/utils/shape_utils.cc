@@ -620,12 +620,12 @@ bool SymbolicDimMgr::saveShapeConstraintGraph() {
 
 bool ShapeAnalysis::isSameNumElements(Value lhs, Value rhs) {
   if (lhs == rhs) return true;
-  auto lhsTy = lhs.type().dyn_cast_interface<ShapedTypeInterface>();
-  auto rhsTy = rhs.type().dyn_cast_interface<ShapedTypeInterface>();
+  auto lhsTy = lhs.type().dyn_cast<ShapedTypeInterface>();
+  auto rhsTy = rhs.type().dyn_cast<ShapedTypeInterface>();
 
-  if (!lhsTy || !rhsTy || !lhsTy.hasRank() || !rhsTy.hasRank()) return false;
+  if (!lhsTy || !rhsTy || !lhsTy.HasRank() || !rhsTy.HasRank()) return false;
 
-  return isProductEqual(lhs, 0, lhsTy.getRank(), rhs, 0, rhsTy.getRank());
+  return isProductEqual(lhs, 0, lhsTy.GetRank(), rhs, 0, rhsTy.GetRank());
 }
 
 bool ShapeAnalysis::isProductEqual(
@@ -665,13 +665,13 @@ SymbolicDimShapeAnalysis::~SymbolicDimShapeAnalysis() { mgr_.save(); }
 bool SymbolicDimShapeAnalysis::isShapeEqual(Value lhs, Value rhs) {
   if (lhs == rhs) return true;
 
-  auto lhsTy = lhs.type().dyn_cast_interface<ShapedTypeInterface>();
-  auto rhsTy = rhs.type().dyn_cast_interface<ShapedTypeInterface>();
+  auto lhsTy = lhs.type().dyn_cast<ShapedTypeInterface>();
+  auto rhsTy = rhs.type().dyn_cast<ShapedTypeInterface>();
 
-  if (!lhsTy || !rhsTy || !lhsTy.hasRank() || !rhsTy.hasRank()) return false;
+  if (!lhsTy || !rhsTy || !lhsTy.HasRank() || !rhsTy.HasRank()) return false;
 
-  if (lhsTy.hasStaticShape() && rhsTy.hasStaticShape()) {
-    return vectorize(lhsTy.getShape()) == vectorize(rhsTy.getShape());
+  if (lhsTy.HasStaticShape() && rhsTy.HasStaticShape()) {
+    return vectorize(lhsTy.GetShape()) == vectorize(rhsTy.GetShape());
   }
 
   auto lhsIt = value2SymDims_.find(lhs);
@@ -701,17 +701,17 @@ bool SymbolicDimShapeAnalysis::isProductEqual(Value lhs,
 
   auto buildSymbolicDimProduct =
       [&](SymbolicDimProduct& prod, Value value, std::vector<int> dimIdxs) {
-        auto ty = value.type().dyn_cast_interface<ShapedTypeInterface>();
+        auto ty = value.type().dyn_cast<ShapedTypeInterface>();
         auto it = value2SymDims_.find(value);
-        if (!ty || !ty.hasRank()) return false;
+        if (!ty || !ty.HasRank()) return false;
         for (int idx : dimIdxs) {
-          if (ty.getShape()[idx] == ShapedTypeInterface::kDynamic) {
+          if (ty.GetShape()[idx] == ShapedTypeInterface::kDynamic) {
             if (it == value2SymDims_.end() ||
                 static_cast<int>(it->second.size()) <= idx)
               return false;
             prod.symbols.push_back(it->second[idx]);
           } else {
-            prod.factor *= ty.getShape()[idx];
+            prod.factor *= ty.GetShape()[idx];
           }
         }
         return true;

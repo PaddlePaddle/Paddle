@@ -51,7 +51,7 @@ class AllocatedDenseTensorType
 
   const phi::Place &place() const;
 
-  const pir::Type &dtype() const;
+  pir::Type dtype() const;
 
   const phi::DDim &dims() const;
 
