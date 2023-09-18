@@ -191,7 +191,7 @@ class TestResult:
 
             setattr(self, name, value)
 
-            if name in MetaResult.cls_map() and value:
+            if name in MetaResult.cls_map():
                 if self.__unique_state is not None:
                     logger.warning('Only one result state should be True.')
 
@@ -199,6 +199,7 @@ class TestResult:
 
         if self.__unique_state is None:
             logger.warning('Default result will be set to FAILED!')
+            setattr(self, Failed.name, True)
             self.__unique_state = Failed
 
     @property

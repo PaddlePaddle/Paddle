@@ -20,6 +20,7 @@ import unittest
 
 import xdoctest
 from sampcd_processor import Xdoctester
+from sampcd_processor_utils import TestResult as _TestResult  # for pytest
 from sampcd_processor_utils import (
     get_api_md5,
     get_incrementapi,
@@ -31,6 +32,51 @@ def _clear_environ():
     for k in {'CPU', 'GPU', 'XPU', 'DISTRIBUTED'}:
         if k in os.environ:
             del os.environ[k]
+
+
+class Test_TestResult(unittest.TestCase):
+    def test_good_result(self):
+        r = _TestResult(name='good', passed=True)
+        self.assertTrue(r.passed)
+        self.assertFalse(r.failed)
+
+        r = _TestResult(name='good', passed=True, failed=False)
+        self.assertTrue(r.passed)
+        self.assertFalse(r.failed)
+
+        r = _TestResult(name='good', passed=False, failed=True)
+        self.assertFalse(r.passed)
+        self.assertTrue(r.failed)
+
+        r = _TestResult(name='good', passed=True, nocode=False, time=10)
+        self.assertTrue(r.passed)
+        self.assertFalse(r.nocode)
+
+        r = _TestResult(
+            name='good',
+            passed=True,
+            timeout=False,
+            time=10,
+            test_msg='ok',
+            extra_info=None,
+        )
+        self.assertTrue(r.passed)
+        self.assertFalse(r.timeout)
+
+    def test_bad_result(self):
+        # more than one True result
+        r = _TestResult(name='bad', passed=True, failed=True)
+        self.assertTrue(r.passed)
+        self.assertTrue(r.failed)
+
+        # default result is Fail for True
+        r = _TestResult(name='bad')
+        self.assertFalse(r.passed)
+        self.assertTrue(r.failed)
+
+        # bad arg
+        with self.assertRaises(KeyError):
+            r = _TestResult(name='good', passed=True, bad=True)
 
 
 class Test_get_api_md5(unittest.TestCase):
