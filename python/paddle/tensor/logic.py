@@ -27,7 +27,7 @@ from paddle.tensor.creation import full
 from paddle.tensor.math import broadcast_shape
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..framework import LayerHelper, in_dynamic_mode
+from ..framework import LayerHelper, in_dynamic_mode, in_dynamic_or_pir_mode
 
 __all__ = []
 
@@ -630,7 +630,7 @@ def greater_equal(x, y, name=None):
             Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True , False, True ])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.greater_equal(x, y)
     else:
         check_variable_and_dtype(

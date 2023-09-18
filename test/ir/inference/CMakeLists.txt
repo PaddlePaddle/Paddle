@@ -133,7 +133,7 @@ if(WITH_XPU)
   endforeach()
 endif()
 
-# below are cutlass unitests
+# below are cutlass unittests
 file(
   GLOB TEST_CUTLASS
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
