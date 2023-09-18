@@ -397,7 +397,7 @@ class TrainEpochRange(SerializableBase):
                 "load tain_epoch_range checkpoint:{}".format(self._serialize())
             )
         else:
-            assert False, "not supported acp_type:{}".format(g_acp_type)
+            raise AssertionError("not supported acp_type:{}".format(g_acp_type))
 
     def _to_dict(self):
         d = {
@@ -503,7 +503,9 @@ class TrainEpochRange(SerializableBase):
                 elif g_acp_type == CONST_DACP_TYPE:
                     self._save_checkpoint()
                 else:
-                    assert False, "not supported acp_type:{}".format(g_acp_type)
+                    raise AssertionError(
+                        "not supported acp_type:{}".format(g_acp_type)
+                    )
             self._last_checkpoint_time = time.time()
 
     def _save_checkpoint(self):
