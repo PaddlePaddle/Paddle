@@ -12,18 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/core/kernel_registry.h"
+
 #include <typeindex>
 #include <typeinfo>
 
 #include "paddle/phi/core/custom_kernel.h"
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/kernel_utils.h"
 
 namespace phi {
 
-void ParseTypeIndex(const std::vector<std::type_index>& args_type,
-                    const KernelKey& default_key,
-                    KernelArgsDef* args_def) {
+void SetKernelArgsDef(const std::vector<std::type_index>& args_type,
+                      const KernelKey& default_key,
+                      KernelArgsDef* args_def) {
   auto default_tensor_layout = phi::DataLayout::NCHW;
   if (default_key.layout() != phi::DataLayout::ANY) {
     default_tensor_layout = default_key.layout();

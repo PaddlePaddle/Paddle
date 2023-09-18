@@ -29,9 +29,9 @@ namespace phi {
 template <typename Func>
 struct KernelArgsParseFunctor;
 
-void ParseTypeIndex(const std::vector<std::type_index>& args_type,
-                    const KernelKey& default_key,
-                    KernelArgsDef* args_def);
+void SetKernelArgsDef(const std::vector<std::type_index>& args_type,
+                      const KernelKey& default_key,
+                      KernelArgsDef* args_def);
 
 template <typename Return_, typename... Args_>
 struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
@@ -47,7 +47,7 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
     // fluid Tensor
 
     auto args_type = ParseArgType(Indices{});
-    ParseTypeIndex(args_type, default_key, args_def);
+    SetKernelArgsDef(args_type, default_key, args_def);
   }
 
  private:
