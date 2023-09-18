@@ -521,6 +521,7 @@ cc_test(
 add_library(proto_desc_base OBJECT var_desc.cc op_desc.cc block_desc.cc
                                    program_desc.cc)
 add_dependencies(
+  proto_desc_base
   attribute
   ops_extra_info
   shape_inference
