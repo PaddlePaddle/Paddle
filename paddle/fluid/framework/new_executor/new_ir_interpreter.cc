@@ -564,7 +564,7 @@ std::string NewIRInterpreter::DebugValueInfo() {
      << "\n";
 
   interpreter::PrintValuesAndVariables(
-      *ir_program_->block(), &value_2_var_name_, &variable_2_var_name_);
+      *ir_block_, &value_2_var_name_, &variable_2_var_name_);
 
   for (auto kv : value_2_var_name_) {
     PADDLE_ENFORCE((bool)kv.first,
@@ -1314,7 +1314,7 @@ void NewIRInterpreter::SolvePersisableVarNames() {
       auto is_persisables = defining_op->attribute(kAttrIsPersisable)
                                 .dyn_cast<::pir::ArrayAttribute>()
                                 .AsVector();
-      if (is_persisables[result.GetResultIndex()]
+      if (is_persisables[result.index()]
               .dyn_cast<::pir::BoolAttribute>()
               .data()) {
         VLOG(6) << "parameter_var_names_ include: " << var_name;

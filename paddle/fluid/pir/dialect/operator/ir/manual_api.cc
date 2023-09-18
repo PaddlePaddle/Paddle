@@ -22,13 +22,13 @@
 namespace paddle {
 namespace dialect {
 
-pir::OpResult builtin_combine(std::vector<pir::OpResult> x) {
+pir::OpResult builtin_combine(const std::vector<pir::Value>& x) {
   auto combine_op =
       APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(x);
   return combine_op.out();
 }
 
-pir::OpResult zeros_like(pir::OpResult x,
+pir::OpResult zeros_like(pir::Value x,
                          phi::DataType dtype,
                          const Place& place) {
   return paddle::dialect::full_like(x, 0, dtype, place);
@@ -52,14 +52,14 @@ pir::OpResult get_parameter(const std::string& name,
   return get_parameter_op.result(0);
 }
 
-void set_parameter(pir::OpResult parameter, const std::string& name) {
+void set_parameter(pir::Value parameter, const std::string& name) {
   APIBuilder::Instance().GetBuilder()->Build<pir::SetParameterOp>(parameter,
                                                                   name);
 }
 
-pir::OpResult embedding_grad(pir::OpResult x,
-                             pir::OpResult weight,
-                             pir::OpResult out_grad,
+pir::OpResult embedding_grad(pir::Value x,
+                             pir::Value weight,
+                             pir::Value out_grad,
                              int64_t padding_idx,
                              bool sparse) {
   if (weight.type().isa<paddle::dialect::DenseTensorType>()) {
