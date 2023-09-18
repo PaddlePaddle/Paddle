@@ -244,7 +244,7 @@ void IrPrinter::PrintAttributeMap(Operation* op) {
   PrintInterleave(
       attribute_will_be_printed.begin(),
       attribute_will_be_printed.end(),
-      [this, &attributes](std::string attr_name) {
+      [this, &attributes](const std::string& attr_name) {
         this->os_ << attr_name;
         this->os_ << ":";
         this->PrintAttribute(attributes.at(attr_name));
