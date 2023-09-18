@@ -112,7 +112,6 @@ ignore = [
     "F522",
     "B010",
     "PLR1722",
-    "UP028",
     "C403",
     "UP034",
     "C405",
@@ -162,15 +161,6 @@ ignore = [
 "test/legacy_test/test_tensordot.py" = ["B017"]
 "test/legacy_test/test_top_k_v2_op.py" = ["B017"]
 
-# UP028
-"python/paddle/dataset/cifar.py" = ["UP028"]
-"python/paddle/dataset/common.py" = ["UP028", "UP032"]
-"python/paddle/io/dataloader/dataset.py" = ["UP028"]
-"python/paddle/nn/layer/layers.py" = ["UP028", "UP032"]
-"python/paddle/utils/layers_utils.py" = ["UP028", "UP032"]
-"test/legacy_test/test_lstm_cudnn_op.py" = ["UP028", "UP032"]
-"test/rnn/rnn_numpy.py" = ["UP028", "UP032"]
-
 # UP032
 "paddle/fluid/ir/dialect/op_generator/api_gen.py" = ["UP032"]
 "paddle/fluid/ir/dialect/op_generator/op_gen.py" = ["UP032"]
@@ -187,6 +177,7 @@ ignore = [
 "python/paddle/audio/backends/init_backend.py" = ["UP032"]
 "python/paddle/audio/backends/wave_backend.py" = ["UP032"]
 "python/paddle/batch.py" = ["UP032"]
+"python/paddle/dataset/common.py" = ["UP032"]
 "python/paddle/device/cuda/__init__.py" = ["UP032"]
 "python/paddle/distributed/auto_parallel/interface.py" = ["UP032"]
 "python/paddle/distributed/auto_parallel/static/completion.py" = ["UP032"]
@@ -309,6 +300,7 @@ ignore = [
 "python/paddle/nn/layer/activation.py" = ["UP032"]
 "python/paddle/nn/layer/common.py" = ["UP032"]
 "python/paddle/nn/layer/container.py" = ["UP032"]
+"python/paddle/nn/layer/layers.py" = ["UP032"]
 "python/paddle/nn/layer/loss.py" = ["UP032"]
 "python/paddle/nn/layer/norm.py" = ["UP032"]
 "python/paddle/nn/layer/pooling.py" = ["UP032"]
@@ -343,6 +335,7 @@ ignore = [
 "python/paddle/utils/dlpack.py" = ["UP032"]
 "python/paddle/utils/download.py" = ["UP032"]
 "python/paddle/utils/install_check.py" = ["UP032"]
+"python/paddle/utils/layers_utils.py" = ["UP032"]
 "python/paddle/vision/datasets/cifar.py" = ["UP032"]
 "python/paddle/vision/datasets/flowers.py" = ["UP032"]
 "python/paddle/vision/datasets/mnist.py" = ["UP032"]
@@ -434,6 +427,7 @@ ignore = [
 "test/legacy_test/test_imperative_se_resnext.py" = ["UP032"]
 "test/legacy_test/test_inplace.py" = ["UP032"]
 "test/legacy_test/test_layers.py" = ["UP032"]
+"test/legacy_test/test_lstm_cudnn_op.py" = ["UP032"]
 "test/legacy_test/test_multi_dot_op.py" = ["UP032"]
 "test/legacy_test/test_multiprocess_dataloader_iterable_dataset_static.py" = ["UP032"]
 "test/legacy_test/test_multiprocess_dataloader_static.py" = ["UP032"]
@@ -461,6 +455,7 @@ ignore = [
 "test/quantization/test_post_training_quantization_while.py" = ["UP032"]
 "test/quantization/test_quant_post_quant_aware.py" = ["UP032"]
 "test/quantization/test_weight_quantization_mobilenetv1.py" = ["UP032"]
+"test/rnn/rnn_numpy.py" = ["UP032"]
 "test/tokenizer/bert_tokenizer.py" = ["UP032"]
 "test/tokenizer/tokenizer_utils.py" = ["UP032"]
 "test/xpu/test_generate_proposals_v2_op_xpu.py" = ["UP032"]
