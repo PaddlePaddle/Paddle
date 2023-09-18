@@ -21,7 +21,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
-#include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/gpu/unary.h"
 
 namespace phi {
 
@@ -56,11 +56,8 @@ struct CudaAbsFunctor<
 template <typename T, typename Context>
 void AbsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   ctx.template Alloc<phi::dtype::Real<T>>(out);
-  std::vector<const DenseTensor*> ins = {&x};
-  std::vector<DenseTensor*> outs = {out};
   auto functor = CudaAbsFunctor<T>();
-
-  funcs::ElementwiseKernel<phi::dtype::Real<T>>(ctx, ins, &outs, functor);
+  UnaryKernel<phi::dtype::Real<T>, Context>(ctx, &x, out, functor);
 }
 
 }  // namespace phi

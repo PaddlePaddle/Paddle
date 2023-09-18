@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/gpu/unary.h"
 #include "paddle/phi/kernels/impl/activation_grad_impl.h"
 #include "paddle/phi/kernels/impl/activation_impl.h"
 
@@ -33,9 +33,8 @@ void ActivationGPUImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_NOT_NULL(out,
                           errors::NotFound("Output Out should not be nullptr"));
   dev_ctx.template Alloc<T>(out);
-  std::vector<const DenseTensor*> ins = {&x};
-  std::vector<DenseTensor*> outs = {out};
-  funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
+  using outT = phi::dtype::Real<T>;
+  UnaryKernel<T, Context>(dev_ctx, &x, out, functor);
 }
 
 #define DEFINE_GPU_ACTIVATION_KERNEL(name, functor_class)               \
