@@ -163,6 +163,179 @@ void gelu_grad(const Tensor& x,
   }
 }
 
+template <typename T>
+void dropout_grad(const Tensor& mask,
+                  const Tensor& out_grad,
+                  const Scalar& p,
+                  bool is_test,
+                  const std::string& mode,
+                  Tensor* x_grad) {
+  if (!x_grad) return;
+  if (is_test) {
+    if (mode == "upscale_in_train") {
+      set_output<T>(out_grad, x_grad);
+    } else {
+      set_output<T>(out_grad * (1.0 - p.to<float>()), x_grad);
+    }
+  } else {
+    if (mode == "upscale_in_train") {
+      if (p.to<float>() == 1.0f) {
+        set_output<T>(scale<T>(out_grad, 0.0), x_grad);
+      } else {
+        set_output<T>(scale<T>(out_grad * cast<T>(mask, out_grad.dtype()),
+                               1.0 / (1.0 - p.to<float>())),
+                      x_grad);
+      }
+    } else {
+      set_output<T>(out_grad * cast<T>(mask, out_grad.dtype()), x_grad);
+    }
+  }
+}
+
+template <typename T>
+void cast_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    auto res = cast<T>(out_grad, x.dtype());
+    set_output<T>(res, x_grad);
+  }
+}
+
+template <typename T>
+void add_grad(const Tensor& x,
+              const Tensor& y,
+              const Tensor& out_grad,
+              int axis,
+              Tensor* dx,
+              Tensor* dy) {
+  if (dy) {
+    if (x.dims() != y.dims()) {
+      // Maybe need reduce here
+      phi::DDim reduce_dim = get_reduce_dims(y.dims(), x.dims());
+      if (!reduce_dim.size()) {
+        set_output<T>(out_grad, dy);
+      } else {
+        auto dy_reduce_res =
+            out_grad.sum(phi::vectorize(reduce_dim), y.dtype(), false);
+        auto dy_tmp = reshape<T>(dy_reduce_res, phi::vectorize(y.dims()));
+        set_output<T>(dy_tmp, dy);
+      }
+
+    } else {
+      set_output<T>(out_grad, dy);
+    }
+  }
+  if (dx) {
+    if (y.dims() != x.dims()) {
+      // Maybe need reduce here
+      auto reduce_dim = get_reduce_dims(x.dims(), y.dims());
+      if (!reduce_dim.size()) {
+        set_output<T>(out_grad, dx);
+      } else {
+        auto dx_reduce_res =
+            out_grad.sum(phi::vectorize(reduce_dim), x.dtype(), false);
+        auto dx_tmp = reshape<T>(dx_reduce_res, phi::vectorize(x.dims()));
+        set_output<T>(dx_tmp, dx);
+      }
+    } else {
+      set_output<T>(out_grad, dx);
+    }
+  }
+}
+
+template <typename T>
+void multiply_grad(const Tensor& x,
+                   const Tensor& y,
+                   const Tensor& out_grad,
+                   int axis,
+                   Tensor* x_grad,
+                   Tensor* y_grad) {
+  if (x_grad) {
+    auto x_grad_unreduce = out_grad * y;
+    if (x_grad_unreduce.dims() != x.dims()) {
+      auto axes = get_reduce_dims_from_out(x_grad_unreduce.dims(), x.dims());
+      if (!axes.size()) {
+        set_output<T>(x_grad_unreduce, x_grad);
+      } else {
+        auto x_grad_reduced = x_grad_unreduce.sum(
+            phi::vectorize(axes), x_grad_unreduce.dtype(), false);
+        if (x_grad_reduced.dims().size() != x.dims().size()) {
+          x_grad_reduced = reshape<T>(x_grad_reduced, x.shape());
+        }
+        set_output<T>(x_grad_reduced, x_grad);
+      }
+    } else {
+      set_output<T>(x_grad_unreduce, x_grad);
+    }
+  }
+  if (y_grad) {
+    auto y_grad_unreduce = out_grad * x;
+    if (y_grad_unreduce.dims() != y.dims()) {
+      auto axes = get_reduce_dims_from_out(y_grad_unreduce.dims(), y.dims());
+      if (!axes.size()) {
+        set_output<T>(y_grad_unreduce, y_grad);
+      } else {
+        auto y_grad_reduced = y_grad_unreduce.sum(
+            phi::vectorize(axes), y_grad_unreduce.dtype(), false);
+        if (y_grad_reduced.dims().size() != y.dims().size()) {
+          y_grad_reduced = reshape<T>(y_grad_reduced, y.shape());
+        }
+        set_output<T>(y_grad_reduced, y_grad);
+      }
+    } else {
+      set_output<T>(y_grad_unreduce, y_grad);
+    }
+  }
+}
+
+template <typename T>
+void elementwise_pow_grad(const Tensor& x,
+                          const Tensor& y,
+                          const Tensor& out_grad,
+                          Tensor* dx,
+                          Tensor* dy) {
+  if (dy) {
+    // dy = lnx * x^y
+    auto lnx = log<T>(x);
+    auto x_pow_y = elementwise_pow<T>(x, y);
+    auto dy_res = lnx * x_pow_y * out_grad;
+    if (x.dims() != y.dims()) {
+      // Maybe need reduce here
+      phi::DDim reduce_dim = get_reduce_dims(y.dims(), x.dims());
+      if (!reduce_dim.size()) {
+        set_output<T>(dy_res, dy);
+      } else {
+        auto dy_reduce_res =
+            dy_res.sum(phi::vectorize(reduce_dim), y.dtype(), false);
+        auto dy_tmp = reshape<T>(dy_reduce_res, phi::vectorize(y.dims()));
+        set_output<T>(dy_tmp, dy);
+      }
+    } else {
+      set_output<T>(dy_res, dy);
+    }
+  }  // indicate we will compute dy
+  if (dx) {
+    // dx = y * x^(y-1)
+    auto tmp_z = y - 1.0;
+    auto x_pow_z = elementwise_pow<T>(x, tmp_z);
+    auto dx_res = y * x_pow_z * out_grad;
+    if (y.dims() != x.dims()) {
+      // Maybe need reduce here
+      auto reduce_dim = get_reduce_dims(x.dims(), y.dims());
+      if (!reduce_dim.size()) {
+        set_output<T>(dx_res, dx);
+      } else {
+        auto dx_reduce_res =
+            dx_res.sum(phi::vectorize(reduce_dim), x.dtype(), false);
+        auto dx_tmp = reshape<T>(dx_reduce_res, phi::vectorize(x.dims()));
+        set_output<T>(dx_tmp, dx);
+      }
+
+    } else {
+      set_output<T>(dx_res, dx);
+    }
+  }  // indicate we will compute dx
+}
+
 }  // namespace details
 }  // namespace primitive
 }  // namespace paddle
