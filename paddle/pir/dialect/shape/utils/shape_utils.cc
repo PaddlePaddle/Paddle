@@ -101,8 +101,8 @@ bool SymbolicDimMgr::LoadShapeConstraintGraph() {
 
   for (auto op : constraint_vec) {
     SymbolicDimProduct lhs, rhs;
-    if (!build_sym_product(op.getLhs(), lhs) ||
-        !build_sym_product(op.getRhs(), rhs) ||
+    if (!build_sym_product(op.lhs(), lhs) ||
+        !build_sym_product(op.rhs(), rhs) ||
         !MapSymbolicDimProductEqual(lhs, rhs))
       return false;
   }
@@ -645,7 +645,7 @@ SymbolicDimShapeAnalysis::SymbolicDimShapeAnalysis(ModuleOp m)
   for (auto op : *(m_.block())) {
     auto tieShapeOp = op->dyn_cast<dialect::TieShapeOp>();
     if (!tieShapeOp) continue;
-    Value result = tieShapeOp.getValue();
+    Value result = tieShapeOp.value();
     auto& symbols = value2SymDims_[result];
     auto attrs =
         tieShapeOp
@@ -724,4 +724,103 @@ bool SymbolicDimShapeAnalysis::IsProductEqual(Value lhs,
 
   return mgr_.IsSymbolicDimProductEqual(lhsProd, rhsProd);
 }
+
+ShapeComputationIRAnalysis::ShapeComputationIRAnalysis(
+    ModuleOp m, const SymbolicDimMgr& mgr)
+    : m_(m), mgr_(mgr) {}
+
+bool ShapeComputationIRAnalysis::Run() {
+  // Make sure only run once.
+  if (initialized_) return false;
+  initialized_ = true;
+  if (!RunOnRegion(&(m_->region(0)), BuildSymbolicShape)) return false;
+  // if(!RunOnRegion(&(m_->region(0)),applyOpConstraint)) return false;
+}
+
+bool ShapeComputationIRAnalysis::RunOnRegion(Region* region, func f) {
+  for (Block& block : *region) {
+    if (!RunOnBlock(&block)) return false;
+  }
+  return true;
+}
+
+bool ShapeComputationIRAnalysis::RunOnBlock(Block* block, func f) {
+  // TODO(liujinnan): mapping block arguments
+
+  std::vector<Operation*> op_list;
+  for (Operation& op : *block) op_list.push_back(&op);
+  for (Operation* op : op_list) {
+    for (size_t i = 0; i < op->num_regions(); ++i) {
+      if (!RunOnRegion(&(op->region(i)), f)) return false;
+    }
+    if (!f(op)) return false;
+  }
+  return true;
+}
+
+bool ShapeComputationIRAnalysis::BuildSymbolicShape(Operation* op) {
+  if (op->isa<dialect::FuncOp>()) return true;
+  if (op->isa<dialect::TieShapeOp>()) {
+    Value value = op->getOperand(0);
+    std::vector<SymbolicDim> symbols;
+    auto attrs =
+        op->attribute<ArrayAttribute>(SymbolicDim::getSymbolicDimAttrName())
+            .AsVector();
+    if (!attrs.empty()) {
+      for (Attribute attr : attrs) {
+        auto sym = fn(attr.dyn_cast<StrAttribute>().AsString());
+        assert(sym);
+        SymbolicDim root = GetRootSymbolicDim(sym);
+        symbols.push_back(root);
+      }
+    } else {
+      symbols = mgr_.CreateSymbolicDimsForRankedValue(value);
+    }
+    rankedTensor2SymDims_[value] = std::move(symbols);
+    return true;
+  }
+
+  if (!BuildSymbolicShapeForResultsOfOp(op)) return false;
+  // TODO(zhangbo63): apply op's shape constraint
+}
+
+bool ShapeComputationIRAnalysis::BuildSymbolicShapeForResultsOfOp(
+    Operation* op) {
+  // build shapes for the results of op
+  for (size_t i = 0; i < op->num_results(); ++i) {
+    if (!BuildSymbolicShape(result)) return false;
+  }
+  return true;
+}
+
+bool ShapeComputationIRAnalysis::BuildSymbolicShape(Value value) {
+  Type ty = value.type();
+  if (IsIntOrIndex(ty)) {
+    SymbolicDim sym = mgr_.newSymbolicDim();
+    value2SymDim_[value] = sym;
+  } else if (IsCandidateShapeTensorType(ty)) {
+    std::vector<SymbolicDim> symbols;
+    for (size_t i = 0, d = tensorTy.getShape()[0]; i < d; ++i)
+      symbols.push_back(mgr_.newSymbolicDim());
+    shapeTensor2SymDims_[value] = std::move(symbols);
+  }
+  return true;
+}
+
+bool IsIntOrIndex(Type type) {
+  return type.isa<IndexType> || type.isa<Int8Type>() || type.isa<UInt8Type>() ||
+         type.isa<Int16Type>() || type.isa<Int32Type>() ||
+         type.isa<Int64Type>();
+}
+
+bool IsCandidateShapeTensorType(Type ty) {
+  if (auto tensorTy = ty.dyn_cast<paddle::dialect::DenseTensorType>()) {
+    auto shapedTy = tensorTy.dyn_cast_interface<ShapedTypeInterface>();
+    return (shapedTy.getRank() == 1 && shapedTy.hasStaticShape() &&
+            isIntOrIndex(shapedTy.getElementType()) &&
+            shapedTy.getShape()[0] < 32);
+  }
+  return false;
+}
+
 }  // namespace pir

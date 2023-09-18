@@ -18,10 +18,13 @@
 
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/program.h"
+#include "paddle/pir/dialect/shape/utils/shape_utils.h"
 #include "paddle/pir/pass/pass.h"
+#include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
 
 namespace {
+using PassPipelineRunner = std::function<bool(OpPassManager&, ModuleOp)>;
 
 bool InsertTieShapeOnValue(pir::OpResult value,
                            pir::Builder& builder) {  // NOLINT
@@ -42,7 +45,8 @@ bool InsertTieShapeOnRegion(pir::Region* region);
 bool InsertTieShapeOnOperation(pir::Operation* op,
                                pir::Builder& builder) {  // NOLINT
   if (op->isa<pir::dialect::TieShapeOp>()) return true;
-  // TODO(liujinnan): skip the specialized Ops.
+  // TODO(liujinnan): skip more specialized Ops.
+  if (op->isa<pir::dialect::FuncOp>()) return true;
 
   for (size_t i = 0; i < op->num_regions(); ++i) {
     if (!InsertTieShapeOnRegion(&(op->region(i)))) return false;
@@ -81,6 +85,15 @@ bool MaterializeShapeComputation(pir::ModuleOp m) {
   return true;
 }
 
+bool optimizeShapeComputation(pir::ModuleOp m, PassPipelineRunner runner) {
+  // TODO(liujinnan): Do some Canonicalizer.
+  pir::SymbolicDimMgr mgr(m);
+  if (!mgr.load()) return false;
+  pir::ShapeComputationIRAnalysis analysis(m, mgr);
+  if (!analysis.run()) return false;
+  if (!mgr.save()) return false;
+}
+
 class ShapeOptimizationPass : public pir::Pass {
  public:
   ShapeOptimizationPass() : pir::Pass("shape_optimization", 0) {}
@@ -88,11 +101,17 @@ class ShapeOptimizationPass : public pir::Pass {
   void Run(pir::Operation* op) override {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     IR_ENFORCE(module_op, "ShapeOptimizationPass should run on module op.");
-    MaterializeShapeComputation(module_op);
+    materializeShapeComputation(module_op);
+    PassPipelineRunner runner = [this](pir::PassManager& pm, pir::ModuleOp m) {
+      return pm.Run(&(m.program()));
+    };
+    if (!optimizeShapeComputation(m, runner)) {
+      return;
+    }
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->name() == "builtin.module" && op->num_regions() > 0;
+    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
   }
 };
 
