@@ -90,7 +90,7 @@ class CommTask {
   virtual std::string GetCommErrors() {
     PADDLE_THROW(
         phi::errors::Unimplemented("%s is not implemented.", __func__));
-    return;
+    return "";
   }
   virtual bool IsStarted() {
     PADDLE_THROW(
