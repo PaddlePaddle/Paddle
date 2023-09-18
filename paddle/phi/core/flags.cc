@@ -1138,6 +1138,10 @@ PADDLE_DEFINE_EXPORTED_bool(enable_async_trace,
 PADDLE_DEFINE_EXPORTED_int32(async_trace_count,
                              5,
                              "collective async trace count");
+
+PADDLE_DEFINE_EXPORTED_bool(benchmark_nccl,
+                            false,
+                            "enable nccl debug mode to synchronize nccl comm");
 #endif
 
 /**
