@@ -1118,7 +1118,7 @@ static PyObject* tensor_method_detach_(TensorObject* self,
   autograd_meta->SetPersistable(
       egr::EagerUtils::autograd_meta(&(self->tensor))->Persistable());
   self->tensor.set_autograd_meta(autograd_meta);
-
+  Py_INCREF(reinterpret_cast<PyObject*>(self));
   return reinterpret_cast<PyObject*>(self);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
