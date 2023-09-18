@@ -48,13 +48,13 @@ def GenBuildInputArgsStr(
     attr_args_is_map=False,
 ):
     '''
-    Example: pir::Builder &builder, pir::OperationArgument &argument, pir::OpResult x_, phi::DataType dtype=phi::DataType::UNDEFINED, phi::Place place={}
+    Example: pir::Builder &builder, pir::OperationArgument &argument, pir::Value x_, phi::DataType dtype=phi::DataType::UNDEFINED, phi::Place place={}
     '''
     # add inputs
     build_args_str = "pir::Builder &builder, pir::OperationArgument &argument"
     if len(op_input_name_list) > 0:
         for input_name in op_input_name_list:
-            build_args_str += ", pir::OpResult " + input_name + "_"
+            build_args_str += ", pir::Value " + input_name + "_"
 
     if attr_args_is_map:
         build_args_str += ", pir::AttributeMap attributes"
@@ -92,7 +92,7 @@ def GenBuildInputArgsStr(
             # add mutable attributes as inputs
             if len(op_mutable_attribute_name_list) > 0:
                 for mutable_attr in op_mutable_attribute_name_list:
-                    build_args_str += ", pir::OpResult " + mutable_attr + "_"
+                    build_args_str += ", pir::Value " + mutable_attr + "_"
 
             # add non-mutable attributes
             for attr_idx in range(len(op_non_mutable_attribute_name_list)):
@@ -183,8 +183,8 @@ def GenBuildInserFullForMutableAttribute(
 
 
 def GenBuildInputs(op_input_name_list, op_mutable_attribute_name_list):
-    BUILD_INPUT_TEMPLATE = """  std::vector<pir::OpResult> argument_inputs = {{{inputs_args}}};
-  argument.AddInputs(argument_inputs.begin(), argument_inputs.end());
+    BUILD_INPUT_TEMPLATE = """  std::vector<pir::Value> argument_inputs = {{{inputs_args}}};
+  argument.AddInputs(argument_inputs);
 """
     build_input_str = '  VLOG(4) << "Builder construction inputs";\n'
     input_name_list = op_input_name_list + op_mutable_attribute_name_list
@@ -344,16 +344,11 @@ def GenBuildOutputs(
     meta_{name}.push_back(&vec_meta_{name}[i]);
   }}
  """
-
-    CREATE_INTARRAY_MUTABLE_ATTRIBUE_TEMPLATE = """  std::vector<int64_t> {name} = {name}_.owner()->dyn_cast<paddle::dialect::FullIntArrayOp>().attributes().at("value").dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData(); (void){name};\n"""
-    CREATE_SCALAR_MUTABLE_ATTRIBUE_TEMPLATE = """  {dtype} {name} = {name}_.owner()->dyn_cast<paddle::dialect::FullOp>().attributes().at("value").dyn_cast<paddle::dialect::ScalarAttribute>().data().to<{dtype}>(); (void){name};\n"""
-
     CREATE_INTARRAY_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::IntArray {name};
-  if ({name}_.owner()->info().id() == pir::TypeId::get<paddle::dialect::FullIntArrayOp>()) {{
-    {name} = std::move(phi::IntArray({name}_.owner()
+  if ({name}_.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullIntArrayOp>()) {{
+    {name} = std::move(phi::IntArray({name}_.dyn_cast<pir::OpResult>().owner()
                           ->dyn_cast<paddle::dialect::FullIntArrayOp>()
-                          .attributes()
-                          .at("value")
+                          .attribute("value")
                           .dyn_cast<paddle::dialect::IntArrayAttribute>()
                           .data()
                           .GetData()));
@@ -370,14 +365,13 @@ def GenBuildOutputs(
   }}\n"""
 
     CREATE_VECTOR_INT_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  std::vector<int64_t> {name};
-  if ({name}_.owner()->info().id() == pir::TypeId::get<paddle::dialect::FullIntArrayOp>()) {{
-    {name} = {name}_.owner()
-                          ->dyn_cast<paddle::dialect::FullIntArrayOp>()
-                          .attributes()
-                          .at("value")
-                          .dyn_cast<paddle::dialect::IntArrayAttribute>()
-                          .data()
-                          .GetData();
+  if ({name}_.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullIntArrayOp>()) {{
+    {name} = {name}_.dyn_cast<pir::OpResult>().owner()
+                    ->dyn_cast<paddle::dialect::FullIntArrayOp>()
+                    .attribute("value")
+                    .dyn_cast<paddle::dialect::IntArrayAttribute>()
+                    .data()
+                    .GetData();
   }} else if ({name}_.type().isa<pir::VectorType>()) {{
     size_t {name}_size = {name}_.type().dyn_cast<pir::VectorType>().size();
     {name} = std::vector<int64_t>({name}_size, -1);
@@ -389,11 +383,10 @@ def GenBuildOutputs(
   }}\n"""
 
     CREATE_SCALAR_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::Scalar {name};
-  if ({name}_.owner()->info().id() == pir::TypeId::get<paddle::dialect::FullOp>()) {{
-    {name} = std::move(phi::Scalar({name}_.owner()
+  if ({name}_.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullOp>()) {{
+    {name} = std::move(phi::Scalar({name}_.dyn_cast<pir::OpResult>().owner()
                                   ->dyn_cast<paddle::dialect::FullOp>()
-                                  .attributes()
-                                  .at("value")
+                                  .attribute("value")
                                   .dyn_cast<paddle::dialect::ScalarAttribute>()
                                   .data()
                                   .to<int>()));

@@ -137,7 +137,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     pir::Builder builder = pir::Builder(ir_context(), program->block());
 
     // prepare op inputs
-    std::vector<pir::OpResult> op_inputs;
+    std::vector<pir::Value> op_inputs;
     for (uint32_t i = 0; i < op->num_operands(); i++) {
       PADDLE_ENFORCE_EQ(
           op->operand_source(i).type().isa<paddle::dialect::DenseTensorType>(),

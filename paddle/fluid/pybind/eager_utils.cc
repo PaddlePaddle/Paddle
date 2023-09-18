@@ -1536,17 +1536,17 @@ pir::OpResult CastPyArg2OpResult(PyObject* obj,
   }
 }
 
-std::vector<pir::OpResult> CastPyArg2VectorOfOpResult(
-    PyObject* obj, const std::string& op_type, size_t arg_pos) {
-  std::vector<pir::OpResult> result_list;
+std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
+                                                const std::string& op_type,
+                                                size_t arg_pos) {
+  std::vector<pir::Value> value_list;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
       if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
-        result_list.emplace_back(
-            ::pybind11::handle(item).cast<pir::OpResult>());
+        value_list.emplace_back(::pybind11::handle(item).cast<pir::OpResult>());
       } else if (item == Py_None) {
         continue;
       } else {
@@ -1565,8 +1565,7 @@ std::vector<pir::OpResult> CastPyArg2VectorOfOpResult(
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
       if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
-        result_list.emplace_back(
-            ::pybind11::handle(item).cast<pir::OpResult>());
+        value_list.emplace_back(::pybind11::handle(item).cast<pir::OpResult>());
       } else if (item == Py_None) {
         continue;
       } else {
@@ -1580,7 +1579,7 @@ std::vector<pir::OpResult> CastPyArg2VectorOfOpResult(
       }
     }
   } else if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
-    return {::pybind11::handle(obj).cast<pir::OpResult>()};
+    return {::pybind11::handle(obj).cast<pir::Value>()};
   } else if (obj == Py_None) {
     return {};
   } else {
@@ -1591,7 +1590,7 @@ std::vector<pir::OpResult> CastPyArg2VectorOfOpResult(
         arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
-  return result_list;
+  return value_list;
 }
 
 paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,

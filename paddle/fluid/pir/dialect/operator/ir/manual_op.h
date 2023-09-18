@@ -45,7 +45,7 @@ class AddNOp : public pir::Op<AddNOp, OpYamlInfoInterface, InferMetaInterface> {
   static OpInfoTuple GetOpInfo();
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::OpResult inputs);
+                    pir::Value inputs);
 
   void Verify();
   pir::Value inputs() { return operand_source(0); }
@@ -65,7 +65,7 @@ class AddN_Op : public pir::Op<AddN_Op,
   static OpInfoTuple GetOpInfo();
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::OpResult inputs_);
+                    pir::Value inputs_);
 
   void Verify();
   pir::Value inputs() { return operand_source(0); }
@@ -85,7 +85,7 @@ class AddNWithKernelOp : public pir::Op<AddNWithKernelOp,
   static OpInfoTuple GetOpInfo();
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::OpResult inputs_);
+                    pir::Value inputs_);
 
   void Verify();
   pir::Value inputs() { return operand_source(0); }
@@ -107,9 +107,9 @@ class FusedGemmEpilogueOp
 
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::OpResult x_,
-                    pir::OpResult y_,
-                    pir::OpResult bias_,
+                    pir::Value x_,
+                    pir::Value y_,
+                    pir::Value bias_,
                     pir::AttributeMap attributes);
   void Verify();
   pir::Value x() { return operand_source(0); }
@@ -134,10 +134,10 @@ class FusedGemmEpilogueGradOp
 
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::OpResult x_,
-                    pir::OpResult y_,
-                    pir::OpResult reserve_space_,
-                    pir::OpResult out_grad_,
+                    pir::Value x_,
+                    pir::Value y_,
+                    pir::Value reserve_space_,
+                    pir::Value out_grad_,
                     pir::AttributeMap attributes);
   void Verify();
   pir::Value x() { return operand_source(0); }
@@ -160,12 +160,12 @@ class SplitGradOp : public pir::Op<SplitGradOp, OpYamlInfoInterface> {
   static OpInfoTuple GetOpInfo();
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::OpResult x_,
+                    pir::Value x_,
                     float axis = 0);
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::OpResult out_grad_,
-                    pir::OpResult axis_);
+                    pir::Value out_grad_,
+                    pir::Value axis_);
 
   void Verify();
   pir::Value out_grad() { return operand_source(0); }
@@ -182,7 +182,7 @@ class IfOp : public pir::Op<IfOp> {
   static constexpr uint32_t attributes_num = 0;
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::OpResult cond,
+                    pir::Value cond,
                     std::vector<pir::Type> &&output_types);
   pir::Value cond() { return operand_source(0); }
   pir::Block *true_block();
