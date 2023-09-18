@@ -112,6 +112,7 @@ class TestBoxCoderOp(OpTest):
         self.check_output()
 
     def test_support_tuple(self):
+        paddle.disable_static()
         prior_box_encode = paddle.rand((80, 4), dtype=paddle.float32)
         prior_box_var_encode = paddle.rand((80, 4), dtype=paddle.float32)
         target_box_encode = paddle.rand((20, 4), dtype=paddle.float32)
@@ -127,7 +128,6 @@ class TestBoxCoderOp(OpTest):
             target_box=target_box_encode,
             code_type="encode_center_size",
         )
-        paddle.disable_static()
         self.assertTrue(np.allclose(encode_1.numpy(), encode_2.numpy()))
         paddle.enable_static()
 
