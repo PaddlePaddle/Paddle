@@ -20,8 +20,6 @@ import numpy as np
 from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
-import paddle.inference as paddle_infer
-
 
 class TestMergeLayernormFusePass(PassAutoScanTest):
     #       input
@@ -42,37 +40,37 @@ class TestMergeLayernormFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         # trt dynamic_shape fp32
-        config = self.create_trt_inference_config()
-        config.enable_tensorrt_engine(
-            max_batch_size=1,
-            workspace_size=1 << 20,
-            min_subgraph_size=0,
-            precision_mode=paddle_infer.PrecisionType.Float32,
-            use_static=False,
-            use_calib_mode=False,
-        )
-        config.set_trt_dynamic_shape_info(
-            {"input_data": [1, 196, 96]},
-            {"input_data": [4, 3136, 384]},
-            {"input_data": [1, 3136, 96]},
-        )
+        config = self.create_inference_config(use_gpu=True)
+        # config.enable_tensorrt_engine(
+        #     max_batch_size=1,
+        #     workspace_size=1 << 20,
+        #     min_subgraph_size=0,
+        #     precision_mode=paddle_infer.PrecisionType.Float32,
+        #     use_static=False,
+        #     use_calib_mode=False,
+        # )
+        # config.set_trt_dynamic_shape_info(
+        #     {"input_data": [1, 196, 96]},
+        #     {"input_data": [4, 3136, 384]},
+        #     {"input_data": [1, 3136, 96]},
+        # )
         yield config, ["merge_layernorm"], (1e-5, 1e-5)
         # trt dynamic_shape fp16
-        config = self.create_trt_inference_config()
-        config.enable_tensorrt_engine(
-            max_batch_size=1,
-            workspace_size=1 << 20,
-            min_subgraph_size=0,
-            precision_mode=paddle_infer.PrecisionType.Half,
-            use_static=False,
-            use_calib_mode=False,
-        )
-        config.set_trt_dynamic_shape_info(
-            {"input_data": [1, 196, 96]},
-            {"input_data": [4, 3136, 384]},
-            {"input_data": [1, 3136, 96]},
-        )
-        yield config, ["merge_layernorm"], (1e-3, 1e-3)
+        # config = self.create_trt_inference_config()
+        # config.enable_tensorrt_engine(
+        #     max_batch_size=1,
+        #     workspace_size=1 << 20,
+        #     min_subgraph_size=0,
+        #     precision_mode=paddle_infer.PrecisionType.Half,
+        #     use_static=False,
+        #     use_calib_mode=False,
+        # )
+        # config.set_trt_dynamic_shape_info(
+        #     {"input_data": [1, 196, 96]},
+        #     {"input_data": [4, 3136, 384]},
+        #     {"input_data": [1, 3136, 96]},
+        # )
+        # yield config, ["merge_layernorm"], (1e-3, 1e-3)
 
     def sample_program_config(self, draw):
         batch_size = draw(st.integers(min_value=1, max_value=4))

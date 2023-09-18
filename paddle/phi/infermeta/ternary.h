@@ -123,6 +123,14 @@ void LinspaceInferMeta(const MetaTensor& start,
                        DataType dtype,
                        MetaTensor* out);
 
+void MergeLayerNormInferMeta(const MetaTensor& x,
+                             const MetaTensor& scale,
+                             const MetaTensor& bias,
+                             float epsilon,
+                             int begin_norm_axis,
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
+
 void MultiClassNMSInferMeta(const MetaTensor& bboxes,
                             const MetaTensor& scores,
                             const MetaTensor& rois_num,
