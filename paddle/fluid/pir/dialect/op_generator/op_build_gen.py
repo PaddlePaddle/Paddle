@@ -56,44 +56,14 @@ def GenBuildInputArgsStr(
         for input_name in op_input_name_list:
             build_args_str += ", pir::Value " + input_name + "_"
 
-    if attr_args_is_map:
-        build_args_str += ", pir::AttributeMap attributes"
-    else:
-        if not mutable_attr_is_input:
-            # add attributes
-            for attr_idx in range(len(op_attribute_name_list)):
-                build_args_str += (
-                    ", "
-                    + op_attribute_build_arg_type_list[attr_idx]
-                    + " "
-                    + op_attribute_name_list[attr_idx]
-                )
-                if for_func_define:
-                    if op_attribute_default_value_list[attr_idx] is not None:
-                        default_value = op_attribute_default_value_list[
-                            attr_idx
-                        ]
-                        if (
-                            op_attribute_build_arg_type_list[attr_idx]
-                            != "const std::string&"
-                        ):
-                            if (
-                                default_value[0] == "'"
-                                or default_value[0] == '"'
-                            ):
-                                default_value = default_value[1:]
-                            if (
-                                default_value[-1] == "'"
-                                or default_value[-1] == '"'
-                            ):
-                                default_value = default_value[0:-1]
-                        build_args_str += "=" + default_value
+    if mutable_attr_is_input:
+        # add mutable attributes as inputs
+        if len(op_mutable_attribute_name_list) > 0:
+            for mutable_attr in op_mutable_attribute_name_list:
+                build_args_str += ", pir::Value " + mutable_attr + "_"
+        if attr_args_is_map:
+            build_args_str += ", pir::AttributeMap attributes"
         else:
-            # add mutable attributes as inputs
-            if len(op_mutable_attribute_name_list) > 0:
-                for mutable_attr in op_mutable_attribute_name_list:
-                    build_args_str += ", pir::Value " + mutable_attr + "_"
-
             # add non-mutable attributes
             for attr_idx in range(len(op_non_mutable_attribute_name_list)):
                 build_args_str += (
@@ -116,6 +86,38 @@ def GenBuildInputArgsStr(
                             op_non_mutable_attribute_build_arg_type_list[
                                 attr_idx
                             ]
+                            != "const std::string&"
+                        ):
+                            if (
+                                default_value[0] == "'"
+                                or default_value[0] == '"'
+                            ):
+                                default_value = default_value[1:]
+                            if (
+                                default_value[-1] == "'"
+                                or default_value[-1] == '"'
+                            ):
+                                default_value = default_value[0:-1]
+                        build_args_str += "=" + default_value
+    else:
+        if attr_args_is_map:
+            build_args_str += ", pir::AttributeMap attributes"
+        else:
+            # add attributes
+            for attr_idx in range(len(op_attribute_name_list)):
+                build_args_str += (
+                    ", "
+                    + op_attribute_build_arg_type_list[attr_idx]
+                    + " "
+                    + op_attribute_name_list[attr_idx]
+                )
+                if for_func_define:
+                    if op_attribute_default_value_list[attr_idx] is not None:
+                        default_value = op_attribute_default_value_list[
+                            attr_idx
+                        ]
+                        if (
+                            op_attribute_build_arg_type_list[attr_idx]
                             != "const std::string&"
                         ):
                             if (
@@ -723,18 +725,28 @@ def gen_build_func_str(
 
     get_attributes_str = ""
     array_attr_str = "pir::ArrayAttribute"
+
+    attr_names = []
+    attr_types = []
+    attr_build_arg_types = []
+    if not muta_attr_is_input:
+        attr_names = op_attribute_name_list
+        attr_types = op_attribute_type_list
+        attr_build_arg_types = op_attribute_build_arg_type_list
+    else:
+        attr_names = op_non_mutable_attribute_name_list
+        attr_types = op_non_mutable_attribute_type_list
+        attr_build_arg_types = op_non_mutable_attribute_build_arg_type_list
     if attr_args_is_map:
-        for idx in range(len(op_attribute_name_list)):
-            attr_type = op_attribute_build_arg_type_list[idx]
+        for idx in range(len(attr_names)):
+            attr_type = attr_build_arg_types[idx]
             attr_type = attr_type.replace("const ", "")
             attr_type = attr_type.replace("&", "")
-            # if op_attribute_build_arg_type_list[idx] == "const std::vector<int>&":
+            # if attr_build_arg_types[idx] == "const std::vector<int>&":
             #     attr_type = "std::vector<int>"
 
-            if array_attr_str in op_attribute_type_list[idx]:
-                inner_type = op_attribute_type_list[idx][
-                    len(array_attr_str) + 1 : -1
-                ]
+            if array_attr_str in attr_types[idx]:
+                inner_type = attr_types[idx][len(array_attr_str) + 1 : -1]
                 data_name = "data"
                 if inner_type == "pir::StrAttribute":
                     data_name = "AsString"
@@ -742,48 +754,42 @@ def gen_build_func_str(
                     GET_ARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE.format(
                         op_name=op_class_name,
                         attr_type=attr_type,
-                        attribute_name=op_attribute_name_list[idx],
+                        attribute_name=attr_names[idx],
                         inner_type=inner_type,
                         data_name=data_name,
                     )
                 )
-            elif (
-                "paddle::dialect::IntArrayAttribute"
-                in op_attribute_type_list[idx]
-            ):
+            elif "paddle::dialect::IntArrayAttribute" in attr_types[idx]:
                 get_attributes_str += (
                     GET_INTARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE.format(
                         op_name=op_class_name,
                         attr_type=attr_type,
-                        attribute_name=op_attribute_name_list[idx],
+                        attribute_name=attr_names[idx],
                     )
                 )
-            elif (
-                "paddle::dialect::ScalarAttribute"
-                in op_attribute_type_list[idx]
-            ):
+            elif "paddle::dialect::ScalarAttribute" in attr_types[idx]:
                 get_attributes_str += (
                     GET_SCALAR_ATTRIBUTE_FROM_MAP_TEMPLATE.format(
                         op_name=op_class_name,
                         attr_type=attr_type,
-                        attribute_name=op_attribute_name_list[idx],
+                        attribute_name=attr_names[idx],
                     )
                 )
-            elif "pir::StrAttribute" in op_attribute_type_list[idx]:
+            elif "pir::StrAttribute" in attr_types[idx]:
                 get_attributes_str += (
                     GET_STR_ATTRIBUTES_FROM_MAP_TEMPLATE.format(
                         op_name=op_class_name,
                         attr_type=attr_type,
-                        attribute_name=op_attribute_name_list[idx],
-                        attr_ir_type=op_attribute_type_list[idx],
+                        attribute_name=attr_names[idx],
+                        attr_ir_type=attr_types[idx],
                     )
                 )
             else:
                 get_attributes_str += GET_ATTRIBUTES_FROM_MAP_TEMPLATE.format(
                     op_name=op_class_name,
                     attr_type=attr_type,
-                    attribute_name=op_attribute_name_list[idx],
-                    attr_ir_type=op_attribute_type_list[idx],
+                    attribute_name=attr_names[idx],
+                    attr_ir_type=attr_types[idx],
                 )
 
     build_func = OP_BUILD_TEMPLATE.format(
