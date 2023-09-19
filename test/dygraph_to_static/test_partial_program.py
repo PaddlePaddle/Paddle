@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, dy2static_unittest
+from dygraph_to_static_util import (
+    ast_only_test,
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 from test_fetch_feed import Linear
 
 import paddle
@@ -84,6 +88,7 @@ class TestWithNestedInput(unittest.TestCase):
 
         return out.numpy()
 
+    @test_and_compare_with_new_ir(False)
     def test_nest(self):
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
@@ -109,6 +114,7 @@ class TestWithNestedOutput(unittest.TestCase):
 
         return out
 
+    @test_and_compare_with_new_ir(False)
     def test_nest(self):
         dygraph_res = self._run(to_static=False)
         dygraph_res = paddle.utils.flatten(dygraph_res)
@@ -130,6 +136,7 @@ class TestWithNestedOutput(unittest.TestCase):
 @dy2static_unittest
 class TestWithTrainAndEval(unittest.TestCase):
     @ast_only_test
+    @test_and_compare_with_new_ir(False)
     def test_switch_eval_and_train(self):
         with base.dygraph.guard():
             linear_net = Linear()
@@ -163,6 +170,7 @@ class TestWithTrainAndEval(unittest.TestCase):
 @dy2static_unittest
 class TestWithNoGrad(unittest.TestCase):
     @ast_only_test
+    @test_and_compare_with_new_ir(False)
     def test_with_no_grad(self):
         with base.dygraph.guard():
             linear_net = Linear()
@@ -198,6 +206,7 @@ class GPT2LMHeadModel(paddle.nn.Layer):
 
 @dy2static_unittest
 class TestPruneUnusedParamInProgram(unittest.TestCase):
+    @test_and_compare_with_new_ir(False)
     def test_prune(self):
         input_ids = np.array([[15, 11, 6, 3, 18, 13]]).astype("float32")
 
