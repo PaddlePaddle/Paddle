@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from utils import static_guard
 
 import paddle
 from paddle import base, nn
@@ -492,10 +493,9 @@ class TestTruncatedNormal(unittest.TestCase):
 
     def test_truncated_normal_initializer_fp64(self):
         """Test truncated normal initializer with float64"""
-        paddle.enable_static()
-
-        # Only test whether float64 data can be generated without error
-        _ = self.test_truncated_normal_initializer("float64")  # float64
+        with static_guard():
+            # Only test whether float64 data can be generated without error
+            _ = self.test_truncated_normal_initializer("float64")  # float64
 
     def test_truncated_normal_initializer_dygraph(self):
         """Test truncated normal initializer in dygraph model."""

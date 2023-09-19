@@ -17,6 +17,7 @@ import unittest
 
 import numpy as np
 from scipy import special
+from utils import dygraph_guard
 
 import paddle
 from paddle import base
@@ -1233,51 +1234,49 @@ class TestTruncatedNormalInitializerDygraph(unittest.TestCase):
         """
         In dygraph mode, we can use initializer directly to initialize a tensor.
         """
-        paddle.disable_static()
-        paddle.seed(42)
-        pre_dtype = paddle.get_default_dtype()
-        paddle.set_default_dtype("float32")
+        with dygraph_guard():
+            paddle.seed(42)
+            pre_dtype = paddle.get_default_dtype()
+            paddle.set_default_dtype("float32")
 
-        tensor = paddle.zeros([1024, 1024, 8])
-        tensor.stop_gradient = False
+            tensor = paddle.zeros([1024, 1024, 8])
+            tensor.stop_gradient = False
 
-        truncated_normal_ = paddle.nn.initializer.TruncatedNormal()
-        truncated_normal_(tensor)
+            truncated_normal_ = paddle.nn.initializer.TruncatedNormal()
+            truncated_normal_(tensor)
 
-        array = self._trunc_normal_numpy(tensor)
-        np.testing.assert_allclose(
-            array.mean(), tensor.mean().item(), rtol=0.01, atol=0.01
-        )
-        np.testing.assert_allclose(
-            array.std(), tensor.std().item(), rtol=0.01, atol=0.01
-        )
-        paddle.set_default_dtype(pre_dtype)
-        paddle.enable_static()
+            array = self._trunc_normal_numpy(tensor)
+            np.testing.assert_allclose(
+                array.mean(), tensor.mean().item(), rtol=0.01, atol=0.01
+            )
+            np.testing.assert_allclose(
+                array.std(), tensor.std().item(), rtol=0.01, atol=0.01
+            )
+            paddle.set_default_dtype(pre_dtype)
 
     def test_truncated_normal_initializer_fp64(self):
         """
         In dygraph mode, we can use initializer directly to initialize a tensor.
         """
-        paddle.disable_static()
-        paddle.seed(42)
-        pre_dtype = paddle.get_default_dtype()
-        paddle.set_default_dtype("float64")
+        with dygraph_guard():
+            paddle.seed(42)
+            pre_dtype = paddle.get_default_dtype()
+            paddle.set_default_dtype("float64")
 
-        tensor = paddle.zeros([1024, 1024, 8])
-        tensor.stop_gradient = False
+            tensor = paddle.zeros([1024, 1024, 8])
+            tensor.stop_gradient = False
 
-        truncated_normal_ = paddle.nn.initializer.TruncatedNormal()
-        truncated_normal_(tensor)
+            truncated_normal_ = paddle.nn.initializer.TruncatedNormal()
+            truncated_normal_(tensor)
 
-        array = self._trunc_normal_numpy(tensor)
-        np.testing.assert_allclose(
-            array.mean(), tensor.mean().item(), rtol=0.01, atol=0.01
-        )
-        np.testing.assert_allclose(
-            array.std(), tensor.std().item(), rtol=0.01, atol=0.01
-        )
-        paddle.set_default_dtype(pre_dtype)
-        paddle.enable_static()
+            array = self._trunc_normal_numpy(tensor)
+            np.testing.assert_allclose(
+                array.mean(), tensor.mean().item(), rtol=0.01, atol=0.01
+            )
+            np.testing.assert_allclose(
+                array.std(), tensor.std().item(), rtol=0.01, atol=0.01
+            )
+            paddle.set_default_dtype(pre_dtype)
 
 
 class TestAssignInitializerDygraph(unittest.TestCase):
@@ -1285,43 +1284,45 @@ class TestAssignInitializerDygraph(unittest.TestCase):
         """
         In dygraph mode, we can use initializer directly to initialize a tensor.
         """
-        paddle.disable_static()
-        pre_dtype = paddle.get_default_dtype()
-        paddle.set_default_dtype("float32")
+        with dygraph_guard():
+            pre_dtype = paddle.get_default_dtype()
+            paddle.set_default_dtype("float32")
 
-        tensor = paddle.zeros([1024, 1024, 8], dtype=paddle.get_default_dtype())
-        tensor.stop_gradient = False
-        array = np.random.randn(*tensor.shape).astype(
-            paddle.get_default_dtype()
-        )
+            tensor = paddle.zeros(
+                [1024, 1024, 8], dtype=paddle.get_default_dtype()
+            )
+            tensor.stop_gradient = False
+            array = np.random.randn(*tensor.shape).astype(
+                paddle.get_default_dtype()
+            )
 
-        assign_ = paddle.nn.initializer.Assign(array)
-        assign_(tensor)
+            assign_ = paddle.nn.initializer.Assign(array)
+            assign_(tensor)
 
-        np.testing.assert_allclose(array, tensor, rtol=1e-6, atol=1e-6)
-        paddle.set_default_dtype(pre_dtype)
-        paddle.enable_static()
+            np.testing.assert_allclose(array, tensor, rtol=1e-6, atol=1e-6)
+            paddle.set_default_dtype(pre_dtype)
 
     def test_assign_initializer_fp64(self):
         """
         In dygraph mode, we can use initializer directly to initialize a tensor.
         """
-        paddle.disable_static()
-        pre_dtype = paddle.get_default_dtype()
-        paddle.set_default_dtype("float64")
+        with dygraph_guard():
+            pre_dtype = paddle.get_default_dtype()
+            paddle.set_default_dtype("float64")
 
-        tensor = paddle.zeros([1024, 1024, 8], dtype=paddle.get_default_dtype())
-        tensor.stop_gradient = False
-        array = np.random.randn(*tensor.shape).astype(
-            paddle.get_default_dtype()
-        )
+            tensor = paddle.zeros(
+                [1024, 1024, 8], dtype=paddle.get_default_dtype()
+            )
+            tensor.stop_gradient = False
+            array = np.random.randn(*tensor.shape).astype(
+                paddle.get_default_dtype()
+            )
 
-        assign_ = paddle.nn.initializer.Assign(array)
-        assign_(tensor)
+            assign_ = paddle.nn.initializer.Assign(array)
+            assign_(tensor)
 
-        np.testing.assert_allclose(array, tensor, rtol=1e-6, atol=1e-6)
-        paddle.set_default_dtype(pre_dtype)
-        paddle.enable_static()
+            np.testing.assert_allclose(array, tensor, rtol=1e-6, atol=1e-6)
+            paddle.set_default_dtype(pre_dtype)
 
 
 if __name__ == '__main__':
