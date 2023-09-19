@@ -46,7 +46,7 @@ class ApiMinTest(unittest.TestCase):
             paddle.static.Program(), paddle.static.Program()
         ):
             data = paddle.static.data("data", shape=[10, 10], dtype="int64")
-            result_min = paddle.min(x=data, axis=(0,))
+            result_min = paddle.min(x=data, axis=0)
             exe = paddle.static.Executor(self.place)
             input_data = np.random.randint(10, size=(10, 10)).astype(np.int64)
             (res,) = exe.run(feed={"data": input_data}, fetch_list=[result_min])
@@ -79,6 +79,15 @@ class ApiMinTest(unittest.TestCase):
         np_x = np.array([10, 10]).astype('float64')
         x = paddle.to_tensor(np_x)
         z = paddle.min(x, axis=0)
+        np_z = z.numpy()
+        z_expected = np.array(np.min(np_x, axis=0))
+        self.assertEqual((np_z == z_expected).all(), True)
+
+    def test_support_tuple(self):
+        paddle.disable_static()
+        np_x = np.array([10, 10]).astype('float64')
+        x = paddle.to_tensor(np_x)
+        z = paddle.min(x, axis=(0,))
         np_z = z.numpy()
         z_expected = np.array(np.min(np_x, axis=0))
         self.assertEqual((np_z == z_expected).all(), True)

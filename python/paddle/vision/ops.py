@@ -685,7 +685,7 @@ def box_coder(
                 axis,
                 [],
             )
-        else:
+        elif isinstance(prior_box_var, (list, tuple)):
             prior_box_var = list(prior_box_var)
             assert (
                 len(prior_box_var) == 4
@@ -699,8 +699,11 @@ def box_coder(
                 axis,
                 prior_box_var,
             )
+        else:
+            raise TypeError(
+                "Input prior_box_var must be Variable or list|tuple"
+            )
         return output_box
-
     else:
         check_variable_and_dtype(
             prior_box, 'prior_box', ['float32', 'float64'], 'box_coder'
@@ -722,11 +725,15 @@ def box_coder(
         }
         if isinstance(prior_box_var, Variable):
             inputs['PriorBoxVar'] = prior_box_var
-        else:
-            attrs['variance'] = list(prior_box_var)
+        elif isinstance(prior_box_var, (list, tuple)):
+            attrs['variance'] = prior_box_var
             assert (
                 len(attrs['variance']) == 4
             ), "Input prior_box_var must be Variable or list|tuple with 4 elements."
+        else:
+            raise TypeError(
+                "Input prior_box_var must be Variable or list|tuple"
+            )
         helper.append_op(
             type="box_coder",
             inputs=inputs,

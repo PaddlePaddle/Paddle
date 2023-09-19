@@ -111,30 +111,31 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
     if isinstance(kernel_sizes, int):
         kernel_sizes = [kernel_sizes, kernel_sizes]
     else:
-        kernel_sizes = list(kernel_sizes)
-        assert (
+        assert isinstance(kernel_sizes, (list, tuple)) and (
             len(kernel_sizes) == 2
         ), "kernel_sizes should either be an integer or a list/tuple of two integers"
+        kernel_sizes = list(kernel_sizes)
 
     if isinstance(strides, int):
         strides = [strides, strides]
     else:
-        strides = list(strides)
-        assert (
+        assert isinstance(strides, (list, tuple)) and (
             len(strides) == 2
         ), "strides should either be an integer or a list/tuple of two integers"
+        strides = list(strides)
 
     if isinstance(dilations, int):
         dilations = [dilations, dilations]
     else:
-        dilations = list(dilations)
-        assert (
+        assert isinstance(dilations, (list, tuple)) and (
             len(dilations) == 2
         ), "dilations should either be an integer or a list/tuple of two integers"
+        dilations = list(dilations)
 
     if isinstance(paddings, int):
         paddings = [paddings] * 4
-    else:
+    elif isinstance(paddings, (list, tuple)):
+        paddings = list(paddings)
         if len(paddings) == 2:
             paddings = paddings * 2
         elif len(paddings) == 4:
@@ -143,6 +144,11 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
             raise ValueError(
                 "paddings should either be an integer or a list/tuple of 2 or 4 integers"
             )
+    else:
+        raise ValueError(
+            "Unexpected type of paddings, it should be either an integer or a list/tuple"
+            "of 2 or 4 integers"
+        )
 
     if in_dynamic_mode():
         return _C_ops.unfold(x, kernel_sizes, strides, paddings, dilations)
