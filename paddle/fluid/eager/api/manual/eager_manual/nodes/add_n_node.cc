@@ -63,7 +63,7 @@ AddNGradNodeFinal::operator()(
   VLOG(3) << "Final State Running: AddNGradNodeFinal";
 
   // dygraph function
-  for (auto& item : returns[0]) {
+  for (auto &item : returns[0]) {
     item = ::scale_ad_func(out_grad, phi::Scalar(1.0), 0.0, true);
   }
 
@@ -94,9 +94,9 @@ AddNGradNodeFinal::operator()(
 
     VLOG(4) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
-    VLOG(6) << "gradnode_ptr = " << this << ", "
-            << paddle::string::Sprintf(
-                   INPUT_PRINT_TEMPLATE, input_str, output_str);
+    VLOG(6) << "gradnode_ptr = " << this;
+    VLOG(6) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
 
   if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);

@@ -189,9 +189,9 @@ GradNodeAccumulation::operator()(
     output_str += output_x_grad_str;
     VLOG(4) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
-    VLOG(6) << "gradnode_ptr = " << this << ", "
-            << paddle::string::Sprintf(
-                   INPUT_PRINT_TEMPLATE, input_str, output_str);
+    VLOG(6) << "gradnode_ptr = " << this;
+    VLOG(6) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
   return {{grad_out}};
 }
