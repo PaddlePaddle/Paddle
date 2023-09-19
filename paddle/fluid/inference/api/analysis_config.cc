@@ -461,7 +461,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_min_subgraph_size_);
   CP_MEMBER(tensorrt_precision_mode_);
   CP_MEMBER(trt_mark_output_);
-  CP_MEMBER(trt_mark_output_with_id_);
   CP_MEMBER(trt_output_tensor_names_);
   CP_MEMBER(trt_disabled_ops_);
   CP_MEMBER(trt_use_dla_);
@@ -478,6 +477,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(collect_shape_range_info_);
   CP_MEMBER(shape_range_info_path_);
   CP_MEMBER(trt_use_inspector_);
+  CP_MEMBER(trt_inspector_serialize_);
   CP_MEMBER(trt_use_explicit_quantization_);
   CP_MEMBER(trt_engine_memory_sharing_);
   CP_MEMBER(trt_engine_memory_sharing_identifier_);
@@ -763,10 +763,8 @@ void AnalysisConfig::EnableTensorRtEngine(int64_t workspace_size,
 }
 
 void AnalysisConfig::MarkTrtEngineOutputs(
-    const std::vector<std::string> &output_tensor_names,
-    const bool mark_output_with_id) {
+    const std::vector<std::string> &output_tensor_names) {
   trt_mark_output_ = true;
-  trt_mark_output_with_id_ = mark_output_with_id;
   trt_output_tensor_names_ = output_tensor_names;
 }
 
@@ -841,7 +839,10 @@ void AnalysisConfig::EnableTensorRtDLA(int dla_core) {
   trt_dla_core_ = dla_core;
 }
 
-void AnalysisConfig::EnableTensorRtInspector() { trt_use_inspector_ = true; }
+void AnalysisConfig::EnableTensorRtInspector(bool inspector_serialize) {
+  trt_use_inspector_ = true;
+  trt_inspector_serialize_ = inspector_serialize;
+}
 
 void AnalysisConfig::EnableTensorRtExplicitQuantization() {
   trt_use_explicit_quantization_ = true;

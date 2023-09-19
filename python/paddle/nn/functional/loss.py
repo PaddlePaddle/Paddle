@@ -801,7 +801,7 @@ def binary_cross_entropy_with_logits(
     if in_dynamic_mode():
         one = _C_ops.full(
             [1],
-            float(1.0),
+            1.0,
             logit.dtype,
             _current_expected_place(),
         )
@@ -3162,7 +3162,7 @@ def sigmoid_focal_loss(
 
     if in_dynamic_mode():
         place = _current_expected_place()
-        one = _C_ops.full(logit.shape, float(1.0), logit.dtype, place)
+        one = _C_ops.full(logit.shape, 1.0, logit.dtype, place)
 
         loss = _C_ops.sigmoid_cross_entropy_with_logits(
             logit, label, None, False, -100

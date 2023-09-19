@@ -537,7 +537,6 @@ class Momentum(Optimizer):
                         attrs=attrs,
                         stop_gradient=True,
                     )
-        return None
 
     def _update_param_group(self, parameters):
         self._momentum = parameters.get(
