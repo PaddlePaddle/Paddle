@@ -162,10 +162,20 @@ void ProgramInterpreter::ProfileInstructionList(
     }
   }
 
-  for (auto instr_id : trace_execute_order_) {
-    auto& instr_node = vec_instruction_.at(instr_id);
+  platform::Timer timer;
 
-    RunInstruction(instr_node);
+  for (auto& instr : vec_instruction_) {
+    bool is_comm_op = interpreter::IsCommunicationOp(instr);
+    const std::string op_place =
+        instr.DeviceContext().GetPlace().GetDeviceType();
+    VLOG(4) << "** Profiling op: [id=" << instr.Id()
+            << ",name=" << instr.OpBase()->Type() << ",devtype=" << op_place
+            << "]";
+    // if (!is_comm_op && )
+    timer.Start();
+    RunInstruction(instr);
+    timer.Pause();
+    double dt = timer.ElapsedUS();
 
     if (UNLIKELY(exception_holder_.IsCaught())) {
       VLOG(4) << "Exception caught";
@@ -1090,7 +1100,9 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
                   : (instr_node.KernelType() == OpFuncType::kGpuSync
                          ? "kGpuSync"
                          : "kGpuAsync"))
-          << " runs on " << platform::GetCurrentThreadName();
+          << " runs on thread: " << platform::GetCurrentThreadName()
+          << " device type: "
+          << instr_node.DeviceContext().GetPlace().GetDeviceType();
 
   auto* op = instr_node.OpBase();
   platform::RecordEvent instruction_event(
