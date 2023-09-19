@@ -114,6 +114,9 @@ class TestMaskedFillAPI2(TestMaskedFillAPI):
         self.dtype = "float32"
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestMaskedFillFP16API1(TestMaskedFillAPI):
     def init(self):
         self.x_shape = (6, 8, 9, 18)
@@ -121,6 +124,9 @@ class TestMaskedFillFP16API1(TestMaskedFillAPI):
         self.dtype = "float16"
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestMaskedFillFP16API2(TestMaskedFillAPI):
     def init(self):
         self.x_shape = (168,)
@@ -156,6 +162,9 @@ class TestMaskedFillAPIBroadcast4(TestMaskedFillAPI):
         self.dtype = "float32"
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestMaskedFillFP16APIBroadcast(TestMaskedFillAPI):
     def init(self):
         self.x_shape = (3, 40)
@@ -163,6 +172,9 @@ class TestMaskedFillFP16APIBroadcast(TestMaskedFillAPI):
         self.dtype = "float16"
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestMaskedFillFP16APIBroadcast2(TestMaskedFillAPI):
     def init(self):
         self.x_shape = (300, 1)
