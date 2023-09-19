@@ -42,7 +42,6 @@ std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
     "nop"};
 
 std::set<std::string> StaticBuildBlackList = {
-    "batch_norm" /*: to handle reserve_space output*/,
     "cinn_instruction_run" /*: to handle subgraph infermeta*/,
     "cinn_launch" /*: to handle subgraph infermeta*/,
     "run_program" /*: to handle scope output*/,

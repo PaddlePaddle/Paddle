@@ -1279,6 +1279,7 @@ set(STATIC_BUILD_TESTS
     test_adamw_op
     test_arg_min_max_op
     test_assign_pos_op
+    test_batch_norm_op
     test_bucketize_api
     test_bincount_op
     test_c_embedding_op
