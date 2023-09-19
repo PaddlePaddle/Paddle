@@ -44,9 +44,15 @@ SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
     auto dist_out = SetKernelDistOutput({});
     auto dense_out = dist_out->unsafe_mutable_value();
 """
+SINGLE_OUT_CREATION_TEMPLATE_WITH_SPMD = """
+    std::shared_ptr<phi::distributed::DistTensor> shared_dist_out =
+        CreateKernelDistOutput({}, spmd_info.second[0]);
+    phi::distributed::DistTensor* dist_out = shared_dist_out.get();
+    phi::DenseTensor* dense_out = dist_out->unsafe_mutable_value();
+"""
 SINGLE_OUT_CREATION_TEMPLATE = """
     std::shared_ptr<phi::distributed::DistTensor> shared_dist_out =
-        CreateKernelDistOutput(spmd_info.second[0]);
+        CreateKernelDistOutput({});
     phi::distributed::DistTensor* dist_out = shared_dist_out.get();
     phi::DenseTensor* dense_out = dist_out->unsafe_mutable_value();
 """
@@ -71,11 +77,17 @@ MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
     auto dist_out_{idx} = SetKernelDistOutput({name});
     auto dense_out_{idx} = dist_out_{idx}->unsafe_mutable_value();
 """
+MULTI_SINGLE_OUT_CREATION_TEMPLATE_WITH_SPMD = """
+    std::shared_ptr<phi::distributed::DistTensor> shared_dist_out_{idx} =
+        CreateKernelDistOutput({name}, spmd_info.second[{idx}]);
+    phi::distributed::DistTensor* dist_out_{idx} = shared_dist_out_{idx}.get();
+    phi::DenseTensor* dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
+"""
 MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
     std::shared_ptr<phi::distributed::DistTensor> shared_dist_out_{idx} =
-        CreateKernelDistOutput(spmd_info.second[{idx}]);
+        CreateKernelDistOutput({name});
     phi::distributed::DistTensor* dist_out_{idx} = shared_dist_out_{idx}.get();
-    phi::DenseTensor* dense_out_{idx} = dist_out_{idx}->unsafe_mutable_value();
+    phi::DenseTensor* dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
 """
 MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
     auto dist_out_{i} = SetKernelDistOutput({name});
@@ -106,7 +118,13 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
             self.dist_output_args.append('dist_out')
             self.dense_output_args.append('dense_out')
             if self.outputs['types'][0] == 'Tensor':
-                if self.generate_infer_spmd is True:
+                if self.infer_meta['spmd_rule'] is not None:
+                    output_creation_code += (
+                        SINGLE_OUT_CREATION_TEMPLATE_WITH_SPMD.format(
+                            self.outputs['names'][0]
+                        )
+                    )
+                elif self.generate_general_infer_spmd is True:
                     output_creation_code += SINGLE_OUT_CREATION_TEMPLATE.format(
                         self.outputs['names'][0]
                     )
@@ -127,7 +145,13 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                 self.dist_output_args.append(f'dist_out_{i}')
                 self.dense_output_args.append(f'dense_out_{i}')
                 if out_type == 'Tensor':
-                    if self.generate_infer_spmd is True:
+                    if self.infer_meta['spmd_rule'] is not None:
+                        output_creation_code += (
+                            MULTI_SINGLE_OUT_CREATION_TEMPLATE_WITH_SPMD.format(
+                                name=self.outputs['names'][i], idx=i
+                            )
+                        )
+                    elif self.generate_general_infer_spmd is True:
                         output_creation_code += (
                             MULTI_SINGLE_OUT_CREATION_TEMPLATE.format(
                                 name=self.outputs['names'][i], idx=i

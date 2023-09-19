@@ -308,10 +308,10 @@ class EagerUtils {
         "Type: %s, Dtype: %s, Place: %s, Shape: %s, DistAttr: %s";
     std::string tensor_info_str = "";
     if (t.defined()) {
-      if (t.initialized()) {
-        if (t.is_dist_tensor()) {
-          auto dist_t =
-              std::static_pointer_cast<phi::distributed::DistTensor>(t.impl());
+      if (t.is_dist_tensor()) {
+        auto dist_t =
+            std::static_pointer_cast<phi::distributed::DistTensor>(t.impl());
+        if (t.initialized()) {
           tensor_info_str += paddle::string::Sprintf(
               TENSOR_INFO_TEMPLATE,
               t.impl()->type_info().name(),
@@ -324,17 +324,29 @@ class EagerUtils {
           tensor_info_str +=
               paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
                                       t.impl()->type_info().name(),
+                                      "Unknown",
+                                      "Unknown",
+                                      t.dims(),
+                                      dist_t->dist_attr());
+        }
+      } else {
+        if (t.initialized()) {
+          tensor_info_str +=
+              paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
+                                      t.impl()->type_info().name(),
                                       t.dtype(),
                                       t.place().DebugString(),
                                       t.dims(),
                                       "Unknown");
+        } else {
+          tensor_info_str +=
+              paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
+                                      t.impl()->type_info().name(),
+                                      "Unknown",
+                                      "Unknown",
+                                      "Unknown",
+                                      "Unknown");
         }
-      } else {
-        tensor_info_str += paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
-                                                   t.impl()->type_info().name(),
-                                                   "Unknown",
-                                                   "Unknown",
-                                                   "Unknown");
       }
     } else {
       tensor_info_str += "Unknown";

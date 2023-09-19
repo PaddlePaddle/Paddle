@@ -16,8 +16,6 @@ import unittest
 
 import collective.test_communication_api_base as test_base
 
-import paddle
-
 
 class TestSemiAutoParallelMatmul(test_base.CommunicationTestDistBase):
     def setUp(self):
@@ -28,7 +26,6 @@ class TestSemiAutoParallelMatmul(test_base.CommunicationTestDistBase):
         )
         self._default_envs = {"dtype": "float32"}
         self._changeable_envs = {"backend": ["cpu", "gpu"]}
-        paddle.base.core.disable_layout_autotune()
 
     def test_matmul_api(self):
         envs_list = test_base.gen_product_envs_list(

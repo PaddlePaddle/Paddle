@@ -168,8 +168,9 @@ VECTOR_GLOBAL_META_OUT_DECL_TEMPLATE = """
 INFER_GLOBAL_SHAPE_TEMPLATE = """
     phi::{}({}{});
 """
+# Dist Branch will not generated in the API that doesn't have input tensor.
 SET_SINGLE_OUT_REPLICATED_DIST_ATTR = """
-    SetReplicatedDistAttrForOutput({});"""
+    SetReplicatedDistAttrForOutput({}, spmd_info.first[0].process_mesh());"""
 
 # 4. Select Kernel
 KERNEL_SELECTION_TEMPLATE = """
@@ -184,6 +185,8 @@ KERNEL_SELECTION_TEMPLATE = """
 # 5. Reshard Input
 SINGLE_INPUT_RESHARD_TEMPLATE = """
     auto dist_input_{arg} = ReshardApiInputToKernelInput(dev_ctx, {arg}, spmd_info.first[{idx}]);"""
+SINGLE_GENERAL_INPUT_RESHARD_TEMPLATE = """
+    auto dist_input_{arg} = ReshardApiInputToReplicatedKernelInput(dev_ctx, {arg}, spmd_info.first[{idx}]);"""
 UNSUPPORTED_RESHARD_INPUT_COMMENT_TEMPLATE = """
     // API `{}` does not need to support ReshardInput at this time
 """
@@ -685,13 +688,13 @@ class DistForwardAPI(ForwardAPI):
                 )
                 if len(self.dense_output_args) == 1:
                     output_args_code += f"&meta_{out_name}, "
-                    if self.generate_general_infer_spmd is True:
-                        set_out_dist_attr_code += (
-                            SET_SINGLE_OUT_REPLICATED_DIST_ATTR.format(out_name)
-                        )
                 else:
                     output_args_code += (
                         f"{out_name} ? &meta_{out_name} : nullptr, "
+                    )
+                if self.generate_general_infer_spmd is True:
+                    set_out_dist_attr_code += (
+                        SET_SINGLE_OUT_REPLICATED_DIST_ATTR.format(out_name)
                     )
         output_args_code = output_args_code[:-2]
 
@@ -723,11 +726,18 @@ class DistForwardAPI(ForwardAPI):
             for i, param in enumerate(kernel_params):
                 if param in input_names:
                     if self.inputs['input_info'][param] == "const Tensor&":
-                        input_reshard_code += (
-                            SINGLE_INPUT_RESHARD_TEMPLATE.format(
-                                arg=param, idx=i
+                        if self.generate_general_infer_spmd is True:
+                            input_reshard_code += (
+                                SINGLE_GENERAL_INPUT_RESHARD_TEMPLATE.format(
+                                    arg=param, idx=i
+                                )
                             )
-                        )
+                        else:
+                            input_reshard_code += (
+                                SINGLE_INPUT_RESHARD_TEMPLATE.format(
+                                    arg=param, idx=i
+                                )
+                            )
                     else:
                         raise ValueError(
                             f"{self.api} : Param of reshard input error : {self.inputs['input_info'][param]} type is not supported."
