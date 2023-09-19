@@ -75,10 +75,12 @@ std::vector<ir::Tensor> TensorGroup::GetGenFuncTopoOrder(
   }
 
   std::vector<ir::Tensor> ret;
-  std::vector<std::string> stack;
+
+  // Using set instead of vector/stack in order to get fix alaphbeta order topo
+  std::set<std::string> node_set;
   for (const auto& name_tensor : name_to_tensor_) {
     if (!in_degree.count(name_tensor.first)) {
-      stack.emplace_back(name_tensor.first);
+      node_set.insert(name_tensor.first);
     }
   }
 
@@ -90,9 +92,9 @@ std::vector<ir::Tensor> TensorGroup::GetGenFuncTopoOrder(
     input_arg_names.erase(name);
   }
 
-  while (!stack.empty()) {
-    const std::string& cur = stack.back();
-    stack.pop_back();
+  while (!node_set.empty()) {
+    const std::string cur = *(node_set.begin());
+    node_set.erase(node_set.begin());
 
     if (!input_arg_names.count(cur)) {
       ret.push_back(name_to_tensor_[cur]);
@@ -103,21 +105,12 @@ std::vector<ir::Tensor> TensorGroup::GetGenFuncTopoOrder(
       if (dep_tensor_names.count(cur)) {
         --in_degree[dep_pair.first];
         if (in_degree[dep_pair.first] == 0) {
-          stack.emplace_back(dep_pair.first);
+          node_set.insert(dep_pair.first);
         }
       }
     }
   }
   return ret;
-}
-
-bool TensorGroup::HasMarkedReduceInit(const std::string& tensor_name) const {
-  return tensor_name_needs_reduce_init_.count(tensor_name);
-}
-
-ir::Tensor TensorGroup::MarkReduceInit(const std::string& tensor_name) {
-  // TODO(zhhsplendid): add check
-  tensor_name_needs_reduce_init_.insert(tensor_name);
 }
 
 void TensorGroup::CtrlDepend(const ir::Tensor& tensor,
@@ -156,8 +149,8 @@ std::string TensorGroup::GetShareMemRootName(const std::string& tensor_name) {
   return share_memory_tensor_[tensor_name];
 }
 
-void TensorGroup::ShareMemoryBuffer(const ir::Tensor& tensor,
-                                    const ir::Tensor& to_share) {
+void TensorGroup::MarkShareMemBuffer(const ir::Tensor& tensor,
+                                     const ir::Tensor& to_share) {
   share_memory_tensor_[GetShareMemRootName(to_share->name)] =
       GetShareMemRootName(tensor->name);
 }

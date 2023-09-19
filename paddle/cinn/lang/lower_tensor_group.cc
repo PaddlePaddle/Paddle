@@ -169,8 +169,8 @@ std::vector<ir::Argument> LowerTensorGroup::GenerateFunctionArgumentList(
     if (!tensor_node->buffer.defined()) {
       continue;
     }
-    // if a argument is already marked as kInput, mark it as kOutput and move it
-    // to the back.
+    // if a argument is already marked as kInput, mark it as kOutput and move
+    // it to the back.
     if (arg_names.count(tensor_node->buffer->name)) {
       auto it =
           std::find_if(args.begin(), args.end(), [&](const ir::Argument& x) {
@@ -201,7 +201,9 @@ ir::Expr LowerTensorGroup::GenerateFunctionBody(
       tensor_group->GetGenFuncTopoOrder(tensor_args_);
   std::vector<ir::Expr> bodies;
   for (const ir::Tensor& tensor : ordered_tensors) {
-    bodies.emplace_back(ast_gen_ius::AstGen::Build(tensor));
+    if (!tensor->is_placeholder_node()) {
+      bodies.emplace_back(ast_gen_ius::AstGen::Build(tensor, tensor_group));
+    }
   }
   if (bodies.size() == 1) {
     return bodies[0];

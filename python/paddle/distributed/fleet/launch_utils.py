@@ -843,7 +843,6 @@ def direct_start(args):
     ] + args.training_script_args
     proc = subprocess.Popen(cmd)
     proc.wait()
-    return
 
 
 def get_custom_endpoints(origin_endpoints, offset=0):

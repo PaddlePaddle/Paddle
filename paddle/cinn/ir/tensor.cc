@@ -251,11 +251,6 @@ Expr *_Tensor_::mutable_body() {
   CINN_NOT_IMPLEMENTED
 }
 
-ir::Tensor _Tensor_::InitReduction(
-    ast_gen_ius::TensorGroup *tensor_group) const {
-  return tensor_group->MarkReduceInit(this->name);
-}
-
 ir::Tensor _Tensor_::InitReduction(poly::StageMap stages,
                                    const Target &target) const {
   CHECK(contains_reduce_axis())
