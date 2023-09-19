@@ -276,6 +276,7 @@ void InitDistTensorWithTensor(TensorObject* self,
                  paddle::platform::errors::InvalidArgument(
                      "DistTensor can only initialize by DenseTensor"));
   self->tensor.set_name(name);
+  VLOG(4) << "Do TensorCopy from DenseTensor to DistTensor.";
   if (place == src.place()) {
     std::shared_ptr<phi::DenseTensor> tensor =
         std::static_pointer_cast<phi::DenseTensor>(src.impl());
