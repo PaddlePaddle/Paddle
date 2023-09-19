@@ -74,7 +74,7 @@ class TestCastBase(unittest.TestCase):
         self.input_shape = (16, 32)
         self.input_dtype = 'float32'
         self.input = (
-            np.random.binomial(4, 0.3, size=np.product(self.input_shape))
+            np.random.binomial(4, 0.3, size=np.prod(self.input_shape))
             .reshape(self.input_shape)
             .astype(self.input_dtype)
         )
@@ -114,7 +114,7 @@ class TestIntCast(TestCastBase):
         self.input_shape = (1,)
         self.input_dtype = 'float32'
         self.input = (
-            np.random.normal(loc=6, scale=10, size=np.product(self.input_shape))
+            np.random.normal(loc=6, scale=10, size=np.prod(self.input_shape))
             .reshape(self.input_shape)
             .astype(self.input_dtype)
         )
@@ -129,7 +129,7 @@ class TestFloatCast(TestCastBase):
         self.input_shape = (8, 16)
         self.input_dtype = 'bool'
         self.input = (
-            np.random.binomial(2, 0.5, size=np.product(self.input_shape))
+            np.random.binomial(2, 0.5, size=np.prod(self.input_shape))
             .reshape(self.input_shape)
             .astype(self.input_dtype)
         )
@@ -144,7 +144,7 @@ class TestMixCast(TestCastBase):
         self.input_shape = (8, 32)
         self.input_dtype = 'float32'
         self.input = (
-            np.random.normal(loc=6, scale=10, size=np.product(self.input_shape))
+            np.random.normal(loc=6, scale=10, size=np.prod(self.input_shape))
             .reshape(self.input_shape)
             .astype(self.input_dtype)
         )

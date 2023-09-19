@@ -274,8 +274,6 @@ class RecomputeOptimizer(Optimizer):
                 },
             )
 
-        return
-
     def _insert_async_memcpy_op(
         self, insert_idx, src_varname, dst_varname, op_role, dst_place_type
     ):
@@ -638,8 +636,6 @@ class RecomputeOptimizer(Optimizer):
             self._update_forward()
             # step 4. verify the correctness
             self._check_offload_fetch()
-
-        return
 
     def backward(
         self,
