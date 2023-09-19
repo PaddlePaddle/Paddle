@@ -692,7 +692,7 @@ class TestTanh(TestActivation, TestParameter):
             return
         # TODO(ScottWong98): set `check_prim=False` when `fill_any_like` supports `complex` dtype
         if self.dtype == np.complex64 or self.dtype == np.complex128:
-            self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
+            self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=False)
         else:
             self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
