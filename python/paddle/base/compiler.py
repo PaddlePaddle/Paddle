@@ -561,7 +561,7 @@ class IpuDynamicPatcher:
 
             return self._caches[item_id]
 
-        setattr(ProgramCache, '__getitem__', patch_getter)
+        ProgramCache.__getitem__ = patch_getter
         IpuDynamicPatcher.patcher_cache.append(
             [ProgramCache, '__getitem__', old_getter]
         )
@@ -578,7 +578,7 @@ class IpuDynamicPatcher:
             old_step(self, epoch)
             ipu_strategy.set_options({"lr": self.last_lr})
 
-        setattr(LRScheduler, 'step', patch_step)
+        LRScheduler.step = patch_step
         IpuDynamicPatcher.patcher_cache.append([LRScheduler, 'step', old_step])
 
     @staticmethod
