@@ -129,7 +129,7 @@ class TestExpFp32_Prim(OpTest):
         self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -177,7 +177,7 @@ class TestExp_Complex64(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.006
+            ['X'], 'Out', max_relative_error=0.006, check_new_ir=True
         )
 
     def init_dtype(self):
@@ -248,7 +248,7 @@ class TestExpm1(TestActivation):
         self.convert_input_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_new_ir=True)
 
     def test_check_output(self):
         self.check_output(check_new_ir=True)
