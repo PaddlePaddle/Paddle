@@ -1460,10 +1460,7 @@ def OpGenerator(
 
     head_file_str = ""
     head_file_str += "".join(ops_declare_list)  # Add op class
-    if dialect_name == "pd":
-        legacy_op_to_pd_ops_map = LEGACY_OP_TO_PD_OPS_MAP_H
-    else:
-        legacy_op_to_pd_ops_map = ""
+    legacy_op_to_pd_ops_map = LEGACY_OP_TO_PD_OPS_MAP_H
     for name in reversed(namespaces):
         head_file_str = NAMESPACE_GARD_TEMPLATE.format(
             namespace=name, input=head_file_str
