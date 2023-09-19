@@ -92,7 +92,7 @@ std::vector<VarMetaInfo> GetVarsInfo(const Scope* scope,
   std::vector<VarMetaInfo> var_info;
 
   const std::unordered_set<std::string>* no_need_buffer_vars = nullptr;
-  if (op.HasInfo() && op.Info().NoNeedBufferVarsInferer()) {
+  if (op.Info().NoNeedBufferVarsInferer()) {
     no_need_buffer_vars = &(op.Info().NoNeedBufferVarsInferer()(
         op.Inputs(), op.Outputs(), op.Attrs()));
     if (no_need_buffer_vars->empty()) no_need_buffer_vars = nullptr;
@@ -142,11 +142,11 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
                                      : PADDLE_GET_CONST(bool, attr);
     }
 
-    bool sub_block_can_not_static_build = true;
+    bool sub_block_can_not_static_build = false;
     if (op->HasAttr("sub_block")) {
       auto* sub_block =
           PADDLE_GET_CONST(framework::BlockDesc*, op->GetAttr("sub_block"));
-      sub_block_can_not_static_build = BlockCanBeStaticBuilt(*sub_block);
+      sub_block_can_not_static_build = !BlockCanBeStaticBuilt(*sub_block);
     }
 
     KernelCode kernel_code = static_cast<KernelCode>(
@@ -156,7 +156,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
       if (in_black_list ||
           (is_operator_base &&
            !OperatorBasesHandledInStaticBuild.count(op_type)) ||
-          is_custom_op || use_mkldnn || !sub_block_can_not_static_build) {
+          is_custom_op || use_mkldnn || sub_block_can_not_static_build) {
         invalid_ops.insert(std::make_pair(op_type, kernel_code));
       }
     }

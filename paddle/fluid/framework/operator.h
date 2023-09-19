@@ -339,8 +339,6 @@ class OperatorBase {
     return *info_;
   }
 
-  bool HasInfo() const { return info_ != nullptr; }
-
   bool HasInputs(const std::string& name) const;
   //! Get a input with argument's name described in `op_proto`
   std::string Input(const std::string& name) const;
