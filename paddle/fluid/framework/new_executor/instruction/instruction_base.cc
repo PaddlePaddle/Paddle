@@ -272,7 +272,6 @@ std::string InstructionBase::DebugStringEx(
     const std::unordered_map<::pir::Value, std::string>& value_2_var_name)
     const {
   std::stringstream ss;
-  ss << "==========================================";
   ss << "Op(" << Name() << "), inputs:{";
 
   const std::unordered_set<::pir::Value> no_need_buffer_vars = NoNeedBuffer();
@@ -281,7 +280,6 @@ std::string InstructionBase::DebugStringEx(
     auto& input = *it;
     bool is_no_need_buffer_var = (!no_need_buffer_vars.empty() &&
                                   no_need_buffer_vars.count(input.first) > 0);
-    ss << value_2_var_name.at(input.first) << "[";
     auto var_name = value_2_var_name.at(input.first);
     ss << var_name;
     if (scope) {
@@ -302,7 +300,6 @@ std::string InstructionBase::DebugStringEx(
         ss << "(" << place << ")";
       }
     }
-    ss << "]";
     ++it;
     if (it != Inputs().end()) {
       ss << ", ";
@@ -311,7 +308,6 @@ std::string InstructionBase::DebugStringEx(
   ss << "}, outputs:{";
   for (auto it = Outputs().begin(); it != Outputs().end();) {
     auto& output = *it;
-    ss << value_2_var_name.at(output.first) << "[";
     auto var_name = value_2_var_name.at(output.first);
     ss << var_name;
     if (scope) {
@@ -329,7 +325,6 @@ std::string InstructionBase::DebugStringEx(
         ss << "(" << GetPlace(*scope, var_name) << ")";
       }
     }
-    ss << "]";
     ++it;
     if (it != Outputs().end()) {
       ss << ", ";
