@@ -23,7 +23,8 @@ inputs = {"x": OpTest.random([8, 8], "float32", -1.0, 1.0)}
 
 builder = NetBuilder("relu")
 x = builder.create_input(Float(32), inputs["x"].shape, "x")
-out = builder.relu(x)
+y = builder.sin(x)
+out = builder.relu(y)
 prog = builder.build()
 
 target = DefaultNVGPUTarget()

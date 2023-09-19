@@ -445,7 +445,7 @@ void TryGenerateMapExprFromGraph(
   for (const auto& fusion_group : graph->fusion_groups) {
     const auto& map_expr = GenerateMapExpr(fusion_group);
     PrintMapExpr(map_expr);
-    LOG(FATAL) << "Pause";
+    // LOG(FATAL) << "Pause";
   }
 }
 

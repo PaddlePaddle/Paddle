@@ -108,6 +108,13 @@ std::vector<Type> InferDtypeForElementwise(
   return res;
 }
 
+void GenerateEquationsForElementwise(
+    cinn::adt::config::NaiveOpEquationContext *ctx) {
+  CHECK(ctx->GetInTensorsRanks().size() != 0)
+      << "The inputs is empty! Please check again.";
+  ctx->Equal(ctx->GetInIteratorTuple(0), ctx->GetOutIteratorTuple(0));
+}
+
 std::vector<Type> InferDtypeForElementwiseBool(
     const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
   CHECK(!inputs_type.empty())
@@ -993,6 +1000,9 @@ CINN_REGISTER_HELPER(elementwise_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))  \
       .set_attr("inferdtype",                                              \
                 MakeOpFunction(cinn::hlir::op::InferDtypeForElementwise))  \
+      .set_attr(                                                           \
+          "generate_equations",                                            \
+          MakeOpFunction(cinn::hlir::op::GenerateEquationsForElementwise)) \
       .set_attr("inferlayout",                                             \
                 MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise)) \
       .set_attr<cinn::hlir::framework::OpPatternKind>(                     \
