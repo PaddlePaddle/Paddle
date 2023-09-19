@@ -3579,13 +3579,36 @@ class OpTest(unittest.TestCase):
 
                 # cast outputs
                 if self.dtype == np.uint16:
-                    for output in outputs:
-                        outputs[output][0] = paddle.cast(
-                            outputs[output][0],
-                            paddle.base.core.DataType.FLOAT32,
-                        )
+                    cast_inputs = []
+                    for output_name in output_names:
+                        cast_input = self._find_var_in_pir(outputs, output_name)
+                        cast_inputs = cast_inputs + cast_input
+                    cast_outputs = []
+                    for cast_input in cast_inputs:
+                        if isinstance(
+                            cast_input, paddle.base.libpaddle.ir.OpResult
+                        ):
+                            cast_outputs.append(
+                                paddle.cast(
+                                    cast_input,
+                                    paddle.base.core.DataType.FLOAT32,
+                                )
+                            )
+                        else:
+                            raise TypeError(
+                                "Unsupported test data type %s."
+                                % type(cast_input)
+                            )
 
-                outputs_valid = outputs
+                    outputs = {}
+                    for i in range(len(output_names)):
+                        outputs.update({output_names[i]: [cast_outputs[i]]})
+
+                outputs_valid = {}
+                for output_name in output_names:
+                    outputs_valid[output_name] = self._find_var_in_pir(
+                        outputs, output_name
+                    )
                 loss_inputs = []
                 for input_name in inputs_to_check:
                     loss_inputs.append(inputs_dict[input_name])
