@@ -357,9 +357,15 @@ phi::DataType GetKernelDataTypeByYamlInfo(
                 vec_data[0]
                     .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
                     .dtype());
+          } else if (vec_data[0]
+                         .isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+            kernel_data_type = TransToPhiDataType(
+                vec_data[0]
+                    .dyn_cast<paddle::dialect::AllocatedSelectedRowsType>()
+                    .dtype());
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(
-                "Only support DenseTensorType in vector"));
+                "Only support DenseTensorType and SelectedRowsType in vector"));
           }
         }
       } else if (type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
@@ -869,12 +875,14 @@ std::vector<pir::Type> BuildOpOutputType(pir::Operation* op_item,
       auto base_types = result_type.dyn_cast<pir::VectorType>().data();
       for (auto& base_type : base_types) {
         if (base_type) {
-          if (base_type.isa<dialect::DenseTensorType>()) {
+          if (base_type.isa<dialect::DenseTensorType>() ||
+              base_type.isa<dialect::SelectedRowsType>()) {
             vec_inner_types.push_back(
                 BuildOutputType(base_type, out_place, out_phi_dtype, ctx));
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(
-                "only support dense tensor in vector type for now"));
+                "only support dense tensor and selected rows in vector type "
+                "for now"));
           }
         } else {
           // NOTE(phlrain), kernel not support a nullptr in output
@@ -1064,8 +1072,9 @@ std::vector<pir::Value> BuildOpInputList(
             block->push_back(operation);
           }
         }
-
       } else if (new_in_type.isa<dialect::AllocatedSelectedRowsType>()) {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "not support AllocatedSelectedRowsType yet"));
         // do nothing here
       } else {
         PADDLE_THROW(phi::errors::Unimplemented(
