@@ -37,8 +37,6 @@
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
-DECLARE_int32(async_trace_count);
-
 namespace phi {
 namespace distributed {
 
@@ -53,8 +51,7 @@ std::list<std::unique_ptr<CommTask>> CommTaskManager::comm_task_list_;
 CommTaskManager::CommTaskManager() {
   terminated_.store(false);
   comm_task_loop_thread_ = std::thread(&CommTaskManager::CommTaskLoop, this);
-  LOG(INFO) << "CommTaskManager init success. FLAGS_async_trace_count: "
-            << FLAGS_async_trace_count;
+  LOG(INFO) << "CommTaskManager init success.";
 }
 CommTaskManager::~CommTaskManager() {
   terminated_.store(true);
