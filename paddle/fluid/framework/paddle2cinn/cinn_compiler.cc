@@ -321,7 +321,6 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
           << target.arch_str() << "), and its related graph:\n"
           << cinn_graph->Visualize();
 
-  VLOG(1) << "MapExpr TryGenerateMapExprFromGraph";
   cinn::adt::TryGenerateMapExprFromGraph(cinn_graph);
 
   auto scope = BuildScope(target, cinn_graph);

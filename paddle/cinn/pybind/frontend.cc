@@ -203,7 +203,6 @@ void BindFrontend(pybind11::module *m) {
 
             auto graph = Optimize(&self, fetch_ids, target, passes);
 
-            VLOG(1) << "MapExpr TryGenerateMapExprFromGraph";
             cinn::adt::TryGenerateMapExprFromGraph(graph);
 
             scope = hlir::framework::BuildScope(target, graph, scope);
