@@ -35,7 +35,7 @@ std::string DebugStringImpl(const LoopDescriptor& loop_descriptor) {
             },
             [&](const Unroll& unroll) { *string += unroll.iter_var_name(); }};
   CHECK(loop_size.Has<std::int64_t>());
-  *string += "=" + std::to_string(loop_size.Get<std::int64_t>());
+  *string += "=0..." + std::to_string(loop_size.Get<std::int64_t>());
   return ret;
 }
 

@@ -229,7 +229,10 @@ List<LoopIteratorsAndMapIrList> GroupByFirstLoopIterators(
     DoEach(begin, map_irs->size());
   };
 
-  const auto& GetFirstLoopIterators = [&](std::size_t begin) {
+  const auto& GetFirstLoopIterators = [&](std::size_t begin) -> LoopIterators {
+    if (map_irs->at(begin).loop_iters_list()->empty()) {
+      return LoopIterators{};
+    }
     return map_irs->at(begin).loop_iters_list()->at(0);
   };
 
@@ -280,6 +283,7 @@ LoopIteratorsAndMapIrList GetStrippedMapIrs(const MapIrList& map_irs) {
                                         origin_loops->end()};
     ret_map_irs->emplace_back(MapIr{op_stmts, loop_iters_list});
   }
+  CHECK(!map_irs->at(0).loop_iters_list()->empty());
   return {map_irs->at(0).loop_iters_list()->at(0), ret_map_irs};
 }
 
