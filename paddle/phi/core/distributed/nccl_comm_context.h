@@ -98,16 +98,22 @@ class NCCLCommContext final : public CommContext {
               int root,
               gpuStream_t stream);
 
+  void GroupStart();
+
+  void GroupEnd();
+
+#if NCCL_VERSION_CODE >= 21100
+  // Creates a new reduction operator which pre-multiplies input values by a
+  // given scalar locally before reducing them with peer values via summation.
   void RedOpCreatePreMulSum(ncclRedOp_t* op,
                             void* scalar,
                             ncclDataType_t dtype,
                             ncclScalarResidence_t residence);
 
+  // Destroys the reduction operator op. The operator must have been created by
+  // ncclRedOpCreatePreMul with the matching communicator comm.
   void RedOpDestroy(ncclRedOp_t op);
-
-  void GroupStart();
-
-  void GroupEnd();
+#endif
 
  private:
   DISABLE_COPY_AND_ASSIGN(NCCLCommContext);

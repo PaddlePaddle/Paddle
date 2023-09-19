@@ -231,6 +231,7 @@ void NCCLCommContext::GroupStart() {
 }
 void NCCLCommContext::GroupEnd() { NCCL_CHECK(phi::dynload::ncclGroupEnd()); }
 
+#if NCCL_VERSION_CODE >= 21100
 void NCCLCommContext::RedOpCreatePreMulSum(ncclRedOp_t* op,
                                            void* scalar,
                                            ncclDataType_t dtype,
@@ -242,6 +243,7 @@ void NCCLCommContext::RedOpCreatePreMulSum(ncclRedOp_t* op,
 void NCCLCommContext::RedOpDestroy(ncclRedOp_t op) {
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclRedOpDestroy(op, nccl_comm_));
 }
+#endif
 
 }  // namespace distributed
 }  // namespace phi
