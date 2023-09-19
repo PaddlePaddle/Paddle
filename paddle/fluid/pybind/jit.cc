@@ -539,10 +539,12 @@ void BindEvalFrame(pybind11::module *m) {
         return obj;
       },
       py::arg("callback"));
+#if PY_VERSION_HEX >= 0x030b0000
   if (PyType_Ready(&Paddle_PyInterpreterFrameProxyType) < 0) {
     VLOG(7) << "Paddle_PyInterpreterFrameProxyType has not been ready!";
   }
   Py_INCREF(&Paddle_PyInterpreterFrameProxyType);
+#endif
 }
 
 }  // namespace pybind
