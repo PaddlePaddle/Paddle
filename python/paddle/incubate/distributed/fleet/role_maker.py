@@ -160,7 +160,6 @@ class RoleMakerBase:
             return a list of values
         """
         print("warning: RoleMakerBase does not have all gather.")
-        return None
 
     def all_reduce_worker(self, input, output, mode="sum"):
         """

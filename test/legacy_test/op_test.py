@@ -28,6 +28,7 @@ from prim_op_test import OpTestUtils, PrimForwardChecker, PrimGradChecker
 from testsuite import append_input_output, append_loss_ops, create_op, set_input
 
 sys.path.append("..")
+from utils import static_guard
 from white_list import (
     check_shape_white_list,
     compile_vs_runtime_white_list,
@@ -1448,7 +1449,7 @@ class OpTest(unittest.TestCase):
         for_inplace_test=None,
         check_cinn=False,
     ):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             program = Program()
             block = program.global_block()
             op = self._append_ops(block)
@@ -1624,9 +1625,7 @@ class OpTest(unittest.TestCase):
             if fwd_var_name is None:
                 fwd_var_name = arg
             fwd_var = fwd_program.global_block().vars.get(fwd_var_name)
-            assert fwd_var is not None, "{} cannot be found".format(
-                fwd_var_name
-            )
+            assert fwd_var is not None, f"{fwd_var_name} cannot be found"
             grad_var = grad_block.create_var(
                 name=arg,
                 dtype=fwd_var.dtype,
@@ -1794,7 +1793,7 @@ class OpTest(unittest.TestCase):
         Returns:
             res (tuple(outs, fetch_list, feed_map, program, op_desc)): The results of given grad_op_desc.
         """
-        with paddle.base.framework._static_guard():
+        with static_guard():
             (
                 fwd_outs,
                 fwd_fetch_list,
@@ -2682,7 +2681,9 @@ class OpTest(unittest.TestCase):
                     return
                 self.check_compile_vs_runtime(fetch_list, outs)
 
-    def check_output_customized(self, checker, custom_place=None):
+    def check_output_customized(
+        self, checker, custom_place=None, check_new_ir=False
+    ):
         self.__class__.op_type = self.op_type
         places = self._get_places()
         if custom_place:
@@ -2692,6 +2693,12 @@ class OpTest(unittest.TestCase):
             outs = [np.array(out) for out in outs]
             outs.sort(key=len)
             checker(outs)
+            if check_new_ir:
+                with paddle.new_ir_utils.IrGuard():
+                    outs_p = self._calc_new_ir_output(place)
+                    outs_p = [outs_p[out] for out in outs_p]
+                    outs_p.sort(key=len)
+                    checker(outs_p)
 
     def check_output_with_place_customized(self, checker, place):
         outs = self.calc_output(place)
@@ -3369,7 +3376,7 @@ class OpTest(unittest.TestCase):
         parallel=False,
         check_cinn=False,
     ):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             prog = Program()
             scope = core.Scope()
             ir_scope = core.Scope()
