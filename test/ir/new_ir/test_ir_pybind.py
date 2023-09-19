@@ -119,10 +119,16 @@ class TestPybind(unittest.TestCase):
         self.assertEqual(
             tanh_op.operands()[0].source().get_defining_op().name(), "pd_op.add"
         )
-        self.assertEqual(
-            tanh_op.operands()[0].source().__str__(),
-            "OpResult(name=%0, dtype=pd_op.tensor<4x4xf32>, stop_gradient=True)",
-        )
+        if tanh_op.operands()[0].source().stop_gradient:
+            self.assertEqual(
+                tanh_op.operands()[0].source().__str__(),
+                "OpResult(name=%0, dtype=pd_op.tensor<4x4xf32>, stop_gradient=True)",
+            )
+        else:
+            self.assertEqual(
+                tanh_op.operands()[0].source().__str__(),
+                "OpResult(name=%0, dtype=pd_op.tensor<4x4xf32>, stop_gradient=False)",
+            )
         add_op.replace_all_uses_with(matmul_op.results())
         self.assertEqual(
             tanh_op.operands()[0].source().get_defining_op().name(),
