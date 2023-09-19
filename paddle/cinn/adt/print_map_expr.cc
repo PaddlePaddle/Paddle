@@ -16,6 +16,7 @@
 
 #include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/adt/print_map_expr.h"
+#include "paddle/cinn/adt/schedule_descriptor.h"
 
 namespace cinn::adt {
 
@@ -69,23 +70,7 @@ void ToTxtString(const OpStmt& op_stmt,
 void ToTextString(const LoopDescriptor& loop_descriptor,
                   std::size_t indent_size,
                   std::string* string) {
-  const auto& [loop_type, loop_size] = loop_descriptor.tuple();
-  loop_type >>
-      match{[&](const S0x&) { *string += "blockIdx.x"; },
-            [&](const S0y&) { *string += "blockIdx.y"; },
-            [&](const S0z&) { *string += "blockIdx.z"; },
-            [&](const S1x&) { *string += "threadIdx.x"; },
-            [&](const S1y&) { *string += "threadIdx.y"; },
-            [&](const S1z&) { *string += "threadIdx.z"; },
-            [&](const Temporal& temporal) {
-              *string += temporal.iter_var_name();
-            },
-            [&](const Vectorize& vectorize) {
-              *string += vectorize.iter_var_name();
-            },
-            [&](const Unroll& unroll) { *string += unroll.iter_var_name(); }};
-  CHECK(loop_size.Has<std::int64_t>());
-  *string += "=" + std::to_string(loop_size.Get<std::int64_t>());
+  *string += DebugString(loop_descriptor);
 }
 
 void ToTextString(const ScheduleDescriptor& schedule_descriptor,

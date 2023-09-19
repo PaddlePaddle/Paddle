@@ -1,0 +1,127 @@
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include <string>
+
+#include "paddle/cinn/adt/equation_value.h"
+#include "paddle/cinn/adt/schedule_descriptor.h"
+
+namespace cinn::adt {
+
+std::string DebugString(std::int64_t c) { return std::to_string(c); }
+std::string DebugString(const tStride<UniqueId>& c) {
+  return std::string("stride_") + std::to_string(c.value().unique_id());
+}
+
+std::string DebugString(const tDim<UniqueId>& c) {
+  return std::string("dim_") + std::to_string(c.value().unique_id());
+}
+
+std::string DebugString(const List<Constant>& c) {
+  std::string ret{"["};
+  std::size_t count = 0;
+  for (const auto& tmp : *c) {
+    if (count++ > 0) {
+      ret += ", ";
+    }
+    ret += DebugString(tmp);
+  }
+  ret += "]";
+  return ret;
+}
+
+std::string DebugString(const Neg<Constant>& c) {
+  return std::string("-") + DebugString(std::get<0>(c.tuple()));
+}
+
+std::string DebugString(const Add<Constant, Constant>& c) {
+  return DebugString(std::get<0>(c.tuple())) + " + " +
+         DebugString(std::get<1>(c.tuple()));
+}
+
+std::string DebugString(const Mul<Constant, Constant>& c) {
+  return DebugString(std::get<0>(c.tuple())) + " * " +
+         DebugString(std::get<1>(c.tuple()));
+}
+
+std::string DebugString(const Constant& c) {
+  return std::visit([&](const auto& impl) { return DebugString(impl); },
+                    c.variant());
+}
+
+std::string DebugString(const Undefined&) { return "Undefined"; }
+std::string DebugString(const Ok&) { return "Ok"; }
+
+std::string DebugString(const List<Value>& values) {
+  std::string ret = "[";
+  std::size_t count = 0;
+  for (const auto& value : *values) {
+    if (count++ > 0) {
+      ret += ", ";
+    }
+    ret += DebugString(value);
+  }
+  ret += "]";
+  return ret;
+}
+
+std::string DebugString(const IndexDot<Value>& index_dot) {
+  const auto& [iters, constant] = index_dot.tuple();
+  return std::string() + "IndexDot(" + DebugString(iters) + ", " +
+         DebugString(constant) + ")";
+}
+
+std::string DebugString(const IndexUnDot<Value>& index_undot) {
+  const auto& [index, constant] = index_undot.tuple();
+  return std::string() + "IndexUnDot(" + DebugString(index) + ", " +
+         DebugString(constant) + ")";
+}
+
+std::string DebugString(const ConstantAdd<Value>& constant_add) {
+  const auto& [value, constant] = constant_add.tuple();
+  return std::string() + "ConstantAdd(" + DebugString(value) + ", " +
+         DebugString(constant) + ")";
+}
+
+std::string DebugString(const ConstantDiv<Value>& constant_div) {
+  const auto& [value, constant] = constant_div.tuple();
+  return std::string() + "ConstantDiv(" + DebugString(value) + ", " +
+         DebugString(constant) + ")";
+}
+
+std::string DebugString(const ConstantMod<Value>& constant_mod) {
+  const auto& [value, constant] = constant_mod.tuple();
+  return std::string() + "ConstantDiv(" + DebugString(value) + ", " +
+         DebugString(constant) + ")";
+}
+
+std::string DebugString(const ListGetItem<Value, Constant>& list_get_item) {
+  const auto& [value, constant] = list_get_item.tuple();
+  return std::string() + "ListGetItem(" + DebugString(value) + ", " +
+         DebugString(constant) + ")";
+}
+
+std::string DebugString(const PtrGetItem<Value>& ptr_get_item) {
+  const auto& [unique_id, value] = ptr_get_item.tuple();
+  return std::string() + "PtrGetItem(" +
+         std::to_string(unique_id.value().unique_id()) + ", " +
+         DebugString(value) + ")";
+}
+
+std::string DebugString(const Value& value) {
+  return std::visit([&](const auto& impl) { return DebugString(impl); },
+                    value.variant());
+}
+
+}  // namespace cinn::adt
