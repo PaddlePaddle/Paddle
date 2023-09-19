@@ -840,7 +840,8 @@ bool ShapeComputationIRAnalysis::ApplyIndexOpConstraint(Operation* op) {
 
   if (auto dimOp = op->dyn_cast<dialect::TensorDimOp>()) {
     int64_t dimIndex = dimOp.index()
-                           .GetDefiningOp()
+                           .dyn_cast<OpResult>()
+                           .owner()
                            ->attribute<Int64Attribute>("value")
                            .data();
     value2SymDim_[dimOp.out()].updateKnownNonNegative(true);
