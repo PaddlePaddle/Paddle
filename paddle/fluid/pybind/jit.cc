@@ -70,7 +70,7 @@ typedef struct Paddle_PyInterpreterFrameProxy {
   static PyObject *Paddle_PyInterpreterFrameProxy_property_##name( \
       Paddle_PyInterpreterFrameProxy *self, void *closure) {       \
     Py_XINCREF(self->frame->name);                                 \
-    return reinterpret_cast<PyObject *> self->frame->name;         \
+    return reinterpret_cast<PyObject *>(self->frame->name);        \
   }
 
 #define REGISTER_PROXY_PROPERTY(name)                                       \
