@@ -19,7 +19,7 @@ import pathlib
 import sys
 
 import yaml
-from op_build_gen import gen_build_func_str
+from op_build_gen import gen_build_func_str, gen_build_func_str_by_invoke
 from op_interface_gen import (
     gen_exclusive_interface_str,
     gen_op_infer_meta_str,
@@ -340,6 +340,7 @@ class OpInfoParser:
         # parse infermeta && kernel
         self.infer_meta_map = self.parse_infer_meta_map()
         self.kernel_map = self.parse_kernel_map()
+        self.invoke_map = self.parse_invoke_map()
         if 'infer_meta' in self.op_yaml_item:
             self.infer_meta_func = self.op_yaml_item['infer_meta']["func"]
         else:
@@ -717,6 +718,12 @@ class OpInfoParser:
         else:
             return None
 
+    def parse_invoke_map(self):
+        if 'invoke' in self.op_yaml_item:
+            return self.op_yaml_item['invoke']
+        else:
+            return None
+
     def parse_backward_name(self):
         if 'backward' in self.op_yaml_item:
             return self.op_yaml_item['backward']
@@ -898,6 +905,7 @@ def OpGenerator(
         # others
         op_infer_meta_map = op_info.infer_meta_map
         op_kernel_map = op_info.kernel_map
+        op_invoke_map = op_info.invoke_map
         op_inplace_map = op_info.inplace_map
         op_view_map = op_info.view_map
         op_interfaces = ["paddle::dialect::OpYamlInfoInterface"]
@@ -1086,6 +1094,35 @@ def OpGenerator(
                         build_mutable_attr_is_input_attr_num_over_1 = "static void Build({build_args});".format(
                             build_args=build_args_with_muta_attr_is_input_with_attr_is_map_for_declare
                         )
+
+            if (op_invoke_map is not None) and (
+                op_invoke_map['func'] in op_info_items
+            ):
+                op_invoke_class_name = (
+                    to_pascal_case(op_invoke_map['func']) + "Op"
+                )
+
+                (
+                    build_args_with_muta_attr_not_input_for_declare,
+                    build_func_with_muta_attr_not_input,
+                ) = gen_build_func_str_by_invoke(
+                    op_class_name,
+                    op_input_name_list,
+                    op_input_type_list,
+                    op_input_optional_list,
+                    op_attribute_name_list,
+                    op_attribute_type_list,
+                    op_attribute_build_arg_type_list,
+                    op_attribute_default_value_list,
+                    op_mutable_attribute_name_list,
+                    op_mutable_attribute_type_list,
+                    op_non_mutable_attribute_name_list,
+                    op_non_mutable_attribute_type_list,
+                    op_non_mutable_attribute_build_arg_type_list,
+                    op_non_mutable_attribute_default_value_list,
+                    op_invoke_class_name,
+                    op_invoke_map,
+                )
 
             # gen op_declare_str/op_defined_str
             if len(op_non_mutable_attribute_name_list) == 0:

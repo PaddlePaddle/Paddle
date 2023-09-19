@@ -803,3 +803,84 @@ def gen_build_func_str(
     )
 
     return (build_args_for_declare, build_func)
+
+
+OP_BUILD_BY_INVOKE_TEMPLATE = """
+void {op_name}::Build({build_args}) {{
+  {invoke_class}::Build(builder, argument{invoke_args});
+}}
+"""
+
+
+def gen_build_func_str_by_invoke(
+    op_class_name,
+    op_input_name_list,
+    op_input_type_list,
+    op_input_optional_list,
+    op_attribute_name_list,
+    op_attribute_type_list,
+    op_attribute_build_arg_type_list,
+    op_attribute_default_value_list,
+    op_mutable_attribute_name_list,
+    op_mutable_attribute_type_list,
+    op_non_mutable_attribute_name_list,
+    op_non_mutable_attribute_type_list,
+    op_non_mutable_attribute_build_arg_type_list,
+    op_non_mutable_attribute_default_value_list,
+    op_invoke_class_name,
+    op_invoke_map,
+):
+    build_args_for_declare = ""
+    build_func = ""
+
+    build_args_for_declare = GenBuildInputArgsStr(
+        op_input_name_list,
+        op_attribute_name_list,
+        op_attribute_build_arg_type_list,
+        op_attribute_default_value_list,
+        op_mutable_attribute_name_list,
+        op_non_mutable_attribute_name_list,
+        op_non_mutable_attribute_build_arg_type_list,
+        op_non_mutable_attribute_default_value_list,
+        True,
+        False,
+        False,
+    )
+
+    build_args_for_define = GenBuildInputArgsStr(
+        op_input_name_list,
+        op_attribute_name_list,
+        op_attribute_build_arg_type_list,
+        op_attribute_default_value_list,
+        op_mutable_attribute_name_list,
+        op_non_mutable_attribute_name_list,
+        op_non_mutable_attribute_build_arg_type_list,
+        op_non_mutable_attribute_default_value_list,
+        False,
+        False,
+        False,
+    )
+
+    invoke_args = op_invoke_map['args'].split(", ")
+    invoke_args_str = ""
+    for item in invoke_args:
+        if item in op_input_name_list:
+            invoke_args_str += ", " + item + "_"
+        elif ".dtype()" in item:
+            invoke_args_str += (
+                ", paddle::dialect::TransToPhiDataType("
+                + item[:-8]
+                + "_"
+                + ".type().dyn_cast<paddle::dialect::DenseTensorType>().dtype())"
+            )
+        else:
+            invoke_args_str += ", " + item
+
+    build_func = OP_BUILD_BY_INVOKE_TEMPLATE.format(
+        op_name=op_class_name,
+        build_args=build_args_for_define,
+        invoke_class=op_invoke_class_name,
+        invoke_args=invoke_args_str,
+    )
+
+    return (build_args_for_declare, build_func)
