@@ -42,6 +42,14 @@ class TensorGroup {
   explicit TensorGroup(const std::vector<ir::Tensor>& tensors);
 
   /**
+   * Constructor for a TensorGroup, the argument tensors should be output tensor
+   * arguments of the AST body to be generated. The dependent tensors of the
+   * output tensors will be collected during construction.
+   */
+  explicit TensorGroup(
+      const std::unordered_map<std::string, ir::Tensor>& tensor_map);
+
+  /**
    * Destructor.
    */
   ~TensorGroup();

@@ -26,10 +26,34 @@ namespace cinn {
 namespace ast_gen_ius {
 
 TensorGroup::TensorGroup(const std::vector<ir::Tensor>& tensors) {
+  // Using set to de-duplicate
   std::set<ir::Tensor> all_tensors(tensors.begin(), tensors.end());
 
   for (auto& tensor : tensors) {
     output_tensor_names_.insert(tensor->name);
+    std::set<ir::Expr> used_tensors = ir::CollectIRNodes(
+        tensor->body(), [](const Expr* x) { return x->as_tensor(); });
+    for (const Expr& x : used_tensors) {
+      const ir::Tensor to_dep = x.as_tensor_ref();
+      all_tensors.insert(to_dep);
+      this->CtrlDepend(tensor, to_dep);
+    }
+  }
+
+  for (const ir::Tensor& t : all_tensors) {
+    name_to_tensor_.insert({t->name, t});
+  }
+}
+
+TensorGroup::TensorGroup(
+    const std::unordered_map<std::string, ir::Tensor>& tensor_map) {
+  // Using set to de-duplicate
+  std::set<ir::Tensor> all_tensors;
+
+  for (const auto& map_pair : tensor_map) {
+    const ir::Tensor& tensor = map_pair.second;
+    output_tensor_names_.insert(tensor->name);
+    all_tensors.insert(tensor);
     std::set<ir::Expr> used_tensors = ir::CollectIRNodes(
         tensor->body(), [](const Expr* x) { return x->as_tensor(); });
     for (const Expr& x : used_tensors) {
