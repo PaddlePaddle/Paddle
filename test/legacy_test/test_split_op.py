@@ -60,7 +60,9 @@ class TestSplitOp(OpTest):
         self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_prim=True)
+        self.check_grad(
+            ['X'], ['out0', 'out1', 'out2'], check_prim=True, check_new_ir=True
+        )
 
 
 # test with attr(num)
@@ -114,7 +116,9 @@ class TestSplitWithNumOp(OpTest):
         self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_prim=True)
+        self.check_grad(
+            ['X'], ['out0', 'out1', 'out2'], check_prim=True, check_new_ir=True
+        )
 
 
 # attr(axis) is Tensor
@@ -151,7 +155,7 @@ class TestSplitOp_AxisTensor(OpTest):
         self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'])
+        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_new_ir=True)
 
 
 # attr(sections) is list containing Tensor
@@ -199,7 +203,7 @@ class TestSplitOp_SectionsTensor(OpTest):
         self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'])
+        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_new_ir=True)
 
 
 class TestSplitOp_unk_section(OpTest):
@@ -238,7 +242,9 @@ class TestSplitOp_unk_section(OpTest):
         self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_prim=True)
+        self.check_grad(
+            ['X'], ['out0', 'out1', 'out2'], check_prim=True, check_new_ir=True
+        )
 
 
 class TestSplitByrefOp(OpTest):
@@ -284,7 +290,9 @@ def create_test_bf16(parent):
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
-            self.check_grad_with_place(place, ['X'], 'out2', check_prim=True)
+            self.check_grad_with_place(
+                place, ['X'], 'out2', check_prim=True, check_new_ir=True
+            )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16Op")
     TestSplitBF16Op.__name__ = cls_name
