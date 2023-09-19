@@ -246,7 +246,6 @@ class FLClient(FLClientBase):
     def push_fl_client_info_sync(self, state_info):
         str_msg = self.__build_fl_client_info_desc(state_info)
         self._client_ptr.push_fl_client_info_sync(str_msg)
-        return
 
     def pull_fl_strategy(self):
         strategy_dict = {}

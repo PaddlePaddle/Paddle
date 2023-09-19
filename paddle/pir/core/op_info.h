@@ -71,6 +71,7 @@ class IR_API OpInfo {
   template <typename InterfaceT>
   typename InterfaceT::Concept *GetInterfaceImpl() const;
 
+  operator const void *() const { return impl_; }
   uint32_t num_attributes() const;
 
   const char *attribute_name(size_t idx) const;
@@ -81,7 +82,6 @@ class IR_API OpInfo {
   }
 
   friend class OpInfoImpl;
-  friend struct std::hash<OpInfo>;
 
  private:
   explicit OpInfo(OpInfoImpl *impl) : impl_(impl) {}
@@ -109,7 +109,7 @@ namespace std {
 template <>
 struct hash<pir::OpInfo> {
   std::size_t operator()(const pir::OpInfo &obj) const {
-    return std::hash<const pir::OpInfoImpl *>()(obj.impl_);
+    return std::hash<const void *>()(obj);
   }
 };
 }  // namespace std

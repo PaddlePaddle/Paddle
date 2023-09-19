@@ -52,6 +52,8 @@ class IR_API Attribute {
 
   bool operator!() const { return storage_ == nullptr; }
 
+  operator const void *() const { return storage_; }
+
   ///
   /// \brief Some Attribute attribute acquisition interfaces.
   ///
@@ -87,8 +89,6 @@ class IR_API Attribute {
     return pir::dyn_cast<U>(*this);
   }
 
-  friend struct std::hash<Attribute>;
-
  protected:
   const Storage *storage_{nullptr};
 };
@@ -100,7 +100,7 @@ namespace std {
 template <>
 struct hash<pir::Attribute> {
   std::size_t operator()(const pir::Attribute &obj) const {
-    return std::hash<const pir::Attribute::Storage *>()(obj.storage_);
+    return std::hash<const void *>()(obj);
   }
 };
 }  // namespace std
