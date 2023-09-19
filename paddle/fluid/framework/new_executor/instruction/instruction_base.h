@@ -147,6 +147,12 @@ class InstructionBase {
       const std::unordered_map<const paddle::framework::Variable*, std::string>&
           variable_2_var_name);
 
+  // if scope is not null, also show dimensions of arguments
+  virtual std::string DebugStringEx(
+      const paddle::framework::Scope* scope,
+      const std::unordered_map<::pir::Value, std::string>& value_2_var_name)
+      const;
+
  protected:
   size_t id_;
 
