@@ -63,3 +63,19 @@ def gelu_composite(x, approximate):
         cdf = half * (one + _ir_ops.erf(x * full(x.shape, M_SQRT1_2, x.dtype)))
         out = x * cdf
         return out
+
+
+@register_decomp('pd_op.rsqrt')
+def rsqrt_composite(x):
+    """define composite rule of op rsqrt."""
+    # rsqrt(x) = x^(-0.5)
+    is_amp = False
+    from paddle.base.data_feeder import convert_dtype
+
+    dtype = convert_dtype(x.dtype)
+    if dtype in ["float16", "uint16"]:
+        is_amp = True
+        x = cast(x, "float32")
+    y = full(x.shape if len(x.shape) == 0 else [1], -0.5, x.dtype)
+    res = pow(x, y)
+    return res if not is_amp else cast(res, dtype)
