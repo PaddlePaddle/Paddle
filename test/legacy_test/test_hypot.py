@@ -68,6 +68,14 @@ class TestHypotAPI(unittest.TestCase):
         )
 
         paddle.enable_static()
+    
+    def test_error(self):
+        paddle.enable_static()
+        x = paddle.to_tensor(self.x_np)
+        y = 3.8
+        self.assertRaises(ValueError, paddle.hypot, x, y)
+        self.assertRaises(ValueError, paddle.hypot, y, x)
+
 
 
 class TestHypotAPIBroadCast(TestHypotAPI):
