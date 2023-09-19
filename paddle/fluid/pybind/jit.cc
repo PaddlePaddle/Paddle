@@ -21,7 +21,14 @@ limitations under the License. */
 #include <code.h>
 #endif
 #if PY_VERSION_HEX >= 0x030b0000
+#include <internal/pycore_code.h>
 #include <internal/pycore_frame.h>
+#define Py_BUILD_CORE       // internal/pycore_opcode.h need this macro
+#define NEED_OPCODE_TABLES  // To get _PyOpcode_Caches and _PyOpcode_Deopt
+#include <internal/pycore_opcode.h>
+#undef NEED_OPCODE_TABLES
+#undef Py_BUILD_CORE
+#include <opcode.h>
 #endif
 
 #include <object.h>
@@ -49,64 +56,178 @@ namespace pybind {
 // that we don't need any modification in eval_frame functions.
 typedef _PyInterpreterFrame FrameObject;
 #define CALL_STAT_INC(name) ((void)0)
-PyFrameObject *Paddle_PyFrame_New_NoTrack(PyCodeObject *code) {
-  CALL_STAT_INC(frame_objects_created);
-  int slots = code->co_nlocalsplus + code->co_stacksize;
-  PyFrameObject *f = PyObject_GC_NewVar(PyFrameObject, &PyFrame_Type, slots);
-  if (f == NULL) {
-    return NULL;
+
+// clang-format off
+// Define a proxy PyObject to access _PyInterpreterFrame's properties.
+// It will be passed as an argument to the eval frame's callback.
+typedef struct Paddle_PyInterpreterFrameProxy {
+  PyObject_HEAD
+  _PyInterpreterFrame *frame;
+} Paddle_PyInterpreterFrameProxy;
+// clang-format on
+
+#define DECLARE_PROXY_PROPERTY(name)                               \
+  static PyObject *Paddle_PyInterpreterFrameProxy_property_##name( \
+      Paddle_PyInterpreterFrameProxy *self, void *closure) {       \
+    Py_XINCREF(self->frame->name);                                 \
+    return reinterpret_cast<PyObject *> self->frame->name;         \
   }
-  f->f_back = NULL;
-  f->f_trace = NULL;
-  f->f_trace_lines = 1;
-  f->f_trace_opcodes = 0;
-  f->f_fast_as_locals = 0;
-  f->f_lineno = 0;
-  return f;
-}
 
-static inline bool Paddle_PyFrame_IsIncomplete(_PyInterpreterFrame *frame) {
-  return frame->owner != FRAME_OWNED_BY_GENERATOR &&
-         frame->prev_instr <
-             _PyCode_CODE(frame->f_code) + frame->f_code->_co_firsttraceable;
-}
+#define REGISTER_PROXY_PROPERTY(name)                                       \
+  {                                                                         \
+#name, (getter)Paddle_PyInterpreterFrameProxy_property_##name, nullptr, \
+        nullptr, nullptr                                                    \
+  }
 
-PyFrameObject *Paddle_PyFrame_MakeAndSetFrameObject(
+DECLARE_PROXY_PROPERTY(f_code)
+DECLARE_PROXY_PROPERTY(f_locals)
+DECLARE_PROXY_PROPERTY(f_globals)
+DECLARE_PROXY_PROPERTY(f_builtins)
+
+static PyGetSetDef Paddle_PyInterpreterFrameProxy_properties[] = {
+    REGISTER_PROXY_PROPERTY(f_code),
+    REGISTER_PROXY_PROPERTY(f_locals),
+    REGISTER_PROXY_PROPERTY(f_globals),
+    REGISTER_PROXY_PROPERTY(f_builtins),
+    {nullptr} /* Sentinel */
+};
+
+// clang-format off
+static PyTypeObject Paddle_PyInterpreterFrameProxyType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "paddle.framework.core._PyInterpreterFrameProxy",
+    .tp_doc = PyDoc_STR("A proxy object for _PyInterpreterFrame, "
+                        "it's only define all properties we need."),
+    .tp_basicsize = sizeof(Paddle_PyInterpreterFrameProxy),
+    .tp_itemsize = 0,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_getset = Paddle_PyInterpreterFrameProxy_properties,
+};
+// clang-format on
+
+Paddle_PyInterpreterFrameProxy *Paddle_PyInterpreterFrameProxy_New(
     _PyInterpreterFrame *frame) {
-  assert(frame->frame_obj == NULL);
-  PyObject *error_type, *error_value, *error_traceback;
-  PyErr_Fetch(&error_type, &error_value, &error_traceback);
-
-  PyFrameObject *f = Paddle_PyFrame_New_NoTrack(frame->f_code);
-  if (f == NULL) {
-    Py_XDECREF(error_type);
-    Py_XDECREF(error_value);
-    Py_XDECREF(error_traceback);
-    return NULL;  // NOLINT
+  PyTypeObject *type = &Paddle_PyInterpreterFrameProxyType;
+  Paddle_PyInterpreterFrameProxy *self =
+      reinterpret_cast<Paddle_PyInterpreterFrameProxy *>(
+          type->tp_alloc(type, 0));
+  if (!self) {
+    VLOG(7) << "Failed to allocate Paddle_PyInterpreterFrameProxy";
+    return nullptr;
   }
-  PyErr_Restore(error_type, error_value, error_traceback);
-  if (frame->frame_obj) {
-    f->f_frame = (_PyInterpreterFrame *)f->_f_frame_data;  // NOLINT
-    f->f_frame->owner = FRAME_CLEARED;
-    f->f_frame->frame_obj = f;
-    Py_DECREF(f);
-    return frame->frame_obj;
-  }
-  assert(frame->owner != FRAME_OWNED_BY_FRAME_OBJECT);
-  assert(frame->owner != FRAME_CLEARED);
-  f->f_frame = frame;
-  frame->frame_obj = f;
-  return f;
+  self->frame = frame;
+  return self;
 }
 
-static inline PyFrameObject *Paddle_PyFrame_GetFrameObject(
-    _PyInterpreterFrame *frame) {
-  assert(!Paddle_PyFrame_IsIncomplete(frame));
-  PyFrameObject *res = frame->frame_obj;
-  if (res != NULL) {
-    return res;
+static int _PyFrame_OpAlreadyRan(_PyInterpreterFrame *frame,
+                                 int opcode,
+                                 int oparg) {
+  // This only works when opcode is a non-quickened form:
+  assert(_PyOpcode_Deopt[opcode] == opcode);
+  int check_oparg = 0;
+  for (_Py_CODEUNIT *instruction = _PyCode_CODE(frame->f_code);
+       instruction < frame->prev_instr;
+       instruction++) {
+    int check_opcode = _PyOpcode_Deopt[_Py_OPCODE(*instruction)];
+    check_oparg |= _Py_OPARG(*instruction);
+    if (check_opcode == opcode && check_oparg == oparg) {
+      return 1;
+    }
+    if (check_opcode == EXTENDED_ARG) {
+      check_oparg <<= 8;
+    } else {
+      check_oparg = 0;
+    }
+    instruction += _PyOpcode_Caches[check_opcode];
   }
-  return Paddle_PyFrame_MakeAndSetFrameObject(frame);
+  return 0;
+}
+
+int Paddle_PyFrame_FastToLocalsWithError(_PyInterpreterFrame *frame) {
+  /* Merge fast locals into f->f_locals */
+  PyObject *locals;
+  PyObject **fast;
+  PyCodeObject *co;
+  locals = frame->f_locals;
+  if (locals == NULL) {
+    locals = frame->f_locals = PyDict_New();
+    if (locals == NULL) return -1;
+  }
+  co = frame->f_code;
+  fast = _PyFrame_GetLocalsArray(frame);
+  // COPY_FREE_VARS has no quickened forms, so no need to use _PyOpcode_Deopt
+  // here:
+  int lasti = _PyInterpreterFrame_LASTI(frame);
+  if (lasti < 0 && _Py_OPCODE(_PyCode_CODE(co)[0]) == COPY_FREE_VARS) {
+    /* Free vars have not been initialized -- Do that */
+    PyCodeObject *co = frame->f_code;
+    PyObject *closure = frame->f_func->func_closure;
+    int offset = co->co_nlocals + co->co_nplaincellvars;
+    for (int i = 0; i < co->co_nfreevars; ++i) {
+      PyObject *o = PyTuple_GET_ITEM(closure, i);
+      Py_INCREF(o);
+      frame->localsplus[offset + i] = o;
+    }
+    // COPY_FREE_VARS doesn't have inline CACHEs, either:
+    frame->prev_instr = _PyCode_CODE(frame->f_code);
+  }
+  for (int i = 0; i < co->co_nlocalsplus; i++) {
+    _PyLocals_Kind kind = _PyLocals_GetKind(co->co_localspluskinds, i);
+
+    /* If the namespace is unoptimized, then one of the
+       following cases applies:
+       1. It does not contain free variables, because it
+          uses import * or is a top-level namespace.
+       2. It is a class namespace.
+       We don't want to accidentally copy free variables
+       into the locals dict used by the class.
+    */
+    if (kind & CO_FAST_FREE && !(co->co_flags & CO_OPTIMIZED)) {
+      continue;
+    }
+
+    PyObject *name = PyTuple_GET_ITEM(co->co_localsplusnames, i);
+    PyObject *value = fast[i];
+    if (frame->stacktop) {
+      if (kind & CO_FAST_FREE) {
+        // The cell was set by COPY_FREE_VARS.
+        assert(value != NULL && PyCell_Check(value));
+        value = PyCell_GET(value);
+      } else if (kind & CO_FAST_CELL) {
+        // Note that no *_DEREF ops can happen before MAKE_CELL
+        // executes.  So there's no need to duplicate the work
+        // that MAKE_CELL would otherwise do later, if it hasn't
+        // run yet.
+        if (value != NULL) {
+          if (PyCell_Check(value) &&
+              _PyFrame_OpAlreadyRan(frame, MAKE_CELL, i)) {
+            // (likely) MAKE_CELL must have executed already.
+            value = PyCell_GET(value);
+          }
+          // (likely) Otherwise it it is an arg (kind & CO_FAST_LOCAL),
+          // with the initial value set when the frame was created...
+          // (unlikely) ...or it was set to some initial value by
+          // an earlier call to PyFrame_LocalsToFast().
+        }
+      }
+    } else {
+      assert(value == NULL);
+    }
+    if (value == NULL) {
+      if (PyObject_DelItem(locals, name) != 0) {
+        if (PyErr_ExceptionMatches(PyExc_KeyError)) {
+          PyErr_Clear();
+        } else {
+          return -1;
+        }
+      }
+    } else {
+      if (PyObject_SetItem(locals, name, value) != 0) {
+        return -1;
+      }
+    }
+  }
+  return 0;
 }
 
 #else
@@ -203,13 +324,16 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
 // https://peps.python.org/pep-0558/#fast-locals-proxy-implementation-details
 // https://devguide.python.org/internals/interpreter/#all-sorts-of-variables
 #if PY_VERSION_HEX >= 0x030b0000
-  // _PyFrame_GetFrameObject(frame) # this function should be the right answer,
-  // but nm libpython.so | grep _PyFrame_MakeAndSetFrameObject is a `t' symbol,
-  // which means it's local to library. we will get a link error if we use it.
   if (frame->owner == FRAME_OWNED_BY_GENERATOR) {
     return eval_frame_default(tstate, frame, throw_flag);
   }
-  if (PyFrame_FastToLocalsWithError(Paddle_PyFrame_GetFrameObject(frame)) < 0) {
+  // PyFrame_FastToLocalsWithError receives a PyFrameObject, but if we created a
+  // PyFrameObject from a PyInterpreterFrame, it will changes the original
+  // PyInterpreterFrame and causes a SegmentationError when Fallback to run
+  // original frame. So we pass a PyInterpreterFrame to
+  // _PyFrame_FastToLocalsWithError directly. But this is an internal API, so we
+  // copy lots of code from CPython project into our project.
+  if (Paddle_PyFrame_FastToLocalsWithError(frame) < 0) {
 #else
   if (PyFrame_FastToLocalsWithError(frame) < 0) {
 #endif
@@ -236,7 +360,8 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   eval_frame_callback_set(Py_None);
 
 #if PY_VERSION_HEX >= 0x030b0000
-  PyObject *args = Py_BuildValue("(O)", Paddle_PyFrame_GetFrameObject(frame));
+  PyObject *args =
+      Py_BuildValue("(O)", Paddle_PyInterpreterFrameProxy_New(frame));
 #else
   PyObject *args = Py_BuildValue("(O)", frame);
 #endif
@@ -414,6 +539,10 @@ void BindEvalFrame(pybind11::module *m) {
         return obj;
       },
       py::arg("callback"));
+  if (PyType_Ready(&Paddle_PyInterpreterFrameProxyType) < 0) {
+    VLOG(7) << "Paddle_PyInterpreterFrameProxyType has not been ready!";
+  }
+  Py_INCREF(&Paddle_PyInterpreterFrameProxyType);
 }
 
 }  // namespace pybind
