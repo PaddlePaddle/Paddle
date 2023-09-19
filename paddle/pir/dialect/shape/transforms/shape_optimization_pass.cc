@@ -89,10 +89,14 @@ bool MaterializeShapeComputation(pir::ModuleOp m) {
 bool OptimizeShapeComputation(pir::ModuleOp m, PassPipelineRunner runner) {
   // TODO(liujinnan): Do some Canonicalizer.
   pir::SymbolicDimMgr mgr(m);
-  if (!mgr.Load()) return false;
+  IR_ENFORCE(mgr.Load(),
+             "SymbolicDimMgr Load failed in OptimizeShapeComputation.");
   pir::ShapeComputationIRAnalysis analysis(m, mgr);
-  if (!analysis.Run()) return false;
-  if (!mgr.Save()) return false;
+  if (!analysis.Run()) {
+    return false;
+  }
+  IR_ENFORCE(mgr.Save(),
+             "SymbolicDimMgr save failed in OptimizeShapeComputation.");
   return true;
 }
 

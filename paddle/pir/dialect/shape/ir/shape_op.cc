@@ -256,7 +256,7 @@ void TensorDimOp::Build(Builder &builder,
                         int64_t index) {
   OpResult indexValue =
       builder
-          .Build<ConstantOp>(Int64Attribute::get(IrContext::Instance(), 2),
+          .Build<ConstantOp>(Int64Attribute::get(IrContext::Instance(), index),
                              IndexType::get(IrContext::Instance()))
           ->result(0);
   argument.AddInputs({source, indexValue});

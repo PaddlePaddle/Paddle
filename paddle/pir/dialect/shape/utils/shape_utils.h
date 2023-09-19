@@ -203,6 +203,10 @@ class ShapeComputationIRAnalysis {
   bool BuildShapeOnOperation(Operation* op);
   bool BuildShapeOnValue(Value value);
 
+  bool ApplyOpConstraint(Operation* op);
+  bool ApplyIndexOpConstraint(Operation* op);
+  bool ApplyTieShapeOpConstraint(Operation* op);
+
   bool initialized_ = false;
   ModuleOp m_;
   SymbolicDimMgr& mgr_;

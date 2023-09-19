@@ -733,11 +733,16 @@ bool ShapeComputationIRAnalysis::Run() {
   // Make sure only run once.
   if (initialized_) return false;
   initialized_ = true;
-  auto fn = std::bind(&ShapeComputationIRAnalysis::BuildShapeOnOperation,
-                      this,
-                      std::placeholders::_1);
-  if (!RunOnRegion(&(m_->region(0)), fn)) return false;
-  // TODO(zhangbo63): Apply constraints with std::function & bind in Run().
+  auto buildShapeFunc =
+      std::bind(&ShapeComputationIRAnalysis::BuildShapeOnOperation,
+                this,
+                std::placeholders::_1);
+  if (!RunOnRegion(&(m_->region(0)), buildShapeFunc)) return false;
+  auto applyOpConstraintFunc =
+      std::bind(&ShapeComputationIRAnalysis::ApplyOpConstraint,
+                this,
+                std::placeholders::_1);
+  if (!RunOnRegion(&(m_->region(0)), applyOpConstraintFunc)) return false;
   return true;
 }
 
@@ -813,6 +818,58 @@ bool ShapeComputationIRAnalysis::BuildShapeOnValue(Value value) {
     for (size_t i = 0, d = shapedTy.getShape()[0]; i < d; ++i)
       symbols.push_back(mgr_.NewSymbolicDim());
     shapeTensor2SymDims_[value] = std::move(symbols);
+  }
+  return true;
+}
+
+bool ShapeComputationIRAnalysis::ApplyOpConstraint(Operation* op) {
+  IR_ENFORCE(ApplyIndexOpConstraint(op),
+             "Fail to apply constraint for index op");
+  IR_ENFORCE(ApplyTieShapeOpConstraint(op),
+             "Fail to apply constraint for tie_shape op");
+
+  // TODO(zhangbo63): add more constraints
+  return true;
+}
+
+bool ShapeComputationIRAnalysis::ApplyIndexOpConstraint(Operation* op) {
+  if (op->num_results() == 0) return true;
+
+  Type ty = op->result(0).type();
+  if (!IsIntOrIndex(ty)) return true;
+
+  if (auto dimOp = op->dyn_cast<dialect::TensorDimOp>()) {
+    int64_t dimIndex = dimOp.index()
+                           .GetDefiningOp()
+                           ->attribute<Int64Attribute>("value")
+                           .data();
+    value2SymDim_[dimOp.out()].updateKnownNonNegative(true);
+    if (!mgr_.MapSymbolicDimEqual(
+            value2SymDim_[dimOp.out()],
+            rankedTensor2SymDims_[dimOp.source()][dimIndex])) {
+      return false;
+    }
+
+  } else if (auto constOp = op->dyn_cast<ConstantOp>()) {
+    int64_t val = constOp.value().dyn_cast<Int64Attribute>().data();
+    if (!mgr_.MapSymbolicDimEqual(value2SymDim_[op->result(0)],
+                                  mgr_.NewConstantSymbolicDim(val))) {
+      return false;
+    }
+  }
+  // TODO(zhangbo63): add support for reifyInferShape. (e.g. mul/add)
+  return true;
+}
+
+bool ShapeComputationIRAnalysis::ApplyTieShapeOpConstraint(Operation* op) {
+  if (auto tieShape = op->dyn_cast<dialect::TieShapeOp>()) {
+    auto& value = rankedTensor2SymDims_[op->operand_source(0)];
+    for (size_t idx = 0; idx < tieShape.dims().size(); ++idx) {
+      if (!mgr_.MapSymbolicDimEqual(value2SymDim_[tieShape.dims()[idx]],
+                                    value[idx]))
+        return false;
+      mgr_.GetRootSymbolicDim(value[idx]).updateKnownNonNegative(true);
+    }
   }
   return true;
 }
