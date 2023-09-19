@@ -27,9 +27,9 @@ const char *GroupOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
 // GroupOp
 void GroupOp::Build(pir::Builder &builder,
                     pir::OperationArgument &argument,
-                    std::vector<pir::Type> &&output_types) {
+                    const std::vector<pir::Type> &output_types) {
   argument.num_regions = 1;
-  argument.output_types.swap(output_types);
+  argument.output_types = output_types;
 }
 
 pir::Block *GroupOp::Block() {
@@ -38,9 +38,9 @@ pir::Block *GroupOp::Block() {
   return region.front();
 }
 
-std::vector<const pir::Operation *> GroupOp::Ops() {
+std::vector<pir::Operation *> GroupOp::Ops() {
   auto *block = this->Block();
-  return std::vector<const pir::Operation *>(block->begin(), block->end());
+  return std::vector<pir::Operation *>(block->begin(), block->end());
 }
 
 void GroupOp::Verify() {}
@@ -54,7 +54,7 @@ void GroupOp::Print(pir::IrPrinter &printer) {
   os << " -> ";
   printer.PrintOpReturnType(op);
   os << " {";
-  for (auto *sub_op : *Block()) {
+  for (auto &sub_op : Ops()) {
     os << "\n";
     printer.PrintOperation(sub_op);
   }

@@ -31,10 +31,10 @@ class GroupOp : public pir::Op<GroupOp> {
   static const char *attributes_name[attributes_num];
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    std::vector<pir::Type> &&output_types);
+                    const std::vector<pir::Type> &output_types);
 
   pir::Block *Block();
-  std::vector<const pir::Operation *> Ops();
+  std::vector<pir::Operation *> Ops();
 
   void Verify();
   void Print(pir::IrPrinter &printer);  // NOLINT
