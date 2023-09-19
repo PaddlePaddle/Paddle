@@ -199,7 +199,7 @@ cc_library(
 cc_library(
   pd_op_dialect_api
   SRCS ${api_source_file} manual_api.cc
-  DEPS api_builder pd_op_dialect_op)
+  DEPS api_builder pd_op_dialect_op pd_op_dialect_utils)
 
 target_include_directories(pd_op_dialect_api INTERFACE ${PD_DIALECT_BINARY_DIR})
 

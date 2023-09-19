@@ -85,7 +85,7 @@ paddle::optional<pir::Value> CastPyArg2OptionalValue(PyObject* obj,
 std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
                                                 const std::string& op_type,
                                                 size_t arg_pos);
-std::vector<pir::Value> CastPyArg2OptionalVectorOfValue(
+paddle::optional<std::vector<pir::Value>> CastPyArg2OptionalVectorOfValue(
     PyObject* obj, const std::string& op_type, size_t arg_pos);
 std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
     PyObject* obj, size_t arg_pos);

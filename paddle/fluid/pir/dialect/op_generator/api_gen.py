@@ -82,29 +82,31 @@ API_IMPL_TEMPLATE = """
 OPTIONAL_VECTOR_VALUE_INPUT_TEMPLATE = """
     paddle::optional<pir::Value> optional_{name};
     if (!{name}) {{
-        optional_{name} = pir::Value();
+        optional_{name} = paddle::make_optional<pir::Value>(pir::Value());
     }} else {{
-        optional_{name} = APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>({name}).out();
+        auto optional_{name}_combine_op = APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>({name}.get());
+        optional_{name} = paddle::make_optional<pir::Value>(optional_{name}_combine_op.out());
     }}"""
 
 OPTIONAL_VALUE_INPUT_TEMPLATE = """
     paddle::optional<pir::Value> optional_{name};
     if (!{name}) {{
-        optional_{name} = pir::Value();
+        optional_{name} = paddle::make_optional<pir::Value>(pir::Value());
     }} else {{
         optional_{name} = {name};
     }}"""
 
 OPTIONAL_OPRESULT_OUTPUT_TEMPLATE = """
-    {type} optional_{name};
+    paddle::optional<pir::OpResult> optional_{name};
     if (!IsEmptyOpResult({op_name}_op.result({index}))) {{
-        optional_{name} = {op_name}_op.result({index});
+        optional_{name} = paddle::make_optional<pir::OpResult>({op_name}_op.result({index}));
     }}"""
 
 OPTIONAL_VECTOR_OPRESULT_OUTPUT_TEMPLATE = """
-    {type} optional_{name};
+    paddle::optional<std::vector<pir::OpResult>> optional_{name};
     if (!IsEmptyOpResult({op_name}_op.result({index}))) {{
-        optional_{name} = APIBuilder::Instance().GetBuilder()->Build<pir::SplitOp>({op_name}_op.result({index})).outputs();
+        auto optional_{name}_slice_op = APIBuilder::Instance().GetBuilder()->Build<pir::SplitOp>({op_name}_op.result({index}));
+        optional_{name} = paddle::make_optional<std::vector<pir::OpResult>>(optional_{name}_slice_op.outputs());
     }}"""
 
 COMBINE_OP_TEMPLATE = """
@@ -360,14 +362,12 @@ class CodeGen:
             if self._is_optinonal_output(op_info, name):
                 if VECTOR_TYPE in type:
                     ret += OPTIONAL_VECTOR_OPRESULT_OUTPUT_TEMPLATE.format(
-                        type=OPTIONAL_OUTPUT_TYPE_MAP[type],
                         name=name,
                         op_name=op_name,
                         index=i,
                     )
                 else:
                     ret += OPTIONAL_OPRESULT_OUTPUT_TEMPLATE.format(
-                        type=OPTIONAL_OUTPUT_TYPE_MAP[type],
                         name=name,
                         op_name=op_name,
                         index=i,
@@ -473,7 +473,7 @@ class CodeGen:
             if intermediate == 'true':
                 continue
             if self._is_optinonal_output(op_info, name):
-                ret_list.append(f'optional_{name}.get()')
+                ret_list.append(f'optional_{name}')
             elif VECTOR_TYPE in type:
                 split_op_name = f'{name}_split_op'
                 split_op_str += SPLIT_OP_TEMPLATE.format(

@@ -1540,7 +1540,7 @@ paddle::optional<pir::Value> CastPyArg2OptionalValue(PyObject* obj,
   if (obj == nullptr || obj == Py_None) {
     return paddle::none;
   }
-  return paddle::make_optional<pir::OpResult>(
+  return paddle::make_optional<pir::Value>(
       CastPyArg2Value(obj, op_type, arg_pos));
 }
 
@@ -1599,12 +1599,12 @@ std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
   return value_list;
 }
 
-std::vector<pir::Value> CastPyArg2OptionalVectorOfValue(
+paddle::optional<std::vector<pir::Value>> CastPyArg2OptionalVectorOfValue(
     PyObject* obj, const std::string& op_type, size_t arg_pos) {
   if (obj == nullptr || obj == Py_None) {
     return paddle::none;
   }
-  return paddle::make_optional<std::vector<pir::OpResult>>(
+  return paddle::make_optional<std::vector<pir::Value>>(
       CastPyArg2VectorOfValue(obj, op_type, arg_pos));
 }
 
