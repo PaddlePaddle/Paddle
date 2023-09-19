@@ -71,7 +71,15 @@ VJPS = [
 ]
 
 
-PRIM_VJP = ['divide_grad', 'sum_grad']  # vjp list of primitive op
+PRIM_VJP = [
+    'divide_grad',
+    'sum_grad',
+    'reshape_grad',
+    'split_grad',
+    'tanh_grad',
+    'transpose_grad',
+    'concat_grad',
+]  # vjp list of primitive op
 CUSTOM_VJP = ['gelu_grad']  # custom vjp list of composite op
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP
 
@@ -146,6 +154,8 @@ BACKENDS = [
     'layer_norm_grad',
     'embedding_grad',
     'uniform',
+    'split',
+    'transpose',
 ]
 
 

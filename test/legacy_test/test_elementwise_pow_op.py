@@ -53,7 +53,11 @@ class TestElementwisePowOp(OpTest):
             )
         else:
             self.check_grad(
-                ['X', 'Y'], 'Out', check_prim=True, check_new_ir=True
+                ['X', 'Y'],
+                'Out',
+                check_prim=True,
+                check_new_ir=True,
+                check_prim_pir=True,
             )
 
 
@@ -265,6 +269,7 @@ class TestElementwisePowOpFP16(OpTest):
             ),
             check_prim=True,
             check_new_ir=True,
+            check_prim_pir=True,
         )
 
 
@@ -302,6 +307,7 @@ class TestElementwisePowBF16Op(OpTest):
                 check_prim=True,
                 only_check_prim=True,
                 check_new_ir=True,
+                check_prim_pir=True,
             )
 
 

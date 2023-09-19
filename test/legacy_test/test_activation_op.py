@@ -694,7 +694,13 @@ class TestTanh(TestActivation, TestParameter):
         if self.dtype == np.complex64 or self.dtype == np.complex128:
             self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=False)
         else:
-            self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_prim=True,
+                check_new_ir=True,
+                check_prim_pir=True,
+            )
 
     def init_dtype(self):
         # TODO If dtype is float64, the output (Out) has diff at CPUPlace
@@ -3574,12 +3580,20 @@ class TestPow(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_new_ir=True)
+        self.check_output(
+            check_prim=True, check_new_ir=True, check_prim_pir=True
+        )
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestPow_ZeroDim(TestPow):
