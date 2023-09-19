@@ -91,8 +91,8 @@ def _use_new_ir_api():
     # TODO(YuanRisheng): need move import to the top of this file after break import circle
     import paddle
 
-    if paddle.framework.get_flags("FLAGS_enable_new_ir_api")[
-        'FLAGS_enable_new_ir_api'
+    if paddle.framework.get_flags("FLAGS_enable_pir_api")[
+        'FLAGS_enable_pir_api'
     ]:
         return True
     else:
