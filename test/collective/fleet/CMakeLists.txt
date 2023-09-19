@@ -950,4 +950,7 @@ if((WITH_GPU) AND (LINUX))
   )
   set_tests_properties(test_dygraph_save_for_auto_infer
                        PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
+  set_tests_properties(
+    test_dygraph_save_for_auto_infer
+    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
 endif()
