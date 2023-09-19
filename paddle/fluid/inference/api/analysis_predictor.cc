@@ -1408,6 +1408,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetTensorRtUseExplicitQuantization(
         config_.trt_use_explicit_quantization_);
     argument_->SetTrtEngineMemorySharing(config_.trt_engine_memory_sharing());
+    argument_->SetTensorRtOptimizationLevel(config_.trt_optimization_level_);
   }
 
   if (config_.dlnne_enabled()) {

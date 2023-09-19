@@ -929,6 +929,10 @@ void BindAnalysisConfig(py::module *m) {
       .def("tensorrt_explicit_quantization_enabled",
            &AnalysisConfig::tensorrt_explicit_quantization_enabled)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
+      .def("set_tensorrt_optimization_level",
+           &AnalysisConfig::SetTensorRtOptimizationLevel)
+      .def("tensorrt_optimization_level",
+           &AnalysisConfig::tensorrt_optimization_level)
       .def("enable_dlnne",
            &AnalysisConfig::EnableDlnne,
            py::arg("min_subgraph_size") = 3,
