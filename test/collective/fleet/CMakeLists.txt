@@ -292,7 +292,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21228;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21228;NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_dygraph_sharding_stage2 PROPERTIES TIMEOUT "200")
 endif()
@@ -950,7 +950,4 @@ if((WITH_GPU) AND (LINUX))
   )
   set_tests_properties(test_dygraph_save_for_auto_infer
                        PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
-  set_tests_properties(
-    test_dygraph_save_for_auto_infer
-    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
 endif()
