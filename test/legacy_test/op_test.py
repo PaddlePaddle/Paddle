@@ -3072,6 +3072,7 @@ class OpTest(unittest.TestCase):
                     no_grad_set,
                     check_dygraph,
                 )
+                print("dygraph_dygraph_grad :", dygraph_dygraph_grad)
                 fp32_grads = []
                 for grad in dygraph_dygraph_grad:
                     if grad.dtype == np.uint16:
@@ -3083,6 +3084,7 @@ class OpTest(unittest.TestCase):
                         )
                     fp32_grads.append(grad)
                 dygraph_dygraph_grad = fp32_grads
+                print("dygraph_dygraph_grad 2:", dygraph_dygraph_grad)
                 self._assert_is_close(
                     numeric_grads,
                     dygraph_dygraph_grad,
@@ -3106,6 +3108,7 @@ class OpTest(unittest.TestCase):
                         user_defined_grad_outputs,
                         no_grad_set,
                     )
+                print("new_ir_grad :", new_ir_grad)
                 fp32_analytic_grads = []
                 for grad in new_ir_grad:
                     if grad.dtype == np.uint16:
@@ -3123,6 +3126,9 @@ class OpTest(unittest.TestCase):
                         if max_relative_error < 0.01
                         else max_relative_error
                     )
+                print("numeric_grads :", numeric_grads)
+                print("new_ir_grad:", new_ir_grad)
+                print("max_relative_error:", max_relative_error)
                 self._assert_is_close(
                     numeric_grads,
                     new_ir_grad,
@@ -3485,6 +3491,11 @@ class OpTest(unittest.TestCase):
 
         return res
 
+    def _find_var_in_pir(self, output_vars, name):
+        if name in output_vars:
+            return output_vars[name]
+        raise AssertionError(name, " not in outputs:", output_vars.keys())
+
     def _get_ir_gradient(
         self,
         inputs_to_check,
@@ -3565,13 +3576,36 @@ class OpTest(unittest.TestCase):
 
                 # cast outputs
                 if self.dtype == np.uint16:
-                    for output in outputs:
-                        outputs[output][0] = paddle.cast(
-                            outputs[output][0],
-                            paddle.base.core.DataType.FLOAT32,
-                        )
+                    cast_inputs = []
+                    for output_name in output_names:
+                        cast_input = self._find_var_in_pir(outputs, output_name)
+                        cast_inputs = cast_inputs + cast_input
+                    cast_outputs = []
+                    for cast_input in cast_inputs:
+                        if isinstance(
+                            cast_input, paddle.base.libpaddle.ir.OpResult
+                        ):
+                            cast_outputs.append(
+                                paddle.cast(
+                                    cast_input,
+                                    paddle.base.core.DataType.FLOAT32,
+                                )
+                            )
+                        else:
+                            raise TypeError(
+                                "Unsupported test data type %s."
+                                % type(cast_input)
+                            )
 
-                outputs_valid = outputs
+                    outputs = {}
+                    for i in range(len(output_names)):
+                        outputs.update({output_names[i]: [cast_outputs[i]]})
+
+                outputs_valid = {}
+                for output_name in output_names:
+                    outputs_valid[output_name] = self._find_var_in_pir(
+                        outputs, output_name
+                    )
                 loss_inputs = []
                 for input_name in inputs_to_check:
                     loss_inputs.append(inputs_dict[input_name])
@@ -3606,7 +3640,8 @@ class OpTest(unittest.TestCase):
                         grad_outputs=grad_outputs,
                     )
                 fetch_list = list(grad_inputs)
-
+                print("grad_inputs = ", grad_inputs)
+                print(paddle.ir.core.default_main_program())
                 # executor run
                 executor = paddle.static.Executor()
                 outs = executor.run(
