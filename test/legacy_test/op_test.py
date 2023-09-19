@@ -28,6 +28,7 @@ from prim_op_test import OpTestUtils, PrimForwardChecker, PrimGradChecker
 from testsuite import append_input_output, append_loss_ops, create_op, set_input
 
 sys.path.append("..")
+from utils import static_guard
 from white_list import (
     check_shape_white_list,
     compile_vs_runtime_white_list,
@@ -1448,7 +1449,7 @@ class OpTest(unittest.TestCase):
         for_inplace_test=None,
         check_cinn=False,
     ):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             program = Program()
             block = program.global_block()
             op = self._append_ops(block)
@@ -1792,7 +1793,7 @@ class OpTest(unittest.TestCase):
         Returns:
             res (tuple(outs, fetch_list, feed_map, program, op_desc)): The results of given grad_op_desc.
         """
-        with paddle.base.framework._static_guard():
+        with static_guard():
             (
                 fwd_outs,
                 fwd_fetch_list,
@@ -3375,7 +3376,7 @@ class OpTest(unittest.TestCase):
         parallel=False,
         check_cinn=False,
     ):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             prog = Program()
             scope = core.Scope()
             ir_scope = core.Scope()

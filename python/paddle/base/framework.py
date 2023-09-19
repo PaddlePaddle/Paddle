@@ -309,7 +309,7 @@ def in_pir_mode():
 
             >>> paddle.enable_static()
             >>> with paddle.new_ir_utils.IrGuard():
-            >>>     print(paddle.framework.in_pir_mode())
+            ...     print(paddle.framework.in_pir_mode())
             True
 
     """
@@ -7766,16 +7766,6 @@ def _dygraph_guard(tracer):
     tmp_tracer = global_var._dygraph_tracer_
     global_var._dygraph_tracer_ = tracer
 
-    try:
-        yield
-    finally:
-        global_var._dygraph_tracer_ = tmp_tracer
-
-
-@signature_safe_contextmanager
-def _static_guard():
-    tmp_tracer = global_var._dygraph_tracer_
-    global_var._dygraph_tracer_ = None
     try:
         yield
     finally:

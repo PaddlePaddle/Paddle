@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from utils import static_guard
 
 import paddle
 from paddle import base
@@ -1598,7 +1599,7 @@ class TestReduceWithDtype2(TestReduceWithDtype):
 
 class TestReduceSumOpError(unittest.TestCase):
     def test_errors(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with program_guard(Program(), Program()):
                 # The input type of reduce_sum_op must be Variable.
                 x1 = base.create_lod_tensor(
