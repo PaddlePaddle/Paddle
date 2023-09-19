@@ -399,7 +399,8 @@ phi::DataType GetKernelDataTypeByYamlInfo(
 phi::Backend GetKernelBackendByYamlInfo(
     const pir::Operation* op,
     const std::unordered_map<pir::Value, pir::OpResult>& map_value_pair,
-    const dialect::OpYamlInfoParser* op_info_parser) {
+    const dialect::OpYamlInfoParser* op_info_parser,
+    const phi::Place& place) {
   auto& attr_map = op->attributes();
   auto& backend_info = op_info_parser->OpRuntimeInfo().kernel_key_backend;
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
@@ -463,6 +464,10 @@ phi::Backend GetKernelBackendByYamlInfo(
     }
   }
 
+  if (backend_info.size() > 0 && kernel_backend == phi::Backend::UNDEFINED) {
+    kernel_backend = paddle::experimental::ParseBackend(place);
+  }
+
   return kernel_backend;
 }
 
@@ -516,7 +521,7 @@ phi::KernelKey GetKernelKey(
     kernel_data_type =
         GetKernelDataTypeByYamlInfo(op, map_value_pair, op_info_parser);
     kernel_backend =
-        GetKernelBackendByYamlInfo(op, map_value_pair, op_info_parser);
+        GetKernelBackendByYamlInfo(op, map_value_pair, op_info_parser, place);
 
     // parse all the input tensor
     if (tensor_input_number == 0 || op->name() == "pd_op.full_") {
@@ -549,7 +554,9 @@ phi::KernelKey GetKernelKey(
     }
   }
 
-  if (op->num_operands() > 0) {
+  if ((kernel_backend == phi::Backend::UNDEFINED ||
+       kernel_data_type == phi::DataType::UNDEFINED) &&
+      op->num_operands() > 0) {
     paddle::experimental::detail::KernelKeyParser kernel_key_parser;
 
     for (size_t i = 0; i < op->num_operands(); ++i) {
@@ -634,7 +641,6 @@ phi::KernelKey GetKernelKey(
   }
 
   phi::KernelKey res(kernel_backend, kernel_layout, kernel_data_type);
-
   if (op->name() == "pd_op.load_combine") {
     res.set_dtype(phi::DataType::FLOAT32);
   }
@@ -1282,11 +1288,11 @@ std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
   ProcessBlock(
       place, block, program->block(), ctx, &map_op_pair, &map_value_pair);
 
-  if (VLOG_IS_ON(2)) {
-    std::stringstream ss1;
-    program->Print(ss1);
-    VLOG(2) << "Program after lowering to kernel pass : " << ss1.str();
-  }
+  // if (VLOG_IS_ON(2)) {
+  //   std::stringstream ss1;
+  //   program->Print(ss1);
+  //   VLOG(2) << "Program after lowering to kernel pass : " << ss1.str();
+  // }
   return program;
 }
 }  // namespace dialect
