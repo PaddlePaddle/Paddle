@@ -16,6 +16,7 @@ import logging
 
 from paddle.base.log_helper import get_logger
 from . import reader
+from .reader import *  # noqa: F403
 
 __all__ = reader.__all__
 
