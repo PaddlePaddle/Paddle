@@ -389,7 +389,7 @@ class OpTest(unittest.TestCase):
         cls.input_shape_is_large = True
         cls.is_calc_ref = False
         cls.check_prim = False
-        cls.check_prim_new_ir = False
+        cls.check_prim_pir = False
         cls._check_cinn = False
 
         np.random.seed(123)
@@ -473,7 +473,7 @@ class OpTest(unittest.TestCase):
                 and not is_rocm_op_test()
                 and not is_custom_device_op_test()
                 and not cls.check_prim
-                and not cls.check_prim_new_ir
+                and not cls.check_prim_pir
             ):
                 raise AssertionError(
                     "This test of %s op needs check_grad with fp64 precision."
@@ -1376,7 +1376,7 @@ class OpTest(unittest.TestCase):
             return
         if os.getenv("FLAGS_NEW_IR_OPTEST_WHITE_LIST") is None:
             return
-        if self.check_prim or self.check_prim_new_ir:
+        if self.check_prim or self.check_prim_pir:
             return
         if self._check_cinn:
             return
@@ -1942,7 +1942,7 @@ class OpTest(unittest.TestCase):
         equal_nan=False,
         check_dygraph=True,
         check_prim=False,
-        check_prim_new_ir=False,
+        check_prim_pir=False,
         only_check_prim=False,
         inplace_atol=None,
         check_cinn=False,
@@ -2501,12 +2501,12 @@ class OpTest(unittest.TestCase):
             self.__class__.check_prim = True
             self.__class__.op_type = self.op_type
 
-        if check_prim_new_ir:
+        if check_prim_pir:
             with paddle.new_ir_utils.IrGuard():
                 prim_checker = PrimForwardChecker(self, place)
                 prim_checker.check()
                 # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-                self.__class__.check_prim_new_ir = True
+                self.__class__.check_prim_pir = True
                 self.__class__.op_type = self.op_type
         if only_check_prim:
             return
@@ -2634,7 +2634,7 @@ class OpTest(unittest.TestCase):
         equal_nan=False,
         check_dygraph=True,
         check_prim=False,
-        check_prim_new_ir=False,
+        check_prim_pir=False,
         inplace_atol=None,
         check_cinn=False,
         only_check_prim=False,
@@ -2660,7 +2660,7 @@ class OpTest(unittest.TestCase):
                 equal_nan,
                 check_dygraph=check_dygraph,
                 check_prim=check_prim,
-                check_prim_new_ir=check_prim_new_ir,
+                check_prim_pir=check_prim_pir,
                 only_check_prim=only_check_prim,
                 inplace_atol=inplace_atol,
                 check_cinn=check_cinn,
@@ -2680,7 +2680,9 @@ class OpTest(unittest.TestCase):
                     return
                 self.check_compile_vs_runtime(fetch_list, outs)
 
-    def check_output_customized(self, checker, custom_place=None):
+    def check_output_customized(
+        self, checker, custom_place=None, check_new_ir=False
+    ):
         self.__class__.op_type = self.op_type
         places = self._get_places()
         if custom_place:
@@ -2690,6 +2692,12 @@ class OpTest(unittest.TestCase):
             outs = [np.array(out) for out in outs]
             outs.sort(key=len)
             checker(outs)
+            if check_new_ir:
+                with paddle.new_ir_utils.IrGuard():
+                    outs_p = self._calc_new_ir_output(place)
+                    outs_p = [outs_p[out] for out in outs_p]
+                    outs_p.sort(key=len)
+                    checker(outs_p)
 
     def check_output_with_place_customized(self, checker, place):
         outs = self.calc_output(place)
@@ -2828,7 +2836,7 @@ class OpTest(unittest.TestCase):
         user_defined_grad_outputs=None,
         check_dygraph=True,
         check_prim=False,
-        check_prim_new_ir=False,
+        check_prim_pir=False,
         only_check_prim=False,
         atol=1e-5,
         check_cinn=False,
@@ -2852,7 +2860,7 @@ class OpTest(unittest.TestCase):
                 user_defined_grad_outputs,
                 check_dygraph=check_dygraph,
                 check_prim=check_prim,
-                check_prim_new_ir=check_prim_new_ir,
+                check_prim_pir=check_prim_pir,
                 only_check_prim=only_check_prim,
                 atol=atol,
                 check_cinn=check_cinn,
@@ -2872,7 +2880,7 @@ class OpTest(unittest.TestCase):
         user_defined_grad_outputs=None,
         check_dygraph=True,
         check_prim=False,
-        check_prim_new_ir=False,
+        check_prim_pir=False,
         only_check_prim=False,
         numeric_place=None,
         atol=1e-5,
@@ -2898,7 +2906,7 @@ class OpTest(unittest.TestCase):
             # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
             self.__class__.check_prim = True
 
-        if check_prim_new_ir:
+        if check_prim_pir:
             with paddle.new_ir_utils.IrGuard():
                 self._check_grad_helper()
                 prim_grad_checker = PrimGradChecker(
@@ -2911,7 +2919,7 @@ class OpTest(unittest.TestCase):
                 )
                 prim_grad_checker.check()
                 # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-                self.__class__.check_prim_new_ir = True
+                self.__class__.check_prim_pir = True
 
         if only_check_prim:
             return
@@ -3300,7 +3308,7 @@ class OpTest(unittest.TestCase):
             return
         if os.getenv("FLAGS_NEW_IR_OPTEST_WHITE_LIST") is None:
             return
-        if self.check_prim or self.check_prim_new_ir:
+        if self.check_prim or self.check_prim_pir:
             return
         if self._check_cinn:
             return

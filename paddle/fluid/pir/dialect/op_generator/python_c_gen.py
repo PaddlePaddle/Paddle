@@ -18,7 +18,7 @@ import re
 from api_gen import (
     INTARRAY_ATTRIBUTE,
     NAMESPACE_TEMPLATE,
-    OP_RESULT,
+    OP_INPUT,
     VECTOR_TYPE,
     CodeGen,
 )
@@ -64,7 +64,7 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
         VLOG(6) << "Add {api_name} op into program";
         VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
 
-        // Get OpResult from args
+        // Get Value from args
         {inputs}
 
         // Parse Attributes
@@ -87,7 +87,7 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
         VLOG(6) << "Add {api_name} op into program";
         VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
 
-        // Get OpResult from args
+        // Get Value from args
         {inputs}
 
         // Parse Attributes
@@ -118,7 +118,7 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
         VLOG(6) << "Add {api_name} op into program";
         VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
 
-        // Get OpResult from args
+        // Get Value from args
         {inputs}
 
         // Parse Attributes
@@ -214,6 +214,8 @@ TYPE_TO_PHI_DATATYPE_MAP = {
     "std::vector<double>": "FLOAT64",
 }
 
+MANUAL_STATIC_OP_FUNCTION_LIST = ['full']
+
 
 class PythonCCodeGen(CodeGen):
     def __init__(self) -> None:
@@ -245,7 +247,7 @@ class PythonCCodeGen(CodeGen):
         ret = ''
         for i, (name, type) in enumerate(zip(name_list, type_list)):
             cast_func = (
-                'CastPyArg2VectorOfOpResult'
+                'CastPyArg2VectorOfValue'
                 if VECTOR_TYPE in type
                 else 'CastPyArg2OpResult'
             )
@@ -286,7 +288,7 @@ class PythonCCodeGen(CodeGen):
         mutable_attr_name_list = op_info.mutable_attribute_name_list
         ret = ''
         for name in mutable_attr_name_list:
-            ret += INIT_ATTRS_TEMPLATE.format(type=OP_RESULT, name=name)
+            ret += INIT_ATTRS_TEMPLATE.format(type=OP_INPUT, name=name)
 
         return ret
 
@@ -320,10 +322,10 @@ class PythonCCodeGen(CodeGen):
                     )
 
                     mutable_vector_cast_str = MUTABLE_ATTR_CAST_TEMPLATE.format(
-                        type='std::vector<pir::OpResult>',
+                        type='std::vector<pir::Value>',
                         name_=name + '_tmp',
                         name=name,
-                        cast_func='CastPyArg2VectorOfOpResult',
+                        cast_func='CastPyArg2VectorOfValue',
                         api_name=op_name,
                         index=input_size + i,
                     )
@@ -425,6 +427,12 @@ class PythonCCodeGen(CodeGen):
             )
         ret = re.sub(r' +\n', '', ret)
         return ret
+
+    def _need_skip(self, op_info, op_name):
+        return (
+            super()._need_skip(op_info, op_name)
+            or op_name in MANUAL_STATIC_OP_FUNCTION_LIST
+        )
 
     def _gen_cpp_file(self, op_info_items, namespaces, cpp_file_path):
         impl_str = ''

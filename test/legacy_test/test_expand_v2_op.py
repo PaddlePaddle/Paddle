@@ -279,6 +279,7 @@ class TestExpandV2BF16Op(OpTest):
 
 class TestExpandV2Error(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             x1 = base.create_lod_tensor(
                 np.array([[-1]]), [[1]], base.CPUPlace()
@@ -290,6 +291,7 @@ class TestExpandV2Error(unittest.TestCase):
             x3 = paddle.static.data(name='x3', shape=[-1, 4], dtype="bool")
             x3.stop_gradient = False
             self.assertRaises(ValueError, paddle.tensor.expand, x3, shape)
+        paddle.disable_static()
 
 
 # Test python API

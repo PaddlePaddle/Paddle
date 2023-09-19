@@ -76,6 +76,6 @@ int main(int argc, char** argv) {  // NOLINT
 
   int ret = RUN_ALL_TESTS();
 
-  if (env_str) free(env_str);
+  if (env_str) free(env_str);  // NOLINT
   return ret;
 }
