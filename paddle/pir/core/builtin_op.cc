@@ -126,16 +126,12 @@ void CombineOp::Build(Builder &builder,
                       OperationArgument &argument,
                       const std::vector<pir::OpResult> &inputs) {
   argument.inputs = inputs;
-  if (inputs.size() == 0) {
-    argument.output_types.emplace_back(pir::Type());
-  } else {
-    std::vector<pir::Type> inputs_type(inputs.size());
-    for (size_t idx = 0; idx < inputs.size(); ++idx) {
-      inputs_type[idx] = inputs[idx].type();
-    }
-    argument.output_types.emplace_back(
-        pir::VectorType::get(builder.ir_context(), inputs_type));
+  std::vector<pir::Type> inputs_type(inputs.size());
+  for (size_t idx = 0; idx < inputs.size(); ++idx) {
+    inputs_type[idx] = inputs[idx].type();
   }
+  argument.output_types.emplace_back(
+      pir::VectorType::get(builder.ir_context(), inputs_type));
 }
 
 void CombineOp::Verify() const {

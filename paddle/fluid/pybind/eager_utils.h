@@ -79,7 +79,11 @@ std::vector<float> CastPyArg2VectorOfFloat(PyObject* obj, size_t arg_pos);
 pir::OpResult CastPyArg2OpResult(PyObject* obj,
                                  const std::string& op_type,
                                  size_t arg_pos);
+paddle::optional<pir::OpResult> CastPyArg2OptionalOpResult(
+    PyObject* obj, const std::string& op_type, size_t arg_pos);
 std::vector<pir::OpResult> CastPyArg2VectorOfOpResult(
+    PyObject* obj, const std::string& op_type, size_t arg_pos);
+paddle::optional<pir::OpResult> CastPyArg2OptionalVectorOfOpResult(
     PyObject* obj, const std::string& op_type, size_t arg_pos);
 std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
     PyObject* obj, size_t arg_pos);

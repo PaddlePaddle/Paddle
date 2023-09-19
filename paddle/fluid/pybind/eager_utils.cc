@@ -1509,8 +1509,6 @@ pir::OpResult CastPyArg2OpResult(PyObject* obj,
                                  size_t arg_pos) {
   if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
     return ::pybind11::handle(obj).cast<pir::OpResult>();
-  } else if (obj == nullptr || obj == Py_None) {
-    return pir::OpResult();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
@@ -1519,6 +1517,15 @@ pir::OpResult CastPyArg2OpResult(PyObject* obj,
         arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
+}
+
+paddle::optional<pir::OpResult> CastPyArg2OptionalOpResult(
+    PyObject* obj, const std::string& op_type, size_t arg_pos) {
+  if (obj == nullptr || obj == Py_None) {
+    return paddle::none;
+  }
+  return paddle::make_optional<pir::OpResult>(
+      CastPyArg2OpResult(obj, op_type, arg_pos));
 }
 
 std::vector<pir::OpResult> CastPyArg2VectorOfOpResult(
@@ -1566,8 +1573,6 @@ std::vector<pir::OpResult> CastPyArg2VectorOfOpResult(
     }
   } else if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
     return {::pybind11::handle(obj).cast<pir::OpResult>()};
-  } else if (obj == Py_None) {
-    return {};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
@@ -1577,6 +1582,15 @@ std::vector<pir::OpResult> CastPyArg2VectorOfOpResult(
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
   return result_list;
+}
+
+paddle::optional<std::vector<pir::OpResult>> CastPyArg2OptionalVectorOfOpResult(
+    PyObject* obj, const std::string& op_type, size_t arg_pos) {
+  if (obj == nullptr || obj == Py_None) {
+    return paddle::none;
+  }
+  return paddle::make_optional<std::vector<pir::OpResult>>(
+      CastPyArg2VectorOfOpResult(obj, op_type, arg_pos));
 }
 
 paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,

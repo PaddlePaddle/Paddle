@@ -233,14 +233,24 @@ class PythonCCodeGen(CodeGen):
     def _gen_inputs(self, op_info, op_name):
         name_list = op_info.input_name_list
         type_list = op_info.input_type_list
-        assert len(name_list) == len(type_list)
+        optional_list = op_info.input_optional_list
+        assert len(name_list) == len(type_list) == len(optional_list)
         ret = ''
-        for i, (name, type) in enumerate(zip(name_list, type_list)):
-            cast_func = (
-                'CastPyArg2VectorOfOpResult'
-                if VECTOR_TYPE in type
-                else 'CastPyArg2OpResult'
-            )
+        for i, (name, type, optional) in enumerate(
+            zip(name_list, type_list, optional_list)
+        ):
+            if optional == 'true':
+                cast_func = (
+                    'CastPyArg2OptionalVectorOfOpResult'
+                    if VECTOR_TYPE in type
+                    else 'CastPyArg2OptionalOpResult'
+                )
+            else:
+                cast_func = (
+                    'CastPyArg2VectorOfOpResult'
+                    if VECTOR_TYPE in type
+                    else 'CastPyArg2OpResult'
+                )
             ret += INPUT_TEMPLATE.format(
                 name=name, index=i, cast_func=cast_func, api_name=op_name
             )
