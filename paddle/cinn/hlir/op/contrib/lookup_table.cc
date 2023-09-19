@@ -102,9 +102,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForLookupTable(
     auto tensor_A = A.as_tensor_ref();
     auto tensor_B = B.as_tensor_ref();
     auto stages = CreateStages({tensor_A, tensor_B});
-    VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
-            << ", B shape: " << utils::Join(tensor_B->shape, ", ")
-            << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
+    VLOG(3) << "A shape: " << cinn::utils::Join(tensor_A->shape, ", ")
+            << ", B shape: " << cinn::utils::Join(tensor_B->shape, ", ")
+            << ", output_shapes: " << cinn::utils::Join(output_shapes[0], ", ");
     CHECK_EQ(pack_args.size(), 3U);
     std::string tensor_name = pack_args[2].operator std::string();
 

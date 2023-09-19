@@ -25,8 +25,8 @@ PD_DECLARE_double(cinn_infer_model_version);
 
 namespace cinn {
 namespace frontend {
+using cinn::utils::TransValidVarName;
 using utils::Join;
-using utils::TransValidVarName;
 
 void MoveData(float* data, int i, int M, int N) {
   float temp = data[i];
@@ -76,7 +76,7 @@ void PaddleModelToProgram::AddOpMapper_fetch() {
     auto output_names = op_desc.Input("X");
     for (auto& output_name : output_names) {
       VLOG(2) << "fetch model output: [" << output_name << "]";
-      fetch_names_.insert(utils::TransValidVarName(output_name));
+      fetch_names_.insert(cinn::utils::TransValidVarName(output_name));
     }
   };
 }
@@ -85,7 +85,7 @@ void PaddleModelToProgram::AddOpMapper_scale() {
   op_mappers_["scale"] = [&](const paddle::cpp::OpDesc& op_desc) {
     CHECK_EQ(op_desc.Input("X").size(), 1UL);
     auto x_name = op_desc.Input("X").front();
-    auto x = GetVar(utils::TransValidVarName(x_name));
+    auto x = GetVar(cinn::utils::TransValidVarName(x_name));
     float scale{};
     float bias{};
     if (op_desc.HasAttr("scale")) {  // the old model format
@@ -109,7 +109,7 @@ void PaddleModelToProgram::AddOpMapper_scale() {
     auto out = net_builder_->Scale(x, scale, bias);
     CHECK_EQ(op_desc.Output("Out").size(), 1UL);
     auto out_name = op_desc.Output("Out").front();
-    AddVar(utils::TransValidVarName(out_name), out);
+    AddVar(cinn::utils::TransValidVarName(out_name), out);
     var_model_to_program_map_[out_name] = out->id;
   };
 }
@@ -120,23 +120,23 @@ void PaddleModelToProgram::AddOpMapper_mul() {
     auto x_name = op_desc.Input("X").front();
     CHECK_EQ(op_desc.Input("Y").size(), 1UL);
     auto y_name = op_desc.Input("Y").front();
-    auto x = GetVar(utils::TransValidVarName(x_name));
+    auto x = GetVar(cinn::utils::TransValidVarName(x_name));
     TransposeVar(TransValidVarName(y_name));
-    auto y = GetVar(utils::TransValidVarName(y_name));
+    auto y = GetVar(cinn::utils::TransValidVarName(y_name));
     int x_num_col_dims = op_desc.GetAttr<int>("x_num_col_dims");
     int y_num_col_dims = op_desc.GetAttr<int>("y_num_col_dims");
 
     VLOG(4) << "Mul x_num_col_dims: " << x_num_col_dims;
     VLOG(4) << "Mul y_num_col_dims: " << y_num_col_dims;
-    VLOG(4) << "x shape: " << utils::Join(x->shape, ",");
-    VLOG(4) << "y shape: " << utils::Join(y->shape, ",");
+    VLOG(4) << "x shape: " << cinn::utils::Join(x->shape, ",");
+    VLOG(4) << "y shape: " << cinn::utils::Join(y->shape, ",");
 
     const auto& out =
         net_builder_->Mul(x, y, x_num_col_dims, y_num_col_dims, true);
 
     CHECK_EQ(op_desc.Output("Out").size(), 1UL);
     auto out_name = op_desc.Output("Out").front();
-    AddVar(utils::TransValidVarName(out_name), out);
+    AddVar(cinn::utils::TransValidVarName(out_name), out);
     var_model_to_program_map_[out_name] = out->id;
   };
 }
@@ -147,17 +147,17 @@ void PaddleModelToProgram::AddOpMapper_matmul() {
     auto x_name = op_desc.Input("X").front();
     CHECK_EQ(op_desc.Input("Y").size(), 1UL);
     auto y_name = op_desc.Input("Y").front();
-    auto x = GetVar(utils::TransValidVarName(x_name));
-    auto y = GetVar(utils::TransValidVarName(y_name));
+    auto x = GetVar(cinn::utils::TransValidVarName(x_name));
+    auto y = GetVar(cinn::utils::TransValidVarName(y_name));
     bool trans_a = op_desc.GetAttr<bool>("transpose_X");
     bool trans_b = op_desc.GetAttr<bool>("transpose_Y");
     float alpha = op_desc.GetAttr<float>("alpha");
-    VLOG(4) << "x shape: " << utils::Join(x->shape, ",");
-    VLOG(4) << "y shape: " << utils::Join(y->shape, ",");
+    VLOG(4) << "x shape: " << cinn::utils::Join(x->shape, ",");
+    VLOG(4) << "y shape: " << cinn::utils::Join(y->shape, ",");
     auto out = net_builder_->Matmul(x, y, trans_a, trans_b, alpha);
     CHECK_EQ(op_desc.Output("Out").size(), 1UL);
     auto out_name = op_desc.Output("Out").front();
-    AddVar(utils::TransValidVarName(out_name), out);
+    AddVar(cinn::utils::TransValidVarName(out_name), out);
     var_model_to_program_map_[out_name] = out->id;
   };
 }
@@ -166,13 +166,13 @@ void PaddleModelToProgram::AddOpMapper_reshape2() {
   op_mappers_["reshape2"] = [&](const paddle::cpp::OpDesc& op_desc) {
     CHECK_EQ(op_desc.Input("X").size(), 1UL);
     auto x_name = op_desc.Input("X").front();
-    auto x = GetVar(utils::TransValidVarName(x_name));
+    auto x = GetVar(cinn::utils::TransValidVarName(x_name));
     std::vector<int> shape = op_desc.GetAttr<std::vector<int>>("shape");
-    VLOG(4) << "x shape: " << utils::Join(x->shape, ",");
+    VLOG(4) << "x shape: " << cinn::utils::Join(x->shape, ",");
     auto out = net_builder_->Reshape(x, shape);
     CHECK_EQ(op_desc.Output("Out").size(), 1UL);
     auto out_name = op_desc.Output("Out").front();
-    AddVar(utils::TransValidVarName(out_name), out);
+    AddVar(cinn::utils::TransValidVarName(out_name), out);
     var_model_to_program_map_[out_name] = out->id;
   };
 }
@@ -184,14 +184,14 @@ void PaddleModelToProgram::AddOpMapper_concat() {
     std::vector<Variable> input_vars;
     for (int i = 0; i < input_size; i++) {
       auto name = op_desc.Input("X")[i];
-      input_vars.push_back(GetVar(utils::TransValidVarName(name)));
+      input_vars.push_back(GetVar(cinn::utils::TransValidVarName(name)));
     }
     int axis = op_desc.GetAttr<int>("axis");
     VLOG(4) << "axis in op concat is : " << axis;
     auto out = net_builder_->Concat(input_vars, axis);
     CHECK_EQ(op_desc.Output("Out").size(), 1UL);
     auto out_name = op_desc.Output("Out").front();
-    AddVar(utils::TransValidVarName(out_name), out);
+    AddVar(cinn::utils::TransValidVarName(out_name), out);
     var_model_to_program_map_[out_name] = out->id;
   };
 }

@@ -54,15 +54,15 @@ void PartialSimplify(
 }
 
 //! Simplify the expression but Load.
-struct SimplifyNoPureMathMutator : public ir::IRMutator<ir::Expr*> {
+struct SimplifyNoPureMathMutator : public ir::ir_utils::IRMutator<ir::Expr*> {
   common::cas_intervals_t& var_intervals;
   explicit SimplifyNoPureMathMutator(
       common::cas_intervals_t& var_intervals)  // NOLINT
       : var_intervals(var_intervals) {}
 
-  void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
+  void operator()(Expr* x) { ir::ir_utils::IRMutator<ir::Expr*>::Visit(x, x); }
 
-  using ir::IRMutator<>::Visit;
+  using ir::ir_utils::IRMutator<>::Visit;
 
 #define __(op__)                                    \
   void Visit(const op__* op, Expr* expr) override { \
@@ -117,8 +117,8 @@ struct SimplifyNoPureMathMutator : public ir::IRMutator<ir::Expr*> {
   }
 };
 
-struct SimplifyLoadMutator : public ir::IRMutator<ir::Expr*> {
-  void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
+struct SimplifyLoadMutator : public ir::ir_utils::IRMutator<ir::Expr*> {
+  void operator()(Expr* x) { ir::ir_utils::IRMutator<ir::Expr*>::Visit(x, x); }
 
   void Visit(const Load* expr, Expr* op) override {
     auto* node = op->As<Load>();
@@ -154,8 +154,8 @@ struct SimplifyLoadMutator : public ir::IRMutator<ir::Expr*> {
   common::cas_intervals_t var_intervals_;
 };
 
-struct SimplifyStoreMutator : public ir::IRMutator<ir::Expr*> {
-  void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
+struct SimplifyStoreMutator : public ir::ir_utils::IRMutator<ir::Expr*> {
+  void operator()(Expr* x) { ir::ir_utils::IRMutator<ir::Expr*>::Visit(x, x); }
 
   void Visit(const Store* expr, Expr* op) override {
     auto* node = op->As<Store>();
@@ -192,8 +192,8 @@ struct SimplifyStoreMutator : public ir::IRMutator<ir::Expr*> {
   common::cas_intervals_t var_intervals_;
 };
 
-struct SimplifyRampMutator : public ir::IRMutator<Expr*> {
-  void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
+struct SimplifyRampMutator : public ir::ir_utils::IRMutator<Expr*> {
+  void operator()(Expr* x) { ir::ir_utils::IRMutator<ir::Expr*>::Visit(x, x); }
 
   void Visit(const Ramp* op, Expr* expr) override {
     auto* node = expr->As<ir::Ramp>();
@@ -222,10 +222,10 @@ struct SimplifyRampMutator : public ir::IRMutator<Expr*> {
   }
 };
 
-struct SimplifyIfThenElseMutator : public ir::IRMutator<> {
-  void operator()(Expr* x) { ir::IRMutator<>::Visit(x, x); }
+struct SimplifyIfThenElseMutator : public ir::ir_utils::IRMutator<> {
+  void operator()(Expr* x) { ir::ir_utils::IRMutator<>::Visit(x, x); }
 
-  using ir::IRMutator<>::Visit;
+  using ir::ir_utils::IRMutator<>::Visit;
 
   void Visit(const IfThenElse* op, Expr* expr) override {
     auto* node = expr->As<ir::IfThenElse>();
@@ -259,25 +259,25 @@ struct SimplifyIfThenElseMutator : public ir::IRMutator<> {
   }
 };
 
-struct ReplaceFracWithDivMutator : public ir::IRMutator<> {
-  void operator()(Expr* x) { ir::IRMutator<>::Visit(x, x); }
+struct ReplaceFracWithDivMutator : public ir::ir_utils::IRMutator<> {
+  void operator()(Expr* x) { ir::ir_utils::IRMutator<>::Visit(x, x); }
 
   void Visit(const FracOp* op, Expr* expr) override {
     auto* node = expr->As<ir::FracOp>();
 
-    ir::IRMutator<>::Visit(&node->operand(0), &node->operand(0));
-    ir::IRMutator<>::Visit(&node->operand(1), &node->operand(1));
+    ir::ir_utils::IRMutator<>::Visit(&node->operand(0), &node->operand(0));
+    ir::ir_utils::IRMutator<>::Visit(&node->operand(1), &node->operand(1));
 
     *expr = ir::Div::Make(node->operand(0), node->operand(1));
   }
 };
 
-struct SimplifyBlocksMutator : public ir::IRMutator<> {
+struct SimplifyBlocksMutator : public ir::ir_utils::IRMutator<> {
   SimplifyBlocksMutator() {}
 
-  void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
+  void operator()(Expr* x) { ir::ir_utils::IRMutator<ir::Expr*>::Visit(x, x); }
 
-  using ir::IRMutator<>::Visit;
+  using ir::ir_utils::IRMutator<>::Visit;
 
   void Visit(const Block* op, Expr* expr) override {
     auto* node = expr->As<ir::Block>();
@@ -334,13 +334,13 @@ struct SimplifyBlocksMutator : public ir::IRMutator<> {
   }
 };
 
-struct SimplifyForLoopsMutator : public ir::IRMutator<> {
+struct SimplifyForLoopsMutator : public ir::ir_utils::IRMutator<> {
   absl::flat_hash_map<std::string, common::CasInterval> var_intervals;
   SimplifyForLoopsMutator() {}
 
-  void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
+  void operator()(Expr* x) { ir::ir_utils::IRMutator<ir::Expr*>::Visit(x, x); }
 
-  using ir::IRMutator<>::Visit;
+  using ir::ir_utils::IRMutator<>::Visit;
 
   void Visit(const For* op, Expr* expr) override {
     auto* node = expr->As<ir::For>();
@@ -393,13 +393,15 @@ CastType NormCastValue(T value) {
   return static_cast<CastType>(value);
 }
 
-struct SimplifyCastMutator : public ir::IRMutator<> {
-  void operator()(Expr* expr) { ir::IRMutator<ir::Expr*>::Visit(expr, expr); }
+struct SimplifyCastMutator : public ir::ir_utils::IRMutator<> {
+  void operator()(Expr* expr) {
+    ir::ir_utils::IRMutator<ir::Expr*>::Visit(expr, expr);
+  }
 
   void Visit(const ir::Cast* op, Expr* expr) {
     auto* node = expr->As<ir::Cast>();
 
-    ir::IRMutator<ir::Expr*>::Visit(&node->v(), &node->v());
+    ir::ir_utils::IRMutator<ir::Expr*>::Visit(&node->v(), &node->v());
 
     if (op->type() == op->v().type()) {
       *expr = op->v();

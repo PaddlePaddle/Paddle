@@ -47,21 +47,21 @@ std::string TimeSchedule::__str__() const {
 
   // generate conditions
   std::vector<std::string> conds;
-  conds.push_back(utils::StringFormat("r=%d", root_time_));
+  conds.push_back(cinn::utils::StringFormat("r=%d", root_time_));
   for (int i = 0; i < time_dims_.size(); i++) {
     conds.push_back(
-        utils::StringFormat("%s=%s",
-                            cond_dims[2 * i].c_str(),
-                            std::to_string(time_dims_[i].time).c_str()));
-    conds.push_back(utils::StringFormat(
+        cinn::utils::StringFormat("%s=%s",
+                                  cond_dims[2 * i].c_str(),
+                                  std::to_string(time_dims_[i].time).c_str()));
+    conds.push_back(cinn::utils::StringFormat(
         "%s=%s", cond_dims[2 * i + 1].c_str(), time_dims_[i].dim.c_str()));
   }
 
-  return utils::StringFormat("{ %s[%s] -> [%s]: %s }",
-                             id_.c_str(),
-                             utils::Join(domain_dims, ", ").c_str(),
-                             utils::Join(range_dims, ", ").c_str(),
-                             utils::Join(conds, " and ").c_str());
+  return cinn::utils::StringFormat("{ %s[%s] -> [%s]: %s }",
+                                   id_.c_str(),
+                                   cinn::utils::Join(domain_dims, ", ").c_str(),
+                                   cinn::utils::Join(range_dims, ", ").c_str(),
+                                   cinn::utils::Join(conds, " and ").c_str());
 }
 
 std::vector<std::string> TimeSchedule::final_axis_names() const {
@@ -224,7 +224,7 @@ void SchedulerBase::FinishStageAdd() {
   for (auto &item : schedule_graph_.nodes()) {
     VLOG(6)
         << "original dims in time_schedule: "
-        << utils::Join(
+        << cinn::utils::Join(
                item->safe_as<ScheduleGraphNode>()->time_schedule.domain_dims,
                ", ");
     item->safe_as<ScheduleGraphNode>()->time_schedule.ResizeTimeSpace(

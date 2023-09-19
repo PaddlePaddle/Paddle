@@ -28,9 +28,9 @@
 #include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_replace.h"
 #include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/lang/compute.h"
-#include "paddle/cinn/optim/ir_replace.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/poly/compute_at_transform.h"
@@ -68,13 +68,13 @@ void Stage::InitTransform() {
   std::string id = isl_set_get_tuple_name(domain_.get());
 
   auto dims = isl_get_dim_names(domain_);
-  auto dims_repr = utils::Join(dims, ", ");
+  auto dims_repr = cinn::utils::Join(dims, ", ");
 
-  auto repr = utils::StringFormat("{ %s[%s] -> %s[%s] }",
-                                  id.c_str(),
-                                  dims_repr.c_str(),
-                                  id.c_str(),
-                                  dims_repr.c_str());
+  auto repr = cinn::utils::StringFormat("{ %s[%s] -> %s[%s] }",
+                                        id.c_str(),
+                                        dims_repr.c_str(),
+                                        id.c_str(),
+                                        dims_repr.c_str());
   transform_ = isl::map(domain_.ctx(), repr);
 
   // set dimension names
@@ -160,10 +160,10 @@ std::tuple<Iterator, Iterator> Stage::Split(const Iterator &level, int factor) {
       to_iters.push_back(outer_iter);
       to_iters.push_back(inner_iter);
 
-      conds.emplace_back(utils::StringFormat(
+      conds.emplace_back(cinn::utils::StringFormat(
           "%s=floor(%s/%d)", outer_iter.id.c_str(), level.id.c_str(), factor));
       VLOG(3) << "outer cond: " << conds.back();
-      conds.emplace_back(utils::StringFormat(
+      conds.emplace_back(cinn::utils::StringFormat(
           "%s=%s %s %d", inner_iter.id.c_str(), level.id.c_str(), "%", factor));
 
       VLOG(3) << "inner cond: " << conds.back();
@@ -515,7 +515,7 @@ void Stage::EditTempTensor(Stage *other, int level) {
 
   std::vector<Expr> new_shape;
   for (auto &i : this->tensor()->new_indices) {
-    new_shape.push_back(optim::IRCopy(i));
+    new_shape.push_back(ir::ir_utils::IRCopy(i));
   }
   for (auto &i : new_shape) {
     for (auto &j : dim_to_range) {
@@ -805,7 +805,7 @@ void Stage::SimpleComputeAt(Stage *other, int level) {
   compute_ats_[other->id()] = relation;
   auto other_expr = other->expr();
   auto find_tensors =
-      ir::CollectIRNodesWithoutTensor(other_expr, [&](const Expr *x) {
+      ir::ir_utils::CollectIRNodesWithoutTensor(other_expr, [&](const Expr *x) {
         return x->as_tensor() && x->as_tensor_ref()->name == tensor()->name;
       });
   if (!find_tensors.empty()) {
@@ -881,7 +881,7 @@ Iterator Stage::Fuse(const std::vector<Iterator> &levels) {
           << "] should be adjancent";
     AssertAxisIsNotLocked(offset);
     offsets.push_back(offset);
-    new_iter_name += utils::StringFormat("%s_", level.id.c_str());
+    new_iter_name += cinn::utils::StringFormat("%s_", level.id.c_str());
   }
   new_iter_name += "fused";
 
@@ -919,19 +919,19 @@ Iterator Stage::Fuse(const std::vector<Iterator> &levels) {
   }
   auto my_prod = [=](int a, int b) { return a * b; };
   std::vector<Condition> conds;
-  conds.emplace_back(utils::StringFormat(
+  conds.emplace_back(cinn::utils::StringFormat(
       "%s = floor(%s / %d)",
       levels.front().id.c_str(),
       new_iter_name.c_str(),
       static_cast<int>(std::accumulate(
           iterator_max_val.begin() + 1, iterator_max_val.end(), 1, my_prod))));
-  conds.emplace_back(utils::StringFormat("%s = %s mod %d",
-                                         levels.back().id.c_str(),
-                                         new_iter_name.c_str(),
-                                         iterator_max_val.back()));
+  conds.emplace_back(cinn::utils::StringFormat("%s = %s mod %d",
+                                               levels.back().id.c_str(),
+                                               new_iter_name.c_str(),
+                                               iterator_max_val.back()));
 
   for (int i = 1; i < levels.size() - 1; i++) {
-    conds.emplace_back(utils::StringFormat(
+    conds.emplace_back(cinn::utils::StringFormat(
         "%s = floor(%s / %d) mod %d",
         levels[i].id.c_str(),
         new_iter_name.c_str(),
@@ -971,8 +971,8 @@ Iterator Stage::Fuse(const Iterator &level0, const Iterator &level1) {
   AssertAxisIsNotLocked(offset0);
   AssertAxisIsNotLocked(offset1);
 
-  auto new_iter_name =
-      utils::StringFormat("%s_%s_fused", level0.id.c_str(), level1.id.c_str());
+  auto new_iter_name = cinn::utils::StringFormat(
+      "%s_%s_fused", level0.id.c_str(), level1.id.c_str());
 
   // Aff { s[i,j,k] -> [j] } and get the j's max value
   // to apply something like { S[i,j] -> S[k]: k = i+j }
@@ -1003,11 +1003,11 @@ Iterator Stage::Fuse(const Iterator &level0, const Iterator &level1) {
   }
 
   std::vector<Condition> conds;
-  conds.emplace_back(utils::StringFormat("%s = %s * %d + %s",
-                                         new_iter_name.c_str(),
-                                         level0.id.c_str(),
-                                         level1_max_val,
-                                         level1.id.c_str()));
+  conds.emplace_back(cinn::utils::StringFormat("%s = %s * %d + %s",
+                                               new_iter_name.c_str(),
+                                               level0.id.c_str(),
+                                               level1_max_val,
+                                               level1.id.c_str()));
 
   Map trans(domain_.ctx(), id(), from_iters, to_iters, conds, id());
 
@@ -1025,7 +1025,7 @@ Iterator Stage::Fuse(const Iterator &level0, const Iterator &level1) {
 std::vector<std::string> Stage::input_statements() const {
   if (!expr_.defined()) return {};
   VLOG(3) << "stage " << id() << " expr: " << expr_;
-  auto load_exprs = ir::CollectIRNodes(
+  auto load_exprs = ir::ir_utils::CollectIRNodes(
       expr_, [](const Expr *x) { return x->As<ir::Load>(); });
   std::set<std::string> statements;
   for (auto &expr : load_exprs) {
@@ -1381,7 +1381,7 @@ namespace {
 /**
  * Replace the reader of a cache tensor to tensor.
  */
-struct CacheReplaceMutator : public ir::IRMutator<> {
+struct CacheReplaceMutator : public ir::ir_utils::IRMutator<> {
   std::string tensor_name;
   ir::Tensor cache;
   bool read_or_write{};
@@ -1397,7 +1397,7 @@ struct CacheReplaceMutator : public ir::IRMutator<> {
                       bool read_or_write)
       : tensor_name(tensor_name), cache(cache), read_or_write(read_or_write) {}
 
-  void operator()(Expr *expr) { ir::IRMutator<>::Visit(expr, expr); }
+  void operator()(Expr *expr) { ir::ir_utils::IRMutator<>::Visit(expr, expr); }
 
  private:
   void Visit(const ir::_Tensor_ *op, Expr *expr) override {
@@ -1411,9 +1411,9 @@ struct CacheReplaceMutator : public ir::IRMutator<> {
     CHECK(node->tensor.as_tensor());
     auto *tensor = node->tensor.as_tensor();
     for (auto &index : node->indices) {
-      ir::IRMutator<>::Visit(&index, &index);
+      ir::ir_utils::IRMutator<>::Visit(&index, &index);
     }
-    ir::IRMutator<>::Visit(&node->tensor, &node->tensor);
+    ir::ir_utils::IRMutator<>::Visit(&node->tensor, &node->tensor);
   }
 
   bool to_mutate_{true};
@@ -1563,10 +1563,11 @@ void Stage::ShareBufferWith(Stage *other) {
 isl_map *__isl_give GatherAccesses(Stage *stage,
                                    const std::string &tensor_name) {
   CHECK(stage->tensor_);
-  auto loads = ir::CollectIRNodes(stage->tensor_->body(), [&](const Expr *x) {
-    return x->As<ir::Load>() &&
-           x->As<ir::Load>()->tensor.as_tensor()->name == tensor_name;
-  });
+  auto loads =
+      ir::ir_utils::CollectIRNodes(stage->tensor_->body(), [&](const Expr *x) {
+        return x->As<ir::Load>() &&
+               x->As<ir::Load>()->tensor.as_tensor()->name == tensor_name;
+      });
 
   auto vars = stage->tensor_->axis_with_reduce();
 
@@ -1585,10 +1586,10 @@ isl_map *__isl_give GatherAccesses(Stage *stage,
   isl_map *res = nullptr;
   for (auto &load : out_loads) {
     std::string repr =
-        utils::StringFormat("{ %s[%s] -> %s }",
-                            in_tuple_name.c_str(),
-                            utils::Join(in_dim_names, ",").c_str(),
-                            load.c_str());
+        cinn::utils::StringFormat("{ %s[%s] -> %s }",
+                                  in_tuple_name.c_str(),
+                                  cinn::utils::Join(in_dim_names, ",").c_str(),
+                                  load.c_str());
     isl_map *access =
         isl_map_read_from_str(stage->domain().ctx().get(), repr.c_str());
     if (res) {
@@ -1888,7 +1889,7 @@ StageMap CreateStages(const std::vector<ir::Tensor> &tensors) {
   std::set<ir::Tensor> all_tensors(tensors.begin(), tensors.end());
 
   for (auto &tensor : tensors) {
-    auto used_tensors = ir::CollectIRNodes(
+    auto used_tensors = ir::ir_utils::CollectIRNodes(
         tensor->body(), [](const Expr *x) { return x->as_tensor(); });
     for (const Expr &x : used_tensors) {
       all_tensors.insert(x.as_tensor_ref());

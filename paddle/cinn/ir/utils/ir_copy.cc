@@ -27,10 +27,11 @@
 #include "paddle/cinn/ir/utils/ir_printer.h"
 
 namespace cinn {
-namespace optim {
-using namespace ir;  // NOLINT
+namespace ir {
+namespace ir_utils {
 
-struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
+namespace {
+struct IRCopyVisitor : public ir::ir_utils::IRVisitorRequireReImpl<Expr> {
   // Use maps to unify all the copied tensors and buffers.
   std::map<std::string, ir::_Tensor_*> tensor_map;
   std::map<std::string, ir::_Buffer_*> buffer_map;
@@ -475,6 +476,8 @@ Expr IRCopyVisitor::Visit(const ir::intrinsics::BuiltinIntrin* op) {
       op->name, op->args, op->id, op->arg_nums, op->type());
 }
 
+}  // namespace
+
 Expr IRCopy(Expr x) {
   IRCopyVisitor visitor;
   auto copied = visitor.Visit(&x);
@@ -508,5 +511,6 @@ std::vector<ir::LoweredFunc> IRCopy(const std::vector<ir::LoweredFunc>& x) {
   return res;
 }
 
-}  // namespace optim
+}  // namespace ir_utils
+}  // namespace ir
 }  // namespace cinn

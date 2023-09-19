@@ -67,7 +67,7 @@ void InferShape(Node* node,
 
     CHECK(product(inputs_shape.back()))
         << node->id() << " 's Input Node " << source_node->id() << "["
-        << utils::Join(inputs_shape.back(), ",")
+        << cinn::utils::Join(inputs_shape.back(), ",")
         << "]'s size should not zero ! Please check.";
   }
 
@@ -93,13 +93,13 @@ void InferShape(Node* node,
     CHECK(sink_node);
 
     VLOG(3) << "Infershape: " << sink_node->id() << " "
-            << utils::Join(out_shape[counter], ",");
+            << cinn::utils::Join(out_shape[counter], ",");
     shape_dict[sink_node->id()] = out_shape[counter];
     dtype_dict[sink_node->id()] = out_dtype[counter];
 
     CHECK(product(out_shape[counter]))
         << node->id() << " 's Output Node " << sink_node->id() << "["
-        << utils::Join(out_shape[counter], ",")
+        << cinn::utils::Join(out_shape[counter], ",")
         << "]'s size should not zero ! Please check.";
 
     counter++;

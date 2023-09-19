@@ -40,9 +40,10 @@ class DecomposerContext {
     if (new_var->shape != ori_var->shape) {
       LOG(FATAL)
           << "The output shape should be equal to the original. But received : "
-          << new_var->id << ".shape=[" << utils::Join(new_var->shape, ", ")
+          << new_var->id << ".shape=["
+          << cinn::utils::Join(new_var->shape, ", ")
           << "] and the original var " << ori_var->id << ".shape=["
-          << utils::Join(ori_var->shape, ", ") << "].";
+          << cinn::utils::Join(ori_var->shape, ", ") << "].";
     }
     if (new_var->type != ori_var->type) {
       LOG(FATAL)

@@ -26,11 +26,11 @@ namespace py = pybind11;
 namespace cinn {
 namespace pybind {
 
+using cinn::utils::StringFormat;
 using common::Type;
 using lang::Placeholder;
 using py::arg;
 using utils::GetStreamCnt;
-using utils::StringFormat;
 
 void BindPE(py::module* m) {
 #define BIND_UNARY(name__, fn__) \

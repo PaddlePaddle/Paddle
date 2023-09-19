@@ -154,14 +154,14 @@ void CompilationInfoDumper::Dump(const std::string& base_path,
                                  const std::string& file_name,
                                  const std::string& content) {
   auto dump_path =
-      utils::StringFormat("%s/fusion_group_%d", base_path.c_str(), idx);
+      cinn::utils::StringFormat("%s/fusion_group_%d", base_path.c_str(), idx);
   if (!hlir::framework::MakeDirectory(
           dump_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
     LOG(WARNING) << "Failed to make directory: \"" << dump_path
                  << "\", the instruction for this group will not dump.";
   } else {
-    auto dump_file =
-        utils::StringFormat("%s/%s", dump_path.c_str(), file_name.c_str());
+    auto dump_file = cinn::utils::StringFormat(
+        "%s/%s", dump_path.c_str(), file_name.c_str());
     VLOG(7) << "Dump instruction to: " << dump_file;
     std::ofstream of(dump_file, std::ios_base::out);
     if (of.is_open()) {

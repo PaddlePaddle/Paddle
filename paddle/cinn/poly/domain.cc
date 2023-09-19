@@ -36,14 +36,14 @@ std::string Domain::__str__() const {
                  dims.end(),
                  std::back_inserter(range_fields),
                  [](const Dim& x) { return x.range_repr(); });
-  std::string range_repr = utils::Join(range_fields, " and ");
+  std::string range_repr = cinn::utils::Join(range_fields, " and ");
 
   std::vector<std::string> dim_fields;
   std::transform(dims.begin(),
                  dims.end(),
                  std::back_inserter(dim_fields),
                  [](const Dim& x) { return x.id; });
-  std::string dims_repr = utils::Join(dim_fields, ", ");
+  std::string dims_repr = cinn::utils::Join(dim_fields, ", ");
 
   // parameters
   std::vector<std::string> param_reprs;
@@ -51,13 +51,13 @@ std::string Domain::__str__() const {
                  params.end(),
                  std::back_inserter(param_reprs),
                  [](const Dim& x) { return x.id; });
-  std::string params_repr = utils::Join(param_reprs, ", ");
+  std::string params_repr = cinn::utils::Join(param_reprs, ", ");
 
-  return utils::StringFormat("[%s]->{ %s[%s]: %s }",
-                             params_repr.c_str(),
-                             id.c_str(),
-                             dims_repr.c_str(),
-                             range_repr.c_str());
+  return cinn::utils::StringFormat("[%s]->{ %s[%s]: %s }",
+                                   params_repr.c_str(),
+                                   id.c_str(),
+                                   dims_repr.c_str(),
+                                   range_repr.c_str());
 }
 
 isl::set Domain::to_isl() const {
@@ -70,8 +70,8 @@ void Domain::ExtractParams() {
   std::unordered_set<std::string> var_names;
   auto collect_param_fn = [&](Expr& e) {
     if (!e.is_constant()) {
-      auto vars =
-          ir::CollectIRNodes(e, [](const Expr* e) { return e->is_var(); });
+      auto vars = ir::ir_utils::CollectIRNodes(
+          e, [](const Expr* e) { return e->is_var(); });
       for (auto& var : vars) var_names.insert(var.As<ir::_Var_>()->name);
     }
   };

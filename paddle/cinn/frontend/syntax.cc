@@ -278,7 +278,7 @@ const Instruction& Program::operator[](size_t i) const {
 }
 
 std::ostream& operator<<(std::ostream& os, const Variable& x) {
-  os << "Var(" << x->id << ": shape=[" << utils::Join(x->shape, ", ")
+  os << "Var(" << x->id << ": shape=[" << cinn::utils::Join(x->shape, ", ")
      << "], dtype=" << x->type;
   if (x->is_const) {
     os << ", CONST";
@@ -538,22 +538,22 @@ std::string _Instruction_::debug_string() const {
     void operator()(bool x) { s_ << (x ? "true" : "false"); }
     void operator()(const std::string& x) { s_ << x; }
     void operator()(const std::vector<int>& x) {
-      s_ << "[" + utils::Join(x, ",") + "]";
+      s_ << "[" + cinn::utils::Join(x, ",") + "]";
     }
     void operator()(const std::vector<int64_t>& x) {
-      s_ << "[" + utils::Join(x, ",") + "]";
+      s_ << "[" + cinn::utils::Join(x, ",") + "]";
     }
     void operator()(const std::vector<float>& x) {
-      s_ << "[" + utils::Join(x, ",") + "]";
+      s_ << "[" + cinn::utils::Join(x, ",") + "]";
     }
     void operator()(const std::vector<double>& x) {
-      s_ << "[" + utils::Join(x, ",") + "]";
+      s_ << "[" + cinn::utils::Join(x, ",") + "]";
     }
     void operator()(const std::vector<bool>& x) {
-      s_ << "[" + utils::Join(x, ",") + "]";
+      s_ << "[" + cinn::utils::Join(x, ",") + "]";
     }
     void operator()(const std::vector<std::string>& x) {
-      s_ << "[" + utils::Join(x, ",") + "]";
+      s_ << "[" + cinn::utils::Join(x, ",") + "]";
     }
   };
 
@@ -568,11 +568,11 @@ std::string _Instruction_::debug_string() const {
                  std::back_inserter(output_names),
                  [](const Variable& x) { return x->id; });
 
-  ss << utils::Join(output_names, ", ");
+  ss << cinn::utils::Join(output_names, ", ");
   ss << " = ";
   ss << op_type;
   ss << "(";
-  ss << utils::Join(input_names, ", ");
+  ss << cinn::utils::Join(input_names, ", ");
   if (!attrs.empty() && !input_names.empty()) ss << ", ";
 
   std::map<std::string, std::string> attr_str_map;

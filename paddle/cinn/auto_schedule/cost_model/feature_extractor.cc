@@ -218,7 +218,7 @@ void FeatureExtractor::Visit(const For *x) {
 }
 
 void FeatureExtractor::Visit(const PolyFor *x) {
-  Expr copy = optim::IRCopy(Expr(x));
+  Expr copy = ir::ir_utils::IRCopy(Expr(x));
   feature_.IntoLoopBlock();
   optim::TransformPolyForToFor(&copy);
   ir::For *loop = copy.As<For>();

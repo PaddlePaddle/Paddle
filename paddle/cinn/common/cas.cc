@@ -1584,10 +1584,10 @@ bool CASasSymbol(Expr expr) {
 
 Expr ConvertCinnToCAS(Expr expr) {
   VLOG(7) << "Begin ConvertCinnToCAS " << expr;
-  Expr copied = optim::IRCopy(expr);
-  struct Mutator : public ir::IRMutator<ir::Expr*> {
+  Expr copied = ir::ir_utils::IRCopy(expr);
+  struct Mutator : public ir::ir_utils::IRMutator<ir::Expr*> {
     void operator()(Expr* expr) { Visit(expr); }
-    void Visit(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+    void Visit(Expr* expr) { ir::ir_utils::IRMutator<>::Visit(expr, expr); }
 
    private:
     void Visit(const Add* op, Expr* expr) override {
@@ -1710,10 +1710,10 @@ Expr ConvertCinnToCAS(Expr expr) {
  * simplify the condition ensures correctness, though not sufficient.
  */
 Expr ReplaceMinToConstant(Expr expr) {
-  Expr copied = optim::IRCopy(expr);
-  struct Mutator : public ir::IRMutator<ir::Expr*> {
+  Expr copied = ir::ir_utils::IRCopy(expr);
+  struct Mutator : public ir::ir_utils::IRMutator<ir::Expr*> {
     void operator()(Expr* expr) { Visit(expr); }
-    void Visit(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+    void Visit(Expr* expr) { ir::ir_utils::IRMutator<>::Visit(expr, expr); }
 
    private:
     void Visit(const Min* op, Expr* expr) override {
@@ -1727,10 +1727,10 @@ Expr ReplaceMinToConstant(Expr expr) {
       auto min_b = op->b();
       if (min_a.is_constant() && !min_b.is_constant()) {
         CHECK(min_a->type().is_integer());
-        *expr = optim::IRCopy(min_a);
+        *expr = ir::ir_utils::IRCopy(min_a);
       } else if (min_b.is_constant() && !min_a.is_constant()) {
         CHECK(min_b->type().is_integer());
-        *expr = optim::IRCopy(min_b);
+        *expr = ir::ir_utils::IRCopy(min_b);
       }
     }
   };
@@ -1743,10 +1743,10 @@ Expr ReplaceMinToConstant(Expr expr) {
  * constant value and 1 inconstant value, return the constant max value.
  */
 Expr ReplaceMaxToConstant(Expr expr) {
-  Expr copied = optim::IRCopy(expr);
-  struct Mutator : public ir::IRMutator<ir::Expr*> {
+  Expr copied = ir::ir_utils::IRCopy(expr);
+  struct Mutator : public ir::ir_utils::IRMutator<ir::Expr*> {
     void operator()(Expr* expr) { Visit(expr); }
-    void Visit(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+    void Visit(Expr* expr) { ir::ir_utils::IRMutator<>::Visit(expr, expr); }
 
    private:
     void Visit(const Max* op, Expr* expr) override {
@@ -1760,10 +1760,10 @@ Expr ReplaceMaxToConstant(Expr expr) {
       auto max_b = op->b();
       if (max_a.is_constant() && !max_b.is_constant()) {
         CHECK(max_a->type().is_integer());
-        *expr = optim::IRCopy(max_a);
+        *expr = ir::ir_utils::IRCopy(max_a);
       } else if (max_b.is_constant() && !max_a.is_constant()) {
         CHECK(max_b->type().is_integer());
-        *expr = optim::IRCopy(max_b);
+        *expr = ir::ir_utils::IRCopy(max_b);
       }
     }
   };
@@ -1773,11 +1773,11 @@ Expr ReplaceMaxToConstant(Expr expr) {
 
 Expr ConvertCasToCinn(Expr expr) {
   VLOG(7) << "Begin ConvertCasToCinn : " << expr;
-  Expr copied = optim::IRCopy(expr);
+  Expr copied = ir::ir_utils::IRCopy(expr);
 
-  struct Mutator : ir::IRMutator<Expr*> {
+  struct Mutator : ir::ir_utils::IRMutator<Expr*> {
     void operator()(Expr* expr) { Visit(expr); }
-    void Visit(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+    void Visit(Expr* expr) { ir::ir_utils::IRMutator<>::Visit(expr, expr); }
 
    private:
     void Visit(const Product* op, Expr* expr) override {
@@ -1868,7 +1868,7 @@ bool IsExprCasCompatible(Expr expr) {
     return expr->As<Add>() || expr->As<Sub>() || expr->As<Mul>() ||
            expr->As<Div>();
   };
-  return ir::CollectIRNodes(expr, teller).empty();
+  return ir::ir_utils::CollectIRNodes(expr, teller).empty();
 }
 
 // Partially divide a by b. e.g. (2x+y)/2 => x + y/2

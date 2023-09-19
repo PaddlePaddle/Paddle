@@ -32,8 +32,7 @@ class GraphAlterHelper {
  public:
   explicit GraphAlterHelper(Graph* graph) : graph_(graph) {
     if (!FLAGS_cinn_custom_call_deny_ops.empty()) {
-      auto splited_names =
-          cinn::utils::Split(FLAGS_cinn_custom_call_deny_ops, ";");
+      auto splited_names = utils::Split(FLAGS_cinn_custom_call_deny_ops, ";");
       deny_ops_ = {splited_names.begin(), splited_names.end()};
     }
   }

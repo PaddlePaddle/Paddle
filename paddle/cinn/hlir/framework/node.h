@@ -33,8 +33,8 @@ class Node;
 class NodeData;
 
 using NodePtr = common::Shared<Node>;
-using AttrType = utils::Attribute;
-using AttrMapType = utils::AttributeMap;
+using AttrType = cinn::utils::Attribute;
+using AttrMapType = cinn::utils::AttributeMap;
 
 /**
  * \brief Attributes of each node in graph.

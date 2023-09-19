@@ -25,8 +25,8 @@ namespace cinn::optim {
 namespace {
 using namespace ir;  // NOLINT
 
-struct ReplaceModWithDivMutator : public ir::IRMutator<> {
-  void operator()(Expr* x) { ir::IRMutator<>::Visit(x, x); }
+struct ReplaceModWithDivMutator : public ir::ir_utils::IRMutator<> {
+  void operator()(Expr* x) { ir::ir_utils::IRMutator<>::Visit(x, x); }
 
   void Visit(const Mod* op, Expr* expr) override {
     auto* node = expr->As<ir::Mod>();
@@ -38,9 +38,9 @@ struct ReplaceModWithDivMutator : public ir::IRMutator<> {
   }
 };
 
-struct ReplaceDivWithVarMutator : public ir::IRMutator<> {
+struct ReplaceDivWithVarMutator : public ir::ir_utils::IRMutator<> {
   absl::flat_hash_map<std::string, Expr> div_var_map_;
-  void operator()(Expr* x) { ir::IRMutator<>::Visit(x, x); }
+  void operator()(Expr* x) { ir::ir_utils::IRMutator<>::Visit(x, x); }
 
   void Visit(const Div* op, Expr* expr) override {
     auto* node = expr->As<ir::Div>();
@@ -60,12 +60,12 @@ struct ReplaceDivWithVarMutator : public ir::IRMutator<> {
   }
 };
 
-struct ReplaceVarWithDivMutator : public ir::IRMutator<> {
+struct ReplaceVarWithDivMutator : public ir::ir_utils::IRMutator<> {
   absl::flat_hash_map<std::string, Expr> div_var_map_;
   void operator()(Expr* x,
                   const absl::flat_hash_map<std::string, Expr>& div_var_map) {
     div_var_map_ = div_var_map;
-    ir::IRMutator<>::Visit(x, x);
+    ir::ir_utils::IRMutator<>::Visit(x, x);
   }
 
   void Visit(const _Var_* op, Expr* expr) override {

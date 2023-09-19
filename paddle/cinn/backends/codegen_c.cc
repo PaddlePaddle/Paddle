@@ -38,7 +38,7 @@ using cinn::common::float16;
 const char *kCKeywordRestrict = "__restrict__";
 
 void CodeGenC::Compile(const ir::Module &module, const Outputs &outputs) {
-  ir::IrVerify(Expr(module));
+  ir::ir_utils::IrVerify(Expr(module));
 
   if (!outputs.c_header_name.empty()) {
     auto source = Compile(module, OutputKind::CHeader);
@@ -61,7 +61,7 @@ void CodeGenC::Compile(const ir::Module &module, const Outputs &outputs) {
   }
 }
 
-CodeGenC::CodeGenC(Target target) : ir::IrPrinter(ss_) {}
+CodeGenC::CodeGenC(Target target) : ir::ir_utils::IrPrinter(ss_) {}
 
 std::string CodeGenC::Compile(const ir::Module &module,
                               OutputKind output_kind) {
@@ -423,7 +423,7 @@ void CodeGenC::PrintCall_pod_values_to_array(const ir::Call *op) {
   str_ += "[] = ";
   str_ += "{ ";
 
-  str_ += utils::Join(arg_names, ", ");
+  str_ += cinn::utils::Join(arg_names, ", ");
 
   str_ += " }";
 }
@@ -554,9 +554,13 @@ void CodeGenC::Visit(const ir::Broadcast *op) {
   str_ += ")";
 }
 
-void CodeGenC::Visit(const ir::FracOp *op) { ir::IrPrinter::Visit(op); }
-void CodeGenC::Visit(const ir::Sum *op) { ir::IrPrinter::Visit(op); }
-void CodeGenC::Visit(const ir::Product *op) { ir::IrPrinter::Visit(op); }
+void CodeGenC::Visit(const ir::FracOp *op) {
+  ir::ir_utils::IrPrinter::Visit(op);
+}
+void CodeGenC::Visit(const ir::Sum *op) { ir::ir_utils::IrPrinter::Visit(op); }
+void CodeGenC::Visit(const ir::Product *op) {
+  ir::ir_utils::IrPrinter::Visit(op);
+}
 
 void CodeGenC::PrintCastExpr(const Type &type, Expr e) {
   str_ += "((";
@@ -637,13 +641,15 @@ void CodeGenC::PrintIncludes() {
 }
 
 void CodeGenC::PrintFileGuardOpen(const std::string &name) {
-  str_ += utils::StringFormat("#ifndef _%s_CINN_H_\n", Uppercase(name).c_str());
-  str_ += utils::StringFormat("#define _%s_CINN_H_\n", Uppercase(name).c_str());
+  str_ += cinn::utils::StringFormat("#ifndef _%s_CINN_H_\n",
+                                    Uppercase(name).c_str());
+  str_ += cinn::utils::StringFormat("#define _%s_CINN_H_\n",
+                                    Uppercase(name).c_str());
   str_ += "\n";
 }
 void CodeGenC::PrintFileGuardClose(const std::string &module_name) {
-  str_ += utils::StringFormat("#endif  // _%s_CINN_H_\n",
-                              Uppercase(module_name).c_str());
+  str_ += cinn::utils::StringFormat("#endif  // _%s_CINN_H_\n",
+                                    Uppercase(module_name).c_str());
 }
 
 void CodeGenC::PrintBufferCreation(const std::vector<ir::Buffer> &buffers) {

@@ -31,10 +31,10 @@ using cinn::common::float16;
 
 //! Implementations for Ir Expr Nodes.
 // @{
-#define __m(t__)                                             \
-  template <>                                                \
-  void ExprNode<t__>::Accept(cinn::ir::IRVisitor *v) const { \
-    v->Visit(const_self());                                  \
+#define __m(t__)                                                       \
+  template <>                                                          \
+  void ExprNode<t__>::Accept(cinn::ir::ir_utils::IRVisitor *v) const { \
+    v->Visit(const_self());                                            \
   }
 #undef __m
 // @}

@@ -46,7 +46,7 @@ bool PassPrinter::Begin(const std::unordered_set<std::string>& fetch_ids) {
   pass_id_ = 0;
   fetch_ids_ = fetch_ids;
 
-  save_path_ = utils::StringFormat(
+  save_path_ = cinn::utils::StringFormat(
       "%s/fusion_groups_%d/", FLAGS_cinn_pass_visualize_dir.c_str(), graph_id_);
   if (!MakeDirectory(save_path_,
                      S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
@@ -68,10 +68,11 @@ bool PassPrinter::PassBegin(const std::string& pass_name,
   }
   const auto& program_info = utils::GetStreamCnt(program);
   VLOG(3) << "Before " << pass_name << " Pass:\n" << program_info;
-  const std::string& file_path = utils::StringFormat("%s/pass_%d_%s_before.txt",
-                                                     save_path_.c_str(),
-                                                     pass_id_,
-                                                     pass_name.c_str());
+  const std::string& file_path =
+      cinn::utils::StringFormat("%s/pass_%d_%s_before.txt",
+                                save_path_.c_str(),
+                                pass_id_,
+                                pass_name.c_str());
   WriteToFile(file_path, program_info);
   return true;
 }
@@ -83,10 +84,11 @@ bool PassPrinter::PassEnd(const std::string& pass_name,
   }
   const auto& program_info = utils::GetStreamCnt(program);
   VLOG(3) << "After " << pass_name << " Pass:\n" << program_info;
-  const std::string& file_path = utils::StringFormat("%s/pass_%d_%s_after.txt",
-                                                     save_path_.c_str(),
-                                                     pass_id_,
-                                                     pass_name.c_str());
+  const std::string& file_path =
+      cinn::utils::StringFormat("%s/pass_%d_%s_after.txt",
+                                save_path_.c_str(),
+                                pass_id_,
+                                pass_name.c_str());
   WriteToFile(file_path, program_info);
 
   ++pass_id_;
@@ -99,17 +101,19 @@ bool PassPrinter::PassBegin(const std::string& pass_name, Graph* g) {
   }
   const auto& graph_info = g->DebugGroupedGraph(fetch_ids_);
   VLOG(3) << "Before " << pass_name << " Pass:\n" << graph_info;
-  const std::string& file_path = utils::StringFormat("%s/pass_%d_%s_before.txt",
-                                                     save_path_.c_str(),
-                                                     pass_id_,
-                                                     pass_name.c_str());
+  const std::string& file_path =
+      cinn::utils::StringFormat("%s/pass_%d_%s_before.txt",
+                                save_path_.c_str(),
+                                pass_id_,
+                                pass_name.c_str());
   WriteToFile(file_path, graph_info);
 
   const auto& dot_info = g->VisualizeGraph(fetch_ids_);
-  const std::string& dot_path = utils::StringFormat("%s/pass_%d_%s_before.dot",
-                                                    save_path_.c_str(),
-                                                    pass_id_,
-                                                    pass_name.c_str());
+  const std::string& dot_path =
+      cinn::utils::StringFormat("%s/pass_%d_%s_before.dot",
+                                save_path_.c_str(),
+                                pass_id_,
+                                pass_name.c_str());
   WriteToFile(dot_path, dot_info);
   return true;
 }
@@ -121,17 +125,19 @@ bool PassPrinter::PassEnd(const std::string& pass_name, Graph* g) {
   const auto& graph_info = g->DebugGroupedGraph(fetch_ids_);
   VLOG(3) << "After " << pass_name << " Pass:\n" << graph_info;
 
-  const std::string& file_path = utils::StringFormat("%s/pass_%d_%s_after.txt",
-                                                     save_path_.c_str(),
-                                                     pass_id_,
-                                                     pass_name.c_str());
+  const std::string& file_path =
+      cinn::utils::StringFormat("%s/pass_%d_%s_after.txt",
+                                save_path_.c_str(),
+                                pass_id_,
+                                pass_name.c_str());
   WriteToFile(file_path, graph_info);
 
   const auto& dot_info = g->VisualizeGraph(fetch_ids_);
-  const std::string& dot_path = utils::StringFormat("%s/pass_%d_%s_after.dot",
-                                                    save_path_.c_str(),
-                                                    pass_id_,
-                                                    pass_name.c_str());
+  const std::string& dot_path =
+      cinn::utils::StringFormat("%s/pass_%d_%s_after.dot",
+                                save_path_.c_str(),
+                                pass_id_,
+                                pass_name.c_str());
   WriteToFile(dot_path, dot_info);
 
   ++pass_id_;
@@ -305,7 +311,8 @@ std::string DebugString(const Node* node) {
   bool first = true;
   std::map<std::string, std::string> attr_str_map;
   for (const auto& attr_pair : node->attrs.attr_store) {
-    attr_str_map[attr_pair.first] = utils::Attribute2String(attr_pair.second);
+    attr_str_map[attr_pair.first] =
+        cinn::utils::Attribute2String(attr_pair.second);
   }
 
   for (const auto& attr_pair : attr_str_map) {

@@ -18,6 +18,7 @@
 
 namespace cinn {
 namespace ir {
+namespace ir_utils {
 
 /**
  * Collect the IR Nodes(without duplication) in the expression.
@@ -84,5 +85,6 @@ std::vector<std::string> CollectUndefinedVars(const Expr* e);
  */
 std::set<std::string> CollectTensorNeedsWrite(const Expr* e);
 
+}  // namespace ir_utils
 }  // namespace ir
 }  // namespace cinn

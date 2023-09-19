@@ -29,7 +29,7 @@ std::string Map::__str__() const {
                    ids.end(),
                    std::back_inserter(fields),
                    [](const Iterator& x) { return x.id; });
-    return utils::Join(fields, ", ");
+    return cinn::utils::Join(fields, ", ");
   };
 
   auto domain_iterators_repr = get_ids_repr(domain_iterators_);
@@ -40,22 +40,22 @@ std::string Map::__str__() const {
                  conds_.end(),
                  std::back_inserter(conds_fields),
                  [](const Condition& x) { return x.__str__(); });
-  auto conds_repr = utils::Join(conds_fields, " and ");
+  auto conds_repr = cinn::utils::Join(conds_fields, " and ");
 
   if (!conds_.empty()) {
-    return utils::StringFormat("{ %s[%s] -> %s[%s]: %s }",
-                               id_.c_str(),
-                               domain_iterators_repr.c_str(),
-                               range_id_.c_str(),
-                               range_iterators_repr.c_str(),
-                               conds_repr.c_str());
+    return cinn::utils::StringFormat("{ %s[%s] -> %s[%s]: %s }",
+                                     id_.c_str(),
+                                     domain_iterators_repr.c_str(),
+                                     range_id_.c_str(),
+                                     range_iterators_repr.c_str(),
+                                     conds_repr.c_str());
   }
 
-  return utils::StringFormat("{ %s[%s] -> %s[%s] }",
-                             id_.c_str(),
-                             domain_iterators_repr.c_str(),
-                             range_id_.c_str(),
-                             range_iterators_repr.c_str());
+  return cinn::utils::StringFormat("{ %s[%s] -> %s[%s] }",
+                                   id_.c_str(),
+                                   domain_iterators_repr.c_str(),
+                                   range_id_.c_str(),
+                                   range_iterators_repr.c_str());
 }
 
 Map::Map(isl::ctx ctx,
@@ -85,7 +85,7 @@ isl::map Map::to_isl() const {
 }
 
 std::ostream& operator<<(std::ostream& os, const Iterator& x) {
-  os << utils::StringFormat("<Iterator: %s>", x.id.c_str());
+  os << cinn::utils::StringFormat("<Iterator: %s>", x.id.c_str());
   return os;
 }
 

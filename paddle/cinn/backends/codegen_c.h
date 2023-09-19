@@ -38,7 +38,7 @@ namespace backends {
 //! keyword of __restrict__.
 extern const char* kCKeywordRestrict;
 
-class CodeGenC : public ir::IrPrinter {
+class CodeGenC : public ir::ir_utils::IrPrinter {
  public:
   enum class OutputKind {
     CHeader,  //! output the C header file.

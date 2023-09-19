@@ -28,7 +28,7 @@ void GetReduceDimsForX(const std::vector<int>& dx_shape,
       reduce_dims->push_back(i);
     }
   }
-  VLOG(3) << "The reduce_dims for X: " << utils::Join(*reduce_dims, ",");
+  VLOG(3) << "The reduce_dims for X: " << cinn::utils::Join(*reduce_dims, ",");
 }
 
 void GetReduceDimsForY(const std::vector<int>& dy_shape,
@@ -46,7 +46,7 @@ void GetReduceDimsForY(const std::vector<int>& dy_shape,
       }
     }
   }
-  VLOG(3) << "The reduce_dims for Y: " << utils::Join(*reduce_dims, ",");
+  VLOG(3) << "The reduce_dims for Y: " << cinn::utils::Join(*reduce_dims, ",");
 }
 
 void elementwise_add(const Instruction& instr,

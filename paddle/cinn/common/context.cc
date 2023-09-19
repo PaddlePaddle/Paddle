@@ -48,12 +48,11 @@ const std::vector<std::string>& Context::runtime_include_dir() {
     const char* env = std::getenv(kRuntimeIncludeDirEnvironKey);
     if (env) {  // use environment variable firstly
       VLOG(4) << "get runtime_include_dir from env: " << env;
-      runtime_include_dir_ = cinn::utils::Split(env, ":");
+      runtime_include_dir_ = utils::Split(env, ":");
     } else if (defined_runtime_include_dir) {
       VLOG(4) << "get runtime_include_dir from RUNTIME_INCLUDE_DIR: "
               << defined_runtime_include_dir;
-      runtime_include_dir_ =
-          cinn::utils::Split(defined_runtime_include_dir, ":");
+      runtime_include_dir_ = utils::Split(defined_runtime_include_dir, ":");
     }
   }
   return runtime_include_dir_;

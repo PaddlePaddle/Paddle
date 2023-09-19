@@ -208,7 +208,7 @@ void LoadCombinedParamsPb(const std::string &path,
   auto load_var_func = [&](std::istream &is) {
     for (size_t i = 0; i < paramlist.size(); ++i) {
       auto *var = scope->Var<hlir::framework::Tensor>(
-          utils::TransValidVarName(paramlist[i]));
+          cinn::utils::TransValidVarName(paramlist[i]));
       // Error checking
       CHECK(static_cast<bool>(is))
           << "There is a problem with loading model parameters";
@@ -277,7 +277,7 @@ void LoadModelPb(const std::string &model_dir,
         case framework_proto::VarType_Type_LOD_TENSOR:
           LoadLoDTensor(file,
                         scope->Var<hlir::framework::Tensor>(
-                            utils::TransValidVarName(var.name())),
+                            cinn::utils::TransValidVarName(var.name())),
                         target);
           break;
         default:

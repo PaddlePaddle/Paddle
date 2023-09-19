@@ -22,8 +22,8 @@ namespace cinn::optim {
 
 namespace {
 
-struct Mutator : public ir::IRMutator<> {
-  using ir::IRMutator<>::Visit;
+struct Mutator : public ir::ir_utils::IRMutator<> {
+  using ir::ir_utils::IRMutator<>::Visit;
 
   void Visit(const ir::_Var_* op, Expr* expr) override {
     if (utils::Startswith(op->name, poly::kIslParamConstPrefix)) {

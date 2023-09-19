@@ -310,8 +310,9 @@ std::vector<shape_t> InferShapeForSum(const std::vector<shape_t> &inputs_shape,
     if (inputs_shape[i] != shape) {
       LOG(FATAL) << "The input shapes must be the same. But received: the i-th("
                  << i << ") input shape is "
-                 << utils::Join(inputs_shape[i], ",")
-                 << " and the first input shape is " << utils::Join(shape, ",");
+                 << cinn::utils::Join(inputs_shape[i], ",")
+                 << " and the first input shape is "
+                 << cinn::utils::Join(shape, ",");
     }
   }
   std::vector<shape_t> out_shape{shape};
@@ -628,8 +629,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForSqueeze(
     CHECK(!output_shapes.empty());
     auto tensor_A = A.as_tensor_ref();
     auto stages = CreateStages({tensor_A});
-    VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
-            << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
+    VLOG(3) << "A shape: " << cinn::utils::Join(tensor_A->shape, ", ")
+            << ", output_shapes: " << cinn::utils::Join(output_shapes[0], ", ");
 
     CHECK_EQ(pack_args.size(), 2U);
     std::string tensor_name = pack_args[1].operator std::string();
@@ -662,7 +663,8 @@ std::vector<std::vector<int>> InferShapeForSqueeze(
   VLOG(4) << "The [axis] value used in Squeeze: "
           << cinn::utils::Join(axes, ",");
 
-  const auto &posi_axes = utils::GetPositiveAxes(axes, inputs_shape[0].size());
+  const auto &posi_axes =
+      cinn::utils::GetPositiveAxes(axes, inputs_shape[0].size());
   std::vector<int> output_shape;
   if (posi_axes.size()) {
     for (int idx = 0; idx < inputs_shape[0].size(); ++idx) {
@@ -742,7 +744,7 @@ std::vector<std::vector<int>> InferShapeForExpandDims(
           << cinn::utils::Join(axes, ",");
 
   std::vector<int> out_shape(inputs_shape[0].size() + axes.size(), 1);
-  const auto &posi_axes = utils::GetPositiveAxes(axes, out_shape.size());
+  const auto &posi_axes = cinn::utils::GetPositiveAxes(axes, out_shape.size());
 
   int shape_pos = 0, axes_pos = 0;
   for (int i = 0; i < out_shape.size(); ++i) {
@@ -782,8 +784,8 @@ std::shared_ptr<OpStrategy> StrategyForReshape(
         absl::get<std::vector<int>>(attr_store.at("shape"));
     auto tensor_A = A.as_tensor_ref();
     auto stages = CreateStages({tensor_A});
-    VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
-            << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
+    VLOG(3) << "A shape: " << cinn::utils::Join(tensor_A->shape, ", ")
+            << ", output_shapes: " << cinn::utils::Join(output_shapes[0], ", ");
 
     CHECK_EQ(pack_args.size(), 2);
     CHECK(pack_args[1].is_string());
@@ -872,8 +874,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForCast(
         CHECK(!output_shapes.empty());
         auto tensor_A = A.as_tensor_ref();
         auto stages = CreateStages({tensor_A});
-        VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
-                << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
+        VLOG(3) << "A shape: " << cinn::utils::Join(tensor_A->shape, ", ")
+                << ", output_shapes: "
+                << cinn::utils::Join(output_shapes[0], ", ");
         CHECK_EQ(pack_args.size(), 2U);
         std::string tensor_name = pack_args[1].operator std::string();
         ir::Tensor out = pe::Cast(tensor_A, out_type[0], tensor_name);

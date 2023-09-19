@@ -333,7 +333,7 @@ std::shared_ptr<Scope> BuildScope(Target target,
       shape.push_back(Shape::dim_t(shape_dim));
     }
     VLOG(3) << "Tensor [" << iter.first << "] resize to "
-            << utils::Join(shape, ",");
+            << cinn::utils::Join(shape, ",");
     tensor->Resize(Shape{shape});
     CHECK(dtype_dict.count(iter.first));
     CHECK(dtype_dict.at(iter.first).is_supported())

@@ -18,5 +18,7 @@
 #include "paddle/cinn/ir/utils/ir_printer.h"
 
 namespace cinn {
-namespace ir {}  // namespace ir
+namespace ir {
+namespace ir_utils {}  // namespace ir_utils
+}  // namespace ir
 }  // namespace cinn

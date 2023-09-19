@@ -28,9 +28,11 @@
 
 namespace cinn {
 namespace ir {
-
+namespace ir_utils {
 using common::bfloat16;
 using common::float16;
+using utils::GetStreamCnt;
+using utils::Join;
 
 void IrPrinter::Print(const Expr &e) {
   IRVisitorRequireReImpl::Visit(&e);
@@ -360,13 +362,13 @@ void IrPrinter::Visit(const _Buffer_ *x) {
   std::transform(x->shape.begin(),
                  x->shape.end(),
                  std::back_inserter(dim_names),
-                 [&](const Expr &x) { return utils::GetStreamCnt(x); });
+                 [&](const Expr &x) { return GetStreamCnt(x); });
 
   str_ += "_Buffer_<";
 
   str_ += x->type().to_string();
   str_ += ": ";
-  str_ += utils::Join(dim_names, ",");
+  str_ += Join(dim_names, ",");
   str_ += ">(";
   str_ += x->name;
   str_ += ")";
@@ -395,7 +397,7 @@ void IrPrinter::Visit(const _LoweredFunc_ *f) {
     arg_names.push_back(arg.name());
   }
   str_ += "(";
-  str_ += utils::Join(arg_names, ", ");
+  str_ += Join(arg_names, ", ");
   str_ += ")\n";
 
   Visit(f->body);
@@ -499,12 +501,12 @@ void IrPrinter::Visit(const PrimitiveNode *x) {
   for (auto &args : x->arguments) {
     std::vector<std::string> arg_repr;
     for (auto &arg : args) {
-      arg_repr.push_back(utils::GetStreamCnt(arg));
+      arg_repr.push_back(GetStreamCnt(arg));
     }
-    args_repr.push_back(utils::Join(arg_repr, ","));
+    args_repr.push_back(Join(arg_repr, ","));
   }
 
-  str_ += utils::Join(args_repr, ",");
+  str_ += Join(args_repr, ",");
   str_ += ")";
 }
 
@@ -668,9 +670,11 @@ void IrPrinter::Visit(const intrinsics::BuiltinIntrin *x) {
   str_ += ")";
 }
 
+}  // namespace ir_utils
+
 std::ostream &operator<<(std::ostream &os, Expr a) {
   std::stringstream ss;
-  IrPrinter printer(ss);
+  ir_utils::IrPrinter printer(ss);
   printer.Print(a);
   os << ss.str();
   return os;
@@ -678,7 +682,7 @@ std::ostream &operator<<(std::ostream &os, Expr a) {
 
 std::ostream &operator<<(std::ostream &os, const std::vector<Expr> &a) {
   std::stringstream ss;
-  IrPrinter printer(ss);
+  ir_utils::IrPrinter printer(ss);
   printer.Print(a);
   os << ss.str();
   return os;
@@ -692,6 +696,5 @@ std::ostream &operator<<(std::ostream &os, const ir::Module &m) {
   os << "\n\n}";
   return os;
 }
-
 }  // namespace ir
 }  // namespace cinn

@@ -136,7 +136,7 @@ std::string TransValidVarName(std::string name) {
   return name;
 }
 
-std::string Attribute2String(const utils::Attribute &attr) {
+std::string Attribute2String(const cinn::utils::Attribute &attr) {
   std::stringstream ss;
   if (absl::holds_alternative<bool>(attr)) {
     ss << (absl::get<bool>(attr) ? "True" : "False");

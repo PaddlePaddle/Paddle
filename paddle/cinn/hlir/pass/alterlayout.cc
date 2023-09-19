@@ -131,7 +131,7 @@ std::vector<framework::shape_t> UpdateInferInfos(
     (*layout_dict)[sink->id()] = inferlayouts[0][i];
     VLOG(3) << "Infershape: " << node->op()->name << "'s " << i
             << "-th outlink " << sink->id() << ": "
-            << utils::Join(infershapes[i], ", ");
+            << cinn::utils::Join(infershapes[i], ", ");
   }
   node->attrs.attr_store["out_layouts"] = inferlayouts[0];
   node->attrs.attr_store["input_layouts"] = inferlayouts[1];
@@ -263,7 +263,7 @@ void AlterLayoutPass(Graph* graph) {
           } else {
             LOG(FATAL)
                 << "conv2d's input shape should be 4D/5D. Wrong input shape: "
-                << utils::Join(input_shape, ", ");
+                << cinn::utils::Join(input_shape, ", ");
           }
 
           if (weight_shape.size() == 4) {
@@ -275,7 +275,7 @@ void AlterLayoutPass(Graph* graph) {
           } else {
             LOG(FATAL)
                 << "conv2d's weight shape should be 4D/6D. Wrong weight shape: "
-                << utils::Join(weight_shape, ", ");
+                << cinn::utils::Join(weight_shape, ", ");
           }
           VLOG(3) << "oc: " << oc;
           VLOG(3) << "ic: " << ic;

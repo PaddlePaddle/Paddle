@@ -21,15 +21,15 @@
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/optim/ir_replace.h"
+#include "paddle/cinn/ir/utils/ir_replace.h"
 
 namespace cinn {
 namespace optim {
 
 namespace {
 
-struct UnrollMutator : public ir::IRMutator<Expr*> {
-  void operator()(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+struct UnrollMutator : public ir::ir_utils::IRMutator<Expr*> {
+  void operator()(Expr* expr) { ir::ir_utils::IRMutator<>::Visit(expr, expr); }
 
  private:
   // update auto_max_step_ from the specific attribute of ScheduleBlock
@@ -41,7 +41,7 @@ struct UnrollMutator : public ir::IRMutator<Expr*> {
         int value = *attr_v;
         std::swap(auto_max_step_, value);
         VLOG(5) << "auto_max_step is updated:" << auto_max_step_;
-        ir::IRMutator<>::Visit(op, expr);
+        ir::ir_utils::IRMutator<>::Visit(op, expr);
         std::swap(auto_max_step_, value);
         return;
       } else {
@@ -49,7 +49,7 @@ struct UnrollMutator : public ir::IRMutator<Expr*> {
                      << ir::attr::auto_unroll_max_step;
       }
     }
-    ir::IRMutator<>::Visit(op, expr);
+    ir::ir_utils::IRMutator<>::Visit(op, expr);
   }
 
   // count a Store node as plain statement
@@ -94,8 +94,8 @@ struct UnrollMutator : public ir::IRMutator<Expr*> {
 
     for (int i = min->value; i < extent->value; i++) {
       Expr start = op->min + i;
-      body.push_back(optim::IRCopy(op->body));
-      optim::IrReplace(&body.back(), op->loop_var, start);
+      body.push_back(ir::ir_utils::IRCopy(op->body));
+      ir::ir_utils::IrReplace(&body.back(), op->loop_var, start);
     }
 
     *expr = ir::Block::Make(body);

@@ -944,7 +944,7 @@ void Conv2d_NCHWc_1X1_Schedule_CPU(poly::StageMap stages,
   // CC: [batch, oh, ow, oc, ic, kh, kw] -> [batch_oc_outer_oh_outer_fused,
   // oh_inner, ow, oc_inner, ic, kh, kw]
   stages[CC]->ComputeAt2(stages[packed_out], 0);
-  VLOG(3) << "cache write shape: " << utils::Join(CC->shape, ", ");
+  VLOG(3) << "cache write shape: " << cinn::utils::Join(CC->shape, ", ");
   // tempory solution because reorder may be wrong before ComputeAt
   // reorder: [batch_oc_outer_oh_outer_fused, oh_inner, ow_outer, ow_inner,
   // oc_inner] -> [batch_oc_outer_oh_outer_fused, ow_outer, oh_inner, ow_inner,
@@ -1320,7 +1320,7 @@ void Conv2d_NCHWc_Schedule_CPU(poly::StageMap stages,
 
   // CC
   stages[CC]->ComputeAt2(stages[packed_out], 1);
-  VLOG(3) << "cache write shape: " << utils::Join(CC->shape, ", ");
+  VLOG(3) << "cache write shape: " << cinn::utils::Join(CC->shape, ", ");
   VLOG(3) << "stages[packed_out]->transformed_domain()"
           << stages[packed_out]->transformed_domain();
   VLOG(3) << "stages[CC]->transformed_domain()"
@@ -2693,7 +2693,7 @@ void CudaScheduleInjectiveWithVectorize(poly::Stage *stage,
     for (int i = 0; i < stage->n_out_dims(); ++i) {
       dim_ranges.push_back(stage->GetDimRange(i));
     }
-    std::string res = "[" + utils::Join(dim_ranges, ",") + "]";
+    std::string res = "[" + cinn::utils::Join(dim_ranges, ",") + "]";
     return res;
   };
 
@@ -2739,7 +2739,7 @@ void CudaScheduleInjectiveWithVectorize(poly::Stage *stage,
   VLOG(5) << "CudaScheduleInjectiveWithVectorize tensor:"
           << stage->tensor()->name << ", vector_width:" << vector_width
           << ", prod_size:" << prod_size << ", shape:["
-          << utils::Join(output_shape, ",") << "]"
+          << cinn::utils::Join(output_shape, ",") << "]"
           << ", range:" << range_str_fn();
 }
 

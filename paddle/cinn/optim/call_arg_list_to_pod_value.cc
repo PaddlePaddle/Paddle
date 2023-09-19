@@ -27,8 +27,8 @@ namespace optim {
 
 namespace {
 
-struct CallArgListToPodValueMutator : ir::IRMutator<> {
-  void operator()(Expr* e) { ir::IRMutator<>::Visit(e, e); }
+struct CallArgListToPodValueMutator : ir::ir_utils::IRMutator<> {
+  void operator()(Expr* e) { ir::ir_utils::IRMutator<>::Visit(e, e); }
 
  private:
   void Visit(const ir::Call* op, Expr* expr) override {

@@ -185,9 +185,9 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
             << "The size of stride in conv2d op is not 2! Please check.";
         std::vector<ir::Tensor> out;
         VLOG(3) << "input shape: "
-                << utils::Join(A.as_tensor_ref()->shape, ", ");
+                << cinn::utils::Join(A.as_tensor_ref()->shape, ", ");
         VLOG(3) << "weight shape: "
-                << utils::Join(B.as_tensor_ref()->shape, ", ");
+                << cinn::utils::Join(B.as_tensor_ref()->shape, ", ");
         CHECK_GE(pack_args.size(), 3);
         CHECK(pack_args[2].is_string());
         std::string tensor_name = pack_args[2].operator std::string();
@@ -585,9 +585,9 @@ std::shared_ptr<OpStrategy> StrategyForConv2dNCHWc(
         // A is input: [N, C_in_outer, H, W, C_in_inner], B is filter: [C_out,
         // C_in_group_outer, filter_h, filter_w, C_in_group_inner]
         std::string key;
-        VLOG(3) << "input[" << utils::Join(tensor_a->shape, ", ")
-                << "], weight shape[" << utils::Join(tensor_b->shape, ", ")
-                << "]";
+        VLOG(3) << "input[" << cinn::utils::Join(tensor_a->shape, ", ")
+                << "], weight shape["
+                << cinn::utils::Join(tensor_b->shape, ", ") << "]";
         out = pe::Conv2d_NCHWc(tensor_a,
                                tensor_b,
                                padding[0],
@@ -751,7 +751,7 @@ std::vector<shape_t> InferShapeForConv2dNCHWc(
   auto input_pad_w = std::min(pad_w_bound, w_in + 2 * pad_w);
   std::vector<int> input_pad_shape = {
       batch, ic_chunk, input_pad_h, input_pad_w, ic_bn};
-  VLOG(3) << "packed_out_shape: " << utils::Join(packed_out_shape, ", ");
+  VLOG(3) << "packed_out_shape: " << cinn::utils::Join(packed_out_shape, ", ");
   return {packed_out_shape, packed_out_shape, input_pad_shape};
 }
 

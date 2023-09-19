@@ -109,10 +109,10 @@ std::vector<shape_t> InferShapeForBroadcast(
     }
   }
   VLOG(3) << "broadcast input shapes are : "
-          << utils::Join(inputs_shape[0], ", ") << "; "
-          << utils::Join(inputs_shape[1], ", ");
+          << cinn::utils::Join(inputs_shape[0], ", ") << "; "
+          << cinn::utils::Join(inputs_shape[1], ", ");
   pe::GetBroadcastOutShape(inputs_shape[0], inputs_shape[1], &out_shape, axis);
-  VLOG(3) << "broadcast out shape: " << utils::Join(out_shape, ", ");
+  VLOG(3) << "broadcast out shape: " << cinn::utils::Join(out_shape, ", ");
   return {out_shape};
 }
 
@@ -183,8 +183,9 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastTo(
   CHECK(attrs.attr_store.count("broadcast_axes"));
   broadcast_axes =
       absl::get<std::vector<int>>(attrs.attr_store.at("broadcast_axes"));
-  VLOG(3) << "broadcast out shape: " << utils::Join(out_shape, ", ");
-  VLOG(3) << "broadcast_axes shape: " << utils::Join(broadcast_axes, ", ");
+  VLOG(3) << "broadcast out shape: " << cinn::utils::Join(out_shape, ", ");
+  VLOG(3) << "broadcast_axes shape: "
+          << cinn::utils::Join(broadcast_axes, ", ");
 
   framework::CINNCompute broadcast_to_compute([=](lang::Args args,
                                                   lang::RetValue *ret) {
@@ -226,9 +227,11 @@ std::vector<shape_t> InferShapeForBroadcastTo(
   out_shape = absl::get<std::vector<int>>(attrs.at("out_shape"));
   broadcast_axes = absl::get<std::vector<int>>(attrs.at("broadcast_axes"));
 
-  VLOG(3) << "broadcast input shape: " << utils::Join(inputs_shape[0], ", ");
-  VLOG(3) << "broadcast out shape: " << utils::Join(out_shape, ", ");
-  VLOG(3) << "broadcast_axes shape: " << utils::Join(broadcast_axes, ", ");
+  VLOG(3) << "broadcast input shape: "
+          << cinn::utils::Join(inputs_shape[0], ", ");
+  VLOG(3) << "broadcast out shape: " << cinn::utils::Join(out_shape, ", ");
+  VLOG(3) << "broadcast_axes shape: "
+          << cinn::utils::Join(broadcast_axes, ", ");
   if (inputs_shape[0].empty()) {
     CHECK(broadcast_axes.size() == 1 && broadcast_axes[0] == 0)
         << "broadcast_axes's size should be {1} when the input is 0D-Tensor";

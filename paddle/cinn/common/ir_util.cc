@@ -139,8 +139,8 @@ Expr RampRelatedMul(Expr a, Expr b) {
 Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
                        const std::vector<Expr> &indices) {
   VLOG(3) << "Begin IndiceToAbsOffset";
-  VLOG(3) << "shape is : " << utils::Join(shape, ",");
-  VLOG(3) << "indices is : " << utils::Join(indices, ",");
+  VLOG(3) << "shape is : " << cinn::utils::Join(shape, ",");
+  VLOG(3) << "indices is : " << cinn::utils::Join(indices, ",");
   CHECK_LE(shape.size(), indices.size());
   Expr res;
   for (int i = 0; i < shape.size(); i++) {
@@ -175,7 +175,7 @@ Expr PrecedingAxisToAbsOffset(const std::vector<Expr> &shape,
 
 namespace {
 
-class SubstituteMutator : ir::IRMutator<ir::Expr *> {
+class SubstituteMutator : ir::ir_utils::IRMutator<ir::Expr *> {
  public:
   explicit SubstituteMutator(const std::map<const ir::_Var_ *, Expr> &var_map) {
     for (auto &item : var_map) {
@@ -186,7 +186,7 @@ class SubstituteMutator : ir::IRMutator<ir::Expr *> {
   void operator()(ir::Expr *expr) { Visit(expr); }
 
  private:
-  void Visit(Expr *expr) { ir::IRMutator<>::Visit(expr, expr); }
+  void Visit(Expr *expr) { ir::ir_utils::IRMutator<>::Visit(expr, expr); }
 
   void Visit(const ir::_Var_ *op, ir::Expr *expr) override {
     auto it = var_map_.find(op->name);
@@ -249,8 +249,8 @@ Expr or_all(const std::vector<Expr> &conds) {
 }
 
 void CheckTensorUniqueInExpr(Expr expr) {
-  auto tensor_uniq =
-      ir::CollectIRNodes(expr, [](const Expr *x) { return x->as_tensor(); });
+  auto tensor_uniq = ir::ir_utils::CollectIRNodes(
+      expr, [](const Expr *x) { return x->as_tensor(); });
   absl::flat_hash_map<std::string, const ir::_Tensor_ *> tensor_names;
   for (auto &t : tensor_uniq) {
     auto *tp = t.as_tensor();
@@ -269,9 +269,9 @@ void CheckBufferUniqueInExpr(Expr expr) {
   // the buffers exists in tensor and lowered functions.
   CheckTensorUniqueInExpr(expr);
 
-  auto tensors =
-      ir::CollectIRNodes(expr, [](const Expr *x) { return x->as_tensor(); });
-  auto funcs = ir::CollectIRNodes(
+  auto tensors = ir::ir_utils::CollectIRNodes(
+      expr, [](const Expr *x) { return x->as_tensor(); });
+  auto funcs = ir::ir_utils::CollectIRNodes(
       expr, [](const Expr *x) { return x->as_lowered_func(); });
 
   absl::flat_hash_map<std::string, const ir::_Buffer_ *> buffer_name;
@@ -337,7 +337,7 @@ Expr cast(Expr e, Type type) {
 
 std::vector<std::string> GatherItersToTensorProducer(
     const std::string &target_tensor_name, Expr *expr) {
-  struct Visitor : public ir::IRMutator<> {
+  struct Visitor : public ir::ir_utils::IRMutator<> {
     std::vector<std::string> iters;
     const std::string &target_tensor_name;
 
@@ -345,7 +345,7 @@ std::vector<std::string> GatherItersToTensorProducer(
         : target_tensor_name(target_tensor_name) {}
 
     std::vector<std::string> operator()(Expr *expr) {
-      ir::IRMutator<>::Visit(expr, expr);
+      ir::ir_utils::IRMutator<>::Visit(expr, expr);
       return iters;
     }
 
@@ -366,12 +366,12 @@ std::vector<std::string> GatherItersToTensorProducer(
 
     void Visit(const ir::For *op, Expr *expr) {
       for_stack.push_back(expr);
-      ir::IRMutator<>::Visit(op, expr);
+      ir::ir_utils::IRMutator<>::Visit(op, expr);
       for_stack.pop_back();
     }
     void Visit(const ir::PolyFor *op, Expr *expr) {
       for_stack.push_back(expr);
-      ir::IRMutator<>::Visit(op, expr);
+      ir::ir_utils::IRMutator<>::Visit(op, expr);
       for_stack.pop_back();
     }
 
@@ -385,7 +385,7 @@ std::vector<Expr *> GetForloopStackToStore(Expr *expr,
                                            const std::string &tensor_name) {
   VLOG(4) << "search store " << tensor_name << " in expr:\n";
   VLOG(4) << *expr;
-  struct Mutator : public ir::IRMutator<> {
+  struct Mutator : public ir::ir_utils::IRMutator<> {
     std::vector<Expr *> forloop_stack;
     bool found{false};
 
@@ -395,21 +395,21 @@ std::vector<Expr *> GetForloopStackToStore(Expr *expr,
         : tensor_name(tensor_name) {}
 
     std::vector<Expr *> operator()(Expr *expr) {
-      ir::IRMutator<>::Visit(expr, expr);
+      ir::ir_utils::IRMutator<>::Visit(expr, expr);
       return forloop_stack;
     }
 
     void Visit(const ir::For *op, Expr *expr) {
       auto *node = expr->As<ir::For>();
       forloop_stack.push_back(expr);
-      ir::IRMutator<>::Visit(&node->body, &node->body);
+      ir::ir_utils::IRMutator<>::Visit(&node->body, &node->body);
       if (!found) forloop_stack.pop_back();
     }
 
     void Visit(const ir::PolyFor *op, Expr *expr) {
       auto *node = expr->As<ir::PolyFor>();
       forloop_stack.push_back(expr);
-      ir::IRMutator<>::Visit(&node->body, &node->body);
+      ir::ir_utils::IRMutator<>::Visit(&node->body, &node->body);
       if (!found) forloop_stack.pop_back();
     }
 

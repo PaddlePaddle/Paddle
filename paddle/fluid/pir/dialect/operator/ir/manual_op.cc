@@ -1099,7 +1099,7 @@ pir::Block *IfOp::false_block() {
   if (false_region.empty()) false_region.emplace_back();
   return false_region.front();
 }
-void IfOp::Print(pir::IrPrinter &printer) {
+void IfOp::Print(pir::ir_utils::IrPrinter &printer) {
   auto &os = printer.os;
   auto op = operation();
   printer.PrintOpResult(op);

@@ -185,7 +185,7 @@ void Program::Execute(
 }
 
 void Program::ExecuteTest(int repeat_) {
-  cinn::utils::Timer timer1;
+  utils::Timer timer1;
   for (int i = 0; i < 100; i++) {
     for (auto& ins : instrs_) {
       ins->Run();

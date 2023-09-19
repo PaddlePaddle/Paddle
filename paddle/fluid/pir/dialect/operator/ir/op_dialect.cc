@@ -158,7 +158,7 @@ pir::Attribute OperatorDialect::ParseAttribute(
 }
 
 void OperatorDialect::PrintOperation(pir::Operation *op,
-                                     pir::IrPrinter &printer) const {
+                                     pir::ir_utils::IrPrinter &printer) const {
   if (auto if_op = op->dyn_cast<IfOp>()) {
     if_op.Print(printer);
   } else {

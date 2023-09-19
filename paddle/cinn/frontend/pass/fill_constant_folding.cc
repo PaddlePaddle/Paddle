@@ -66,7 +66,7 @@ class FillConstantKey {
                     key.shape_.end(),
                     [&](const DimType& dim) { hash_str << dim; });
 
-      hash_str << utils::Attribute2String(key.value_);
+      hash_str << cinn::utils::Attribute2String(key.value_);
       hash_str << key.force_cpu_;
       hash_str << key.dtype_;
 

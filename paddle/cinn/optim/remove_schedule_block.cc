@@ -21,11 +21,11 @@
 namespace cinn {
 namespace optim {
 
-struct ScheduleBlockRemover : public ir::IRMutator<Expr*> {
+struct ScheduleBlockRemover : public ir::ir_utils::IRMutator<Expr*> {
   void operator()(ir::Expr* expr) { Visit(expr); }
 
  private:
-  void Visit(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+  void Visit(ir::Expr* expr) { ir::ir_utils::IRMutator<>::Visit(expr, expr); }
 
   void Visit(const ir::ScheduleBlockRealize* op, Expr* expr) override {
     auto* node = expr->As<ir::ScheduleBlockRealize>();

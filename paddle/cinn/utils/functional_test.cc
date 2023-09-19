@@ -75,24 +75,24 @@ TEST(Functional, IsVector) {
 TEST(Functional, Flatten) {
   double d = 3.14;
   auto flatten_d = Flatten(d);
-  LOG(INFO) << utils::Join(flatten_d, ", ");
+  LOG(INFO) << cinn::utils::Join(flatten_d, ", ");
   ASSERT_EQ(flatten_d.size(), 1);
   ASSERT_TRUE(absl::c_equal(flatten_d, std::vector<double>{3.14}));
 
   std::string s = "constant";
   auto flatten_s = Flatten(s);
-  LOG(INFO) << utils::Join(flatten_s, ", ");
+  LOG(INFO) << cinn::utils::Join(flatten_s, ", ");
   ASSERT_EQ(flatten_s.size(), 1);
   ASSERT_TRUE(absl::c_equal(flatten_s, std::vector<std::string>{"constant"}));
   const std::string &sr = s;
   auto flatten_sr = Flatten(sr);
-  LOG(INFO) << utils::Join(flatten_sr, ", ");
+  LOG(INFO) << cinn::utils::Join(flatten_sr, ", ");
   ASSERT_EQ(flatten_sr.size(), 1);
   ASSERT_TRUE(absl::c_equal(flatten_sr, std::vector<std::string>{"constant"}));
 
   std::vector<std::vector<int>> i{{3, 4, 5}, {7, 8, 9, 10}};
   auto flatten_i = Flatten(i);
-  LOG(INFO) << utils::Join(flatten_i, ", ");
+  LOG(INFO) << cinn::utils::Join(flatten_i, ", ");
   ASSERT_EQ(flatten_i.size(), 7);
   ASSERT_TRUE(absl::c_equal(flatten_i, std::vector<int>{3, 4, 5, 7, 8, 9, 10}));
 
@@ -100,7 +100,7 @@ TEST(Functional, Flatten) {
       {{true, false}, {true, false, true, false}},
       {{false}, {true, true, false}}};
   std::vector<bool> flatten_v = Flatten(v);
-  LOG(INFO) << utils::Join(flatten_v, ", ");
+  LOG(INFO) << cinn::utils::Join(flatten_v, ", ");
   ASSERT_EQ(flatten_v.size(), 10);
   ASSERT_TRUE(absl::c_equal(
       flatten_v,
@@ -111,7 +111,7 @@ TEST(Functional, Flatten) {
       {{"true", "false"}, {"true", "false", "true", "false"}},
       {{"false"}, {"true", "true", "false"}}};
   auto flatten_str = Flatten(str);
-  LOG(INFO) << utils::Join(flatten_str, ", ");
+  LOG(INFO) << cinn::utils::Join(flatten_str, ", ");
   ASSERT_EQ(flatten_str.size(), 10);
   ASSERT_TRUE(absl::c_equal(flatten_str,
                             std::vector<std::string>{"true",
@@ -128,7 +128,7 @@ TEST(Functional, Flatten) {
   std::list<std::set<std::vector<float>>> a{{{1, 2, 3}, {1, 2, 3, 4, 5, 6}},
                                             {{1, 2.2f, 3}, {1, 2, 3.3f, 4.5f}}};
   auto flatten_a = Flatten(a);
-  LOG(INFO) << utils::Join(flatten_a, ", ");
+  LOG(INFO) << cinn::utils::Join(flatten_a, ", ");
   ASSERT_EQ(flatten_a.size(), 16);
   ASSERT_TRUE(
       absl::c_equal(flatten_a,
@@ -137,13 +137,13 @@ TEST(Functional, Flatten) {
 
   std::list<std::vector<std::set<bool>>> b;
   auto flatten_b = Flatten(b);
-  LOG(INFO) << utils::Join(flatten_b, ", ");
+  LOG(INFO) << cinn::utils::Join(flatten_b, ", ");
   ASSERT_EQ(flatten_b.size(), 0);
   ASSERT_TRUE(absl::c_equal(flatten_b, std::vector<bool>{}));
 
   std::list<std::list<std::vector<std::string>>> empty_str;
   auto flatten_empty_str = Flatten(empty_str);
-  LOG(INFO) << utils::Join(flatten_empty_str, ", ");
+  LOG(INFO) << cinn::utils::Join(flatten_empty_str, ", ");
   ASSERT_EQ(flatten_empty_str.size(), 0);
   ASSERT_TRUE(absl::c_equal(flatten_empty_str, std::vector<std::string>{}));
 }

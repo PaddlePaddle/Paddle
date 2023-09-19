@@ -17,12 +17,10 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-TEST(RecordEvent, HOST) {
-  using cinn::utils::EventType;
-  using cinn::utils::HostEventRecorder;
-  using cinn::utils::ProfilerHelper;
-  using cinn::utils::RecordEvent;
+namespace cinn {
+namespace utils {
 
+TEST(RecordEvent, HOST) {
   ProfilerHelper::EnableCPU();
 
   LOG(INFO) << "Usage 1: RecordEvent for HOST";
@@ -78,3 +76,6 @@ TEST(RecordEvent, HOST) {
   }
   EXPECT_EQ(events.size(), 8U);
 }
+
+}  // namespace utils
+}  // namespace cinn

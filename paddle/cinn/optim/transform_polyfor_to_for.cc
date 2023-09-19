@@ -53,11 +53,12 @@ Expr PlusOneWithMinMax(Expr expr) {
   return expr + 1;
 }
 
-struct PolyForWithSimpleConditionToForMutator : public ir::IRMutator<Expr*> {
-  void operator()(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+struct PolyForWithSimpleConditionToForMutator
+    : public ir::ir_utils::IRMutator<Expr*> {
+  void operator()(Expr* expr) { ir::ir_utils::IRMutator<>::Visit(expr, expr); }
 
  private:
-  void Visit(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+  void Visit(Expr* expr) { ir::ir_utils::IRMutator<>::Visit(expr, expr); }
 
   void Visit(const ir::PolyFor* op, Expr* expr) override {
     auto* node = expr->As<ir::PolyFor>();

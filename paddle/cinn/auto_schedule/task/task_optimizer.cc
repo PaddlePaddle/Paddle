@@ -247,7 +247,7 @@ TaskOptimizer::Result TaskOptimizer::OptimizeByEvolution(
   auto& optimized_funcs = result.functions;
   auto& best_cost = result.cost;
   // use initial lowered function as default result
-  optimized_funcs = optim::IRCopy(task_->lowered_funcs);
+  optimized_funcs = ir::ir_utils::IRCopy(task_->lowered_funcs);
   if (options.num_measure_trials ==
       0) {  // no need to measure and simply return the best searched
     std::vector<MeasureInput> measure_candidates;
@@ -308,7 +308,7 @@ TaskOptimizer::Result TaskOptimizer::OptimizeByEvolution(
         cost_model_samples[i] = &(states[i]->ir_schedule.GetModule());
         cost_model_labels[i] = measure_outputs[i].execution_cost;
       }
-      VLOG(4) << utils::StringFormat(
+      VLOG(4) << cinn::utils::StringFormat(
           "Update CostModel with samples size=%lu,labels size=%lu",
           cost_model_samples.size(),
           cost_model_labels.size());
@@ -347,7 +347,7 @@ std::vector<SearchState> TaskOptimizer::SearchOneRound(
     CHECK_EQ(best_exprs.size(), task_->lowered_funcs.size())
         << "RuntimeError: Expr size is not equal to LoweredFunc size in "
            "TaskOptimizer";
-    auto init_funcs = optim::IRCopy(task_->lowered_funcs);
+    auto init_funcs = ir::ir_utils::IRCopy(task_->lowered_funcs);
     std::vector<ir::LoweredFunc> valid_funcs;
     for (size_t j = 0; j < best_exprs.size(); ++j) {
       auto updated_f =
@@ -387,7 +387,7 @@ size_t GetGPUSharedMemoryLimit() {
   CUDA_CALL(cudaGetDevice(&device_id));
   cudaDeviceProp prop;
   CUDA_CALL(cudaGetDeviceProperties(&prop, device_id));
-  VLOG(4) << utils::StringFormat(
+  VLOG(4) << cinn::utils::StringFormat(
       "GPU-%d GPUSharedMemoryLimit=%d", device_id, prop.sharedMemPerBlock);
   return prop.sharedMemPerBlock;
 #else
@@ -405,7 +405,7 @@ size_t GetGPULocalStackLimit() {
   CUDA_CALL(cudaGetDeviceProperties(&prop, device_id));
   size_t limit = prop.totalGlobalMem / prop.multiProcessorCount /
                  prop.maxThreadsPerMultiProcessor;
-  VLOG(4) << utils::StringFormat(
+  VLOG(4) << cinn::utils::StringFormat(
       "GPU-%d "
       "totalGlobalMem=%lu,maxThreadsPerMultiProcessor=%d,multiProcessorCount=%"
       "d, calculated "

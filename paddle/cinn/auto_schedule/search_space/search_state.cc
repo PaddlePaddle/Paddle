@@ -60,10 +60,11 @@ ScheduleDesc {
 } // end ScheduleDesc
 predicted_cost: %f)ROC";
 
-  return utils::StringFormat(fmt_str,
-                             module_stream.str().c_str(),
-                             ir_schedule.GetTraceDesc().DebugString().c_str(),
-                             predicted_cost);
+  return cinn::utils::StringFormat(
+      fmt_str,
+      module_stream.str().c_str(),
+      ir_schedule.GetTraceDesc().DebugString().c_str(),
+      predicted_cost);
 }
 
 bool operator<(const SearchState& left, const SearchState& right) {
@@ -71,7 +72,7 @@ bool operator<(const SearchState& left, const SearchState& right) {
 }
 
 // Visit every node by expanding all of their fields in dfs order
-class DfsWithExprsFields : public ir::IRVisitorRequireReImpl<void> {
+class DfsWithExprsFields : public ir::ir_utils::IRVisitorRequireReImpl<void> {
  protected:
 #define __m(t__)                          \
   void Visit(const ir::t__* x) override { \
@@ -133,11 +134,8 @@ bool SearchStateEqual::operator()(const SearchState& lhs,
   // compare exprs size firstly
   if (lhs_exprs.size() != rhs_exprs.size()) return false;
 
-  // compare every expr one by one with ir::IrEqualVisitor
   for (int i = 0; i < lhs_exprs.size(); ++i) {
-    ir::IrEqualVisitor compartor(
-        /*allow_name_suffix_diff=*/true);  // ignore suffix difference in name
-    if (!compartor.Compare(lhs_exprs[i], rhs_exprs[i])) return false;
+    if (ir::ir_utils::IRCompare(lhs_exprs[i], rhs_exprs[i]), true) return false;
   }
   return true;
 }

@@ -60,11 +60,11 @@ std::string ExprToGinacConverter::Repr(const ir::Expr& expr) {
     Replace(&repr, "*", "_mul_");
     Replace(&repr, "/", "_div_");
     // remove the spaces
-    auto fields = utils::Split(repr, " ");
-    repr = utils::Join(fields, "_");
+    auto fields = Split(repr, " ");
+    repr = Join(fields, "_");
     return repr;
   } else if (var_n) {
-    return utils::GetStreamCnt(expr);
+    return GetStreamCnt(expr);
   }
   return "";
 }
@@ -126,7 +126,7 @@ GiNaC::ex ExprToGinacConverter::BuildHelper(ir::Expr expr) {
 
 GiNaC::ex ExprToGinacConverter::operator()(Expr expr) {
   // TODO(Superjomn) Replace this with common::IsPureMath(
-  auto complex_nodes = CollectIRNodes(expr, [](const Expr* n) {
+  auto complex_nodes = ir::ir_utils::CollectIRNodes(expr, [](const Expr* n) {
     return n->As<Block>() ||    //
            n->As<PolyFor>() ||  //
            n->As<EQ>() ||       //
@@ -262,7 +262,7 @@ bool IsPureMath(Expr expr) {
       IrNodeTy ::Minus,
   });
 
-  auto complex_nodes = ir::CollectIRNodes(expr, [&](const Expr* n) {
+  auto complex_nodes = ir::ir_utils::CollectIRNodes(expr, [&](const Expr* n) {
     return !valid_node_tys.count(n->node_type());
   });
 #ifdef CINN_DEBUG

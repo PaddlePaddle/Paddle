@@ -32,11 +32,11 @@
 namespace py = pybind11;
 
 namespace cinn::pybind {
+using cinn::utils::StringFormat;
 using common::Type;
 using lang::Placeholder;
 using py::arg;
 using utils::GetStreamCnt;
-using utils::StringFormat;
 
 namespace {
 void BindBuffer(py::module *);

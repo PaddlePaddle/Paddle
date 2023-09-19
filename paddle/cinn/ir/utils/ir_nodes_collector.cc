@@ -20,6 +20,7 @@
 
 namespace cinn {
 namespace ir {
+namespace ir_utils {
 
 namespace {
 
@@ -135,7 +136,7 @@ std::map<std::string, Expr> CollectTensorMap(
     Expr x, std::function<bool(const Expr*)>&& extra_teller) {
   std::map<std::string, Expr> tensor_map;
 
-  auto tensors = CollectIRNodes(
+  auto tensors = ir::ir_utils::CollectIRNodes(
       x, [&](const Expr* x) { return x->as_tensor() && extra_teller(x); });
   for (auto& e : tensors) {
     auto* t = e.as_tensor();
@@ -147,14 +148,14 @@ std::map<std::string, Expr> CollectTensorMap(
 std::set<Expr> CollectLoadTensors(Expr x,
                                   std::function<bool(const Expr*)>&& teller) {
   if (!x.defined()) return std::set<Expr>();
-  struct Mutator : public ir::IRMutator<const Expr*> {
+  struct Mutator : public IRMutator<const Expr*> {
     std::function<bool(const Expr*)> teller;
     std::set<Expr> exprs;
     explicit Mutator(std::function<bool(const Expr*)>&& teller)
         : teller(std::move(teller)) {}
 
     void operator()(const Expr* expr) {
-      ir::IRMutator<const Expr*>::Visit(expr, expr);
+      IRMutator<const Expr*>::Visit(expr, expr);
     }
 
     void Visit(const Load* op, const Expr* expr) override {
@@ -171,14 +172,14 @@ std::set<Expr> CollectLoadTensors(Expr x,
 
 std::set<Expr> CollectStoreTensors(Expr x,
                                    std::function<bool(const Expr*)>&& teller) {
-  struct Mutator : public ir::IRMutator<const Expr*> {
+  struct Mutator : public IRMutator<const Expr*> {
     std::function<bool(const Expr*)> teller;
     std::set<Expr> exprs;
     explicit Mutator(std::function<bool(const Expr*)>&& teller)
         : teller(std::move(teller)) {}
 
     void operator()(const Expr* expr) {
-      ir::IRMutator<const Expr*>::Visit(expr, expr);
+      IRMutator<const Expr*>::Visit(expr, expr);
     }
 
     void Visit(const Store* op, const Expr* expr) override {
@@ -208,8 +209,8 @@ std::set<Expr> CollectReferencedTensors(
 }
 
 std::vector<std::string> CollectUndefinedVars(const Expr* e) {
-  struct Mutator : public ir::IRMutator<const Expr*> {
-    using ir::IRMutator<const Expr*>::Visit;
+  struct Mutator : public IRMutator<const Expr*> {
+    using IRMutator<const Expr*>::Visit;
     std::vector<std::string> undefined_vars;
     std::set<std::string> defined_vars;
     std::set<std::string> used_vars;
@@ -317,6 +318,6 @@ std::set<std::string> CollectTensorNeedsWrite(const Expr* e) {
   collector.Visit(e);
   return tensor_written;
 }
-
+}  // namespace ir_utils
 }  // namespace ir
 }  // namespace cinn

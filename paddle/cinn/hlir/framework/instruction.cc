@@ -127,8 +127,7 @@ void Instruction::Run(
     bool dryrun,
     void* stream,
     bool use_cache) {
-  utils::RecordEvent record_run(function_name_,
-                                cinn::utils::EventType::kInstruction);
+  utils::RecordEvent record_run(function_name_, utils::EventType::kInstruction);
   CHECK(finalized_flag_) << "Instruction must be finalized before run";
   if (function_name_ == "no_run") {
     VLOG(2) << "skip instruction";
@@ -139,14 +138,14 @@ void Instruction::Run(
 
   {
     utils::RecordEvent record_args("UpdateArgsCache",
-                                   cinn::utils::EventType::kInstruction);
+                                   utils::EventType::kInstruction);
     if (!use_cache || args_cached_.size() != size()) {
       UpdateArgsCache(name2podargs);
     }
   }
 
   utils::RecordEvent record_args("Instruction::Run",
-                                 cinn::utils::EventType::kInstruction);
+                                 utils::EventType::kInstruction);
 #if defined(CINN_WITH_CUDA) && !defined(CINN_WITH_CUDNN)
   if (function_name_ == "cublas_gemm" && target_.arch == Target::Arch::NVGPU) {
     auto& pod_args = args_cached_[0];

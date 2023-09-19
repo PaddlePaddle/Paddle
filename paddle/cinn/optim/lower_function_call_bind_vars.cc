@@ -24,13 +24,13 @@ namespace optim {
 
 namespace {
 
-struct LowerFunctionCallBindVarsMutator : public ir::IRMutator<> {
+struct LowerFunctionCallBindVarsMutator : public ir::ir_utils::IRMutator<> {
   LowerFunctionCallBindVarsMutator() = default;
 
   void operator()(Expr* m) {
     m_ = m->as_module();
     Expr module(m->get());
-    ir::IRMutator<>::Visit(&module, &module);
+    ir::ir_utils::IRMutator<>::Visit(&module, &module);
   }
 
  private:
@@ -60,7 +60,7 @@ struct LowerFunctionCallBindVarsMutator : public ir::IRMutator<> {
                              extra_var_args.end());
     }
 
-    ir::IRMutator<>::Visit(op, expr);
+    ir::ir_utils::IRMutator<>::Visit(op, expr);
   }
 
  private:

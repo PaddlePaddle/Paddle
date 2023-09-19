@@ -37,7 +37,7 @@
 namespace cinn {
 namespace auto_schedule {
 
-class FeatureExtractor : public ir::IRVisitorRequireReImpl<void> {
+class FeatureExtractor : public ir::ir_utils::IRVisitorRequireReImpl<void> {
  public:
   FeatureExtractor();
   Feature Extract(const ir::ModuleExpr& mod_expr, const common::Target& target);

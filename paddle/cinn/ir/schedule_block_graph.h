@@ -143,7 +143,7 @@ class ScheduleBlockGraph : public common::Graph {
  *   [0, 2, 0]: block3
  *   [0, 2, 1]: block4
  */
-struct BlockOrderConstructor : public IRMutator<Expr*> {
+struct BlockOrderConstructor : public ir_utils::IRMutator<Expr*> {
   std::map<std::vector<int>, Expr> operator()(ir::Expr* expr) {
     IRMutator::Visit(expr, expr);
     return block_order_with_ctrl_structure_;

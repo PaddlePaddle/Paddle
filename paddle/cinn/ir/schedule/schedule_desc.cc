@@ -153,7 +153,7 @@ class PackedStepContext {
   IRSchedule* ir_schedule_;
   std::vector<Expr> inputs_;
   std::vector<std::pair<size_t, size_t>> input_range_;
-  std::vector<utils::Attribute> attrs_;
+  std::vector<cinn::utils::Attribute> attrs_;
 };
 
 #define CINN_SPECIALIZE_ApplyCallHelper(attr_type)                             \
@@ -557,7 +557,7 @@ CINN_BUILD_STEP_KIND(SampleCategorical)
 
 // ------ Following codes are about member function implement of the
 // ScheduleDesc class
-void AttrVariantToProto(const utils::Attribute& attr,
+void AttrVariantToProto(const cinn::utils::Attribute& attr,
                         proto::ScheduleDesc_Attr* attr_proto) {
 #define SET_DESC_SINGLE_ITEM(index, built_type, proto_type, proto_field)   \
   case index:                                                              \
@@ -595,8 +595,9 @@ void AttrVariantToProto(const utils::Attribute& attr,
 #undef SET_DESC_REPEATED_ITEM
 }
 
-utils::Attribute AttrProtoToVariant(const proto::ScheduleDesc_Attr& attr) {
-  utils::Attribute value;
+cinn::utils::Attribute AttrProtoToVariant(
+    const proto::ScheduleDesc_Attr& attr) {
+  cinn::utils::Attribute value;
 #define PARSE_DESC_SINGLE_ITEM(proto_type, proto_field, built_type) \
   case proto::ScheduleDesc_Attr_DataType_##proto_type:              \
     value = built_type(attr.proto_field());                         \
@@ -746,7 +747,7 @@ std::vector<Expr> ScheduleDesc::ReplayWithProto(
 }
 
 ScheduleDesc ScheduleDesc::ForkAndUpdate(int step_idx,
-                                         utils::Attribute decision,
+                                         cinn::utils::Attribute decision,
                                          bool without_post_schedule) const {
   int n_valid_step = 0;
   if (!without_post_schedule) {

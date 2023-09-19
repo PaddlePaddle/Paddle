@@ -210,20 +210,22 @@ bool TensorContainsGPUInfo(ir::Tensor t, poly::Stage* stage);
 /**
  * Mark the PolyFor as Vectorized if it is scheduled Vectorize in Stage.
  */
-struct MarkVectorizeMutator : public ir::IRMutator<Expr*> {
+struct MarkVectorizeMutator : public ir::ir_utils::IRMutator<Expr*> {
   const std::map<std::string, ir::VectorizeInfo>& vectorizes;
 
   explicit MarkVectorizeMutator(const std::map<std::string /*tensor name*/,
                                                ir::VectorizeInfo>& vectorizes)
       : vectorizes(vectorizes) {}
 
-  void operator()(Expr* expr) { ir::IRMutator<Expr*>::Visit(expr, expr); }
+  void operator()(Expr* expr) {
+    ir::ir_utils::IRMutator<Expr*>::Visit(expr, expr);
+  }
 
   // NOTE This mutator takes PolyFor as input, not For.
   void Visit(const ir::PolyFor* op, Expr* expr) override {
     auto* node = expr->As<ir::PolyFor>();
     forloop_stack.push_back(node);
-    ir::IRMutator<ir::Expr*>::Visit(op, expr);
+    ir::ir_utils::IRMutator<ir::Expr*>::Visit(op, expr);
     forloop_stack.pop_back();
   }
 
@@ -245,19 +247,19 @@ struct MarkVectorizeMutator : public ir::IRMutator<Expr*> {
 /**
  * Mark the PolyFor as Unroll if is called Unroll in Stage.
  */
-struct MarkUnrollMutator : public ir::IRMutator<Expr*> {
+struct MarkUnrollMutator : public ir::ir_utils::IRMutator<Expr*> {
   std::map<std::string, std::set<int> /*level*/> unrolls;
 
   explicit MarkUnrollMutator(
       const std::map<std::string, std::set<int>>& unrolls)
       : unrolls(unrolls) {}
 
-  void operator()(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+  void operator()(Expr* expr) { ir::ir_utils::IRMutator<>::Visit(expr, expr); }
 
   void Visit(const ir::PolyFor* op, Expr* expr) override {
     auto* node = expr->As<ir::PolyFor>();
     stack.push_back(node);
-    ir::IRMutator<>::Visit(op, expr);
+    ir::ir_utils::IRMutator<>::Visit(op, expr);
     stack.pop_back();
   }
 
@@ -281,19 +283,19 @@ struct MarkUnrollMutator : public ir::IRMutator<Expr*> {
 /**
  * Mark the PolyFor as Parallel if is called Parallel in Stage.
  */
-struct MarkParallelMutator : public ir::IRMutator<Expr*> {
+struct MarkParallelMutator : public ir::ir_utils::IRMutator<Expr*> {
   std::map<std::string, std::set<int> /*level*/> parallels;
 
   explicit MarkParallelMutator(
       const std::map<std::string, std::set<int>>& parallels)
       : parallels(parallels) {}
 
-  void operator()(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+  void operator()(Expr* expr) { ir::ir_utils::IRMutator<>::Visit(expr, expr); }
 
   void Visit(const ir::PolyFor* op, Expr* expr) override {
     auto* node = expr->As<ir::PolyFor>();
     stack.push_back(node);
-    ir::IRMutator<>::Visit(op, expr);
+    ir::ir_utils::IRMutator<>::Visit(op, expr);
     stack.pop_back();
   }
 

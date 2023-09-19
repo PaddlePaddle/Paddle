@@ -25,8 +25,8 @@
 
 namespace cinn {
 namespace poly {
+using cinn::utils::StringFormat;
 using utils::Join;
-using utils::StringFormat;
 
 std::vector<std::string> isl_get_dim_names(const isl::set &x) {
   std::vector<std::string> res;
@@ -155,12 +155,12 @@ isl_set *isl_get_precending_aixs(isl_set *set,
 
   const char *statement = isl_set_get_tuple_name(set);
 
-  std::string repr =
-      utils::StringFormat("{ %s[%s] -> %s[%s] }",
-                          statement,
-                          utils::Join(domain_iterators, ", ").c_str(),
-                          statement,
-                          utils::Join(range_iterators, ", ").c_str());
+  std::string repr = cinn::utils::StringFormat(
+      "{ %s[%s] -> %s[%s] }",
+      statement,
+      cinn::utils::Join(domain_iterators, ", ").c_str(),
+      statement,
+      cinn::utils::Join(range_iterators, ", ").c_str());
   auto transform =
       isl::manage(isl_map_read_from_str(isl_set_get_ctx(set), repr.c_str()));
 
@@ -302,11 +302,12 @@ std::tuple<isl::val, isl::val> isl_set_get_axis_range_by_name(
     }
   }
 
-  isl::aff aff(isl_set_get_ctx(set),
-               utils::StringFormat("{ %s[%s] -> [%s] }",
-                                   isl_set_get_tuple_name(set),
-                                   utils::Join(from_iters, ",").c_str(),
-                                   axis_name.c_str()));
+  isl::aff aff(
+      isl_set_get_ctx(set),
+      cinn::utils::StringFormat("{ %s[%s] -> [%s] }",
+                                isl_set_get_tuple_name(set),
+                                cinn::utils::Join(from_iters, ",").c_str(),
+                                axis_name.c_str()));
 
   isl::val max_val = isl::manage(isl_set_max_val(set, aff.get()));
   isl::val min_val = isl::manage(isl_set_min_val(set, aff.get()));
@@ -330,11 +331,12 @@ std::tuple<isl::val, isl::val> isl_set_get_axis_range(isl_set *set, int pos) {
     if (pos == i) target_axis_name = from_iters.back();
   }
 
-  isl::aff aff(isl_set_get_ctx(set),
-               utils::StringFormat("{ %s[%s] -> [%s] }",
-                                   isl_set_get_tuple_name(set),
-                                   utils::Join(from_iters, ",").c_str(),
-                                   target_axis_name.c_str()));
+  isl::aff aff(
+      isl_set_get_ctx(set),
+      cinn::utils::StringFormat("{ %s[%s] -> [%s] }",
+                                isl_set_get_tuple_name(set),
+                                cinn::utils::Join(from_iters, ",").c_str(),
+                                target_axis_name.c_str()));
 
   isl::val max_val = isl::manage(isl_set_max_val(set, aff.get()));
   isl::val min_val = isl::manage(isl_set_min_val(set, aff.get()));

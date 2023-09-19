@@ -41,12 +41,12 @@ class ScheduleDesc {
   struct Step {
     std::string type;  // step name
     absl::flat_hash_map<std::string, std::vector<Expr>> inputs;
-    utils::AttributeMap attrs;
+    cinn::utils::AttributeMap attrs;
     std::vector<Expr> outputs;
     Step() = default;
     Step(std::string type_i,
          absl::flat_hash_map<std::string, std::vector<Expr>> inputs_i,
-         utils::AttributeMap attrs_i,
+         cinn::utils::AttributeMap attrs_i,
          std::vector<Expr> outputs_i)
         : type(type_i), inputs(inputs_i), attrs(attrs_i), outputs(outputs_i) {}
   };
@@ -105,7 +105,7 @@ class ScheduleDesc {
    * @return The new ScheduleDesc.
    */
   ScheduleDesc ForkAndUpdate(int step_idx,
-                             utils::Attribute decision,
+                             cinn::utils::Attribute decision,
                              bool without_post_schedule) const;
 
  private:

@@ -129,7 +129,7 @@ std::string Compiler::CompileCudaSource(const std::string& code,
   for (const auto& option : compile_options) {
     param_cstrings.push_back(option.c_str());
   }
-  VLOG(3) << "compile options: " << utils::Join(compile_options, " ");
+  VLOG(3) << "compile options: " << cinn::utils::Join(compile_options, " ");
   NVRTC_CALL(nvrtcCreateProgram(&prog,
                                 code.c_str(),
                                 nullptr,

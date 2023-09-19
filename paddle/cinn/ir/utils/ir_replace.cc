@@ -12,22 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/optim/ir_replace.h"
+#include "paddle/cinn/ir/utils/ir_replace.h"
 
 #include <set>
 
+#include "paddle/cinn/ir/utils/ir_compare.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
-namespace optim {
+namespace ir {
 using utils::GetStreamCnt;
+namespace ir_utils {
 
 namespace {
 
-struct IrReplaceMutator : ir::IRMutator<Expr*> {
+struct IrReplaceMutator : IRMutator<Expr*> {
   std::set<ir::IrNodeTy> valid_nodetys{
       {ir::IrNodeTy::Broadcast, ir::IrNodeTy::_Var_}};
 
@@ -36,24 +38,25 @@ struct IrReplaceMutator : ir::IRMutator<Expr*> {
     CHECK(valid_nodetys.count(from->node_type()))
         << "Not valid node type got " << from->node_type();
   }
-  void operator()(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+  void operator()(Expr* expr) { IRMutator<>::Visit(expr, expr); }
 
  private:
   void Visit(const ir::_Var_* op, Expr* expr) override {
     if (op->node_type() == from_->node_type() &&
         from_repr_ == GetStreamCnt(*expr)) {
-      *expr = optim::IRCopy(to_);
+      *expr = ir::ir_utils::IRCopy(to_);
     }
   }
 
   void Visit(const ir::Broadcast* op, Expr* expr) override {
     if (op->node_type() == from_->node_type() &&
         from_repr_ == GetStreamCnt(*expr)) {
-      *expr = optim::IRCopy(to_);
+      *expr = ir::ir_utils::IRCopy(to_);
     }
   }
 
   std::string from_repr_;
+
   ir::Expr from_;
   Expr to_;
 };
@@ -65,5 +68,6 @@ void IrReplace(ir::Expr* expr, ir::Expr from, ir::Expr to) {
   IrReplaceMutator(from, to)(expr);
 }
 
-}  // namespace optim
+}  // namespace ir_utils
+}  // namespace ir
 }  // namespace cinn

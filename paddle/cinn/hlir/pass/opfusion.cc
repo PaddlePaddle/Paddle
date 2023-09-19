@@ -313,8 +313,10 @@ class GraphPartition {
     auto out_shape2 = GetOutshape(node2);
     if (out_shape1.size() == 1 || out_shape2.size() == 1) return true;
     if (out_shape1.size() != out_shape2.size()) return false;
-    VLOG(2) << node1->id() << ", out_shape1: " << utils::Join(out_shape1, ", ");
-    VLOG(2) << node2->id() << ", out_shape2: " << utils::Join(out_shape2, ", ");
+    VLOG(2) << node1->id()
+            << ", out_shape1: " << cinn::utils::Join(out_shape1, ", ");
+    VLOG(2) << node2->id()
+            << ", out_shape2: " << cinn::utils::Join(out_shape2, ", ");
     for (int i = 0; i < out_shape1.size(); i++) {
       if (out_shape1[i] != out_shape2[i]) return false;
     }

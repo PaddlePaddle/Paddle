@@ -70,7 +70,7 @@ struct SearchStateHash {
   size_t operator()(const SearchState& s) const;
 };
 
-// SearchStateHash equal functor, use ir::IrEqualVisitor to compare their AST
+// SearchStateHash equal functor, use IRCompare to compare their AST
 // struct and fields
 struct SearchStateEqual {
   bool operator()(const SearchState& lhs, const SearchState& rhs) const;

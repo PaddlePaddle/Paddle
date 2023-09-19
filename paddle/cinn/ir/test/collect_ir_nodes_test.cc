@@ -19,16 +19,17 @@
 
 namespace cinn {
 namespace ir {
+namespace ir_utils {
 
 TEST(CollectIRNodes, basic0) {
   Expr C = Expr(1) + 2;
 
-  auto exprs =
-      CollectIRNodes(C, [](const Expr* x) { return x->As<ir::Add>(); });
+  auto exprs = ir::ir_utils::CollectIRNodes(
+      C, [](const Expr* x) { return x->As<ir::Add>(); });
   ASSERT_EQ(exprs.size(), 1UL);
 
-  auto ints =
-      CollectIRNodes(C, [](const Expr* x) { return x->As<ir::IntImm>(); });
+  auto ints = ir::ir_utils::CollectIRNodes(
+      C, [](const Expr* x) { return x->As<ir::IntImm>(); });
   ASSERT_EQ(ints.size(), 2UL);
 }
 
@@ -47,16 +48,18 @@ TEST(CollectIRNodes, basic) {
 
   LOG(INFO) << "fn:\n" << fn;
 
-  auto tensors =
-      CollectIRNodes(fn, [](const Expr* x) { return x->as_tensor(); });
+  auto tensors = ir::ir_utils::CollectIRNodes(
+      fn, [](const Expr* x) { return x->as_tensor(); });
   ASSERT_EQ(tensors.size(), 5UL);
 
   auto fn_body = fn.As<ir::_LoweredFunc_>()->body;
   LOG(INFO) << "fn.body:\n" << fn_body;
-  auto tensors2 =
-      CollectIRNodes(fn_body, [](const Expr* x) { return x->as_tensor(); });
-  auto exprs = CollectIRNodes(fn_body, [](const Expr* x) { return x; });
+  auto tensors2 = ir::ir_utils::CollectIRNodes(
+      fn_body, [](const Expr* x) { return x->as_tensor(); });
+  auto exprs =
+      ir::ir_utils::CollectIRNodes(fn_body, [](const Expr* x) { return x; });
 }
 
+}  // namespace ir_utils
 }  // namespace ir
 }  // namespace cinn

@@ -45,12 +45,12 @@ static const std::set<std::string> kExternFp32CallsCPU = {
     "erf", "acos", "acosh", "asin", "asinh", "atan", "atanh", "remainder"};
 
 void MapExternCall(Expr *e, Target target) {
-  struct Mutator : ir::IRMutator<Expr *> {
+  struct Mutator : ir::ir_utils::IRMutator<Expr *> {
     Target target;
 
     explicit Mutator(Target target) : target(target) {}
 
-    void operator()(Expr *e) { ir::IRMutator<>::Visit(e, e); }
+    void operator()(Expr *e) { ir::ir_utils::IRMutator<>::Visit(e, e); }
 
     void Visit(const ir::Call *op, Expr *expr) override {
       auto *node = expr->As<ir::Call>();

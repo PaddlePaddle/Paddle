@@ -58,7 +58,7 @@ struct Condition {
   }
 
   std::string __str__() const {
-    return utils::StringFormat("%s", cond.c_str());
+    return cinn::utils::StringFormat("%s", cond.c_str());
   }
 };
 

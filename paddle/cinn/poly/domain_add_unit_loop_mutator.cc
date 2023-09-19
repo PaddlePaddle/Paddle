@@ -32,7 +32,7 @@ DomainAddUnitLoopMutator::DomainAddUnitLoopMutator(
     : dim_names_(dim_names), dim_min_max_(dim_min_max) {}
 
 void DomainAddUnitLoopMutator::operator()(ir::Expr* expr) {
-  ir::IRMutator<>::Visit(expr, expr);
+  ir::ir_utils::IRMutator<>::Visit(expr, expr);
 
   // If the loop with length 1 is the most inner loop, Visit cannot find it
   // in deleted-length-1-loop expr. So we should check after visit
@@ -78,13 +78,13 @@ void DomainAddUnitLoopMutator::Visit(const ir::For* op, Expr* expr) {
   }
 
   if (add_unit_loop) {
-    ir::IRMutator<>::Visit(&(parent_for_.back()->body),
-                           &(parent_for_.back()->body));
+    ir::ir_utils::IRMutator<>::Visit(&(parent_for_.back()->body),
+                                     &(parent_for_.back()->body));
     parent_for_.pop_back();
   } else {
     parent_for_.push_back(node);
     longest_loop_.push_back(*expr);
-    ir::IRMutator<>::Visit(&node->body, &node->body);
+    ir::ir_utils::IRMutator<>::Visit(&node->body, &node->body);
     parent_for_.pop_back();
   }
 }
@@ -131,13 +131,13 @@ void DomainAddUnitLoopMutator::Visit(const ir::PolyFor* op, Expr* expr) {
   }
 
   if (add_unit_loop) {
-    ir::IRMutator<>::Visit(&(parent_poly_for_.back()->body),
-                           &(parent_poly_for_.back()->body));
+    ir::ir_utils::IRMutator<>::Visit(&(parent_poly_for_.back()->body),
+                                     &(parent_poly_for_.back()->body));
     parent_poly_for_.pop_back();
   } else {
     parent_poly_for_.push_back(node);
     longest_loop_.push_back(*expr);
-    ir::IRMutator<>::Visit(&node->body, &node->body);
+    ir::ir_utils::IRMutator<>::Visit(&node->body, &node->body);
     parent_poly_for_.pop_back();
   }
 }

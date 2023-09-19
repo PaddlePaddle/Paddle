@@ -32,11 +32,11 @@
 namespace cinn {
 namespace backends {
 
+using cinn::utils::StringFormat;
 using ir::Module;
 using lang::Compute;
 using lang::Lower;
 using lang::Placeholder;
-using utils::StringFormat;
 using utils::Trim;
 
 std::tuple<ir::Tensor, ir::Tensor, ir::Tensor, lang::Buffer> CreateTensor1() {

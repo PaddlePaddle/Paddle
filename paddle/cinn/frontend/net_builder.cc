@@ -28,11 +28,11 @@
 namespace cinn {
 namespace frontend {
 
+using cinn::utils::AttributeMap;
+using cinn::utils::ShapeType;
 using common::Context;
 using common::Type;
 using hlir::framework::Operator;
-using utils::AttributeMap;
-using utils::ShapeType;
 
 NetBuilder::NetBuilder(const std::string& name) : name_(name) {}
 
@@ -277,7 +277,7 @@ Variable NetBuilder::FillConstant(const std::vector<int>& shape,
                                   bool force_cpu) {
   const auto& type = common::Str2Type(dtype);
 
-  utils::Attribute value;
+  cinn::utils::Attribute value;
   if (type.is_float()) {
     value = std::stod(str_value);
   } else if (type.is_int() || type.is_uint()) {
@@ -391,7 +391,8 @@ Variable NetBuilder::Transpose(const Variable& operand,
   return CustomInstr(
              "transpose",
              {operand},
-             {{"axis", utils::GetPositiveAxes(axis, operand->shape.size())}})
+             {{"axis",
+               cinn::utils::GetPositiveAxes(axis, operand->shape.size())}})
       .front();
 }
 
@@ -433,7 +434,8 @@ Variable NetBuilder::Reverse(const Variable& operand,
   return CustomInstr(
              "reverse",
              {operand},
-             {{"axis", utils::GetPositiveAxes(axis, operand->shape.size())}})
+             {{"axis",
+               cinn::utils::GetPositiveAxes(axis, operand->shape.size())}})
       .front();
 }
 
@@ -790,16 +792,16 @@ Variable NetBuilder::Pool2d(const Variable& a,
         padding_algorithm == "VALID")
       << "Padding_algorithm must be EXPLICIT/SAME/VALID, but got: "
       << padding_algorithm;
-  utils::AttributeMap attrs = {{"pool_type", pool_type},
-                               {"origin_kernel_size", input_ksize},
-                               {"stride_size", new_strides},
-                               {"origin_padding_size", paddings},
-                               {"ceil_mode", ceil_mode},
-                               {"exclusive", exclusive},
-                               {"origin_global_pooling", global_pooling},
-                               {"data_format", new_data_format},
-                               {"origin_adaptive", adaptive},
-                               {"padding_algorithm", padding_algorithm}};
+  cinn::utils::AttributeMap attrs = {{"pool_type", pool_type},
+                                     {"origin_kernel_size", input_ksize},
+                                     {"stride_size", new_strides},
+                                     {"origin_padding_size", paddings},
+                                     {"ceil_mode", ceil_mode},
+                                     {"exclusive", exclusive},
+                                     {"origin_global_pooling", global_pooling},
+                                     {"data_format", new_data_format},
+                                     {"origin_adaptive", adaptive},
+                                     {"padding_algorithm", padding_algorithm}};
   // In avg_pool2d, if global_pooling = false, adaptive = true and ksize is [1,
   // 1], we turn off adaptive and use global pooling instead
   if (pooling_type == "avg" && !global_pooling && adaptive &&
@@ -1013,7 +1015,8 @@ Variable NetBuilder::Flip(const Variable& operand,
   return CustomInstr(
              "reverse",
              {operand},
-             {{"axis", utils::GetPositiveAxes(axes, operand->shape.size())}})
+             {{"axis",
+               cinn::utils::GetPositiveAxes(axes, operand->shape.size())}})
       .front();
 }
 

@@ -86,7 +86,7 @@ void TestElementwisePE(const std::string &fn_name,
   cinn_pod_value_t args[] = {a_arg, b_arg};
 
   if (test_benchmark) {
-    cinn::utils::Timer timer;
+    utils::Timer timer;
     timer.Start();
     fn_(args, 2);
     double test_op_time = timer.Stop();

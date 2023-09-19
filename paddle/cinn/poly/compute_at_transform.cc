@@ -209,7 +209,7 @@ ComputeAtTransform::ComputeAtTransform(isl::set pdomain,
 }
 
 std::string GenConsumerParamName(const char* tuple, int id) {
-  return utils::StringFormat("%s%s_%d", kConsumerParamPrefix, tuple, id);
+  return cinn::utils::StringFormat("%s%s_%d", kConsumerParamPrefix, tuple, id);
 }
 
 std::vector<int> ComputeAtTransform::GetProducerAdjustedShape() const {

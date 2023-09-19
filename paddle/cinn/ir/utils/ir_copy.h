@@ -24,9 +24,8 @@ namespace cinn {
 
 namespace ir {
 class ModuleExpr;
-}  // namespace ir
 
-namespace optim {
+namespace ir_utils {
 
 //! Shallow copy an expression.
 Expr IRCopy(Expr x);
@@ -39,5 +38,6 @@ ir::LoweredFunc IRCopy(const ir::LoweredFunc& x);
 
 std::vector<ir::LoweredFunc> IRCopy(const std::vector<ir::LoweredFunc>& x);
 
-}  // namespace optim
+}  // namespace ir_utils
+}  // namespace ir
 }  // namespace cinn

@@ -27,7 +27,7 @@ namespace poly {
  * CINN Expr mutator utility to add length-1-loop to Expr based on input
  * dim names and dim range.
  */
-class DomainAddUnitLoopMutator : public ir::IRMutator<> {
+class DomainAddUnitLoopMutator : public ir::ir_utils::IRMutator<> {
  public:
   DomainAddUnitLoopMutator(
       const std::vector<std::string>& dim_names,

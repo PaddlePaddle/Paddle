@@ -21,8 +21,9 @@ namespace optim {
 
 namespace {
 
-struct ExternCallMultiOutputShallowStoreMutator : public ir::IRMutator<> {
-  void operator()(Expr* e) { ir::IRMutator<>::Visit(e, e); }
+struct ExternCallMultiOutputShallowStoreMutator
+    : public ir::ir_utils::IRMutator<> {
+  void operator()(Expr* e) { ir::ir_utils::IRMutator<>::Visit(e, e); }
 
  private:
   void Visit(const ir::Store* op, Expr* expr) override {

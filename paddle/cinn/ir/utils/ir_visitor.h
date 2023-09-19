@@ -28,6 +28,7 @@ namespace ir {
 
 struct _Tensor_;
 
+namespace ir_utils {
 /**
  * Base class of all the methods visit the IR tree.
  * @param RetTy return type.
@@ -76,9 +77,10 @@ struct IRVisitor : public IRVisitorRequireReImpl<void> {
     LOG(FATAL) << "not supported NodeTy";
   }
 };
-// std::set<Expr> CollectIRNodes(Expr expr, std::function<bool(const Expr*)>
-// teller);
+// std::set<Expr> ir::ir_utils::CollectIRNodes(Expr expr,
+// std::function<bool(const Expr*)> teller);
 
+}  // namespace ir_utils
 bool operator==(Expr a, Expr b);
 bool operator!=(Expr a, Expr b);
 

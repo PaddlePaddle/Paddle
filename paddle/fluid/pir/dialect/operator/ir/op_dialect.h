@@ -31,8 +31,9 @@ class OperatorDialect : public pir::Dialect {
   void PrintType(pir::Type type, std::ostream& os) const override;
   void PrintAttribute(pir::Attribute type, std::ostream& os) const override;
 
-  void PrintOperation(pir::Operation* op,
-                      pir::IrPrinter& printer) const override;  // NOLINT
+  void PrintOperation(
+      pir::Operation* op,
+      pir::ir_utils::IrPrinter& printer) const override;  // NOLINT
 
  private:
   void initialize();

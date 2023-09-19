@@ -70,13 +70,13 @@ class IRSchedule {
  public:
   IRSchedule();
   explicit IRSchedule(const ModuleExpr& modexpr,
-                      utils::LinearRandomEngine::StateType rand_seed = -1,
+                      cinn::utils::LinearRandomEngine::StateType rand_seed = -1,
                       bool debug_flag = false,
                       utils::ErrorMessageLevel err_msg_level =
                           utils::ErrorMessageLevel::kGeneral);
   IRSchedule(ir::ModuleExpr&& mod_expr,
              ScheduleDesc&& trace,
-             utils::LinearRandomEngine::StateType rand_seed = -1);
+             cinn::utils::LinearRandomEngine::StateType rand_seed = -1);
   IRSchedule(const IRSchedule& other);
   IRSchedule& operator=(const IRSchedule& src);
   IRSchedule(IRSchedule&& other);
@@ -445,15 +445,15 @@ class IRSchedule {
 
  private:
   // Init the random seed with a new seed
-  void InitSeed(utils::LinearRandomEngine::StateType rand_seed);
+  void InitSeed(cinn::utils::LinearRandomEngine::StateType rand_seed);
 
   // Fork a new seed from current seed
-  utils::LinearRandomEngine::StateType ForkSeed() const;
+  cinn::utils::LinearRandomEngine::StateType ForkSeed() const;
 
  private:
   std::unique_ptr<ScheduleImpl> impl_;
   mutable ScheduleDesc trace_;  // trace the scheduling process
-  mutable utils::LinearRandomEngine::StateType rand_seed_;
+  mutable cinn::utils::LinearRandomEngine::StateType rand_seed_;
 };
 
 /*!
@@ -462,7 +462,7 @@ class IRSchedule {
  * 2) Maintain a list of index variables and their substition of the buffer
  * being inlined
  */
-class BaseInliner : public ir::IRMutator<> {
+class BaseInliner : public ir::ir_utils::IRMutator<> {
  protected:
   explicit BaseInliner(const Tensor& inlined_tensor, const Expr& inlined_store)
       : inlined_tensor_(inlined_tensor), inlined_store_(inlined_store) {}
@@ -556,7 +556,7 @@ class ReverseComputeInliner : public BaseInliner {
 };
 
 // The struct used to remove the original block in ComputeAt.
-class LeafBlockRemovalPlan : public ir::IRMutator<> {
+class LeafBlockRemovalPlan : public ir::ir_utils::IRMutator<> {
  public:
   LeafBlockRemovalPlan(const Expr& block, Expr* source_expr, Expr* target_expr)
       : block_(block), source_expr_(source_expr), target_expr_(target_expr) {}
@@ -621,7 +621,7 @@ class LeafBlockRemovalPlan : public ir::IRMutator<> {
   Expr* target_expr_;
 };
 
-class ComputeInlineChecker : public ir::IRMutator<> {
+class ComputeInlineChecker : public ir::ir_utils::IRMutator<> {
  public:
   ComputeInlineChecker(IRSchedule& schedule, Expr& block)  // NOLINT
       : ir_schedule_(schedule), block_(block) {}

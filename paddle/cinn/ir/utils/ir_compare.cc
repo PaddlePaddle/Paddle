@@ -21,6 +21,9 @@
 
 namespace cinn {
 namespace ir {
+namespace ir_utils {
+
+namespace {
 
 bool IrEqualVisitor::Compare(const Expr& lhs, const Expr& rhs) {
   if (lhs.get() == rhs.get()) {  // the same object, including both are null
@@ -357,6 +360,13 @@ bool IrEqualVisitor::Visit(const ScheduleBlockRealize* lhs, const Expr* other) {
   return Compare(lhs->iter_values, rhs->iter_values) &&
          Compare(lhs->schedule_block, rhs->schedule_block);
 }
+}  // namespace
 
+bool IRCompare(const Expr& lhs, const Expr& rhs, bool allow_name_suffix_diff) {
+  IrEqualVisitor ir_equal_visit;
+  return ir_equal_visit.Compare(lhs, rhs);
+}
+
+}  // namespace ir_utils
 }  // namespace ir
 }  // namespace cinn

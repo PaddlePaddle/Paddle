@@ -145,9 +145,9 @@ std::vector<std::vector<int>> InferShapeForMatMul(
   bool trans_b = SafeGetAttr(attrs, "trans_b", false);
 
   VLOG(4) << "During the matmul shape inference, origin shape_A: "
-          << utils::Join(inputs_shape[0], ", ");
+          << cinn::utils::Join(inputs_shape[0], ", ");
   VLOG(4) << "During the matmul shape inference, origin shape_B: "
-          << utils::Join(inputs_shape[1], ", ");
+          << cinn::utils::Join(inputs_shape[1], ", ");
 
   const auto &new_shape =
       pe::utils::GetMatmulNewShapes(inputs_shape, trans_a, trans_b);
@@ -157,11 +157,11 @@ std::vector<std::vector<int>> InferShapeForMatMul(
   const auto &output_shape = new_shape[2];
 
   VLOG(4) << "During the matmul shape inference, new_shape_A: "
-          << utils::Join(new_shape_A, ", ");
+          << cinn::utils::Join(new_shape_A, ", ");
   VLOG(4) << "During the matmul shape inference, new_shape_B: "
-          << utils::Join(new_shape_B, ", ");
+          << cinn::utils::Join(new_shape_B, ", ");
   VLOG(4) << "During the matmul shape inference, output_shape: "
-          << utils::Join(output_shape, ", ");
+          << cinn::utils::Join(output_shape, ", ");
 
   std::vector<std::vector<int>> res{output_shape};
   return res;
@@ -617,9 +617,9 @@ std::vector<std::vector<int>> InferShapeForMul(
       << "Input matrix Y's dim should be >= 2! Please check.";
 
   VLOG(4) << "During the matmul shape inference, origin shape_A: "
-          << utils::Join(inputs_shape[0], ", ");
+          << cinn::utils::Join(inputs_shape[0], ", ");
   VLOG(4) << "During the matmul shape inference, origin shape_B: "
-          << utils::Join(inputs_shape[1], ", ");
+          << cinn::utils::Join(inputs_shape[1], ", ");
 
   int x_num_col_dims = SafeGetAttr(attrs, "x_num_col_dims", 1);
   int y_num_col_dims = SafeGetAttr(attrs, "y_num_col_dims", 1);
@@ -633,11 +633,11 @@ std::vector<std::vector<int>> InferShapeForMul(
   const auto &output_shape = new_shape[2];
 
   VLOG(4) << "During the mul shape inference, new_shape_A: "
-          << utils::Join(new_shape_A, ", ");
+          << cinn::utils::Join(new_shape_A, ", ");
   VLOG(4) << "During the mul shape inference, new_shape_B: "
-          << utils::Join(new_shape_B, ", ");
+          << cinn::utils::Join(new_shape_B, ", ");
   VLOG(4) << "During the mul shape inference, output_shape: "
-          << utils::Join(output_shape, ", ");
+          << cinn::utils::Join(output_shape, ", ");
 
   int a_K = new_shape_A[1];
   int b_K = is_infer ? new_shape_B[1] : new_shape_B[0];
@@ -1097,7 +1097,7 @@ std::shared_ptr<OpStrategy> StrategyForGather(
   CHECK(!output_shapes.empty() && !output_shapes[0].empty())
       << "The shape of output is empty! Please check again.";
   VLOG(4) << "The output passed in StrategyForGather: "
-          << utils::Join(output_shapes[0], ", ");
+          << cinn::utils::Join(output_shapes[0], ", ");
   CHECK(!out_type.empty())
       << "The output type of Gather is empty! Please check again.\n";
 
@@ -1166,7 +1166,8 @@ std::vector<std::vector<int>> InferShapeForGather(
 
   std::vector<int> output_shape = x_shape;
   output_shape[axis] = index_shape[axis];
-  VLOG(4) << "The output shape of gather: " << utils::Join(output_shape, ", ");
+  VLOG(4) << "The output shape of gather: "
+          << cinn::utils::Join(output_shape, ", ");
 
   return {std::move(output_shape)};
 }
@@ -1678,7 +1679,7 @@ std::shared_ptr<OpStrategy> StrategyForSliceAssign(
   CHECK(!output_shapes.empty() && !output_shapes[0].empty())
       << "The shape of output is empty! Please check again.";
   VLOG(4) << "The output passed in StrategyForSliceAssign: "
-          << utils::Join(output_shapes[0], ", ");
+          << cinn::utils::Join(output_shapes[0], ", ");
   CHECK(!out_type.empty())
       << "The output type of SliceAssign is empty! Please check again.\n";
 

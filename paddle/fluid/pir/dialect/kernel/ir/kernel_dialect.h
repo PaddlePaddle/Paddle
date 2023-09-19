@@ -29,8 +29,9 @@ class KernelDialect : public pir::Dialect {
 
   void PrintAttribute(pir::Attribute attr, std::ostream& os) const override;
 
-  void PrintOperation(pir::Operation* op,
-                      pir::IrPrinter& printer) const override;  // NOLINT
+  void PrintOperation(
+      pir::Operation* op,
+      pir::ir_utils::IrPrinter& printer) const override;  // NOLINT
 
  private:
   void initialize();

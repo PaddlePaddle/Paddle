@@ -45,7 +45,7 @@ struct CompVar {
   }
 };
 
-struct MappingVarToExprMutator : public ir::IRMutator<> {
+struct MappingVarToExprMutator : public ir::ir_utils::IRMutator<> {
   explicit MappingVarToExprMutator(
       const std::map<Var, Expr, CompVar>& replacing_map)
       : replacing_map_(replacing_map) {}
@@ -470,8 +470,7 @@ std::unordered_map<int, int> PrimeFactorize(int n);
  * \param n The number to be factorized.
  * \param dividend The dividend of the number.
  */
-std::vector<int> SampleTile(utils::LinearRandomEngine::StateType* rand_seed,
-                            int n,
-                            int dividend);
+std::vector<int> SampleTile(
+    cinn::utils::LinearRandomEngine::StateType* rand_seed, int n, int dividend);
 }  // namespace ir
 }  // namespace cinn

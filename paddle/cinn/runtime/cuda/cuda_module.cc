@@ -62,8 +62,8 @@ void CUDAModule::LaunchKernel(int device_id,
           << ", share_memory_size:" << share_memory_size;
   auto function = GetFunction(device_id, func_name);
   CHECK(function);
-  cinn::utils::RecordEvent record_run("cuLaunchKernel",
-                                      cinn::utils::EventType::kInstruction);
+  utils::RecordEvent record_run("cuLaunchKernel",
+                                utils::EventType::kInstruction);
   CUDA_DRIVER_CALL(cuLaunchKernel(function,
                                   gridDim.x,
                                   gridDim.y,
@@ -80,8 +80,7 @@ void CUDAModule::LaunchKernel(int device_id,
 CUfunction CUDAModule::GetFunction(int device_id,
                                    const std::string& func_name) {
   VLOG(5) << "GetFuncion : " << func_name << " with device_id : " << device_id;
-  cinn::utils::RecordEvent record_run("cuLaunchKernel",
-                                      cinn::utils::EventType::kOrdinary);
+  utils::RecordEvent record_run("cuLaunchKernel", utils::EventType::kOrdinary);
   if (!module_per_card_[device_id]) {
     std::lock_guard<std::mutex> lock(mutex_);
     // Compilation with parameters

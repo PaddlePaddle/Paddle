@@ -26,7 +26,7 @@ namespace api {
 
 class Shape final {
  public:
-  explicit Shape(const utils::ShapeType& shape)
+  explicit Shape(const cinn::utils::ShapeType& shape)
       : shape_(shape.begin(), shape.end()) {}
 
   Shape(const Shape& other) = delete;
@@ -49,7 +49,7 @@ class Shape final {
   }
 
  private:
-  cinn::utils::SmallVector<int64_t, 12> shape_;
+  utils::SmallVector<int64_t, 12> shape_;
 };
 
 }  // namespace api

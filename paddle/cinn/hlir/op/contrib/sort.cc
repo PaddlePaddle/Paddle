@@ -172,8 +172,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(
         CHECK(!output_shapes.empty());
         auto tensor_A = A.as_tensor_ref();
         auto stages = CreateStages({tensor_A});
-        VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
-                << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
+        VLOG(3) << "A shape: " << cinn::utils::Join(tensor_A->shape, ", ")
+                << ", output_shapes: "
+                << cinn::utils::Join(output_shapes[0], ", ");
         CHECK_EQ(pack_args.size(), 2U);
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
@@ -254,8 +255,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
     CHECK(!output_shapes.empty());
     auto tensor_A = A.as_tensor_ref();
     auto stages = CreateStages({tensor_A});
-    VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
-            << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
+    VLOG(3) << "A shape: " << cinn::utils::Join(tensor_A->shape, ", ")
+            << ", output_shapes: " << cinn::utils::Join(output_shapes[0], ", ");
     CHECK_EQ(pack_args.size(), 3U);
     CHECK(pack_args[1].is_string());
     std::string tensor_name = pack_args[1].operator std::string();

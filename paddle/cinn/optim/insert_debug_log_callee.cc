@@ -30,7 +30,7 @@ using cinn::utils::StringFormat;
 
 namespace {
 
-struct StoreDebugInfoBuilder : public ir::IRVisitor {
+struct StoreDebugInfoBuilder : public ir::ir_utils::IRVisitor {
   std::tuple<std::string, std::vector<Expr>> operator()(const Expr *e) {
     IRVisitor::Visit(e);
     return std::make_tuple(format_.str(), args_);
@@ -125,8 +125,8 @@ struct StoreDebugInfoBuilder : public ir::IRVisitor {
   bool in_load_{false};
 };
 
-struct InsertDebugLogCalleeMutator : public ir::IRMutator<> {
-  void operator()(Expr *e) { ir::IRMutator<>::Visit(e, e); }
+struct InsertDebugLogCalleeMutator : public ir::ir_utils::IRMutator<> {
+  void operator()(Expr *e) { ir::ir_utils::IRMutator<>::Visit(e, e); }
 
   void Visit(const ir::_LoweredFunc_ *op, Expr *expr) {
     auto *node = expr->As<ir::_LoweredFunc_>();
@@ -136,7 +136,7 @@ struct InsertDebugLogCalleeMutator : public ir::IRMutator<> {
     auto msg = StringFormat("running : %s", GetDebugString(*expr).c_str());
     auto debug_node = CreateDebugStatement(msg);
 
-    ir::IRMutator<>::Visit(&node->body, &node->body);
+    ir::ir_utils::IRMutator<>::Visit(&node->body, &node->body);
 
     auto deal_with_exprs =
         [&](std::vector<Expr> *exprs) {  // deal with op->argument_preapre_exprs
@@ -178,7 +178,7 @@ struct InsertDebugLogCalleeMutator : public ir::IRMutator<> {
         }
       }
 
-      ir::IRMutator<>::Visit(&e, &Reference(&e));
+      ir::ir_utils::IRMutator<>::Visit(&e, &Reference(&e));
 
       new_stmts.push_back(e);
 

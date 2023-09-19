@@ -89,7 +89,7 @@ std::string GetStreamCnt(const T& x) {
 
 std::string TransValidVarName(std::string name);
 
-std::string Attribute2String(const utils::Attribute& attr);
+std::string Attribute2String(const Attribute& attr);
 
 }  // namespace utils
 }  // namespace cinn

@@ -104,7 +104,7 @@ std::unique_ptr<DataFlowGraph> CreateGraph(
   for (auto* stage : stages) {
     auto depend_statement_names = stage->input_statements();
     VLOG(3) << stage->id() << " depend "
-            << utils::Join(depend_statement_names, ", ");
+            << cinn::utils::Join(depend_statement_names, ", ");
     for (auto& depend_statement : depend_statement_names) {
       auto input_it = id2stage.find(depend_statement);
       // We removed some node in the original stages(such as placeholders), so

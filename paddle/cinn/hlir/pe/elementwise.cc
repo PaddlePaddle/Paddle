@@ -168,7 +168,7 @@ ir::Tensor ExpandDims(const ir::Tensor& A,
                       const std::vector<int>& axes,
                       const std::vector<int>& out_shape,
                       const std::string& output_name) {
-  const auto& posi_axes = utils::GetPositiveAxes(axes, out_shape.size());
+  const auto& posi_axes = cinn::utils::GetPositiveAxes(axes, out_shape.size());
 
   return Compute(
       ToCinnExprs(out_shape),

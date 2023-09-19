@@ -120,7 +120,7 @@ isl::set TransIdentityExtentToContextId(isl::set set) {
         llvm::formatv("[{0}] -> { {1}[{2}]: {3} and {4} }",
                       const_param_name,
                       isl_set_get_tuple_name(res_set.get()),
-                      utils::Join(isl_get_dim_names(res_set.get()), ","),
+                      cinn::utils::Join(isl_get_dim_names(res_set.get()), ","),
                       cond_str,
                       param_cond_str);
 
@@ -280,7 +280,7 @@ isl::ast_expr CreateIslAstIndexExpression(isl_ast_build* build,
   auto statement = isl_map_get_statement_repr(schedule.get(), isl_dim_in);
   auto statement_set = isl::manage(isl_set_read_from_str(
       isl_map_get_ctx(schedule.get()),
-      utils::StringFormat("{ %s : }", statement.c_str()).c_str()));
+      cinn::utils::StringFormat("{ %s : }", statement.c_str()).c_str()));
   auto identity_access = isl::manage(isl_set_identity(statement_set.release()));
   isl::map map = isl::manage(isl_map_reverse(schedule.copy()));
 

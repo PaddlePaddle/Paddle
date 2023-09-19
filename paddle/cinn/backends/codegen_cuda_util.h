@@ -45,14 +45,14 @@ std::tuple<ir::Module, ir::Module> SplitCudaAndHostModule(ir::Module module);
 
 namespace detail {
 
-struct CollectHostFunctionVisitor : public ir::IRMutator<> {
+struct CollectHostFunctionVisitor : public ir::ir_utils::IRMutator<> {
   explicit CollectHostFunctionVisitor(const std::string& module_name)
       : host_module_builder(module_name + "_host", common::DefaultHostTarget()),
         device_module_builder(module_name + "_gpu_device",
                               common::DefaultNVGPUTarget()) {}
 
   std::tuple<ir::Module, ir::Module> operator()(Expr* expr) {
-    ir::IRMutator<>::Visit(expr, expr);
+    ir::ir_utils::IRMutator<>::Visit(expr, expr);
     return std::make_tuple(host_module_builder.Build(),
                            device_module_builder.Build());
   }
@@ -127,7 +127,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
   }
 
   Expr CreateDeviceFunctionGivenDeviceKernel(Expr expr) {
-    auto copied = optim::IRCopy(expr);
+    auto copied = ir::ir_utils::IRCopy(expr);
     auto* lowered_func = copied.as_lowered_func();
     lowered_func->name = GenDeviceKernelName(lowered_func->name);
     return copied;

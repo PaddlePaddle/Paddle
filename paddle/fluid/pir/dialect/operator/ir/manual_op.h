@@ -187,7 +187,7 @@ class IfOp : public pir::Op<IfOp> {
   pir::Value cond() { return operand_source(0); }
   pir::Block *true_block();
   pir::Block *false_block();
-  void Print(pir::IrPrinter &printer);  // NOLINT
+  void Print(pir::ir_utils::IrPrinter &printer);  // NOLINT
   void Verify();
 };
 

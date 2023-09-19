@@ -258,12 +258,15 @@ void BindNode(py::module *m) {
 
 // empty visitor
 void BindIrVisitor(py::module *m) {
-  py::class_<ir::IRVisitor> ir_visitor(*m, "IRVisitor");
+  py::class_<ir::ir_utils::IRVisitor> ir_visitor(*m, "IRVisitor");
   ir_visitor.def(py::init<>())
-      .def("visit", py::overload_cast<const ir::Expr *>(&ir::IRVisitor::Visit));
+      .def(
+          "visit",
+          py::overload_cast<const ir::Expr *>(&ir::ir_utils::IRVisitor::Visit));
 #define DEFINE_VISIT_FN(__ty) \
-  ir_visitor.def("visit",     \
-                 py::overload_cast<const ir::__ty *>(&ir::IRVisitor::Visit));
+  ir_visitor.def(             \
+      "visit",                \
+      py::overload_cast<const ir::__ty *>(&ir::ir_utils::IRVisitor::Visit));
   NODETY_FORALL(DEFINE_VISIT_FN)
 #undef DEFINE_VISIT_FN
 }

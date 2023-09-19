@@ -27,13 +27,13 @@ namespace py = pybind11;
 
 namespace cinn::pybind {
 
+using cinn::utils::StringFormat;
 using common::bfloat16;
 using common::CINNValue;
 using common::float16;
 using common::Target;
 using common::Type;
 using utils::GetStreamCnt;
-using utils::StringFormat;
 
 namespace {
 void BindTarget(py::module *);

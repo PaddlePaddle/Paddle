@@ -90,7 +90,7 @@ std::string TuneTask::SerializeToString(
           // the future, we should remove name-related limit in Lower process,
           // to avoid duplicate tuning tasks with same operators.
           ss << var_node->id() << "->" << cinn::common::Type2Str(dit->second)
-             << "[" + utils::Join(sit->second, ",") << "]";
+             << "[" + cinn::utils::Join(sit->second, ",") << "]";
         }
       };
 

@@ -39,8 +39,8 @@ namespace hlir {
 namespace framework {
 class Operator;
 
-using shape_t = utils::ShapeType;
-using dim_t = utils::DimType;
+using shape_t = cinn::utils::ShapeType;
+using dim_t = cinn::utils::DimType;
 
 /*! \brief operator pattern used in graph fusion */
 enum OpPatternKind {

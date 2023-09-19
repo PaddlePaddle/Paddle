@@ -909,7 +909,7 @@ std::vector<ir::Expr> CustomCallArgsForMemset(
       common::Str2Type(absl::get<std::string>(attr_store.at("dtype")));
   count *= dtype.bytes();
   VLOG(4) << "call memset custom_call with value="
-          << utils::Attribute2String(value_attr) << " (" << value
+          << cinn::utils::Attribute2String(value_attr) << " (" << value
           << "), count=" << count;
 
   return {Expr(value), Expr(count)};

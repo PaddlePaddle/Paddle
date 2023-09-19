@@ -88,7 +88,7 @@ std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
     }
 
     // Some store tensors are also temp tensors;
-    auto store_exprs = ir::CollectIRNodes(
+    auto store_exprs = ir::ir_utils::CollectIRNodes(
         func_body, [](const Expr* x) { return x->As<ir::Store>(); });
     for (auto& expr : store_exprs) {
       auto* store_node = expr.As<ir::Store>();
@@ -146,7 +146,7 @@ std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
 std::vector<ir::Argument> LowerTensorGroup::GenerateFunctionArgumentList(
     Expr fn_body) {
   std::vector<ir::Argument> args;
-  auto teller = ir::CollectTensorNeedsWrite(&fn_body);
+  auto teller = ir::ir_utils::CollectTensorNeedsWrite(&fn_body);
 
   std::set<std::string> arg_names;
 

@@ -34,9 +34,8 @@ class TensorNode final {
       : node_data_(node_data),
         graph_(graph),
         consumers_(node_data_->outlinks(), graph_) {
-    const auto& shape_dict =
-        graph_->GetAttrs<absl::flat_hash_map<std::string, utils::ShapeType>>(
-            "infershape");
+    const auto& shape_dict = graph_->GetAttrs<
+        absl::flat_hash_map<std::string, cinn::utils::ShapeType>>("infershape");
     CHECK(shape_dict.count(node_data_->id()))
         << "Can't find " << node_data_->id() << " 's shape!";
     shape_ = std::make_shared<Shape>(shape_dict.find(node_data_->id())->second);

@@ -28,7 +28,7 @@ class LoweredFunc;
 
 namespace ir {
 class Module;
-
+namespace ir_utils {
 struct IrPrinter : public IRVisitorRequireReImpl<void> {
   explicit IrPrinter(std::ostream &os) : os_(os), str_("") {}
 
@@ -78,10 +78,6 @@ struct IrPrinter : public IRVisitorRequireReImpl<void> {
   const int indent_unit{2};
 };
 
-std::ostream &operator<<(std::ostream &os, Expr a);
-std::ostream &operator<<(std::ostream &os, const std::vector<Expr> &a);
-std::ostream &operator<<(std::ostream &os, const Module &m);
-
 template <typename IRN>
 void IrPrinter::PrintBinaryOp(const std::string &op,
                               const BinaryOpNode<IRN> *x) {
@@ -93,6 +89,10 @@ void IrPrinter::PrintBinaryOp(const std::string &op,
   Visit(x->b());
   str_ += ")";
 }
+}  // namespace ir_utils
+std::ostream &operator<<(std::ostream &os, Expr a);
+std::ostream &operator<<(std::ostream &os, const std::vector<Expr> &a);
+std::ostream &operator<<(std::ostream &os, const Module &m);
 
 }  // namespace ir
 }  // namespace cinn

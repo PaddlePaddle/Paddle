@@ -19,16 +19,16 @@
 
 #include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/utils/ir_replace.h"
 #include "paddle/cinn/ir/utils/ir_visitor.h"
-#include "paddle/cinn/optim/ir_replace.h"
 
 namespace cinn {
 namespace optim {
 
 namespace detail {
 
-struct EliminateBroadcastInForloop : public ir::IRMutator<Expr*> {
-  void operator()(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+struct EliminateBroadcastInForloop : public ir::ir_utils::IRMutator<Expr*> {
+  void operator()(Expr* expr) { ir::ir_utils::IRMutator<>::Visit(expr, expr); }
 
   void Visit(const ir::Store* op, Expr* expr) {
     // TODO(Superjom) Support single one level of forloop.
@@ -36,9 +36,9 @@ struct EliminateBroadcastInForloop : public ir::IRMutator<Expr*> {
 
     auto* node = expr->As<ir::Store>();
 
-    auto broadcasts = ir::CollectIRNodes(node->value, [&](const Expr* expr) {
-      return expr->As<ir::Broadcast>();
-    });
+    auto broadcasts = ir::ir_utils::CollectIRNodes(
+        node->value,
+        [&](const Expr* expr) { return expr->As<ir::Broadcast>(); });
     std::vector<Expr> let_exprs;
 
     Var tmp;
@@ -54,7 +54,7 @@ struct EliminateBroadcastInForloop : public ir::IRMutator<Expr*> {
       std::tie(let_expr, tmp) = CreateTmpLet(broadcast);
       let_exprs.push_back(let_expr);
 
-      optim::IrReplace(expr, broadcast, tmp);
+      cinn::ir::ir_utils::IrReplace(expr, broadcast, tmp);
     }
 
     // insert the let expressions to the outer forloop.
@@ -62,7 +62,7 @@ struct EliminateBroadcastInForloop : public ir::IRMutator<Expr*> {
     Expr* outer_forloop = forloop_stack[forloop_stack.size() - 2];
 
     auto& outer_forloop_body = outer_forloop->As<ir::For>()
-                                   ? outer_forloop->As<ir::For>()->body
+                                   ? outer_forloop->As<cinn::ir::For>()->body
                                    : outer_forloop->As<ir::PolyFor>()->body;
 
     auto* outer_forloop_body_block = outer_forloop_body.As<ir::Block>();
@@ -79,7 +79,7 @@ struct EliminateBroadcastInForloop : public ir::IRMutator<Expr*> {
   }
 
   bool ContainsLoopVar(Expr expr, Var loop_var) {
-    return !ir::CollectIRNodes(expr, [&](const Expr* e) -> bool {
+    return !ir::ir_utils::CollectIRNodes(expr, [&](const Expr* e) -> bool {
               return e->As<ir::_Var_>() &&
                      e->As<ir::_Var_>()->name == loop_var->name;
             }).empty();
@@ -95,13 +95,13 @@ struct EliminateBroadcastInForloop : public ir::IRMutator<Expr*> {
 
   void Visit(const ir::For* op, Expr* expr) {
     forloop_stack.push_back(expr);
-    ir::IRMutator<>::Visit(op, expr);
+    IRMutator<>::Visit(op, expr);
     forloop_stack.pop_back();
   }
 
   void Visit(const ir::PolyFor* op, Expr* expr) {
     forloop_stack.push_back(expr);
-    ir::IRMutator<>::Visit(op, expr);
+    IRMutator<>::Visit(op, expr);
     forloop_stack.pop_back();
   }
 

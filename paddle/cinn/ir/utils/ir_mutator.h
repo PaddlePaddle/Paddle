@@ -23,6 +23,7 @@
 
 namespace cinn {
 namespace ir {
+namespace ir_utils {
 
 //! T might be Expr* or const Expr*
 template <typename T = Expr *>
@@ -348,5 +349,6 @@ void IRMutator<T>::Visit(const ScheduleBlockRealize *expr, T op) {
                                          &node->schedule_block);
 }
 
+}  // namespace ir_utils
 }  // namespace ir
 }  // namespace cinn

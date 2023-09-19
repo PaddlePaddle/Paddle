@@ -790,7 +790,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Call *op) {
 llvm::Value *CodeGenLLVM::Visit(const ir::_Module_ *op) {
   {
     Expr body_to_verify(&Reference(op));
-    ir::IrVerify(body_to_verify);
+    ir::ir_utils::IrVerify(body_to_verify);
   }
 
   for (auto &fn : op->functions) {
@@ -1439,7 +1439,8 @@ void CodeGenLLVM::AddTbaaMetadata(llvm::Instruction *inst,
     for (int w = 1024; w >= width; w /= 2) {
       int b = (base / w) * w;
       tbaa = builder.createTBAAScalarTypeNode(
-          utils::StringFormat("%s.width%d.base%d", buffer.data(), w, b), tbaa);
+          cinn::utils::StringFormat("%s.width%d.base%d", buffer.data(), w, b),
+          tbaa);
     }
   }
 

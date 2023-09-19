@@ -31,12 +31,12 @@ void LowerIntrin(Expr *e, Target target) {
   } else {
     return;
   }
-  struct Mutator : ir::IRMutator<Expr *> {
+  struct Mutator : ir::ir_utils::IRMutator<Expr *> {
     Target target;
 
     explicit Mutator(Target target) : target(target) {}
 
-    void operator()(Expr *e) { ir::IRMutator<>::Visit(e, e); }
+    void operator()(Expr *e) { ir::ir_utils::IRMutator<>::Visit(e, e); }
 
     void Visit(const ir::Add *op, Expr *expr) override {
       auto *node = expr->As<ir::Add>();
@@ -57,13 +57,13 @@ void LowerIntrin(Expr *e, Target target) {
                                ir::CallType::Intrinsic);
         }
         if (ret.defined()) {
-          ir::IRMutator<>::Visit(&ret, &ret);
+          ir::ir_utils::IRMutator<>::Visit(&ret, &ret);
           *expr = ret;
           return;
         }
       }
-      ir::IRMutator<>::Visit(&node->a(), &node->a());
-      ir::IRMutator<>::Visit(&node->b(), &node->b());
+      ir::ir_utils::IRMutator<>::Visit(&node->a(), &node->a());
+      ir::ir_utils::IRMutator<>::Visit(&node->b(), &node->b());
     }
 
     void Visit(const ir::Call *op, Expr *expr) override {
@@ -81,16 +81,16 @@ void LowerIntrin(Expr *e, Target target) {
                         << "lower_cpu_intrinsic_" + node->name;
         Expr ret = (*func_ptr)(Expr(node));
         if (!ret.same_as(*expr)) {
-          ir::IRMutator<>::Visit(&ret, &ret);
+          ir::ir_utils::IRMutator<>::Visit(&ret, &ret);
         }
         *expr = ret;
         return;
       }
       for (auto &expr : node->read_args) {
-        ir::IRMutator<>::Visit(&expr, &expr);
+        ir::ir_utils::IRMutator<>::Visit(&expr, &expr);
       }
       for (auto &expr : node->write_args) {
-        ir::IRMutator<>::Visit(&expr, &expr);
+        ir::ir_utils::IRMutator<>::Visit(&expr, &expr);
       }
     }
   };

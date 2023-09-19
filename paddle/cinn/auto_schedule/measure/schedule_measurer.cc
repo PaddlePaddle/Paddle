@@ -44,7 +44,7 @@ std::vector<MeasureResult> ScheduleMeasurer::Measure(
           build_results[index] = builder->Build(inputs[index]);
         } catch (std::exception& e) {
           results[index].error_msg =
-              utils::StringFormat("Build failed, error: %s\n", e.what());
+              cinn::utils::StringFormat("Build failed, error: %s\n", e.what());
         }
         auto time_span = std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::steady_clock::now() - m_start);
@@ -63,7 +63,7 @@ std::vector<MeasureResult> ScheduleMeasurer::Measure(
           }
         } catch (std::exception& e) {
           results[index].error_msg =
-              utils::StringFormat("Run failed, error: %s\n", e.what());
+              cinn::utils::StringFormat("Run failed, error: %s\n", e.what());
         }
         auto time_span = std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::steady_clock::now() - m_start);

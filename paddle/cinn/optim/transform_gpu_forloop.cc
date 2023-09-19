@@ -53,8 +53,10 @@ namespace optim {
  * @param expr The expression to mutate.
  */
 void RemoveGpuForloopsAxis(Expr *expr) {
-  struct Mutator : public ir::IRMutator<Expr *> {
-    void operator()(Expr *expr) { ir::IRMutator<>::Visit(expr, expr); }
+  struct Mutator : public ir::ir_utils::IRMutator<Expr *> {
+    void operator()(Expr *expr) {
+      ir::ir_utils::IRMutator<>::Visit(expr, expr);
+    }
 
    private:
     void Visit(const ir::For *op, Expr *expr) override {
@@ -148,12 +150,14 @@ void RemoveGpuForloopsAxis(Expr *expr) {
  * threads.
  */
 void CudaSyncThreadsDropIfThenElse(Expr *expr) {
-  struct Mutator : public ir::IRMutator<> {
-    void operator()(Expr *expr) { ir::IRMutator<>::Visit(expr, expr); }
+  struct Mutator : public ir::ir_utils::IRMutator<> {
+    void operator()(Expr *expr) {
+      ir::ir_utils::IRMutator<>::Visit(expr, expr);
+    }
 
     void Visit(const ir::IfThenElse *op, Expr *expr) override {
       blocked_statement_stack.push_back(expr);
-      ir::IRMutator<>::Visit(op, expr);
+      ir::ir_utils::IRMutator<>::Visit(op, expr);
       blocked_statement_stack.pop_back();
     }
 
@@ -177,15 +181,17 @@ void CudaSyncThreadsDropIfThenElse(Expr *expr) {
   Mutator()(expr);
 }
 
-class RestructureVarNodes : public ir::IRMutator<> {
+class RestructureVarNodes : public ir::ir_utils::IRMutator<> {
  public:
-  void operator()(ir::Expr *expr) { ir::IRMutator<>::Visit(expr, expr); }
+  void operator()(ir::Expr *expr) {
+    ir::ir_utils::IRMutator<>::Visit(expr, expr);
+  }
 
  private:
   void Visit(const ir::Load *load, Expr *op) override {
     std::vector<ir::Expr> indices_copied;
     for (const ir::Expr &indice : load->indices) {
-      indices_copied.push_back(IRCopy(indice));
+      indices_copied.push_back(ir::ir_utils::IRCopy(indice));
     }
     op->As<ir::Load>()->indices = indices_copied;
 
@@ -195,7 +201,7 @@ class RestructureVarNodes : public ir::IRMutator<> {
   void Visit(const ir::Store *store, Expr *op) override {
     std::vector<ir::Expr> indices_copied;
     for (const ir::Expr &indice : store->indices) {
-      indices_copied.push_back(IRCopy(indice));
+      indices_copied.push_back(ir::ir_utils::IRCopy(indice));
     }
     op->As<ir::Store>()->indices = indices_copied;
 
@@ -203,9 +209,11 @@ class RestructureVarNodes : public ir::IRMutator<> {
   }
 };
 
-class ReplaceIndexToBindExpr : public ir::IRMutator<> {
+class ReplaceIndexToBindExpr : public ir::ir_utils::IRMutator<> {
  public:
-  void operator()(ir::Expr *expr) { ir::IRMutator<>::Visit(expr, expr); }
+  void operator()(ir::Expr *expr) {
+    ir::ir_utils::IRMutator<>::Visit(expr, expr);
+  }
 
  private:
   void Visit(const ir::ScheduleBlockRealize *op, Expr *expr) override {
@@ -223,14 +231,16 @@ class ReplaceIndexToBindExpr : public ir::IRMutator<> {
     for (int idx = 0; idx < iter_values.size(); ++idx) {
       ReplaceVarWithExpr(&body, iter_vars[idx], iter_values[idx]);
     }
-    ir::IRMutator<>::Visit(&body, &body);
+    ir::ir_utils::IRMutator<>::Visit(&body, &body);
   }
 };
 
 using TENSOR_LOOP = std::pair<ir::Expr, std::vector<ir::Expr>>;
-class CollectTensorLoopVisitor : public ir::IRMutator<> {
+class CollectTensorLoopVisitor : public ir::ir_utils::IRMutator<> {
  public:
-  void operator()(ir::Expr *expr) { ir::IRMutator<>::Visit(expr, expr); }
+  void operator()(ir::Expr *expr) {
+    ir::ir_utils::IRMutator<>::Visit(expr, expr);
+  }
 
  private:
   void Visit(const ir::Store *op, Expr *expr) override {
@@ -384,9 +394,9 @@ void UpdateBufferAxisPass(ir::Expr *expr) {
   }
 }
 
-class ReplaceLoopVarToGpu : public ir::IRMutator<> {
+class ReplaceLoopVarToGpu : public ir::ir_utils::IRMutator<> {
  public:
-  void operator()(Expr *expr) { ir::IRMutator<>::Visit(expr, expr); }
+  void operator()(Expr *expr) { ir::ir_utils::IRMutator<>::Visit(expr, expr); }
 
  private:
   void Visit(const ir::For *op, Expr *expr) override {
@@ -412,16 +422,18 @@ class ReplaceLoopVarToGpu : public ir::IRMutator<> {
           expr, op->loop_var, ir::Expr(ir::Var(var_name)));
     }
 
-    ir::IRMutator<>::Visit(&for_ir->body, &for_ir->body);
+    ir::ir_utils::IRMutator<>::Visit(&for_ir->body, &for_ir->body);
   }
   void Visit(const ir::PolyFor *op, Expr *expr) override {
     LOG(FATAL) << "Unkown PolyFor!";
   }
 };
 
-class SharedAxisVisitor : public ir::IRMutator<> {
+class SharedAxisVisitor : public ir::ir_utils::IRMutator<> {
  public:
-  void operator()(ir::Expr *expr) { ir::IRMutator<>::Visit(expr, expr); }
+  void operator()(ir::Expr *expr) {
+    ir::ir_utils::IRMutator<>::Visit(expr, expr);
+  }
 
  private:
   void Visit(const ir::Store *op, Expr *expr) override {
@@ -439,7 +451,7 @@ class SharedAxisVisitor : public ir::IRMutator<> {
         indice = common::AutoSimplify(indice);
       }
     }
-    ir::IRMutator<>::Visit(op, expr);
+    ir::ir_utils::IRMutator<>::Visit(op, expr);
   }
 
   void Visit(const ir::Load *op, Expr *expr) override {
@@ -460,16 +472,18 @@ class SharedAxisVisitor : public ir::IRMutator<> {
         indice = common::AutoSimplify(indice);
       }
     }
-    ir::IRMutator<>::Visit(op, expr);
+    ir::ir_utils::IRMutator<>::Visit(op, expr);
   }
 
   const std::vector<std::string> gpu_axis = {
       "blockIdx.x", "blockIdx.y", "blockIdx.z"};
 };
 
-class LocalAxisVisitor : public ir::IRMutator<> {
+class LocalAxisVisitor : public ir::ir_utils::IRMutator<> {
  public:
-  void operator()(ir::Expr *expr) { ir::IRMutator<>::Visit(expr, expr); }
+  void operator()(ir::Expr *expr) {
+    ir::ir_utils::IRMutator<>::Visit(expr, expr);
+  }
 
  private:
   void Visit(const ir::Store *op, Expr *expr) override {
@@ -487,7 +501,7 @@ class LocalAxisVisitor : public ir::IRMutator<> {
         indice = common::AutoSimplify(indice);
       }
     }
-    ir::IRMutator<>::Visit(op, expr);
+    ir::ir_utils::IRMutator<>::Visit(op, expr);
   }
 
   void Visit(const ir::Load *op, Expr *expr) override {
@@ -508,7 +522,7 @@ class LocalAxisVisitor : public ir::IRMutator<> {
         indice = common::AutoSimplify(indice);
       }
     }
-    ir::IRMutator<>::Visit(op, expr);
+    ir::ir_utils::IRMutator<>::Visit(op, expr);
   }
 
   const std::vector<std::string> gpu_axis = {"blockIdx.x",
@@ -519,9 +533,11 @@ class LocalAxisVisitor : public ir::IRMutator<> {
                                              "threadIdx.z"};
 };
 
-class ResizeBufferSizeVisitor : public ir::IRMutator<> {
+class ResizeBufferSizeVisitor : public ir::ir_utils::IRMutator<> {
  public:
-  void operator()(ir::Expr *expr) { ir::IRMutator<>::Visit(expr, expr); }
+  void operator()(ir::Expr *expr) {
+    ir::ir_utils::IRMutator<>::Visit(expr, expr);
+  }
 
  private:
   void Visit(const ir::Store *op, Expr *expr) override {
@@ -532,7 +548,7 @@ class ResizeBufferSizeVisitor : public ir::IRMutator<> {
       return;
     }
     if (store_tensor->buffer->memory_type == ir::MemoryType::Heap) {
-      ir::IRMutator<>::Visit(op, expr);
+      ir::ir_utils::IRMutator<>::Visit(op, expr);
       return;
     }
 
@@ -546,7 +562,7 @@ class ResizeBufferSizeVisitor : public ir::IRMutator<> {
       shape.push_back(ir::Expr(BufferSize(indices[idx])));
       buffer.push_back(shape.back());
     }
-    ir::IRMutator<>::Visit(op, expr);
+    ir::ir_utils::IRMutator<>::Visit(op, expr);
   }
 
   void Visit(const ir::Load *op, Expr *expr) override {
@@ -557,7 +573,7 @@ class ResizeBufferSizeVisitor : public ir::IRMutator<> {
 
     if (load->tensor.as_tensor_ref()->buffer->memory_type ==
         ir::MemoryType::Heap) {
-      ir::IRMutator<>::Visit(op, expr);
+      ir::ir_utils::IRMutator<>::Visit(op, expr);
       return;
     }
 
@@ -571,7 +587,7 @@ class ResizeBufferSizeVisitor : public ir::IRMutator<> {
     for (int i = 0; i < cnt; i++) {
       load->indices.erase(load->indices.begin());
     }
-    ir::IRMutator<>::Visit(op, expr);
+    ir::ir_utils::IRMutator<>::Visit(op, expr);
   }
 
   void Visit(const ir::For *op, Expr *expr) override {
@@ -581,12 +597,12 @@ class ResizeBufferSizeVisitor : public ir::IRMutator<> {
     auto extent_i = for_ir->extent;
 
     if (extent_i.is_constant()) loop_2_extent_[var_name] = extent_i.as_int32();
-    ir::IRMutator<>::Visit(op, expr);
+    ir::ir_utils::IRMutator<>::Visit(op, expr);
   }
 
   int BufferSize(ir::Expr indice) {
-    auto copy = IRCopy(indice);
-    auto vars = ir::CollectIRNodesInOrder(
+    auto copy = ir::ir_utils::IRCopy(indice);
+    auto vars = ir::ir_utils::CollectIRNodesInOrder(
         copy, [](const ir::Expr *expr) { return expr->As<ir::_Var_>(); });
 
     int max_range = 1;
@@ -598,7 +614,7 @@ class ResizeBufferSizeVisitor : public ir::IRMutator<> {
       auto extent = loop_2_extent_.find(var->name)->second;
 
       for (int idx = 0; idx < extent; ++idx) {
-        auto tmp = IRCopy(index);
+        auto tmp = ir::ir_utils::IRCopy(index);
         ReplaceVarWithExpr(&tmp, var, Expr(idx));
 
         if (deep == vars.size() - 1) {
@@ -619,9 +635,11 @@ class ResizeBufferSizeVisitor : public ir::IRMutator<> {
   std::unordered_map<std::string, int> loop_2_extent_;
 };
 
-class ReplaceVarToZero : public ir::IRMutator<> {
+class ReplaceVarToZero : public ir::ir_utils::IRMutator<> {
  public:
-  void operator()(ir::Expr *expr) { ir::IRMutator<>::Visit(expr, expr); }
+  void operator()(ir::Expr *expr) {
+    ir::ir_utils::IRMutator<>::Visit(expr, expr);
+  }
 
  private:
   void Visit(const ir::Store *op, Expr *expr) override {
@@ -637,7 +655,7 @@ class ReplaceVarToZero : public ir::IRMutator<> {
       }
       indice = common::AutoSimplify(indice);
     }
-    ir::IRMutator<>::Visit(op, expr);
+    ir::ir_utils::IRMutator<>::Visit(op, expr);
   }
 
   void Visit(const ir::Load *op, Expr *expr) override {
@@ -654,7 +672,7 @@ class ReplaceVarToZero : public ir::IRMutator<> {
       indice = common::AutoSimplify(indice);
     }
 
-    ir::IRMutator<>::Visit(op, expr);
+    ir::ir_utils::IRMutator<>::Visit(op, expr);
   }
 
   void Visit(const ir::For *op, Expr *expr) override {
@@ -665,7 +683,7 @@ class ReplaceVarToZero : public ir::IRMutator<> {
 
     if (extent_i.is_constant() && extent_i.as_int32() == 1)
       loop_var_.insert(var_name);
-    ir::IRMutator<>::Visit(op, expr);
+    ir::ir_utils::IRMutator<>::Visit(op, expr);
     loop_var_.erase(var_name);
   }
   std::unordered_set<std::string> loop_var_;

@@ -316,9 +316,9 @@ void Graph::VisualizeGroupedGraph(
   for (int idx = 0; idx < groups.size(); ++idx) {
     // Create fusion_group_x folder
     auto group_path =
-        utils::StringFormat("%s/fusion_group_%d",
-                            FLAGS_cinn_fusion_groups_graphviz_dir.c_str(),
-                            idx);
+        cinn::utils::StringFormat("%s/fusion_group_%d",
+                                  FLAGS_cinn_fusion_groups_graphviz_dir.c_str(),
+                                  idx);
     if (!MakeDirectory(group_path,
                        S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
       LOG(WARNING) << "Failed to make directory: \"" << group_path
@@ -326,20 +326,20 @@ void Graph::VisualizeGroupedGraph(
       continue;
     }
     // Create test_group_x.py
-    auto python_test_file =
-        utils::StringFormat("%s/test_group_%d.py", group_path.c_str(), idx);
+    auto python_test_file = cinn::utils::StringFormat(
+        "%s/test_group_%d.py", group_path.c_str(), idx);
     WriteToFile(python_test_file,
                 GenerateGroupPythonCode(groups[idx], fetch_var_ids));
     // Create x_group_name.dot
-    auto graph_group_file =
-        utils::StringFormat("%s/graph_group_%d.dot", group_path.c_str(), idx);
+    auto graph_group_file = cinn::utils::StringFormat(
+        "%s/graph_group_%d.dot", group_path.c_str(), idx);
     WriteToFile(graph_group_file, group_dots[idx]);
   }
 
   // Summary
   Summary(groups, FLAGS_cinn_fusion_groups_graphviz_dir);
   // Grouped graph
-  auto grouped_graph_file = utils::StringFormat(
+  auto grouped_graph_file = cinn::utils::StringFormat(
       "%s/grouped_graph.dot", FLAGS_cinn_fusion_groups_graphviz_dir.c_str());
   WriteToFile(grouped_graph_file, VisualizeGraph(groups, fetch_var_ids));
 }

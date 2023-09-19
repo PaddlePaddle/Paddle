@@ -127,7 +127,7 @@ namespace frontend {
 // clang-format on
 
 class NetBuilder {
-  using AttributeMap = utils::AttributeMap;
+  using AttributeMap = cinn::utils::AttributeMap;
 
  private:
   std::string name_;
@@ -225,7 +225,7 @@ class NetBuilder {
   }
 
   template <typename T>
-  std::enable_if_t<cinn::utils::IsVector<T>::value, cinn::utils::ShapeType>
+  std::enable_if_t<utils::IsVector<T>::value, cinn::utils::ShapeType>
   GetVectorShape(const std::vector<T>& value) {
     CHECK(!value.empty())
         << "The vector should not has empty list! Please check.";
@@ -425,7 +425,7 @@ class NetBuilder {
   }
 
   template <typename T>
-  std::enable_if_t<cinn::utils::IsVector<T>::value, Variable> Constant(
+  std::enable_if_t<utils::IsVector<T>::value, Variable> Constant(
       const T& value,
       const std::string& name = "",
       const std::string& dtype = "") {
@@ -433,7 +433,7 @@ class NetBuilder {
                              "empty list! Please check.";
 
     // flatten n-dims vector to 1-dim vector
-    auto all_datas = cinn::utils::Flatten(value);
+    auto all_datas = utils::Flatten(value);
     CHECK(!all_datas.empty()) << "The value of Constant should not be None or "
                                  "empty list! Please check.";
 
