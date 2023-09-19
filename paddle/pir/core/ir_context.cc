@@ -284,15 +284,14 @@ void IrContext::RegisterAbstractType(pir::TypeId type_id,
   }
 }
 
-void IrContext::RegisterOpInfo(
-    Dialect *dialect,
-    TypeId op_id,
-    const char *name,
-    std::vector<details::InterfaceValue> &&interface_map,
-    const std::vector<TypeId> &trait_set,
-    size_t attributes_num,
-    const char **attributes_name,
-    VerifyPtr verify) {
+void IrContext::RegisterOpInfo(Dialect *dialect,
+                               TypeId op_id,
+                               const char *name,
+                               std::vector<InterfaceValue> &&interface_map,
+                               const std::vector<TypeId> &trait_set,
+                               size_t attributes_num,
+                               const char **attributes_name,
+                               VerifyPtr verify) {
   if (impl().IsOpInfoRegistered(name)) {
     LOG(WARNING) << name << " op already registered.";
   } else {
