@@ -123,7 +123,6 @@ class TestComplexElementwiseMulOpWithCheckGrad(ElementwiseMulOp):
         }
         self.outputs = {'Out': self.out}
         self.attrs = {'axis': self.axis}
-        print(self.prim_op_type)
 
     def init_input_output(self):
         self.x = np.array([3 + 4j, 1 + 2j]).astype(self.dtype)

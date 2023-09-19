@@ -100,7 +100,6 @@ BACKENDS = [
     'expand',
     'tile',
     'add_grad',
-    # 'cast_grad',
     'divide_grad',
     'sum_grad',
     'concat_grad',
