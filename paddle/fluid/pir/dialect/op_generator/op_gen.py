@@ -91,6 +91,7 @@ class {op_name} : public pir::Op<{op_name}{interfaces}{traits}> {{
   static void Build({build_args});
   {build_mutable_attr_is_input}
   {build_attr_num_over_1}
+  {build_mutable_attr_is_input_attr_num_over_1}
   void Verify();
 {get_inputs_and_outputs}
 {exclusive_interface}
@@ -182,7 +183,12 @@ scalar_type_maps = {
     'bool': 'pir::BoolAttribute',
 }
 
-PD_MANUAL_OP_LIST = {'add_n', 'add_n_', 'add_n_with_kernel', 'split_grad'}
+PD_MANUAL_OP_LIST = {
+    'add_n',
+    'add_n_',
+    'add_n_with_kernel',
+    'split_grad',
+}
 
 
 def to_phi_and_fluid_op_name(op_item):
@@ -409,6 +415,17 @@ class OpInfoParser:
             return self.op_yaml_item['view']
         return None
 
+    def is_mutable_attribute(self, attr_dict):
+        if (
+            'support_tensor' in attr_dict
+            and attr_dict['support_tensor'] is True
+        ):
+            return True
+        elif 'tensor_name' in attr_dict or 'tensors_name' in attr_dict:
+            return True
+        else:
+            return False
+
     def parse_mutable_attribute(self):
         """
         {'axis': 'paddle::dialect::ScalarAttribute', 'rotl': 'paddle::dialect::IntArrayAttribute'}
@@ -420,6 +437,10 @@ class OpInfoParser:
             'scalar' in self.op_compat_item
         ):
             for scalar_attr in self.op_compat_item['scalar'].keys():
+                if not self.is_mutable_attribute(
+                    self.op_compat_item['scalar'][scalar_attr]
+                ):
+                    continue
                 if 'data_type' in self.op_compat_item['scalar'][scalar_attr]:
                     if (
                         scalar_attr == "depth"
@@ -458,6 +479,10 @@ class OpInfoParser:
             'int_array' in self.op_compat_item
         ):
             for int_array_attr in self.op_compat_item['int_array']:
+                if not self.is_mutable_attribute(
+                    self.op_compat_item['int_array'][int_array_attr]
+                ):
+                    continue
                 mutable_attribute_name_list.append(int_array_attr)
                 mutable_attribute_type_list.append(
                     [
@@ -819,9 +844,14 @@ def OpGenerator(
             op_yaml_items = op_yaml_items + ops
     op_info_items = {}
     for op in op_yaml_items:
-        op_info_items[op['name']] = OpInfoParser(
-            op, op_compat_parser.get_compat(op['name'])
-        )
+        op_compat_item = op_compat_parser.get_compat(op['name'])
+        if (
+            op_compat_item is None
+            and op['name'].endswith(('_grad', '_grad_'))
+            and 'forward' in op
+        ):
+            op_compat_item = op_compat_parser.get_compat(op['forward']['name'])
+        op_info_items[op['name']] = OpInfoParser(op, op_compat_item)
     # (3) CodeGen: Traverse op_info_items and generate
     ops_name_list = []  # all op class name store in this list
     ops_declare_list = []  # all op class declare store in this list
@@ -934,7 +964,9 @@ def OpGenerator(
             build_args_with_muta_attr_not_input_for_declare = ""
             build_func_with_muta_attr_not_input = ""
             build_mutable_attr_is_input = ""
+            build_func_with_muta_attr_is_input_with_attr_is_map = ""
             build_attr_num_over_1 = ""
+            build_mutable_attr_is_input_attr_num_over_1 = ""
             build_func_with_attr_is_map = ""
             build_func_with_muta_attr_is_input = ""
 
@@ -993,11 +1025,7 @@ def OpGenerator(
                         muta_attr_is_input=False,
                         attr_args_is_map=True,
                     )
-                    build_attr_num_over_1 = (
-                        "static void Build({build_args});".format(
-                            build_args=build_args_with_attr_is_map_for_declare
-                        )
-                    )
+                    build_attr_num_over_1 = f"static void Build({build_args_with_attr_is_map_for_declare});"
 
                 if len(op_mutable_attribute_name_list) > 0:
                     (
@@ -1031,6 +1059,39 @@ def OpGenerator(
                         build_args=build_args_with_muta_attr_is_input_for_declare
                     )
 
+                    if len(op_non_mutable_attribute_name_list) > 0:
+                        (
+                            build_args_with_muta_attr_is_input_with_attr_is_map_for_declare,
+                            build_func_with_muta_attr_is_input_with_attr_is_map,
+                        ) = gen_build_func_str(
+                            op_class_name,
+                            op_input_name_list,
+                            op_input_type_list,
+                            op_input_optional_list,
+                            op_attribute_name_list,
+                            op_attribute_type_list,
+                            op_attribute_build_arg_type_list,
+                            op_attribute_default_value_list,
+                            op_mutable_attribute_name_list,
+                            op_mutable_attribute_type_list,
+                            op_non_mutable_attribute_name_list,
+                            op_non_mutable_attribute_type_list,
+                            op_non_mutable_attribute_build_arg_type_list,
+                            op_non_mutable_attribute_default_value_list,
+                            op_output_name_list,
+                            op_output_type_list,
+                            op_output_size_list,
+                            op_output_optional_list,
+                            op_infer_meta_map,
+                            op_inplace_map,
+                            muta_attr_is_input=True,
+                            attr_args_is_map=True,
+                        )
+
+                        build_mutable_attr_is_input_attr_num_over_1 = "static void Build({build_args});".format(
+                            build_args=build_args_with_muta_attr_is_input_with_attr_is_map_for_declare
+                        )
+
             # gen op_declare_str/op_defined_str
             if len(op_non_mutable_attribute_name_list) == 0:
                 op_declare_str = OP_DECLARE_TEMPLATE.format(
@@ -1043,6 +1104,7 @@ def OpGenerator(
                     build_args=build_args_with_muta_attr_not_input_for_declare,
                     build_mutable_attr_is_input=build_mutable_attr_is_input,
                     build_attr_num_over_1=build_attr_num_over_1,
+                    build_mutable_attr_is_input_attr_num_over_1=build_mutable_attr_is_input_attr_num_over_1,
                     get_inputs_and_outputs=op_get_inputs_outputs_str,
                     exclusive_interface=exclusive_interface_str,
                 )
@@ -1060,6 +1122,7 @@ def OpGenerator(
                     build_args=build_args_with_muta_attr_not_input_for_declare,
                     build_mutable_attr_is_input=build_mutable_attr_is_input,
                     build_attr_num_over_1=build_attr_num_over_1,
+                    build_mutable_attr_is_input_attr_num_over_1=build_mutable_attr_is_input_attr_num_over_1,
                     get_inputs_and_outputs=op_get_inputs_outputs_str,
                     exclusive_interface=exclusive_interface_str,
                 )
@@ -1237,6 +1300,9 @@ def OpGenerator(
             ops_defined_list.append(build_func_with_attr_is_map)
             if len(op_mutable_attribute_name_list) > 0:
                 ops_defined_list.append(build_func_with_muta_attr_is_input)
+                ops_defined_list.append(
+                    build_func_with_muta_attr_is_input_with_attr_is_map
+                )
             ops_defined_list.append(op_verify_str)
             ops_defined_list.append(op_infer_meta_str)
             # NOTE(chenxi67)skip if dialect_name==cinn

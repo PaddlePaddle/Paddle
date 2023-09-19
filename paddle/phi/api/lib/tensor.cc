@@ -52,6 +52,14 @@ Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl)
       phi::errors::InvalidArgument("TensorImpl with nullptr is not supported"));
 }
 
+Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl,
+               std::shared_ptr<AbstractAutogradMeta> autograd_meta)
+    : impl_(std::move(tensor_impl)), autograd_meta_(std::move(autograd_meta)) {
+  PADDLE_ENFORCE_NOT_NULL(
+      impl_,
+      phi::errors::InvalidArgument("TensorImpl with nullptr is not supported"));
+}
+
 Tensor::Tensor(const Place &place) {
   LOG_FIRST_N(WARNING, 1)
       << "The Tensor(place) constructor is deprecated since version "
