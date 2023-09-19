@@ -336,8 +336,8 @@ def in_dynamic_or_pir_mode():
             >>> print(paddle.framework.in_dynamic_or_pir_mode())
             False
 
-            >>> paddle.framework.set_flags({"FLAGS_enable_pir_api": True})
-            >>> print(paddle.framework.in_dynamic_or_pir_mode())
+            >>> with paddle.pir_utils.IrGuard():
+            ...     print(paddle.framework.in_dynamic_or_pir_mode())
             True
 
     """
