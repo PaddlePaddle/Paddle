@@ -528,8 +528,8 @@ def append_backward_ops(
                         ] = state.value_to_valuegrad[value]
                     else:
                         state.op_to_opgrad[op] = []
-                else:
-                    state.op_to_opgrad[op] = []
+            else:
+                state.op_to_opgrad[op] = []
 
 
 def create_backward_prune_set(inputs, outputs, no_grad_set, state):
