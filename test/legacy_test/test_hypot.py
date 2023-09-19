@@ -72,8 +72,8 @@ class TestHypotAPI(unittest.TestCase):
     def test_error(self):
         x = paddle.to_tensor(self.x_np)
         y = 3.8
-        self.assertRaises(ValueError, paddle.hypot, x, y)
-        self.assertRaises(ValueError, paddle.hypot, y, x)
+        self.assertRaises(TypeError, paddle.hypot, x, y)
+        self.assertRaises(TypeError, paddle.hypot, y, x)
 
 
 class TestHypotAPIBroadCast(TestHypotAPI):
