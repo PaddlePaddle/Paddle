@@ -39,7 +39,7 @@ select = [
 
     # NumPy-specific rules
     "NPY001",
-    # "NPY003",
+    "NPY003",
 
     # Bugbear
     "B002",
@@ -109,9 +109,7 @@ ignore = [
     "C408",
     "UP030",
     "F403",
-    "B010",
     "PLR1722",
-    "UP034",
     "C405",
     "C417",
     "PLR0402",
