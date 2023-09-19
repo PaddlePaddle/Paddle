@@ -235,6 +235,30 @@ def test_stage2_bf16():
         o2_32_loss = paddle.cast(o2_losses[i], dtype='float32').detach()
         np.testing.assert_array_equal(o2_loss_no_storage, o2_32_loss)
 
+    # grad accumulation test
+    mlp5 = MLP()
+    mlp6 = MLP()
+    mlp5.set_state_dict(state_dict)
+    mlp6.set_state_dict(state_dict)
+    o1_losses_grad_acc = train_mlp(
+        mlp5, sharding_stage=2, use_pure_bf16=False, accumulate_grad=True
+    )
+    o2_losses_grad_acc = train_mlp(
+        mlp6,
+        sharding_stage=2,
+        use_pure_bf16=True,
+        use_main_grad=True,
+        accumulate_grad=True,
+    )
+    for i in range(len(o2_losses_grad_acc)):
+        o2_loss_grad_acc = paddle.cast(
+            o2_losses_grad_acc[i], dtype='float32'
+        ).detach()
+        o1_loss_grad_acc = paddle.cast(
+            o1_losses_grad_acc[i], dtype='float32'
+        ).detach()
+        np.testing.assert_array_equal(o2_loss_grad_acc, o1_loss_grad_acc)
+
     return
 
 
