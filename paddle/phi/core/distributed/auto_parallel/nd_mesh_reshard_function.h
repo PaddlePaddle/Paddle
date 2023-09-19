@@ -14,18 +14,21 @@
 
 #pragma once
 
-#include "paddle/fluid/primitive/primitive/primitive.h"
-#include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/common/int_array.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
 
-namespace paddle {
-namespace primitive {
+namespace phi {
+namespace distributed {
 
-using IntArray = paddle::experimental::IntArray;
-std::vector<std::vector<paddle::Tensor>> add_n_vjp(
-    const std::vector<paddle::Tensor>& x,
-    const Tensor& out_grad,
-    const std::vector<std::vector<bool>>& stop_gradients);
-}  // namespace primitive
-}  // namespace paddle
+class SameNdMeshReshardFunction final : public ReshardFunction {
+ public:
+  bool IsSuitable(const DistTensor& in,
+                  const TensorDistAttr& out_dist_attr) override;
+
+  void Eval(DeviceContext* dev_ctx,
+            const DistTensor& in,
+            const TensorDistAttr& out_dist_attr,
+            DistTensor* out) override;
+};
+
+}  // namespace distributed
+}  // namespace phi
