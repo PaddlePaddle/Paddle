@@ -913,13 +913,17 @@ def OpGenerator(
 
         if op_info.infer_meta_func:
             op_interfaces += ["paddle::dialect::InferMetaInterface"]
+        elif op_invoke_map and op_invoke_map['func'] in op_info_items:
+            op_interfaces += ["paddle::dialect::InferMetaInterface"]
 
         if (
             op_info.backward_name
             and op_info.op_phi_name[0] in vjp_interface_declare_gen_op_list
         ):
             op_interfaces += ["paddle::dialect::VjpInterface"]
-        exclusive_interface_str = gen_exclusive_interface_str(op_info)
+        exclusive_interface_str = gen_exclusive_interface_str(
+            op_info, op_info_items
+        )
 
         # if op has custom vjp rule, then append a CustomVjpTrait to it
         if op_info.op_phi_name[0] in custom_vjp_op_name_list:
@@ -1299,7 +1303,9 @@ def OpGenerator(
                     op_output_optional_list,
                 )
 
-            op_infer_meta_str = gen_op_infer_meta_str(op_info, op_class_name)
+            op_infer_meta_str = gen_op_infer_meta_str(
+                op_info, op_class_name, op_info_items
+            )
 
             # =================================== #
             #         gen Vjp func str      #

@@ -145,7 +145,15 @@ mutable_attribute_phi_type_maps = {
 }
 
 
+def phi_dype_patch(op_class_name, phi_dtype):
+    rtn = phi_dtype
+    if op_class_name == "PowOp":
+        rtn = "paddle::dialect::TransToPhiDataType(x_.type().dyn_cast<paddle::dialect::DenseTensorType>().dtype())"
+    return rtn
+
+
 def GenBuildInserFullForMutableAttribute(
+    op_class_name,
     op_attribute_name_list,
     op_attribute_build_arg_type_list,
     op_mutable_attribute_name_list,
@@ -173,6 +181,9 @@ def GenBuildInserFullForMutableAttribute(
             phi_dtype = mutable_attribute_phi_type_maps[
                 op_mutable_attribute_type_list[idx][1]
             ]
+
+        phi_dtype = phi_dype_patch(op_class_name, phi_dtype)
+
         if attr_type == "paddle::dialect::IntArrayAttribute":
             build_mutable_attribute += BUILD_INTARRAY_ATTRIBUTE_TEMPLATE.format(
                 attr_name=attr_name, phi_dtype=phi_dtype
@@ -654,6 +665,7 @@ def gen_build_func_str(
     if not muta_attr_is_input:
         inset_full_for_mutable_attributes_str = (
             GenBuildInserFullForMutableAttribute(
+                op_class_name,
                 op_attribute_name_list,
                 op_attribute_build_arg_type_list,
                 op_mutable_attribute_name_list,
