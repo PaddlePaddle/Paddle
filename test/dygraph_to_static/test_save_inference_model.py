@@ -17,7 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_util import ast_only_test, test_and_compare_with_new_ir
 
 import paddle
 from paddle import base
@@ -119,6 +119,7 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
         )
         np.testing.assert_allclose(gt_out, infer_out, rtol=1e-05)
 
+    @test_and_compare_with_new_ir(True)
     def load_and_run_inference(
         self, model_path, model_filename, params_filename, inputs
     ):
@@ -145,6 +146,7 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
 
 class TestPartialProgramRaiseError(unittest.TestCase):
     @ast_only_test
+    @test_and_compare_with_new_ir(False)
     def test_param_type(self):
         paddle.jit.enable_to_static(True)
         x_data = np.random.random((20, 20)).astype('float32')
