@@ -224,5 +224,56 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   }
 }
 
+void StandaloneExecutor::RunProfile(
+    const std::vector<std::string>& feed_names) {
+  platform::RecordEvent record_event("StandaloneExecutor::run_profile",
+                                     platform::TracerEventType::UserDefined,
+                                     1);
+
+  VLOG(1) << "Profile run started.";
+
+  const auto& jobs = plan_.JobList();
+
+  std::map<std::string, size_t> type_to_first_id;
+  if (!is_interpretercore_build_result_shared_) {
+    type_to_first_id[jobs[0]->Type()] = 0;
+    for (size_t job_idx = 1; job_idx < jobs.size(); ++job_idx) {
+      interpretercores_[job_idx]->ShareWorkQueueFrom(interpretercores_[0]);
+      if (type_to_first_id.count(jobs[job_idx]->Type()) == 0) {
+        type_to_first_id[jobs[job_idx]->Type()] = job_idx;
+      }
+    }
+    is_interpretercore_build_result_shared_ = true;
+  }
+
+  for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
+    const auto& job = jobs[job_idx];
+    const std::string& job_type = job->Type();
+    platform::RecordEvent record_event(
+        job_type + "-" + std::to_string(job->MicroBatchId()),
+        platform::TracerEventType::UserDefined,
+        1);
+
+    VLOG(6) << "Run profiling job (" << job_idx << "), type = " << job_type
+            << ", micro_batch_id =" << job->MicroBatchId();
+
+    // Note(sonder): Share build results don't work for new IR now.
+    if (type_to_first_id.count(job_type) != 0 &&
+        !FLAGS_enable_new_ir_in_executor) {
+      interpretercores_[job_idx]->ShareBuildResultsFrom(
+          interpretercores_[type_to_first_id[job_type]]);
+    }
+
+    // Run forward/backward for each microbatch
+    if (jobs.size() > 1 && job_type != "forward") {
+      const std::vector<std::string> tmp_feed_names = {};
+      interpretercores_[job_idx]->RunProfile(tmp_feed_names);
+    } else {
+      interpretercores_[job_idx]->RunProfile(feed_names);
+    }
+  }
+  // Profile run does not need to fetch any tensor here.
+}
+
 }  // namespace framework
 }  // namespace paddle

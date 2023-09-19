@@ -127,6 +127,64 @@ void ProgramInterpreter::RunImpl() {
 #endif
 }
 
+void ProgramInterpreter::RunProfileImpl() {
+  // lazy initialization of gc, do not create gc is the program only run once
+  if (!gc_) {
+    gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
+  }
+
+  interpreter::ResetAtomicGuard guard(&deps_, &refs_);
+
+  VLOG(4) << "Profiling Instruction List";
+  ProfileInstructionList(vec_instruction_);
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (platform::is_custom_place(place_)) {
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
+#endif
+}
+
+void ProgramInterpreter::ProfileInstructionList(
+    const std::vector<Instruction>& vec_instr) {
+  unfinished_op_number_ = vec_instr.size();
+  if (unfinished_op_number_ == 0) {
+    VLOG(4) << "No op to run, return";
+    return;
+  }
+
+  exception_holder_.Clear();
+
+  for (size_t i = 0; i < dependecy_count_->size(); ++i) {
+    if ((*dependecy_count_)[i] == 0) {
+      // NOTE(zhiqiu): hot fix for jit input var
+      RecordMemcpyD2H(vec_instr.at(i));
+    }
+  }
+
+  for (auto instr_id : trace_execute_order_) {
+    auto& instr_node = vec_instruction_.at(instr_id);
+
+    RunInstruction(instr_node);
+
+    if (UNLIKELY(exception_holder_.IsCaught())) {
+      VLOG(4) << "Exception caught";
+      break;
+    }
+  }
+
+  if (UNLIKELY(exception_holder_.IsCaught())) {
+    VLOG(1) << "Exception caught " << exception_holder_.Type();
+    PADDLE_ENFORCE_EQ(
+        main_thread_blocker_.Clear(),
+        0,
+        platform::errors::PreconditionNotMet(
+            "main_thread_blocker_.Clear() return -1, clear failed"));
+    VLOG(4) << "clear ok";
+    exception_holder_.ReThrow();
+  }
+}
+
 FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
                                   bool need_fetch) {
   SetDeviceId(place_);
@@ -227,6 +285,49 @@ FetchList ProgramInterpreter::Run(
     return fetch_list;
   } else {
     return {};
+  }
+}
+
+void ProgramInterpreter::RunProfile(
+    const std::vector<std::string>& feed_names) {
+  SetDeviceId(place_);
+  CheckCUDAGraphBeforeRun(feed_names);
+
+#ifdef PADDLE_WITH_DNNL
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+#endif
+
+  if (!is_build_) {
+    LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
+    paddle::framework::interpreter::BuildVariableScope(
+        block_, execution_config_, &var_scope_);
+
+    std::vector<paddle::framework::OpFuncNode> op_func_nodes;
+    paddle::framework::interpreter::BuildOpFuncList(
+        place_,
+        block_,
+        execution_config_.skip_gc_vars,
+        &op_func_nodes,
+        &var_scope_,
+        execution_config_,
+        HasLocalScope(),
+        static_build_);
+    SetFeedVarsInplaceSkip(feed_names);
+    // convert vec func_list to graph
+    Convert(&op_func_nodes);
+    UpdateSyncOpNum();
+    if (static_build_) {
+      VLOG(4) << "RUN impl";
+      RunProfileImpl();
+    }
+    is_build_ = true;
+    is_shared_results_build_ = true;
+  } else {
+    RunProfileImpl();
+  }
+
+  if (HasLocalScope()) {
+    ClearLoDTensorArrayInLocalScope();
   }
 }
 

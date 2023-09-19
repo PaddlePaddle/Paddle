@@ -52,6 +52,10 @@ class InterpreterCore {
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true);
 
+  // Profile run does not need to fetch anything, just knowing the feed names is
+  // enough.
+  void RunProfile(const std::vector<std::string>& feed_names);
+
   void ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src);
 
   void ShareBuildResultsFrom(std::shared_ptr<InterpreterCore> src);

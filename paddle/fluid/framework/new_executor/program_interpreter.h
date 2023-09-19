@@ -48,6 +48,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true) override;
 
+  void RunProfile(const std::vector<std::string>& feed_names) override;
+
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 
   void ShareBuildResultsFrom(const InterpreterBaseImpl& src) override;
@@ -121,6 +123,11 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   void RunNextInstructions(const Instruction& instr_id,
                            SchedulingQueue* reserved_next_ops);
   void RunOperator(const Instruction& instr_node);
+
+  // Profiling (single instruction profiling feature)
+  void RunProfileImpl();
+  void ProfileInstructionList(const std::vector<Instruction>& vec_instr);
+
   // Trace
   void TraceInstructionList(const std::vector<Instruction>& vec_instr);
 

@@ -72,6 +72,8 @@ class InterpreterBaseImpl {
   virtual paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names, bool need_fetch = true) = 0;
 
+  virtual void RunProfile(const std::vector<std::string>& feed_names) = 0;
+
   virtual void ShareWorkQueueFrom(InterpreterBaseImpl* src) = 0;
 
   virtual void ShareBuildResultsFrom(const InterpreterBaseImpl& src) = 0;
