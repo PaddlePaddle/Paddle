@@ -498,15 +498,17 @@ def pow(x, y, name=None):
             [1., 4., 9.])
 
     """
+
     # in dynamic graph mode
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(y, (int, float)):
             return _C_ops.pow(x, y)
-        elif isinstance(y, (paddle.Tensor, Variable)):
+        elif isinstance(y, (paddle.Tensor, Variable, paddle.ir.OpResult)):
             return _C_ops.elementwise_pow(x, y)
         else:
             raise TypeError(
-                'y must be scalar or tensor type, but received: %s ' % (y.dtype)
+                'y must be scalar , Tensor(in dygraph mode), OpResult(in pir mode) but received: %s '
+                % (y.dtype)
             )
     else:
         # in static graph mode
@@ -883,11 +885,9 @@ def divide(x, y, name=None):
             [2.        , 0.60000000, 2.        ])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.divide(x, y)
     else:
-        if paddle.ir.core._use_new_ir_api():
-            return paddle._ir_ops.divide(x, y)
         return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
 
@@ -1081,7 +1081,7 @@ def multiply(x, y, name=None):
               [2, 4, 6]]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.multiply(x, y)
     else:
         if x.dtype != y.dtype:
@@ -2805,7 +2805,7 @@ def max(x, axis=None, keepdim=False, name=None):
               [1., 1.]]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.max(x, axis, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
@@ -4626,7 +4626,7 @@ def tanh(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.37994900, -0.19737528,  0.09966799,  0.29131261])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.tanh(x)
     else:
         check_variable_and_dtype(

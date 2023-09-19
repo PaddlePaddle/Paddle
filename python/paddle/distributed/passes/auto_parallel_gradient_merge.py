@@ -74,7 +74,7 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
     zero_var = paddle.static.create_global_var(
         name="gradient_merge_zero",
         shape=[1],
-        value=int(0),
+        value=0,
         dtype='int32',
         persistable=True,
         force_cpu=True,
@@ -85,7 +85,7 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
     step_var = paddle.static.create_global_var(
         name="gradient_merge_step",
         shape=[1],
-        value=int(0),
+        value=0,
         dtype='int32',
         persistable=True,
         force_cpu=True,
@@ -108,7 +108,7 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
             type='increment',
             inputs={'X': [step_var]},
             outputs={'Out': [step_var]},
-            attrs={'step': float(1.0), OP_ROLE_KEY: OpRole.Backward},
+            attrs={'step': 1.0, OP_ROLE_KEY: OpRole.Backward},
         )
         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
             increment_op,

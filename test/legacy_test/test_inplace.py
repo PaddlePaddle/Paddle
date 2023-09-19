@@ -896,15 +896,6 @@ class TestDygraphInplaceNanToNum(TestDygraphInplace):
             ):
                 loss.backward()
 
-    # def test_backward_success_1(self):
-    #     pass
-
-    # def test_backward_success_2(self):
-    #     pass
-
-    # def test_leaf_inplace_var_error(self):
-    #     pass
-
 
 class TestDygraphInplaceLcm(TestDygraphInplace):
     def init_data(self):
@@ -1117,10 +1108,19 @@ class TestDygraphInplaceLogicAnd(TestDygraphInplace):
         var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
         no_inplace_var = self.non_inplace_api_processing(var)
         inplace_var = self.inplace_api_processing(var)
-        inplace_var_bool = paddle.cast(inplace_var, 'bool')
         np.testing.assert_array_equal(
-            no_inplace_var.numpy(), inplace_var_bool.numpy()
+            no_inplace_var.numpy(), inplace_var.numpy()
         )
+
+    def test_forward_version(self):
+        with paddle.base.dygraph.guard():
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            self.assertEqual(var.inplace_version, 0)
+
+            inplace_var = self.inplace_api_processing(var)
+            self.assertEqual(var.inplace_version, 1)
+            inplace_var[0] = True
+            self.assertEqual(var.inplace_version, 2)
 
     def inplace_api_processing(self, var):
         return paddle.logical_and_(var, self.y)

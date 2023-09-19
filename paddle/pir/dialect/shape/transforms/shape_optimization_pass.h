@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,24 +13,14 @@
 // limitations under the License.
 
 #pragma once
-#include <string>
-#include <vector>
 
-#include "paddle/cinn/ir/ir.h"
-namespace cinn::optim {
+#include <memory>
+#include "paddle/pir/core/dll_decl.h"
 
-/**
- * Collect undefined vars in the scope.
- *
- * e.g.
- *
- * The expression:
- * for i
- *  for j
- *    a[i, j] = b[i, j]
- *
- * here a, b are vars without definition
- */
-std::vector<std::string> CollectUndefinedVars(Expr* e);
+namespace pir {
 
-}  // namespace cinn::optim
+class Pass;
+
+IR_API std::unique_ptr<Pass> CreateShapeOptimizationPass();
+
+}  // namespace pir

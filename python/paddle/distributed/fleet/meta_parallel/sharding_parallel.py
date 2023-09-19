@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..utils.hybrid_parallel_util import broadcast_sharding_parameters
+from ..utils.hybrid_parallel_util import (
+    broadcast_dp_parameters,
+    broadcast_sharding_parameters,
+)
 from ..utils.log_util import logger
 from .meta_parallel_base import MetaParallelBase
 
@@ -27,6 +30,8 @@ class ShardingParallel(MetaParallelBase):
         logger.info("start broadcast sharding parameters")
         broadcast_sharding_parameters(self._layers, self._hcg)
 
-        # TODO (JZ-LIANG) to support Sharding-DP
+        if self._hcg.get_data_parallel_world_size() > 1:
+            logger.info("start broadcast dp parameters")
+            broadcast_dp_parameters(self._layers, self._hcg)
 
         logger.info("sharding's parameters is ready")

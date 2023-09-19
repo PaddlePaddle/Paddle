@@ -65,6 +65,10 @@ std::vector<int64_t> ResoluteOutputPartialDimension(
     const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
     const std::string& tensor_axes);
 
+// Construct a DistAttr from the incoming DistAttr corresponding to the
+// Repliacated state
+TensorDistAttr GetReplicatedDistAttr(const TensorDistAttr& dist_attr);
+
 // Adaptor for variadic arguments
 template <typename Functor>
 struct ArgsIterator {
@@ -94,11 +98,10 @@ using SpmdFn = SpmdInfo (*)(const std::vector<const DistMetaTensor*>& ins,
 
 namespace detail {
 template <SpmdFn Fn>
-struct PhiSpmdVariadicArgumentParser
-    : public ArgsIterator<PhiSpmdVariadicArgumentParser<Fn>> {
+struct VariadicSpmdRuleArgumentParser
+    : public ArgsIterator<VariadicSpmdRuleArgumentParser<Fn>> {
   std::vector<const DistMetaTensor*> inputs;
   std::vector<const DistMetaTensor*> outputs;
-  std::vector<phi::Attribute> attrs;
 
   // deal with inputs
   void operator()(const DistMetaTensor& x) { inputs.emplace_back(&x); }
@@ -107,11 +110,6 @@ struct PhiSpmdVariadicArgumentParser
     for (auto t : x) {
       inputs.emplace_back(t);
     }
-  }
-
-  template <typename AttrType>
-  void operator()(AttrType x) {
-    attrs.emplace_back(x);
   }
 
   // deal with outputs
@@ -123,15 +121,9 @@ struct PhiSpmdVariadicArgumentParser
     }
   }
 
-  SpmdInfo InferForward() {
-    return Fn(inputs, outputs);
-    // return Fn(inputs, outputs, attrs);
-  }
+  SpmdInfo InferForward() { return Fn(inputs, outputs); }
 
-  SpmdInfo InferBackward() {
-    return Fn(inputs, outputs);
-    // return Fn(inputs, outputs, attrs);
-  }
+  SpmdInfo InferBackward() { return Fn(inputs, outputs); }
 };
 }  // namespace detail
 }  // namespace distributed

@@ -137,6 +137,8 @@ class InstructionBase {
 
   virtual const std::string& Name() const = 0;
 
+  virtual ::pir::Operation* Operation() const = 0;
+
   void InitInputsOutputsIds(
       ::pir::Operation* op,
       Scope* inner_scope,

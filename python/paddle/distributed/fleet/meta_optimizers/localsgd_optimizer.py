@@ -351,7 +351,7 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
             last_step = paddle.static.create_global_var(
                 name="last_step",
                 shape=[1],
-                value=int(0),
+                value=0,
                 dtype='int64',
                 persistable=True,
             )

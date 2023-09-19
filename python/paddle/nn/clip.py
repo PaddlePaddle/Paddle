@@ -678,21 +678,24 @@ class ClipGradByGlobalNorm(ClipGradBase):
         ):
             return params_grads
 
+        def async_add_n(var_list):
+            return paddle.stack(var_list).sum()
+
         sum_dtype = 'float64' if len(sum_square_list) > 0 else "float32"
         global_norm_var = []
         if len(sum_square_list_fp16) > 0:
-            global_norm_var_fp16 = paddle.add_n(sum_square_list_fp16)
+            global_norm_var_fp16 = async_add_n(sum_square_list_fp16)
             global_norm_var.append(global_norm_var_fp16.astype(sum_dtype))
         if len(sum_square_list_fp32) > 0:
-            global_norm_var_fp32 = paddle.add_n(sum_square_list_fp32)
+            global_norm_var_fp32 = async_add_n(sum_square_list_fp32)
             if sum_dtype == 'float32':
                 global_norm_var.append(global_norm_var_fp32)
             else:
                 global_norm_var.append(global_norm_var_fp32.astype(sum_dtype))
         if len(sum_square_list) > 0:
-            global_norm_var_fp64 = paddle.add_n(sum_square_list)
+            global_norm_var_fp64 = async_add_n(sum_square_list)
             global_norm_var.append(global_norm_var_fp64)
-        global_norm_var = paddle.add_n(global_norm_var)
+        global_norm_var = async_add_n(global_norm_var)
         global_norm_var = paddle.sqrt(global_norm_var)
         max_global_norm = paddle.full(
             shape=[], dtype=global_norm_var.dtype, fill_value=self.clip_norm

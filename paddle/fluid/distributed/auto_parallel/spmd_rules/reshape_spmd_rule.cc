@@ -117,7 +117,7 @@ std::vector<DimTrans*> MakeReshapeDimTrans(
 
     if (tgt_splitted_shape.size() > 0) {
       std::vector<DimTrans*> input_dims;
-      for (int64_t i = 0, n = src_dims.size(); i < n; i++) {
+      for (int i = 0, n = static_cast<int>(src_dims.size()); i < n; i++) {
         int64_t in_dim = src_dims[i];
         if (src_shape[in_dim] > 1) {
           input_dims.emplace_back(new InputDim(in_dim));
@@ -141,7 +141,7 @@ paddle::distributed::auto_parallel::ReshapeSPMDRule::InferForward(
     const std::vector<DistTensorSpec>& input_specs,
     const paddle::framework::AttributeMap& attrs) {
   // step0: Verify Input Args Based on Reshape Logic
-  int64_t ninputs = input_specs.size();
+  int64_t ninputs = static_cast<int64_t>(input_specs.size());
   PADDLE_ENFORCE_EQ(
       ninputs,
       1,
