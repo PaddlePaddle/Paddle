@@ -200,6 +200,8 @@ void ProcessGroupNCCL::RecordEndEvent(gpuEvent_t event, gpuStream_t stream) {
   if (event != nullptr) {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event, stream));
   }
+=======
+>>>>>>> ca56e6cbcf22c4a3ca44981b6b706c925e6786d5
 }
 
 void ProcessGroupNCCL::GroupStart() {
@@ -335,7 +337,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
                 << GetGroupMessage();
 
         auto event = RecordStartEvent(stream);
-
         int64_t numel = in_tensor.numel();
         NCCL_CHECK(
             phi::dynload::ncclAllReduce(in_tensor.data(),
