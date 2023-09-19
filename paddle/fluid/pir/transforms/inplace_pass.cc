@@ -37,13 +37,14 @@ static bool CanBeDeleted(pir::Value value) {
       !value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
     return false;
   }
-  if (value.GetDefiningOp()->HasAttribute(kAttrIsPersisable)) {
-    return !(value.GetDefiningOp()
-                 ->attribute(kAttrIsPersisable)
-                 .dyn_cast<pir::ArrayAttribute>()
-                 .AsVector()[value.dyn_cast<pir::OpResult>().index()]
-                 .dyn_cast<pir::BoolAttribute>()
-                 .data());
+  if (auto op_result = value.dyn_cast<pir::OpResult>()) {
+    auto def_op = op_result.owner();
+    if (def_op->HasAttribute(kAttrIsPersisable)) {
+      return !(def_op->attribute<pir::ArrayAttribute>(kAttrIsPersisable)
+                   .AsVector()[op_result.index()]
+                   .dyn_cast<pir::BoolAttribute>()
+                   .data());
+    }
   }
   return true;
 }
