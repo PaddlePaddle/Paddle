@@ -15,7 +15,7 @@
 #pragma once
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace paddle {
+namespace phi {
 namespace distributed {
 
 inline phi::DenseTensor GetPartialTensor(const phi::DenseTensor& tensor,
@@ -51,5 +51,39 @@ inline bool IsP2POP(CommType comm_type, bool is_batch_p2p = false) {
   }
 }
 
+inline std::string CommTypeToString(CommType CommType) {
+  switch (CommType) {
+    case CommType::BROADCAST:
+      return "BROADCAST";
+    case CommType::ALLREDUCE:
+      return "ALLREDUCE";
+    case CommType::ALLREDUCE_SPARSE:
+      return "ALLREDUCE_SPARSE";
+    case CommType::REDUCE:
+      return "REDUCE";
+    case CommType::ALLGATHER:
+      return "ALLGATHER";
+    case CommType::GATHER:
+      return "GATHER";
+    case CommType::SCATTER:
+      return "SCATTER";
+    case CommType::REDUCE_SCATTER:
+      return "REDUCE_SCATTER";
+    case CommType::ALLTOALL:
+      return "ALLTOALL";
+    case CommType::SEND:
+      return "SEND";
+    case CommType::RECV:
+      return "RECV";
+    case CommType::BARRIER:
+      return "BARRIER";
+    case CommType::UNKNOWN:
+      return "UNKNOWN";
+    default:
+      return "UNKNOWN";
+  }
+  return "UNKNOWN";
+}
+
 }  //  namespace distributed
-}  //  namespace paddle
+}  // namespace phi

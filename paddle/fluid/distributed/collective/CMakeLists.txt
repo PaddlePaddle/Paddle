@@ -18,7 +18,7 @@ endif()
 if(WITH_NCCL OR WITH_RCCL)
   cc_library(
     process_group_nccl
-    SRCS process_group_nccl.cc nccl_tools.cc common.cc
+    SRCS process_group_nccl.cc common.cc
     DEPS process_group
          tcp_store
          place
@@ -28,7 +28,8 @@ if(WITH_NCCL OR WITH_RCCL)
          ${DEVICE_EVENT_LIBS}
          dense_tensor
          comm_static_check
-         nccl_dynamic_check)
+         nccl_dynamic_check
+         comm_task_manager)
 endif()
 
 if(WITH_XPU_BKCL)

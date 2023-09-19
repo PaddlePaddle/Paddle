@@ -12,14 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/collective/nccl_tools.h"
+#include "paddle/phi/core/distributed/nccl_tools.h"
 
 #include <unordered_map>
 
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
-namespace paddle {
+#if NCCL_VERSION_CODE >= 21300
+#define ENABLE_NCCL_GET_LAST_ERROR
+#define NCCL_REMOTE_ERROR
+#endif
+
+namespace phi {
 namespace distributed {
 
 ncclRedOp_t ToNCCLRedType(ReduceOp reduction) {
@@ -86,4 +91,4 @@ std::string NCCLRedTypeToString(ncclRedOp_t op) {
 }
 
 }  //  namespace distributed
-}  //  namespace paddle
+}  // namespace phi
