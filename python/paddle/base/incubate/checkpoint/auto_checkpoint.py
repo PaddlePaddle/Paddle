@@ -633,8 +633,6 @@ def _normal_yield(max_epoch_num):
         max_epoch_num = sys.maxint
     yield from range(0, max_epoch_num)
 
-    return
-
 
 def train_epoch_range(max_epoch_num, save_checkpoint_inter=None):
     global g_acp_type
