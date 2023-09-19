@@ -422,13 +422,16 @@ def append_backward_ops(
         ):
             if not grad_semantic:
                 continue
-            if input.get_defining_op().name() == "builtin.combine":
+            if (
+                input.get_defining_op() is not None
+                and input.get_defining_op().name() == "builtin.combine"
+            ):
                 stop_gradient = make_input_stopgradient(input.get_defining_op())
                 input_grad_stopgradients.append(
                     [info[0] for info in stop_gradient]
                 )
             else:
-                if input in no_grad_set:
+                if input.get_defining_op() is None or input in no_grad_set:
                     input_grad_stopgradients.append([True])
                 else:
                     input_grad_stopgradients.append([False])
@@ -445,7 +448,10 @@ def append_backward_ops(
         ):
             if not grad_semantic:
                 continue
-            if input.get_defining_op().name() == "builtin.combine":
+            if (
+                input.get_defining_op() is not None
+                and input.get_defining_op().name() == "builtin.combine"
+            ):
                 update_input_grad_map(input.get_defining_op(), input_grads[i])
             else:
                 input_grad = input_grads[i]
