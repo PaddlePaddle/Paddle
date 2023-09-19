@@ -18,15 +18,8 @@ from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestDygraphShardingStage2(TestMultipleGpus):
-    # check sharding logic as well as the accuracy with single mode
-    def test_dygraph_sharding_stage2(self):
-        self.run_mnist_2gpu('dygraph_group_sharded_stage2.py')
-
-    def test_dygraph_sharding_stage2_offload(self):
-        self.run_mnist_2gpu('dygraph_group_sharded_stage2_offload.py')
-
-    def test_dygraph_sharding_stage2_with_comm_overlap(self):
-        self.run_mnist_2gpu('dygraph_group_sharded_stage2_comm_overlap.py')
+    def test_dygraph_sharding_stage2_bf16(self):
+        self.run_mnist_2gpu('dygraph_group_sharded_stage2_bf16.py')
 
 
 if __name__ == "__main__":
