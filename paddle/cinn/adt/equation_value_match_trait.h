@@ -105,7 +105,7 @@ template <typename T>
 struct MatchTrait<Value, List<T>> final {
   using base_type = List<Value>;
 
-  static constexpr int is_template = false;
+  static constexpr int is_template = true;
 
   template <template <typename> class Matcher>
   static bool MatchChildren(const base_type& list) {

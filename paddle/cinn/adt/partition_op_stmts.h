@@ -38,7 +38,7 @@ std::vector<AnchorGroup> PartitionOpStmts(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,
     const List<OpStmt>& op_stmts);
 
-bool IsEquationSolvable(const AnchorGroup& igroup_spec);
+void CheckEquationSolvable(const AnchorGroup& igroup_spec);
 
 GraphView MakeGlobalEquationGraphViewForPartition(
     const EquationCtx4OpStmtT& EquationCtx4OpStmt,

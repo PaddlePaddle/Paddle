@@ -84,8 +84,6 @@ void VisitEachOpStmt(
     const std::shared_ptr<hlir::framework::Graph::Group>& group,
     const DoEachT& DoEach) {
   for (const auto* op : group->nodes) {
-    // Tuple<Op, In<List<Arg>>, Out<List<Arg>>>
-    VLOG(1) << "MapExpr VisitEachOpStmt begin() " << op->id();
     DoEach(OpStmt{MakeOp(op),
                   MakeOpStmtInputList(op, group->graph_),
                   MakeOpStmtOutputList(op, group->graph_)});
@@ -114,7 +112,7 @@ void PartitionIGroupOpStmts(const List<OpStmt>& op_stmts,
 }
 
 std::shared_ptr<IGroup> MakeIGroup(const AnchorGroup& igroup_spec) {
-  CHECK(IsEquationSolvable(igroup_spec));
+  CheckEquationSolvable(igroup_spec);
   return std::make_shared<IGroup>(igroup_spec.op_stmts,
                                   igroup_spec.anchor_index,
                                   igroup_spec.EquationCtx4OpStmt);
@@ -426,7 +424,6 @@ MapExpr GenerateMapExpr(const std::shared_ptr<KGroup>& kgroup) {
 
 MapExpr GenerateMapExpr(
     const std::shared_ptr<hlir::framework::Graph::Group>& group) {
-  VLOG(1) << "MapExpr GenerateMapExpr begin()";
   const auto& igroups = GenerateIGroups(group);
 
   const auto& kgroup = GenerateKGroups(group, igroups);
@@ -439,7 +436,7 @@ namespace {}  // namespace
 void TryGenerateMapExprFromGraph(
     const std::shared_ptr<cinn::hlir::framework::Graph>& graph) {
   if (!FLAGS_cinn_enable_map_expr) {
-    VLOG(1) << "FLAGS_cinn_enable_map_expr=false, break";
+    LOG(WARNING) << "FLAGS_cinn_enable_map_expr=false, break";
     return;
   }
   for (const auto& fusion_group : graph->fusion_groups) {

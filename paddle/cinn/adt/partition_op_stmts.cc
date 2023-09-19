@@ -324,8 +324,6 @@ std::unordered_map<AnchorIndex, AnchorGroup> PartitionOpStmtsIntoAnchorGroups(
       MakeGlobalEquationGraphViewForPartition(EquationCtx4OpStmt, op_stmts);
 
   std::unordered_set<OpStmt> all_visited_op_stmts{};
-  VLOG(1) << "candidate_anchor_indexes->size() = "
-          << candidate_anchor_indexes->size();
   while (!candidate_anchor_indexes->empty()) {
     AnchorIndex anchor_tensor =
         PickThenEraseAnchorIndex(candidate_anchor_indexes);
@@ -371,7 +369,7 @@ tBreak<bool> AggregateAnchorGroupOpStmt(const AnchorGroup& igroup_spec,
   return tBreak<bool>{false};
 }
 
-bool IsEquationSolvable(const AnchorGroup& igroup_spec) {
+void CheckEquationSolvable(const AnchorGroup& igroup_spec) {
   const auto& equation_graph_view = MakeGlobalEquationGraphViewForPartition(
       igroup_spec.EquationCtx4OpStmt, igroup_spec.op_stmts);
 
@@ -384,18 +382,11 @@ bool IsEquationSolvable(const AnchorGroup& igroup_spec) {
     return ctx.HasValue(fake_op_placeholder);
   };
 
-  bool is_solvable =
-      TrySolveEquations(equation_graph_view, igroup_spec.anchor_index, &ctx)
-          .value();
+  CheckEquationsSolvable(equation_graph_view, igroup_spec.anchor_index, &ctx);
   AggregateAnchorGroupOpStmt(igroup_spec, [&](const auto& op_stmt) {
-    if (!IsOpSolved(op_stmt)) {
-      is_solvable = false;
-      return tBreak<bool>{true};
-    } else {
-      return tBreak<bool>{false};
-    }
+    CHECK(IsOpSolved(op_stmt));
+    return tBreak<bool>{false};
   });
-  return is_solvable;
 }
 
 std::function<std::size_t(const OpStmt&)> MakeGetterOrderValue4OpStmt(

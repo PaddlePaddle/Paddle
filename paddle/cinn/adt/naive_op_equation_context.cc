@@ -101,7 +101,6 @@ void GenerateOpEquations(const OpStmt& op_stmt,
   const auto& generate_equations =
       hlir::framework::Operator::GetAttrs<GenerateEquationFunc>(
           "generate_equations");
-  VLOG(1) << "MapExpr op_node->op() " << op_node->op()->get_index();
   CHECK(generate_equations.Find(op_node->op()));
   generate_equations[op_node->op()](ctx);
 }
@@ -125,7 +124,6 @@ GenerateContext4LocalOpStmt(const List<OpStmt>& op_stmts) {
   const auto& op_stmt2equation_ctx = std::make_shared<OpStmt2EquationContext>();
 
   for (const auto& op_stmt : *op_stmts) {
-    VLOG(1) << "MapExpr MakeContextAndGenerateEquations begin()";
     const auto& ctx = MakeContextAndGenerateEquations(op_stmt);
     CHECK(op_stmt2equation_ctx->emplace(op_stmt, ctx).second);
   }

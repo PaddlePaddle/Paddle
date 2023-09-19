@@ -18,6 +18,7 @@
 #include "glog/logging.h"
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/equation_solver.h"
+#include "paddle/cinn/adt/equation_value.h"
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/simplify_value.h"
 #include "paddle/cinn/adt/tags.h"
@@ -114,8 +115,11 @@ std::unordered_map<Variable, Value> InferValues(const Function* function,
 
 DEFINE_ADT_TAG(tHasUniqueInferedValue);
 
+template <typename OnFailT>
 tHasUniqueInferedValue<bool> MergeInferedValuesIntoCtx(
-    const Function* function, IndexExprInferContext* ctx) {
+    const Function* function,
+    IndexExprInferContext* ctx,
+    const OnFailT& OnFail) {
   auto output_variable2value = InferValues(function, ctx);
   for (const auto& [variable, unsimplified_value] : output_variable2value) {
     Value simplified_value({SimplifyValue(unsimplified_value)});
@@ -124,11 +128,19 @@ tHasUniqueInferedValue<bool> MergeInferedValuesIntoCtx(
     } else {
       const Value& old_value = ctx->GetValue(variable);
       if (simplified_value != old_value) {
-        return tHasUniqueInferedValue<bool>{false};
+        return OnFail(old_value, simplified_value);
       }
     }
   }
   return tHasUniqueInferedValue<bool>{true};
+}
+
+tHasUniqueInferedValue<bool> MergeInferedValuesIntoCtx(
+    const Function* function, IndexExprInferContext* ctx) {
+  return MergeInferedValuesIntoCtx(
+      function, ctx, [&](const auto&, const auto&) {
+        return tHasUniqueInferedValue<bool>{false};
+      });
 }
 
 void SolveEquations(
@@ -141,6 +153,25 @@ void SolveEquations(
             MergeInferedValuesIntoCtx(function, ctx);
         CHECK(has_unique_value.value());
       });
+}
+
+void CheckEquationsSolvable(
+    const EquationGraphTopoWalker<Variable, const Function*>& walker,
+    const Variable& start,
+    IndexExprInferContext* ctx) {
+  const auto& CheckNoConflictInferedValue = [&](const Function* function) {
+    MergeInferedValuesIntoCtx(
+        function,
+        ctx,
+        [&](const auto& old_value, const auto& simplified_value) {
+          LOG(ERROR) << "old_value: " << DebugString(old_value);
+          LOG(ERROR) << "simplified_value: " << DebugString(simplified_value);
+          LOG(FATAL) << "CheckEquationsSolvable Failed";
+          return tHasUniqueInferedValue<bool>{false};
+        });
+  };
+
+  walker.WalkFunction(start, CheckNoConflictInferedValue);
 }
 
 tHasNoConflictValue<bool> TrySolveEquations(

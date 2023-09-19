@@ -34,4 +34,9 @@ tHasNoConflictValue<bool> TrySolveEquations(
     const Variable& start,
     IndexExprInferContext* ctx);
 
+void CheckEquationsSolvable(
+    const EquationGraphTopoWalker<Variable, const Function*>& walker,
+    const Variable& start,
+    IndexExprInferContext* ctx);
+
 }  // namespace cinn::adt
