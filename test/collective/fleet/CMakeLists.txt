@@ -946,11 +946,8 @@ if((WITH_GPU) AND (LINUX))
     MODULES
     test_dygraph_save_for_auto_infer
     ENVS
-    "NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "NVIDIA_TF32_OVERRIDE=0;FLAGS_new_executor_micro_batching=False;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_dygraph_save_for_auto_infer
                        PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
-  set_tests_properties(
-    test_dygraph_save_for_auto_infer
-    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
 endif()
