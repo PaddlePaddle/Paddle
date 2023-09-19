@@ -43,6 +43,8 @@
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/utils.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(full_int_array, CPU, ALL_LAYOUT);
@@ -162,11 +164,47 @@ TEST(kernel_dialect, legacy_op_test) {
                                            "kernel_key",
                                            kernel_key);
 
-  pir::Operation* op = pir::Operation::Create(std::move(argument));
+  pir::Operation* op = pir::Operation::Create(argument);
   EXPECT_EQ("pd_op.kernel_op",
             op->dyn_cast<paddle::dialect::LegacyKernelOp>().op_name());
   EXPECT_EQ("kernel_op",
             op->dyn_cast<paddle::dialect::LegacyKernelOp>().kernel_name());
   EXPECT_EQ(kernel_key,
             op->dyn_cast<paddle::dialect::LegacyKernelOp>().kernel_key());
+}
+
+TEST(kernel_dialect, cond_op_test) {
+  // (1) Init environment.
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::ControlFlowDialect>();
+
+  pir::Program program(ctx);
+  pir::Block* block = program.block();
+  pir::Builder builder(ctx, block);
+
+  auto full_op = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{1}, true, phi::DataType::BOOL);
+
+  auto if_op = builder.Build<paddle::dialect::IfOp>(
+      full_op.out(), std::vector<pir::Type>{full_op.result(0).type()});
+
+  pir::Block* true_block = if_op.true_block();
+
+  builder.SetInsertionPointToStart(true_block);
+
+  auto full_op_1 = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{2}, true, phi::DataType::BOOL);
+  builder.Build<pir::YieldOp>(std::vector<pir::OpResult>{full_op_1.out()});
+
+  pir::Block* false_block = if_op.false_block();
+
+  builder.SetInsertionPointToStart(false_block);
+
+  auto full_op_2 = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{3}, true, phi::DataType::BOOL);
+  builder.Build<pir::YieldOp>(std::vector<pir::OpResult>{full_op_2.out()});
+
+  program.Print(std::cout);
+  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 }

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import numpy as np
 from . import unique_name
 from . import core
@@ -374,7 +373,6 @@ def _setitem_for_tensor_array(var, item, value):
         from paddle.jit.dy2static.variable_trans_func import (
             to_static_variable,
         )
-        from paddle import cast
         from paddle.tensor import array_write
 
         item = paddle.cast(to_static_variable(item), dtype='int64')
@@ -892,6 +890,7 @@ def _setitem_static(x, indices, values):
             attrs["shape"] = shape
 
         elif isinstance(values, Variable):
+            values = values.astype(dtype)
             inputs["ValueTensor"] = values
             value_tensor = values
 
@@ -966,6 +965,9 @@ def _setitem_static(x, indices, values):
         ) = deal_advanced_index(sub_tensor, advanced_index, True)
         if not isinstance(values, Variable):
             values = paddle.assign(values).astype(transed_sub_tensor.dtype)
+
+        if values.dtype != transed_sub_tensor.dtype:
+            values = values.astype(transed_sub_tensor.dtype)
 
         if paddle.in_dynamic_mode():
             return transed_sub_tensor.index_put_(
