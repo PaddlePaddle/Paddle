@@ -406,7 +406,7 @@ TEST(shape_op, dim) {
   EXPECT_EQ(dimOp.getName(), "S0");
   dimOp.setName("S1");
   EXPECT_EQ(dimOp.getName(), "S1");
-  EXPECT_EQ(res.GetDefiningOp(), dimOp.operation());
+  EXPECT_EQ(res.owner(), dimOp.operation());
   EXPECT_EQ(res.type(), pir::IndexType::get(ctx));
 }
 

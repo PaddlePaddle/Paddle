@@ -84,7 +84,7 @@ bool SymbolicDimMgr::LoadShapeConstraintGraph() {
   auto build_sym_product = [&](std::vector<Value> range,
                                SymbolicDimProduct& product) {
     for (Value v : range) {
-      auto definingOp = v.GetDefiningOp();
+      auto definingOp = v.dyn_cast<OpResult>().owner();
       if (auto constOp = definingOp->dyn_cast<ConstantOp>()) {
         product.factor *= constOp.value().dyn_cast<Int32Attribute>().data();
         continue;
