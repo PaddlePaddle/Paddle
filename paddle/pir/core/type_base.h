@@ -37,10 +37,9 @@ class IR_API AbstractType {
   /// \param type_id The type id of the AbstractType.
   /// \param dialect The Dialect which the type registered to.
   ///
-  static AbstractType get(
-      TypeId type_id,
-      const Dialect &dialect,
-      std::vector<details::InterfaceValue> &&interface_map) {
+  static AbstractType get(TypeId type_id,
+                          const Dialect &dialect,
+                          std::vector<InterfaceValue> &&interface_map) {
     return AbstractType(type_id, dialect, std::move(interface_map));
   }
 
@@ -104,7 +103,7 @@ class IR_API AbstractType {
   ///
   explicit AbstractType(TypeId type_id,
                         const Dialect &dialect,
-                        std::vector<details::InterfaceValue> &&interface_map)
+                        std::vector<InterfaceValue> &&interface_map)
       : type_id_(type_id),
         dialect_(dialect),
         interface_map_(std::move(interface_map)) {}
@@ -118,7 +117,7 @@ class IR_API AbstractType {
   const Dialect &dialect_;
 
   /// A collection of the interfaces registered to this type.
-  std::vector<details::InterfaceValue> interface_map_;
+  std::vector<InterfaceValue> interface_map_;
 
   /// Interface will be recorded by std::pair<TypeId, void*> currently.
   uint32_t num_interfaces_ = 0;
