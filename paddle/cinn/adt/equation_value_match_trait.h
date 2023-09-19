@@ -97,7 +97,7 @@ struct MatchTrait<Value, Undefined> final {
 };
 
 template <>
-struct MatchTrait<Value, LoopDescriptor> final {
+struct MatchTrait<Value, Iterator> final {
   static constexpr int is_template = false;
 };
 

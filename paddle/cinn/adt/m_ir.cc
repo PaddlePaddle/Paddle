@@ -45,9 +45,9 @@ void CollectTensorIndexIteratorsImpl(const Ok& ok,
   LOG(FATAL) << "Not Implemented";
 }
 
-void CollectTensorIndexIteratorsImpl(const LoopDescriptor& loop_descriptor,
+void CollectTensorIndexIteratorsImpl(const Iterator& iterator,
                                      std::unordered_set<Iterator>* ret) {
-  LOG(FATAL) << "Not Implemented";
+  ret->emplace(iterator);
 }
 
 void CollectTensorIndexIteratorsImpl(const List<Value>& tensor_index_expr,

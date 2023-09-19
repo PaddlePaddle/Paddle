@@ -159,13 +159,14 @@ GraphView MakeEquationGraphView(const std::shared_ptr<IGroup>& igroup,
 
 using TensorIndexExpr = Value;
 
-std::unordered_map<Variable, const Value> MakeSdIterator2LoopDescriptor(
-    const IGroup& igroup, const ScheduleDescriptor& sd) {
+std::unordered_map<Variable, const Value> MakeSdIterator2Iterator(
+    const IGroup& igroup) {
   std::unordered_map<Variable, const Value> ret{};
-  CHECK_EQ(igroup.loop_iterators()->size(), sd->size());
 
-  for (std::size_t i = 0; i < sd->size(); ++i) {
-    CHECK(ret.emplace(igroup.loop_iterators()->at(i), sd->at(i)).second);
+  for (std::size_t i = 0; i < igroup.loop_iterators()->size(); ++i) {
+    CHECK(ret.emplace(igroup.loop_iterators()->at(i),
+                      igroup.loop_iterators()->at(i))
+              .second);
   }
 
   return ret;
@@ -173,12 +174,11 @@ std::unordered_map<Variable, const Value> MakeSdIterator2LoopDescriptor(
 
 std::function<const TensorIndexExpr*(const Tensor&)> MakeGetterTensorIndexExpr(
     const std::shared_ptr<IGroup>& igroup,
-    const GraphView& sd_equation_graph_view,
-    const ScheduleDescriptor& sd) {
+    const GraphView& sd_equation_graph_view) {
   GraphView igroup_view = igroup->GetDefaultGraphView();
   GraphView merged_view = igroup_view.Merge(sd_equation_graph_view);
 
-  const auto& init_var2value = MakeSdIterator2LoopDescriptor(*igroup, sd);
+  const auto& init_var2value = MakeSdIterator2Iterator(*igroup);
   auto ctx = std::make_shared<IndexExprInferContext>(init_var2value);
 
   std::vector<Variable> starts{};
@@ -391,7 +391,7 @@ AnchoredMapStmt GenerateAnchoredMapStmt(const std::shared_ptr<IGroup>& igroup,
   const auto& sd_equation_graph_view = MakeEquationGraphView(igroup, sd);
 
   const auto& TensorIndexExpr4Tensor =
-      MakeGetterTensorIndexExpr(igroup, sd_equation_graph_view, sd);
+      MakeGetterTensorIndexExpr(igroup, sd_equation_graph_view);
 
   CHECK(igroup->anchor_sd_equation_ctx().has_value());
   const auto& schedule_iters =
