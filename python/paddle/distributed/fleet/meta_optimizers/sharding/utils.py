@@ -1067,7 +1067,7 @@ def append_naive_sync(block, sync_var, ring_id):
         attrs={
             "shape": sync_var.shape,
             "dtype": sync_var.dtype,
-            "value": int(1),
+            "value": 1,
         },
     )
     block.append_op(
