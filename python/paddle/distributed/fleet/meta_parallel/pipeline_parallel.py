@@ -306,14 +306,7 @@ class PipelineParallel(MetaParallelBase):
     def set_virtual_pipeline_rank(self, rank):
         self._virtual_pp_rank = rank
 
-    def bw_hook_func(self, buffer, param):
-        @paddle.autograd.no_grad()
-        def fused_allreduce(*_):
-            buffer.add_grad(param)
-
-        return fused_allreduce
-
-    def register_allreduce_overlap_hook(
+    def fused_gradient(
         self, model, comm_group, acc_steps, dp, group_size=128 * 1024 * 1024
     ):
         if model.get_num_virtual_stages() > 1:
@@ -325,7 +318,7 @@ class PipelineParallel(MetaParallelBase):
             assert hasattr(self, "optimizer")
             assert hasattr(self.optimizer, "_param2rank")
             _param2rank = self.optimizer._param2rank
-        # Note: after sharding change to reduce operation, here need to be cleared
+
         act = (
             HOOK_ACTION.ALL_REDUCE
             if (dp or not g_shard_use_reduce)
@@ -368,10 +361,27 @@ class PipelineParallel(MetaParallelBase):
                         group_idx, parameters, comm_group, acc_steps, act, dst
                     )
                     self._chunk_2_comm_buffers[chunk_idx].append(buffer)
-                    for param in parameters:
-                        param._register_backward_hook(
-                            self.bw_hook_func(buffer, param)
-                        )
+
+        return self._chunk_2_comm_buffers
+
+    def bw_hook_func(self, buffer, param):
+        @paddle.autograd.no_grad()
+        def fused_allreduce(*_):
+            buffer.add_grad(param)
+
+        return fused_allreduce
+
+    def register_allreduce_overlap_hook(
+        self, model, comm_group, acc_steps, dp, group_size=128 * 1024 * 1024
+    ):
+        # register hook
+        self.fused_gradient(model, comm_group, acc_steps, dp, group_size)
+        for _, buffers in self._chunk_2_comm_buffers.items():
+            for buffer in buffers:
+                for param in buffer._params:
+                    param._register_backward_hook(
+                        self.bw_hook_func(buffer, param)
+                    )
 
     def timer_printer(self):
         if not self._enable_timer:
