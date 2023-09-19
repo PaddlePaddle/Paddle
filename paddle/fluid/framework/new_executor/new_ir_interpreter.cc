@@ -1309,11 +1309,11 @@ void NewIRInterpreter::SolvePersisableVarNames() {
     ::pir::Value value = kv.first;
     const std::string& var_name = kv.second;
     ::pir::OpResult result = value.dyn_cast<::pir::OpResult>();
-    auto* defining_op = value.GetDefiningOp();
+    auto* defining_op = result.owner();
     if (defining_op->HasAttribute(kAttrIsPersisable)) {
-      auto is_persisables = defining_op->attribute(kAttrIsPersisable)
-                                .dyn_cast<::pir::ArrayAttribute>()
-                                .AsVector();
+      auto is_persisables =
+          defining_op->attribute<::pir::ArrayAttribute>(kAttrIsPersisable)
+              .AsVector();
       if (is_persisables[result.index()]
               .dyn_cast<::pir::BoolAttribute>()
               .data()) {
