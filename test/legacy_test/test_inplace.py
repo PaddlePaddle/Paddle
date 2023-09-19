@@ -882,7 +882,7 @@ class TestDygraphInplaceHypot(TestDygraphInplace):
             with self.assertRaisesRegex(
                 RuntimeError,
                 "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    1, 0
+                    3, 0
                 ),
             ):
                 loss.backward()
