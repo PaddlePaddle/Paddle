@@ -74,6 +74,8 @@ class IR_API Value {
 
   OpOperand first_use() const;
 
+  void Print(std::ostream &os) const;
+
   bool use_empty() const;
 
   bool HasOneUse() const;
@@ -88,7 +90,7 @@ class IR_API Value {
   void ReplaceAllUsesWith(Value new_value) const;
   detail::ValueImpl *impl() const { return impl_; }
 
-  std::vector<std::string> GetValueInfoList() const;
+  std::string GetValueInfo() const;
 
  protected:
   detail::ValueImpl *impl_{nullptr};

@@ -336,13 +336,12 @@ void BindValue(py::module *m) {
            })
       .def("__hash__",
            [](const Value &self) { return std::hash<pir::Value>{}(self); })
-      .def("print_value_info", [](const Value &self) -> py::list {
-        py::list value_info_list;
-        auto value_info_vec = self.GetValueInfoList();
-        for (auto &value_info : value_info_vec) {
-          value_info_list.append(value_info);
-        }
-        return value_info_list;
+      .def("__str__", [](const Value &self) -> py::str {
+        std::ostringstream print_stream;
+        print_stream << "Value(";
+        print_stream << self.GetValueInfo();
+        print_stream << ")";
+        return print_stream.str();
       });
 }
 
@@ -452,6 +451,19 @@ void BindOpResult(py::module *m) {
            })
       .def("__hash__",
            [](OpResult &self) { return std::hash<pir::Value>{}(self); })
+      .def("__str__",
+           [](OpResult &self) -> py::str {
+             std::ostringstream print_stream;
+             print_stream << "OpResult(";
+             print_stream << self.GetValueInfo();
+             if (GetOpResultBoolAttr(self, kAttrStopGradients)) {
+               print_stream << ", stop_gradient=True";
+             } else {
+               print_stream << ", stop_gradient=False";
+             }
+             print_stream << ")";
+             return print_stream.str();
+           })
       .def("get_defining_op",
            &OpResult::GetDefiningOp,
            return_value_policy::reference)
@@ -479,15 +491,6 @@ void BindOpResult(py::module *m) {
       .def("has_one_use", &Value::HasOneUse)
       .def("use_empty", &OpResult::use_empty)
       .def("type", &OpResult::type)
-      .def("print_value_info",
-           [](const OpResult &self) -> py::list {
-             py::list value_info_list;
-             auto value_info_vec = self.GetValueInfoList();
-             for (auto &value_info : value_info_vec) {
-               value_info_list.append(value_info);
-             }
-             return value_info_list;
-           })
       .def_property(
           "stop_gradient",
           [](OpResult &self) {

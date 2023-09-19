@@ -309,6 +309,11 @@ void Operation::Print(std::ostream& os) {
   printer.PrintOperation(this);
 }
 
+void Value::Print(std::ostream& os) const {
+  IrPrinter printer(os);
+  printer.PrintValue(*this);
+}
+
 void Type::Print(std::ostream& os) const {
   BasicIrPrinter printer(os);
   printer.PrintType(*this);
