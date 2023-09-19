@@ -63,7 +63,6 @@ std::shared_ptr<::pir::Program> BuildGroupProgram() {
   pir::Block* block2 = group_op2.Block();
   builder.SetInsertionPointToEnd(block2);
 
-  LOG(INFO) << group_op1->result(0).GetDefiningOp();
   auto tan_op_x = builder.Build<paddle::dialect::TanOp>(group_op1->result(0));
   auto relu_op_x = builder.Build<paddle::dialect::ReluOp>(tan_op_x->result(0));
   auto tan_op_y = builder.Build<paddle::dialect::TanOp>(relu_op_x->result(0));
