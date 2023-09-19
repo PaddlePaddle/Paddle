@@ -35,8 +35,10 @@ std::vector<std::vector<pir::OpResult>> AddNOp::Vjp(
 
   VLOG(6) << "Prepare inputs of add_n_grad";
 
-  pir::CombineOp combine_op_obj =
-      op_obj.inputs().GetDefiningOp()->dyn_cast<pir::CombineOp>();
+  pir::CombineOp combine_op_obj = op_obj.inputs()
+                                      .dyn_cast<pir::OpResult>()
+                                      .owner()
+                                      ->dyn_cast<pir::CombineOp>();
   std::vector<Tensor> inputs;
   for (size_t idx = 0; idx < combine_op_obj.inputs().size(); idx++) {
     inputs.emplace_back(

@@ -821,7 +821,6 @@ def _save_property(filename: str, property_vals: list[tuple[Any, str]]):
                 meta.set_strings(key, val)
         else:
             raise ValueError(f"Note support val type: {type(val)}")
-        return
 
     with open(filename, 'wb') as f:
         meta = paddle.framework.core.Property()

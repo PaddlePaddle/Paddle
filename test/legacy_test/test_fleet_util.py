@@ -20,6 +20,7 @@ import unittest
 
 import numpy as np
 
+import paddle
 from paddle.dataset.common import download
 from paddle.distributed.fleet.base import role_maker
 
@@ -271,6 +272,19 @@ class TestFleetUtil(unittest.TestCase):
                     os.path.join(output_dir, output_filename + ".pdf")
                 )
             )
+
+    def test_support_tuple(self):
+        role = paddle.distributed.fleet.PaddleCloudRoleMaker(
+            is_collective=False, init_gloo=True, path="./tmp_gloo"
+        )
+        paddle.distributed.fleet.init(role)
+        output_1 = paddle.distributed.fleet.util.all_reduce(
+            [3, 4], "sum", "all"
+        )
+        output_2 = paddle.distributed.fleet.util.all_reduce(
+            (3, 4), "sum", "all"
+        )
+        self.assertTrue(output_1 == output_2)
 
 
 if __name__ == "__main__":

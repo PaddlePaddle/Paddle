@@ -1430,7 +1430,6 @@ def _insert_init_and_broadcast_op(
             broadcast_var_dist_attr.dims_mapping,
             dist_context,
         )
-    return
 
 
 def _insert_reduce_op(

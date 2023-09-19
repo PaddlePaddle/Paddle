@@ -142,6 +142,7 @@ class TestLayerNormOpByOpTest(OpTest):
             atol=self.ori_atol,
             rtol=self.ori_rtol,
             check_prim=True,
+            check_new_ir=True,
         )
 
     def test_check_grad(self):
@@ -150,6 +151,7 @@ class TestLayerNormOpByOpTest(OpTest):
             ['Y'],
             max_relative_error=self.max_relative_error,
             check_prim=True,
+            check_new_ir=True,
         )
 
     def initConfig(self):
@@ -239,6 +241,7 @@ class TestLayerNormBF16OpByOpTest(OpTest):
             atol=self.ori_atol,
             rtol=self.ori_rtol,
             check_prim=True,
+            check_new_ir=True,
         )
 
     def test_check_grad(self):
@@ -248,6 +251,7 @@ class TestLayerNormBF16OpByOpTest(OpTest):
             ['Y'],
             max_relative_error=self.max_relative_error,
             check_prim=True,
+            check_new_ir=True,
         )
 
     def initConfig(self):
@@ -519,6 +523,7 @@ class TestLayerNormOpByOpTestFP32_case4(TestLayerNormOpByOpTest):
 class TestLayerNormOp(unittest.TestCase):
     def setUp(self):
         self.use_cudnn = True
+        paddle.enable_static()
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         np.testing.assert_allclose(

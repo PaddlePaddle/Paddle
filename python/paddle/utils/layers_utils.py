@@ -455,7 +455,10 @@ def convert_shape_to_list(shape):
     if isinstance(shape, (list, tuple)):
         shape = [x.item(0) if isinstance(x, Variable) else x for x in shape]
     else:
-        shape = shape.astype(int).tolist()
+        if in_dygraph_mode():
+            shape = shape.astype(int).tolist()
+        else:
+            shape = [shape]
     return shape
 
 
