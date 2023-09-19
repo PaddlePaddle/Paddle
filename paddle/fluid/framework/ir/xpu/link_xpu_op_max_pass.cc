@@ -77,8 +77,14 @@ LinkConv2dPattern::LinkConv2dPattern(PDPattern* pattern,
                                      const std::string& name_scope,
                                      bool with_branch)
     : PatternBase(pattern, name_scope, name_scope), with_branch_(with_branch) {
-  auto* fusion_op =
-      pattern->NewNode(fusion_op_repr())->assert_is_op("conv2d_xpu");
+  auto* fusion_op = pattern->NewNode(fusion_op_repr())
+                        ->assert_is_op("conv2d_xpu")
+                        ->assert_more([&](Node* node) {
+                          bool enable_int8 =
+                              node->Op()->GetAttrIfExists<bool>("enable_int8");
+                          return !enable_int8;
+                        });
+
   auto* x = pattern->NewNode(x_repr())->assert_is_op_input("conv2d_xpu", "x");
   PDNode* branch = nullptr;
   if (with_branch_) {
@@ -177,7 +183,12 @@ void LinkXPUOpMaxPass::LinkConv2dMax(ir::Graph* graph, bool with_branch) const {
       auto preop_max_var_name = x_pre_op->Output("out_max");
       for (auto max_node : x->inputs[0]->outputs) {
         if (preop_max_var_name[0] == max_node->Name()) {
-          fusion_op_desc->SetInput("x_max", {max_node->Name()});
+          if (fusion_op_desc->HasInput("x_max")) {
+            auto x_max_old_name = fusion_op_desc->Input("x_max")[0];
+            fusion_op_desc->RenameInput(x_max_old_name, max_node->Name());
+          } else {
+            fusion_op_desc->SetInput("x_max", {max_node->Name()});
+          }
           IR_NODE_LINK_TO(max_node, fusion_op);
         }
       }

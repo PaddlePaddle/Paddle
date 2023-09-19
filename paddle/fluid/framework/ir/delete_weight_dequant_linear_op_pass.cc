@@ -35,7 +35,7 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
                     true,
                     platform::errors::InvalidArgument(
                         "Graph must have kParamScopeAttr attribute."));
-
+  VLOG(1) << "Handle delete weight dequant linear op pass ...";
   auto& scope = graph->Get<framework::Scope>(kParamScopeAttr);
   bool is_int8 = false;
 
@@ -44,7 +44,9 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp()) {
       auto* op = n->Op();
+      VLOG(1) << "Dequantize linear op Type: " << op->Type();
       if (op->Type() == "dequantize_linear") {
+        VLOG(1) << "Dequantize linear op is come in: " << op->Type();
         Node *weight_var_node, *calcu_op_node, *while_op_node;
         Node *dequantized_weight_var_node = nullptr, *scale_var_node = nullptr;
         // 1. Judge whether for dequant weight and find
@@ -110,6 +112,8 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
                         weight_scale_tensor->dtype()));
                   }
 
+                  int bit_length =
+                      PADDLE_GET_CONST(int, op->GetAttr("bit_length"));
                   int quant_axis =
                       PADDLE_GET_CONST(int, op->GetAttr("quant_axis"));
                   if (quant_axis == -1) {  // per_layer quant_dequant: all OP
@@ -124,14 +128,36 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
 
                     calcu_op_desc->SetAttr("weight_scale", weight_scale[0]);
                   } else {
-                    PADDLE_THROW(platform::errors::Unimplemented(
-                        "Delete Weight Dequant Linear Op Pass is not supported "
-                        "for "
-                        "per-channel quantization"));
+                    std::vector<int64_t> weights_shape =
+                        weight_var_node->Var()->GetShape();
+                    quant_axis = quant_axis >= 0
+                                     ? quant_axis
+                                     : quant_axis + weights_shape.size();
+                    PADDLE_ENFORCE_EQ(
+                        weight_scale_nums,
+                        weights_shape[quant_axis],
+                        platform::errors::InvalidArgument(
+                            "When quant_axis != -1, it means using per_channel "
+                            "dequantization. In this situation, the number of "
+                            "weight_scale should be equal with "
+                            "weights_shape[quant_axis=%d]=%ld , but received "
+                            "%d.",
+                            quant_axis,
+                            weights_shape[quant_axis],
+                            weight_scale_nums));
+                    calcu_op_desc->SetAttr("weight_scale", weight_scale);
                   }
+                  calcu_op_desc->SetAttr("weight_quant_axis", quant_axis);
+                  calcu_op_desc->SetAttr("weight_bit_length", bit_length);
+                  calcu_op_desc->SetAttr("enable_int8", true);
+                  VLOG(1) << "dequantized_weight_var_node->Var()->Name():"
+                          << dequantized_weight_var_node->Var()->Name();
+                  VLOG(1) << "weight_var_node->Var()->Name(): "
+                          << weight_var_node->Var()->Name();
                   calcu_op_desc->RenameInput(
                       dequantized_weight_var_node->Var()->Name(),
                       weight_var_node->Var()->Name());
+                  calcu_op_desc->Flush();
                 }
               }
             }

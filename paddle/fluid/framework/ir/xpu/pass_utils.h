@@ -57,6 +57,28 @@ std::vector<Node*> FindOpNodeByInputName(Graph* graph,
 template <typename T>
 size_t HashTensor(const phi::DenseTensor& in);
 
+template <typename Tcpu,
+          typename Txpu,
+          typename std::enable_if<!std::is_same<Tcpu, Txpu>::value, Tcpu>::type*
+              ptr = nullptr>
+void ConvertWeightWrapper(phi::DenseTensor* weight,
+                          phi::DenseTensor* weight_max,
+                          bool transpose,
+                          const std::vector<float>& weight_scales) {
+  ConvertWithQuant<Tcpu, Txpu>(weight, weight_max, transpose, weight_scales);
+}
+
+template <typename Tcpu,
+          typename Txpu,
+          typename std::enable_if<std::is_same<Tcpu, Txpu>::value, Tcpu>::type*
+              ptr = nullptr>
+void ConvertWeightWrapper(phi::DenseTensor* weight,
+                          phi::DenseTensor* weight_max,
+                          bool transpose,
+                          const std::vector<float>& weight_scales) {
+  ConvertWithoutQuant<Tcpu>(weight, weight_max, transpose, weight_scales);
+}
+
 template <typename T>
 void PrepareWeight(Graph* graph,
                    Scope* scope,
@@ -65,6 +87,16 @@ void PrepareWeight(Graph* graph,
                    Node** dst,
                    Node** dst_max,
                    bool transpose);
+
+template <typename Tcpu, typename Txpu>
+void PrepareWeight(Graph* graph,
+                   Scope* scope,
+                   BlockDesc* block,
+                   Node* weight,
+                   Node** quant_weight,
+                   Node** quant_weight_max,
+                   bool transpose,
+                   const std::vector<float>& weight_scales);
 
 void PrepareBias(
     Graph* graph, Scope* scope, BlockDesc* block, Node* src, Node** dst);

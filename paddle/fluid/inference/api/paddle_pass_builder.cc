@@ -507,6 +507,8 @@ void CpuPassStrategy::EraseFcMkldnnPasses() {
 
 XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
+      "delete_quant_dequant_linear_op_pass",
+      "delete_weight_dequant_linear_op_pass",
       "delete_assign_op_pass",
       "delete_dropout_op_pass",
       "delete_concat_op_pass",
@@ -562,6 +564,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "delete_isolated_node_pass",
       // "auto_mixed_precision_pass",
       "cast_mixed_precision_op_fuse_pass",
+      "auto_trans_quantize_op_precision_pass",
       "inplace_op_var_pass",
   });
   use_xpu_ = true;

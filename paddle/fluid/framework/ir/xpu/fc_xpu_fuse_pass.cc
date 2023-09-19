@@ -244,8 +244,61 @@ class FcXPUFusePass : public FusePassBase {
                 bool with_bn,
                 const std::string& act_type) const;
 
+  void CreateFusionWeightsAndBias(
+      ir::Graph* graph,
+      Scope* scope,
+      BlockDesc* block,
+      std::string mul_type,
+      const std::map<std::string, std::map<std::string, Node*>>& nodes_map,
+      std::map<std::string, Node*>* fusion_nodes_map,
+      bool with_bias,
+      bool with_bn,
+      bool enable_int8) const;
+
+  void CreateFusionOutputs(
+      ir::Graph* graph,
+      Scope* scope,
+      BlockDesc* block,
+      const std::map<std::string, std::map<std::string, Node*>>& nodes_map,
+      std::map<std::string, Node*>* fusion_nodes_map,
+      bool enable_int8) const;
+
+  void CreateFusionInputs(
+      ir::Graph* graph,
+      Scope* scope,
+      BlockDesc* block,
+      const std::map<std::string, std::map<std::string, Node*>>& nodes_map,
+      std::map<std::string, Node*>* fusion_nodes_map,
+      bool enable_int8) const;
+
+  Node* GetNodeFromNodesMap(
+      const std::map<std::string, std::map<std::string, Node*>>& nodes_map,
+      std::string pattern_node_name,
+      std::string node_name) const;
+
   const std::string name_scope_{"fc_xpu_fuse_pass"};
 };
+
+Node* FcXPUFusePass::GetNodeFromNodesMap(
+    const std::map<std::string, std::map<std::string, Node*>>& nodes_map,
+    std::string pattern_node_name,
+    std::string node_name) const {
+  auto iter = nodes_map.find(pattern_node_name);
+  PADDLE_ENFORCE_EQ(
+      iter != nodes_map.end(),
+      true,
+      platform::errors::InvalidArgument("nodes_map[%s] not found in nodes_map",
+                                        pattern_node_name.c_str()));
+  auto node_map = iter->second;
+  auto node_iter = node_map.find(node_name);
+  PADDLE_ENFORCE_EQ(node_iter != node_map.end(),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "nodes_map[%s][%s] not found in nodes_map",
+                        pattern_node_name.c_str(),
+                        node_name.c_str()));
+  return node_iter->second;
+}
 
 void FcXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
@@ -275,6 +328,395 @@ void FcXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_subgraph_count);
 }
 
+void FcXPUFusePass::CreateFusionWeightsAndBias(
+    ir::Graph* graph,
+    Scope* scope,
+    BlockDesc* block,
+    std::string mul_type,
+    const std::map<std::string, std::map<std::string, Node*>>& nodes_map,
+    std::map<std::string, Node*>* fusion_nodes_map,
+    bool with_bias,
+    bool with_bn,
+    bool enable_int8) const {
+  // Get Node
+  auto* mul = GetNodeFromNodesMap(nodes_map, "mul", "mul");
+  PADDLE_ENFORCE_EQ(
+      mul != nullptr,
+      true,
+      platform::errors::InvalidArgument("mul node ptr can not be null"));
+  auto* mul_w = GetNodeFromNodesMap(nodes_map, "mul", "mul_w");
+  PADDLE_ENFORCE_EQ(
+      mul_w != nullptr,
+      true,
+      platform::errors::InvalidArgument("mul_w node ptr can not be null"));
+
+  // transfilter fp16 --> fp32
+  auto* filter_t =
+      scope->FindVar(mul_w->Name())->GetMutable<phi::DenseTensor>();
+  auto filter_len = filter_t->numel();
+  auto filter_dtype = filter_t->dtype();
+  if (filter_dtype == phi::DataType::FLOAT16) {
+    CastToFp32(filter_t, nullptr);
+  }
+
+  bool transpose_w = false;
+  if (mul_type == "matmul") {
+    transpose_w = PADDLE_GET_CONST(bool, mul->Op()->GetAttr("transpose_Y"));
+  } else if (mul_type == "matmul_v2") {
+    transpose_w = PADDLE_GET_CONST(bool, mul->Op()->GetAttr("trans_y"));
+  }
+  // Get Weight scale in int8 scene
+  std::vector<float> weight_scale =
+      mul->Op()->GetAttrIfExists<std::vector<float>>("Input_scale_" +
+                                                     mul_w->Name());
+  // Create fusion_bias_node
+  auto filter_dims = filter_t->dims();
+  bool has_bias = with_bn || with_bias;
+  Node* fusion_bias_node = nullptr;
+  if (with_bias) {
+    auto* ew_bias_add_bias =
+        GetNodeFromNodesMap(nodes_map, "ew_bias_add", "ew_bias_add_bias");
+    PADDLE_ENFORCE_EQ(ew_bias_add_bias != nullptr,
+                      true,
+                      platform::errors::InvalidArgument(
+                          "ew_bias_add_bias node ptr can not be null"));
+    auto* ew_bias_add_bias_t = scope->FindVar(ew_bias_add_bias->Name())
+                                   ->GetMutable<phi::DenseTensor>();
+    PrepareBias(graph, scope, block, ew_bias_add_bias, &fusion_bias_node);
+  }
+
+  if (with_bn) {
+    auto* bn = GetNodeFromNodesMap(nodes_map, "bn", "bn");
+    PADDLE_ENFORCE_EQ(
+        bn != nullptr,
+        true,
+        platform::errors::InvalidArgument("bn node ptr can not be null"));
+    auto* bn_bias = GetNodeFromNodesMap(nodes_map, "bn", "bn_bias");
+    PADDLE_ENFORCE_EQ(
+        bn_bias != nullptr,
+        true,
+        platform::errors::InvalidArgument("bn_bias node ptr can not be null"));
+    auto* bn_scale = GetNodeFromNodesMap(nodes_map, "bn", "bn_scale");
+    PADDLE_ENFORCE_EQ(
+        bn_scale != nullptr,
+        true,
+        platform::errors::InvalidArgument("bn_scale node ptr can not be null"));
+    auto* bn_var = GetNodeFromNodesMap(nodes_map, "bn", "bn_var");
+    PADDLE_ENFORCE_EQ(
+        bn_var != nullptr,
+        true,
+        platform::errors::InvalidArgument("bn_var node ptr can not be null"));
+    auto* bn_mean = GetNodeFromNodesMap(nodes_map, "bn", "bn_mean");
+    PADDLE_ENFORCE_EQ(
+        bn_mean != nullptr,
+        true,
+        platform::errors::InvalidArgument("bn_mean node ptr can not be null"));
+
+    auto bn_bias_t =
+        scope->Var(bn_bias->Name())->GetMutable<phi::DenseTensor>();
+    PADDLE_ENFORCE_EQ(
+        filter_dims[0],
+        bn_bias_t->dims()[0],
+        platform::errors::InvalidArgument("the shape[%d] of bn bias tensor "
+                                          "must equal out_channel[%d] of conv",
+                                          bn_bias_t->dims()[0],
+                                          filter_dims[0]));
+    auto bn_scale_t =
+        scope->Var(bn_scale->Name())->GetMutable<phi::DenseTensor>();
+    auto bn_mean_t =
+        scope->Var(bn_mean->Name())->GetMutable<phi::DenseTensor>();
+    auto bn_var_t = scope->Var(bn_var->Name())->GetMutable<phi::DenseTensor>();
+    float* bn_scale_ptr =
+        bn_scale_t->mutable_data<float>(paddle::platform::CPUPlace());
+    float* bn_bias_ptr =
+        bn_bias_t->mutable_data<float>(paddle::platform::CPUPlace());
+    float* bn_mean_ptr =
+        bn_mean_t->mutable_data<float>(paddle::platform::CPUPlace());
+    float* bn_var_ptr =
+        bn_var_t->mutable_data<float>(paddle::platform::CPUPlace());
+    auto mean_len = bn_mean_t->numel();
+    auto filter_stride = filter_len / mean_len;
+    float epsilon = PADDLE_GET_CONST(float, bn->Op()->GetAttr("epsilon"));
+    if (!with_bias) {  // prev node is conv
+      PrepareBias(graph, scope, block, bn_bias, &fusion_bias_node);
+    }
+
+    auto fusion_bias_t =
+        scope->Var(fusion_bias_node->Name())->GetMutable<phi::DenseTensor>();
+    float* fusion_bias_ptr =
+        fusion_bias_t->mutable_data<float>(paddle::platform::CPUPlace());
+    // recompute bias and weights
+    for (int i = 0; i < mean_len; ++i) {
+      bn_scale_ptr[i] = bn_scale_ptr[i] / sqrtf(bn_var_ptr[i] + epsilon);
+    }
+    // recompute the weights
+    if (!enable_int8) {
+      float* filter_ptr =
+          filter_t->mutable_data<float>(paddle::platform::CPUPlace());
+      for (int i = 0; i < mean_len; ++i) {
+        for (int j = 0; j < filter_stride; j++) {
+          filter_ptr[i * filter_stride + j] *= bn_scale_ptr[i];
+        }
+      }
+    } else {
+      int8_t* filter_ptr =
+          filter_t->mutable_data<int8_t>(paddle::platform::CPUPlace());
+      PADDLE_ENFORCE_EQ(
+          weight_scale.size(),
+          mean_len,
+          platform::errors::InvalidArgument(
+              "Weight max_scale size must equal batch_norm sacle/mean size."));
+      for (int i = 0; i < mean_len; i++) {
+        weight_scale[i] *= fabs(bn_scale_ptr[i]);
+      }
+      for (int i = 0; i < mean_len; i++) {
+        if (bn_scale_ptr[i] < 0) {
+          for (int j = 0; j < filter_stride; ++j) {
+            filter_ptr[i * filter_stride + j] *= -1;
+          }
+        }
+      }
+    }
+    // recompute bias
+    if (!with_bias) {
+      for (int i = 0; i < mean_len; ++i) {
+        fusion_bias_ptr[i] += (0.0f - bn_mean_ptr[i]) * bn_scale_ptr[i];
+      }
+    } else {
+      for (int i = 0; i < mean_len; ++i) {
+        fusion_bias_ptr[i] =
+            bn_bias_ptr[i] +
+            (fusion_bias_ptr[i] - bn_mean_ptr[i]) * bn_scale_ptr[i];
+      }
+    }
+  }
+
+  (*fusion_nodes_map)["bias"] = fusion_bias_node;
+
+  Node* filter_intx = nullptr;
+  Node* filter_max = nullptr;
+  Node* scale_max = nullptr;
+  if (!enable_int8) {
+    PrepareWeight<float, int16_t>(graph,
+                                  scope,
+                                  block,
+                                  mul_w,
+                                  &filter_intx,
+                                  &filter_max,
+                                  !transpose_w,
+                                  weight_scale);
+  } else {
+    PrepareWeight<int8_t, int8_t>(graph,
+                                  scope,
+                                  block,
+                                  mul_w,
+                                  &filter_intx,
+                                  &filter_max,
+                                  !transpose_w,
+                                  weight_scale);
+  }
+
+  bool is_per_channel_need_create_scale_max_node =
+      !weight_scale.empty() && !IsPerTensorQuant(weight_scale);
+  if (is_per_channel_need_create_scale_max_node) {
+    phi::DenseTensor ones_weight_max_tensor;
+    auto* cpu_ctx = static_cast<phi::CPUContext*>(
+        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+    int max_ptr_size = weight_scale.empty()
+                           ? phi::backends::xpu::get_xpu_max_ptr_size(-1)
+                           : weight_scale.size();
+    ones_weight_max_tensor.set_type(phi::DataType::FLOAT32);
+    ones_weight_max_tensor.Resize({max_ptr_size});
+    std::vector<float> ones_weight(max_ptr_size, 1.0);
+    memcpy(cpu_ctx->Alloc<float>(&ones_weight_max_tensor),
+           ones_weight.data(),
+           max_ptr_size * sizeof(float));
+
+    std::string scale_max_name = mul_w->Name() + "_scale_max";
+    VarDesc scale_max_desc(scale_max_name);
+    scale_max_desc.SetPersistable(true);
+    scale_max_desc.SetShape(vectorize(ones_weight_max_tensor.dims()));
+    scale_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
+    scale_max = graph->CreateVarNode(&scale_max_desc);
+    auto* block_scale_max_desc = block->Var(scale_max_name);
+    block_scale_max_desc->SetPersistable(scale_max_desc.Persistable());
+    block_scale_max_desc->SetShape(scale_max_desc.GetShape());
+    block_scale_max_desc->SetDataType(scale_max_desc.GetDataType());
+    Assign(ones_weight_max_tensor,
+           scope->Var(scale_max_name)->GetMutable<phi::DenseTensor>());
+  }
+
+  (*fusion_nodes_map)["w"] = filter_intx;
+  if (is_per_channel_need_create_scale_max_node) {
+    (*fusion_nodes_map)["w_max"] = scale_max;
+    (*fusion_nodes_map)["scale_max"] = filter_max;
+  } else {
+    (*fusion_nodes_map)["w_max"] = filter_max;
+    (*fusion_nodes_map)["scale_max"] = scale_max;
+  }
+}
+
+void FcXPUFusePass::CreateFusionOutputs(
+    ir::Graph* graph,
+    Scope* scope,
+    BlockDesc* block,
+    const std::map<std::string, std::map<std::string, Node*>>& nodes_map,
+    std::map<std::string, Node*>* fusion_nodes_map,
+    bool enable_int8) const {
+  auto* mul = GetNodeFromNodesMap(nodes_map, "mul", "mul");
+  PADDLE_ENFORCE_EQ(
+      mul != nullptr,
+      true,
+      platform::errors::InvalidArgument("mul node ptr can not be null"));
+  // output && output max
+  std::string fc_xpu_out_name;
+  Node* fc_out_op_node = nullptr;
+  Node* fc_out_var_node = nullptr;
+
+  auto* bn = GetNodeFromNodesMap(nodes_map, "bn", "bn");
+  auto* ew_bias_add =
+      GetNodeFromNodesMap(nodes_map, "ew_bias_add", "ew_bias_add");
+  auto* act = GetNodeFromNodesMap(nodes_map, "act", "act");
+  if (act) {
+    auto* act_out = GetNodeFromNodesMap(nodes_map, "act", "act_out");
+    PADDLE_ENFORCE_EQ(
+        act_out != nullptr,
+        true,
+        platform::errors::InvalidArgument("act_out node ptr can not be null"));
+    fc_xpu_out_name = act_out->Name();
+    fc_out_var_node = act_out;
+    fc_out_op_node = act;
+  } else if (bn) {
+    auto* bn_out = GetNodeFromNodesMap(nodes_map, "bn", "bn_out");
+    PADDLE_ENFORCE_EQ(
+        bn_out != nullptr,
+        true,
+        platform::errors::InvalidArgument("bn_out node ptr can not be null"));
+    fc_xpu_out_name = bn_out->Name();
+    fc_out_var_node = bn_out;
+    fc_out_op_node = bn;
+  } else if (ew_bias_add) {
+    auto* ew_bias_add_out =
+        GetNodeFromNodesMap(nodes_map, "ew_bias_add", "ew_bias_add_out");
+    PADDLE_ENFORCE_EQ(ew_bias_add_out != nullptr,
+                      true,
+                      platform::errors::InvalidArgument(
+                          "ew_bias_add_out node ptr can not be null"));
+    fc_xpu_out_name = ew_bias_add_out->Name();
+    fc_out_var_node = ew_bias_add_out;
+    fc_out_op_node = ew_bias_add;
+  } else {
+    auto* mul_out = GetNodeFromNodesMap(nodes_map, "mul", "mul_out");
+    PADDLE_ENFORCE_EQ(
+        mul_out != nullptr,
+        true,
+        platform::errors::InvalidArgument("mul_out node ptr can not be null"));
+    fc_xpu_out_name = mul_out->Name();
+    fc_out_var_node = mul_out;
+    fc_out_op_node = mul;
+  }
+  (*fusion_nodes_map)["out"] = fc_out_var_node;
+
+  // Create out max in
+  if (enable_int8) {
+    std::string fc_out_max_in_name = fc_xpu_out_name + "_max_in";
+    int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
+    VarDesc fc_out_max_in_desc(fc_out_max_in_name);
+    fc_out_max_in_desc.SetPersistable(true);
+    fc_out_max_in_desc.SetShape({static_cast<int64_t>(max_ptr_size)});
+    fc_out_max_in_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
+    Node* fc_xpu_out_max_in = graph->CreateVarNode(&fc_out_max_in_desc);
+    auto* block_out_max_in_desc = block->Var(fc_out_max_in_name);
+    block_out_max_in_desc->SetPersistable(fc_out_max_in_desc.Persistable());
+    block_out_max_in_desc->SetShape(fc_out_max_in_desc.GetShape());
+    block_out_max_in_desc->SetDataType(fc_out_max_in_desc.GetDataType());
+
+    auto GetOutputScale = [&](Node* var_node, std::string name) -> float {
+      int nums_any_ops = var_node->outputs.size();
+      for (size_t i = 0; i < nums_any_ops; ++i) {
+        auto* any_op_desc = fc_out_var_node->outputs[i]->Op();
+        VLOG(1) << "any_op_desc: " << any_op_desc->Type();
+        if (any_op_desc->HasAttr("Input_scale_" + name)) {
+          VLOG(1) << "find it: "
+                  << "Input_scale_" + name;
+          return any_op_desc->GetAttrIfExists<float>("Input_scale_" + name);
+        }
+      }
+      return 0;
+    };
+    float output_scale = GetOutputScale(fc_out_var_node, fc_xpu_out_name);
+    mul->Op()->SetAttr("Input_scale_" + fc_xpu_out_name, output_scale);
+    VLOG(1) << "fc_xpu_out_name:" << fc_xpu_out_name
+            << " output_scale: " << output_scale
+            << "fc_out_var_node name:" << fc_out_var_node->Name();
+    phi::DenseTensor out_max_in_cpu_tensor;
+    auto* cpu_ctx = static_cast<phi::CPUContext*>(
+        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+    out_max_in_cpu_tensor.set_type(phi::DataType::FLOAT32);
+    out_max_in_cpu_tensor.Resize({max_ptr_size});
+    std::vector<float> output_scales(max_ptr_size, output_scale);
+    memcpy(cpu_ctx->Alloc<float>(&out_max_in_cpu_tensor),
+           output_scales.data(),
+           max_ptr_size * sizeof(float));
+    Assign(out_max_in_cpu_tensor,
+           scope->Var(fc_out_max_in_name)->GetMutable<phi::DenseTensor>());
+    (*fusion_nodes_map)["out_max_in"] = fc_xpu_out_max_in;
+  }
+
+  // Create out max
+  std::string fc_out_max_name = fc_xpu_out_name + "_max";
+  VarDesc fc_out_max_desc(fc_out_max_name);
+  Node* fc_xpu_out_max = graph->CreateVarNode(&fc_out_max_desc);
+  (*fusion_nodes_map)["out_max"] = fc_xpu_out_max;
+}
+
+void FcXPUFusePass::CreateFusionInputs(
+    ir::Graph* graph,
+    Scope* scope,
+    BlockDesc* block,
+    const std::map<std::string, std::map<std::string, Node*>>& nodes_map,
+    std::map<std::string, Node*>* fusion_nodes_map,
+    bool enable_int8) const {
+  // Get Node
+  auto* mul = GetNodeFromNodesMap(nodes_map, "mul", "mul");
+  PADDLE_ENFORCE_EQ(
+      mul != nullptr,
+      true,
+      platform::errors::InvalidArgument("mul node ptr can not be null"));
+  auto* mul_x = GetNodeFromNodesMap(nodes_map, "mul", "mul_x");
+  PADDLE_ENFORCE_EQ(
+      mul_x != nullptr,
+      true,
+      platform::errors::InvalidArgument("mul_x node ptr can not be null"));
+  // x max
+  std::string mul_x_max_name = mul_x->Name() + "_max";
+  Node* mul_x_max = nullptr;
+  if (enable_int8) {
+    float input_scale =
+        mul->Op()->GetAttrIfExists<float>("Input_scale_" + mul_x->Name());
+    int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
+    VarDesc x_max_desc(mul_x_max_name);
+    x_max_desc.SetPersistable(
+        true);  // Need depends on ir_params_sync_among_devices_pass copy to xpu
+                // device
+    x_max_desc.SetShape({static_cast<int64_t>(max_ptr_size)});
+    x_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
+    mul_x_max = graph->CreateVarNode(&x_max_desc);
+    auto input_max_tensor =
+        scope->Var(mul_x_max_name)->GetMutable<phi::DenseTensor>();
+    input_max_tensor->set_type(phi::DataType::FLOAT32);
+    input_max_tensor->Resize({max_ptr_size});
+    auto* cpu_ctx = static_cast<phi::CPUContext*>(
+        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+    std::vector<float> input_scales(max_ptr_size, input_scale);
+    memcpy(cpu_ctx->Alloc<float>(input_max_tensor),
+           input_scales.data(),
+           max_ptr_size * sizeof(float));
+  }
+  (*fusion_nodes_map)["x"] = mul_x;
+  (*fusion_nodes_map)["x_max"] = mul_x_max;
+}
+
 int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
                              const std::string& mul_type,
                              bool with_bias,
@@ -287,7 +729,7 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
                                  with_bias,
                                  with_bn,
                                  act_type);
-
+  auto* scope = param_scope();
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
@@ -311,108 +753,78 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
     GET_IR_NODE(bn_saved_mean);
     GET_IR_NODE(act);
     GET_IR_NODE(act_out);
+    std::map<std::string, std::map<std::string, Node*>> nodes_map;
+    nodes_map.insert(
+        {"mul", {{"mul_x", mul_x}, {"mul_w", mul_w}, {"mul_out", mul_out}}});
+    nodes_map.insert({"ew_bias_add",
+                      {{"ew_bias_add", add},
+                       {"ew_bias_add_bias", bias},
+                       {"ew_bias_add_out", add_out}}});
+    nodes_map.insert({"bn",
+                      {{"bn", bn},
+                       {"bn_bias", bn_bias},
+                       {"bn_mean", bn_mean},
+                       {"bn_scale", bn_scale},
+                       {"bn_var", bn_var},
+                       {"bn_out", bn_out},
+                       {"bn_var_out", bn_var_out},
+                       {"bn_mean_out", bn_mean_out},
+                       {"bn_saved_var", bn_saved_var},
+                       {"bn_saved_mean", bn_saved_mean}}});
+    nodes_map.insert({"act", {{"act", act}, {"act_out", act_out}}});
+
+    std::map<std::string, Node*> fusion_nodes_map{{"x", nullptr},
+                                                  {"x_max", nullptr},
+                                                  {"w", nullptr},
+                                                  {"w_max", nullptr},
+                                                  {"bias", nullptr},
+                                                  {"scale_max", nullptr},
+                                                  {"out_max_in", nullptr},
+                                                  {"out", nullptr},
+                                                  {"out_max", nullptr}};
+
+    bool enable_int8 = mul->Op()->GetAttrIfExists<bool>("enable_int8");
+    std::string op_precision_str = enable_int8 ? "int8" : "fp32";
+    VLOG(4) << "FC fusion fuse pass is running on " << op_precision_str
+            << " precision!";
     auto* block = mul->Op()->Block();
-    auto* scope = param_scope();
-
-    auto* filter_t =
-        scope->FindVar(mul_w->Name())->GetMutable<phi::DenseTensor>();
-    // weight fp16 --> fp32
-    auto filter_dtype = filter_t->dtype();
-    int out_dtype = proto::VarType::Type::VarType_Type_FP32;
-    if (filter_dtype == phi::DataType::FLOAT16) {
-      out_dtype = proto::VarType::Type::VarType_Type_FP16;
-      CastToFp32(filter_t, nullptr);
-    }
-    auto filter_dims = filter_t->dims();
-
-    bool transpose_w = false;
-    if (mul_type == "matmul") {
-      transpose_w = PADDLE_GET_CONST(bool, mul->Op()->GetAttr("transpose_Y"));
-    } else if (mul_type == "matmul_v2") {
-      transpose_w = PADDLE_GET_CONST(bool, mul->Op()->GetAttr("trans_y"));
-    }
-
-    bool has_bias = with_bn || with_bias;
-    Node* fusion_bias_node = nullptr;
-    if (has_bias) {
-      if (bias != nullptr) {
-        PrepareBias(graph, scope, block, bias, &fusion_bias_node);
-      }
-      if (bn != nullptr) {
-        auto bn_bias_t =
-            scope->Var(bn_bias->Name())->GetMutable<phi::DenseTensor>();
-        auto bn_scale_t =
-            scope->Var(bn_scale->Name())->GetMutable<phi::DenseTensor>();
-        auto bn_mean_t =
-            scope->Var(bn_mean->Name())->GetMutable<phi::DenseTensor>();
-        auto bn_var_t =
-            scope->Var(bn_var->Name())->GetMutable<phi::DenseTensor>();
-        float* mul_w_ptr = filter_t->data<float>();
-        float* bn_scale_ptr = bn_scale_t->data<float>();
-        float* bn_bias_ptr = bn_bias_t->data<float>();
-        float* bn_mean_ptr = bn_mean_t->data<float>();
-        float* bn_var_ptr = bn_var_t->data<float>();
-        auto mean_len = bn_mean_t->numel();
-        auto filter_h = filter_dims[0];
-        auto filter_w = filter_dims[1];
-        float epsilon = PADDLE_GET_CONST(float, bn->Op()->GetAttr("epsilon"));
-        if (fusion_bias_node == nullptr) {  // prev node is conv
-          PrepareBias(graph, scope, block, bn_bias, &fusion_bias_node);
-        }
-        auto fusion_bias_t = scope->Var(fusion_bias_node->Name())
-                                 ->GetMutable<phi::DenseTensor>();
-        float* fusion_bias_ptr = fusion_bias_t->data<float>();
-        // recompute bias and weights
-        if (bias == nullptr) {
-          for (int i = 0; i < mean_len; ++i) {
-            bn_scale_ptr[i] = bn_scale_ptr[i] / sqrtf(bn_var_ptr[i] + epsilon);
-            fusion_bias_ptr[i] += (0.f - bn_mean_ptr[i]) * bn_scale_ptr[i];
-            for (int j = 0; j < filter_h; j++) {
-              mul_w_ptr[j * filter_w + i] *= bn_scale_ptr[i];
-            }
-          }
-        } else {
-          for (int i = 0; i < mean_len; ++i) {
-            bn_scale_ptr[i] = bn_scale_ptr[i] / sqrtf(bn_var_ptr[i] + epsilon);
-            bn_bias_ptr[i] +=
-                (fusion_bias_ptr[i] - bn_mean_ptr[i]) * bn_scale_ptr[i];
-            for (int j = 0; j < filter_h; j++) {
-              mul_w_ptr[j * filter_w + i] *= bn_scale_ptr[i];
-            }
-          }
-          memcpy(fusion_bias_ptr, bn_bias_ptr, mean_len * sizeof(float));
-        }
-      }
-    }
-
-    Node* mul_w_int16 = nullptr;
-    Node* mul_w_max = nullptr;
-    PrepareWeight<int16_t>(
-        graph, scope, block, mul_w, &mul_w_int16, &mul_w_max, !transpose_w);
-
-    std::string fc_out_name;
-    if (act_out) {
-      fc_out_name = act_out->Name();
-    } else if (bn) {
-      fc_out_name = bn_out->Name();
-    } else if (add_out) {
-      fc_out_name = add_out->Name();
-    } else {
-      fc_out_name = mul_out->Name();
-    }
-    std::string fc_out_max_name = fc_out_name + "_max";
-    VarDesc fc_out_max_desc(fc_out_max_name);
-    Node* fc_out_max = graph->CreateVarNode(&fc_out_max_desc);
+    CreateFusionWeightsAndBias(graph,
+                               scope,
+                               block,
+                               mul_type,
+                               nodes_map,
+                               &fusion_nodes_map,
+                               with_bias,
+                               with_bn,
+                               enable_int8);
+    CreateFusionInputs(
+        graph, scope, block, nodes_map, &fusion_nodes_map, enable_int8);
+    CreateFusionOutputs(
+        graph, scope, block, nodes_map, &fusion_nodes_map, enable_int8);
+    VLOG(1) << "CreateFusionOutputs success!";
 
     // Generate fc_xpu op
     framework::OpDesc fc_xpu_op_desc(block);
     fc_xpu_op_desc.SetType("fc_xpu");
-    fc_xpu_op_desc.SetInput("x", {mul_x->Name()});
-    fc_xpu_op_desc.SetInput("w", {mul_w_int16->Name()});
-    fc_xpu_op_desc.SetInput("w_max", {mul_w_max->Name()});
-    if (has_bias) {
-      fc_xpu_op_desc.SetInput("bias", {fusion_bias_node->Name()});
+    fc_xpu_op_desc.SetInput("x", {fusion_nodes_map["x"]->Name()});
+    if (fusion_nodes_map["x_max"]) {
+      fc_xpu_op_desc.SetInput("x_max", {fusion_nodes_map["x_max"]->Name()});
     }
+    fc_xpu_op_desc.SetInput("w", {fusion_nodes_map["w"]->Name()});
+    fc_xpu_op_desc.SetInput("w_max", {fusion_nodes_map["w_max"]->Name()});
+    if (fusion_nodes_map["bias"]) {
+      fc_xpu_op_desc.SetInput("bias", {fusion_nodes_map["bias"]->Name()});
+    }
+    if (fusion_nodes_map["scale_max"]) {
+      fc_xpu_op_desc.SetInput("scale_max",
+                              {fusion_nodes_map["scale_max"]->Name()});
+    }
+    if (fusion_nodes_map["out_max_in"]) {
+      fc_xpu_op_desc.SetInput("out_max_in",
+                              {fusion_nodes_map["out_max_in"]->Name()});
+    }
+    fc_xpu_op_desc.SetOutput("out", {fusion_nodes_map["out"]->Name()});
+    fc_xpu_op_desc.SetOutput("out_max", {fusion_nodes_map["out_max"]->Name()});
     fc_xpu_op_desc.SetAttr(
         "in_num_col_dims",
         static_cast<int>(mul_x->Var()->GetShape().size() - 1));
@@ -440,48 +852,54 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
             "act_alpha", PADDLE_GET_CONST(float, act->Op()->GetAttr("slope")));
       }
     }
-    fc_xpu_op_desc.SetAttr("out_dtype", out_dtype);
-    fc_xpu_op_desc.SetOutput("out", {fc_out_name});
-    fc_xpu_op_desc.SetOutput("out_max", {fc_out_max_name});
+    // out_dtype is same to input precision
+    fc_xpu_op_desc.SetAttr("out_dtype",
+                           fusion_nodes_map["x"]->Var()->GetDataType());
+    fc_xpu_op_desc.SetAttr("enable_int8",
+                           mul->Op()->GetAttrIfExists<bool>("enable_int8"));
+    if (enable_int8) {
+      fc_xpu_op_desc.SetAttr(
+          "Input_scale_" + fusion_nodes_map["out"]->Name(),
+          mul->Op()->GetAttrIfExists<float>("Input_scale_" +
+                                            fusion_nodes_map["out"]->Name()));
+      fc_xpu_op_desc.SetAttr(
+          "Input_scale_" + fusion_nodes_map["x"]->Name(),
+          mul->Op()->GetAttrIfExists<float>("Input_scale_" +
+                                            fusion_nodes_map["x"]->Name()));
+    }
+
     auto* fc_xpu = graph->CreateOpNode(&fc_xpu_op_desc);
-    IR_NODE_LINK_TO(mul_x, fc_xpu);
-    IR_NODE_LINK_TO(mul_w_int16, fc_xpu);
-    IR_NODE_LINK_TO(mul_w_max, fc_xpu);
-    if (bias || bn) {
-      SAFE_IR_NODE_LINK_TO(fusion_bias_node, fc_xpu);
+    IR_NODE_LINK_TO(fusion_nodes_map["x"], fc_xpu);
+    if (fusion_nodes_map["x_max"]) {
+      IR_NODE_LINK_TO(fusion_nodes_map["x_max"], fc_xpu);
     }
-    if (act_out) {
-      IR_NODE_LINK_TO(fc_xpu, act_out);
-    } else if (bn_out) {
-      IR_NODE_LINK_TO(fc_xpu, bn_out);
-    } else if (add_out) {
-      IR_NODE_LINK_TO(fc_xpu, add_out);
-    } else {
-      IR_NODE_LINK_TO(fc_xpu, mul_out);
+    IR_NODE_LINK_TO(fusion_nodes_map["w"], fc_xpu);
+    IR_NODE_LINK_TO(fusion_nodes_map["w_max"], fc_xpu);
+    if (fusion_nodes_map["scale_max"]) {
+      IR_NODE_LINK_TO(fusion_nodes_map["scale_max"], fc_xpu);
     }
-    IR_NODE_LINK_TO(fc_xpu, fc_out_max);
+    if (fusion_nodes_map["bias"]) {
+      IR_NODE_LINK_TO(fusion_nodes_map["bias"], fc_xpu);
+    }
+    if (fusion_nodes_map["out_max_in"]) {
+      IR_NODE_LINK_TO(fusion_nodes_map["out_max_in"], fc_xpu);
+    }
+    IR_NODE_LINK_TO(fc_xpu, fusion_nodes_map["out"]);
+    IR_NODE_LINK_TO(fc_xpu, fusion_nodes_map["out_max"]);
 
     // delete useless node
     std::unordered_set<const Node*> delete_nodes;
-    if (act != nullptr && add != nullptr) {
-      delete_nodes = {mul, mul_out, add, add_out, act};
-    } else if (act) {
-      delete_nodes = {mul, mul_out, act};
-    } else if (add) {
-      delete_nodes = {mul, mul_out, add};
-    } else {
-      delete_nodes = {mul};
+    if (mul != nullptr) {
+      delete_nodes.insert(mul);
     }
     if (bn != nullptr) {
       delete_nodes.insert(bn);
-      delete_nodes.insert(bn_bias);
-      delete_nodes.insert(bn_var);
-      delete_nodes.insert(bn_mean);
-      delete_nodes.insert(bn_scale);
-      delete_nodes.insert(bn_var_out);
-      delete_nodes.insert(bn_mean_out);
-      delete_nodes.insert(bn_saved_var);
-      delete_nodes.insert(bn_saved_mean);
+    }
+    if (add != nullptr) {
+      delete_nodes.insert(add);
+    }
+    if (act != nullptr) {
+      delete_nodes.insert(act);
     }
     GraphSafeRemoveNodes(graph, delete_nodes);
     found_subgraph_count++;

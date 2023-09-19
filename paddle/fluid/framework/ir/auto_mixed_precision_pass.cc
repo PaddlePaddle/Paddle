@@ -734,6 +734,11 @@ bool AutoMixedPrecisionPass::OutputVarsNotConvert(
 }
 
 void AutoMixedPrecisionPass::SetVarPrecision() const {
+  auto* scope = param_scope();
+  PADDLE_ENFORCE_NOT_NULL(scope,
+                          platform::errors::PreconditionNotMet(
+                              "During the auto_mixed_precision_pass, the scope "
+                              "should not be null."));
   for (const auto& nodes : all_op_nodes_) {
     for (auto* op_node : nodes) {
       if (op_run_low_precision_.count(op_node->Op()->Type()) == 0) {
@@ -750,7 +755,21 @@ void AutoMixedPrecisionPass::SetVarPrecision() const {
           if (!IsFP32AndFP64(real_in_var_node->Var()->GetDataType())) continue;
           if (!VarNodeHasDtype(real_in_var_node)) continue;
           if (InputVarsNotConvert(op_node, in_var_name)) continue;
-
+          // Judge the real tensor is same to variable, Paddle-Slim weight use
+          // fp32 variable to save int8 tensor.
+          if (real_in_var_node->Var()->Persistable()) {
+            auto* tensor = scope->Var(real_in_var_node->Name())
+                               ->GetMutable<phi::DenseTensor>();
+            if (framework::TransToProtoVarType(tensor->type()) !=
+                real_in_var_node->Var()->GetDataType()) {
+              VLOG(1) << "[AutoMixedPrecisionPass] variable "
+                      << real_in_var_node->Name() << "'s proto data type "
+                      << real_in_var_node->Var()->GetDataType()
+                      << " is different from real dense tensor "
+                      << framework::TransToProtoVarType(tensor->type());
+              continue;
+            }
+          }
           if (real_in_var_node->Var()->Persistable()) {
             real_in_var_node->Var()->SetDataType(
                 framework::TransToProtoVarType(low_precision_));

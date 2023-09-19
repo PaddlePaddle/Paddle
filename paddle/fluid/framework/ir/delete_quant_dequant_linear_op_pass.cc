@@ -137,11 +137,15 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
 
     int nums_any_ops =
         static_cast<int>(dequantize_linear_op_out->outputs.size());
+    int bit_length =
+        PADDLE_GET_CONST(int, quantize_linear_op->Op()->GetAttr("bit_length"));
     for (int i = 0; i < nums_any_ops; ++i) {
       auto* any_op_desc = dequantize_linear_op_out->outputs[i]->Op();
       any_op_desc->SetAttr("Input_scale_" + quantize_linear_op_x->Var()->Name(),
                            input_scale);
-
+      any_op_desc->SetAttr(
+          "Input_bit_length_" + quantize_linear_op_x->Var()->Name(),
+          bit_length);
       // link x to any_op2
       any_op_desc->RenameInput(dequantize_linear_op_out->Var()->Name(),
                                quantize_linear_op_x->Var()->Name());

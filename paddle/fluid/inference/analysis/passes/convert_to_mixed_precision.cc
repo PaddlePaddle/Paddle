@@ -17,6 +17,8 @@
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/ir/auto_mixed_precision_pass.h"
 #include "paddle/fluid/framework/ir/constant_folding_pass.h"
+#include "paddle/fluid/framework/ir/delete_quant_dequant_linear_op_pass.h"
+#include "paddle/fluid/framework/ir/delete_weight_dequant_linear_op_pass.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/identity_op_clean_pass.h"
 #include "paddle/fluid/inference/io.h"
@@ -89,12 +91,22 @@ void ConvertToMixedPrecisionPass::LoadModel() {
 void ConvertToMixedPrecisionPass::Run() {
   LoadModel();
 
+  if (backend_ == phi::Backend::XPU) {
+    framework::ir::DeleteQuantDequantLinearOpPass
+        delete_quant_dequant_linear_op_pass;
+    delete_quant_dequant_linear_op_pass.Apply(main_graph_.get());
+    framework::ir::DeleteWeightDequantLinearOpPass
+        delete_weight_dequant_linear_op_pass;
+    delete_weight_dequant_linear_op_pass.Apply(main_graph_.get());
+  }
+
   framework::ir::ConstantFoldingPass constant_folding_pass;
   constant_folding_pass.Apply(main_graph_.get());
 
   framework::ir::AutoMixedPrecisionPass auto_mixed_precision_pass;
   auto_mixed_precision_pass.Set("mixed_precision_mode",
                                 new int{static_cast<int>(mixed_precision_)});
+
   if (backend_ == phi::Backend::GPU) {
     auto_mixed_precision_pass.Set("enable_gpu_mixed", new bool{true});
   } else if (backend_ == phi::Backend::XPU) {

@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "glog/logging.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
 namespace phi {
 namespace fusion {
@@ -32,6 +35,8 @@ void Conv2dXPUKernelImpl(const Context& ctx,
                          const paddle::optional<DenseTensor>& bias,
                          const paddle::optional<DenseTensor>& branch,
                          const paddle::optional<DenseTensor>& branch_max,
+                         const paddle::optional<DenseTensor>& scale_max,
+                         const paddle::optional<DenseTensor>& out_max_in,
                          const std::vector<int>& paddings,
                          const std::vector<int>& dilations,
                          const std::vector<int>& strides,
@@ -66,14 +71,22 @@ void Conv2dXPUKernelImpl(const Context& ctx,
   int out_c = static_cast<int>(filter_dims[0]);
   int win_h = static_cast<int>(filter_dims[2]);
   int win_w = static_cast<int>(filter_dims[3]);
-
+  VLOG(1) << "KERNEL1";
   auto* input_data = reinterpret_cast<const XPUTypeX*>(x.data<T_X>());
+  VLOG(1) << "KERNEL1.5";
   const float* input_max_data =
       x_max.get_ptr() == nullptr ? nullptr : x_max.get_ptr()->data<float>();
+  VLOG(1) << "KERNEL2";
   auto* filter_data = reinterpret_cast<const XPUTypeW*>(filter.data<T_W>());
   auto* filter_max_data = filter_max.data<float>();
+  auto* scale_max_data = scale_max.get_ptr() == nullptr
+                             ? nullptr
+                             : scale_max.get_ptr()->data<float>();
 
   const XPUTypeOut* branch_data = nullptr;
+  const float* branch_max_data = branch_max.get_ptr() == nullptr
+                                     ? nullptr
+                                     : branch_max.get_ptr()->data<float>();
   auto* branch_tensor = branch.get_ptr();
   xpu::ctx_guard RAII_GUARD(ctx.x_context());
   if (branch_tensor != nullptr) {
@@ -81,32 +94,269 @@ void Conv2dXPUKernelImpl(const Context& ctx,
       branch_data =
           reinterpret_cast<const XPUTypeOut*>(branch_tensor->data<T_OUT>());
     } else {
-      auto branch_data_temp =
-          RAII_GUARD.alloc_l3_or_gm<XPUTypeOut>(branch_tensor->numel());
-      int r = xpu::cast<XPUTypeX, XPUTypeOut>(
-          ctx.x_context(),
-          reinterpret_cast<const XPUTypeX*>(branch_tensor->data<T_X>()),
-          branch_data_temp,
-          branch_tensor->numel());
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-      branch_data = branch_data_temp;
+      if (branch_tensor->dtype() == phi::DataType::FLOAT32 &&
+          out->dtype() == phi::DataType::INT8) {
+        VLOG(1) << "branch_tensor->dtype() == phi::DataType::FLOAT32 && "
+                   "out->dtype() == phi::DataType::INT8";
+        auto branch_data_temp =
+            RAII_GUARD.alloc_l3_or_gm<int8_t>(branch_tensor->numel());
+        int r = xpu::quantization<float, int8_t>(
+            ctx.x_context(),
+            reinterpret_cast<const float*>(branch_tensor->data<float>()),
+            branch_data_temp,
+            branch_tensor->numel(),
+            branch_max_data);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "quantization");
+        branch_data = reinterpret_cast<const XPUTypeOut*>(branch_data_temp);
+      } else if (branch_tensor->dtype() == phi::DataType::FLOAT16 &&
+                 out->dtype() == phi::DataType::INT8) {
+        VLOG(1) << "branch_tensor->dtype() == phi::DataType::FLOAT16 && "
+                   "out->dtype() == phi::DataType::INT8";
+        auto branch_data_temp =
+            RAII_GUARD.alloc_l3_or_gm<int8_t>(branch_tensor->numel());
+        int r = xpu::quantization<XPUTypeFP16, int8_t>(
+            ctx.x_context(),
+            reinterpret_cast<const XPUTypeFP16*>(
+                branch_tensor->data<dtype::float16>()),
+            branch_data_temp,
+            branch_tensor->numel(),
+            branch_max_data);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "quantization");
+        branch_data = reinterpret_cast<const XPUTypeOut*>(branch_data_temp);
+      } else if (branch_tensor->dtype() == phi::DataType::INT8 &&
+                 out->dtype() == phi::DataType::FLOAT32) {
+        VLOG(1) << "branch_tensor->dtype() == phi::DataType::INT8 && "
+                   "out->dtype() == phi::DataType::FLOAT32";
+        // if (branch_tensor) {
+        //   DenseTensor temp_tensor_cpu;
+        //   ctx.template HostAlloc(&temp_tensor_cpu,
+        //                          branch.get_ptr()->dtype(),
+        //                          branch.get_ptr()->numel() * sizeof(int8_t));
+        //   phi::Copy(ctx, *branch.get_ptr(), CPUPlace(), false,
+        //   &temp_tensor_cpu); for (size_t i = 0; i < 50; ++i) {
+        //     VLOG(1) << "branch_data_quantize_before[" << i
+        //             << "]:" <<
+        //             static_cast<float>(temp_tensor_cpu.data<int8_t>()[i]);
+        //   }
+        // }
+        auto branch_data_temp =
+            RAII_GUARD.alloc_l3_or_gm<float>(branch_tensor->numel());
+        int r = xpu::dequantization<int8_t, float>(
+            ctx.x_context(),
+            reinterpret_cast<const int8_t*>(branch_tensor->data<int8_t>()),
+            branch_data_temp,
+            branch_tensor->numel(),
+            branch_max_data);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "quantization");
+        // if (branch_tensor) {
+        //   DenseTensor temp_tensor_cpu;
+        //   ctx.template HostAlloc(&temp_tensor_cpu,
+        //                          phi::DataType::FLOAT32,
+        //                          branch.get_ptr()->numel() * sizeof(float));
+        //   memory_utils::Copy(CPUPlace(),
+        //              static_cast<void*>(temp_tensor_cpu.data<float>()),
+        //              ctx.GetPlace(),
+        //              static_cast<void*>(branch_data_temp),
+        //              branch.get_ptr()->numel() * sizeof(float));
+        //   for (size_t i = 0; i < 50; ++i) {
+        //     VLOG(1) << "branch_data_quantize_after[" << i
+        //             << "]:" <<
+        //             static_cast<float>(temp_tensor_cpu.data<float>()[i]);
+        //   }
+        // }
+        branch_data = reinterpret_cast<const XPUTypeOut*>(branch_data_temp);
+      } else if (branch_tensor->dtype() == phi::DataType::INT8 &&
+                 out->dtype() == phi::DataType::FLOAT16) {
+        VLOG(1) << "branch_tensor->dtype() == phi::DataType::INT8 && "
+                   "out->dtype() == phi::DataType::FLOAT16";
+        // if (branch_tensor) {
+        //   DenseTensor temp_tensor_cpu;
+        //   ctx.template HostAlloc(&temp_tensor_cpu,
+        //                          branch.get_ptr()->dtype(),
+        //                          branch.get_ptr()->numel() * sizeof(int8_t));
+        //   phi::Copy(ctx, *branch.get_ptr(), CPUPlace(), false,
+        //   &temp_tensor_cpu); for (size_t i = 0; i < 50; ++i) {
+        //     VLOG(1) << "branch_data_quantize_before[" << i
+        //             << "]:" <<
+        //             static_cast<float>(temp_tensor_cpu.data<int8_t>()[i]);
+        //   }
+        // }
+        auto branch_data_temp =
+            RAII_GUARD.alloc_l3_or_gm<XPUTypeFP16>(branch_tensor->numel());
+        int r = xpu::dequantization<int8_t, XPUTypeFP16>(
+            ctx.x_context(),
+            reinterpret_cast<const int8_t*>(branch_tensor->data<int8_t>()),
+            branch_data_temp,
+            branch_tensor->numel(),
+            branch_max_data);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "quantization");
+        // if (branch_tensor) {
+        //   DenseTensor temp_tensor_cpu;
+        //   ctx.template HostAlloc(&temp_tensor_cpu,
+        //                          phi::DataType::FLOAT16,
+        //                          branch.get_ptr()->numel() *
+        //                          sizeof(dtype::float16));
+        //   memory_utils::Copy(CPUPlace(),
+        //              static_cast<void*>(temp_tensor_cpu.data<dtype::float16>()),
+        //              ctx.GetPlace(),
+        //              static_cast<void*>(branch_data_temp),
+        //              branch.get_ptr()->numel() * sizeof(dtype::float16));
+        //   for (size_t i = 0; i < 50; ++i) {
+        //     VLOG(1) << "branch_data_quantize_after[" << i
+        //             << "]:" <<
+        //             static_cast<float>(temp_tensor_cpu.data<dtype::float16>()[i]);
+        //   }
+        // }
+        branch_data = reinterpret_cast<const XPUTypeOut*>(branch_data_temp);
+      } else {
+        auto branch_data_temp =
+            RAII_GUARD.alloc_l3_or_gm<XPUTypeOut>(branch_tensor->numel());
+        int r = xpu::cast<XPUTypeX, XPUTypeOut>(
+            ctx.x_context(),
+            reinterpret_cast<const XPUTypeX*>(branch_tensor->data<T_X>()),
+            branch_data_temp,
+            branch_tensor->numel());
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+        branch_data = branch_data_temp;
+      }
     }
   }
-  const float* branch_max_data = branch_max.get_ptr() == nullptr
-                                     ? nullptr
-                                     : branch_max.get_ptr()->data<float>();
+  VLOG(1) << "KERNEL3";
   const float* bias_data =
       bias.get_ptr() == nullptr ? nullptr : bias.get_ptr()->data<float>();
   auto* out_data =
       reinterpret_cast<XPUTypeOut*>(ctx.template Alloc<T_OUT>(out));
   auto* out_max_data = ctx.template Alloc<float>(out_max);
+  out_max_data = out_max_in.get_ptr() != nullptr
+                     ? const_cast<float*>(out_max_in.get_ptr()->data<float>())
+                     : out_max_data;
+  VLOG(1) << "KERNEL4.5";
   xpu::Activation_t act(static_cast<xpu::Activation_t::act_enum>(act_type));
+  VLOG(1) << "KERNEL5";
   if (act_type == xpu::Activation_t::LEAKY_RELU) {
     act.leaky_alpha = act_param;
   } else if (act_type == xpu::Activation_t::HARD_SIGMOID) {
     act.hard_sigmoid_slope = act_param;
   }
+  // if (input_max_data) {
+  //   DenseTensor temp_tensor_cpu;
+  //   ctx.template HostAlloc(&temp_tensor_cpu,
+  //                          x_max.get_ptr()->dtype(),
+  //                          x_max.get_ptr()->numel() * sizeof(float));
+  //   phi::Copy(ctx, *x_max.get_ptr(), CPUPlace(), false, &temp_tensor_cpu);
+  //   for (size_t i = 0; i < temp_tensor_cpu.numel(); ++i) {
+  //     VLOG(1) << "input_max_data[" << i
+  //             << "]:" << temp_tensor_cpu.data<float>()[i];
+  //   }
+  // }
 
+  // if (filter_max_data) {
+  //   DenseTensor temp_tensor_cpu;
+  //   ctx.template HostAlloc(&temp_tensor_cpu,
+  //                          filter_max.dtype(),
+  //                          filter_max.numel() * sizeof(float));
+  //   phi::Copy(ctx, filter_max, CPUPlace(), false, &temp_tensor_cpu);
+  //   for (size_t i = 0; i < temp_tensor_cpu.numel(); ++i) {
+  //     VLOG(1) << "filter_max_data[" << i
+  //             << "]:" << temp_tensor_cpu.data<float>()[i];
+  //   }
+  // }
+
+  // if (input_data) {
+  //   DenseTensor temp_tensor_cpu;
+  //   ctx.template HostAlloc(
+  //       &temp_tensor_cpu, x.dtype(), x.numel() * sizeof(T_X));
+  //   phi::Copy(ctx, x, CPUPlace(), false, &temp_tensor_cpu);
+  //   for (size_t i = 0; i < 50; ++i) {
+  //     VLOG(1) << "input_data[" << i
+  //             << "]:" << static_cast<float>(temp_tensor_cpu.data<T_X>()[i]);
+  //   }
+  // }
+
+  // if (filter_data) {
+  //   DenseTensor temp_tensor_cpu;
+  //   ctx.template HostAlloc(
+  //       &temp_tensor_cpu, filter.dtype(), filter.numel() * sizeof(T_W));
+  //   phi::Copy(ctx, filter, CPUPlace(), false, &temp_tensor_cpu);
+  //   for (size_t i = 0; i < 50; ++i) {
+  //     VLOG(1) << "filter_data[" << i
+  //             << "]:" << static_cast<float>(temp_tensor_cpu.data<T_W>()[i]);
+  //   }
+  // }
+
+  // if (bias_data) {
+  //   DenseTensor temp_tensor_cpu;
+  //   ctx.template HostAlloc(&temp_tensor_cpu,
+  //                          bias.get_ptr()->dtype(),
+  //                          bias.get_ptr()->numel() * sizeof(float));
+  //   phi::Copy(ctx, *bias.get_ptr(), CPUPlace(), false, &temp_tensor_cpu);
+  //   for (size_t i = 0; i < 50; ++i) {
+  //     VLOG(1) << "bias_data[" << i << "]:" <<
+  //     temp_tensor_cpu.data<float>()[i];
+  //   }
+  // }
+
+  // if (branch_data) {
+  //   DenseTensor temp_tensor_cpu;
+  //   ctx.template HostAlloc(&temp_tensor_cpu,
+  //                          branch.get_ptr()->dtype(),
+  //                          branch.get_ptr()->numel() * sizeof(T_OUT));
+  //   phi::Copy(ctx, *branch.get_ptr(), CPUPlace(), false, &temp_tensor_cpu);
+  //   for (size_t i = 0; i < 50; ++i) {
+  //     VLOG(1) << "branch_data[" << i
+  //             << "]:" <<
+  //             static_cast<float>(temp_tensor_cpu.data<T_OUT>()[i]);
+  //   }
+  // }
+
+  // if (branch_max) {
+  //   DenseTensor temp_tensor_cpu;
+  //   ctx.template HostAlloc(&temp_tensor_cpu,
+  //                          branch_max.get_ptr()->dtype(),
+  //                          branch_max.get_ptr()->numel() * sizeof(float));
+  //   phi::Copy(ctx, *branch_max.get_ptr(), CPUPlace(), false,
+  //   &temp_tensor_cpu); for (size_t i = 0; i < 50; ++i) {
+  //     VLOG(1) << "branch_max_data[" << i
+  //             << "]:" << temp_tensor_cpu.data<float>()[i];
+  //   }
+  // }
+
+  // if (scale_max) {
+  //   DenseTensor temp_tensor_cpu;
+  //   ctx.template HostAlloc(&temp_tensor_cpu,
+  //                          scale_max.get_ptr()->dtype(),
+  //                          scale_max.get_ptr()->numel() * sizeof(float));
+  //   phi::Copy(ctx, *scale_max.get_ptr(), CPUPlace(), false,
+  //   &temp_tensor_cpu); for (size_t i = 0; i < 50; ++i) {
+  //     VLOG(1) << "scale_max_data[" << i
+  //             << "]:" << temp_tensor_cpu.data<float>()[i];
+  //   }
+  // }
+
+  // if (filter_data) {
+  //   DenseTensor temp_tensor_cpu;
+  //   ctx.template HostAlloc(
+  //       &temp_tensor_cpu, filter.dtype(), filter.numel() * sizeof(T_W));
+  //   phi::Copy(ctx, filter, CPUPlace(), false, &temp_tensor_cpu);
+  //   for (size_t i = 0; i < 50; ++i) {
+  //     VLOG(1) << "filter_data[" << i
+  //             << "]:" << static_cast<float>(temp_tensor_cpu.data<T_W>()[i]);
+  //   }
+  // }
+
+  // if (out_max_in.get_ptr()) {
+  //   DenseTensor temp_tensor_cpu;
+  //   ctx.template HostAlloc(
+  //       &temp_tensor_cpu, out_max_in.get_ptr()->dtype(),
+  //       out_max_in.get_ptr()->numel() * sizeof(float));
+  //   phi::Copy(ctx, *out_max_in.get_ptr(), CPUPlace(), false,
+  //   &temp_tensor_cpu); for (size_t i = 0; i < out_max_in.get_ptr()->numel();
+  //   ++i) {
+  //     VLOG(1) << "output_max_data_before[" << i
+  //             << "]:" <<
+  //             static_cast<float>(temp_tensor_cpu.data<float>()[i]);
+  //   }
+  // }
   int r = xpu::
       conv2d_fusion<XPUTypeX, XPUTypeW, XPUTypeOut, T_GEMM>(  // TX/TW/TY/TGEMM
           /* baidu::xpu::api::Context* ctx */ ctx.x_context(),
@@ -131,8 +381,32 @@ void Conv2dXPUKernelImpl(const Context& ctx,
           /* const TY* branch */ branch_data,
           /* const baidu::xpu::api::Activation_t& act */ act,
           /* const float* branch_maxptr */ branch_max_data,
-          /* const float* scale */ nullptr);
+          /* const float* scale */ scale_max_data);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_xpu");
+  // if (out_data) {
+  //   DenseTensor temp_tensor_cpu;
+  //   ctx.template HostAlloc(
+  //       &temp_tensor_cpu, out->dtype(), out->numel() * sizeof(T_OUT));
+  //   phi::Copy(ctx, *out, CPUPlace(), false, &temp_tensor_cpu);
+  //   for (size_t i = 0; i < 50; ++i) {
+  //     VLOG(1) << "output_data[" << i
+  //             << "]:" <<
+  //             static_cast<float>(temp_tensor_cpu.data<T_OUT>()[i]);
+  //   }
+  // }
+
+  // if (out_max) {
+  //   DenseTensor temp_tensor_cpu;
+  //   ctx.template HostAlloc(
+  //       &temp_tensor_cpu, out_max->dtype(), out_max->numel() *
+  //       sizeof(float));
+  //   phi::Copy(ctx, *out_max, CPUPlace(), false, &temp_tensor_cpu);
+  //   for (size_t i = 0; i < 50; ++i) {
+  //     VLOG(1) << "output_max_data_after[" << i
+  //             << "]:" <<
+  //             static_cast<float>(temp_tensor_cpu.data<float>()[i]);
+  //   }
+  // }
 }
 
 #define CONV2D_XPU_KERNEL_IMPL(x_dtype_, w_dtype_, out_dtype_, gemm_dtype_)  \
@@ -145,6 +419,8 @@ void Conv2dXPUKernelImpl(const Context& ctx,
       bias,                                                                  \
       branch,                                                                \
       branch_max,                                                            \
+      scale_max,                                                             \
+      out_max_in,                                                            \
       paddings,                                                              \
       dilations,                                                             \
       strides,                                                               \
@@ -164,6 +440,8 @@ void Conv2dXPUKernel(const Context& ctx,
                      const paddle::optional<DenseTensor>& bias,
                      const paddle::optional<DenseTensor>& branch,
                      const paddle::optional<DenseTensor>& branch_max,
+                     const paddle::optional<DenseTensor>& scale_max,
+                     const paddle::optional<DenseTensor>& out_max_in,
                      const std::vector<int>& paddings,
                      const std::vector<int>& dilations,
                      const std::vector<int>& strides,
@@ -174,14 +452,118 @@ void Conv2dXPUKernel(const Context& ctx,
                      DataType out_dtype,
                      DenseTensor* out,
                      DenseTensor* out_max) {
-  if (out_dtype == DataType::FLOAT32) {
-    CONV2D_XPU_KERNEL_IMPL(T, int16_t, float, int16_t);
-  } else if (out_dtype == DataType::FLOAT16) {
-    CONV2D_XPU_KERNEL_IMPL(T, int16_t, dtype::float16, int16_t);
-  } else {
-    PADDLE_THROW(phi::errors::Unimplemented("Not support out_dtype is %s.",
-                                            DataTypeToString(out_dtype)));
+  // Dont use template T param
+  VLOG(1) << "Kernel type: " << x.dtype() << "," << filter.dtype() << " ,"
+          << out_dtype;
+  if (x.dtype() == DataType::FLOAT32) {
+    // float32/float16 kernel
+    if (filter.dtype() == DataType::INT16) {
+      if (out_dtype == DataType::FLOAT32) {
+        CONV2D_XPU_KERNEL_IMPL(float, int16_t, float, int16_t);
+      } else if (out_dtype == DataType::FLOAT16) {
+        CONV2D_XPU_KERNEL_IMPL(float, int16_t, dtype::float16, int16_t);
+      } else {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "Not support x_dtype is %s, filter_dtype is %s and out_dtype is "
+            "%s.",
+            DataTypeToString(x.dtype()),
+            DataTypeToString(filter.dtype()),
+            DataTypeToString(out_dtype)));
+      }
+    } else if (filter.dtype() == DataType::INT8) {
+      if (out_dtype == DataType::FLOAT32) {
+        CONV2D_XPU_KERNEL_IMPL(float, int8_t, float, int8_t);
+      } else if (out_dtype == DataType::INT8) {
+        CONV2D_XPU_KERNEL_IMPL(float, int8_t, int8_t, int8_t);
+      } else {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "Not support x_dtype is %s, filter_dtype is %s and out_dtype is "
+            "%s.",
+            DataTypeToString(x.dtype()),
+            DataTypeToString(filter.dtype()),
+            DataTypeToString(out_dtype)));
+      }
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Not support x_dtype is %s, filter_dtype is %s and out_dtype is %s.",
+          DataTypeToString(x.dtype()),
+          DataTypeToString(filter.dtype()),
+          DataTypeToString(out_dtype)));
+    }
+    return;
   }
+
+  if (x.dtype() == DataType::FLOAT16) {
+    // float16 kernel
+    if (filter.dtype() == DataType::INT16) {
+      if (out_dtype == DataType::FLOAT32) {
+        CONV2D_XPU_KERNEL_IMPL(phi::dtype::float16, int16_t, float, int16_t);
+      } else if (out_dtype == DataType::FLOAT16) {
+        CONV2D_XPU_KERNEL_IMPL(
+            phi::dtype::float16, int16_t, dtype::float16, int16_t);
+      } else {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "Not support x_dtype is %s, filter_dtype is %s and out_dtype is "
+            "%s.",
+            DataTypeToString(x.dtype()),
+            DataTypeToString(filter.dtype()),
+            DataTypeToString(out_dtype)));
+      }
+    } else if (filter.dtype() == DataType::INT8) {
+      if (out_dtype == DataType::FLOAT16) {
+        CONV2D_XPU_KERNEL_IMPL(
+            phi::dtype::float16, int8_t, dtype::float16, int8_t);
+      } else if (out_dtype == DataType::INT8) {
+        CONV2D_XPU_KERNEL_IMPL(phi::dtype::float16, int8_t, int8_t, int8_t);
+      } else {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "Not support x_dtype is %s, filter_dtype is %s and out_dtype is "
+            "%s.",
+            DataTypeToString(x.dtype()),
+            DataTypeToString(filter.dtype()),
+            DataTypeToString(out_dtype)));
+      }
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Not support x_dtype is %s, filter_dtype is %s and out_dtype is %s.",
+          DataTypeToString(x.dtype()),
+          DataTypeToString(filter.dtype()),
+          DataTypeToString(out_dtype)));
+    }
+    return;
+  }
+
+  if (x.dtype() == DataType::INT8) {
+    if (filter.dtype() == DataType::INT8) {
+      if (out_dtype == DataType::FLOAT32) {
+        CONV2D_XPU_KERNEL_IMPL(int8_t, int8_t, float, int8_t);
+      } else if (out_dtype == DataType::FLOAT16) {
+        CONV2D_XPU_KERNEL_IMPL(int8_t, int8_t, dtype::float16, int8_t);
+      } else if (out_dtype == DataType::INT8) {
+        CONV2D_XPU_KERNEL_IMPL(int8_t, int8_t, int8_t, int8_t);
+      } else {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "Not support x_dtype is %s, filter_dtype is %s and out_dtype is "
+            "%s.",
+            DataTypeToString(x.dtype()),
+            DataTypeToString(filter.dtype()),
+            DataTypeToString(out_dtype)));
+      }
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Not support x_dtype is %s, filter_dtype is %s and out_dtype is %s.",
+          DataTypeToString(x.dtype()),
+          DataTypeToString(filter.dtype()),
+          DataTypeToString(out_dtype)));
+    }
+    return;
+  }
+
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Not support x_dtype is %s, filter_dtype is %s and out_dtype is %s.",
+      DataTypeToString(x.dtype()),
+      DataTypeToString(filter.dtype()),
+      DataTypeToString(out_dtype)));
 }
 
 }  // namespace fusion
@@ -192,4 +574,5 @@ PD_REGISTER_KERNEL(conv2d_xpu,
                    ALL_LAYOUT,
                    phi::fusion::Conv2dXPUKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   int8_t) {}
