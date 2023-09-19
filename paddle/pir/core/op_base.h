@@ -17,6 +17,7 @@
 
 #include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/interface_support.h"
+#include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/utils.h"
 
@@ -125,11 +126,11 @@ class Op : public OpBase {
   }
 
   static std::vector<details::InterfaceValue> GetInterfaceMap() {
-    return pir::details::GetInterfaceMap<ConcreteOp, InterfaceList>();
+    return pir::detail::GetInterfaceMap<ConcreteOp, InterfaceList>();
   }
 
   static std::vector<TypeId> GetTraitSet() {
-    return pir::details::GetTraitSet<ConcreteOp, TraitList>();
+    return pir::detail::GetTraitSet<ConcreteOp, TraitList>();
   }
 
   // Checking that the derived class does not define any member by comparing

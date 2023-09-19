@@ -32,6 +32,10 @@
 #include "paddle/phi/backends/device_manager.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 namespace paddle {
@@ -1204,10 +1208,18 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
   auto operator_base_ptr = instr.OpBase();
   if ((operator_base_ptr->Type() == "send_v2") &&
       (operator_base_ptr->Attr<bool>("use_calc_stream") == false)) {
-    stream = platform::NCCLCommContext::Instance()
-                 .Get(operator_base_ptr->Attr<int>("ring_id"),
-                      instr.DeviceContext().GetPlace())
-                 ->stream();
+    int ring_id = operator_base_ptr->Attr<int>("ring_id");
+    if (FLAGS_dynamic_static_unified_comm) {
+      const auto& comm_context_manager =
+          phi::distributed::CommContextManager::GetInstance();
+      stream = static_cast<phi::distributed::NCCLCommContext*>(
+                   comm_context_manager.Get(std::to_string(ring_id)))
+                   ->GetStream();
+    } else {
+      stream = platform::NCCLCommContext::Instance()
+                   .Get(ring_id, instr.DeviceContext().GetPlace())
+                   ->stream();
+    }
   }
 #endif
   auto TensorRecordStream = [&stream](phi::DenseTensor& tensor) {

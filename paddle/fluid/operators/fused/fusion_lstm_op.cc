@@ -72,7 +72,7 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
                         wx_dims[0],
                         x_dims[1]));
 
-  int frame_size = wx_dims[1] / 4;
+  int frame_size = static_cast<int>(wx_dims[1] / 4);
   auto wh_dims = ctx->GetInputDim("WeightH");
 
   PADDLE_ENFORCE_EQ(wh_dims.size(),
@@ -143,9 +143,10 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->ShareLoD("X", "Cell");
   int xx_width;
   if (ctx->Attrs().Get<bool>("use_seq")) {
-    xx_width = wx_dims[1];
+    xx_width = static_cast<int>(wx_dims[1]);
   } else {
-    xx_width = x_dims[1] > wx_dims[1] ? wx_dims[1] : x_dims[1];
+    xx_width =
+        static_cast<int>(x_dims[1] > wx_dims[1] ? wx_dims[1] : x_dims[1]);
 
     OP_INOUT_CHECK(ctx->HasOutput("BatchedInput"),
                    "Output",
@@ -369,8 +370,8 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     INIT_BASE_DEFINES;
     INIT_OTHER_DEFINES;
     auto x_lod = x->lod();
-    const int total_T = x_dims[0];
-    const int N = x_lod[0].size() - 1;
+    const int total_T = static_cast<int>(x_dims[0]);
+    const int N = static_cast<int>(x_lod[0].size() - 1);
     const T* h0_data = h0 ? h0->data<T>() : nullptr;
     const T* c0_data = c0 ? c0->data<T>() : nullptr;
     T* xx_data = xx->mutable_data<T>(place);
@@ -395,7 +396,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
 
     for (int i = 0; i < N; ++i) {
       int bid = is_reverse ? N - 1 - i : i;
-      int seq_len = x_lod[0][bid + 1] - x_lod[0][bid];
+      int seq_len = static_cast<int>(x_lod[0][bid + 1] - x_lod[0][bid]);
       const T* prev_c_data = nullptr;
       const T* prev_h_data = nullptr;
       int tstart = 0;
@@ -476,7 +477,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
 
     auto batched_lod = batched_input->lod();
     const auto& seq_order = batched_lod[2];
-    const int max_bs = seq_order.size();
+    const int max_bs = static_cast<int>(seq_order.size());
     reordered_h0->Resize({max_bs, D});
     reordered_c0->Resize({max_bs, D});
 
@@ -520,13 +521,14 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
 
     // compute kernel part
     const auto& batch_starts = batched_lod[0];
-    const int max_seq_len = batch_starts.size() - 1;
+    const int max_seq_len = static_cast<int>(batch_starts.size() - 1);
     const int offset = tstart * max_bs * D;
     batched_input_data = batched_input_data + offset * 4;
     batched_h_out_data = batched_h_out_data + offset;
     batched_c_out_data = batched_c_out_data + offset;
     for (int step = tstart; step < max_seq_len; ++step) {
-      const int cur_bs = batch_starts[step + 1] - batch_starts[step];
+      const int cur_bs =
+          static_cast<int>(batch_starts[step + 1] - batch_starts[step]);
       GEMM_WH_ADDON(cur_bs, prev_h_data, batched_input_data);
       T* cur_in_data = batched_input_data;
       T* cur_prev_c_data = prev_c_data;

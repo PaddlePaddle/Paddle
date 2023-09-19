@@ -403,8 +403,14 @@ inline void RunProgramAPI(
 
     if (FLAGS_enable_new_ir_in_executor) {
       // build new ir program
-      auto ir_program = paddle::framework::ConstructFowardIrProgram(
-          forward_global_block, backward_global_block, output_names, x, params);
+      auto ir_program =
+          paddle::framework::ConstructFowardIrProgram(forward_global_block,
+                                                      backward_global_block,
+                                                      output_names,
+                                                      x,
+                                                      input_names,
+                                                      params,
+                                                      place);
       interpreter_core =
           paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
               std::move(ir_program),

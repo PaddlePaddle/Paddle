@@ -15,6 +15,8 @@
 import argparse
 import logging
 import os
+import pathlib
+import sys
 
 import yaml
 from op_build_gen import gen_build_func_str
@@ -29,6 +31,12 @@ from vjp_interface_gen_op_list import (
     vjp_interface_declare_gen_op_list,
     vjp_interface_implementation_gen_op_list,
 )
+
+# import from paddle/fluid/primitive/code_gen/gen.py
+sys.path.append(
+    str(pathlib.Path(__file__).resolve().parents[3] / 'primitive/codegen')
+)
+import gen as vjp_gen
 
 # =====================================
 # String Template for h file code gen
@@ -54,6 +62,7 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
+#include "paddle/fluid/pir/dialect/operator/trait/custom_vjp.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
@@ -82,6 +91,7 @@ class {op_name} : public pir::Op<{op_name}{interfaces}{traits}> {{
   static void Build({build_args});
   {build_mutable_attr_is_input}
   {build_attr_num_over_1}
+  {build_mutable_attr_is_input_attr_num_over_1}
   void Verify();
 {get_inputs_and_outputs}
 {exclusive_interface}
@@ -400,6 +410,17 @@ class OpInfoParser:
             return self.op_yaml_item['view']
         return None
 
+    def is_mutable_attribute(self, attr_dict):
+        if (
+            'support_tensor' in attr_dict
+            and attr_dict['support_tensor'] is True
+        ):
+            return True
+        elif 'tensor_name' in attr_dict or 'tensors_name' in attr_dict:
+            return True
+        else:
+            return False
+
     def parse_mutable_attribute(self):
         """
         {'axis': 'paddle::dialect::ScalarAttribute', 'rotl': 'paddle::dialect::IntArrayAttribute'}
@@ -411,6 +432,10 @@ class OpInfoParser:
             'scalar' in self.op_compat_item
         ):
             for scalar_attr in self.op_compat_item['scalar'].keys():
+                if not self.is_mutable_attribute(
+                    self.op_compat_item['scalar'][scalar_attr]
+                ):
+                    continue
                 if 'data_type' in self.op_compat_item['scalar'][scalar_attr]:
                     if (
                         scalar_attr == "depth"
@@ -449,6 +474,10 @@ class OpInfoParser:
             'int_array' in self.op_compat_item
         ):
             for int_array_attr in self.op_compat_item['int_array']:
+                if not self.is_mutable_attribute(
+                    self.op_compat_item['int_array'][int_array_attr]
+                ):
+                    continue
                 mutable_attribute_name_list.append(int_array_attr)
                 mutable_attribute_type_list.append(
                     [
@@ -810,14 +839,25 @@ def OpGenerator(
             op_yaml_items = op_yaml_items + ops
     op_info_items = {}
     for op in op_yaml_items:
-        op_info_items[op['name']] = OpInfoParser(
-            op, op_compat_parser.get_compat(op['name'])
-        )
+        op_compat_item = op_compat_parser.get_compat(op['name'])
+        if (
+            op_compat_item is None
+            and op['name'].endswith(('_grad', '_grad_'))
+            and 'forward' in op
+        ):
+            op_compat_item = op_compat_parser.get_compat(op['forward']['name'])
+        op_info_items[op['name']] = OpInfoParser(op, op_compat_item)
     # (3) CodeGen: Traverse op_info_items and generate
     ops_name_list = []  # all op class name store in this list
     ops_declare_list = []  # all op class declare store in this list
     ops_defined_list = []  # all op class defined store in this list
     ops_vjp_defined_list = []  # all op vjp static interface defination
+
+    # (4) parse name of ops which have custom vjp rules
+    custom_vjp_op_name_list = []
+    for custom_vjp in vjp_gen.CUSTOM_VJP:
+        custom_vjp_op_name_list.append(custom_vjp[:-5])  # cut _grad
+
     for key, op_info in op_info_items.items():
         # get op inputs info
         op_input_name_list = op_info.input_name_list
@@ -873,6 +913,10 @@ def OpGenerator(
             op_interfaces += ["paddle::dialect::VjpInterface"]
         exclusive_interface_str = gen_exclusive_interface_str(op_info)
 
+        # if op has custom vjp rule, then append a CustomVjpTrait to it
+        if op_info.op_phi_name[0] in custom_vjp_op_name_list:
+            op_traits += ["paddle::dialect::CustomVjpTrait"]
+
         # check op inputs and mutable_attributes grad semantics
         input_grad_semantics = get_input_grad_semantic(op_info, op_info_items)
         mutable_attribute_grad_semantics = get_mutable_attribute_grad_semantic(
@@ -915,7 +959,9 @@ def OpGenerator(
             build_args_with_muta_attr_not_input_for_declare = ""
             build_func_with_muta_attr_not_input = ""
             build_mutable_attr_is_input = ""
+            build_func_with_muta_attr_is_input_with_attr_is_map = ""
             build_attr_num_over_1 = ""
+            build_mutable_attr_is_input_attr_num_over_1 = ""
             build_func_with_attr_is_map = ""
             build_func_with_muta_attr_is_input = ""
 
@@ -974,11 +1020,7 @@ def OpGenerator(
                         muta_attr_is_input=False,
                         attr_args_is_map=True,
                     )
-                    build_attr_num_over_1 = (
-                        "static void Build({build_args});".format(
-                            build_args=build_args_with_attr_is_map_for_declare
-                        )
-                    )
+                    build_attr_num_over_1 = f"static void Build({build_args_with_attr_is_map_for_declare});"
 
                 if len(op_mutable_attribute_name_list) > 0:
                     (
@@ -1012,6 +1054,39 @@ def OpGenerator(
                         build_args=build_args_with_muta_attr_is_input_for_declare
                     )
 
+                    if len(op_non_mutable_attribute_name_list) > 0:
+                        (
+                            build_args_with_muta_attr_is_input_with_attr_is_map_for_declare,
+                            build_func_with_muta_attr_is_input_with_attr_is_map,
+                        ) = gen_build_func_str(
+                            op_class_name,
+                            op_input_name_list,
+                            op_input_type_list,
+                            op_input_optional_list,
+                            op_attribute_name_list,
+                            op_attribute_type_list,
+                            op_attribute_build_arg_type_list,
+                            op_attribute_default_value_list,
+                            op_mutable_attribute_name_list,
+                            op_mutable_attribute_type_list,
+                            op_non_mutable_attribute_name_list,
+                            op_non_mutable_attribute_type_list,
+                            op_non_mutable_attribute_build_arg_type_list,
+                            op_non_mutable_attribute_default_value_list,
+                            op_output_name_list,
+                            op_output_type_list,
+                            op_output_size_list,
+                            op_output_optional_list,
+                            op_infer_meta_map,
+                            op_inplace_map,
+                            muta_attr_is_input=True,
+                            attr_args_is_map=True,
+                        )
+
+                        build_mutable_attr_is_input_attr_num_over_1 = "static void Build({build_args});".format(
+                            build_args=build_args_with_muta_attr_is_input_with_attr_is_map_for_declare
+                        )
+
             # gen op_declare_str/op_defined_str
             if len(op_non_mutable_attribute_name_list) == 0:
                 op_declare_str = OP_DECLARE_TEMPLATE.format(
@@ -1024,6 +1099,7 @@ def OpGenerator(
                     build_args=build_args_with_muta_attr_not_input_for_declare,
                     build_mutable_attr_is_input=build_mutable_attr_is_input,
                     build_attr_num_over_1=build_attr_num_over_1,
+                    build_mutable_attr_is_input_attr_num_over_1=build_mutable_attr_is_input_attr_num_over_1,
                     get_inputs_and_outputs=op_get_inputs_outputs_str,
                     exclusive_interface=exclusive_interface_str,
                 )
@@ -1041,6 +1117,7 @@ def OpGenerator(
                     build_args=build_args_with_muta_attr_not_input_for_declare,
                     build_mutable_attr_is_input=build_mutable_attr_is_input,
                     build_attr_num_over_1=build_attr_num_over_1,
+                    build_mutable_attr_is_input_attr_num_over_1=build_mutable_attr_is_input_attr_num_over_1,
                     get_inputs_and_outputs=op_get_inputs_outputs_str,
                     exclusive_interface=exclusive_interface_str,
                 )
@@ -1218,6 +1295,9 @@ def OpGenerator(
             ops_defined_list.append(build_func_with_attr_is_map)
             if len(op_mutable_attribute_name_list) > 0:
                 ops_defined_list.append(build_func_with_muta_attr_is_input)
+                ops_defined_list.append(
+                    build_func_with_muta_attr_is_input_with_attr_is_map
+                )
             ops_defined_list.append(op_verify_str)
             ops_defined_list.append(op_infer_meta_str)
             # NOTE(chenxi67)skip if dialect_name==cinn

@@ -18,13 +18,28 @@
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/core/op_result.h"
 
 namespace paddle {
 namespace dialect {
+
+pir::OpResult builtin_combine(const std::vector<pir::Value>& x);
+
+pir::OpResult zeros_like(pir::Value x,
+                         phi::DataType dtype = phi::DataType::UNDEFINED,
+                         const Place& place = {});
+
 pir::OpResult get_parameter(const std::string& name,
                             phi::DataType dtype,
                             const std::vector<int64_t>& shape);
-void set_parameter(pir::OpResult parameter, const std::string& name);
+
+void set_parameter(pir::Value parameter, const std::string& name);
+
+pir::OpResult embedding_grad(pir::Value x,
+                             pir::Value weight,
+                             pir::Value out_grad,
+                             int64_t padding_idx = -1,
+                             bool sparse = false);
+
 }  // namespace dialect
 }  // namespace paddle

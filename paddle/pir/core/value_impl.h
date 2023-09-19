@@ -14,50 +14,17 @@
 
 #pragma once
 
+#include "paddle/pir/core/op_operand_impl.h"
 #include "paddle/pir/core/value.h"
 
-namespace pir {
-static const uint32_t OUTLINE_OP_RESULT_INDEX = 6;
+#define OUTLINE_RESULT_IDX 6u
+#define MAX_INLINE_RESULT_IDX (OUTLINE_RESULT_IDX - 1u)
+#define BLOCK_ARG_IDX (OUTLINE_RESULT_IDX + 1u)
 
+namespace pir {
 class Operation;
 
 namespace detail {
-///
-/// \brief OpOperandImpl
-///
-class OpOperandImpl {
- public:
-  pir::Operation *owner() const;
-
-  pir::detail::OpOperandImpl *next_use();
-
-  pir::Value source() const;
-
-  void set_source(Value value);
-
-  /// Remove this op_operand from the current use list.
-  void RemoveFromUdChain();
-
-  ~OpOperandImpl();
-
-  friend pir::Operation;
-
- private:
-  OpOperandImpl(pir::Value source, pir::Operation *owner);
-
-  // Insert self to the UD chain holded by source_;
-  // It is not safe. So set private.
-  void InsertToUdChain();
-
-  pir::detail::OpOperandImpl *next_use_ = nullptr;
-
-  pir::detail::OpOperandImpl **prev_use_addr_ = nullptr;
-
-  pir::Value source_;
-
-  pir::Operation *const owner_ = nullptr;
-};
-
 ///
 /// \brief ValueImpl is the base class of all derived Value classes such as
 /// OpResultImpl. This class defines all the information and usage interface in
@@ -71,30 +38,18 @@ class alignas(8) ValueImpl {
   ///
   /// \brief Interface functions of "type_" attribute.
   ///
-  pir::Type type() const { return type_; }
+  Type type() const { return type_; }
 
-  void set_type(pir::Type type) { type_ = type; }
-
-  ///
-  /// \brief Interface functions of "first_use_offseted_by_index_" attribute.
-  ///
-  uint32_t index() const;
+  void set_type(Type type) { type_ = type; }
 
   OpOperandImpl *first_use() const {
     return reinterpret_cast<OpOperandImpl *>(
-        reinterpret_cast<uintptr_t>(first_use_offseted_by_index_) & (~0x07));
+        reinterpret_cast<uintptr_t>(first_use_offseted_by_kind_) & (~0x07));
   }
 
-  void set_first_use(OpOperandImpl *first_use) {
-    uint32_t offset = index();
-    first_use_offseted_by_index_ = reinterpret_cast<OpOperandImpl *>(
-        reinterpret_cast<uintptr_t>(first_use) + offset);
-    VLOG(4) << "The index of this value is " << offset
-            << ". Offset and set first use: " << first_use << " -> "
-            << first_use_offseted_by_index_ << ".";
-  }
+  void set_first_use(OpOperandImpl *first_use);
 
-  OpOperandImpl **first_use_addr() { return &first_use_offseted_by_index_; }
+  OpOperandImpl **first_use_addr() { return &first_use_offseted_by_kind_; }
 
   bool use_empty() const { return first_use() == nullptr; }
 
@@ -104,26 +59,28 @@ class alignas(8) ValueImpl {
 
   std::string PrintUdChain();
 
+  ///
+  /// \brief Interface functions of "first_use_offseted_by_kind_" attribute.
+  ///
+  uint32_t kind() const {
+    return reinterpret_cast<uintptr_t>(first_use_offseted_by_kind_) & 0x07;
+  }
+
+  template <typename T>
+  bool isa() {
+    return T::classof(*this);
+  }
+
  protected:
   ///
   /// \brief Only can be constructed by derived classes such as OpResultImpl.
   ///
-  explicit ValueImpl(pir::Type type, uint32_t index) {
-    if (index > OUTLINE_OP_RESULT_INDEX) {
-      throw("The value of index must not exceed 6");
-    }
-    type_ = type;
-    first_use_offseted_by_index_ = reinterpret_cast<OpOperandImpl *>(
-        reinterpret_cast<uintptr_t>(nullptr) + index);
-    VLOG(4) << "Construct a ValueImpl whose's index is " << index
-            << ". The offset first_use address is: "
-            << first_use_offseted_by_index_;
-  }
+  ValueImpl(Type type, uint32_t kind);
 
   ///
   /// \brief Attribute1: Type of value.
   ///
-  pir::Type type_;
+  Type type_;
 
   ///
   /// \brief Attribute2/3: Record the UD-chain of value and index.
@@ -134,77 +91,9 @@ class alignas(8) ValueImpl {
   /// output(OpInlineResultImpl); (2) index = 6: represent the position >=6
   /// outline output(OpOutlineResultImpl); (3) index = 7 is reserved.
   ///
-  OpOperandImpl *first_use_offseted_by_index_ = nullptr;
-};
-
-///
-/// \brief OpResultImpl is the implementation of an operation result.
-///
-class alignas(8) OpResultImpl : public ValueImpl {
- public:
-  using ValueImpl::ValueImpl;
-
-  static bool classof(const ValueImpl &value) { return true; }
-
-  ///
-  /// \brief Get the parent operation of this result.(op_ptr = value_ptr +
-  /// index)
-  ///
-  pir::Operation *owner() const;
-
-  ///
-  /// \brief Get the result index of the operation result.
-  ///
-  uint32_t GetResultIndex() const;
-
-  ///
-  /// \brief Get the maximum number of results that can be stored inline.
-  ///
-  static uint32_t GetMaxInlineResultIndex() {
-    return OUTLINE_OP_RESULT_INDEX - 1;
-  }
-
-  ~OpResultImpl();
-};
-
-///
-/// \brief OpInlineResultImpl is the implementation of an operation result whose
-/// index <= 5.
-///
-class OpInlineResultImpl : public OpResultImpl {
- public:
-  OpInlineResultImpl(pir::Type type, uint32_t result_index)
-      : OpResultImpl(type, result_index) {
-    if (result_index > GetMaxInlineResultIndex()) {
-      throw("Inline result index should not exceed MaxInlineResultIndex(5)");
-    }
-  }
-
-  static bool classof(const OpResultImpl &value) {
-    return value.index() < OUTLINE_OP_RESULT_INDEX;
-  }
-
-  uint32_t GetResultIndex() const { return index(); }
-};
-
-///
-/// \brief OpOutlineResultImpl is the implementation of an operation result
-/// whose index > 5.
-///
-class OpOutlineResultImpl : public OpResultImpl {
- public:
-  OpOutlineResultImpl(pir::Type type, uint32_t outline_index)
-      : OpResultImpl(type, OUTLINE_OP_RESULT_INDEX),
-        outline_index_(outline_index) {}
-
-  static bool classof(const OpResultImpl &value) {
-    return value.index() >= OUTLINE_OP_RESULT_INDEX;
-  }
-
-  uint32_t GetResultIndex() const { return outline_index_; }
-
-  uint32_t outline_index_;
+  OpOperandImpl *first_use_offseted_by_kind_ = nullptr;
 };
 
 }  // namespace detail
+
 }  // namespace pir

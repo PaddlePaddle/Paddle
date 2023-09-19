@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import base
@@ -57,7 +57,7 @@ class TestSplitOp(OpTest):
         self.op_type = "split"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], ['out0', 'out1', 'out2'], check_prim=True)
@@ -111,7 +111,7 @@ class TestSplitWithNumOp(OpTest):
         self.op_type = "split"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], ['out0', 'out1', 'out2'], check_prim=True)
@@ -148,7 +148,7 @@ class TestSplitOp_AxisTensor(OpTest):
         self.op_type = "split"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], ['out0', 'out1', 'out2'])
@@ -196,7 +196,7 @@ class TestSplitOp_SectionsTensor(OpTest):
         self.op_type = "split"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], ['out0', 'out1', 'out2'])
@@ -235,7 +235,7 @@ class TestSplitOp_unk_section(OpTest):
         self.op_type = "split"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], ['out0', 'out1', 'out2'], check_prim=True)
@@ -333,6 +333,7 @@ class TestSplitAPI(unittest.TestCase):
 
 class TestSplitOpError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             # The type of axis in split_op should be int or Variable.
             def test_axis_type():
@@ -379,6 +380,7 @@ class TestSplitOpError(unittest.TestCase):
                 paddle.split(input=x8, num_or_sections=2, dim=3.2)
 
             self.assertRaises(TypeError, test_axis_type_tensor)
+        paddle.disable_static()
 
         with paddle.base.dygraph.guard():
 

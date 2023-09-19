@@ -17,7 +17,7 @@ import random
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 from paddle.base import core
@@ -218,8 +218,7 @@ def flatten(nested):
 def _flatten(nested):
     for item in nested:
         if isinstance(item, (list, tuple)):
-            for subitem in _flatten(item):
-                yield subitem
+            yield from _flatten(item)
         else:
             yield item
 

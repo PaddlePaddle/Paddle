@@ -18,7 +18,7 @@ import warnings
 from contextlib import contextmanager
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 from scipy.special import erf, expit
 
 import paddle
@@ -356,6 +356,11 @@ class TestSigmoid(TestActivation):
         self.if_enable_cinn()
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
         out = 1 / (1 + np.exp(-x))
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -373,6 +378,34 @@ class TestSigmoid(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.01, check_prim=True)
+
+
+class TestSigmoid_Complex64(TestSigmoid):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    def test_check_output(self):
+        self.check_output(check_prim=False)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            max_relative_error=0.006,
+            check_prim=False,
+        )
+
+
+class TestSigmoid_Complex128(TestSigmoid_Complex64):
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=False,
+        )
 
 
 class TestSigmoid_ZeroDim(TestSigmoid):
@@ -458,12 +491,15 @@ class TestSilu(TestActivation):
     def if_enable_cinn(self):
         pass
 
+    def test_check_output(self):
+        self.check_output(check_new_ir=True)
+
     def test_check_grad(self):
         # TODO(BeingGod): set `check_prim=True` when `fill_constant` supports `complex` dtype
         if self.dtype == np.complex64 or self.dtype == np.complex128:
-            self.check_grad(['X'], 'Out', check_prim=False)
+            self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=False)
         else:
-            self.check_grad(['X'], 'Out', check_prim=True)
+            self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
 
 class TestSilu_ZeroDim(TestSilu):
@@ -648,14 +684,17 @@ class TestTanh(TestActivation, TestParameter):
         self.outputs = {'Out': out}
         self.convert_input_output()
 
+    def test_check_output(self):
+        self.check_output(check_new_ir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         # TODO(ScottWong98): set `check_prim=False` when `fill_any_like` supports `complex` dtype
         if self.dtype == np.complex64 or self.dtype == np.complex128:
-            self.check_grad(['X'], 'Out', check_prim=False)
+            self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
         else:
-            self.check_grad(['X'], 'Out', check_prim=True)
+            self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
     def init_dtype(self):
         # TODO If dtype is float64, the output (Out) has diff at CPUPlace
@@ -754,6 +793,11 @@ class TestAtan(TestActivation, TestParameter):
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(0.1, 1, self.shape)
+                + 1j * np.random.uniform(0.1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.arctan(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -788,6 +832,16 @@ class TestAtan(TestActivation, TestParameter):
             self.assertEqual(z, z_expected)
 
 
+class TestAtan_Complex64(TestAtan):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestAtan_Complex128(TestAtan):
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+
 class TestAtan_ZeroDim(TestAtan):
     def init_shape(self):
         self.shape = []
@@ -802,6 +856,11 @@ class TestSinh(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(0.1, 1, self.shape)
+                + 1j * np.random.uniform(0.1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.sinh(x)
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
@@ -812,6 +871,16 @@ class TestSinh(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestSinh_Complex64(TestSinh):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestSinh_Complex128(TestSinh):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestSinh_ZeroDim(TestSinh):
@@ -894,6 +963,11 @@ class TestCosh(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(0.1, 1, self.shape)
+                + 1j * np.random.uniform(0.1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.cosh(x)
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
@@ -903,7 +977,21 @@ class TestCosh(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            # Complex64 [CPU]: AssertionError: 0.006845869 not less than or equal to 0.005
+            self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        else:
+            self.check_grad(['X'], 'Out')
+
+
+class TestCosh_Complex64(TestCosh):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestCosh_Complex128(TestCosh):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestCosh_ZeroDim(TestCosh):
@@ -1526,7 +1614,7 @@ class TestRsqrt(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_new_ir=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -1536,6 +1624,7 @@ class TestRsqrt(TestActivation):
             'Out',
             max_relative_error=0.0005,
             check_prim=True,
+            check_new_ir=True,
         )
 
 
@@ -1827,6 +1916,11 @@ class TestAcos(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(-0.95, 0.95, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-0.95, 0.95, self.shape)
+                + 1j * np.random.uniform(-0.95, 0.95, self.shape)
+            ).astype(self.dtype)
         out = np.arccos(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -1840,6 +1934,16 @@ class TestAcos(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestAcos_Comple64(TestAcos):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestAcos_Complex128(TestAcos):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestAcos_ZeroDim(TestAcos):
@@ -1909,6 +2013,11 @@ class TestAsin(TestActivation):
 
         np.random.seed(2048)
         x = np.random.uniform(-0.95, 0.95, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-0.95, 0.95, self.shape)
+                + 1j * np.random.uniform(-0.95, 0.95, self.shape)
+            ).astype(self.dtype)
         out = np.arcsin(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -1922,6 +2031,16 @@ class TestAsin(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestAsin_Complex64(TestAsin):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestAsin_Complex128(TestAsin):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestAsin_ZeroDim(TestAsin):
@@ -1938,6 +2057,11 @@ class TestAcosh(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(2, 3, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(2, 3, self.shape)
+                + 1j * np.random.uniform(2, 3, self.shape)
+            ).astype(self.dtype)
         out = np.arccosh(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -1950,7 +2074,21 @@ class TestAcosh(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        if self.dtype == np.complex64:
+            # Complex64[CPU]: AssertionError: 0.012431525 not less than or equal to 0.005
+            self.check_grad(['X'], 'Out', max_relative_error=0.02)
+        else:
+            self.check_grad(['X'], 'Out')
+
+
+class TestAcosh_Complex64(TestAcosh):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestAcosh_Complex128(TestAcosh):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestAcosh_ZeroDim(TestAcosh):
@@ -1967,6 +2105,11 @@ class TestAsinh(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(1, 2, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(1, 2, self.shape)
+                + 1j * np.random.uniform(1, 2, self.shape)
+            ).astype(self.dtype)
         out = np.arcsinh(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -1979,7 +2122,21 @@ class TestAsinh(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            # Complex64 [CPU]: AssertionError: 0.006898686 not less than or equal to 0.005
+            self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        else:
+            self.check_grad(['X'], 'Out')
+
+
+class TestAsinh_Complex64(TestAsinh):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestAsinh_Complex128(TestAsinh):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestAsinh_ZeroDim(TestAsinh):
@@ -1996,6 +2153,11 @@ class TestAtanh(TestActivation):
 
         np.random.seed(400)
         x = np.random.uniform(-0.9, 0.9, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-0.9, 0.9, self.shape)
+                + 1j * np.random.uniform(-0.9, 0.9, self.shape)
+            ).astype(self.dtype)
         out = np.arctanh(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -2009,6 +2171,16 @@ class TestAtanh(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestAtanh_Complex64(TestAtanh):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestAtanh_Complex128(TestAtanh):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestAtanh_ZeroDim(TestAtanh):
@@ -2307,12 +2479,12 @@ class TestGeluApproximate(TestActivation):
         self.cinn_atol = 1e-8
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_new_ir=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
 
 class TestGelu(TestActivation):
@@ -2345,12 +2517,12 @@ class TestGelu(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_new_ir=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
 
 class TestGelu_ZeroDim(TestGelu):
@@ -3402,12 +3574,12 @@ class TestPow(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_new_ir=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
 
 class TestPow_ZeroDim(TestPow):
@@ -4331,6 +4503,7 @@ create_test_act_fp16_class(TestRelu, check_prim=True, enable_cinn=True)
 create_test_act_fp16_class(
     TestGelu,
     check_prim=True,
+    check_new_ir=True,
     enable_cinn=True,
     rev_comp_rtol=1e-3,
     rev_comp_atol=1e-3,
@@ -4372,7 +4545,9 @@ create_test_act_fp16_class(
     TestLeakyReluAlpha3, check_prim=True, enable_cinn=True
 )
 create_test_act_fp16_class(TestLeakyRelu_ZeroDim, check_prim=True)
-create_test_act_fp16_class(TestRsqrt, check_prim=True, enable_cinn=True)
+create_test_act_fp16_class(
+    TestRsqrt, check_prim=True, enable_cinn=True, check_new_ir=True
+)
 
 
 def create_test_act_bf16_class(
@@ -4460,6 +4635,7 @@ create_test_act_bf16_class(TestRelu, check_prim=True)
 create_test_act_bf16_class(
     TestGelu,
     check_prim=True,
+    check_new_ir=True,
     rev_comp_rtol=1e-2,
     rev_comp_atol=1e-2,
     cinn_rtol=1e-2,
@@ -4494,7 +4670,7 @@ create_test_act_bf16_class(TestLeakyReluAlpha1, check_prim=True)
 create_test_act_bf16_class(TestLeakyReluAlpha2, check_prim=True)
 create_test_act_bf16_class(TestLeakyReluAlpha3, check_prim=True)
 create_test_act_bf16_class(TestLeakyRelu_ZeroDim, check_prim=True)
-create_test_act_bf16_class(TestRsqrt, check_prim=True)
+create_test_act_bf16_class(TestRsqrt, check_prim=True, check_new_ir=True)
 
 if __name__ == "__main__":
     unittest.main()

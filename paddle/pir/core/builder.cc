@@ -20,12 +20,12 @@
 
 namespace pir {
 /// Create an operation given the fields represented as an OperationState.
-Operation *Builder::Build(OperationArgument &&argument) {
-  return Insert(Operation::Create(std::move(argument)));
+Operation *Builder::Build(const OperationArgument &argument) {
+  return Insert(Operation::Create(argument));
 }
 
 /// Creates an operation with the given fields.
-Operation *Builder::Build(const std::vector<OpResult> &inputs,
+Operation *Builder::Build(const std::vector<Value> &inputs,
                           const AttributeMap &attribute,
                           const std::vector<Type> &output_types,
                           OpInfo op_info) {

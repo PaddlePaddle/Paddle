@@ -163,7 +163,7 @@ std::string GetCurrentTraceBackString(bool for_signal) {
       }
     }
   }
-  free(symbols);
+  free(symbols);  // NOLINT
 #else
   sout << "Not support stack backtrace yet.\n";
 #endif
