@@ -14,17 +14,17 @@
 
 import unittest
 
-from paddle.distributed.auto_parallel.static.completion import get_spmd_rule
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     DistTensorSpec,
     TensorDistAttr,
 )
 from paddle.distributed.fleet import auto
+from paddle.framework import core
 
 
 class TestReshapeSPMDRule(unittest.TestCase):
     def setUp(self):
-        self.rule = get_spmd_rule("reshape")
+        self.rule = core.get_phi_spmd_rule("reshape")
 
         x_shape = [6, 12, 48, 24]
         process_mesh = auto.ProcessMesh(mesh=[[0, 1, 2], [3, 4, 5]])
