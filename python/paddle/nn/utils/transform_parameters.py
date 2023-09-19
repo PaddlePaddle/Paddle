@@ -169,8 +169,6 @@ def vector_to_parameters(vec, parameters, name=None):
             res = _C_ops.split(vec, sections, 0)
             for i in range(0, len(parameters)):
                 res[i]._share_underline_tensor_to(parameters[i])
-            res.stop_gradient = False
-            return res
     else:
         _dygraph_tracer().trace_op(
             type='split',
