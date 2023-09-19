@@ -41,6 +41,7 @@ from . import executor
 from .executor import *  # noqa: F403
 
 from . import data_feed_desc
+from .data_feed_desc import *  # noqa: F403
 
 from . import dataset
 
