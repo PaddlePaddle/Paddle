@@ -1181,16 +1181,28 @@ class Engine:
             'eval', {'steps': eval_steps, 'metrics': self._metrics_name()}
         )
         logs = {}
-        for step, _ in enumerate(valid_dataloader):
-            cbks.on_batch_begin('eval', step, logs)
+        for step, batch in enumerate(valid_dataloader):
+            if auto_utils.use_new_executor():
+                batches = self._validate_batch(batch)
+            else:
+                batches = [{}]
+
             try:
-                outs = self._executor.run(
-                    self.main_program,
-                    fetch_list=fetch_names,
-                    use_program_cache=self._strategy.use_cache,
-                    return_numpy=self._strategy.return_numpy,
-                )
+                for micro_batch in batches:
+                    cbks.on_batch_begin('eval', step, logs)
+                    outs = self._executor.run(
+                        self.main_program,
+                        feed=micro_batch,
+                        fetch_list=fetch_names,
+                        use_program_cache=self._strategy.use_cache,
+                        return_numpy=self._strategy.return_numpy,
+                    )
             except core.EOFException:
+                break
+
+            if steps_per_epoch and step >= steps_per_epoch:
+                if not auto_utils.use_new_executor():
+                    valid_dataloader._reset()
                 break
             logs = self._prepare_logger(
                 outs, None, step, None, fetch_names, fetch_indices, self._mode
@@ -1291,16 +1303,28 @@ class Engine:
         test_steps = steps_per_epoch
         cbks.on_begin('predict', {'steps': test_steps})
         logs = {}
-        for step, _ in enumerate(test_dataloader):
-            cbks.on_batch_begin('predict', step, logs)
+        for step, batch in enumerate(test_dataloader):
+            if auto_utils.use_new_executor():
+                batches = self._validate_batch(batch)
+            else:
+                batches = [{}]
+
             try:
-                outs = self._executor.run(
-                    self.main_program,
-                    fetch_list=fetch_names,
-                    use_program_cache=self._strategy.use_cache,
-                    return_numpy=self._strategy.return_numpy,
-                )
+                for micro_batch in batches:
+                    cbks.on_batch_begin('predict', step, logs)
+                    outs = self._executor.run(
+                        self.main_program,
+                        feed=micro_batch,
+                        fetch_list=fetch_names,
+                        use_program_cache=self._strategy.use_cache,
+                        return_numpy=self._strategy.return_numpy,
+                    )
             except core.EOFException:
+                break
+
+            if steps_per_epoch and step >= steps_per_epoch:
+                if not auto_utils.use_new_executor():
+                    test_dataloader._reset()
                 break
             logs = self._prepare_logger(
                 outs, None, step, None, fetch_names, fetch_indices, self._mode
