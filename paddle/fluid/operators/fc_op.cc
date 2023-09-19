@@ -88,6 +88,22 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Force INT8 kernel output FP32, only "
                   "used in MKL-DNN INT8")
         .SetDefault(false);
+    AddAttr<bool>("is_quant", "(bool, default false)").SetDefault(false);
+    AddAttr<int>(
+        "quant_round_type",
+        "(int, default 1) The round type of fp32 to int."
+        "0: rounding to nearest ties to even. Eg: round(1.5)=2, round(2.5)=2"
+        "1: rounding to nearest ties away from zero. Eg: round(1.5)=2, "
+        "round(-2.5)=-3")
+        .SetDefault(1);
+    AddAttr<float>(
+        "quant_max_bound",
+        "(float, default 127.0) the max bound of float type to int type")
+        .SetDefault(127.0);
+    AddAttr<float>(
+        "quant_min_bound",
+        "(float, default -127.0) the min bound of float type to int type")
+        .SetDefault(-127.0);
     AddComment(R"DOC(
 Fully Connected Operator.
 

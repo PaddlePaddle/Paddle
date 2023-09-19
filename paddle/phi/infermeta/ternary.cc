@@ -1369,6 +1369,10 @@ void FcInferMeta(const MetaTensor& x,
                  const std::vector<float>& scale_weights,
                  float scale_out,
                  bool force_fp32_output,
+                 bool is_quant,
+                 int quant_round_type,
+                 float quant_max_bound,
+                 float quant_min_bound,
                  MetaTensor* y) {
   auto w_dims = w.dims();
   PADDLE_ENFORCE_EQ(

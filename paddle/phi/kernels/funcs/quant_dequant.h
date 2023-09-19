@@ -155,4 +155,57 @@ void LaunchDequantKernel(const int32_t* input,
           output, input, m, n, quant_in_scale, dequant_out_scale_data);
 }
 
+template <typename T, int VecSize>
+__global__ void DequantKernelWithWeight(T* output,
+                                        const int32_t* input,
+                                        const int m,  // batch size
+                                        const int n,  // hidden
+                                        const float quant_in_scale,
+                                        const float* quant_weight_scale,
+                                        float quant_max_bound) {
+  int numel = m * n;
+  int stride = blockDim.x * gridDim.x * VecSize;
+  int idx = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
+  int col_id = idx % n;
+
+  phi::AlignedVector<int32_t, VecSize> in_vec;
+  phi::AlignedVector<float, VecSize> out_scale_vec;
+  phi::AlignedVector<T, VecSize> out_vec;
+
+  for (; idx < numel; idx += stride) {
+    phi::Load<int32_t, VecSize>(input + idx, &in_vec);
+    phi::Load<float, VecSize>(quant_weight_scale + col_id, &out_scale_vec);
+
+#pragma unroll
+    for (int i = 0; i < VecSize; ++i) {
+      out_vec[i] = static_cast<T>(
+          static_cast<float>(in_vec[i] / quant_max_bound / quant_max_bound /
+                             quant_in_scale / out_scale_vec[i]));
+    }
+
+    phi::Store<T, VecSize>(out_vec, output + idx);
+  }
+}
+
+template <typename T>
+void LaunchDequantKernelWithWeight(const int32_t* input,
+                                   T* output,
+                                   const int m,  // m
+                                   const int n,  // n
+                                   gpuStream_t stream,
+                                   GpuLaunchConfig* gpu_config,
+                                   const float quant_in_scale,
+                                   const float* quant_weight_scale,
+                                   float quant_max_bound) {
+  DequantKernelWithWeight<T, DequantKernelVecSize>
+      <<<gpu_config->block_per_grid, gpu_config->thread_per_block, 0, stream>>>(
+          output,
+          input,
+          m,
+          n,
+          quant_in_scale,
+          quant_weight_scale,
+          quant_max_bound);
+}
+
 }  // namespace phi

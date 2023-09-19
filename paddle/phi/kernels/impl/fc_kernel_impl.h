@@ -4,7 +4,6 @@
 
 namespace phi {
 
-// TODO(yinshangfei): add param
 template <typename T, typename Context>
 void FcKernel(const Context& dev_ctx,
               const DenseTensor& x,
@@ -20,6 +19,10 @@ void FcKernel(const Context& dev_ctx,
               const std::vector<float>& scale_weights,
               float scale_out,
               bool force_fp32_output,
+              bool is_quant,
+              int quant_round_type,
+              float quant_max_bound,
+              float quant_min_bound,
               DenseTensor* y) {
   bool with_relu = activation_type == "relu" ? true : false;
   auto w_dims = w.dims();
@@ -55,10 +58,37 @@ void FcKernel(const Context& dev_ctx,
   int M = phi::product(out_dims) / w_dims1;
 
   const T* input_data = x.data<T>();
-  const T* w_data = w.data<T>();
   auto* output_data = dev_ctx.template Alloc<T>(y, y->numel() * sizeof(T));
   auto bias_data = bias ? bias.get_ptr()->data<T>() : NULL;
 
+  if (is_quant) {
+    PADDLE_ENFORCE_EQ(
+        w.dtype(),
+        phi::DataType::INT8,
+        phi::errors::InvalidArgument(
+            "The weight's datatype is expected to be int8 when use quant. But "
+            "received weight's datatype is %d",
+            static_cast<int>(w.dtype())));
+    phi::funcs::FCInt8Functor<Context, T> fc;
+    fc(dev_ctx,
+       M,
+       w_dims1,
+       w_dims0,
+       input_data,
+       w.data<int8_t>(),
+       output_data,
+       scale_in,
+       scale_weights,
+       quant_round_type,
+       quant_max_bound,
+       quant_min_bound,
+       bias_data,
+       with_relu,
+       padding_weights);
+    return;
+  }
+
+  const T* w_data = w.data<T>();
   phi::funcs::FCFunctor<Context, T> fc;
   fc(dev_ctx,
      M,

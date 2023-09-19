@@ -14,7 +14,11 @@ KernelSignature FcOpArgumentMapping(const ArgumentMappingContext& ctx) {
                           "Scale_in",
                           "Scale_weights",
                           "Scale_out",
-                          "force_fp32_output"},
+                          "force_fp32_output",
+                          "is_quant",
+                          "quant_round_type",
+                          "quant_max_bound",
+                          "quant_min_bound"},
                          {"Out"});
 }
 
