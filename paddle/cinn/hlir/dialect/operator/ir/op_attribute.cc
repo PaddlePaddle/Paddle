@@ -12,29 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/pir/core/dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 
 namespace cinn {
 namespace dialect {
-
-class OperatorDialect : public ::pir::Dialect {
- public:
-  explicit OperatorDialect(::pir::IrContext* context);
-
-  static const char* name() { return "cinn_op"; }
-
-  void PrintType(pir::Type type, std::ostream& os) const override;
-  void PrintAttribute(pir::Attribute type, std::ostream& os) const override;
-  void PrintOperation(pir::Operation* op,
-                      pir::IrPrinter& printer) const override;  // NOLINT
-
- private:
-  void initialize();
-};
-
+const GroupInfo &GroupInfoAttribute::data() const {
+  return storage()->GetAsKey();
+}
 }  // namespace dialect
 }  // namespace cinn
 
-IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::OperatorDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GroupInfoAttribute)

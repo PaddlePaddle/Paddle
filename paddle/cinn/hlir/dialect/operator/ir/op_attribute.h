@@ -13,28 +13,27 @@
 // limitations under the License.
 
 #pragma once
-
-#include "paddle/pir/core/dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/attribute_storage.h"
+#include "paddle/pir/core/attribute_base.h"
 
 namespace cinn {
 namespace dialect {
 
-class OperatorDialect : public ::pir::Dialect {
+class GroupInfoAttribute : public pir::Attribute {
  public:
-  explicit OperatorDialect(::pir::IrContext* context);
+  using Attribute::Attribute;
 
-  static const char* name() { return "cinn_op"; }
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(GroupInfoAttribute,
+                                    GroupInfoAttributeStorage);
 
-  void PrintType(pir::Type type, std::ostream& os) const override;
-  void PrintAttribute(pir::Attribute type, std::ostream& os) const override;
-  void PrintOperation(pir::Operation* op,
-                      pir::IrPrinter& printer) const override;  // NOLINT
+  bool operator<(const GroupInfoAttribute& right) const {
+    return storage() < right.storage();
+  }
 
- private:
-  void initialize();
+  const GroupInfo& data() const;
 };
 
 }  // namespace dialect
 }  // namespace cinn
 
-IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::OperatorDialect)
+IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::GroupInfoAttribute)
