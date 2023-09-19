@@ -7235,18 +7235,16 @@ class Program:
                     vars_dict[name].set_value(value, scope)
                 except ValueError as err:
                     warnings.warn(
-                        ("Skip loading for '{}'. ".format(name) + str(err))
+                        "Skip loading for '{}'. ".format(name) + str(err)
                     )
                 except TypeError as err:
                     warnings.warn(
-                        ("Skip loading for '{}'. ".format(name) + str(err))
+                        "Skip loading for '{}'. ".format(name) + str(err)
                     )
             else:
                 warnings.warn(
-                    (
-                        "Skip loading for '{0}'. Because '{0}' not in the program.".format(
-                            name
-                        )
+                    "Skip loading for '{0}'. Because '{0}' not in the program.".format(
+                        name
                     )
                 )
 
