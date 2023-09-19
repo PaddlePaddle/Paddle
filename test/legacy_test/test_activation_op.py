@@ -694,7 +694,13 @@ class TestTanh(TestActivation, TestParameter):
         if self.dtype == np.complex64 or self.dtype == np.complex128:
             self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
         else:
-            self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_prim=True,
+                check_new_ir=True,
+                check_prim_pir=True,
+            )
 
     def init_dtype(self):
         # TODO If dtype is float64, the output (Out) has diff at CPUPlace

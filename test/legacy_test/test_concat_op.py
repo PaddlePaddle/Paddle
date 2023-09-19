@@ -61,18 +61,51 @@ class TestConcatOp(OpTest):
         if self.dtype == np.uint16:
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['x0'], 'Out', check_prim=True, check_new_ir=True
+                place,
+                ['x0'],
+                'Out',
+                check_prim=True,
+                check_new_ir=True,
+                check_prim_pir=True,
             )
             self.check_grad_with_place(
-                place, ['x1'], 'Out', check_prim=True, check_new_ir=True
+                place,
+                ['x1'],
+                'Out',
+                check_prim=True,
+                check_new_ir=True,
+                check_prim_pir=True,
             )
             self.check_grad_with_place(
-                place, ['x2'], 'Out', check_prim=True, check_new_ir=True
+                place,
+                ['x2'],
+                'Out',
+                check_prim=True,
+                check_new_ir=True,
+                check_prim_pir=True,
             )
         else:
-            self.check_grad(['x0'], 'Out', check_prim=True, check_new_ir=True)
-            self.check_grad(['x1'], 'Out', check_prim=True, check_new_ir=True)
-            self.check_grad(['x2'], 'Out', check_prim=True, check_new_ir=True)
+            self.check_grad(
+                ['x0'],
+                'Out',
+                check_prim=True,
+                check_new_ir=True,
+                check_prim_pir=True,
+            )
+            self.check_grad(
+                ['x1'],
+                'Out',
+                check_prim=True,
+                check_new_ir=True,
+                check_prim_pir=True,
+            )
+            self.check_grad(
+                ['x2'],
+                'Out',
+                check_prim=True,
+                check_new_ir=True,
+                check_prim_pir=True,
+            )
 
     def init_test_data(self):
         if self.dtype == np.uint16:
@@ -213,9 +246,27 @@ class TestConcatOp7(TestConcatOp):
         self.check_output(check_new_ir=True)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', check_prim=True, check_new_ir=True)
-        self.check_grad(['x1'], 'Out', check_prim=True, check_new_ir=True)
-        self.check_grad(['x2'], 'Out', check_prim=True, check_new_ir=True)
+        self.check_grad(
+            ['x0'],
+            'Out',
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
+        )
+        self.check_grad(
+            ['x1'],
+            'Out',
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
+        )
+        self.check_grad(
+            ['x2'],
+            'Out',
+            check_prim=True,
+            check_new_ir=True,
+            check_prim_pir=True,
+        )
 
     def init_test_data(self):
         if self.dtype == np.uint16:
