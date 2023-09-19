@@ -1235,6 +1235,7 @@ class TestTruncatedNormalInitializerDygraph(unittest.TestCase):
         """
         paddle.disable_static()
         paddle.seed(42)
+        pre_dtype = paddle.get_default_dtype()
         paddle.set_default_dtype("float32")
 
         tensor = paddle.zeros([1024, 1024, 8])
@@ -1250,6 +1251,7 @@ class TestTruncatedNormalInitializerDygraph(unittest.TestCase):
         np.testing.assert_allclose(
             array.std(), tensor.std().item(), rtol=0.01, atol=0.01
         )
+        paddle.set_default_dtype(pre_dtype)
         paddle.enable_static()
 
     def test_truncated_normal_initializer_fp64(self):
@@ -1258,6 +1260,7 @@ class TestTruncatedNormalInitializerDygraph(unittest.TestCase):
         """
         paddle.disable_static()
         paddle.seed(42)
+        pre_dtype = paddle.get_default_dtype()
         paddle.set_default_dtype("float64")
 
         tensor = paddle.zeros([1024, 1024, 8])
@@ -1273,6 +1276,7 @@ class TestTruncatedNormalInitializerDygraph(unittest.TestCase):
         np.testing.assert_allclose(
             array.std(), tensor.std().item(), rtol=0.01, atol=0.01
         )
+        paddle.set_default_dtype(pre_dtype)
         paddle.enable_static()
 
 
@@ -1282,6 +1286,7 @@ class TestAssignInitializerDygraph(unittest.TestCase):
         In dygraph mode, we can use initializer directly to initialize a tensor.
         """
         paddle.disable_static()
+        pre_dtype = paddle.get_default_dtype()
         paddle.set_default_dtype("float32")
 
         tensor = paddle.zeros([1024, 1024, 8], dtype=paddle.get_default_dtype())
@@ -1294,6 +1299,7 @@ class TestAssignInitializerDygraph(unittest.TestCase):
         assign_(tensor)
 
         np.testing.assert_allclose(array, tensor, rtol=1e-6, atol=1e-6)
+        paddle.set_default_dtype(pre_dtype)
         paddle.enable_static()
 
     def test_assign_initializer_fp64(self):
@@ -1301,6 +1307,7 @@ class TestAssignInitializerDygraph(unittest.TestCase):
         In dygraph mode, we can use initializer directly to initialize a tensor.
         """
         paddle.disable_static()
+        pre_dtype = paddle.get_default_dtype()
         paddle.set_default_dtype("float64")
 
         tensor = paddle.zeros([1024, 1024, 8], dtype=paddle.get_default_dtype())
@@ -1313,6 +1320,7 @@ class TestAssignInitializerDygraph(unittest.TestCase):
         assign_(tensor)
 
         np.testing.assert_allclose(array, tensor, rtol=1e-6, atol=1e-6)
+        paddle.set_default_dtype(pre_dtype)
         paddle.enable_static()
 
 
