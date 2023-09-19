@@ -100,19 +100,8 @@ DEFINE_ADT_UNION(Tensor, adapter::Tensor, SSAShadowTensor, TempStorage);
 OVERRIDE_UNION_GET_HASH_VALUE(Tensor);
 OVERLOAD_OPERATOR_EQ_NE(Tensor, UnionEqual);
 
-// MemoryBarrier = {}    // (Sync Thread)
-class MemoryBarrier final {};
-
-// BuiltinReduceRelatedOp = Zeros | InplaceAdd
-class Zeros final {};
-class InplaceAdd final {};
-DEFINE_ADT_UNION(BuiltinReduceRelatedOp, Zeros, InplaceAdd);
-
-// Op = const Node* | BuiltinReduceRelatedOp | MemoryBarrier
-DEFINE_ADT_UNION(Op,
-                 const hlir::framework::Node*,
-                 BuiltinReduceRelatedOp,
-                 MemoryBarrier);
+// Op = const Node*
+DEFINE_ADT_UNION(Op, const hlir::framework::Node*);
 
 using Arg = Tensor;
 

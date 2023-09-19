@@ -439,13 +439,11 @@ namespace {}  // namespace
 void TryGenerateMapExprFromGraph(
     const std::shared_ptr<cinn::hlir::framework::Graph>& graph) {
   if (!FLAGS_cinn_enable_map_expr) {
-    LOG(WARNING) << "FLAGS_cinn_enable_map_expr=false, break";
     return;
   }
   for (const auto& fusion_group : graph->fusion_groups) {
     const auto& map_expr = GenerateMapExpr(fusion_group);
     PrintMapExpr(map_expr);
-    // LOG(FATAL) << "Pause";
   }
 }
 
