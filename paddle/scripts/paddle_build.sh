@@ -990,7 +990,7 @@ function check_whl_size() {
     pr_whl_size=`du -m ${PADDLE_ROOT}/build/pr_whl/paddle*.whl|awk '{print $1}'`
     echo "pr_whl_size: ${pr_whl_size}"
 
-    dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
+    dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/paddle*.whl|awk '{print $1}'`
     echo "dev_whl_size: ${dev_whl_size}"
 
     whldiffSize=`echo $(($pr_whl_size - $dev_whl_size))`
