@@ -38,7 +38,7 @@ def net(batch_size=4, lr=0.01):
     Returns:
         avg_cost: LoDTensor of cost.
     """
-    dnn_input_dim, lr_input_dim = int(2), int(2)
+    dnn_input_dim, lr_input_dim = 2, 2
 
     with base.device_guard("cpu"):
         dnn_data = paddle.static.data(

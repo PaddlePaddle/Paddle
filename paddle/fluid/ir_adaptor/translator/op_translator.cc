@@ -1520,7 +1520,7 @@ struct ElementwiseTranscriber : public OpTranscriber {
           phi::DataType::INT64,
           phi::CPUPlace());
       auto y_true_shape_op = builder.Build<pir::CombineOp>(
-          std::vector<pir::OpResult>{shape_op.out(), append_shape_op.out()});
+          std::vector<pir::Value>{shape_op.out(), append_shape_op.out()});
       auto concat_op =
           builder.Build<dialect::ConcatOp>(y_true_shape_op.out(), 0);
       auto y_new_shape = concat_op.out();

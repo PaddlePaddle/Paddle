@@ -959,7 +959,6 @@ def _release_param(
 
                 if offload:
                     param.fw_storage = _device2cpu(param.fw_storage)
-    return
 
 
 def _wait_layer(

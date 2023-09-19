@@ -274,8 +274,6 @@ class _Tensor_ : public ExprNode<_Tensor_> {
       poly::StageMap stages,
       const Target& target = common::DefaultHostTarget()) const;
 
-  ir::Tensor InitReduction(ast_gen_ius::TensorGroup* tensor_group) const;
-
   /**
    * Create the initialization tensor.
    * @param stages The stages.

@@ -37,7 +37,7 @@ if(WITH_GPU)
     file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/gloo/device.cc.patch
          native_dst)
     set(GLOO_PATCH_COMMAND
-        git checkout -- . && git checkout ${GLOO_TAG} &&patch -Nd
+        git checkout -- . && git checkout ${GLOO_TAG} && patch -Nd
         ${SOURCE_DIR}/gloo/transport/tcp < ${native_dst})
   endif()
 endif()

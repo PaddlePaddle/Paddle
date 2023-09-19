@@ -711,7 +711,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     )
 
                 # get(timeout) will call _poll(timeout) and may raise IOError
-                if isinstance(e, queue.Empty) or isinstance(e, IOError):
+                if isinstance(e, (IOError, queue.Empty)):
                     # continue on timeout to keep getting data from queue
                     continue
 
