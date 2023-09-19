@@ -70,6 +70,7 @@ from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
 
 from . import unique_name
 from . import compiler
+from .compiler import *  # noqa: F403
 from paddle.base.layers.math_op_patch import monkey_patch_variable
 from .dygraph.base import enable_dygraph, disable_dygraph
 from .dygraph.tensor_patch_methods import monkey_patch_tensor
