@@ -57,9 +57,9 @@ void ToTxtString(const List<Arg>& out_args,
   *string += ")\n";
 }
 
-void ToTxtString(const OpStmt& op_stmt,
-                 std::size_t indent_size,
-                 std::string* string) {
+void ToTextStringImpl(const OpStmt& op_stmt,
+                      std::size_t indent_size,
+                      std::string* string) {
   const auto& [op, in_args, out_args] = op_stmt.tuple();
   CHECK(op.Has<const hlir::framework::Node*>());
   *string += std::string(" ", indent_size * kIndentSpaceSize);
@@ -87,20 +87,21 @@ void ToTextString(const ScheduleDescriptor& schedule_descriptor,
   *string += ")\n";
 }
 
-void ToTextString(const MapStmt<Stmt>& map_stmt,
-                  std::size_t indent_size,
-                  std::string* string);
+void ToTextStringImpl(const MapStmt<Stmt>& map_stmt,
+                      std::size_t indent_size,
+                      std::string* string);
 
 void ToTextString(const Stmt& stmt,
                   std::size_t indent_size,
                   std::string* string) {
-  std::visit([&](const auto& impl) { ToTextString(stmt, indent_size, string); },
-             stmt.variant());
+  std::visit(
+      [&](const auto& impl) { ToTextStringImpl(impl, indent_size, string); },
+      stmt.variant());
 }
 
-void ToTextString(const MapStmt<Stmt>& map_stmt,
-                  std::size_t indent_size,
-                  std::string* string) {
+void ToTextStringImpl(const MapStmt<Stmt>& map_stmt,
+                      std::size_t indent_size,
+                      std::string* string) {
   const auto& [schedule_descriptor, stmts] = map_stmt.tuple();
   *string += std::string(" ", indent_size * kIndentSpaceSize) + "{\n";
   ToTextString(schedule_descriptor, indent_size + 1, string);

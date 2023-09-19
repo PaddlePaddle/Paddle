@@ -258,10 +258,10 @@ std::size_t TagHashValue(const T& tag) {
 #define OVERRIDE_TAG_GET_HASH_VALUE(cls) \
   inline std::size_t GetHashValue(const cls& tag) { return TagHashValue(tag); }
 
-#define OVERRIDE_UNION_GET_HASH_VALUE(cls)                                 \
-  inline std::size_t GetHashValue(const cls& union_obj) {                  \
-    return std::visit([](const auto& impl) { return GetHashValue(impl); }, \
-                      union_obj.variant());                                \
+#define OVERRIDE_UNION_GET_HASH_VALUE(cls)                                     \
+  inline std::size_t GetHashValue(const cls& union_obj) {                      \
+    return std::visit([](const auto& impl) { return GetHashValueImpl(impl); }, \
+                      union_obj.variant());                                    \
   }
 
 using Name = std::string;

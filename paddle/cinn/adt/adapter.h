@@ -53,7 +53,7 @@ struct Tensor final {
   }
 };
 
-inline std::size_t GetHashValue(const Tensor& tensor) {
+inline std::size_t GetHashValueImpl(const Tensor& tensor) {
   return hash_combine(
       std::hash<const hlir::framework::NodeData*>()(tensor.node_data),
       std::hash<const hlir::framework::Graph*>()(tensor.graph));

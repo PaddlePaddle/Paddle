@@ -19,16 +19,16 @@
 
 namespace cinn::adt {
 
-std::string DebugString(std::int64_t c) { return std::to_string(c); }
-std::string DebugString(const tStride<UniqueId>& c) {
+std::string DebugStringImpl(std::int64_t c) { return std::to_string(c); }
+std::string DebugStringImpl(const tStride<UniqueId>& c) {
   return std::string("stride_") + std::to_string(c.value().unique_id());
 }
 
-std::string DebugString(const tDim<UniqueId>& c) {
+std::string DebugStringImpl(const tDim<UniqueId>& c) {
   return std::string("dim_") + std::to_string(c.value().unique_id());
 }
 
-std::string DebugString(const List<Constant>& c) {
+std::string DebugStringImpl(const List<Constant>& c) {
   std::string ret{"["};
   std::size_t count = 0;
   for (const auto& tmp : *c) {
@@ -41,29 +41,29 @@ std::string DebugString(const List<Constant>& c) {
   return ret;
 }
 
-std::string DebugString(const Neg<Constant>& c) {
+std::string DebugStringImpl(const Neg<Constant>& c) {
   return std::string("-") + DebugString(std::get<0>(c.tuple()));
 }
 
-std::string DebugString(const Add<Constant, Constant>& c) {
+std::string DebugStringImpl(const Add<Constant, Constant>& c) {
   return DebugString(std::get<0>(c.tuple())) + " + " +
          DebugString(std::get<1>(c.tuple()));
 }
 
-std::string DebugString(const Mul<Constant, Constant>& c) {
+std::string DebugStringImpl(const Mul<Constant, Constant>& c) {
   return DebugString(std::get<0>(c.tuple())) + " * " +
          DebugString(std::get<1>(c.tuple()));
 }
 
 std::string DebugString(const Constant& c) {
-  return std::visit([&](const auto& impl) { return DebugString(impl); },
+  return std::visit([&](const auto& impl) { return DebugStringImpl(impl); },
                     c.variant());
 }
 
-std::string DebugString(const Undefined&) { return "Undefined"; }
-std::string DebugString(const Ok&) { return "Ok"; }
+std::string DebugStringImpl(const Undefined&) { return "Undefined"; }
+std::string DebugStringImpl(const Ok&) { return "Ok"; }
 
-std::string DebugString(const List<Value>& values) {
+std::string DebugStringImpl(const List<Value>& values) {
   std::string ret = "[";
   std::size_t count = 0;
   for (const auto& value : *values) {
@@ -76,43 +76,43 @@ std::string DebugString(const List<Value>& values) {
   return ret;
 }
 
-std::string DebugString(const IndexDot<Value>& index_dot) {
+std::string DebugStringImpl(const IndexDot<Value>& index_dot) {
   const auto& [iters, constant] = index_dot.tuple();
   return std::string() + "IndexDot(" + DebugString(iters) + ", " +
          DebugString(constant) + ")";
 }
 
-std::string DebugString(const IndexUnDot<Value>& index_undot) {
+std::string DebugStringImpl(const IndexUnDot<Value>& index_undot) {
   const auto& [index, constant] = index_undot.tuple();
   return std::string() + "IndexUnDot(" + DebugString(index) + ", " +
          DebugString(constant) + ")";
 }
 
-std::string DebugString(const ConstantAdd<Value>& constant_add) {
+std::string DebugStringImpl(const ConstantAdd<Value>& constant_add) {
   const auto& [value, constant] = constant_add.tuple();
   return std::string() + "ConstantAdd(" + DebugString(value) + ", " +
          DebugString(constant) + ")";
 }
 
-std::string DebugString(const ConstantDiv<Value>& constant_div) {
+std::string DebugStringImpl(const ConstantDiv<Value>& constant_div) {
   const auto& [value, constant] = constant_div.tuple();
   return std::string() + "ConstantDiv(" + DebugString(value) + ", " +
          DebugString(constant) + ")";
 }
 
-std::string DebugString(const ConstantMod<Value>& constant_mod) {
+std::string DebugStringImpl(const ConstantMod<Value>& constant_mod) {
   const auto& [value, constant] = constant_mod.tuple();
   return std::string() + "ConstantDiv(" + DebugString(value) + ", " +
          DebugString(constant) + ")";
 }
 
-std::string DebugString(const ListGetItem<Value, Constant>& list_get_item) {
+std::string DebugStringImpl(const ListGetItem<Value, Constant>& list_get_item) {
   const auto& [value, constant] = list_get_item.tuple();
   return std::string() + "ListGetItem(" + DebugString(value) + ", " +
          DebugString(constant) + ")";
 }
 
-std::string DebugString(const PtrGetItem<Value>& ptr_get_item) {
+std::string DebugStringImpl(const PtrGetItem<Value>& ptr_get_item) {
   const auto& [unique_id, value] = ptr_get_item.tuple();
   return std::string() + "PtrGetItem(" +
          std::to_string(unique_id.value().unique_id()) + ", " +
@@ -120,7 +120,7 @@ std::string DebugString(const PtrGetItem<Value>& ptr_get_item) {
 }
 
 std::string DebugString(const Value& value) {
-  return std::visit([&](const auto& impl) { return DebugString(impl); },
+  return std::visit([&](const auto& impl) { return DebugStringImpl(impl); },
                     value.variant());
 }
 

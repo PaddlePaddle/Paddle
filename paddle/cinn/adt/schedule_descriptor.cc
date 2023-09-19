@@ -16,7 +16,7 @@
 
 namespace cinn::adt {
 
-std::string DebugString(const LoopDescriptor& loop_descriptor) {
+std::string DebugStringImpl(const LoopDescriptor& loop_descriptor) {
   const auto& [loop_type, loop_size] = loop_descriptor.tuple();
   std::string ret{};
   auto* string = &ret;

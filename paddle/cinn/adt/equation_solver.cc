@@ -26,7 +26,7 @@
 
 namespace cinn::adt {
 
-std::unordered_map<Variable, Value> InferValues(
+std::unordered_map<Variable, Value> InferValuesImpl(
     const Identity<tOut<Iterator>, tIn<Iterator>>& id,
     IndexExprInferContext* ctx) {
   const auto& [out_iter, in_iter] = id.tuple();
@@ -35,7 +35,7 @@ std::unordered_map<Variable, Value> InferValues(
   return {{out_iter.value(), ctx->GetValue(in_variable)}};
 }
 
-std::unordered_map<Variable, Value> InferValues(
+std::unordered_map<Variable, Value> InferValuesImpl(
     const Identity<tOut<Index>, tIn<Index>>& id, IndexExprInferContext* ctx) {
   const auto& [out_index, in_index] = id.tuple();
   Variable in_variable{in_index.value()};
@@ -43,7 +43,7 @@ std::unordered_map<Variable, Value> InferValues(
   return {{out_index.value(), ctx->GetValue(in_variable)}};
 }
 
-std::unordered_map<Variable, Value> InferValues(
+std::unordered_map<Variable, Value> InferValuesImpl(
     const Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>& dot,
     IndexExprInferContext* ctx) {
   const auto& [strides, out_index, in_iters] = dot.tuple();
@@ -59,7 +59,7 @@ std::unordered_map<Variable, Value> InferValues(
   return {{out_index.value(), index_dot}};
 }
 
-std::unordered_map<Variable, Value> InferValues(
+std::unordered_map<Variable, Value> InferValuesImpl(
     const UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>& undot,
     IndexExprInferContext* ctx) {
   const auto& [strides, out_iters, in_index] = undot.tuple();
@@ -79,7 +79,7 @@ std::unordered_map<Variable, Value> InferValues(
   return ret;
 }
 
-std::unordered_map<Variable, Value> InferValues(
+std::unordered_map<Variable, Value> InferValuesImpl(
     const InMsgBox2OutMsgBox<tOut<FakeOpPlaceHolder>,
                              tOut<tOutMsgBox<OpArgIndexes>>,
                              tIn<tInMsgBox<OpArgIndexes>>>&
@@ -109,8 +109,9 @@ std::unordered_map<Variable, Value> InferValues(
 
 std::unordered_map<Variable, Value> InferValues(const Function* function,
                                                 IndexExprInferContext* ctx) {
-  return std::visit([&](auto&& function) { return InferValues(function, ctx); },
-                    function->variant());
+  return std::visit(
+      [&](auto&& function) { return InferValuesImpl(function, ctx); },
+      function->variant());
 }
 
 DEFINE_ADT_TAG(tHasUniqueInferedValue);

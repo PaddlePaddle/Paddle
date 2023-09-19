@@ -21,6 +21,7 @@
 #include "paddle/cinn/adt/m_ir.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
 #include "paddle/cinn/adt/partition_op_stmts.h"
+#include "paddle/cinn/adt/print_map_expr.h"
 
 namespace cinn::adt {
 
@@ -34,63 +35,71 @@ void VisitEachOpStmt(const List<OpStmt>& op_stmts, const DoEachT& DoEach) {
 void CollectTensorIndexIterators(const TensorIndexExpr& tensor_index_expr,
                                  std::unordered_set<Iterator>* ret);
 
-void CollectTensorIndexIterators(const Undefined& tensor_index_expr,
-                                 std::unordered_set<Iterator>* ret) {
+void CollectTensorIndexIteratorsImpl(const Undefined& tensor_index_expr,
+                                     std::unordered_set<Iterator>* ret) {
   LOG(FATAL) << "Not Implemented";
 }
 
-void CollectTensorIndexIterators(const Iterator& tensor_index_expr,
-                                 std::unordered_set<Iterator>* ret) {
-  ret->insert(tensor_index_expr);
+void CollectTensorIndexIteratorsImpl(const Ok& ok,
+                                     std::unordered_set<Iterator>* ret) {
+  LOG(FATAL) << "Not Implemented";
 }
 
-void CollectTensorIndexIterators(const List<Value>& tensor_index_expr,
-                                 std::unordered_set<Iterator>* ret) {
+void CollectTensorIndexIteratorsImpl(const LoopDescriptor& loop_descriptor,
+                                     std::unordered_set<Iterator>* ret) {
+  LOG(FATAL) << "Not Implemented";
+}
+
+void CollectTensorIndexIteratorsImpl(const List<Value>& tensor_index_expr,
+                                     std::unordered_set<Iterator>* ret) {
   for (const auto& value : *tensor_index_expr) {
     CollectTensorIndexIterators(value, ret);
   }
 }
 
-void CollectTensorIndexIterators(const IndexDot<Value>& tensor_index_expr,
-                                 std::unordered_set<Iterator>* ret) {
+void CollectTensorIndexIteratorsImpl(const IndexDot<Value>& tensor_index_expr,
+                                     std::unordered_set<Iterator>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetIteratorsValue(), ret);
 }
 
-void CollectTensorIndexIterators(const IndexUnDot<Value>& tensor_index_expr,
-                                 std::unordered_set<Iterator>* ret) {
+void CollectTensorIndexIteratorsImpl(const IndexUnDot<Value>& tensor_index_expr,
+                                     std::unordered_set<Iterator>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetIndexValue(), ret);
 }
 
-void CollectTensorIndexIterators(const ConstantAdd<Value>& tensor_index_expr,
-                                 std::unordered_set<Iterator>* ret) {
+void CollectTensorIndexIteratorsImpl(
+    const ConstantAdd<Value>& tensor_index_expr,
+    std::unordered_set<Iterator>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetArg0(), ret);
 }
 
-void CollectTensorIndexIterators(const ConstantDiv<Value>& tensor_index_expr,
-                                 std::unordered_set<Iterator>* ret) {
+void CollectTensorIndexIteratorsImpl(
+    const ConstantDiv<Value>& tensor_index_expr,
+    std::unordered_set<Iterator>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetArg0(), ret);
 }
 
-void CollectTensorIndexIterators(const ConstantMod<Value>& tensor_index_expr,
-                                 std::unordered_set<Iterator>* ret) {
+void CollectTensorIndexIteratorsImpl(
+    const ConstantMod<Value>& tensor_index_expr,
+    std::unordered_set<Iterator>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetArg0(), ret);
 }
 
-void CollectTensorIndexIterators(
+void CollectTensorIndexIteratorsImpl(
     const ListGetItem<Value, Constant>& tensor_index_expr,
     std::unordered_set<Iterator>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetList(), ret);
 }
 
-void CollectTensorIndexIterators(const PtrGetItem<Value>& tensor_index_expr,
-                                 std::unordered_set<Iterator>* ret) {
+void CollectTensorIndexIteratorsImpl(const PtrGetItem<Value>& tensor_index_expr,
+                                     std::unordered_set<Iterator>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetArg1(), ret);
 }
 
 void CollectTensorIndexIterators(const TensorIndexExpr& tensor_index_expr,
                                  std::unordered_set<Iterator>* ret) {
   std::visit(
-      [&](auto&& impl) { CollectTensorIndexIterators(std::move(impl), ret); },
+      [&](const auto& impl) { CollectTensorIndexIteratorsImpl(impl, ret); },
       tensor_index_expr.variant());
 }
 
@@ -196,16 +205,16 @@ void EraseWriteBroadcastOutMsgBoxes(
 
 namespace {
 
-Tensor GetTensor(const OpStmt& op_stmt, const Undefined& undefined) {
+Tensor GetTensorImpl(const OpStmt& op_stmt, const Undefined& undefined) {
   LOG(FATAL) << "position not found";
 }
 
-Tensor GetTensor(const OpStmt& op_stmt, const tIn<std::size_t>& pos) {
+Tensor GetTensorImpl(const OpStmt& op_stmt, const tIn<std::size_t>& pos) {
   const auto& [op, in_args, out_args] = op_stmt.tuple();
   return in_args.value()->at(pos.value());
 }
 
-Tensor GetTensor(const OpStmt& op_stmt, const tOut<std::size_t>& pos) {
+Tensor GetTensorImpl(const OpStmt& op_stmt, const tOut<std::size_t>& pos) {
   const auto& [op, in_args, out_args] = op_stmt.tuple();
   return out_args.value()->at(pos.value());
 }
@@ -214,11 +223,12 @@ Tensor GetTensor(const config::NaiveOpEquationContext& ctx,
                  const OpStmt& op_stmt,
                  const Index& index) {
   const auto& op_arg_pos = ctx.GetOpArgPos(index);
-  return std::visit([&](const auto& impl) { return GetTensor(op_stmt, impl); },
-                    op_arg_pos.variant());
+  return std::visit(
+      [&](const auto& impl) { return GetTensorImpl(op_stmt, impl); },
+      op_arg_pos.variant());
 }
 
-const auto& GetAnchorTensor(const AnchorGroup& anchor_group) {
+Tensor GetAnchorTensor(const AnchorGroup& anchor_group) {
   const auto& ctx = *anchor_group.EquationCtx4OpStmt(anchor_group.op_stmt);
   return GetTensor(ctx, anchor_group.op_stmt, anchor_group.anchor_index);
 }
