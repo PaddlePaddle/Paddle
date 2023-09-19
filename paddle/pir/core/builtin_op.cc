@@ -310,7 +310,7 @@ void SplitOp::PassStopGradients(OperationArgument &argument) {
       for (uint32_t i = 0; i < defining_op->num_operands(); ++i) {
         auto value = defining_op->operand_source(i);
         if (!value) continue;
-        auto *oprand_defining_op = value.GetDefiningOp();
+        auto *oprand_defining_op = value.dyn_cast<OpResult>().owner();
         if (oprand_defining_op->HasAttribute(kStopGradientAttrName)) {
           auto attrs = oprand_defining_op->attribute(kStopGradientAttrName)
                            .dyn_cast<pir::ArrayAttribute>()

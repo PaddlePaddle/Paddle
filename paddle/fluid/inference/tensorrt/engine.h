@@ -154,6 +154,7 @@ class TensorRTEngine {
     ShapeMapType optim_shape_tensor;
 
     bool use_inspector{false};
+    std::string engine_info_path{""};
 
     //
     // From tensorrt_subgraph_pass, only used for OpConverter.
@@ -531,7 +532,7 @@ class TensorRTEngine {
   // FreshDeviceId().
   void FreshDeviceId();
 
-  void GetEngineInfo();
+  void GetEngineInfo(const std::string& engine_info_path);
 
   int device_id() { return params_.device_id; }
 
