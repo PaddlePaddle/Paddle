@@ -93,7 +93,6 @@ def check_broadcast(block):
                     < last_sync_comm_op_idx
                 )
                 assert last_sync_comm_op_idx < idx
-    return
 
 
 def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
@@ -254,8 +253,6 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
     if idx_gradient_clip_allreduce != -1:
         assert idx_gradient_clip_allreduce > idx_last_grad_allreduce
 
-    return
-
 
 def get_valid_op_role(block, insert_idx):
     """
@@ -284,7 +281,6 @@ def insert_sync_calc_op(block, insert_idx, calc_dep_vars):
         outputs={'Out': calc_dep_vars},
         attrs={OP_ROLE_KEY: op_role},
     )
-    return
 
 
 def insert_sync_comm_op(block, insert_idx, ring_id, comm_dep_vars):
@@ -339,7 +335,6 @@ def insert_fill_constant_ops(block, insert_idx, fill_constant_vars):
                 OP_ROLE_KEY: op_role,
             },
         )
-    return
 
 
 def insert_cast_ops(block, insert_idx, cast_ops):
@@ -359,7 +354,6 @@ def insert_cast_ops(block, insert_idx, cast_ops):
                 OP_ROLE_KEY: op_role,
             },
         )
-    return
 
 
 def insert_allreduce_ops(
@@ -873,8 +867,6 @@ def insert_broadcast_ops(block, insert_idx, ring_id, broadcast2root):
             },
         )
 
-    return
-
 
 DtypeToSize = {
     core.VarDesc.VarType.FP16: 2,
@@ -994,7 +986,6 @@ def add_sync_comm(program, sharding_ring_id):
                 'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
             },
         )
-    return
 
 
 def save_persistables(exe, dirname, main_program, filename=None):
@@ -1055,8 +1046,6 @@ def save_persistables(exe, dirname, main_program, filename=None):
             filename=None,
         )
 
-    return
-
 
 def append_naive_sync(block, sync_var, ring_id):
     # NOTE (JZ-LIANG) update this to use barrier sync for more elegent logic
@@ -1067,7 +1056,7 @@ def append_naive_sync(block, sync_var, ring_id):
         attrs={
             "shape": sync_var.shape,
             "dtype": sync_var.dtype,
-            "value": int(1),
+            "value": 1,
         },
     )
     block.append_op(

@@ -18,7 +18,7 @@
 #include "paddle/pir/core/interface_value.h"
 
 namespace pir {
-namespace details {
+namespace detail {
 template <typename ConcreteT, typename... Args>
 class ConstructInterfacesOrTraits {
  public:
@@ -117,6 +117,6 @@ std::vector<TypeId> GetTraitSet() {
   return trait_set;
 }
 
-}  // namespace details
+}  // namespace detail
 
 }  // namespace pir

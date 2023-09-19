@@ -631,10 +631,7 @@ def _get_checker():
 def _normal_yield(max_epoch_num):
     if max_epoch_num < 0:
         max_epoch_num = sys.maxint
-    for i in range(0, max_epoch_num):
-        yield i
-
-    return
+    yield from range(0, max_epoch_num)
 
 
 def train_epoch_range(max_epoch_num, save_checkpoint_inter=None):
