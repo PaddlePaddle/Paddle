@@ -3080,7 +3080,6 @@ class OpTest(unittest.TestCase):
                     no_grad_set,
                     check_dygraph,
                 )
-                print("dygraph_dygraph_grad :", dygraph_dygraph_grad)
                 fp32_grads = []
                 for grad in dygraph_dygraph_grad:
                     if grad.dtype == np.uint16:
@@ -3092,7 +3091,6 @@ class OpTest(unittest.TestCase):
                         )
                     fp32_grads.append(grad)
                 dygraph_dygraph_grad = fp32_grads
-                print("dygraph_dygraph_grad 2:", dygraph_dygraph_grad)
                 self._assert_is_close(
                     numeric_grads,
                     dygraph_dygraph_grad,
@@ -3116,7 +3114,6 @@ class OpTest(unittest.TestCase):
                         user_defined_grad_outputs,
                         no_grad_set,
                     )
-                print("new_ir_grad :", new_ir_grad)
                 fp32_analytic_grads = []
                 for grad in new_ir_grad:
                     if grad.dtype == np.uint16:
@@ -3134,9 +3131,6 @@ class OpTest(unittest.TestCase):
                         if max_relative_error < 0.01
                         else max_relative_error
                     )
-                print("numeric_grads :", numeric_grads)
-                print("new_ir_grad:", new_ir_grad)
-                print("max_relative_error:", max_relative_error)
                 self._assert_is_close(
                     numeric_grads,
                     new_ir_grad,
@@ -3648,8 +3642,6 @@ class OpTest(unittest.TestCase):
                         grad_outputs=grad_outputs,
                     )
                 fetch_list = list(grad_inputs)
-                print("grad_inputs = ", grad_inputs)
-                print(paddle.ir.core.default_main_program())
                 # executor run
                 executor = paddle.static.Executor()
                 outs = executor.run(
