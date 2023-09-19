@@ -33,6 +33,8 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 
 #include "paddle/fluid/platform/init_phi.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 
 DECLARE_FILE_SYMBOLS(kernel_dialect);
 
@@ -136,6 +138,63 @@ TEST(StandaloneExecutor, run_inplace_sqrt) {
   EXPECT_EQ(res1, true);
   EXPECT_EQ(res2, true);
   EXPECT_EQ(res3, true);
+}
+
+TEST(StandaloneExecutor, if_op) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::ControlFlowDialect>();
+
+  pir::Program program(ctx);
+  pir::Block* block = program.block();
+  pir::Builder builder(ctx, block);
+
+  auto full_op = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{1}, true, phi::DataType::BOOL);
+
+  auto if_op = builder.Build<paddle::dialect::IfOp>(
+      full_op.out(), std::vector<pir::Type>{full_op.result(0).type()});
+
+  pir::Block* true_block = if_op.true_block();
+
+  builder.SetInsertionPointToStart(true_block);
+
+  auto full_op_1 = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{2}, true, phi::DataType::BOOL);
+  builder.Build<pir::YieldOp>(std::vector<pir::OpResult>{full_op_1.out()});
+
+  pir::Block* false_block = if_op.false_block();
+
+  builder.SetInsertionPointToStart(false_block);
+
+  auto full_op_2 = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{3}, true, phi::DataType::BOOL);
+  builder.Build<pir::YieldOp>(std::vector<pir::OpResult>{full_op_2.out()});
+
+  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+
+  auto place = platform::CPUPlace();
+  Scope scope;
+  InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
+
+  std::stringstream os;
+  os << reinterpret_cast<NewIRInterpreter*>(
+      const_cast<InterpreterBaseImpl*>(test_core.Impl()));
+  std::string out_name = os.str() + "_inner_var_1";
+  test_core.SetSkipGcVars({out_name});
+
+  test_core.Run({});
+
+  auto out_tensor =
+      test_core.local_scope() == nullptr
+          ? scope.FindVar(out_name)->Get<phi::DenseTensor>()
+          : test_core.local_scope()->FindVar(out_name)->Get<phi::DenseTensor>();
+
+  bool res0 = out_tensor.data<bool>()[0] == true;
+  bool res1 = out_tensor.data<bool>()[1] == true;
+
+  EXPECT_EQ(res0, true);
+  EXPECT_EQ(res1, true);
 }
 
 }  // namespace framework
