@@ -102,6 +102,7 @@ class {op_name} : public pir::Op<{op_name}{interfaces}{traits}> {{
   static void Build({build_args});
   {build_mutable_attr_is_input}
   {build_attr_num_over_1}
+  {build_mutable_attr_is_input_attr_num_over_1}
   void Verify();
 {get_inputs_and_outputs}
 {exclusive_interface}
@@ -1091,7 +1092,9 @@ def OpGenerator(
                 build_args_with_muta_attr_not_input_for_declare = ""
                 build_func_with_muta_attr_not_input = ""
                 build_mutable_attr_is_input = ""
+                build_func_with_muta_attr_is_input_with_attr_is_map = ""
                 build_attr_num_over_1 = ""
+                build_mutable_attr_is_input_attr_num_over_1 = ""
                 build_func_with_attr_is_map = ""
                 build_func_with_muta_attr_is_input = ""
 
@@ -1150,9 +1153,7 @@ def OpGenerator(
                             muta_attr_is_input=False,
                             attr_args_is_map=True,
                         )
-                        build_attr_num_over_1 = "static void Build({build_args});".format(
-                            build_args=build_args_with_attr_is_map_for_declare
-                        )
+                        build_attr_num_over_1 = f"static void Build({build_args_with_attr_is_map_for_declare});"
 
                     if len(op_mutable_attribute_name_list) > 0:
                         (
@@ -1186,6 +1187,38 @@ def OpGenerator(
                             build_args=build_args_with_muta_attr_is_input_for_declare
                         )
 
+                        if len(op_non_mutable_attribute_name_list) > 0:
+                            (
+                                build_args_with_muta_attr_is_input_with_attr_is_map_for_declare,
+                                build_func_with_muta_attr_is_input_with_attr_is_map,
+                            ) = gen_build_func_str(
+                                op_class_name,
+                                op_input_name_list,
+                                op_input_type_list,
+                                op_input_optional_list,
+                                op_attribute_name_list,
+                                op_attribute_type_list,
+                                op_attribute_build_arg_type_list,
+                                op_attribute_default_value_list,
+                                op_mutable_attribute_name_list,
+                                op_mutable_attribute_type_list,
+                                op_non_mutable_attribute_name_list,
+                                op_non_mutable_attribute_type_list,
+                                op_non_mutable_attribute_build_arg_type_list,
+                                op_non_mutable_attribute_default_value_list,
+                                op_output_name_list,
+                                op_output_type_list,
+                                op_output_size_list,
+                                op_output_optional_list,
+                                op_infer_meta_map,
+                                op_inplace_map,
+                                muta_attr_is_input=True,
+                                attr_args_is_map=True,
+                            )
+
+                            build_mutable_attr_is_input_attr_num_over_1 = "static void Build({build_args});".format(
+                                build_args=build_args_with_muta_attr_is_input_with_attr_is_map_for_declare
+                            )
                 # gen op_declare_str/op_defined_str
                 if len(op_non_mutable_attribute_name_list) == 0:
                     op_declare_str = OP_DECLARE_TEMPLATE.format(
@@ -1198,6 +1231,7 @@ def OpGenerator(
                         build_args=build_args_with_muta_attr_not_input_for_declare,
                         build_mutable_attr_is_input=build_mutable_attr_is_input,
                         build_attr_num_over_1=build_attr_num_over_1,
+                        build_mutable_attr_is_input_attr_num_over_1=build_mutable_attr_is_input_attr_num_over_1,
                         get_inputs_and_outputs=op_get_inputs_outputs_str,
                         exclusive_interface=exclusive_interface_str,
                     )
@@ -1217,6 +1251,7 @@ def OpGenerator(
                         build_args=build_args_with_muta_attr_not_input_for_declare,
                         build_mutable_attr_is_input=build_mutable_attr_is_input,
                         build_attr_num_over_1=build_attr_num_over_1,
+                        build_mutable_attr_is_input_attr_num_over_1=build_mutable_attr_is_input_attr_num_over_1,
                         get_inputs_and_outputs=op_get_inputs_outputs_str,
                         exclusive_interface=exclusive_interface_str,
                     )
@@ -1408,6 +1443,10 @@ def OpGenerator(
                         ops_defined_list.append(
                             build_func_with_muta_attr_is_input
                         )
+                        ops_defined_list.append(
+                            build_func_with_muta_attr_is_input_with_attr_is_map
+                        )
+
                     ops_defined_list.append(op_verify_str)
                     ops_defined_list.append(op_infer_meta_str)
                     # NOTE(chenxi67)skip if dialect_name==cinn

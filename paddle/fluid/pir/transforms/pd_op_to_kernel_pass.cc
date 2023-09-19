@@ -248,9 +248,9 @@ pir::OpResult AddPlaceTransferOp(pir::OpResult in,
     pir::Operation* op =
         pir::Operation::Create({in}, op_attribute, {out_type}, op_info);
 
-    if (in.GetDefiningOp()->HasAttribute(kAttrIsPersisable)) {
+    if (in.owner()->HasAttribute(kAttrIsPersisable)) {
       op->set_attribute(kAttrIsPersisable,
-                        in.GetDefiningOp()->attribute(kAttrIsPersisable));
+                        in.owner()->attribute(kAttrIsPersisable));
     }
     block->push_back(op);
 
@@ -527,11 +527,10 @@ phi::KernelKey GetKernelKey(
       if (op->isa<paddle::dialect::UniformOp>()) {
         // try to process uniform, use shape to determin backend
         // TODO(phlrain): shuold support other initilize op
-        auto define_op = op->operand_source(0).GetDefiningOp();
+        auto define_op =
+            op->operand_source(0).dyn_cast<pir::OpResult>().owner();
         if (define_op->isa<paddle::dialect::FullIntArrayOp>()) {
-          auto shape = define_op->attributes()
-                           .at("value")
-                           .dyn_cast<dialect::IntArrayAttribute>()
+          auto shape = define_op->attribute<dialect::IntArrayAttribute>("value")
                            .data()
                            .GetData();
 
@@ -577,13 +576,12 @@ phi::KernelKey GetKernelKey(
       // uses data op outout as inputs. So, we need set kernel backend
       // manually.
       if (op->operand_source(i)
-              .GetDefiningOp()
+              .dyn_cast<pir::OpResult>()
+              .owner()
               ->isa<paddle::dialect::DataOp>()) {
-        auto data_op = op->operand_source(i).GetDefiningOp();
-        auto data_place = data_op->attributes()
-                              .at("place")
-                              .dyn_cast<dialect::PlaceAttribute>()
-                              .data();
+        auto data_op = op->operand_source(i).dyn_cast<pir::OpResult>().owner();
+        auto data_place =
+            data_op->attribute<dialect::PlaceAttribute>("place").data();
 
         auto data_op_backend = paddle::experimental::ParseBackend(data_place);
         if (data_op_backend == phi::Backend::UNDEFINED) {
@@ -592,17 +590,21 @@ phi::KernelKey GetKernelKey(
         kernel_key_parser.key_set.backend_set =
             kernel_key_parser.key_set.backend_set |
             paddle::experimental::BackendSet(data_op_backend);
-      } else if (op->operand_source(i).GetDefiningOp()->name() ==
-                 "builtin.combine") {
-        auto combine_op = op->operand_source(i).GetDefiningOp();
+      } else if (op->operand_source(i)
+                     .dyn_cast<pir::OpResult>()
+                     .owner()
+                     ->isa<pir::CombineOp>()) {
+        auto combine_op =
+            op->operand_source(i).dyn_cast<pir::OpResult>().owner();
         for (size_t j = 0; j < combine_op->num_operands(); ++j) {
-          if (combine_op->operand_source(j).GetDefiningOp()->name() ==
-              "pd_op.data") {
-            auto data_op = combine_op->operand_source(j).GetDefiningOp();
-            auto data_place = data_op->attributes()
-                                  .at("place")
-                                  .dyn_cast<dialect::PlaceAttribute>()
-                                  .data();
+          if (combine_op->operand_source(j)
+                  .dyn_cast<pir::OpResult>()
+                  .owner()
+                  ->isa<DataOp>()) {
+            auto data_op =
+                combine_op->operand_source(j).dyn_cast<pir::OpResult>().owner();
+            auto data_place =
+                data_op->attribute<PlaceAttribute>("place").data();
 
             auto data_op_backend =
                 paddle::experimental::ParseBackend(data_place);
@@ -981,7 +983,7 @@ std::vector<pir::Value> BuildOpInputList(
       } else if (new_in_type.isa<pir::VectorType>()) {
         // [ todo need update here, support combine data transfomer]
         // deal with pre combine op
-        auto pre_define_op = cur_in.GetDefiningOp();
+        auto pre_define_op = cur_in.dyn_cast<pir::OpResult>().owner();
 
         if (pre_define_op->isa<::pir::CombineOp>()) {
           std::vector<pir::Value> inner_inputs;

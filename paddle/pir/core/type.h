@@ -48,7 +48,7 @@ class IR_API Type {
   Type() = default;
 
   Type(const Storage *storage)  // NOLINT
-      : storage_(const_cast<Storage *>(storage)) {}
+      : storage_(storage) {}
 
   Type(const Type &other) = default;
 
@@ -73,11 +73,7 @@ class IR_API Type {
   ///
   /// \brief Support PointerLikeTypeTraits.
   ///
-  ///
-  const void *AsOpaquePointer() const {
-    return static_cast<const void *>(storage_);
-  }
-
+  operator const void *() const { return storage_; }
   static Type RecoverFromOpaquePointer(const void *pointer) {
     return Type(reinterpret_cast<Storage *>(const_cast<void *>(pointer)));
   }
@@ -119,11 +115,6 @@ class IR_API Type {
   void Print(std::ostream &os) const;
 
   static Type Parse(std::istream &is, IrContext *ctx);
-
-  ///
-  /// \brief Enable hashing Type.
-  ///
-  friend struct std::hash<Type>;
 
   template <typename U>
   U cast() const {
@@ -189,7 +180,7 @@ namespace std {
 template <>
 struct hash<pir::Type> {
   std::size_t operator()(const pir::Type &obj) const {
-    return std::hash<const pir::Type::Storage *>()(obj.storage_);
+    return std::hash<const void *>()(obj);
   }
 };
 }  // namespace std
