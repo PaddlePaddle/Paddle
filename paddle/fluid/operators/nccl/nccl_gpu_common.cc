@@ -25,7 +25,7 @@ size_t last_num_gpus = -1;
 // TODO(panyx0718): Need to decide whether Paddle supports parallel
 // runs with different number GPUs. If true, current solution is not enough.
 std::mutex comm_mu;
-}
+}  // namespace
 
 int Communicator::GetCommId(int device_id) const {
   std::lock_guard<std::mutex> guard(comm_mu);
@@ -44,8 +44,8 @@ void Communicator::InitAll(const std::vector<int>& gpus) {
       dynload::ncclCommDestroy((*global_comms)[i]);
     }
   }
-  global_comms.reset(new std::vector<ncclComm_t>());
-  comm_id_map.reset(new std::unordered_map<int, int>());
+  global_comms = std::make_unique<std::vector<ncclComm_t>>();
+  comm_id_map = std::make_unique<std::unordered_map<int, int>>();
   global_comms->resize(gpus.size());
   for (size_t i = 0; i < gpus.size(); ++i) {
     (*comm_id_map)[gpus[i]] = i;

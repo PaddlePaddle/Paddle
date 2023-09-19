@@ -37,8 +37,8 @@ class AssignFunctor {
                 const platform::DeviceContext &dev_ctx)
       : out_(out), dev_ctx_(dev_ctx) {}
 
-  void operator()(const framework::LoDTensor &lod_tensor) const {
-    auto &out_tensor = *out_->GetMutable<framework::LoDTensor>();
+  void operator()(const phi::DenseTensor &lod_tensor) const {
+    auto &out_tensor = *out_->GetMutable<phi::DenseTensor>();
     copy_tensor(lod_tensor, &out_tensor);
   }
 
@@ -60,17 +60,18 @@ class AssignFunctor {
   }
 
   template <typename T>
-  void operator()(const T &v) const {
+  void operator()(const T &v UNUSED) const {
     PADDLE_ENFORCE_EQ(
-        true, false,
+        true,
+        false,
         platform::errors::PermissionDenied(
             "Not support type for assign op with type %s", typeid(T).name()));
   }
 
  private:
-  void copy_tensor(const framework::LoDTensor &lod_tensor,
-                   framework::LoDTensor *out) const {
-    if (lod_tensor.numel() == 0) return;
+  void copy_tensor(const phi::DenseTensor &lod_tensor,
+                   phi::DenseTensor *out) const {
+    if (!lod_tensor.IsInitialized()) return;
     auto &out_tensor = *out;
     paddle::framework::TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);
     out_tensor.set_lod(lod_tensor.lod());

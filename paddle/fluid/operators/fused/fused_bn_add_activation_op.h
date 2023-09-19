@@ -17,6 +17,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <unordered_map>
+
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
@@ -25,7 +26,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
 
 class FusedBatchNormAddActOp : public framework::OperatorWithKernel {
  public:
@@ -33,7 +33,7 @@ class FusedBatchNormAddActOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
 };
 
@@ -43,7 +43,7 @@ class FusedBatchNormAddActGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
 };
 
@@ -89,13 +89,13 @@ class FusedBatchNormAddActOpInferVarType
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FusedBatchNormAddActKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override;
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FusedBatchNormAddActGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override;

@@ -24,7 +24,8 @@ limitations under the License. */
 
 namespace phi {
 
-class CPUContext : public DeviceContext {
+class PADDLE_API CPUContext : public DeviceContext,
+                              public TypeInfoTraits<DeviceContext, CPUContext> {
  public:
   CPUContext();
   CPUContext(CPUContext&&);
@@ -34,11 +35,7 @@ class CPUContext : public DeviceContext {
   Eigen::DefaultDevice* eigen_device() const;
   const Place& GetPlace() const override;
 
- public:
-  // NOTE: DeviceContext hold resources. Used in training scenarios.
-  // The interface used by the training scene, DeviceContext will initialize
-  // all resources and delete them when destructing.
-  void Init();
+  static const char* name() { return "CPUContext"; }
 
  protected:
   // NOTE: External users manage resources. Used in inference scenarios.

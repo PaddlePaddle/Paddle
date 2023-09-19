@@ -14,8 +14,9 @@
 
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 
-#include <stdlib.h>
+#include <cstdlib>
 
+#include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -25,12 +26,14 @@ namespace allocation {
 bool CPUAllocator::IsAllocThreadSafe() const { return true; }
 
 void CPUAllocator::FreeImpl(phi::Allocation *allocation) {
+  auto size = allocation->size();
   void *p = allocation->ptr();
 #ifdef _WIN32
   _aligned_free(p);
 #else
-  free(p);
+  free(p);  // NOLINT
 #endif
+  HOST_MEMORY_STAT_UPDATE(Reserved, 0, -size);
   delete allocation;
 }
 
@@ -41,10 +44,12 @@ phi::Allocation *CPUAllocator::AllocateImpl(size_t size) {
 #else
   int error = posix_memalign(&p, kAlignment, size);
   PADDLE_ENFORCE_EQ(
-      error, 0,
+      error,
+      0,
       platform::errors::ResourceExhausted(
           "Fail to alloc memory of %ld size, error code is %d.", size, error));
 #endif
+  HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
   return new Allocation(p, size, platform::CPUPlace());
 }
 }  // namespace allocation

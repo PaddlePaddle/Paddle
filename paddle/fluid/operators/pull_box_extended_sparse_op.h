@@ -15,6 +15,7 @@
 #pragma once
 #include <memory>
 #include <vector>
+
 #include "paddle/fluid/framework/fleet/box_wrapper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -25,9 +26,9 @@ namespace operators {
 template <typename T>
 static void PullBoxExtendedSparseFunctor(
     const framework::ExecutionContext &ctx) {
-  auto inputs = ctx.MultiInput<framework::Tensor>("Ids");
-  auto outputs = ctx.MultiOutput<framework::Tensor>("Out");
-  auto outputs_extend = ctx.MultiOutput<framework::Tensor>("OutExtend");
+  auto inputs = ctx.MultiInput<phi::DenseTensor>("Ids");
+  auto outputs = ctx.MultiOutput<phi::DenseTensor>("Out");
+  auto outputs_extend = ctx.MultiOutput<phi::DenseTensor>("OutExtend");
   const auto slot_size = inputs.size();
   std::vector<const uint64_t *> all_keys(slot_size);
   // BoxPS only supports float now
@@ -48,19 +49,23 @@ static void PullBoxExtendedSparseFunctor(
   auto emb_size = ctx.Attr<int>("emb_size");
   auto emb_extended_size = ctx.Attr<int>("emb_extended_size");
   auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
-  box_ptr->PullSparse(ctx.GetPlace(), all_keys, all_values, slot_lengths,
-                      emb_size, emb_extended_size);
+  box_ptr->PullSparse(ctx.GetPlace(),
+                      all_keys,
+                      all_values,
+                      slot_lengths,
+                      emb_size,
+                      emb_extended_size);
 #endif
 }
 
 template <typename T>
 static void PushBoxExtendedSparseFunctor(
     const framework::ExecutionContext &ctx) {
-  auto inputs = ctx.MultiInput<framework::LoDTensor>("Ids");
+  auto inputs = ctx.MultiInput<phi::DenseTensor>("Ids");
   auto d_output =
-      ctx.MultiInput<framework::Tensor>(framework::GradVarName("Out"));
+      ctx.MultiInput<phi::DenseTensor>(framework::GradVarName("Out"));
   auto d_output_extend =
-      ctx.MultiInput<framework::Tensor>(framework::GradVarName("OutExtend"));
+      ctx.MultiInput<phi::DenseTensor>(framework::GradVarName("OutExtend"));
   const auto slot_size = inputs.size();
   std::vector<const uint64_t *> all_keys(slot_size);
   std::vector<const float *> all_grad_values(slot_size * 2);
@@ -77,7 +82,8 @@ static void PushBoxExtendedSparseFunctor(
     if (batch_size == -1) {
       batch_size = cur_batch_size;
     } else {
-      PADDLE_ENFORCE_EQ(batch_size, cur_batch_size,
+      PADDLE_ENFORCE_EQ(batch_size,
+                        cur_batch_size,
                         platform::errors::PreconditionNotMet(
                             "The batch size of all input slots should be same,"
                             "please cheack"));
@@ -92,14 +98,17 @@ static void PushBoxExtendedSparseFunctor(
   auto emb_size = ctx.Attr<int>("emb_size");
   auto emb_extended_size = ctx.Attr<int>("emb_extended_size");
   auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
-  box_ptr->PushSparseGrad(ctx.GetPlace(), all_keys, all_grad_values,
-                          slot_lengths, emb_size, emb_extended_size,
+  box_ptr->PushSparseGrad(ctx.GetPlace(),
+                          all_keys,
+                          all_grad_values,
+                          slot_lengths,
+                          emb_size,
+                          emb_extended_size,
                           batch_size);
 #endif
 }
 
-using LoDTensor = framework::LoDTensor;
-template <typename T>
+template <typename T, typename DeviceContext>
 class PullBoxExtendedSparseCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -107,7 +116,7 @@ class PullBoxExtendedSparseCPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PushBoxExtendedSparseCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {

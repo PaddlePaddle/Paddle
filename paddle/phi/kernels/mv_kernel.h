@@ -18,10 +18,18 @@
 
 namespace phi {
 
+/**
+ * @brief This kernel is used to perform matrix vector multiplication
+ *        of the input tensors `X` and `Vec`
+ * @param  ctx   device context
+ * @param  x     The matrix input of mv
+ * @param  vec   The vector input of mv
+ * @param  out   The output of mv
+ */
 template <typename T, typename Context>
 void MvKernel(const Context& ctx,
               const DenseTensor& x,
               const DenseTensor& vec,
               DenseTensor* out);
 
-}  // namepsace phi
+}  // namespace phi

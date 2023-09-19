@@ -17,7 +17,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 class SeedOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -27,10 +26,9 @@ class SeedOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::INT32,
-                                   ctx.device_context());
+    return phi::KernelKey(framework::proto::VarType::INT32, ctx.GetPlace());
   }
 };
 
@@ -39,23 +37,6 @@ class SeedOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddOutput("Out", "The output of seed op.");
     AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
-    AddAttr<bool>("deterministic",
-                  "(bool, default false) Whether to use deterministic "
-                  "RandomSeedGenerator which "
-                  "generate by `set_random_seed_generator`")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "rng_name",
-        "use deterministic RandomSeedGenerator which name is `rng_name`")
-        .SetDefault("")
-        .AsExtra();
-    AddAttr<bool>("force_cpu",
-                  "(bool, default false) Force fill output variable to cpu "
-                  "memory. Otherwise, fill output variable to the running "
-                  "device")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 Seed Operator.
 )DOC");
@@ -67,20 +48,20 @@ Seed Operator.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    seed, ops::SeedOp, ops::SeedOpMaker,
+    seed,
+    ops::SeedOp,
+    ops::SeedOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    seed, ops::CPUSeedKernel<paddle::platform::CPUDeviceContext, int>);
+PD_REGISTER_STRUCT_KERNEL(seed, CPU, ALL_LAYOUT, ops::CPUSeedKernel, int) {}
 
 /* ==========================  register checkpoint ===========================*/
-REGISTER_OP_VERSION(seed)
-    .AddCheckpoint(
-        R"ROC(
+REGISTER_OP_VERSION(seed).AddCheckpoint(
+    R"ROC(
              Upgrade seed add a new attribute [force_cpu])ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "force_cpu",
-            "If true, Force fill output variable to cpu."
-            "memory. Otherwise, fill output variable to the running "
-            "device",
-            false));
+    paddle::framework::compatible::OpVersionDesc().NewAttr(
+        "force_cpu",
+        "If true, Force fill output variable to cpu."
+        "memory. Otherwise, fill output variable to the running "
+        "device",
+        false));

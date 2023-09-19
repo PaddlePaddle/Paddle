@@ -12,18 +12,17 @@
  See the License for the specific language governing permissions and
  limitations under the License. */
 #include "paddle/phi/kernels/empty_kernel.h"
-
 #include "paddle/phi/backends/all_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/phi/common/complex.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/macros.h"
 
 namespace phi {
 
 template <typename T, typename Context>
 void EmptyKernel(const Context& dev_ctx,
-                 const ScalarArray& shape,
-                 DataType dtype,
+                 const IntArray& shape,
+                 DataType dtype UNUSED,
                  DenseTensor* out) {
   out->Resize(phi::make_ddim(shape.GetData()));
   dev_ctx.template Alloc<T>(out);
@@ -31,8 +30,8 @@ void EmptyKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void EmptyLikeKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     DataType dtype,
+                     const DenseTensor& x UNUSED,
+                     DataType dtype UNUSED,
                      DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
 }
@@ -45,6 +44,7 @@ PD_REGISTER_KERNEL(empty,
                    phi::EmptyKernel,
                    float,
                    double,
+                   int8_t,
                    uint8_t,
                    int16_t,
                    int,
@@ -61,6 +61,7 @@ PD_REGISTER_KERNEL(empty_like,
                    phi::EmptyLikeKernel,
                    float,
                    double,
+                   int8_t,
                    uint8_t,
                    int16_t,
                    int,
@@ -80,12 +81,14 @@ PD_REGISTER_KERNEL(empty,
                    phi::EmptyKernel,
                    float,
                    double,
+                   int8_t,
                    uint8_t,
                    int16_t,
                    int,
                    int64_t,
                    bool,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
@@ -95,6 +98,7 @@ PD_REGISTER_KERNEL(empty_like,
                    phi::EmptyLikeKernel,
                    float,
                    double,
+                   int8_t,
                    uint8_t,
                    int16_t,
                    int,
@@ -104,6 +108,68 @@ PD_REGISTER_KERNEL(empty_like,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
+#endif
+
+#ifdef PADDLE_WITH_XPU
+PD_REGISTER_KERNEL(empty,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::EmptyKernel,
+                   float,
+                   double,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(empty_like,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::EmptyLikeKernel,
+                   float,
+                   double,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::float16) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+PD_REGISTER_KERNEL(empty,
+                   Custom,
+                   ALL_LAYOUT,
+                   phi::EmptyKernel,
+                   float,
+                   double,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(empty_like,
+                   Custom,
+                   ALL_LAYOUT,
+                   phi::EmptyLikeKernel,
+                   float,
+                   double,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::float16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 #endif

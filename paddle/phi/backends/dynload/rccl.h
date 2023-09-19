@@ -16,6 +16,7 @@ limitations under the License. */
 #include <rccl.h>
 
 #include <mutex>  // NOLINT
+
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
 
@@ -63,6 +64,11 @@ RCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
 RCCL_RAND_ROUTINE_EACH_AFTER_2212(DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
 #endif
 
+#if NCCL_VERSION_CODE >= 2304
+#define RCCL_RAND_ROUTINE_EACH_AFTER_2304(__macro) __macro(ncclGetVersion);
+RCCL_RAND_ROUTINE_EACH_AFTER_2304(DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
+#endif
+
 #if NCCL_VERSION_CODE >= 2703
 #define RCCL_RAND_ROUTINE_EACH_AFTER_2703(__macro) \
   __macro(ncclSend);                               \
@@ -70,5 +76,11 @@ RCCL_RAND_ROUTINE_EACH_AFTER_2212(DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
 RCCL_RAND_ROUTINE_EACH_AFTER_2703(DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
 #endif
 
+#if NCCL_VERSION_CODE >= 21100
+#define RCCL_RAND_ROUTINE_EACH_AFTER_21100(__macro) \
+  __macro(ncclRedOpCreatePreMulSum);                \
+  __macro(ncclRedOpDestroy);
+RCCL_RAND_ROUTINE_EACH_AFTER_21100(DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
+#endif
 }  // namespace dynload
 }  // namespace phi

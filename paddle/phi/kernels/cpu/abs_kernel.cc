@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/abs_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -45,4 +46,6 @@ PD_REGISTER_KERNEL(abs,
                    int,
                    int64_t,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>) {
+  kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}

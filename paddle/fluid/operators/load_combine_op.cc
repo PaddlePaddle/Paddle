@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/load_combine_op.h"
+
 #include <string>
 #include <vector>
-
-#include "paddle/fluid/operators/load_combine_op.h"
 
 namespace paddle {
 namespace operators {
@@ -27,11 +27,9 @@ class LoadCombineOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {}
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::OpKernelType kt = framework::OpKernelType(
-        framework::proto::VarType::FP32, ctx.GetPlace());
-    return kt;
+    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
   }
 };
 
@@ -62,7 +60,7 @@ class LoadCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 LoadCombine Operator.
 
-LoadCombine operator loads LoDTensor variables from a file, which could be
+LoadCombine operator loads phi::DenseTensor variables from a file, which could be
 loaded in memory already. The file should contain one or more LoDTensors
 serialized using the SaveCombine operator. The
 LoadCombine operator applies a deserialization strategy to appropriately load
@@ -79,16 +77,19 @@ that were saved using the SaveCombine operator.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(load_combine, ops::LoadCombineOp,
+REGISTER_OPERATOR(load_combine,
+                  ops::LoadCombineOp,
                   ops::LoadCombineOpProtoMaker);
 
-REGISTER_OP_CPU_KERNEL(
-    load_combine,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::bfloat16>,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(load_combine,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::LoadCombineOpKernel,
+                          float,
+                          double,
+                          plat::bfloat16,
+                          int,
+                          int8_t,
+                          int64_t) {}

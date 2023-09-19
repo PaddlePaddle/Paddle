@@ -14,7 +14,8 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/op_registry.h"
+#include "glog/logging.h"
+
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -36,8 +37,7 @@ inline void ResizeToChannelFirst(const DeviceContext& context,
     in_dims_vec[3] = input->dims()[2];
     in_dims_vec[4] = input->dims()[3];
     transformed_input->Resize(make_ddim(in_dims_vec));
-    transformed_input->mutable_data<T>(context.GetPlace());
-
+    context.template Alloc<T>(transformed_input);
   } else if (dim == 2) {
     // input
     transformed_input->Resize(input->dims());
@@ -47,7 +47,7 @@ inline void ResizeToChannelFirst(const DeviceContext& context,
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
     transformed_input->Resize(make_ddim(in_dims_vec));
-    transformed_input->mutable_data<T>(context.GetPlace());
+    context.template Alloc<T>(transformed_input);
   } else if (dim == 1) {
     transformed_input->Resize(input->dims());
 
@@ -55,7 +55,7 @@ inline void ResizeToChannelFirst(const DeviceContext& context,
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[1];
     transformed_input->Resize(make_ddim(in_dims_vec));
-    transformed_input->mutable_data<T>(context.GetPlace());
+    context.template Alloc<T>(transformed_input);
   }
 }
 
@@ -74,7 +74,7 @@ inline void ResizeToChannelLast(const DeviceContext& context,
     in_dims_vec[3] = input->dims()[4];
     in_dims_vec[4] = input->dims()[1];
     transformed_input->Resize(make_ddim(in_dims_vec));
-    transformed_input->mutable_data<T>(context.GetPlace());
+    context.template Alloc<T>(transformed_input);
 
   } else if (dim == 2) {
     // input
@@ -85,7 +85,7 @@ inline void ResizeToChannelLast(const DeviceContext& context,
     in_dims_vec[2] = input->dims()[3];
     in_dims_vec[3] = input->dims()[1];
     transformed_input->Resize(make_ddim(in_dims_vec));
-    transformed_input->mutable_data<T>(context.GetPlace());
+    context.template Alloc<T>(transformed_input);
   } else if (dim == 1) {
     transformed_input->Resize(input->dims());
 
@@ -93,7 +93,7 @@ inline void ResizeToChannelLast(const DeviceContext& context,
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[1];
     transformed_input->Resize(make_ddim(in_dims_vec));
-    transformed_input->mutable_data<T>(context.GetPlace());
+    context.template Alloc<T>(transformed_input);
   }
 }
 

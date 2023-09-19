@@ -13,6 +13,7 @@
 // limitations under the License.
 #pragma once
 #include <memory>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -27,7 +28,8 @@ class DeviceEvent;
 constexpr int MaxDeviceTypes =
     static_cast<int>(platform::DeviceType::MAX_DEVICE_TYPES);
 
-typedef void (*EventCreateFunction)(DeviceEvent*, const platform::Place&,
+typedef void (*EventCreateFunction)(DeviceEvent*,
+                                    const platform::Place&,
                                     unsigned int flag);
 typedef void (*EventRecordFunction)(DeviceEvent*, const DeviceContext*);
 typedef bool (*EventQueryFunction)(const DeviceEvent*);
@@ -56,14 +58,19 @@ class DeviceEvent {
   explicit DeviceEvent(const platform::Place& place, unsigned int flag = 0)
       : event_(), place_(place), flag_(flag) {
     type_id_ = DeviceTypeToId(platform::Place2DeviceType(place));
-    PADDLE_ENFORCE_LT(type_id_, MaxDeviceTypes,
+    PADDLE_ENFORCE_LT(type_id_,
+                      MaxDeviceTypes,
                       platform::errors::PreconditionNotMet(
                           "Required type < %d, but received type = %d",
-                          MaxDeviceTypes, type_id_));
-    // TODO(Aurelius84): only support CPU/CUDA, need consider XPU/NPU later
-    PADDLE_ENFORCE_LT(type_id_, 3,
+                          MaxDeviceTypes,
+                          type_id_));
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
+    // TODO(Aurelius84): only support CPU/CUDA.
+    PADDLE_ENFORCE_LT(type_id_,
+                      3,
                       platform::errors::Unavailable(
                           "Currently DeviceEvent do not support %s", place));
+#endif
     PADDLE_ENFORCE_NOT_NULL(
         event_creator_[type_id_],
         platform::errors::Unavailable(
@@ -78,6 +85,9 @@ class DeviceEvent {
         event_recorder_[type_id_],
         platform::errors::Unavailable(
             "event_recorder_[%d] shall not be nullptr.", type_id_));
+    if (!recorded_) {
+      recorded_ = true;
+    }
     event_recorder_[type_id_](this, dev_ctx);
   }
 
@@ -86,6 +96,10 @@ class DeviceEvent {
         event_querier_[type_id_],
         platform::errors::Unavailable(
             "event_querier_[%d] shall not be nullptr.", type_id_));
+    if (!recorded_) {
+      VLOG(4) << "Event " << this << " is not recorded yet, and skip query!";
+      return true;
+    }
     return event_querier_[type_id_](this);
   }
 
@@ -118,7 +132,12 @@ class DeviceEvent {
     PADDLE_ENFORCE_NOT_NULL(event_waiter_[waiter_idx][type_id_],
                             platform::errors::Unavailable(
                                 "event_waiter_[%d][%d] shall not be nullptr.",
-                                waiter_idx, type_id_));
+                                waiter_idx,
+                                type_id_));
+    if (!recorded_) {
+      VLOG(4) << "Event " << this << " is not recorded yet, and skip wait!";
+      return;
+    }
     event_waiter_[waiter_idx][type_id_](this, context);
   }
 
@@ -131,6 +150,14 @@ class DeviceEvent {
   platform::Place place_;
   int type_id_;
   unsigned int flag_;
+
+  // NOTE(chenruibiao): In cross-step stream synchronization, an event may be
+  // recorded in the first step and waited in the second step. So, in the first
+  // step, the WaitEvent may be called without RecordEvent.
+  // On cuda device, it is ok to wait event that is not recorded yet;
+  // while on npu device, it results in error.
+  // So, we add flag recorded_ to handle this case uniformly.
+  bool recorded_{false};
 
   static EventCreateFunction event_creator_[MaxDeviceTypes];
   static EventRecordFunction event_recorder_[MaxDeviceTypes];

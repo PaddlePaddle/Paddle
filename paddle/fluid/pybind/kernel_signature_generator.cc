@@ -40,40 +40,47 @@
 // },
 // ...
 // }
-int main(int argc, char **argv) {
+int main(int argc, char **argv) {  // NOLINT
   paddle::framework::InitDefaultKernelSignatureMap();
   auto &kernel_signature_map = phi::DefaultKernelSignatureMap::Instance();
   auto &kernel_factory = phi::KernelFactory::Instance();
   std::string kernel_signature_map_str{"{"};
   for (const auto &op_kernel_pair : kernel_factory.kernels()) {
-    if (kernel_signature_map.Has(op_kernel_pair.first)) {
-      kernel_signature_map_str =
-          kernel_signature_map_str + "\"" + op_kernel_pair.first + "\":{";
-      auto &args = kernel_signature_map.Get(op_kernel_pair.first).args;
+    std::string op_name = op_kernel_pair.first;
+    const paddle::flat_hash_map<std::string, std::string> &kernel_name_map =
+        phi::OpUtilsMap::Instance().fluid_op_to_phi_kernel();
+    for (auto &it : kernel_name_map) {
+      if (it.second == op_name) {
+        op_name = it.first;
+        break;
+      }
+    }
+    if (kernel_signature_map.Has(op_name)) {
+      kernel_signature_map_str.append("\"")
+          .append(op_kernel_pair.first)
+          .append("\":{");
+      const auto &args = kernel_signature_map.Get(op_name);
 
       kernel_signature_map_str += "\"inputs\":[";
-      auto inputs_ = std::get<0>(args);
+      auto inputs_ = args.input_names;
       for (size_t i = 0; i < inputs_.size(); i++) {
-        kernel_signature_map_str =
-            kernel_signature_map_str + "\"" + inputs_[i] + "\",";
+        kernel_signature_map_str.append("\"").append(inputs_[i]).append("\",");
       }
-      if (inputs_.size()) kernel_signature_map_str.pop_back();
+      if (!inputs_.empty()) kernel_signature_map_str.pop_back();
 
       kernel_signature_map_str += "],\"attrs\":[";
-      auto attrs_ = std::get<1>(args);
+      auto attrs_ = args.attr_names;
       for (size_t i = 0; i < attrs_.size(); i++) {
-        kernel_signature_map_str =
-            kernel_signature_map_str + "\"" + attrs_[i] + "\",";
+        kernel_signature_map_str.append("\"").append(attrs_[i]).append("\",");
       }
-      if (attrs_.size()) kernel_signature_map_str.pop_back();
+      if (!attrs_.empty()) kernel_signature_map_str.pop_back();
       kernel_signature_map_str += "],\"outputs\":[";
-      auto outputs_ = std::get<2>(args);
+      auto outputs_ = args.output_names;
       for (size_t i = 0; i < outputs_.size(); i++) {
-        kernel_signature_map_str =
-            kernel_signature_map_str + "\"" + outputs_[i] + "\",";
+        kernel_signature_map_str.append("\"").append(outputs_[i]).append("\",");
       }
 
-      if (outputs_.size()) kernel_signature_map_str.pop_back();
+      if (!outputs_.empty()) kernel_signature_map_str.pop_back();
       kernel_signature_map_str += "]},";
     }
   }

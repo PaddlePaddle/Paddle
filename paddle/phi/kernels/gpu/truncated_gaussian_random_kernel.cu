@@ -18,13 +18,12 @@
 #include <thrust/host_vector.h>
 #include <thrust/random.h>
 #include <thrust/transform.h>
+
 #include <limits>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/fluid/framework/generator.h"
 
 namespace phi {
 
@@ -33,27 +32,23 @@ struct GPUTruncatedNormal {
   T mean, std;
   T a_normal_cdf;
   T b_normal_cdf;
-
   unsigned int seed;
   T numeric_min;
 
   __host__ __device__ GPUTruncatedNormal(T mean, T std, T numeric_min, int seed)
       : mean(mean), std(std), seed(seed), numeric_min(numeric_min) {
-    auto normal_cdf = [](float x) {
-      return (1.0 + std::erf(x / std::sqrt(2.0))) / 2.0;
-    };
-    a_normal_cdf = normal_cdf((-2.0 - mean) / std);
-    b_normal_cdf = normal_cdf((2.0 - mean) / std);
+    a_normal_cdf = (1.0 + erff(-2.0 / sqrtf(2.0))) / 2.0;
+    b_normal_cdf = (1.0 + erff(2.0 / sqrtf(2.0))) / 2.0;
   }
 
   __host__ __device__ T operator()(const unsigned int n) const {
     thrust::minstd_rand rng;
     rng.seed(seed);
-    thrust::uniform_real_distribution<T> dist(2.0 * a_normal_cdf - 1.0,
-                                              2.0 * b_normal_cdf - 1.0);
+    thrust::uniform_real_distribution<T> dist(numeric_min, 1);
     rng.discard(n);
     T value = dist(rng);
-    return std::sqrt(2.0) * erfinvf(value) * std + mean;
+    auto p = a_normal_cdf + (b_normal_cdf - a_normal_cdf) * value;
+    return std::sqrt(2.0) * erfinvf(2 * p - 1) * std + mean;
   }
 };
 
@@ -73,21 +68,18 @@ struct TruncatedNormalOffset {
         seed(seed),
         numeric_min(numeric_min),
         offset_(offset) {
-    auto normal_cdf = [](float x) {
-      return (1.0 + std::erf(x / std::sqrt(2.0))) / 2.0;
-    };
-    a_normal_cdf = normal_cdf((-2.0 - mean) / std);
-    b_normal_cdf = normal_cdf((2.0 - mean) / std);
+    a_normal_cdf = (1.0 + erff(-2.0 / sqrtf(2.0))) / 2.0;
+    b_normal_cdf = (1.0 + erff(2.0 / sqrtf(2.0))) / 2.0;
   }
 
   __host__ __device__ T operator()(const unsigned int n) const {
     thrust::minstd_rand rng;
     rng.seed(seed);
-    thrust::uniform_real_distribution<T> dist(2.0 * a_normal_cdf - 1.0,
-                                              2.0 * b_normal_cdf - 1.0);
+    thrust::uniform_real_distribution<T> dist(numeric_min, 1);
     rng.discard(n + offset_);
     T value = dist(rng);
-    return std::sqrt(2.0) * erfinvf(value) * std + mean;
+    auto p = a_normal_cdf + (b_normal_cdf - a_normal_cdf) * value;
+    return std::sqrt(2.0) * erfinvf(2 * p - 1) * std + mean;
   }
 };
 
@@ -99,35 +91,25 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
                                    int seed,
                                    DataType dtype,
                                    DenseTensor* out) {
-  auto tensor = out;
-
-  T* data = dev_ctx.template Alloc<T>(tensor);
-
-  bool seed_flag = false;
-  if (seed == 0) {
-    std::random_device rd;
-    seed = rd();
-    seed_flag = true;
-  }
+  T* data = dev_ctx.template Alloc<T>(out);
 
   thrust::counting_iterator<int64_t> index_sequence_begin(0);
-  int64_t size = tensor->numel();
+  int64_t size = out->numel();
 
-  int device_id = dev_ctx.GetPlace().GetDeviceId();
-  auto gen_cuda = paddle::framework::GetDefaultCUDAGenerator(device_id);
-
-  if (gen_cuda->GetIsInitPy() && seed_flag) {
+  auto gen_cuda = dev_ctx.GetGenerator();
+  if (seed == 0) {
+    // use global Generator seed
     auto seed_offset = gen_cuda->IncrementOffset(1);
-    int64_t gen_offset = size * seed_offset.second;
-    thrust::transform(index_sequence_begin,
-                      index_sequence_begin + size,
-                      thrust::device_ptr<T>(data),
-                      TruncatedNormalOffset<T>(mean,
-                                               std,
-                                               std::numeric_limits<T>::min(),
-                                               seed_offset.first,
-                                               gen_offset));
+    uint64_t seed = seed_offset.first;
+    uint64_t offset = seed_offset.second;
+    thrust::transform(
+        index_sequence_begin,
+        index_sequence_begin + size,
+        thrust::device_ptr<T>(data),
+        TruncatedNormalOffset<T>(
+            mean, std, std::numeric_limits<T>::min(), seed, size * offset));
   } else {
+    // use OP seed
     thrust::transform(
         index_sequence_begin,
         index_sequence_begin + size,

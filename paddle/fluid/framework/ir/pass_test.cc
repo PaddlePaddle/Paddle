@@ -69,7 +69,7 @@ TEST(PassTest, TestPassAttrCheck) {
                              "test_pass > is not set") != exception.npos);
 
   int val = 1;
-  graph.reset(new Graph(prog));
+  graph = std::make_unique<Graph>(prog);
   pass->SetNotOwned<int>("test_pass_attr", &val);
 
   for (std::string try_type : {"bool", "const int", "std::string"}) {
@@ -84,8 +84,9 @@ TEST(PassTest, TestPassAttrCheck) {
     } catch (paddle::platform::EnforceNotMet& e) {
       exception = std::string(e.what());
     }
-    std::string msg = "Invalid type for attritube test_pass_attr, expected: " +
-                      try_type + ", actual: int";
+    std::string msg =
+        "Invalid type for attritube test_pass_attr, expected: " + try_type +
+        ", actual: int";
     ASSERT_TRUE(exception.find(msg) != exception.npos);
   }
 
@@ -98,7 +99,7 @@ TEST(PassTest, TestPassAttrCheck) {
                   "Required atrribute test_graph_attr for graph is not set") !=
               exception.npos);
 
-  graph.reset(new Graph(prog));
+  graph = std::make_unique<Graph>(prog);
   graph->Set<int>("test_graph_attr", new int);
   graph->Get<int>("test_graph_attr") = 1;
   graph.reset(pass->Apply(graph.release()));
@@ -106,13 +107,13 @@ TEST(PassTest, TestPassAttrCheck) {
   ASSERT_EQ(graph->Get<int>("copy_test_graph_attr"), 2);
 
   // Allow apply more than once.
-  graph.reset(new Graph(prog));
+  graph = std::make_unique<Graph>(prog);
   graph->Set<int>("test_graph_attr", new int);
   graph.reset(pass->Apply(graph.release()));
 
   pass = PassRegistry::Instance().Get("test_pass");
   pass->SetNotOwned<int>("test_pass_attr", &val);
-  graph.reset(new Graph(prog));
+  graph = std::make_unique<Graph>(prog);
   BuildCircleGraph(graph.get());
   graph->Set<int>("test_graph_attr", new int);
   graph->Get<int>("test_graph_attr") = 2;
@@ -153,7 +154,7 @@ TEST(PassTest, TestPassAttrCheckConvertAllBlocks) {
                              "test_pass > is not set") != exception.npos);
 
   int val = 1;
-  graph.reset(new Graph(prog));
+  graph = std::make_unique<Graph>(prog);
   pass->SetNotOwned<int>("test_pass_attr", &val);
 
   for (std::string try_type : {"bool", "const int", "std::string"}) {
@@ -168,8 +169,9 @@ TEST(PassTest, TestPassAttrCheckConvertAllBlocks) {
     } catch (paddle::platform::EnforceNotMet& e) {
       exception = std::string(e.what());
     }
-    std::string msg = "Invalid type for attritube test_pass_attr, expected: " +
-                      try_type + ", actual: int";
+    std::string msg =
+        "Invalid type for attritube test_pass_attr, expected: " + try_type +
+        ", actual: int";
     ASSERT_TRUE(exception.find(msg) != exception.npos);
   }
 
@@ -182,7 +184,7 @@ TEST(PassTest, TestPassAttrCheckConvertAllBlocks) {
                   "Required atrribute test_graph_attr for graph is not set") !=
               exception.npos);
 
-  graph.reset(new Graph(prog));
+  graph = std::make_unique<Graph>(prog);
   graph->Set<int>("test_graph_attr", new int);
   graph->Get<int>("test_graph_attr") = 1;
   graph.reset(pass->Apply(graph.release()));
@@ -190,13 +192,13 @@ TEST(PassTest, TestPassAttrCheckConvertAllBlocks) {
   ASSERT_EQ(graph->Get<int>("copy_test_graph_attr"), 2);
 
   // Allow apply more than once.
-  graph.reset(new Graph(prog));
+  graph = std::make_unique<Graph>(prog);
   graph->Set<int>("test_graph_attr", new int);
   graph.reset(pass->Apply(graph.release()));
 
   pass = PassRegistry::Instance().Get("test_pass");
   pass->SetNotOwned<int>("test_pass_attr", &val);
-  graph.reset(new Graph(prog));
+  graph = std::make_unique<Graph>(prog);
   BuildCircleGraph(graph.get());
   graph->Set<int>("test_graph_attr", new int);
   graph->Get<int>("test_graph_attr") = 2;

@@ -23,7 +23,12 @@ namespace paddle {
 namespace framework {
 
 // insert python call stack & append error op for exception message
-void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
+void InsertCallStackInfo(const std::string &type,
+                         const paddle::framework::AttributeMap &attrs,
+                         platform::EnforceNotMet *exception);
+
+void InsertCallStackInfo(const std::string &type,
+                         const std::vector<std::string> &callstack_attr_str,
                          platform::EnforceNotMet *exception);
 
 // only append error op for exception message

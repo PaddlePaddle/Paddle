@@ -36,6 +36,7 @@ class Event {
     Interprocess = 0x4,
   };
 
+  Event() = default;
   // For compatible
   Event(const Place& place, event_t event);
   ~Event();
@@ -45,8 +46,10 @@ class Event {
   void Destroy();
   void Record(const stream::Stream* stream);
   bool Query() const;
-  void Synchonrize() const;
+  void Synchronize() const;
   const Place& GetPlace() const;
+
+  static void ReleaseAll();
 
  private:
   DISABLE_COPY_AND_ASSIGN(Event);

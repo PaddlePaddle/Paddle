@@ -25,23 +25,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
 
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/device/npu/enforce_npu.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
-#endif
-
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/enforce.h"
-#include "paddle/fluid/platform/device/mlu/mlu_info.h"
-#endif
-
 #ifdef PADDLE_WITH_IPU
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-#include "paddle/fluid/platform/device/custom/enforce_custom.h"
 #include "paddle/phi/backends/callback_manager.h"
+#include "paddle/phi/backends/custom/enforce_custom.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/backends/event.h"

@@ -16,6 +16,7 @@ limitations under the License. */
 #include <rccl.h>
 
 #include <mutex>  // NOLINT
+
 #include "paddle/phi/backends/dynload/rccl.h"
 
 namespace paddle {
@@ -50,11 +51,23 @@ RCCL_RAND_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
 RCCL_RAND_ROUTINE_EACH_AFTER_2212(PLATFORM_DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
 #endif
 
+#if NCCL_VERSION_CODE >= 2304
+#define RCCL_RAND_ROUTINE_EACH_AFTER_2304(__macro) __macro(ncclGetVersion);
+RCCL_RAND_ROUTINE_EACH_AFTER_2304(PLATFORM_DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
+#endif
+
 #if NCCL_VERSION_CODE >= 2703
 #define RCCL_RAND_ROUTINE_EACH_AFTER_2703(__macro) \
   __macro(ncclSend);                               \
   __macro(ncclRecv);
 RCCL_RAND_ROUTINE_EACH_AFTER_2703(PLATFORM_DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
+#endif
+
+#if NCCL_VERSION_CODE >= 21100
+#define RCCL_RAND_ROUTINE_EACH_AFTER_21100(__macro) \
+  __macro(ncclRedOpCreatePreMulSum);                \
+  __macro(ncclRedOpDestroy);
+RCCL_RAND_ROUTINE_EACH_AFTER_21100(PLATFORM_DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
 #endif
 
 }  // namespace dynload

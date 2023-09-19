@@ -12,86 +12,94 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/masked_select_grad_kernel.h"
+
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
 #include <thrust/reverse.h>
 #include <thrust/scan.h>
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/masked_select_grad_kernel.h"
+#include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/expand_grad_kernel.h"
+#include "paddle/phi/kernels/expand_kernel.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
+#include "paddle/phi/kernels/funcs/select_impl.cu.h"
 
 namespace phi {
 
-__global__ void SetMaskArrayT(const bool* mask, int32_t* mask_array, int size) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  for (; idx < size; idx += blockDim.x * gridDim.x) {
-    if (mask[idx])
-      mask_array[idx] = 1;
-    else
-      mask_array[idx] = 0;
-  }
-}
+template <typename MT, typename InT, typename OutT>
+struct MaskedSelectGradFunctor {
+  HOSTDEVICE MaskedSelectGradFunctor() = default;
 
-template <typename T>
-__global__ void SelectGradWithPrefixMask(const int32_t* mask_prefix_sum,
-                                         const bool* mask,
-                                         const T* input,
-                                         T* out,
-                                         int size) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  for (; idx < size; idx += blockDim.x * gridDim.x) {
-    if (mask[idx]) {
-      int index = mask_prefix_sum[idx];
-      out[idx] = input[index];
-    } else {
-      out[idx] = 0;
+  HOSTDEVICE inline void operator()(OutT* out,
+                                    const MT* mask,
+                                    const InT* value,
+                                    int num) {
+    int read_fix = 0;
+    for (int idx = 0; idx < num; idx++) {
+      if (mask[idx]) {
+        out[idx] = value[read_fix++];
+      } else {
+        out[idx] = 0;
+      }
     }
   }
-}
+};
 
 template <typename T, typename Context>
 void MaskedSelectGradKernel(const Context& dev_ctx,
-                            const DenseTensor& out_grad,
                             const DenseTensor& x,
                             const DenseTensor& mask,
+                            const DenseTensor& out_grad,
                             DenseTensor* x_grad) {
-  auto* mask_data = mask.data<bool>();
-  auto* input_data = out_grad.data<T>();
-  auto* out_data = x_grad->mutable_data<T>(dev_ctx.GetPlace());
+  // x_grad.size() == x.size()
+  // x.size() == mask.size(), no broadcast, expand_mask = false, expand_x =
+  // false x.size() < mask.size(), x broadcast to mask, expand_mask = false,
+  // expand_x = true x.size() > mask.size(), mask broadcast to x, epxand_mask =
+  // true, expand_x = false
+  DenseTensor mask_expand;
+  DenseTensor x_grad_expand;
+  bool expand_x = false;
 
-  auto input_size = out_grad.numel();
-  auto mask_size = mask.numel();
-  auto mask_dim = mask.dims();
+  auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
+      vectorize(x_grad->dims()), vectorize(mask.dims()));
+  auto expaned_dims = make_ddim(expanded_size);
 
-  auto out_size = mask_size;
+  if (mask.dims() != expaned_dims) {
+    ExpandKernel<bool, Context>(
+        dev_ctx, mask, IntArray(expanded_size), &mask_expand);
+  } else {
+    mask_expand = mask;
+  }
 
-  DenseTensor mask_array;
-  DenseTensor mask_prefix_sum;
-  mask_array.Resize(mask_dim);
-  mask_prefix_sum.Resize(mask_dim);
+  if (x_grad->dims() != expaned_dims) {
+    x_grad_expand = Empty<T, Context>(dev_ctx, IntArray(expanded_size));
+    expand_x = true;
+  } else {
+    expand_x = false;
+  }
 
-  int32_t* mask_array_data =
-      mask_array.mutable_data<int32_t>(dev_ctx.GetPlace());
-  int32_t* mask_prefix_sum_data =
-      mask_prefix_sum.mutable_data<int32_t>(dev_ctx.GetPlace());
-  int threads = 512;
-  int grid = (mask_size + threads - 1) / threads;
-  auto stream = dev_ctx.stream();
-  SetMaskArrayT<<<grid, threads, 0, stream>>>(
-      mask_data, mask_array_data, mask_size);
+  dev_ctx.template Alloc<T>(x_grad);
+  auto mask_size = mask_expand.numel();
+  if (mask_size <= 0) return;
 
-  thrust::device_ptr<int32_t> mask_array_dev_ptr =
-      thrust::device_pointer_cast(mask_array_data);
-  thrust::device_vector<int32_t> mask_array_vec(mask_array_dev_ptr,
-                                                mask_array_dev_ptr + mask_size);
-  thrust::exclusive_scan(thrust::device,
-                         mask_array_vec.begin(),
-                         mask_array_vec.end(),
-                         mask_prefix_sum_data);
+  using Functor = MaskedSelectGradFunctor<bool, T, T>;
 
-  SelectGradWithPrefixMask<T><<<grid, threads, 0, stream>>>(
-      mask_prefix_sum_data, mask_data, input_data, out_data, mask_size);
+  DenseTensor* x_grad_tmp = x_grad;
+  if (expand_x) {
+    x_grad_tmp = &x_grad_expand;
+  }
+
+  phi::funcs::SelectKernel<bool, T, T, 2, Functor>(
+      dev_ctx, mask_expand, out_grad, x_grad_tmp, Functor());
+
+  if (expand_x) {
+    ExpandGradKernel<T, Context>(
+        dev_ctx, x, x_grad_expand, IntArray(expanded_size), x_grad);
+  }
 }
 
 }  // namespace phi
@@ -103,4 +111,6 @@ PD_REGISTER_KERNEL(masked_select_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

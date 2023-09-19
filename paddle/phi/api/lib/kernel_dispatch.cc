@@ -14,32 +14,84 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
+
+#include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/string_tensor_utils.h"
+#include "paddle/phi/core/tensor_utils.h"
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#endif
 
 namespace paddle {
 namespace experimental {
 namespace detail {
 
-BackendSet GetTensorBackendSet(const Tensor& t) {
-  BackendSet backend_set(phi::TransToPhiBackend(t.inner_place()));
-  switch (t.layout()) {
-    case DataLayout::MKLDNN:
-      backend_set = backend_set | BackendSet(Backend::MKLDNN);
-      break;
-    default:
-      // do nothing
-      break;
+// We need judge whether the allocation is nullptr,
+// whether the allocation is initialized, wo we need GetHolder method
+bool HasAllocation(const phi::TensorBase& t) {
+  if (phi::DenseTensor::classof(&t)) {
+    return phi::DenseTensorUtils::GetHolder(
+               static_cast<const phi::DenseTensor&>(t)) != nullptr;
+  } else if (phi::SelectedRows::classof(&t)) {
+    return phi::DenseTensorUtils::GetHolder(
+               static_cast<const phi::SelectedRows&>(t).value()) != nullptr;
+  } else if (phi::SparseCsrTensor::classof(&t)) {
+    return phi::DenseTensorUtils::GetHolder(
+               static_cast<const phi::SparseCsrTensor&>(t)
+                   .non_zero_elements()) != nullptr;
+  } else if (phi::SparseCooTensor::classof(&t)) {
+    return phi::DenseTensorUtils::GetHolder(
+               static_cast<const phi::SparseCooTensor&>(t)
+                   .non_zero_elements()) != nullptr;
+  } else if (phi::StringTensor::classof(&t)) {
+    return phi::StringTensorUtils::GetHolder(
+               static_cast<const phi::StringTensor&>(t)) != nullptr;
+  } else if (phi::distributed::DistTensor::classof(&t)) {
+    return static_cast<const phi::distributed::DistTensor&>(t).defined();
+  } else {
+    return false;
   }
-  return backend_set;
 }
 
-std::size_t CountLeadingZeros(uint64_t val) {
+BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
+  if (HasAllocation(t) && t.place().GetType() != AllocationType::UNDEFINED) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    // See Note [ Why `SetDevice` when parsing custom place? ]
+    if (t.place().GetType() == AllocationType::CUSTOM) {
+      phi::DeviceManager::SetDevice(t.place());
+    }
+#endif
+    phi::Backend backend_key = phi::TransToPhiBackend(t.place());
+    BackendSet backend_set(backend_key);
+    if (backend_key == Backend::GPU && phi::DenseTensor::classof(&t) &&
+        static_cast<const phi::DenseTensor&>(t).meta().use_gpudnn) {
+      backend_set = backend_set | BackendSet(Backend::GPUDNN);
+    }
+    return backend_set;
+  }
+  return BackendSet(Backend::UNDEFINED);
+}
+
+std::size_t CountLeadingZeros(uint32_t val) {
+#if defined(__clang__) || defined(__GNUC__)
+  return __builtin_clz(val);
+#elif defined(_MSC_VER)
+  // windows don't have built-in clz/ctz function
+  DWORD Index;
+  _BitScanReverse(&Index, val);
+  return (uint32_t)Index ^ 31;
+#else
   if (val == 0) {
-    return 64;
+    return 32;
   }
   std::size_t zero_bits = 0;
-  for (std::size_t shift = 64 >> 1; shift; shift >>= 1) {
-    uint64_t tmp = val >> shift;
+  for (std::size_t shift = 32 >> 1; shift; shift >>= 1) {
+    uint32_t tmp = val >> shift;
     if (tmp) {
       val = tmp;
     } else {
@@ -47,13 +99,14 @@ std::size_t CountLeadingZeros(uint64_t val) {
     }
   }
   return zero_bits;
+#endif
 }
 
 }  // namespace detail
 
 phi::DeviceContext* GetDeviceContextByBackend(phi::Backend backend) {
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
-  return pool.Get(phi::TransToPhiPlace(backend));
+  auto& pool = paddle::experimental::DeviceContextPool::Instance();
+  return pool.GetMutable(phi::TransToPhiPlace(backend));
 }
 
 DataType ParseDataType(DataType dtype) { return dtype; }
@@ -66,7 +119,7 @@ DataType ParseDataType(const std::vector<Tensor>& tensors) {
   auto n = tensors.size();
   for (size_t i = 1; i < n; ++i) {
     if (tensors[i].type() != dtype) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "The data_type of input tensor in list isn't consistent, "
           "the first tensor is %s, but %dth tensor is %s.",
           dtype,
@@ -81,13 +134,37 @@ DataType ParseDataTypeWithInputOrder(DataType dtype, const Tensor& tensor) {
   return dtype != DataType::UNDEFINED ? dtype : ParseDataType(tensor);
 }
 
-Backend ParseBackend(Backend backend) { return backend; }
+Backend ParseBackend(const Place& place) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  /**
+   * [ Why `SetDevice` when parsing custom place? ]
+   * Users are able to call C++ APIs under customOP + customDevice scenario. To
+   * make sure `GetDevice` function outputs the accurate place when executing
+   * `GetDeviceContextByBackend` function in C++ API, we need to call
+   * `SetDevice` first. However, in dygraph mode, `SetDevice` is called at
+   * CPython level and calling C++ API directly in customOP cannot reach
+   * CPython. Hence, we need to manually set the device here.
+   */
+  if (place.GetType() == AllocationType::CUSTOM) {
+    phi::DeviceManager::SetDevice(place);
+  }
+#endif
+  return phi::TransToPhiBackend(place);
+}
 Backend ParseBackend(const Tensor& tensor) {
-  return phi::TransToPhiBackend(tensor.inner_place());
+  Backend backend_key = phi::TransToPhiBackend(tensor.place());
+  if (backend_key == Backend::GPU &&
+      phi::DenseTensor::classof(tensor.impl().get()) &&
+      static_cast<phi::DenseTensor*>(tensor.impl().get())->meta().use_gpudnn) {
+    return Backend::GPUDNN;
+  }
+  return backend_key;
 }
 
-Backend ParseBackendWithInputOrder(Backend backend, const Tensor& tensor) {
-  return backend != Backend::UNDEFINED ? backend : ParseBackend(tensor);
+Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor) {
+  return place.GetType() != phi::AllocationType::UNDEFINED
+             ? ParseBackend(place)
+             : ParseBackend(tensor);
 }
 
 DataLayout ParseLayout(DataLayout layout) { return layout; }

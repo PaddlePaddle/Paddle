@@ -42,10 +42,9 @@ class SelectedRows : public TensorBase,
    *
    */
  public:
-  SelectedRows(const std::vector<int64_t>& rows, const int64_t& height)
-      : impl_(std::make_shared<phi::SelectedRowsImpl>(rows, height)) {}
+  SelectedRows(const std::vector<int64_t>& rows, const int64_t& height);
 
-  SelectedRows() : impl_(std::make_shared<phi::SelectedRowsImpl>()) {}
+  SelectedRows();
 
   const DenseTensor& value() const { return impl_->value(); }
 
@@ -91,8 +90,9 @@ class SelectedRows : public TensorBase,
 
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
-                     size_t requested_size = 0) override {
-    return impl_->AllocateFrom(allocator, dtype, requested_size);
+                     size_t requested_size = 0,
+                     bool fake_alloc = false) override {
+    return impl_->AllocateFrom(allocator, dtype, requested_size, fake_alloc);
   }
 
   /*
@@ -133,18 +133,23 @@ class SelectedRows : public TensorBase,
 
   /// \brief Returns the dims of the tensor.
   /// \return The dims of the tensor.
-  const DDim& dims() const noexcept override {
-    return impl_->dims();
-    // return phi::make_ddim(dims);
-  }
+  const DDim& dims() const noexcept override { return impl_->dims(); }
 
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.
   DataType dtype() const noexcept override { return impl_->dtype(); }
 
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
+  void set_type(const DataType dtype);
+#endif
+
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
   DataLayout layout() const noexcept override { return impl_->layout(); }
+
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
+  void set_layout(const DataLayout layout);
+#endif
 
   /// \brief Returns the data place of the tensor.
   /// \return The data place of the tensor.

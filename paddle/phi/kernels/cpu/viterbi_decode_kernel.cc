@@ -21,7 +21,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/compare_functors.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
@@ -34,7 +34,7 @@ namespace phi {
 
 template <typename Context, typename T, typename IndType>
 struct Argmax {
-  void operator()(const Context& dev_ctx,
+  void operator()(const Context& dev_ctx UNUSED,
                   const DenseTensor& input,
                   DenseTensor* out_idx,
                   DenseTensor* out,
@@ -109,10 +109,11 @@ struct Gather {
 };
 
 template <typename Context,
-          template <typename InT, typename OutT> typename CompareFunctor,
+          template <typename InT, typename OutT>
+          class CompareFunctor,
           typename T>
 struct GetMask {
-  void operator()(const Context& dev_ctx,
+  void operator()(const Context& dev_ctx UNUSED,
                   const DenseTensor& lhs,
                   const DenseTensor& rhs,
                   DenseTensor* mask) {
@@ -122,10 +123,11 @@ struct GetMask {
 };
 
 template <typename Context,
-          template <typename T> typename BinaryFunctor,
+          template <typename T>
+          class BinaryFunctor,
           typename T>
 struct BinaryOperation {
-  void operator()(const Context& dev_ctx,
+  void operator()(const Context& dev_ctx UNUSED,
                   const DenseTensor& lhs,
                   const DenseTensor& rhs,
                   DenseTensor* output) {
@@ -186,8 +188,8 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   DenseTensor tpath =
       int_tensor_buffer.GetBufferBlock({max_seq_len, batch_size});
   auto batch_path = funcs::Unbind(tpath);
-  for (auto it = batch_path.begin(); it != batch_path.end(); ++it) {
-    it->Resize({batch_size});
+  for (auto& item : batch_path) {
+    item.Resize({batch_size});
   }
   // create and init required tensor
   DenseTensor input_exp =
@@ -316,4 +318,6 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    viterbi_decode, CPU, ALL_LAYOUT, phi::ViterbiDecodeKernel, float, double) {}
+    viterbi_decode, CPU, ALL_LAYOUT, phi::ViterbiDecodeKernel, float, double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+}

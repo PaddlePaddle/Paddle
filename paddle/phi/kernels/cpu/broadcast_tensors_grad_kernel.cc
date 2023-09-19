@@ -15,7 +15,7 @@
 #include "paddle/phi/kernels/broadcast_tensors_grad_kernel.h"
 
 #include <vector>
-#include "paddle/fluid/framework/tensor_util.h"
+
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
@@ -59,8 +59,10 @@ namespace phi {
 
 template <typename T, typename Context>
 void BroadcastTensorsGradKernel(const Context& ctx,
+                                const std::vector<const DenseTensor*>& inputs,
                                 const std::vector<const DenseTensor*>& dout,
                                 std::vector<DenseTensor*> dx) {
+  (void)inputs;
   // Find reduce dimensions
   const auto& in_tensors = dout;
   auto& out_tensors = dx;
@@ -106,7 +108,7 @@ void BroadcastTensorsGradKernel(const Context& ctx,
       int out_axis = out_rank - j - 1;
       int in_axis = in_rank - j - 1;
 
-      reshape_dims_vec.push_back(input_dims[j]);
+      reshape_dims_vec.push_back(static_cast<int>(input_dims[j]));
       if (out_axis < 0 || output_dims[out_axis] != input_dims[in_axis]) {
         reduce_dims_vec.push_back(in_axis);
       }
@@ -114,12 +116,11 @@ void BroadcastTensorsGradKernel(const Context& ctx,
 
     size_t reduce_size = reduce_dims_vec.size();
     size_t reshape_size = reshape_dims_vec.size();
-    bool just_copy = (reduce_dims_vec.size() == 0);
+    bool just_copy = (reduce_dims_vec.empty());
     ctx.template Alloc<T>(output_tensor);
     if (just_copy) {
       // If this turns out to be a No-Op, simply perform a tensor copy
-      paddle::framework::TensorCopy(
-          *input_tensor, ctx.GetPlace(), ctx, output_tensor);
+      phi::Copy(ctx, *input_tensor, ctx.GetPlace(), false, output_tensor);
     } else {
       PADDLE_ENFORCE_GE(
           reduce_dims_vec.size(),

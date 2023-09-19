@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -22,17 +23,16 @@ namespace phi {
 template <typename T, typename Context>
 void BatchNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const DenseTensor& scale,
-                     const DenseTensor& bias,
                      const DenseTensor& mean,
                      const DenseTensor& variance,
+                     const DenseTensor& scale,
+                     const DenseTensor& bias,
+                     bool is_test,
                      float momentum,
                      float epsilon,
                      const std::string& data_layout,
-                     bool is_test,
                      bool use_global_stats,
                      bool trainable_statistics,
-                     bool fuse_with_relu,
                      DenseTensor* y,
                      DenseTensor* mean_out,
                      DenseTensor* variance_out,
@@ -40,4 +40,39 @@ void BatchNormKernel(const Context& dev_ctx,
                      DenseTensor* saved_variance,
                      DenseTensor* reserve_space);
 
+template <typename T, typename Context>
+void BatchNormInferKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& mean,
+                          const DenseTensor& variance,
+                          const DenseTensor& scale,
+                          const DenseTensor& bias,
+                          float momentum,
+                          float epsilon,
+                          const std::string& data_layout,
+                          DenseTensor* y,
+                          DenseTensor* mean_out,
+                          DenseTensor* variance_out);
+#define PD_DECLARE_BN_GRAD_FUNCTOR(dtype, backend)                         \
+  template void phi::BatchNormGradFunctor<dtype, ::phi::backend##Context>( \
+      const ::phi::backend##Context& dev_ctx,                              \
+      const DenseTensor& x,                                                \
+      const DenseTensor& scale,                                            \
+      const DenseTensor& bias,                                             \
+      const paddle::optional<DenseTensor>& mean,                           \
+      const paddle::optional<DenseTensor>& variance,                       \
+      const DenseTensor& saved_mean,                                       \
+      const DenseTensor& saved_variance,                                   \
+      const paddle::optional<DenseTensor>& reserve_space,                  \
+      const DenseTensor& y_grad,                                           \
+      float momentum,                                                      \
+      float epsilon,                                                       \
+      const std::string& data_layout,                                      \
+      bool is_test,                                                        \
+      bool use_global_stats,                                               \
+      bool trainable_statistics,                                           \
+      bool is_inplace,                                                     \
+      DenseTensor* x_grad,                                                 \
+      DenseTensor* scale_grad,                                             \
+      DenseTensor* bias_grad)
 }  // namespace phi

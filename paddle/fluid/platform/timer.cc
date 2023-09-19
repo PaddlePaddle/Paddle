@@ -41,7 +41,7 @@ void Timer::Pause() {
 }
 
 void Timer::Resume() {
-  gettimeofday(&_start, NULL);
+  gettimeofday(&_start, nullptr);
   _paused = false;
 }
 
@@ -49,12 +49,12 @@ int Timer::Count() { return _count; }
 
 double Timer::ElapsedUS() { return static_cast<double>(_elapsed); }
 
-double Timer::ElapsedMS() { return _elapsed / 1000.0; }
+double Timer::ElapsedMS() { return _elapsed / 1000.0; }  // NOLINT
 
-double Timer::ElapsedSec() { return _elapsed / 1000000.0; }
+double Timer::ElapsedSec() { return _elapsed / 1000000.0; }  // NOLINT
 
 int64_t Timer::Tickus() {
-  gettimeofday(&_now, NULL);
+  gettimeofday(&_now, nullptr);
   return (_now.tv_sec - _start.tv_sec) * 1000 * 1000L +
          (_now.tv_usec - _start.tv_usec);
 }

@@ -1,0 +1,188 @@
+import os
+import re
+import sys
+import shutil
+import errno
+from contextlib import contextmanager
+from setuptools import setup
+
+def set_rpath(lib, rpath):
+    command = "patchelf --set-rpath '{}' {}".format(rpath, lib)
+    if os.system(command) != 0:
+        raise Exception("patch {} failed, command: {}".format(lib, command))
+
+def git_commit():
+    try:
+        cmd = ['git', 'rev-parse', 'HEAD']
+        git_commit = subprocess.Popen(cmd, stdout = subprocess.PIPE,
+            cwd="${PROJECT_SOURCE_DIR}").communicate()[0].strip()
+    except:
+        git_commit = b'Unknown'
+    git_commit = git_commit.decode()
+    return str(git_commit)
+
+def _get_version_detail(idx):
+    assert idx < 3, "vesion info consists of %(major)d.%(minor)d.%(patch)d, \
+        so detail index must less than 3"
+
+    if re.match('${TAG_VERSION_REGEX}', '${PADDLE_VERSION}'):
+        version_details = '${PADDLE_VERSION}'.split('.')
+
+        if len(version_details) >= 3:
+            return version_details[idx]
+
+    return 0
+
+def get_major():
+    return int(_get_version_detail(0))
+
+def get_minor():
+    return int(_get_version_detail(1))
+
+def get_patch():
+    return str(_get_version_detail(2))
+
+def get_cuda_version():
+    if '${WITH_GPU}' == 'ON':
+        return '${CUDA_VERSION}'
+    else:
+        return 'False'
+
+def get_cudnn_version():
+    if '${WITH_GPU}' == 'ON':
+        temp_cudnn_version = ''
+        if '${CUDNN_MAJOR_VERSION}':
+            temp_cudnn_version += '${CUDNN_MAJOR_VERSION}'
+            if '${CUDNN_MINOR_VERSION}':
+                temp_cudnn_version += '.${CUDNN_MINOR_VERSION}'
+                if '${CUDNN_PATCHLEVEL_VERSION}':
+                    temp_cudnn_version += '.${CUDNN_PATCHLEVEL_VERSION}'
+        return temp_cudnn_version
+    else:
+        return 'False'
+
+def is_taged():
+    try:
+        cmd = ['git', 'describe', '--exact-match', '--tags', 'HEAD', '2>/dev/null']
+        git_tag = subprocess.Popen(cmd, stdout = subprocess.PIPE, cwd="${PROJECT_SOURCE_DIR}").communicate()[0].strip()
+        git_tag = git_tag.decode()
+    except:
+        return False
+
+    if str(git_tag).replace('v', '') == '${CINN_VERSION}':
+        return True
+    else:
+        return False
+
+def write_version_py(filename='cinn/version/info.py'):
+    cnt = '''# THIS FILE IS GENERATED FROM CINN SETUP.PY
+#
+full_version    = '%(major)d.%(minor)d.%(patch)s'
+major           = '%(major)d'
+minor           = '%(minor)d'
+patch           = '%(patch)s'
+cuda_version    = '%(cuda)s'
+cudnn_version   = '%(cudnn)s'
+istaged         = %(istaged)s
+commit          = '%(commit)s'
+with_mkl        = '%(with_mkl)s'
+'''
+    commit = git_commit()
+
+    dirname = os.path.dirname(filename)
+
+    try:
+        os.makedirs(dirname)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+
+    with open(filename, 'w') as f:
+        f.write(cnt % {
+            'major': get_major(),
+            'minor': get_minor(),
+            'patch': get_patch(),
+            'version': '${CINN_VERSION}',
+            'cuda': get_cuda_version(),
+            'cudnn': get_cudnn_version(),
+            'commit': commit,
+            'istaged': is_taged(),
+            'with_mkl': '${WITH_MKL}'})
+
+write_version_py(filename='${CMAKE_BINARY_DIR}/python/cinn/version/info.py')
+
+if sys.platform != 'win32':
+    @contextmanager
+    def redirect_stdout():
+        f_log = open('${SETUP_LOG_FILE}', 'w')
+        origin_stdout = sys.stdout
+        sys.stdout = f_log
+        yield
+        f_log = sys.stdout
+        sys.stdout = origin_stdout
+        f_log.close()
+else:
+    @contextmanager
+    def redirect_stdout():
+        yield
+
+libs_path = '${CMAKE_BINARY_DIR}/python/cinn/libs'
+os.makedirs(libs_path, exist_ok=True)
+
+cinnlibs = []
+package_data = {'cinn': ['core_api.so'], 'cinn.libs': []}
+
+if '${WITH_MKL}' == 'ON':
+    cinnlibs.append('${MKLML_LIB}')
+    cinnlibs.append('${MKLML_IOMP_LIB}')
+
+if '${WITH_MKLDNN}' == 'ON':
+    cinnlibs.append('${MKLDNN_SHARED_LIB}')
+
+if '${CINN_ONLY}' == 'OFF':
+    cinnlibs.append('${PHI_LIB}')
+
+if '${WITH_GPU}' == 'ON':
+    cinnlibs.append('${CMAKE_BINARY_DIR}/dist/cinn/include/paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh')
+    cinnlibs.append('${CMAKE_BINARY_DIR}/dist/cinn/include/paddle/cinn/runtime/cuda/float16.h')
+    cinnlibs.append('${CMAKE_BINARY_DIR}/dist/cinn/include/paddle/cinn/runtime/cuda/bfloat16.h')
+
+for lib in cinnlibs:
+    shutil.copy(lib, libs_path)
+    libname = os.path.basename(lib)
+    if lib.endswith('so'):
+        set_rpath(os.path.join(libs_path, libname) , '$ORIGIN/')
+    package_data['cinn.libs'].append(libname)
+
+set_rpath('${CMAKE_BINARY_DIR}/python/cinn/core_api.so', '$ORIGIN/libs/')
+
+def git_commit():
+    try:
+        cmd = ['git', 'rev-parse', 'HEAD']
+        git_commit = subprocess.Popen(cmd, stdout = subprocess.PIPE,
+            cwd="@PADDLE_SOURCE_DIR@").communicate()[0].strip()
+    except:
+        git_commit = 'Unknown'
+    git_commit = git_commit.decode()
+    return str(git_commit)
+
+packages = ["cinn",
+            "cinn.auto_schedule",
+            "cinn.auto_schedule.cost_model",
+            "cinn.ir",
+            "cinn.libs",
+            "cinn.version"
+            ]
+
+with redirect_stdout():
+    setup(
+        name='${PACKAGE_NAME}',
+        version='${CINN_VERSION}',
+        description='CINN: a Compiler Infrastructure for Neural Networks',
+        maintainer="PaddlePaddle",
+        maintainer_email="Paddle-better@baidu.com",
+        url='https://github.com/PaddlePaddle/Paddle',
+        license='Apache Software License',
+        packages=packages,
+        package_data=package_data
+    )

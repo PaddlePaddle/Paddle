@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/impl/expand_kernel_impl.h"
@@ -50,10 +50,15 @@ template <typename T, typename Context>
 void ExpandGradKernel(const Context& ctx,
                       const DenseTensor& x,
                       const DenseTensor& out_grad,
-                      const ScalarArray& shape,
+                      const IntArray& shape,
                       DenseTensor* in_grad) {
   auto expand_shape = shape.GetData();
   auto x_dims = x.dims();
+
+  if (in_grad->dims() == out_grad.dims()) {
+    phi::Copy(ctx, out_grad, ctx.GetPlace(), false, in_grad);
+    return;
+  }
   auto vec_in_dims = phi::vectorize<int>(x_dims);
   auto diff = expand_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
@@ -79,63 +84,55 @@ void ExpandGradKernel(const Context& ctx,
 
   int dims = reduce_dims_vec.size();
 
-  bool just_copy = true;
-  for (size_t i = 0; i < repeat_times.size(); i++) {
-    if (repeat_times[i] != 1) {
-      just_copy = false;
+  PADDLE_ENFORCE_GE(
+      dims,
+      0,
+      phi::errors::InvalidArgument("The rank of the input 'Out@GRAD' for "
+                                   "expand_v2_grad op must be greater than or "
+                                   "equal to 0, but the value received is %d.",
+                                   dims));
+  PADDLE_ENFORCE_LE(dims,
+                    MAX_RANK_SUPPORTED,
+                    phi::errors::InvalidArgument(
+                        "The rank of the input 'Out@GRAD' for "
+                        "expand_v2_grad op must be less than or equal "
+                        "to %d, but the value received is %d.",
+                        MAX_RANK_SUPPORTED,
+                        dims));
+  switch (dims) {
+    case 0:
+      ExpandBackward<Context, T, 1>(
+          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
       break;
-    }
-  }
-  // no need reduce, just copy
-  if (just_copy) {
-    phi::Copy(ctx, out_grad, ctx.GetPlace(), false, in_grad);
-  } else {
-    PADDLE_ENFORCE_GE(dims,
-                      1,
-                      phi::errors::InvalidArgument(
-                          "The rank of the input 'Out@GRAD' for "
-                          "expand_v2_grad op must be greater than or "
-                          "equal to 1, but the value received is %d.",
-                          dims));
-    PADDLE_ENFORCE_LE(dims,
-                      MAX_RANK_SUPPORTED,
-                      phi::errors::InvalidArgument(
-                          "The rank of the input 'Out@GRAD' for "
-                          "expand_v2_grad op must be less than or equal "
-                          "to %d, but the value received is %d.",
-                          MAX_RANK_SUPPORTED,
-                          dims));
-    switch (dims) {
-      case 1:
-        ExpandBackward<Context, T, 1>(
-            ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
-        break;
-      case 2:
-        ExpandBackward<Context, T, 2>(
-            ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
-        break;
-      case 3:
-        ExpandBackward<Context, T, 3>(
-            ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
-        break;
-      case 4:
-        ExpandBackward<Context, T, 4>(
-            ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
-        break;
-      case 5:
-        ExpandBackward<Context, T, 5>(
-            ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
-        break;
-      case 6:
-        ExpandBackward<Context, T, 6>(
-            ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
-        break;
-      default:
-        PADDLE_THROW(phi::errors::InvalidArgument(
-            "Only support tensor with rank being between 1 and 6. But "
-            "received tensor's rank = %d.",
-            dims));
-    }
+    case 1:
+      ExpandBackward<Context, T, 1>(
+          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+      break;
+    case 2:
+      ExpandBackward<Context, T, 2>(
+          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+      break;
+    case 3:
+      ExpandBackward<Context, T, 3>(
+          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+      break;
+    case 4:
+      ExpandBackward<Context, T, 4>(
+          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+      break;
+    case 5:
+      ExpandBackward<Context, T, 5>(
+          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+      break;
+    case 6:
+      ExpandBackward<Context, T, 6>(
+          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+      break;
+    default:
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Only support tensor with rank being between 1 and 6. But "
+          "received tensor's rank = %d.",
+          dims));
   }
 }
 

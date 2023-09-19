@@ -1,1 +1,1 @@
-math_library(lapack_function DEPS phi_dynload_lapack)
+collect_srcs(kernels_srcs SRCS lapack_function.cc)

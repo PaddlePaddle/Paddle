@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/shuffle_channel_op.h"
+
 #include <memory>
 #include <string>
 
@@ -26,18 +27,19 @@ class ShuffleChannelOp : public framework::OperatorWithKernel {
 
     auto input_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(
-        input_dims.size(), 4,
+        input_dims.size(),
+        4,
         platform::errors::InvalidArgument("The layout of input is NCHW."));
 
     ctx->SetOutputDim("Out", input_dims);
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -53,21 +55,22 @@ class ShuffleChannelOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("group", "the number of groups.")
         .SetDefault(1)
         .AddCustomChecker([](const int& group) {
-          PADDLE_ENFORCE_GE(group, 1, platform::errors::InvalidArgument(
-                                          "group should be larger than 0."));
+          PADDLE_ENFORCE_GE(group,
+                            1,
+                            platform::errors::InvalidArgument(
+                                "group should be larger than 0."));
         });
-
     AddComment(R"DOC(
-		Shuffle Channel operator
-		This opearator shuffles the channels of input x.
-		It  divide the input channels in each group into several subgroups,
-		and obtain a new order by selecting element from every subgroup one by one.
+    Shuffle Channel operator
+    This opearator shuffles the channels of input x.
+    It  divide the input channels in each group into several subgroups,
+    and obtain a new order by selecting element from every subgroup one by one.
 
-		Shuffle channel operation makes it possible to build more powerful structures
-		with multiple group convolutional layers.
-		please get more information from the following paper:
-		https://arxiv.org/pdf/1707.01083.pdf
-        )DOC");
+    Shuffle channel operation makes it possible to build more powerful structures
+    with multiple group convolutional layers.
+    please get more information from the following paper:
+    https://arxiv.org/pdf/1707.01083.pdf
+    )DOC");
   }
 };
 
@@ -78,18 +81,19 @@ class ShuffleChannelGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     auto input_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     PADDLE_ENFORCE_EQ(
-        input_dims.size(), 4,
+        input_dims.size(),
+        4,
         platform::errors::InvalidArgument("The layout of input is NCHW."));
 
     ctx->SetOutputDim(framework::GradVarName("X"), input_dims);
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
 };
 
@@ -111,20 +115,23 @@ class ShuffleChannelGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(shuffle_channel, ops::ShuffleChannelOp,
+REGISTER_OPERATOR(shuffle_channel,
+                  ops::ShuffleChannelOp,
                   ops::ShuffleChannelOpMaker,
                   ops::ShuffleChannelGradMaker<paddle::framework::OpDesc>,
                   ops::ShuffleChannelGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(shuffle_channel_grad, ops::ShuffleChannelGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    shuffle_channel,
-    ops::ShuffleChannelOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ShuffleChannelOpKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    shuffle_channel_grad,
-    ops::ShuffleChannelGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ShuffleChannelGradOpKernel<paddle::platform::CPUDeviceContext,
-                                    double>);
+PD_REGISTER_STRUCT_KERNEL(shuffle_channel,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::ShuffleChannelOpKernel,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(shuffle_channel_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::ShuffleChannelGradOpKernel,
+                          float,
+                          double) {}

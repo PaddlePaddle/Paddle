@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 #define MAX_RANK_SUPPORTED 6
@@ -24,7 +24,7 @@ namespace phi {
 template <typename T, typename Context>
 void TileKernel(const Context& dev_ctx,
                 const DenseTensor& x,
-                const ScalarArray& repeat_times,
+                const IntArray& repeat_times,
                 DenseTensor* out);
 
 }  // namespace phi

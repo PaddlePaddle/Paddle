@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
-from ..common import is_optimizer_op, OP_ROLE_KEY, OpRole, is_update_op
-from paddle.fluid import core, unique_name
-from .shard import Shard
+from paddle.framework import core
+from paddle.utils import unique_name
+
+from ..common import OP_ROLE_KEY, OpRole, is_optimizer_op, is_update_op
 
 __all__ = []
 
@@ -26,27 +26,21 @@ class PlaceType:
     CUDA = 1
     CUDA_PINNED = 2
     XPU = 3  # unsupport for now
-    NPU = 4
-    NPU_PINNED = 5
 
     @staticmethod
     def default_device():
         if core.is_compiled_with_cuda():
             return PlaceType.CUDA
-        elif core.is_compiled_with_npu():
-            return PlaceType.NPU
         return PlaceType.CPU
 
     @staticmethod
     def default_pinned():
         if core.is_compiled_with_cuda():
             return PlaceType.CUDA_PINNED
-        elif core.is_compiled_with_npu():
-            return PlaceType.NPU_PINNED
         return PlaceType.CPU
 
 
-class OffloadHelper(object):
+class OffloadHelper:
     cpu_place_type = 0
     cuda_place_type = PlaceType.default_device()
     cuda_pinned_place_type = PlaceType.default_pinned()
@@ -62,7 +56,8 @@ class OffloadHelper(object):
                 name=dst_name,
                 shape=src_var.shape,
                 dtype=core.VarDesc.VarType.FP16,
-                persistable=True)
+                persistable=True,
+            )
         dst_var = block.var(dst_name)
         assert dst_var.dtype == core.VarDesc.VarType.FP16
         block._insert_op_without_sync(
@@ -73,8 +68,9 @@ class OffloadHelper(object):
             attrs={
                 'in_dtype': src_var.dtype,
                 'out_dtype': dst_var.dtype,
-                OP_ROLE_KEY: OpRole.Optimize
-            })
+                OP_ROLE_KEY: OpRole.Optimize,
+            },
+        )
 
     def _insert_broadcast_op(self, block, idx, param_name):
         rings = []
@@ -100,7 +96,8 @@ class OffloadHelper(object):
                     'root': 0,
                     'use_calc_stream': True,
                     OP_ROLE_KEY: OpRole.Forward,
-                })
+                },
+            )
 
     def _insert_memcpy_op(self, block, idx, src_name, dst_name, dst_place_type):
         src_var = block.var(src_name)
@@ -113,15 +110,18 @@ class OffloadHelper(object):
             attrs={
                 'dst_place_type': dst_place_type,
                 OP_ROLE_KEY: OpRole.Optimize,
-            })
+            },
+        )
 
     def _insert_fetch_op(self, block, idx, src_name, dst_name):
-        self._insert_memcpy_op(block, idx, src_name, dst_name,
-                               OffloadHelper.cuda_place_type)
+        self._insert_memcpy_op(
+            block, idx, src_name, dst_name, OffloadHelper.cuda_place_type
+        )
 
     def _insert_offload_op(self, block, idx, src_name, dst_name):
-        self._insert_memcpy_op(block, idx, src_name, dst_name,
-                               OffloadHelper.cuda_pinned_place_type)
+        self._insert_memcpy_op(
+            block, idx, src_name, dst_name, OffloadHelper.cuda_pinned_place_type
+        )
 
     def _get_offload_var_name(self, name):
         return unique_name.generate(name + '@offload')
@@ -134,7 +134,8 @@ class OffloadHelper(object):
                 name=offload_var_name,
                 shape=var.shape,
                 dtype=var.dtype,
-                persistable=True)
+                persistable=True,
+            )
 
     def offload_fp32param(self, block, startup_block, offload=True):
         """
@@ -149,11 +150,11 @@ class OffloadHelper(object):
         (p_fp16) = cast(p)
         (p@offload) = memcpy(p)
         """
-        param_to_idx = dict()
-        param_to_fp16 = dict()
+        param_to_idx = {}
+        param_to_fp16 = {}
         # recompute_var which need rename to fp16_param
-        fp16_param_to_recompute = dict()
-        recompute_to_fp16 = dict()
+        fp16_param_to_recompute = {}
+        recompute_to_fp16 = {}
 
         def remove_param(input_name):
             param_to_idx.pop(input_name)
@@ -195,41 +196,47 @@ class OffloadHelper(object):
 
                 if 'subprog' not in output_name:
                     assert output_name == input_name + '.cast_fp16'
-                    assert input_name not in param_to_fp16, \
-                        "There must be only one cast op from fp32 param to fp16 param."
+                    assert (
+                        input_name not in param_to_fp16
+                    ), "There must be only one cast op from fp32 param to fp16 param."
                     param_to_fp16[input_name] = output_name
                 else:
                     # fp16-->recompute_var
-                    assert input_name in param_to_fp16, \
-                        "param must first be cast to fp16"
+                    assert (
+                        input_name in param_to_fp16
+                    ), "param must first be cast to fp16"
                     fp16_param = param_to_fp16[input_name]
                     fp16_param_to_recompute[fp16_param] = output_name
                     recompute_to_fp16[output_name] = fp16_param
 
-        param_name_to_offload_name = dict()
+        param_name_to_offload_name = {}
         # step3: main_block add offload, cast op
         # change recompute to fp16, remove cast(param) to fp16
         for idx, op in reversed(list(enumerate(block.ops))):
             if is_update_op(op):
                 param = op.desc.input("Param")[0]
-                if param not in param_to_idx: continue
+                if param not in param_to_idx:
+                    continue
                 # step3.1: create offload_var
                 offload_var_name = self._get_offload_var_name(param)
                 param_name_to_offload_name[param] = offload_var_name
                 if offload:
-                    self._create_offload_var(param, offload_var_name,
-                                             [block, startup_block])
+                    self._create_offload_var(
+                        param, offload_var_name, [block, startup_block]
+                    )
 
                     # step3.2: insert cast op and offload op
-                    self._insert_offload_op(block, idx + 1, param,
-                                            offload_var_name)
+                    self._insert_offload_op(
+                        block, idx + 1, param, offload_var_name
+                    )
 
                 assert param in param_to_fp16
                 fp16_param_name = param_to_fp16[param]
                 fp16_param_var = block.var(fp16_param_name)
                 fp16_param_var.persistable = True
-                self._insert_cast_op(block, idx + 1, param,
-                                     param_to_fp16[param])
+                self._insert_cast_op(
+                    block, idx + 1, param, param_to_fp16[param]
+                )
 
                 if offload:
                     # step3.3: insert fetch op
@@ -249,8 +256,9 @@ class OffloadHelper(object):
                     op._rename_input(input_name, recompute_to_fp16[input_name])
             for output_name in op.desc.output_arg_names():
                 if output_name in recompute_to_fp16:
-                    op._rename_output(output_name,
-                                      recompute_to_fp16[output_name])
+                    op._rename_output(
+                        output_name, recompute_to_fp16[output_name]
+                    )
 
         # step4: remove recompute_param
         for name in recompute_to_fp16.keys():
@@ -269,14 +277,23 @@ class OffloadHelper(object):
                     var_name = out_name
                     if offload:
                         offload_var_name = param_name_to_offload_name[var_name]
-                        self._insert_offload_op(startup_block, insert_idx,
-                                                var_name, offload_var_name)
-                    self._insert_cast_op(startup_block, insert_idx, var_name,
-                                         param_to_fp16[var_name])
+                        self._insert_offload_op(
+                            startup_block,
+                            insert_idx,
+                            var_name,
+                            offload_var_name,
+                        )
+                    self._insert_cast_op(
+                        startup_block,
+                        insert_idx,
+                        var_name,
+                        param_to_fp16[var_name],
+                    )
                     # NOTE(wangxi): cast and offload should insert after broadcast param.
                     # the insert op order is: {mp, dp}broadcast, cast, offload
-                    self._insert_broadcast_op(startup_block, insert_idx,
-                                              var_name)
+                    self._insert_broadcast_op(
+                        startup_block, insert_idx, var_name
+                    )
 
                 visited_vars.add(out_name)
 
@@ -302,7 +319,7 @@ class OffloadHelper(object):
         (m1out, m2out, pout) = adam(m1, m2, p)
         (m1@offload, m2@offload) = memcpy(m1, m2)
         """
-        vars_name_to_offload_name = dict()
+        vars_name_to_offload_name = {}
 
         # main_block add offload
         for idx, op in reversed(list(enumerate(block.ops))):
@@ -329,14 +346,16 @@ class OffloadHelper(object):
                 offload_var_name = self._get_offload_var_name(var_name)
                 vars_name_to_offload_name[var_name] = offload_var_name
 
-                self._create_offload_var(var_name, offload_var_name,
-                                         [block, startup_block])
+                self._create_offload_var(
+                    var_name, offload_var_name, [block, startup_block]
+                )
 
             # step2: insert offload op
             for var_name in vars_name:
                 offload_var_name = vars_name_to_offload_name[var_name]
-                self._insert_offload_op(block, idx + 1, var_name,
-                                        offload_var_name)
+                self._insert_offload_op(
+                    block, idx + 1, var_name, offload_var_name
+                )
 
             # step3: insert fetch op
             for var_name in vars_name:
@@ -354,18 +373,17 @@ class OffloadHelper(object):
                     var_name = out_name
                     offload_var_name = vars_name_to_offload_name[var_name]
                     # insert offload op after var is generated
-                    self._insert_offload_op(startup_block, idx + 1, var_name,
-                                            offload_var_name)
+                    self._insert_offload_op(
+                        startup_block, idx + 1, var_name, offload_var_name
+                    )
                 visited_vars.add(out_name)
 
         block._sync_with_cpp()
         startup_block._sync_with_cpp()
 
-    def opt_sharding_cast_fp32param(self,
-                                    block,
-                                    startup_block,
-                                    params,
-                                    offload=False):
+    def opt_sharding_cast_fp32param(
+        self, block, startup_block, params, offload=False
+    ):
         """
         (p_fp16) = cast(p)
         (p_fp16_recompute) = cast(p)
@@ -379,10 +397,10 @@ class OffloadHelper(object):
         """
         global_params = set()
         local_params = set()
-        param_to_fp16 = dict()
+        param_to_fp16 = {}
         # recompute_var which need rename to fp16_param
-        fp16_param_to_recompute = dict()
-        recompute_to_fp16 = dict()
+        fp16_param_to_recompute = {}
+        recompute_to_fp16 = {}
 
         def remove_param(input_name):
             global_params.remove(input_name)
@@ -427,18 +445,20 @@ class OffloadHelper(object):
 
                 if 'subprog' not in output_name:
                     assert output_name == input_name + '.cast_fp16'
-                    assert input_name not in param_to_fp16, \
-                        "There must be only one cast op from fp32 param to fp16 param."
+                    assert (
+                        input_name not in param_to_fp16
+                    ), "There must be only one cast op from fp32 param to fp16 param."
                     param_to_fp16[input_name] = output_name
                 else:
                     # fp16-->recompute_var
-                    assert input_name in param_to_fp16, \
-                        "param must first be cast to fp16"
+                    assert (
+                        input_name in param_to_fp16
+                    ), "param must first be cast to fp16"
                     fp16_param = param_to_fp16[input_name]
                     fp16_param_to_recompute[fp16_param] = output_name
                     recompute_to_fp16[output_name] = fp16_param
 
-        param_name_to_offload_name = dict()
+        param_name_to_offload_name = {}
         # step3: main_block add offload, cast op
         # change recompute to fp16, remove cast(param) to fp16
         for idx, op in reversed(list(enumerate(block.ops))):
@@ -450,19 +470,22 @@ class OffloadHelper(object):
                 offload_var_name = self._get_offload_var_name(param)
                 param_name_to_offload_name[param] = offload_var_name
                 if offload:
-                    self._create_offload_var(param, offload_var_name,
-                                             [block, startup_block])
+                    self._create_offload_var(
+                        param, offload_var_name, [block, startup_block]
+                    )
 
                     # step3.2: insert cast op and offload op
-                    self._insert_offload_op(block, idx + 1, param,
-                                            offload_var_name)
+                    self._insert_offload_op(
+                        block, idx + 1, param, offload_var_name
+                    )
 
                 assert param in param_to_fp16
                 fp16_param_name = param_to_fp16[param]
                 fp16_param_var = block.var(fp16_param_name)
                 fp16_param_var.persistable = True
-                self._insert_cast_op(block, idx + 1, param,
-                                     param_to_fp16[param])
+                self._insert_cast_op(
+                    block, idx + 1, param, param_to_fp16[param]
+                )
 
                 if offload:
                     # step3.3: insert fetch op
@@ -483,8 +506,9 @@ class OffloadHelper(object):
                     op._rename_input(input_name, recompute_to_fp16[input_name])
             for output_name in op.desc.output_arg_names():
                 if output_name in recompute_to_fp16:
-                    op._rename_output(output_name,
-                                      recompute_to_fp16[output_name])
+                    op._rename_output(
+                        output_name, recompute_to_fp16[output_name]
+                    )
 
         # step4: remove recompute_param
         for name in recompute_to_fp16.keys():
@@ -515,22 +539,31 @@ class OffloadHelper(object):
         insert_idx = len(startup_block.ops)
         for idx, op in reversed(list(enumerate(startup_block.ops))):
             for out_name in op.output_arg_names:
-                if out_name in visited_vars: continue
+                if out_name in visited_vars:
+                    continue
 
                 if out_name in param_to_fp16:
                     var_name = out_name
                     if offload:
                         self._insert_offload_op(
-                            startup_block, idx + 1, var_name,
-                            param_name_to_offload_name[var_name])
+                            startup_block,
+                            idx + 1,
+                            var_name,
+                            param_name_to_offload_name[var_name],
+                        )
 
-                    self._insert_cast_op(startup_block, insert_idx, var_name,
-                                         param_to_fp16[var_name])
+                    self._insert_cast_op(
+                        startup_block,
+                        insert_idx,
+                        var_name,
+                        param_to_fp16[var_name],
+                    )
 
                     # NOTE(wangxi): cast and offload should insert after broadcast param.
                     # the insert op order is: {mp, dp}broadcast, cast, offload
-                    self._insert_broadcast_op(startup_block, insert_idx,
-                                              var_name)
+                    self._insert_broadcast_op(
+                        startup_block, insert_idx, var_name
+                    )
 
                     if var_name not in local_params:
                         param = startup_block.var(out_name)

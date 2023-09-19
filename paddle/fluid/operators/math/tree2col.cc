@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/math/tree2col.h"
+
 #include <deque>
 #include <stack>
 
@@ -25,21 +26,22 @@ std::vector<TreeNode> Tree2ColUtil::construct_patch(
   std::unordered_map<int, bool> visited;
   std::vector<TreeNode> patch;
 
-  stack.push(TreeNode(root, 1, 1, 0));
-  patch.emplace_back(TreeNode(root, 1, 1, 0));
-  visited[root] = true;
+  stack.emplace(root, 1, 1, 0);
+  patch.emplace_back(root, 1, 1, 0);
+  visited[static_cast<int>(root)] = true;
 
   while (!stack.empty()) {
     TreeNode &u = stack.top();
     bool end = true;
     size_t node = u.get_node(), sz = tr[node].size();
-    visited[node] = true;
+    visited[static_cast<int>(node)] = true;
     for (size_t i = 0; i < sz; i++) {
       size_t v = tr[node][i];
-      if (!visited[v] && static_cast<int>(u.get_depth()) + 1 < max_depth) {
-        visited[v] = true;
-        stack.push(TreeNode(v, i, sz, u.get_depth() + 1));
-        patch.push_back(TreeNode(v, i + 1, sz, u.get_depth() + 1));
+      if (!visited[static_cast<int>(v)] &&
+          static_cast<int>(u.get_depth()) + 1 < max_depth) {
+        visited[static_cast<int>(v)] = true;
+        stack.emplace(v, i, sz, u.get_depth() + 1);
+        patch.emplace_back(v, i + 1, sz, u.get_depth() + 1);
         end = false;
       }
     }
@@ -50,11 +52,12 @@ std::vector<TreeNode> Tree2ColUtil::construct_patch(
   return patch;
 }
 
-void Tree2ColUtil::construct_tree(const framework::Tensor &EdgeSet,
+void Tree2ColUtil::construct_tree(const phi::DenseTensor &EdgeSet,
                                   std::vector<std::vector<int>> *tr,
                                   size_t *node_count) {
-  auto edge_set_dims = EdgeSet.dims();
-  PADDLE_ENFORCE_EQ(edge_set_dims[1], 2,
+  const auto &edge_set_dims = EdgeSet.dims();
+  PADDLE_ENFORCE_EQ(edge_set_dims[1],
+                    2,
                     platform::errors::InvalidArgument(
                         "The second dimension of the EdgeSet shall be 2, but "
                         "got %ld != 2. Please check the input value.",
@@ -82,16 +85,17 @@ void Tree2ColUtil::construct_tree(const framework::Tensor &EdgeSet,
 }
 
 template <typename T>
-class Tree2ColFunctor<platform::CPUDeviceContext, T> {
+class Tree2ColFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext &context,
-                  const framework::Tensor &EdgeSet,
-                  const framework::Tensor &node_features,
-                  framework::Tensor *patch, int max_depth) {
+  void operator()(const phi::CPUContext &context,
+                  const phi::DenseTensor &EdgeSet,
+                  const phi::DenseTensor &node_features,
+                  phi::DenseTensor *patch,
+                  int max_depth) {
     std::vector<std::vector<int>> tr;
-    auto feature_dims = node_features.dims();
+    const auto &feature_dims = node_features.dims();
     auto cpu_place = context.GetPlace();
-    phi::funcs::SetConstant<platform::CPUDeviceContext, T> constant;
+    phi::funcs::SetConstant<phi::CPUContext, T> constant;
     int64_t feature_size = feature_dims[1];
     size_t patch_elem_size = 3 * static_cast<size_t>(feature_size);
     size_t node_count = 0, patch_count = 0, patch_size;
@@ -135,16 +139,17 @@ class Tree2ColFunctor<platform::CPUDeviceContext, T> {
   }
 };
 template <typename T>
-class Col2TreeFunctor<platform::CPUDeviceContext, T> {
+class Col2TreeFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext &context,
-                  const framework::Tensor &EdgeSet,
-                  const framework::Tensor &out_grad, framework::Tensor *in_grad,
+  void operator()(const phi::CPUContext &context,
+                  const phi::DenseTensor &EdgeSet,
+                  const phi::DenseTensor &out_grad,
+                  phi::DenseTensor *in_grad,
                   int max_depth) {
     std::vector<std::vector<int>> tr;
-    auto output_dims = out_grad.dims();
+    const auto &output_dims = out_grad.dims();
     auto cpu_place = context.GetPlace();
-    phi::funcs::SetConstant<platform::CPUDeviceContext, T> constant;
+    phi::funcs::SetConstant<phi::CPUContext, T> constant;
     int64_t output_size = output_dims[1];
     size_t grad_elem_size = 3 * static_cast<size_t>(output_size);
     size_t node_count = 0, grad_count = 0;
@@ -191,10 +196,10 @@ class Col2TreeFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template class Tree2ColFunctor<platform::CPUDeviceContext, float>;
-template class Tree2ColFunctor<platform::CPUDeviceContext, double>;
-template class Col2TreeFunctor<platform::CPUDeviceContext, float>;
-template class Col2TreeFunctor<platform::CPUDeviceContext, double>;
+template class Tree2ColFunctor<phi::CPUContext, float>;
+template class Tree2ColFunctor<phi::CPUContext, double>;
+template class Col2TreeFunctor<phi::CPUContext, float>;
+template class Col2TreeFunctor<phi::CPUContext, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

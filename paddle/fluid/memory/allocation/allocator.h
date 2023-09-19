@@ -23,8 +23,9 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_string(allocator_strategy);
+PHI_DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace memory {
@@ -33,8 +34,8 @@ namespace allocation {
 // Exception when `Alloc`/`AllocShared` failed
 struct BadAlloc : public std::exception {
   inline explicit BadAlloc(std::string err_msg, const char* file, int line)
-      : err_str_(platform::GetTraceBackString(std::move(err_msg), file, line)) {
-  }
+      : err_str_(platform::GetCompleteTraceBackString(
+            std::move(err_msg), file, line)) {}
 
   const char* what() const noexcept override { return err_str_.c_str(); }
 
@@ -89,7 +90,9 @@ class Allocation : public phi::Allocation {
  public:
   Allocation(void* ptr, size_t size, platform::Place place)
       : phi::Allocation(ptr, size, place), base_ptr_(ptr) {}
-  Allocation(void* ptr, void* base_ptr, size_t size,
+  Allocation(void* ptr,
+             void* base_ptr,
+             size_t size,
              const platform::Place& place)
       : phi::Allocation(ptr, size, place), base_ptr_(base_ptr) {}
 
@@ -160,7 +163,9 @@ class Allocator : public phi::Allocator {
  protected:
   virtual phi::Allocation* AllocateImpl(size_t size) = 0;
   virtual void FreeImpl(phi::Allocation* allocation);
-  virtual uint64_t ReleaseImpl(const platform::Place& place) { return 0; }
+  virtual uint64_t ReleaseImpl(const platform::Place& place UNUSED) {
+    return 0;
+  }
 };
 
 inline size_t AlignedSize(size_t size, size_t alignment) {

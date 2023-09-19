@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
@@ -24,24 +26,27 @@ namespace phi {
 
 template <typename T, typename Context>
 void DepthwiseConvGradKernel(const Context& dev_ctx,
-                             const DenseTensor& out_grad,
                              const DenseTensor& input,
                              const DenseTensor& filter,
+                             const DenseTensor& out_grad,
                              const std::vector<int>& strides_t,
                              const std::vector<int>& paddings_t,
                              const std::string& padding_algorithm,
                              int groups,
                              const std::vector<int>& dilations_t,
                              const std::string& data_format,
-                             bool use_addto,
-                             int workspace_size_MB,
-                             bool exhaustive_search,
-                             bool fuse_relu,
                              DenseTensor* input_grad,
                              DenseTensor* filter_grad) {
   const DenseTensor* output_grad = &out_grad;
 
   if (!input_grad && !filter_grad) return;
+
+  bool has_fuse_relu = dev_ctx.HasDnnAttr("fuse_relu_before_depthwise_conv");
+  bool fuse_relu =
+      has_fuse_relu
+          ? PADDLE_GET_CONST(
+                bool, dev_ctx.GetDnnAttr("fuse_relu_before_depthwise_conv"))
+          : false;
 
   std::vector<int> strides = strides_t;
   std::vector<int> paddings = paddings_t;
@@ -52,9 +57,8 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
   auto filter_dims = filter.dims();
 
   DDim in_data_dims;
-  const paddle::framework::DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_format);
-  if (data_layout != paddle::framework::DataLayout::kNHWC) {
+  const phi::DataLayout data_layout = phi::StringToDataLayout(data_format);
+  if (data_layout != phi::DataLayout::kNHWC) {
     in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   } else {
     in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);
@@ -73,7 +77,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
   phi::funcs::SetConstant<Context, T> set_zero;
 
   if (input_grad) {
-    input_grad->mutable_data<T>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(input_grad);
     set_zero(dev_ctx, input_grad, static_cast<T>(0));
 
     if (fuse_relu) {
@@ -104,7 +108,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
   }
 
   if (filter_grad) {
-    filter_grad->mutable_data<T>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(filter_grad);
     set_zero(dev_ctx, filter_grad, static_cast<T>(0));
     if (fuse_relu) {
       paddle::operators::math::DepthwiseConvFilterGradFunctor<Context, T, true>
@@ -139,4 +143,6 @@ PD_REGISTER_KERNEL(depthwise_conv2d_grad,
                    ALL_LAYOUT,
                    phi::DepthwiseConvGradKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

@@ -15,6 +15,7 @@
 #pragma once
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -60,8 +61,8 @@ class DistModelDataBuf {
   void Resize(size_t length);
 
   DistModelDataBuf& operator=(const DistModelDataBuf& other);
-  DistModelDataBuf& operator=(DistModelDataBuf&& other);
-  DistModelDataBuf(DistModelDataBuf&& other);
+  DistModelDataBuf& operator=(DistModelDataBuf&& other) noexcept;
+  DistModelDataBuf(DistModelDataBuf&& other) noexcept;
   DistModelDataBuf(const DistModelDataBuf& other);
 
  private:

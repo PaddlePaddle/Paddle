@@ -15,8 +15,9 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
-#include "gflags/gflags.h"
+
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
+#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace platform {
@@ -53,7 +54,6 @@ void* GetCUDADsoHandle() { return phi::dynload::GetCUDADsoHandle(); }
 void* GetWarpCTCDsoHandle() { return phi::dynload::GetWarpCTCDsoHandle(); }
 
 void* GetNCCLDsoHandle() { return phi::dynload::GetNCCLDsoHandle(); }
-void* GetHCCLDsoHandle() { return phi::dynload::GetHCCLDsoHandle(); }
 
 void* GetTensorRtDsoHandle() { return phi::dynload::GetTensorRtDsoHandle(); }
 
@@ -70,6 +70,12 @@ void* GetNvtxDsoHandle() { return phi::dynload::GetNvtxDsoHandle(); }
 void* GetCUFFTDsoHandle() { return phi::dynload::GetCUFFTDsoHandle(); }
 
 void* GetMKLRTDsoHandle() { return phi::dynload::GetMKLRTDsoHandle(); }
+
+void* GetCusparseLtDsoHandle() {
+  return phi::dynload::GetCusparseLtDsoHandle();
+}
+
+void* GetXPTIDsoHandle() { return phi::dynload::GetXPTIDsoHandle(); }
 
 }  // namespace dynload
 }  // namespace platform

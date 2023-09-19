@@ -29,9 +29,12 @@ limitations under the License. */
 // phi
 #include "paddle/phi/kernels/declarations.h"
 
-DEFINE_string(devices, "", "The devices to be used which is joined by comma.");
-DEFINE_int32(math_num_threads, 1,
-             "Number of threads used to run math functions.");
+PD_DEFINE_string(devices,  // NOLINT
+                 "",
+                 "The devices to be used which is joined by comma.");
+PD_DEFINE_int32(math_num_threads,
+                1,
+                "Number of threads used to run math functions.");
 
 namespace paddle {
 namespace inference {
@@ -52,13 +55,14 @@ void Init(const std::vector<std::string> argv) {
 void ReadBinaryFile(const std::string& filename, std::string* contents) {
   std::ifstream fin(filename, std::ios::in | std::ios::binary);
   PADDLE_ENFORCE_EQ(
-      fin.is_open(), true,
+      fin.is_open(),
+      true,
       platform::errors::Unavailable("Failed to open file %s.", filename));
   fin.seekg(0, std::ios::end);
   contents->clear();
   contents->resize(fin.tellg());
   fin.seekg(0, std::ios::beg);
-  fin.read(&(contents->at(0)), contents->size());
+  fin.read(&(contents->at(0)), contents->size());  // NOLINT
   fin.close();
 }
 
@@ -72,7 +76,8 @@ bool IsPersistable(const framework::VarDesc* var) {
   return false;
 }
 
-void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
+void LoadPersistables(framework::Executor* executor,
+                      framework::Scope* scope,
                       const framework::ProgramDesc& main_program,
                       const std::string& dirname,
                       const std::string& param_filename,
@@ -142,51 +147,72 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
   PADDLE_ENFORCE_EQ(
-      framework::IsProgramVersionSupported(main_program->Version()), true,
+      framework::IsProgramVersionSupported(main_program->Version()),
+      true,
       platform::errors::Unavailable("Model version %ld is not supported.",
                                     main_program->Version()));
 
   // model_from_memory is false in separate parameters.
-  LoadPersistables(executor, scope, *main_program, dirname, "",
+  LoadPersistables(executor,
+                   scope,
+                   *main_program,
+                   dirname,
+                   "",
                    false /* model_from_memory */);
   return main_program;
 }
 
-std::unique_ptr<framework::ProgramDesc> Load(
-    framework::Executor* executor, framework::Scope* scope,
-    const std::string& prog_filename, const std::string& param_filename) {
+std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
+                                             framework::Scope* scope,
+                                             const std::string& prog_filename,
+                                             const std::string& param_filename,
+                                             bool load_params) {
   std::string program_desc_str;
   ReadBinaryFile(prog_filename, &program_desc_str);
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
   PADDLE_ENFORCE_EQ(
-      framework::IsProgramVersionSupported(main_program->Version()), true,
+      framework::IsProgramVersionSupported(main_program->Version()),
+      true,
       platform::errors::Unavailable("Model version %ld is not supported.",
                                     main_program->Version()));
-
-  LoadPersistables(executor, scope, *main_program, "", param_filename,
-                   false /* model_from_memory */);
+  if (load_params) {
+    LoadPersistables(executor,
+                     scope,
+                     *main_program,
+                     "",
+                     param_filename,
+                     false /* model_from_memory */);
+  }
   return main_program;
 }
 
 std::unique_ptr<framework::ProgramDesc> LoadFromMemory(
-    framework::Executor* executor, framework::Scope* scope,
-    const std::string& prog_buffer, const std::string& param_buffer) {
+    framework::Executor* executor,
+    framework::Scope* scope,
+    const std::string& prog_buffer,
+    const std::string& param_buffer) {
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(prog_buffer));
   PADDLE_ENFORCE_EQ(
-      framework::IsProgramVersionSupported(main_program->Version()), true,
+      framework::IsProgramVersionSupported(main_program->Version()),
+      true,
       platform::errors::Unavailable("Model version %ld is not supported.",
                                     main_program->Version()));
 
-  LoadPersistables(executor, scope, *main_program, "", param_buffer,
+  LoadPersistables(executor,
+                   scope,
+                   *main_program,
+                   "",
+                   param_buffer,
                    true /* model_filename */);
   return main_program;
 }
 
 void SaveVars(const framework::Scope& scope,
-              const std::vector<std::string>& vars, const std::string& dirname,
+              const std::vector<std::string>& vars,
+              const std::string& dirname,
               bool predicate) {
   framework::ProgramDesc prog;
   auto* block = prog.MutableBlock(0);

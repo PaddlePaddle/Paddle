@@ -16,18 +16,19 @@ limitations under the License. */
 
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/sample_prob.h"
-#include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/softmax.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
@@ -46,40 +47,51 @@ struct TolerableValue {
 // UNDERSTAND: something like take_along_axis in numpy.
 template <typename T>
 static void CPUTakeAlongD1(const platform::DeviceContext& ctx,
-                           const framework::Tensor& array,
-                           const framework::Tensor& index,
-                           framework::Tensor* value) {
+                           const phi::DenseTensor& array,
+                           const phi::DenseTensor& index,
+                           phi::DenseTensor* value) {
   PADDLE_ENFORCE_EQ(
-      platform::is_cpu_place(ctx.GetPlace()), true,
+      platform::is_cpu_place(ctx.GetPlace()),
+      true,
       platform::errors::InvalidArgument("This kernel only runs on CPU."));
   // UNDERSTAND: check shape src(B, C), index(B, K), out should also be (B, K)
   const auto batch_size = index.dims()[0];
   const auto num_take = index.dims()[1];
   const auto array_dims = array.dims();
   const auto idx_dims = index.dims();
-  PADDLE_ENFORCE_EQ(idx_dims.size(), 2,
+  PADDLE_ENFORCE_EQ(idx_dims.size(),
+                    2,
                     platform::errors::InvalidArgument(
                         "index of CPUTakeAlongD1 should be 2D. "
                         "But received shape = [%s] and dimension is %d.",
-                        idx_dims, idx_dims.size()));
-  PADDLE_ENFORCE_EQ(array_dims.size(), 2,
+                        idx_dims,
+                        idx_dims.size()));
+  PADDLE_ENFORCE_EQ(array_dims.size(),
+                    2,
                     platform::errors::InvalidArgument(
                         "array of CPUTakeAlongD1 should be 2D. "
                         "But received shape = [%s] and dimension is %d.",
-                        array_dims, array_dims.size()));
-  PADDLE_ENFORCE_EQ(idx_dims[0], array_dims[0],
+                        array_dims,
+                        array_dims.size()));
+  PADDLE_ENFORCE_EQ(idx_dims[0],
+                    array_dims[0],
                     platform::errors::InvalidArgument(
                         "The first dimension of index and array of "
                         "CPUTakeAlongD1 should be equal. "
                         "But received index shape = [%s], array shape = [%s], "
                         "and the first dimensions are %d and %d.",
-                        idx_dims, array_dims, idx_dims[0], array_dims[0]));
+                        idx_dims,
+                        array_dims,
+                        idx_dims[0],
+                        array_dims[0]));
   PADDLE_ENFORCE_EQ(
-      idx_dims, value->dims(),
+      idx_dims,
+      value->dims(),
       platform::errors::InvalidArgument(
           "index and array of CPUTakeAlongD1 should have the same shape. "
           "But received index shape = [%s], array shape = [%s].",
-          idx_dims, value->dims()));
+          idx_dims,
+          value->dims()));
 
   // UNDERSTAND: no allocations here
   const T* p_array = array.data<T>();
@@ -106,40 +118,51 @@ static void CPUTakeAlongD1(const platform::DeviceContext& ctx,
 // indices, scatter is done in += way.
 template <typename T>
 static void CPUPutAlongD1(const platform::DeviceContext& ctx,
-                          framework::Tensor* array,
-                          const framework::Tensor& index,
-                          const framework::Tensor& value) {
+                          phi::DenseTensor* array,
+                          const phi::DenseTensor& index,
+                          const phi::DenseTensor& value) {
   PADDLE_ENFORCE_EQ(
-      platform::is_cpu_place(ctx.GetPlace()), true,
+      platform::is_cpu_place(ctx.GetPlace()),
+      true,
       platform::errors::InvalidArgument("This kernel only runs on CPU."));
   // UNDERSTAND: check shape src(B, C), index(B, K), out should also be (B, K)
   const auto batch_size = index.dims()[0];
   const auto num_put = index.dims()[1];
   auto array_dims = array->dims();
   auto idx_dims = index.dims();
-  PADDLE_ENFORCE_EQ(idx_dims.size(), 2,
+  PADDLE_ENFORCE_EQ(idx_dims.size(),
+                    2,
                     platform::errors::InvalidArgument(
                         "index of CPUPutAlongD1 should be 2D. "
                         "But received shape = [%s] and dimension is %d.",
-                        idx_dims, idx_dims.size()));
-  PADDLE_ENFORCE_EQ(array_dims.size(), 2,
+                        idx_dims,
+                        idx_dims.size()));
+  PADDLE_ENFORCE_EQ(array_dims.size(),
+                    2,
                     platform::errors::InvalidArgument(
                         "array of CPUPutAlongD1 should be 2D. "
                         "But received shape = [%s] and dimension is %d.",
-                        array_dims, array_dims.size()));
-  PADDLE_ENFORCE_EQ(idx_dims[0], array_dims[0],
+                        array_dims,
+                        array_dims.size()));
+  PADDLE_ENFORCE_EQ(idx_dims[0],
+                    array_dims[0],
                     platform::errors::InvalidArgument(
                         "The first dimension of index and array of "
                         "CPUPutAlongD1 should be equal. "
                         "But received index shape = [%s], array shape = [%s], "
                         "and the first dimensions are %d and %d.",
-                        idx_dims, array_dims, idx_dims[0], array_dims[0]));
+                        idx_dims,
+                        array_dims,
+                        idx_dims[0],
+                        array_dims[0]));
   PADDLE_ENFORCE_EQ(
-      idx_dims, value.dims(),
+      idx_dims,
+      value.dims(),
       platform::errors::InvalidArgument(
           "index and array of CPUPutAlongD1 should have the same shape. "
           "But received index shape = [%s], array shape = [%s].",
-          idx_dims, value.dims()));
+          idx_dims,
+          value.dims()));
 
   // UNDERSTAND: no allocations here
   T* p_array = array->data<T>();
@@ -164,8 +187,8 @@ static void CPUPutAlongD1(const platform::DeviceContext& ctx,
 // logits by a float max, here 1e20
 template <typename T>
 static void compute_remove_accidental_hits(const platform::DeviceContext& ctx,
-                                           framework::Tensor* sampled_logits,
-                                           const framework::Tensor& samples,
+                                           phi::DenseTensor* sampled_logits,
+                                           const phi::DenseTensor& samples,
                                            const int num_true) {
   const auto batch_size = sampled_logits->dims()[0];
   const auto num_sampled_classes = sampled_logits->dims()[1];
@@ -185,24 +208,27 @@ static void compute_remove_accidental_hits(const platform::DeviceContext& ctx,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class SampleLogitsKernel : public framework::OpKernel<T> {
  public:
-  using Tensor = framework::Tensor;
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_cpu_place(context.GetPlace()), true,
+        platform::is_cpu_place(context.GetPlace()),
+        true,
         platform::errors::InvalidArgument("this kernel only runs on cpu."));
     VLOG(3) << "Enter SampleLogitsKernel";
     // get necessary inputs
-    const Tensor* logits = context.Input<Tensor>("Logits");
-    const Tensor* labels = context.Input<Tensor>("Labels");
+    const phi::DenseTensor* logits = context.Input<phi::DenseTensor>("Logits");
+    const phi::DenseTensor* labels = context.Input<phi::DenseTensor>("Labels");
 
     // get necessary outputs
-    Tensor* samples = context.Output<Tensor>("Samples");
-    Tensor* probabilities = context.Output<Tensor>("Probabilities");
-    Tensor* sampled_logits = context.Output<Tensor>("SampledLogits");
-    Tensor* sampled_labels = context.Output<Tensor>("SampledLabels");
+    phi::DenseTensor* samples = context.Output<phi::DenseTensor>("Samples");
+    phi::DenseTensor* probabilities =
+        context.Output<phi::DenseTensor>("Probabilities");
+    phi::DenseTensor* sampled_logits =
+        context.Output<phi::DenseTensor>("SampledLogits");
+    phi::DenseTensor* sampled_labels =
+        context.Output<phi::DenseTensor>("SampledLabels");
 
     // shapes
     const auto batch_size = logits->dims()[0];
@@ -219,8 +245,7 @@ class SampleLogitsKernel : public framework::OpKernel<T> {
         context.Attr<bool>("remove_accidental_hits");
 
     // device contexts
-    auto& dev_ctx =
-        context.template device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = context.template device_context<phi::CPUContext>();
 
     // UNDERSTAND: allocate memories for temporaries
     sampled_logits->mutable_data<T>(samples_dim, context.GetPlace());
@@ -233,35 +258,41 @@ class SampleLogitsKernel : public framework::OpKernel<T> {
     }
 
     if (use_customized_samples) {
-      const Tensor* customized_samples =
-          context.Input<Tensor>("CustomizedSamples");
-      const Tensor* customized_probabilities =
-          context.Input<Tensor>("CustomizedProbabilities");
-      PADDLE_ENFORCE_EQ(customized_samples, samples,
-                        platform::errors::InvalidArgument(
-                            "CustomizedSamples must be the same Tensor with "
-                            "Samples when use_customized_samples = True"));
+      const phi::DenseTensor* customized_samples =
+          context.Input<phi::DenseTensor>("CustomizedSamples");
+      const phi::DenseTensor* customized_probabilities =
+          context.Input<phi::DenseTensor>("CustomizedProbabilities");
       PADDLE_ENFORCE_EQ(
-          customized_probabilities, probabilities,
+          customized_samples,
+          samples,
           platform::errors::InvalidArgument(
-              "CustomizedProbabilities must be the same Tensor with "
+              "CustomizedSamples must be the same phi::DenseTensor with "
+              "Samples when use_customized_samples = True"));
+      PADDLE_ENFORCE_EQ(
+          customized_probabilities,
+          probabilities,
+          platform::errors::InvalidArgument(
+              "CustomizedProbabilities must be the same phi::DenseTensor with "
               "Probabilities when use_customized_samples = True"));
     } else {
       samples->mutable_data<int64_t>(context.GetPlace());
       probabilities->mutable_data<T>(samples_dim, context.GetPlace());
       // UNDERSTAND: sampling
       const auto seed = context.Attr<int>("seed");
-      auto sampler_with_prob =
-          math::SampleWithProb<platform::CPUDeviceContext, T>();
-      sampler_with_prob(dev_ctx, math::LogUniformSampler(num_classes, seed),
-                        num_samples, labels, samples, probabilities);
+      auto sampler_with_prob = math::SampleWithProb<phi::CPUContext, T>();
+      sampler_with_prob(dev_ctx,
+                        math::LogUniformSampler(num_classes, seed),
+                        num_samples,
+                        labels,
+                        samples,
+                        probabilities);
     }
 
     // UNDERSTAND: gather sampled logits and remove accidental hits if needed
     CPUTakeAlongD1<T>(dev_ctx, *logits, *samples, sampled_logits);
     if (remove_accidental_hits) {
-      compute_remove_accidental_hits<T>(dev_ctx, sampled_logits, *samples,
-                                        num_true);
+      compute_remove_accidental_hits<T>(
+          dev_ctx, sampled_logits, *samples, num_true);
     }
 
     // subtracted sampled logits with logQ(y|x)
@@ -273,20 +304,21 @@ class SampleLogitsKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class SampleLogitsGradKernel : public framework::OpKernel<T> {
  public:
-  using Tensor = framework::Tensor;
   void Compute(const framework::ExecutionContext& context) const override {
-    auto logits_grad = context.Output<Tensor>(framework::GradVarName("Logits"));
-    const Tensor* samples = context.Input<Tensor>("Samples");
-    const Tensor* sampled_logits_grad =
-        context.Input<Tensor>(framework::GradVarName("SampledLogits"));
+    auto logits_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("Logits"));
+    const phi::DenseTensor* samples =
+        context.Input<phi::DenseTensor>("Samples");
+    const phi::DenseTensor* sampled_logits_grad =
+        context.Input<phi::DenseTensor>(
+            framework::GradVarName("SampledLogits"));
     logits_grad->mutable_data<T>(context.GetPlace());
 
-    auto& dev_ctx =
-        context.template device_context<platform::CPUDeviceContext>();
-    phi::funcs::SetConstant<platform::CPUDeviceContext, T> set_zero;
+    auto& dev_ctx = context.template device_context<phi::CPUContext>();
+    phi::funcs::SetConstant<phi::CPUContext, T> set_zero;
     set_zero(dev_ctx, logits_grad, static_cast<T>(0));
 
     // UNDERSTAND: scatter it back to logit_grad

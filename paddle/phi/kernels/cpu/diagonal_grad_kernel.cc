@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/diagonal_grad_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
@@ -21,7 +22,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void DiagonalGradKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
+                        const DenseTensor& x UNUSED,
                         const DenseTensor& out_grad,
                         int offset,
                         int axis1,
@@ -37,8 +38,10 @@ void DiagonalGradKernel(const Context& dev_ctx,
   auto dx_dim_size = dx_dim.size();
 
   const int64_t offset_ = offset;
-  int64_t axis1_ = axis1 < 0 ? dx_dim_size + axis1 : axis1;
-  int64_t axis2_ = axis2 < 0 ? dx_dim_size + axis2 : axis2;
+  int64_t axis1_ =
+      static_cast<int64_t>(axis1 < 0 ? dx_dim_size + axis1 : axis1);
+  int64_t axis2_ =
+      static_cast<int64_t>(axis2 < 0 ? dx_dim_size + axis2 : axis2);
 
   std::vector<int64_t> dout_stride = funcs::ComputeDimStride(dout_dim);
   std::vector<int64_t> dx_stride = funcs::ComputeDimStride(dx_dim);
@@ -89,4 +92,7 @@ PD_REGISTER_KERNEL(diagonal_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

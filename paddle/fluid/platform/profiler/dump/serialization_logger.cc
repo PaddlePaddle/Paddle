@@ -9,9 +9,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "glog/logging.h"
-
 #include "paddle/fluid/platform/profiler/dump/serialization_logger.h"
+
+#include "glog/logging.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
 #include "paddle/fluid/platform/profiler/extra_info.h"
 #include "paddle/fluid/platform/profiler/utils.h"
@@ -20,19 +20,17 @@ namespace paddle {
 namespace platform {
 
 static const char* kDefaultFilename = "pid_%s_time_%s.paddle_trace.pb";
-static const char* version = "1.0.0";
-static uint32_t span_indx = 0;
 
 static std::string DefaultFileName() {
   auto pid = GetProcessId();
-  return string_format(std::string(kDefaultFilename), pid,
-                       GetStringFormatLocalTime().c_str());
+  return string_format(
+      std::string(kDefaultFilename), pid, GetStringFormatLocalTime().c_str());
 }
 
 void SerializationLogger::OpenFile() {
-  output_file_stream_.open(filename_, std::ofstream::out |
-                                          std::ofstream::trunc |
-                                          std::ofstream::binary);
+  output_file_stream_.open(
+      filename_,
+      std::ofstream::out | std::ofstream::trunc | std::ofstream::binary);
   if (!output_file_stream_) {
     LOG(WARNING) << "Unable to open file for writing profiling data."
                  << std::endl;
@@ -40,41 +38,73 @@ void SerializationLogger::OpenFile() {
     LOG(INFO) << "writing profiling data to " << filename_ << std::endl;
   }
   node_trees_proto_ = new NodeTreesProto();
-  node_trees_proto_->set_version(std::string(version));
-  node_trees_proto_->set_span_indx(span_indx++);
 }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+void SerializationLogger::LogDeviceProperty(
+    const std::map<uint32_t, gpuDeviceProp>& device_property_map) {
+  for (const auto& item : device_property_map) {
+    const gpuDeviceProp& device_property = item.second;
+    DevicePropertyProto* device_property_proto =
+        node_trees_proto_->add_device_property();
+    device_property_proto->set_id(item.first);
+    device_property_proto->set_name(device_property.name);
+    device_property_proto->set_total_global_memory(
+        device_property.totalGlobalMem);
+    device_property_proto->set_compute_major(device_property.major);
+    device_property_proto->set_compute_minor(device_property.minor);
+    device_property_proto->set_sm_count(device_property.multiProcessorCount);
+#if defined(PADDLE_WITH_CUDA)
+    device_property_proto->set_max_threads_per_block(
+        device_property.maxThreadsPerBlock);
+    device_property_proto->set_max_threads_per_multiprocessor(
+        device_property.maxThreadsPerMultiProcessor);
+    device_property_proto->set_regs_per_block(device_property.regsPerBlock);
+    device_property_proto->set_regs_per_multiprocessor(
+        device_property.regsPerMultiprocessor);
+    device_property_proto->set_warp_size(device_property.warpSize);
+    device_property_proto->set_shared_memory_per_block(
+        device_property.sharedMemPerBlock);
+    device_property_proto->set_shared_memory_per_multiprocessor(
+        device_property.sharedMemPerMultiprocessor);
+    device_property_proto->set_shared_memory_per_block_optin(
+        device_property.sharedMemPerBlockOptin);
+#endif
+  }
+}
+#endif
 
 void SerializationLogger::LogNodeTrees(const NodeTrees& node_trees) {
   // dump the whole tree into file
   const std::map<uint64_t, std::vector<HostTraceEventNode*>>
       thread2host_event_nodes = node_trees.Traverse(true);
 
-  for (auto it = thread2host_event_nodes.begin();
-       it != thread2host_event_nodes.end(); ++it) {
+  for (const auto& event_node : thread2host_event_nodes) {
     // 1. order every node an index, every node a parent
     std::map<HostTraceEventNode*, int64_t> node_index_map;
     std::map<HostTraceEventNode*, int64_t> node_parent_map;
     int64_t index = 0;
-    for (auto hostnode = it->second.begin(); hostnode != it->second.end();
-         ++hostnode) {
-      node_index_map[(*hostnode)] = index;  // order each node
+    for (auto hostnode : event_node.second) {
+      node_index_map[hostnode] = index;  // order each node
       index++;
     }
-    node_parent_map[(*(it->second.begin()))] = -1;  // root's parent set as -1
-    for (auto hostnode = it->second.begin(); hostnode != it->second.end();
-         ++hostnode) {
-      for (auto childnode = (*hostnode)->GetChildren().begin();
-           childnode != (*hostnode)->GetChildren().end(); ++childnode) {
+    node_parent_map[(*(event_node.second.begin()))] =
+        -1;  // root's parent set as -1
+    for (auto hostnode : event_node.second) {
+      for (auto childnode = hostnode->GetChildren().begin();
+           childnode != hostnode->GetChildren().end();
+           ++childnode) {
         node_parent_map[(*childnode)] =
-            node_index_map[(*hostnode)];  // mark each node's parent
+            node_index_map[hostnode];  // mark each node's parent
       }
     }
 
     // 2. serialize host node, runtime node and device node
     current_thread_node_tree_proto_ =
         node_trees_proto_->add_thread_trees();  // add ThreadNodeTreeProto
-    current_thread_node_tree_proto_->set_thread_id(it->first);
-    for (auto hostnode = it->second.begin(); hostnode != it->second.end();
+    current_thread_node_tree_proto_->set_thread_id(event_node.first);
+    for (auto hostnode = event_node.second.begin();
+         hostnode != event_node.second.end();
          ++hostnode) {
       HostTraceEventNodeProto* host_node_proto =
           current_thread_node_tree_proto_
@@ -85,18 +115,15 @@ void SerializationLogger::LogNodeTrees(const NodeTrees& node_trees) {
           host_node_proto;       // set current HostTraceEventNodeProto
       (*hostnode)->LogMe(this);  // fill detail information
 
-      for (auto runtimenode = (*hostnode)->GetRuntimeTraceEventNodes().begin();
-           runtimenode != (*hostnode)->GetRuntimeTraceEventNodes().end();
-           ++runtimenode) {
+      for (auto runtimenode : (*hostnode)->GetRuntimeTraceEventNodes()) {
         CudaRuntimeTraceEventNodeProto* runtime_node_proto =
             current_host_trace_event_node_proto_
                 ->add_runtime_nodes();  // add CudaRuntimeTraceEventNodeProto
         current_runtime_trace_event_node_proto_ =
-            runtime_node_proto;  // set current CudaRuntimeTraceEventNodeProto
-        (*runtimenode)->LogMe(this);  // fill detail information
-        for (auto devicenode =
-                 (*runtimenode)->GetDeviceTraceEventNodes().begin();
-             devicenode != (*runtimenode)->GetDeviceTraceEventNodes().end();
+            runtime_node_proto;    // set current CudaRuntimeTraceEventNodeProto
+        runtimenode->LogMe(this);  // fill detail information
+        for (auto devicenode = runtimenode->GetDeviceTraceEventNodes().begin();
+             devicenode != runtimenode->GetDeviceTraceEventNodes().end();
              ++devicenode) {
           DeviceTraceEventNodeProto* device_node_proto =
               current_runtime_trace_event_node_proto_
@@ -106,8 +133,32 @@ void SerializationLogger::LogNodeTrees(const NodeTrees& node_trees) {
           (*devicenode)->LogMe(this);  // fill detail information
         }
       }
+      for (auto memnode : (*hostnode)->GetMemTraceEventNodes()) {
+        MemTraceEventNodeProto* mem_node_proto =
+            current_host_trace_event_node_proto_->add_mem_nodes();
+        current_mem_trace_event_node_proto_ = mem_node_proto;
+        memnode->LogMe(this);
+      }
     }
   }
+}
+
+void SerializationLogger::LogMemTraceEventNode(
+    const MemTraceEventNode& mem_node) {
+  MemTraceEventProto* mem_trace_event = new MemTraceEventProto();
+  mem_trace_event->set_timestamp_ns(mem_node.TimeStampNs());
+  mem_trace_event->set_type(
+      static_cast<TracerMemEventTypeProto>(mem_node.Type()));
+  mem_trace_event->set_addr(mem_node.Addr());
+  mem_trace_event->set_process_id(mem_node.ProcessId());
+  mem_trace_event->set_thread_id(mem_node.ThreadId());
+  mem_trace_event->set_increase_bytes(mem_node.IncreaseBytes());
+  mem_trace_event->set_place(mem_node.Place());
+  mem_trace_event->set_current_allocated(mem_node.CurrentAllocated());
+  mem_trace_event->set_current_reserved(mem_node.CurrentReserved());
+  mem_trace_event->set_peak_allocated(mem_node.PeakAllocated());
+  mem_trace_event->set_peak_reserved(mem_node.PeakReserved());
+  current_mem_trace_event_node_proto_->set_allocated_mem_event(mem_trace_event);
 }
 
 void SerializationLogger::LogHostTraceEventNode(
@@ -122,6 +173,54 @@ void SerializationLogger::LogHostTraceEventNode(
   host_trace_event->set_thread_id(host_node.ThreadId());
   current_host_trace_event_node_proto_->set_allocated_host_trace_event(
       host_trace_event);
+  OperatorSupplementEventNode* op_supplement_event_node =
+      host_node.GetOperatorSupplementEventNode();
+  if (op_supplement_event_node != nullptr) {
+    current_op_supplement_event_node_proto_ =
+        current_host_trace_event_node_proto_->add_op_supplement_nodes();
+    OperatorSupplementEventProto* op_supplement_event_proto =
+        new OperatorSupplementEventProto();
+    op_supplement_event_proto->set_op_type(op_supplement_event_node->Name());
+    op_supplement_event_proto->set_timestamp_ns(
+        op_supplement_event_node->TimeStampNs());
+    op_supplement_event_proto->set_process_id(
+        op_supplement_event_node->ProcessId());
+    op_supplement_event_proto->set_thread_id(
+        op_supplement_event_node->ThreadId());
+    op_supplement_event_proto->set_callstack(
+        op_supplement_event_node->CallStack());
+    op_supplement_event_proto->set_op_id(op_supplement_event_node->OpId());
+
+    OperatorSupplementEventProto::input_shape_proto* input_shape_proto =
+        op_supplement_event_proto->mutable_input_shapes();
+    for (auto& item : op_supplement_event_node->InputShapes()) {
+      input_shape_proto->add_key(item.first);
+      OperatorSupplementEventProto::input_shape_proto::shape_vector*
+          shape_vectors_proto = input_shape_proto->add_shape_vecs();
+      auto shape_vectors = item.second;
+      for (auto shape_vector : shape_vectors) {
+        OperatorSupplementEventProto::input_shape_proto::shape_vector::shape*
+            shape_proto = shape_vectors_proto->add_shapes();
+        for (auto& shape_item : shape_vector) {
+          shape_proto->add_size(shape_item);
+        }
+      }
+    }
+
+    OperatorSupplementEventProto::dtype_proto* dtype_proto =
+        op_supplement_event_proto->mutable_dtypes();
+    for (auto& item : op_supplement_event_node->Dtypes()) {
+      dtype_proto->add_key(item.first);
+      OperatorSupplementEventProto::dtype_proto::dtype_vector*
+          dtype_vector_proto = dtype_proto->add_dtype_vecs();
+      auto dtype_vector = item.second;
+      for (auto& dtype : dtype_vector) {
+        dtype_vector_proto->add_dtype(dtype);
+      }
+    }
+    current_op_supplement_event_node_proto_->set_allocated_op_supplement_event(
+        op_supplement_event_proto);
+  }
 }
 
 void SerializationLogger::LogRuntimeTraceEventNode(
@@ -186,6 +285,9 @@ void SerializationLogger::HandleTypeKernel(
   kernel_info->set_queued(info.queued);
   kernel_info->set_submitted(info.submitted);
   kernel_info->set_completed(info.completed);
+  kernel_info->set_blocks_per_sm(info.blocks_per_sm);
+  kernel_info->set_warps_per_sm(info.warps_per_sm);
+  kernel_info->set_occupancy(info.occupancy);
   // binding
   device_trace_event->set_allocated_kernel_info(kernel_info);
   current_device_trace_event_node_proto_->set_allocated_device_event(
@@ -243,13 +345,19 @@ void SerializationLogger::HandleTypeMemset(
       device_trace_event);
 }
 
-void SerializationLogger::LogMetaInfo(
+void SerializationLogger::LogExtraInfo(
     const std::unordered_map<std::string, std::string> extra_info) {
   for (const auto& kv : extra_info) {
     ExtraInfoMap* extra_info_map = node_trees_proto_->add_extra_info();
     extra_info_map->set_key(kv.first);
     extra_info_map->set_value(kv.second);
   }
+}
+
+void SerializationLogger::LogMetaInfo(const std::string& version,
+                                      uint32_t span_indx) {
+  node_trees_proto_->set_version(version);
+  node_trees_proto_->set_span_indx(span_indx);
 }
 
 SerializationLogger::SerializationLogger(const std::string& filename) {
@@ -263,7 +371,7 @@ SerializationLogger::SerializationLogger(const char* filename_cstr) {
   OpenFile();
 }
 
-SerializationLogger::~SerializationLogger() {
+SerializationLogger::~SerializationLogger() {  // NOLINT
   if (!output_file_stream_) {
     delete node_trees_proto_;
     return;

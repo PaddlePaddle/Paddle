@@ -14,25 +14,23 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/memory/malloc.h"
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
-#include "paddle/phi/core/storage.h"
 
 namespace paddle {
 namespace experimental {
 
 class DefaultAllocator : public phi::Allocator {
  public:
-  explicit DefaultAllocator(const paddle::platform::Place& place)
-      : place_(place) {}
+  explicit DefaultAllocator(const phi::Place& place) : place_(place) {}
 
   AllocationPtr Allocate(size_t bytes_size) override {
-    return memory::Alloc(place_, bytes_size);
+    return phi::memory_utils::Alloc(place_, bytes_size);
   }
 
  private:
-  paddle::platform::Place place_;
+  phi::Place place_;
 };
 
 }  // namespace experimental

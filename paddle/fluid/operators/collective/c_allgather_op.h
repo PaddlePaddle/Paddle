@@ -25,31 +25,30 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_GLOO)
 #include <gloo/allgather.h>
+
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CAllGatherOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_GLOO)
-    auto in = ctx.Input<framework::Tensor>("X");
-    auto out = ctx.Output<framework::Tensor>("Out");
-    framework::DDim out_dims = in->dims();
+    auto in = ctx.Input<phi::DenseTensor>("X");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
     auto place = ctx.GetPlace();
-
     auto gloo = paddle::framework::GlooWrapper::GetInstance();
     auto nranks = gloo->Size();
-    out_dims[0] *= nranks;
     int64_t send_numel = in->numel();
     const T* send_buff = in->data<T>();
-    T* recv_buff = out->mutable_data<T>(out_dims, place);
+    T* recv_buff = out->mutable_data<T>(place);
 
     PADDLE_ENFORCE_EQ(
-        gloo->IsInitialized(), true,
+        gloo->IsInitialized(),
+        true,
         platform::errors::PreconditionNotMet(
             "You must initialize the gloo environment first to use it."));
     gloo::AllgatherOptions opts(gloo->GetContext());

@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/repeated_fc_relu_fuse_pass.h"
-
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/framework/ir/repeated_fc_relu_fuse_pass.h"
 
 namespace paddle {
 namespace framework {
@@ -51,23 +51,27 @@ void TestMain(int num_fc) {
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   auto pass = PassRegistry::Instance().Get("repeated_fc_relu_fuse_pass");
-  int num_nodes_before = graph->Nodes().size();
+  int num_nodes_before = static_cast<int>(graph->Nodes().size());
   int num_fc_nodes_before = GetNumOpNodes(graph, "fc");
   VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
-  int num_nodes_after = graph->Nodes().size();
+  int num_nodes_after = static_cast<int>(graph->Nodes().size());
   int num_fused_nodes_after = GetNumOpNodes(graph, "fusion_repeated_fc_relu");
   VLOG(3) << DebugString(graph);
 
   // Delete (num_fc_nodes_before - 1) fc ops
   PADDLE_ENFORCE_EQ(
-      num_nodes_before - (num_fc_nodes_before - 1) + 1, num_nodes_after,
+      num_nodes_before - (num_fc_nodes_before - 1) + 1,
+      num_nodes_after,
       platform::errors::InvalidArgument(
           "num_nodes_before = %d, num_fc_nodes_before = %d, num_nodes_after = "
           "%d.",
-          num_nodes_before, num_fc_nodes_before, num_nodes_after));
-  PADDLE_ENFORCE_EQ(num_fused_nodes_after, 1,
+          num_nodes_before,
+          num_fc_nodes_before,
+          num_nodes_after));
+  PADDLE_ENFORCE_EQ(num_fused_nodes_after,
+                    1,
                     platform::errors::InvalidArgument(
                         "num_fused_nodes_after = %d.", num_fused_nodes_after));
 }

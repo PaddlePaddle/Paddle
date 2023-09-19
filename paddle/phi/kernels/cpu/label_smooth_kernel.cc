@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/label_smooth_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -22,7 +23,7 @@ namespace phi {
 template <typename T, typename Context>
 void LabelSmoothKernel(const Context& ctx,
                        const DenseTensor& label,
-                       paddle::optional<const DenseTensor&> prior_dist,
+                       const paddle::optional<DenseTensor>& prior_dist,
                        float epsilon,
                        DenseTensor* out) {
   auto label_dim = label.dims()[label.dims().size() - 1];
@@ -36,10 +37,12 @@ void LabelSmoothKernel(const Context& ctx,
       eigen_out.device(dev) =
           static_cast<T>(1 - epsilon) * eigen_in +
           static_cast<T>(epsilon) *
-              dist.broadcast(Eigen::DSizes<int, 1>(label.numel() / label_dim));
+              dist.broadcast(Eigen::DSizes<int, 1>(
+                  static_cast<int>(label.numel() / label_dim)));
     } else {
-      eigen_out.device(dev) = static_cast<T>(1 - epsilon) * eigen_in +
-                              static_cast<T>(epsilon / label_dim);
+      eigen_out.device(dev) =
+          static_cast<T>(1 - epsilon) * eigen_in +
+          static_cast<T>(epsilon / static_cast<float>(label_dim));
     }
   }
 }

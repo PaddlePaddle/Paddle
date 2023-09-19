@@ -26,6 +26,12 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   rules_["conv2d"]["ResidualData"] = ScaleAlgo::KL;
   rules_["conv2d"]["Output"] = ScaleAlgo::KL;
 
+  rules_["fused_conv2d"]["Input"] = ScaleAlgo::KL;
+  rules_["fused_conv2d"]["Filter"] = ScaleAlgo::MAX_CH;
+  rules_["fused_conv2d"]["Bias"] = ScaleAlgo::NONE;  // do not compute scale
+  rules_["fused_conv2d"]["ResidualData"] = ScaleAlgo::KL;
+  rules_["fused_conv2d"]["Output"] = ScaleAlgo::KL;
+
   rules_["pool2d"]["X"] = ScaleAlgo::KL;
   rules_["pool2d"]["Out"] = ScaleAlgo::KL;
 
@@ -41,9 +47,17 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   // input data and assign to Quantize and Dequantize scale.
   rules_["transpose2"]["X"] = ScaleAlgo::KL;
   rules_["transpose2"]["Out"] = ScaleAlgo::NONE;
+  rules_["fused_transpose"]["X"] = ScaleAlgo::KL;
+  rules_["fused_transpose"]["Out"] = ScaleAlgo::NONE;
 
   rules_["slice"]["Input"] = ScaleAlgo::KL;
   rules_["slice"]["Out"] = ScaleAlgo::NONE;
+
+  rules_["shape"]["Input"] = ScaleAlgo::KL;
+  rules_["shape"]["Out"] = ScaleAlgo::NONE;
+
+  rules_["split"]["X"] = ScaleAlgo::KL;
+  rules_["split"]["Out"] = ScaleAlgo::NONE;
 
   rules_["fc"]["Input"] = ScaleAlgo::KL;
   rules_["fc"]["W"] = ScaleAlgo::MAX_CH_T;
@@ -61,6 +75,10 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   rules_["elementwise_mul"]["X"] = ScaleAlgo::KL;
   rules_["elementwise_mul"]["Y"] = ScaleAlgo::KL;
   rules_["elementwise_mul"]["Out"] = ScaleAlgo::KL;
+
+  rules_["elementwise_sub"]["X"] = ScaleAlgo::KL;
+  rules_["elementwise_sub"]["Y"] = ScaleAlgo::KL;
+  rules_["elementwise_sub"]["Out"] = ScaleAlgo::KL;
 
   // Reshape2 does not perform calculation on the data and shapes are not
   // changed. Scale is calculated on input data and assign to Quantize and

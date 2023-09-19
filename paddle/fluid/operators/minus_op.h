@@ -20,19 +20,20 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class MinusKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* left_tensor = context.Input<framework::Tensor>("X");
-    auto* right_tensor = context.Input<framework::Tensor>("Y");
-    auto* out_tensor = context.Output<framework::Tensor>("Out");
+    auto* left_tensor = context.Input<phi::DenseTensor>("X");
+    auto* right_tensor = context.Input<phi::DenseTensor>("Y");
+    auto* out_tensor = context.Output<phi::DenseTensor>("Out");
 
     out_tensor->mutable_data<T>(context.GetPlace());
     auto& dev =
         *context.template device_context<DeviceContext>().eigen_device();
     EigenSub<std::decay_t<decltype(dev)>, T>::Eval(
-        dev, framework::EigenVector<T>::Flatten(*out_tensor),
+        dev,
+        framework::EigenVector<T>::Flatten(*out_tensor),
         framework::EigenVector<T>::Flatten(*left_tensor),
         framework::EigenVector<T>::Flatten(*right_tensor));
   }

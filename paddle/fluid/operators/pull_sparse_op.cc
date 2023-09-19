@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/pull_sparse_op.h"
+
 #include <string>
 
 namespace paddle {
@@ -22,10 +23,12 @@ class PullSparseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_GE(ctx->Inputs("Ids").size(), 1UL,
+    PADDLE_ENFORCE_GE(ctx->Inputs("Ids").size(),
+                      1UL,
                       platform::errors::InvalidArgument(
                           "Input(Ids) of PullSparseOp can not be null"));
-    PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
+    PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(),
+                      1UL,
                       platform::errors::InvalidArgument(
                           "Output(Out) of PullSparseOp can not be null"));
 
@@ -38,7 +41,8 @@ class PullSparseOp : public framework::OperatorWithKernel {
     for (size_t i = 0; i < n_ids; ++i) {
       const auto ids_dims = all_ids_dim[i];
       int ids_rank = ids_dims.size();
-      PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1], 1,
+      PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1],
+                        1,
                         platform::errors::InvalidArgument(
                             "Shape error in %lu id, the last dimension of "
                             " the 'Ids' tensor must be 1.",
@@ -54,10 +58,9 @@ class PullSparseOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.device_context());
+    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
   }
 };
 
@@ -123,20 +126,24 @@ class PushSparseOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
 };
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(pull_sparse, ops::PullSparseOp, ops::PullSparseOpMaker,
+REGISTER_OPERATOR(pull_sparse,
+                  ops::PullSparseOp,
+                  ops::PullSparseOpMaker,
                   ops::PushSparseOpMaker<paddle::framework::OpDesc>,
                   ops::PushSparseOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(push_sparse, ops::PushSparseOp);
-REGISTER_OP_CPU_KERNEL(pull_sparse, ops::PullSparseCPUKernel<float>)
-REGISTER_OP_CPU_KERNEL(push_sparse, ops::PushSparseCPUKernel<float>)
+PD_REGISTER_STRUCT_KERNEL(
+    pull_sparse, CPU, ALL_LAYOUT, ops::PullSparseCPUKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    push_sparse, CPU, ALL_LAYOUT, ops::PushSparseCPUKernel, float) {}

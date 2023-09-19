@@ -27,6 +27,9 @@ void DotKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out) {
+  if (out->numel() <= 0) {
+    return;
+  }
   auto const *x_ptr = x.data<T>(), *x_ptr_ = &x_ptr[0];
   auto const *y_ptr = y.data<T>(), *y_ptr_ = &y_ptr[0];
   T* z = dev_ctx.template Alloc<T>(out);
@@ -35,7 +38,13 @@ void DotKernel(const Context& dev_ctx,
   // B pairs along the way where B is the dimension of the least ordered axis
   auto&& d = x.dims();
   auto const N = x.numel();
-  auto const B = d[d.size() - 1];
+
+  // prevent div 0
+  auto const _B = d.size() == 0 ? 1 : d[d.size() - 1];
+  auto const B = _B != 0 ? _B : 1;
+
+  // initialize for N / B <= 0
+  z[0] = 0;
 
   for (int j = 0; j < N / B; j++) {
     T ss = 0;

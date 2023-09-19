@@ -9,8 +9,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/multihead_matmul_fuse_pass.h"  // NOLINT
 #include <gtest/gtest.h>
+
+#include "paddle/fluid/framework/ir/multihead_matmul_fuse_pass.h"  // NOLINT
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
@@ -18,9 +19,10 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void AddVarToScope(Scope* param_scope, const std::string& name,
+void AddVarToScope(Scope* param_scope,
+                   const std::string& name,
                    const DDim& dims) {
-  auto* tensor = param_scope->Var(name)->GetMutable<LoDTensor>();
+  auto* tensor = param_scope->Var(name)->GetMutable<phi::DenseTensor>();
   tensor->Resize(dims);
   tensor->mutable_data<float>(platform::CPUPlace());
 }
@@ -113,21 +115,24 @@ TEST(MultiHeadMatmulFusePass, basic) {
 
   auto pass = PassRegistry::Instance().Get("multihead_matmul_fuse_pass_v2");
   if (pass.get() == nullptr) LOG(INFO) << "asdfasdf";
-  int num_nodes_before = graph->Nodes().size();
+  int num_nodes_before = static_cast<int>(graph->Nodes().size());
   VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
-  int num_nodes_after = graph->Nodes().size();
+  int num_nodes_after = static_cast<int>(graph->Nodes().size());
   int num_fused_nodes_after = GetNumOpNodes(graph, "multihead_matmul");
   VLOG(3) << DebugString(graph);
 
   PADDLE_ENFORCE_EQ(
-      num_nodes_before, num_nodes_after + 39,
+      num_nodes_before,
+      num_nodes_after + 39,
       platform::errors::InvalidArgument(
           "After the multihead_matmul pass, The node num in graph "
           "should be %d, but the result is %d",
-          num_nodes_before - 39, num_nodes_after));
-  PADDLE_ENFORCE_EQ(num_fused_nodes_after, 1,
+          num_nodes_before - 39,
+          num_nodes_after));
+  PADDLE_ENFORCE_EQ(num_fused_nodes_after,
+                    1,
                     platform::errors::InvalidArgument(
                         "After the multihead_matmul pass, there should be one "
                         "multihead_matmul op, but the result is %d",

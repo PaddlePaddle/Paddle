@@ -16,67 +16,54 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace paddle {
 namespace distributed {
-
-class StartInterceptor : public Interceptor {
- public:
-  StartInterceptor(int64_t interceptor_id, TaskNode* node)
-      : Interceptor(interceptor_id, node) {
-    RegisterMsgHandle([this](const InterceptorMessage& msg) { NOP(msg); });
-  }
-
-  void NOP(const InterceptorMessage& msg) {
-    if (msg.message_type() == STOP) {
-      stop_ = true;
-      InterceptorMessage stop;
-      stop.set_message_type(STOP);
-      Send(1, stop);  // stop 1, compute
-      return;
-    }
-    std::cout << GetInterceptorId() << " recv msg from " << msg.src_id()
-              << std::endl;
-  }
-};
 
 TEST(ComputeInterceptor, Compute) {
   std::string carrier_id = "0";
   Carrier* carrier =
       GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
-  carrier->Init(0, {{0, 0}, {1, 0}, {2, 0}});
+  carrier->Init(0, {{SOURCE_ID, 0}, {0, 0}, {1, 0}, {SINK_ID, 0}});
 
   MessageBus* msg_bus = GlobalVal<MessageBus>::Create();
   msg_bus->Init(0, {{0, "127.0.0.0:0"}}, "");
 
   // NOTE: don't delete, otherwise interceptor will use undefined node
-  TaskNode* node_a = new TaskNode(0, 0, 0, 3, 0);  // role, rank, task_id
-  TaskNode* node_b = new TaskNode(0, 0, 1, 3, 0);
-  TaskNode* node_c = new TaskNode(0, 0, 2, 3, 0);
+  TaskNode* source =
+      new TaskNode(0, SOURCE_ID, 3);  // rank, task_id, max_run_times
+  TaskNode* node_a = new TaskNode(0, 0, 0, 3);
+  TaskNode* node_b = new TaskNode(0, 0, 1, 3);
+  TaskNode* sink = new TaskNode(0, SINK_ID, 3);
 
-  // a->b->c
+  // source->a->b->sink
+  source->AddDownstreamTask(0);
+  node_a->AddUpstreamTask(SOURCE_ID);
   node_a->AddDownstreamTask(1, 3);
   node_b->AddUpstreamTask(0, 3);
-  node_b->AddDownstreamTask(2);
-  node_c->AddUpstreamTask(1);
+  node_b->AddDownstreamTask(SINK_ID);
+  sink->AddUpstreamTask(1);
 
-  Interceptor* a =
-      carrier->SetInterceptor(0, std::make_unique<StartInterceptor>(0, node_a));
+  carrier->SetInterceptor(
+      SOURCE_ID, InterceptorFactory::Create("Source", SOURCE_ID, source));
+  carrier->SetInterceptor(0, InterceptorFactory::Create("Compute", 0, node_a));
   carrier->SetInterceptor(1, InterceptorFactory::Create("Compute", 1, node_b));
-  carrier->SetInterceptor(2, InterceptorFactory::Create("Compute", 2, node_c));
+  carrier->SetInterceptor(SINK_ID,
+                          InterceptorFactory::Create("Sink", SINK_ID, sink));
 
+  // start
   InterceptorMessage msg;
-  msg.set_message_type(DATA_IS_READY);
-  // test run three times
-  a->Send(1, msg);
-  a->Send(1, msg);
-  a->Send(1, msg);
+  msg.set_message_type(START);
+  msg.set_dst_id(SOURCE_ID);
+  carrier->EnqueueInterceptorMessage(msg);
 
   carrier->Wait();
   carrier->Release();

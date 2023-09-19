@@ -13,13 +13,14 @@
 // limitations under the License.
 
 #include <sstream>
-#include "gflags/gflags.h"
+
 #include "paddle/fluid/framework/commit.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/utils/flags.h"
 
 namespace paddle {
 
@@ -39,7 +40,7 @@ int PaddleDtypeSize(PaddleDType dtype) {
   }
 }
 
-PaddleBuf::PaddleBuf(PaddleBuf &&other)
+PaddleBuf::PaddleBuf(PaddleBuf &&other) noexcept
     : data_(other.data_),
       length_(other.length_),
       memory_owned_(other.memory_owned_) {
@@ -51,6 +52,7 @@ PaddleBuf::PaddleBuf(PaddleBuf &&other)
 PaddleBuf::PaddleBuf(const PaddleBuf &other) { *this = other; }
 
 PaddleBuf &PaddleBuf::operator=(const PaddleBuf &other) {
+  if (this == &other) return *this;
   if (!other.memory_owned_) {
     data_ = other.data_;
     length_ = other.length_;
@@ -72,7 +74,7 @@ PaddleBuf &PaddleBuf::operator=(const PaddleBuf &other) {
   return *this;
 }
 
-PaddleBuf &PaddleBuf::operator=(PaddleBuf &&other) {
+PaddleBuf &PaddleBuf::operator=(PaddleBuf &&other) noexcept {
   // only the buffer with external memory can be copied
   data_ = other.data_;
   length_ = other.length_;
@@ -107,7 +109,8 @@ void PaddleBuf::Reset(void *data, size_t length) {
 void PaddleBuf::Free() {
   if (memory_owned_ && data_) {
     PADDLE_ENFORCE_GT(
-        length_, 0UL,
+        length_,
+        0UL,
         platform::errors::PreconditionNotMet(
             "The memory used in PaddleBuf %d should be greater than 0",
             length_));
@@ -131,19 +134,18 @@ std::string get_version() {
   return ss.str();
 }
 
-std::string UpdateDllFlag(const char *name, const char *value) {
+void UpdateDllFlag(const char *name, const char *value) {
   std::string ret;
   LOG(WARNING)
       << "The function \"UpdateDllFlag\" is only used to update the flag "
          "on the Windows shared library";
-  ret = ::GFLAGS_NAMESPACE::SetCommandLineOption(name, value);
+  bool success = paddle::flags::SetFlagValue(name, value);
 
   PADDLE_ENFORCE_EQ(
-      ret.empty(), false,
+      success,
+      true,
       platform::errors::InvalidArgument(
           "Fail to update flag: %s, please make sure the flag exists.", name));
-  LOG(INFO) << ret;
-  return ret;
 }
 
 #ifdef PADDLE_WITH_CRYPTO
@@ -153,3 +155,7 @@ std::shared_ptr<framework::Cipher> MakeCipher(const std::string &config_file) {
 #endif
 
 }  // namespace paddle
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/capi/capi.h"
+#endif

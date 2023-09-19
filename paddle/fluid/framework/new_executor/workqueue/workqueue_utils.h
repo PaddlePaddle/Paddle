@@ -21,6 +21,7 @@
 #include <memory>
 #include <set>
 #include <string>
+
 #include "paddle/fluid/framework/new_executor/workqueue/events_waiter.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -81,7 +82,13 @@ class TaskTracker {
 
   ~TaskTracker() = default;
 
-  void AddCounter() { num_tasks_.fetch_add(1, std::memory_order_relaxed); }
+  void AddCounter() {
+    if (0 == num_tasks_.fetch_add(1, std::memory_order_relaxed)) {
+      if (notifier_ != nullptr) {
+        notifier_->CancelEvent();
+      }
+    }
+  }
 
   void SubCounter() {
     if (1 == num_tasks_.fetch_sub(1, std::memory_order_relaxed)) {

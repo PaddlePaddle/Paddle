@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -20,10 +21,8 @@ namespace paddle::operators::details {
 
 #ifdef PADDLE_WITH_CUDA
 template <>
-void* GetStream<platform::CUDADeviceContext>(
-    const framework::ExecutionContext& ctx) {
-  const auto& dev_ctx =
-      ctx.template device_context<platform::CUDADeviceContext>();
+void* GetStream<phi::GPUContext>(const framework::ExecutionContext& ctx) {
+  const auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
   return dev_ctx.stream();
 }
 #endif

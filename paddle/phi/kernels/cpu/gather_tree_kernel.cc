@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/gather_tree_kernel.h"
+
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -28,7 +30,7 @@ void GatherTreeKernel(const Context &dev_ctx,
   T *out_data = dev_ctx.template Alloc<T>(out);
 
   auto &ids_dims = ids.dims();
-  auto max_length = ids_dims[0];
+  int64_t max_length = ids_dims[0];
   auto batch_size = ids_dims[1];
   auto beam_size = ids_dims[2];
 
@@ -47,7 +49,16 @@ void GatherTreeKernel(const Context &dev_ctx,
           (max_length - 1) * batch_size * beam_size + batch * beam_size + beam;
       out_data[idx] = ids_data[idx];
       auto parent = parents_data[idx];
-      for (int step = max_length - 2; step >= 0; step--) {
+      for (int64_t step = max_length - 2; step >= 0; step--) {
+        PADDLE_ENFORCE_LT(
+            parent,
+            beam_size,
+            phi::errors::InvalidArgument(
+                "The parents must be less than beam size, but received"
+                "parents %d is greater than or equal to beam size %d. ",
+                parent,
+                beam_size));
+
         idx = step * batch_size * beam_size + batch * beam_size;
         out_data[idx + beam] = ids_data[idx + parent];
         parent = parents_data[idx + parent];

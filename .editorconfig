@@ -1,0 +1,29 @@
+# EditorConfig is a cross-editor configuration file
+# that helps to unify code styles for multiple
+# developers collaborative projects.
+# See more at https://editorconfig.org/
+
+root = true
+
+[*]
+indent_style = space
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.{c,cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps}]
+indent_size = 2
+
+[*.{py,java,r}]
+indent_size = 4
+
+[Dockerfile.*]
+indent_size = 4
+
+[.flake8]
+indent_size = 4
+
+[*.go]
+indent_style = tab
+indent_size = 4

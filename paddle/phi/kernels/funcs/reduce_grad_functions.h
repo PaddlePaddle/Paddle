@@ -14,11 +14,11 @@
 
 #pragma once
 
-#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 namespace phi {
 
 namespace funcs {
@@ -41,14 +41,14 @@ void ReduceGradFunctor(const Context& dev_ctx,
   Eigen::array<int, D> broadcast_dim;
   for (size_t i = 0; i < D; ++i) broadcast_dim[i] = 1;
 
-  int broad_cats_times = 1;
+  int broad_cast_times = 1;
   for (size_t i = 0; i < dims_ref.size(); ++i) {
     if (dims_ref[i] < 0) {
       dims_ref[i] = x_rank + dims_ref[i];
     }
     reduced_dims_v[dims_ref[i]] = 1;
     broadcast_dim[dims_ref[i]] = x_dims[dims_ref[i]];
-    broad_cats_times *= x_dims[dims_ref[i]];
+    broad_cast_times *= x_dims[dims_ref[i]];
   }
   auto reduced_dims = phi::make_ddim(reduced_dims_v);
   auto x_reduce = EigenTensor<T, D>::From(input1, reduced_dims);
@@ -62,7 +62,7 @@ void ReduceGradFunctor(const Context& dev_ctx,
           &x_grad,
           &x_reduce_grad,
           broadcast_dim,
-          broad_cats_times);
+          broad_cast_times);
 }
 
 inline void GetOriginDimFromShuffled(const DDim& src_dim,
@@ -87,7 +87,20 @@ void HandleLargeDimGrad(const Context& dev_ctx,
                         Functor functor,
                         const std::vector<int>& dims) {
   const int64_t unreduced = out->numel();
-  const int64_t reduced = x->numel() / unreduced;
+  const int64_t x_numel = x->numel();
+  // assume: 0 / 0 == 0, which allow process 0 dim tensor
+  const int64_t reduced = (unreduced != 0) ? (x_numel / unreduced) : 0;
+
+  PADDLE_ENFORCE_EQ(
+      unreduced * reduced,
+      x_numel,
+      phi::errors::InvalidArgument(
+          "Reducing failed in HandleLargeDimGrad, when try to transpose (%d) "
+          "operands into 2D tensor with shape (%d, %d).",
+          x_numel,
+          unreduced,
+          reduced));
+
   DDim out_dim(out->dims());
   DDim x_dim(x->dims());
   // transpose and reshape X
@@ -104,7 +117,7 @@ void HandleLargeDimGrad(const Context& dev_ctx,
   std::vector<int> origin_axis(x_dim.size());
   GetOriginDimFromShuffled(x_dim, dims, &origin_axis);
   DenseTensor dx_tmp;
-  paddle::framework::TensorCopy(*dx, dev_ctx.GetPlace(), &dx_tmp);
+  phi::Copy(dev_ctx, *dx, dev_ctx.GetPlace(), false, &dx_tmp);
   dx_tmp.Resize(shuffled_dim);
   dx->Resize(x_dim);
   phi::funcs::TransposeNormal<Context, T> trans;

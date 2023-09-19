@@ -14,22 +14,45 @@ limitations under the License. */
 
 #include "paddle/phi/common/scalar.h"
 
+#include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
-
+#include "paddle/phi/core/tensor_utils.h"
 namespace paddle {
 namespace experimental {
 
-// NOTE(xiongkun): why we put definition here?
-// test_custom_op can't include enforce.h, because enforce.h includes gflags.
-// so we decouple the include dependence of enforce.h by link.
-void ThrowTensorConvertError(int num) {
-  PADDLE_ENFORCE_EQ(num,
+// The Tensor must have one dim
+template <>
+ScalarBase<phi::DenseTensor>::ScalarBase(const phi::DenseTensor& tensor_in)
+    : dtype_(tensor_in.dtype()) {  // NOLINT
+  PADDLE_ENFORCE_EQ(tensor_in.numel(),
                     1,
                     phi::errors::InvalidArgument(
                         "The Scalar only supports Tensor with 1 element, but "
                         "now Tensor has `%d` elements",
-                        num));
+                        tensor_in.numel()));
+  auto cpu_place = phi::CPUPlace();
+  if (tensor_in.place().GetType() != phi::AllocationType::CPU) {
+    phi::DenseTensor tensor;
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    auto dev_ctx = pool.Get(tensor_in.place());
+    phi::Copy(*dev_ctx, tensor_in, cpu_place, true, &tensor);
+    GetDataFromTensor(tensor);
+  } else {
+    GetDataFromTensor(tensor_in);
+  }
 }
 
+bool operator==(const Scalar& lhs, const Scalar& rhs) {
+  return lhs.operator==(rhs);
+}
+bool operator!=(const Scalar& lhs, const Scalar& rhs) {
+  return lhs.operator!=(rhs);
+}
+
+std::ostream& operator<<(std::ostream& os, const Scalar& s) {
+  return os << s.ToString();
+}
 }  // namespace experimental
 }  // namespace paddle

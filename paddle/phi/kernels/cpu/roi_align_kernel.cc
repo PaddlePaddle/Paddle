@@ -79,16 +79,13 @@ std::vector<OffsetsAndRatios<T>> GetIndexesAndRatios(
     for (std::size_t px = 0; px < pooled_width; px++) {
       for (std::size_t iy = 0; iy < roi_bin_grid_h; iy++) {
         // calculate x of sample points
-        auto y =
-            roi_ymin +
-            bin_h * (py +
-                     static_cast<T>(iy + .5f) / static_cast<T>(roi_bin_grid_h));
+        auto y = roi_ymin + bin_h * (py + static_cast<T>(iy + .5f) /  // NOLINT
+                                              static_cast<T>(roi_bin_grid_h));
         for (std::size_t ix = 0; ix < roi_bin_grid_w; ix++) {
           // calculate x of sample points
-          auto x = roi_xmin +
-                   bin_w * (px +
-                            static_cast<T>(ix + .5f) /
-                                static_cast<T>(roi_bin_grid_w));
+          auto x =
+              roi_xmin + bin_w * (px + static_cast<T>(ix + .5f) /  // NOLINT
+                                           static_cast<T>(roi_bin_grid_w));
 
           // deal with elements out of map
           if (y < -1.0 || y > height || x < -1.0 || x > width) {
@@ -179,10 +176,10 @@ void AvgPool(const std::vector<T>& interpolated_values,
 }
 
 template <typename T, typename Context>
-void ROIAlignKernel(const Context& dev_ctx,
+void RoiAlignKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& boxes,
-                    paddle::optional<const DenseTensor&> boxes_num,
+                    const paddle::optional<DenseTensor>& boxes_num,
                     int pooled_height,
                     int pooled_width,
                     float spatial_scale,
@@ -190,11 +187,16 @@ void ROIAlignKernel(const Context& dev_ctx,
                     bool aligned,
                     DenseTensor* out) {
   auto in_dims = x.dims();
-  int batch_size = in_dims[0];
-  int channels = in_dims[1];
-  int height = in_dims[2];
-  int width = in_dims[3];
-  int rois_num = boxes.dims()[0];
+  int batch_size = static_cast<int>(in_dims[0]);
+  int channels = static_cast<int>(in_dims[1]);
+  int height = static_cast<int>(in_dims[2]);
+  int width = static_cast<int>(in_dims[3]);
+  int rois_num = static_cast<int>(boxes.dims()[0]);
+
+  if (rois_num == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
 
   auto in_stride = phi::stride(in_dims);
   auto roi_stride = phi::stride(boxes.dims());
@@ -205,7 +207,7 @@ void ROIAlignKernel(const Context& dev_ctx,
   int* roi_batch_id_data = roi_batch_id_list.data<int>();
   int boxes_batch_size;
   if (boxes_num) {
-    boxes_batch_size = boxes_num->numel();
+    boxes_batch_size = static_cast<int>(boxes_num->numel());
     PADDLE_ENFORCE_EQ(
         boxes_batch_size,
         batch_size,
@@ -231,7 +233,7 @@ void ROIAlignKernel(const Context& dev_ctx,
         errors::InvalidArgument("Input(ROIs) Tensor of ROIAlignOp "
                                 "does not contain LoD information."));
     auto boxes_lod = lod.back();
-    int boxes_batch_size = boxes_lod.size() - 1;
+    int boxes_batch_size = static_cast<int>(boxes_lod.size() - 1);
     PADDLE_ENFORCE_EQ(
         boxes_batch_size,
         batch_size,
@@ -241,7 +243,7 @@ void ROIAlignKernel(const Context& dev_ctx,
             "batch_size = %d",
             boxes_batch_size,
             batch_size));
-    int boxes_num_with_lod = boxes_lod[boxes_batch_size];
+    int boxes_num_with_lod = static_cast<int>(boxes_lod[boxes_batch_size]);
     PADDLE_ENFORCE_EQ(
         rois_num,
         boxes_num_with_lod,
@@ -315,4 +317,4 @@ void ROIAlignKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    roi_align, CPU, ALL_LAYOUT, phi::ROIAlignKernel, float, double, int) {}
+    roi_align, CPU, ALL_LAYOUT, phi::RoiAlignKernel, float, double, int) {}

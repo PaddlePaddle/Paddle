@@ -16,55 +16,21 @@
 
 namespace phi {
 
-KernelSignature Conv2dOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("conv2d",
-                         {"Input", "Filter"},
+KernelSignature Conv2dFusionArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
+  return KernelSignature("conv2d_fusion_cutlass",
+                         {"Input", "Filter", "Bias", "ResidualData"},
                          {"strides",
                           "paddings",
                           "padding_algorithm",
                           "groups",
                           "dilations",
                           "data_format",
-                          "use_addto",
-                          "workspace_size_MB",
-                          "exhaustive_search"},
+                          "activation",
+                          "fuse_alpha"},
                          {"Output"});
 }
-
-KernelSignature Conv2dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("conv2d_grad",
-                         {GradVarName("Output"), "Input", "Filter"},
-                         {"strides",
-                          "paddings",
-                          "padding_algorithm",
-                          "groups",
-                          "dilations",
-                          "data_format",
-                          "use_addto",
-                          "workspace_size_MB",
-                          "exhaustive_search"},
-                         {GradVarName("Input"), GradVarName("Filter")});
-}
-
-KernelSignature Conv2dDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("conv2d_grad_grad",
-                         {"DDInput", "DDFilter", "DOutput", "Input", "Filter"},
-                         {"strides",
-                          "paddings",
-                          "padding_algorithm",
-                          "groups",
-                          "dilations",
-                          "data_format",
-                          "use_addto",
-                          "workspace_size_MB",
-                          "exhaustive_search"},
-                         {"DDOutput", "DInput", "DFilter"});
-}
-
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(conv2d, phi::Conv2dOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(conv2d_grad, phi::Conv2dGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(conv2d_grad_grad,
-                           phi::Conv2dDoubleGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(conv2d_fusion_cutlass,
+                           phi::Conv2dFusionArgumentMapping);

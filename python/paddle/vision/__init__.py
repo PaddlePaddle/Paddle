@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import paddle
-import paddle.nn as nn
+from paddle import nn
 from . import models  # noqa: F401
 from . import transforms  # noqa: F401
 from . import datasets  # noqa: F401
@@ -34,6 +34,12 @@ from .models import resnet34  # noqa: F401
 from .models import resnet50  # noqa: F401
 from .models import resnet101  # noqa: F401
 from .models import resnet152  # noqa: F401
+from .models import resnext50_32x4d  # noqa: F401
+from .models import resnext50_64x4d  # noqa: F401
+from .models import resnext101_32x4d  # noqa: F401
+from .models import resnext101_64x4d  # noqa: F401
+from .models import resnext152_32x4d  # noqa: F401
+from .models import resnext152_64x4d  # noqa: F401
 from .models import wide_resnet50_2  # noqa: F401
 from .models import wide_resnet101_2  # noqa: F401
 from .models import MobileNetV1  # noqa: F401
@@ -61,13 +67,6 @@ from .models import densenet201  # noqa: F401
 from .models import densenet264  # noqa: F401
 from .models import AlexNet  # noqa: F401
 from .models import alexnet  # noqa: F401
-from .models import ResNeXt  # noqa: F401
-from .models import resnext50_32x4d  # noqa: F401
-from .models import resnext50_64x4d  # noqa: F401
-from .models import resnext101_32x4d  # noqa: F401
-from .models import resnext101_64x4d  # noqa: F401
-from .models import resnext152_32x4d  # noqa: F401
-from .models import resnext152_64x4d  # noqa: F401
 from .models import InceptionV3  # noqa: F401
 from .models import inception_v3  # noqa: F401
 from .models import GoogLeNet  # noqa: F401
@@ -113,6 +112,4 @@ from .transforms import adjust_contrast  # noqa: F401
 from .transforms import adjust_hue  # noqa: F401
 from .transforms import normalize  # noqa: F401
 
-__all__ = [  #noqa
-    'set_image_backend', 'get_image_backend', 'image_load'
-]
+__all__ = ['set_image_backend', 'get_image_backend', 'image_load']  # noqa

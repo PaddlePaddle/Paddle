@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/utils/table_printer.h"
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
+#include "paddle/fluid/inference/utils/table_printer.h"
 
 namespace paddle {
 namespace inference {}  // namespace inference
@@ -43,7 +44,7 @@ TEST(table_printer, output) {
   table.InsertRow({"trt_precision", "fp32"});
   table.InsertRow({"enable_dynamic_shape", "true"});
   table.InsertRow({"DisableTensorRtOPs", "{}"});
-  table.InsertRow({"EnableTensorRtOSS", "ON"});
+  table.InsertRow({"EnableVarseqlen", "ON"});
   table.InsertRow({"tensorrt_dla_enabled", "ON"});
   table.InsetDivider();
 

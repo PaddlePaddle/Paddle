@@ -15,13 +15,13 @@ limitations under the License. */
 #define GLOG_NO_ABBREVIATED_SEVERITIES
 #define GOOGLE_GLOG_DLL_DECL
 
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-
 #include <gtest/gtest.h>
 
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+
 TEST(MIOpenHelper, ScopedTensorDescriptor) {
-  using paddle::platform::ScopedTensorDescriptor;
-  using paddle::platform::DataLayout;
+  using phi::backends::gpu::DataLayout;
+  using phi::backends::gpu::ScopedTensorDescriptor;
 
   ScopedTensorDescriptor tensor_desc;
   std::vector<int> shape = {2, 4, 6, 6};
@@ -31,9 +31,9 @@ TEST(MIOpenHelper, ScopedTensorDescriptor) {
   int nd;
   std::vector<int> dims(4);
   std::vector<int> strides(4);
-  paddle::platform::dynload::miopenGetTensorDescriptor(desc, &type, dims.data(),
-                                                       strides.data());
-  paddle::platform::dynload::miopenGetTensorDescriptorSize(desc, &nd);
+  phi::dynload::miopenGetTensorDescriptor(
+      desc, &type, dims.data(), strides.data());
+  phi::dynload::miopenGetTensorDescriptorSize(desc, &nd);
 
   EXPECT_EQ(nd, 4);
   for (size_t i = 0; i < dims.size(); ++i) {
@@ -51,9 +51,9 @@ TEST(MIOpenHelper, ScopedTensorDescriptor) {
 
   std::vector<int> dims_5d(5);
   std::vector<int> strides_5d(5);
-  paddle::platform::dynload::miopenGetTensorDescriptor(
+  phi::dynload::miopenGetTensorDescriptor(
       desc_5d, &type, dims_5d.data(), strides_5d.data());
-  paddle::platform::dynload::miopenGetTensorDescriptorSize(desc_5d, &nd);
+  phi::dynload::miopenGetTensorDescriptorSize(desc_5d, &nd);
 
   EXPECT_EQ(nd, 5);
   for (size_t i = 0; i < dims_5d.size(); ++i) {
@@ -67,7 +67,7 @@ TEST(MIOpenHelper, ScopedTensorDescriptor) {
 }
 
 TEST(MIOpenHelper, ScopedConvolutionDescriptor) {
-  using paddle::platform::ScopedConvolutionDescriptor;
+  using phi::backends::gpu::ScopedConvolutionDescriptor;
 
   ScopedConvolutionDescriptor conv_desc;
   std::vector<int> src_pads = {2, 2, 2};
@@ -80,7 +80,7 @@ TEST(MIOpenHelper, ScopedConvolutionDescriptor) {
   std::vector<int> pads(3);
   std::vector<int> strides(3);
   std::vector<int> dilations(3);
-  paddle::platform::dynload::miopenGetConvolutionNdDescriptor(
+  phi::dynload::miopenGetConvolutionNdDescriptor(
       desc, 3, &nd, pads.data(), strides.data(), dilations.data(), &mode);
 
   EXPECT_EQ(nd, 3);

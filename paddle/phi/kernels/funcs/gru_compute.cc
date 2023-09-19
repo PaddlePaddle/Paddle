@@ -19,8 +19,8 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
-struct GRUUnitFunctor<paddle::platform::CPUDeviceContext, T> {
-  static void compute(const paddle::platform::CPUDeviceContext &context,
+struct GRUUnitFunctor<phi::CPUContext, T> {
+  static void compute(const phi::CPUContext &context,
                       GRUMetaValue<T> value,
                       int frame_size,
                       int batch_size,
@@ -28,8 +28,7 @@ struct GRUUnitFunctor<paddle::platform::CPUDeviceContext, T> {
                       const phi::funcs::detail::ActivationType active_gate,
                       bool origin_mode) {
 #if !defined(__NVCC__) && !defined(__HIPCC___)
-    auto blas =
-        phi::funcs::GetBlas<paddle::platform::CPUDeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(context);
     if (value.prev_out_value) {
       blas.GEMM(false,
                 false,
@@ -46,7 +45,7 @@ struct GRUUnitFunctor<paddle::platform::CPUDeviceContext, T> {
                 frame_size * 3);
     }
 
-    detail::forward_reset_output(
+    detail::forward_reset_output<phi::CPUContext>(
         phi::funcs::detail::forward::gru_resetOutput<T>(),
         value,
         frame_size,
@@ -71,7 +70,7 @@ struct GRUUnitFunctor<paddle::platform::CPUDeviceContext, T> {
                 frame_size * 3);
     }
 
-    detail::forward_final_output(
+    detail::forward_final_output<phi::CPUContext>(
         phi::funcs::detail::forward::gru_finalOutput<T>(),
         value,
         frame_size,
@@ -85,8 +84,8 @@ struct GRUUnitFunctor<paddle::platform::CPUDeviceContext, T> {
 };
 
 template <typename T>
-struct GRUUnitGradFunctor<paddle::platform::CPUDeviceContext, T> {
-  static void compute(const paddle::platform::CPUDeviceContext &context,
+struct GRUUnitGradFunctor<phi::CPUContext, T> {
+  static void compute(const phi::CPUContext &context,
                       GRUMetaValue<T> value,
                       GRUMetaGrad<T> grad,
                       int frame_size,
@@ -103,8 +102,7 @@ struct GRUUnitGradFunctor<paddle::platform::CPUDeviceContext, T> {
         batch_size,
         active_node,
         origin_mode);
-    auto blas =
-        phi::funcs::GetBlas<paddle::platform::CPUDeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(context);
     if (value.prev_out_value && grad.prev_out_grad) {
       blas.GEMM(false,
                 true,
@@ -180,16 +178,15 @@ struct GRUUnitGradFunctor<paddle::platform::CPUDeviceContext, T> {
 };
 
 template <typename T>
-struct GRUUnitFunctorV2<paddle::platform::CPUDeviceContext, T> {
-  static void compute(const paddle::platform::CPUDeviceContext &context,
+struct GRUUnitFunctorV2<CPUContext, T> {
+  static void compute(const CPUContext &context,
                       GRUMetaValue<T> value,
                       int frame_size,
                       int batch_size,
                       const phi::funcs::detail::ActivationType active_node,
                       const phi::funcs::detail::ActivationType active_gate) {
 #if !defined(__NVCC__) && !defined(__HIPCC___)
-    auto blas =
-        phi::funcs::GetBlas<paddle::platform::CPUDeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<CPUContext, T>(context);
     if (value.prev_out_value) {
       blas.GEMM(CblasNoTrans,
                 CblasTrans,
@@ -234,8 +231,8 @@ struct GRUUnitFunctorV2<paddle::platform::CPUDeviceContext, T> {
 };
 
 template <typename T>
-struct GRUUnitGradFunctorV2<paddle::platform::CPUDeviceContext, T> {
-  static void compute(const paddle::platform::CPUDeviceContext &context,
+struct GRUUnitGradFunctorV2<CPUContext, T> {
+  static void compute(const CPUContext &context,
                       GRUMetaValue<T> value,
                       GRUMetaGrad<T> grad,
                       int frame_size,
@@ -253,8 +250,7 @@ struct GRUUnitGradFunctorV2<paddle::platform::CPUDeviceContext, T> {
                              batch_size,
                              active_node,
                              active_gate);
-    auto blas =
-        phi::funcs::GetBlas<paddle::platform::CPUDeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<CPUContext, T>(context);
     if (grad.prev_out_grad && value.prev_out_value) {
       // update prev_out_grad
       blas.GEMM(false,
@@ -358,16 +354,15 @@ struct GRUUnitGradFunctorV2<paddle::platform::CPUDeviceContext, T> {
   }
 };
 
-template struct GRUUnitFunctor<paddle::platform::CPUDeviceContext, float>;
-template struct GRUUnitFunctor<paddle::platform::CPUDeviceContext, double>;
-template struct GRUUnitGradFunctor<paddle::platform::CPUDeviceContext, float>;
-template struct GRUUnitGradFunctor<paddle::platform::CPUDeviceContext, double>;
+template struct GRUUnitFunctor<phi::CPUContext, float>;
+template struct GRUUnitFunctor<phi::CPUContext, double>;
+template struct GRUUnitGradFunctor<phi::CPUContext, float>;
+template struct GRUUnitGradFunctor<phi::CPUContext, double>;
 
-template struct GRUUnitFunctorV2<paddle::platform::CPUDeviceContext, float>;
-template struct GRUUnitFunctorV2<paddle::platform::CPUDeviceContext, double>;
-template struct GRUUnitGradFunctorV2<paddle::platform::CPUDeviceContext, float>;
-template struct GRUUnitGradFunctorV2<paddle::platform::CPUDeviceContext,
-                                     double>;
+template struct GRUUnitFunctorV2<CPUContext, float>;
+template struct GRUUnitFunctorV2<CPUContext, double>;
+template struct GRUUnitGradFunctorV2<CPUContext, float>;
+template struct GRUUnitGradFunctorV2<CPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 /*
- * This file defines the the class to partition a graph.
+ * This file defines the class to partition a graph.
  */
 
 #pragma once
@@ -61,6 +61,11 @@ void RenameAndGetOutputs(
     std::unordered_map<std::string, std::string> *output_name_map,
     const std::unordered_map<std::string, framework::ir::Node *> &graph_var_map,
     bool trt_and_not_int8 = false);
+
+// When fuse some ops into one subgraph, we need to rename all vars within this
+// subgraph (excluding the inputs and outputs of the subgraph) to a unique name.
+std::string RenameVarBeUnique(std::string original_var_name,
+                              std::string var_id);
 
 }  // namespace analysis
 }  // namespace inference

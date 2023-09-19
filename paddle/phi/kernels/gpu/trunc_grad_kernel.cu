@@ -12,15 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/kernels/trunc_grad_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/trunc_grad_kernel.h"
 
 namespace phi {
 
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
 __global__ void TruncGrad(T* dx, int64_t N) {
@@ -51,4 +52,6 @@ PD_REGISTER_KERNEL(trunc_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

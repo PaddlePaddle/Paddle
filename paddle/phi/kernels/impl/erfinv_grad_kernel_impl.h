@@ -13,9 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#ifndef _USE_MATH_DEFINES
-#define _USE_MATH_DEFINES  // use M_2_SQRTPI on Windows
-#endif
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -32,7 +29,7 @@ void ErfinvGradKernel(const Context& ctx,
   auto eigen_dout = EigenVector<T>::Flatten(out_grad);
   auto eigen_dx = EigenVector<T>::Flatten(*x_grad);
   auto& place = *ctx.eigen_device();
-  constexpr T half_sqrt_pi = static_cast<T>(1 / M_2_SQRTPI);
+  T half_sqrt_pi = static_cast<T>(1 / M_2_SQRTPI);
   eigen_dx.device(place) = half_sqrt_pi * eigen_dout * eigen_out.square().exp();
 }
 

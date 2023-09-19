@@ -21,7 +21,7 @@ KernelSignature RandintOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (seed) {
     if (ctx.InputSize("ShapeTensorList") > 0) {
       return KernelSignature(
-          "randint_raw",
+          "randint_with_seed",
           {},
           {"low", "high", "ShapeTensorList", "seed", "dtype"},
           {"Out"});
@@ -29,12 +29,12 @@ KernelSignature RandintOpArgumentMapping(const ArgumentMappingContext& ctx) {
       const auto& shape =
           paddle::any_cast<std::vector<int64_t>>(ctx.Attr("shape"));
       if (ctx.HasInput("ShapeTensor") && shape.empty()) {
-        return KernelSignature("randint_raw",
+        return KernelSignature("randint_with_seed",
                                {},
                                {"low", "high", "ShapeTensor", "seed", "dtype"},
                                {"Out"});
       } else {
-        return KernelSignature("randint_raw",
+        return KernelSignature("randint_with_seed",
                                {},
                                {"low", "high", "shape", "seed", "dtype"},
                                {"Out"});

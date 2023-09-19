@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -23,17 +23,8 @@ template <typename T, typename Context>
 void RandintKernel(const Context& dev_ctx,
                    int low,
                    int high,
-                   const ScalarArray& shape,
+                   const IntArray& shape,
                    DataType dtype,
                    DenseTensor* out);
-
-template <typename T, typename Context>
-void RandintRawKernel(const Context& dev_ctx,
-                      int low,
-                      int high,
-                      const ScalarArray& shape,
-                      DataType dtype,
-                      int seed,
-                      DenseTensor* out);
 
 }  // namespace phi

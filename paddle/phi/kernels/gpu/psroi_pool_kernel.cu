@@ -16,10 +16,11 @@
 
 #include <algorithm>
 #include <vector>
-#include "paddle/fluid/memory/memory.h"
+
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
 
@@ -107,7 +108,7 @@ template <typename T, typename Context>
 void PsroiPoolKernel(const Context& ctx,
                      const DenseTensor& x,
                      const DenseTensor& rois,
-                     paddle::optional<const DenseTensor&> rois_num,
+                     const paddle::optional<DenseTensor>& rois_num,
                      int pooled_height,
                      int pooled_width,
                      int output_channels,
@@ -149,12 +150,12 @@ void PsroiPoolKernel(const Context& ctx,
                           rois_batch_size,
                           batch_size));
     std::vector<int> rois_num_list(rois_batch_size);
-    paddle::memory::Copy(CPUPlace(),
-                         rois_num_list.data(),
-                         ctx.GetPlace(),
-                         rois_num_data,
-                         sizeof(int) * rois_batch_size,
-                         0);
+    memory_utils::Copy(CPUPlace(),
+                       rois_num_list.data(),
+                       ctx.GetPlace(),
+                       rois_num_data,
+                       sizeof(int) * rois_batch_size,
+                       0);
     int rois_num_count = 0;
     for (int i = 0; i < rois_batch_size; ++i) {
       rois_num_count += rois_num_list[i];
@@ -207,25 +208,24 @@ void PsroiPoolKernel(const Context& ctx,
   int threads = kNumCUDAThreads;
 
   // call cuda kernel function
-  GPUPSROIPoolForward<T><<<blocks, threads, 0, ctx.stream()>>>(
-      output_size,
-      x.data<T>(),
-      rois.data<T>(),
-      spatial_scale,
-      input_channels,
-      height,
-      width,
-      output_channels,
-      pooled_height,
-      pooled_width,
-      rois_batch_id_list_gpu.data<int>(),
-      ctx.template Alloc<T>(out));
+  GPUPSROIPoolForward<T>
+      <<<blocks, threads, 0, ctx.stream()>>>(output_size,
+                                             x.data<T>(),
+                                             rois.data<T>(),
+                                             spatial_scale,
+                                             input_channels,
+                                             height,
+                                             width,
+                                             output_channels,
+                                             pooled_height,
+                                             pooled_width,
+                                             rois_batch_id_list_gpu.data<int>(),
+                                             ctx.template Alloc<T>(out));
 }
 
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
     psroi_pool, GPU, ALL_LAYOUT, phi::PsroiPoolKernel, float, double) {
-  kernel->InputAt(2).SetDataType(
-      paddle::experimental::CppTypeToDataType<int>::Type());
+  kernel->InputAt(2).SetDataType(phi::CppTypeToDataType<int>::Type());
 }

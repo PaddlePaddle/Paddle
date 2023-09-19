@@ -20,11 +20,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
@@ -44,16 +45,16 @@ struct SmoothL1LossForward {
   T sigma2;
 };
 
-template <typename DeviceContext, typename T, typename AttrType = T>
+template <typename T, typename DeviceContext, typename AttrType = T>
 class SmoothL1LossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in0 = context.Input<Tensor>("X");
-    auto* in1 = context.Input<Tensor>("Y");
-    auto* in2 = context.Input<Tensor>("InsideWeight");
-    auto* in3 = context.Input<Tensor>("OutsideWeight");
-    auto* out0 = context.Output<Tensor>("Diff");
-    auto* out1 = context.Output<Tensor>("Out");
+    auto* in0 = context.Input<phi::DenseTensor>("X");
+    auto* in1 = context.Input<phi::DenseTensor>("Y");
+    auto* in2 = context.Input<phi::DenseTensor>("InsideWeight");
+    auto* in3 = context.Input<phi::DenseTensor>("OutsideWeight");
+    auto* out0 = context.Output<phi::DenseTensor>("Diff");
+    auto* out1 = context.Output<phi::DenseTensor>("Out");
 
     out0->mutable_data<T>(context.GetPlace());
     out1->mutable_data<T>(context.GetPlace());
@@ -77,7 +78,7 @@ class SmoothL1LossKernel : public framework::OpKernel<T> {
     }
 
     auto in_counts = in0->numel();
-    Tensor ptensor_errors;
+    phi::DenseTensor ptensor_errors;
     ptensor_errors.mutable_data<T>({static_cast<int>(in_counts)},
                                    context.GetPlace());
     auto errors = EigenVector<T>::Flatten(ptensor_errors);
@@ -115,14 +116,14 @@ struct SmoothL1LossBackward {
   T sigma2;
 };
 
-template <typename DeviceContext, typename T, typename AttrType = T>
+template <typename T, typename DeviceContext, typename AttrType = T>
 class SmoothL1LossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in0 = context.Input<Tensor>("InsideWeight");
-    auto* in1 = context.Input<Tensor>("OutsideWeight");
-    auto* in2 = context.Input<Tensor>("Diff");
-    auto* og = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* in0 = context.Input<phi::DenseTensor>("InsideWeight");
+    auto* in1 = context.Input<phi::DenseTensor>("OutsideWeight");
+    auto* in2 = context.Input<phi::DenseTensor>("Diff");
+    auto* og = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto sigma = static_cast<T>(context.Attr<AttrType>("sigma"));
     T sigma2 = sigma * sigma;
     bool has_weight = (in0 != nullptr) && (in1 != nullptr);
@@ -136,7 +137,7 @@ class SmoothL1LossGradKernel : public framework::OpKernel<T> {
     auto mat_dims =
         phi::make_ddim({static_cast<int>(in_dims[0]), static_cast<int>(cols)});
 
-    Tensor ptensor_diff;
+    phi::DenseTensor ptensor_diff;
     ptensor_diff.mutable_data<T>({static_cast<int>(counts)},
                                  context.GetPlace());
     auto diff = EigenVector<T>::Flatten(ptensor_diff);
@@ -145,7 +146,7 @@ class SmoothL1LossGradKernel : public framework::OpKernel<T> {
         SmoothL1LossBackward<T>(sigma2));
 
     // compute weights
-    Tensor ptensor_weights;
+    phi::DenseTensor ptensor_weights;
     ptensor_weights.mutable_data<T>(mat_dims, context.GetPlace());
     auto weights = EigenMatrix<T>::From(ptensor_weights);
     // initialize to 1.0
@@ -163,8 +164,8 @@ class SmoothL1LossGradKernel : public framework::OpKernel<T> {
                          Eigen::array<int, 2>({{1, static_cast<int>(cols)}})) *
                      weights * diff_mat_view;
 
-    auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
-    auto* out1 = context.Output<Tensor>(framework::GradVarName("Y"));
+    auto* out0 = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* out1 = context.Output<phi::DenseTensor>(framework::GradVarName("Y"));
 
     if (out0) {
       out0->mutable_data<T>(context.GetPlace());

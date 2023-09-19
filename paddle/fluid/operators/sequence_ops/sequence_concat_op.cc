@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/sequence_ops/sequence_concat_op.h"
+
 #include <memory>
 #include <vector>
 
@@ -42,15 +43,18 @@ class SequenceConcatOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE_EQ(
-        context->HasInputs("X"), true,
+        context->HasInputs("X"),
+        true,
         platform::errors::NotFound("SequenceConcatOp Input(X) of Sequence "
                                    "Concat Op should not be null."));
     PADDLE_ENFORCE_EQ(
-        context->HasOutput("Out"), true,
+        context->HasOutput("Out"),
+        true,
         platform::errors::NotFound("SequenceConcatOp Output(Out) of Sequence "
                                    "Concat Op should not be null."));
 
-    PADDLE_ENFORCE_GT(context->Inputs("X").size(), 1,
+    PADDLE_ENFORCE_GT(context->Inputs("X").size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "The number of SequenceConcatOp inputs should be "
                           "greater than 1. But "
@@ -65,17 +69,24 @@ class SequenceConcatOp : public framework::OperatorWithKernel {
         out_dims = phi::vectorize(x_dim);
       }
       batch_size += x_dim[0];
+      PADDLE_ENFORCE_NE(
+          x_dim[0],
+          0,
+          platform::errors::InvalidArgument(
+              "The first dim of SequenceConcatOp inputs must not be 0."));
       if (feature_size == 0) {
         feature_size = phi::product(x_dim) / x_dim[0];
       } else {
         PADDLE_ENFORCE_EQ(
-            feature_size, phi::product(x_dim) / x_dim[0],
+            feature_size,
+            phi::product(x_dim) / x_dim[0],
             platform::errors::InvalidArgument(
                 "Each input of SequenceConcatOp inputs must have same feature "
                 "size, But "
                 "the feature size we received is %d, the feature size of 1st "
                 "input is %d",
-                feature_size, phi::product(x_dim) / x_dim[0]));
+                feature_size,
+                phi::product(x_dim) / x_dim[0]));
       }
     }
     if (batch_size < 0) {
@@ -115,11 +126,11 @@ class SeqConcatGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
 };
 
@@ -130,21 +141,28 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(SeqConcatGradNoNeedBufferVarsInferer, "X");
 
 namespace op = paddle::operators;
 
-REGISTER_OPERATOR(sequence_concat, op::SequenceConcatOp, op::SeqConcatOpMaker,
+REGISTER_OPERATOR(sequence_concat,
+                  op::SequenceConcatOp,
+                  op::SeqConcatOpMaker,
                   op::SeqConcatGradOpMaker<paddle::framework::OpDesc>,
                   op::SeqConcatGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    sequence_concat,
-    op::SeqConcatKernel<paddle::platform::CPUDeviceContext, float>,
-    op::SeqConcatKernel<paddle::platform::CPUDeviceContext, double>,
-    op::SeqConcatKernel<paddle::platform::CPUDeviceContext, int>,
-    op::SeqConcatKernel<paddle::platform::CPUDeviceContext, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(sequence_concat,
+                          CPU,
+                          ALL_LAYOUT,
+                          op::SeqConcatKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
 
-REGISTER_OPERATOR(sequence_concat_grad, op::SeqConcatGradOp,
+REGISTER_OPERATOR(sequence_concat_grad,
+                  op::SeqConcatGradOp,
                   op::SeqConcatGradNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    sequence_concat_grad,
-    op::SeqConcatGradKernel<paddle::platform::CPUDeviceContext, float>,
-    op::SeqConcatGradKernel<paddle::platform::CPUDeviceContext, double>,
-    op::SeqConcatGradKernel<paddle::platform::CPUDeviceContext, int>,
-    op::SeqConcatGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(sequence_concat_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          op::SeqConcatGradKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

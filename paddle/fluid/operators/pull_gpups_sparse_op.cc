@@ -22,16 +22,19 @@ class PullGpuPSSparseOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_GE(
-        ctx->Inputs("Ids").size(), 1UL,
+        ctx->Inputs("Ids").size(),
+        1UL,
         platform::errors::InvalidArgument(
             "Inputs(Ids) of PullGpuPSSparseOp should not be empty."));
     PADDLE_ENFORCE_GE(
-        ctx->Outputs("Out").size(), 1UL,
+        ctx->Outputs("Out").size(),
+        1UL,
         platform::errors::InvalidArgument(
             "Outputs(Out) of PullGpuPSSparseOp should not be empty."));
     auto embedding_size_vec = ctx->Attrs().Get<std::vector<int>>("size");
     PADDLE_ENFORCE_EQ(
-        ctx->Inputs("Ids").size(), embedding_size_vec.size(),
+        ctx->Inputs("Ids").size(),
+        embedding_size_vec.size(),
         platform::errors::InvalidArgument("The ids size: %lu must be equal to "
                                           "the length of embedding size: %lu.",
                                           ctx->Inputs("Ids").size(),
@@ -44,7 +47,8 @@ class PullGpuPSSparseOp : public framework::OperatorWithKernel {
       int embedding_size = embedding_size_vec[i];
       const auto ids_dims = all_ids_dim[i];
       int ids_rank = ids_dims.size();
-      PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1], 1,
+      PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1],
+                        1,
                         platform::errors::InvalidArgument(
                             "Shape error in %lu id, the last dimension of the "
                             "'Ids' tensor must be 1.",
@@ -60,10 +64,9 @@ class PullGpuPSSparseOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.device_context());
+    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
   }
 };
 
@@ -125,23 +128,33 @@ class PushGpuPSSparseOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
 };
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(pull_gpups_sparse, ops::PullGpuPSSparseOp,
+REGISTER_OPERATOR(pull_gpups_sparse,
+                  ops::PullGpuPSSparseOp,
                   ops::PullGpuPSSparseOpMaker,
                   ops::PushGpuPSSparseOpMaker<paddle::framework::OpDesc>,
                   ops::PushGpuPSSparseOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(push_gpups_sparse, ops::PushGpuPSSparseOp);
-REGISTER_OP_CPU_KERNEL(pull_gpups_sparse, ops::PullGpuPSSparseCPUKernel<float>,
-                       ops::PullGpuPSSparseCPUKernel<double>)
-REGISTER_OP_CPU_KERNEL(push_gpups_sparse, ops::PushGpuPSSparseCPUKernel<float>,
-                       ops::PushGpuPSSparseCPUKernel<double>)
+
+PD_REGISTER_STRUCT_KERNEL(pull_gpups_sparse,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PullGpuPSSparseCPUKernel,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(push_gpups_sparse,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PushGpuPSSparseCPUKernel,
+                          float,
+                          double) {}

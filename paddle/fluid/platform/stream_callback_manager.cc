@@ -13,13 +13,15 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/stream_callback_manager.h"
+
 #include "paddle/fluid/platform/device/device_wrapper.h"
 
 namespace paddle {
 namespace platform {
 
 #ifdef PADDLE_WITH_HIP
-static void StreamCallbackFunc(gpuStream_t stream, gpuError_t status,
+static void StreamCallbackFunc(gpuStream_t stream,
+                               gpuError_t status,
                                void *user_data)
 #endif
 #ifdef PADDLE_WITH_CUDA
@@ -29,13 +31,6 @@ static void StreamCallbackFunc(gpuStream_t stream, gpuError_t status,
     static void CUDART_CB
     StreamCallbackFunc(cudaStream_t stream, cudaError_t status, void *user_data)
 #endif
-#endif
-
-#if PADDLE_WITH_ASCEND_CL
-        static void StreamCallbackFunc(void *user_data)
-#endif
-#if PADDLE_WITH_MLU
-            static void StreamCallbackFunc(void *user_data)
 #endif
 {
   std::unique_ptr<std::function<void()>> func(
@@ -72,31 +67,12 @@ void StreamCallbackManager<Stream>::AddCallback(
       cudaStreamAddCallback(stream_, StreamCallbackFunc, func, 0));
 #endif
 #endif
-
-#if PADDLE_WITH_ASCEND_CL
-  VLOG(3) << "aclrtLaunchCallback at stream: " << stream_;
-  // TODO(zhiqiu): failed to call aclrtLaunchCallback
-  NPULaunchCallback(StreamCallbackFunc, func, ACL_CALLBACK_BLOCK, stream_);
-#endif
-
-#if PADDLE_WITH_MLU
-  VLOG(3) << "MLULaunchCallback at stream: " << stream_
-          << " Failed to call MLULaunchCallback, "
-          << "because mlu not support StreamAddCallback yet. "
-          << "function: " << func;
-#endif
 }
 
 template <typename Stream>
 void StreamCallbackManager<Stream>::Wait() const {
 #if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUDA)
   platform::GpuStreamSync(stream_);
-#endif
-#ifdef PADDLE_WITH_MLU
-  PADDLE_ENFORCE_MLU_SUCCESS(cnrtQueueSync(stream_));
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  NPUStreamSync(stream_);
 #endif
   {
     std::lock_guard<std::mutex> lock(mtx_);
@@ -112,12 +88,5 @@ template struct StreamCallbackManager<gpuStream_t>;
 #ifdef PADDLE_WITH_HIP
 template struct StreamCallbackManager<hipStream_t>;
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-template struct StreamCallbackManager<aclrtStream>;
-#endif
-#ifdef PADDLE_WITH_MLU
-template struct StreamCallbackManager<mluStream>;
-#endif
-
 }  // namespace platform
 }  // namespace paddle

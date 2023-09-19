@@ -33,7 +33,7 @@ TEST(StringHelper, EndsWith) {
 
 TEST(StringHelper, FormatStringAppend) {
   std::string str("hello");
-  char fmt[] = "%d";
+  char fmt[] = "%d";  // NOLINT
 
   paddle::string::format_string_append(str, fmt, 10);
   EXPECT_EQ(str, "hello10");
@@ -41,8 +41,8 @@ TEST(StringHelper, FormatStringAppend) {
 
 TEST(StringHelper, JoinStrings) {
   std::vector<std::string> v;
-  v.push_back("hello");
-  v.push_back("world");
+  v.emplace_back("hello");
+  v.emplace_back("world");
 
   std::string result = paddle::string::join_strings(v, ' ');
   EXPECT_EQ(result, "hello world");
@@ -62,4 +62,24 @@ TEST(StringHelper, JoinStringsWithConversion) {
   auto result =
       paddle::string::join_strings(v, ",", [](int x) { return x * x; });
   EXPECT_EQ(result, "4,9");
+}
+
+TEST(StringHelper, SplitString) {
+  std::string line = "hello world my world";
+  std::vector<paddle::string::str_ptr> vals;
+  int num = 0;
+  num =
+      paddle::string::split_string_ptr(line.c_str(), line.length(), ' ', &vals);
+  EXPECT_EQ(num, 4);
+
+  num = paddle::string::split_string_ptr(
+      line.c_str(), line.length(), ' ', &vals, 3);
+  EXPECT_EQ(num, 3);
+
+  num = paddle::string::split_string_ptr(
+      line.c_str(), line.length(), ' ', &vals, 10);
+  EXPECT_EQ(num, 4);
+
+  num = paddle::string::split_string_ptr(line.c_str(), -1, ' ', &vals, 3);
+  EXPECT_EQ(num, 0);
 }

@@ -20,19 +20,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/math/sampler.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/ddim.h"
-
-namespace paddle {
-namespace platform {
-class CUDADeviceContext;
-}  // namespace platform
-}  // namespace paddle
 
 namespace paddle {
 namespace operators {
 namespace math {
-
-using Tensor = framework::Tensor;
 
 /* UNDERSTAND: utility function to adjust probability for unique sampling,
 return whatever as it is if not using unique samping */
@@ -48,11 +41,14 @@ static T adjust_prob(const T prob, const int num_samples, const int num_tries) {
 template <typename DeviceContext, typename T>
 class SampleWithProb {
  public:
-  void operator()(const DeviceContext& context, const Sampler& sampler,
-                  const std::size_t num_samples, const Tensor* L, Tensor* S,
-                  Tensor* P) {
+  void operator()(const DeviceContext& context,
+                  const Sampler& sampler,
+                  const std::size_t num_samples,
+                  const phi::DenseTensor* L,
+                  phi::DenseTensor* S,
+                  phi::DenseTensor* P) {
     // UNDERSTAND: dimension issues
-    const auto lbl_dim = L->dims();
+    const auto& lbl_dim = L->dims();
     const int batch_size = lbl_dim[0];
     const int num_true = lbl_dim[1];
     const int num_sampled_classes = num_true + num_samples;
@@ -114,10 +110,14 @@ class SampleWithProb {
 template <typename T>
 class GPUSampleWithProb {
  public:
-  void operator()(const platform::CUDADeviceContext& context, const int seed,
-                  const int dict_size, const bool uniq,
-                  const std::size_t num_samples, const Tensor* L, Tensor* S,
-                  Tensor* P);
+  void operator()(const phi::GPUContext& context,
+                  const int seed,
+                  const int dict_size,
+                  const bool uniq,
+                  const std::size_t num_samples,
+                  const phi::DenseTensor* L,
+                  phi::DenseTensor* S,
+                  phi::DenseTensor* P);
 };
 #endif
 }  // namespace math

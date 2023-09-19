@@ -23,13 +23,13 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 
-#include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/operators/sequence_ops/sequence_softmax_op.h"
+#include "paddle/phi/kernels/funcs/math.h"
 
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 template <typename T, int BlockDim>
 using BlockReduce = cub::BlockReduce<T, BlockDim>;
@@ -38,8 +38,10 @@ template <typename T, int BlockDim>
 using BlockReduceTempStorage = typename BlockReduce<T, BlockDim>::TempStorage;
 
 template <typename T, int BlockDim>
-__global__ void sequence_softmax_kernel(const T *in_data, const size_t *ref_lod,
-                                        const size_t src_hight, T *out_data) {
+__global__ void sequence_softmax_kernel(const T *in_data,
+                                        const size_t *ref_lod,
+                                        const size_t src_hight,
+                                        T *out_data) {
   __shared__ BlockReduceTempStorage<T, BlockDim> temp_storage;
   __shared__ T shared_max_data;
   __shared__ T shared_sum_data;
@@ -65,7 +67,7 @@ __global__ void sequence_softmax_kernel(const T *in_data, const size_t *ref_lod,
     T sum_data = 0;
     for (int tid = threadIdx.x; tid < span; tid += blockDim.x) {
       T ele = in_data[start + tid];
-      sum_data += real_exp(ele - shared_max_data);
+      sum_data += phi::funcs::real_exp(ele - shared_max_data);
     }
     sum_data =
         BlockReduce<T, BlockDim>(temp_storage).Reduce(sum_data, cub::Sum());
@@ -77,7 +79,7 @@ __global__ void sequence_softmax_kernel(const T *in_data, const size_t *ref_lod,
     // get final resit
     for (int tid = threadIdx.x; tid < span; tid += blockDim.x) {
       T ele = in_data[start + tid];
-      ele = real_exp(ele - shared_max_data) / shared_sum_data;
+      ele = phi::funcs::real_exp(ele - shared_max_data) / shared_sum_data;
       out_data[start + tid] = ele;
     }
   }
@@ -119,10 +121,10 @@ __global__ void sequence_softmax_grad_kernel(const T *softmax_grad_data,
 }
 
 template <typename T>
-struct SequenceSoftmaxFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext &context,
+struct SequenceSoftmaxFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext &context,
                   const LoDTensor &x,
-                  const framework::Vector<size_t> &ref_lod, /*referenced lod*/
+                  const phi::Vector<size_t> &ref_lod, /*referenced lod*/
                   LoDTensor *out) {
     int height = ref_lod.size() - 1;
 
@@ -133,19 +135,22 @@ struct SequenceSoftmaxFunctor<platform::CUDADeviceContext, T> {
 
     dim3 block_size(thread_x);
     dim3 grid_size(max_blocks);
-    paddle::framework::MixVector<size_t> mixv_ref_lod(&ref_lod);
-    sequence_softmax_kernel<
-        T, kThreadsPerBlock><<<grid_size, block_size, 0, context.stream()>>>(
-        x.data<T>(), mixv_ref_lod.CUDAData(context.GetPlace()), height,
-        out->mutable_data<T>(context.GetPlace()));
+    phi::MixVector<size_t> mixv_ref_lod(&ref_lod);
+    sequence_softmax_kernel<T, kThreadsPerBlock>
+        <<<grid_size, block_size, 0, context.stream()>>>(
+            x.data<T>(),
+            mixv_ref_lod.CUDAData(context.GetPlace()),
+            height,
+            out->mutable_data<T>(context.GetPlace()));
   }
 };
 
 template <typename T>
-struct SequenceSoftmaxGradFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext &context,
-                  const LoDTensor &dout, const LoDTensor &out,
-                  const framework::Vector<size_t> &ref_lod, /*referenced lod*/
+struct SequenceSoftmaxGradFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext &context,
+                  const LoDTensor &dout,
+                  const LoDTensor &out,
+                  const phi::Vector<size_t> &ref_lod, /*referenced lod*/
                   LoDTensor *dx) {
     size_t height = ref_lod.size() - 1;
 
@@ -157,12 +162,14 @@ struct SequenceSoftmaxGradFunctor<platform::CUDADeviceContext, T> {
     dim3 block_size(thread_x);
     dim3 grid_size(max_blocks);
 
-    paddle::framework::MixVector<size_t> mixv_ref_lod(&ref_lod);
-    sequence_softmax_grad_kernel<
-        T, kThreadsPerBlock><<<grid_size, block_size, 0, context.stream()>>>(
-        dout.data<T>(), out.data<T>(),
-        mixv_ref_lod.CUDAData(context.GetPlace()), height,
-        dx->mutable_data<T>(context.GetPlace()));
+    phi::MixVector<size_t> mixv_ref_lod(&ref_lod);
+    sequence_softmax_grad_kernel<T, kThreadsPerBlock>
+        <<<grid_size, block_size, 0, context.stream()>>>(
+            dout.data<T>(),
+            out.data<T>(),
+            mixv_ref_lod.CUDAData(context.GetPlace()),
+            height,
+            dx->mutable_data<T>(context.GetPlace()));
   }
 };
 
@@ -170,12 +177,15 @@ struct SequenceSoftmaxGradFunctor<platform::CUDADeviceContext, T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    sequence_softmax,
-    ops::SequenceSoftmaxKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequenceSoftmaxKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    sequence_softmax_grad,
-    ops::SequenceSoftmaxGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequenceSoftmaxGradKernel<paddle::platform::CUDADeviceContext,
-                                   double>);
+PD_REGISTER_STRUCT_KERNEL(sequence_softmax,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequenceSoftmaxKernel,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(sequence_softmax_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequenceSoftmaxGradKernel,
+                          float,
+                          double) {}

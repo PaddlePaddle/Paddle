@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/bce_loss_grad_kernel.h"
 
 #include <algorithm>  // for max
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -31,7 +32,7 @@ void BCELossGradKernel(const Context& dev_ctx,
   auto x_data = input.data<T>();
   auto label_data = label.data<T>();
 
-  int x_numel = input.numel();
+  int x_numel = static_cast<int>(input.numel());
 
   // dx = dout * ((x - label)/(x - x^2))
   for (int i = 0; i < x_numel; ++i) {

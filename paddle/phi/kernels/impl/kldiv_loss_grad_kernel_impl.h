@@ -14,6 +14,7 @@
 
 #pragma once
 #include <string>
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -35,7 +36,7 @@ struct KLDivLossBackward {
 
 template <typename T, typename Context>
 void KLDivLossGradKernel(const Context& dev_ctx,
-                         const DenseTensor& x,
+                         const DenseTensor& x UNUSED,
                          const DenseTensor& label,
                          const DenseTensor& d_out,
                          const std::string& reduction,

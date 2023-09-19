@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -25,13 +26,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class PadConstantLikeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto in_x = context.Input<framework::Tensor>("X");
-    auto in_y = context.Input<framework::Tensor>("Y");
-    auto* out = context.Output<framework::Tensor>("Out");
+    auto in_x = context.Input<phi::DenseTensor>("X");
+    auto in_y = context.Input<phi::DenseTensor>("Y");
+    auto* out = context.Output<phi::DenseTensor>("Out");
 
     if (in_x->dims() == in_y->dims()) {
       framework::TensorCopy(*in_y, context.GetPlace(), out);
@@ -41,7 +42,7 @@ class PadConstantLikeKernel : public framework::OpKernel<T> {
     T pad_value = static_cast<T>(context.Attr<float>("pad_value"));
     out->mutable_data<T>(context.GetPlace());
 
-    int rank = context.Input<framework::Tensor>("X")->dims().size();
+    int rank = context.Input<phi::DenseTensor>("X")->dims().size();
 
     std::vector<int> pads(rank * 2, 0);
 
@@ -51,19 +52,23 @@ class PadConstantLikeKernel : public framework::OpKernel<T> {
     }
 
     phi::funcs::PaddingFunctor<DeviceContext, T>(
-        rank, context.template device_context<DeviceContext>(), pads, pad_value,
-        *in_y, out);
+        rank,
+        context.template device_context<DeviceContext>(),
+        pads,
+        pad_value,
+        *in_y,
+        out);
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class PadConstantLikeGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto in_y = context.Input<framework::Tensor>("Y");
+    auto in_y = context.Input<phi::DenseTensor>("Y");
     auto in_dout =
-        context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* d_y = context.Output<framework::Tensor>(framework::GradVarName("Y"));
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* d_y = context.Output<phi::DenseTensor>(framework::GradVarName("Y"));
 
     if (d_y == nullptr) {
       return;
@@ -84,7 +89,10 @@ class PadConstantLikeGradKernel : public framework::OpKernel<T> {
     }
 
     phi::funcs::PaddingGradFunctor<DeviceContext, T>(
-        rank, context.template device_context<DeviceContext>(), pads, *in_dout,
+        rank,
+        context.template device_context<DeviceContext>(),
+        pads,
+        *in_dout,
         d_y);
   }
 };

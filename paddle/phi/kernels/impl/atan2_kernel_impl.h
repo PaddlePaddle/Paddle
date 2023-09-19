@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/atan2_kernel.h"
-
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/kernels/atan2_kernel.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
 template <typename T>
@@ -77,6 +77,14 @@ void Atan2Kernel(const Context& ctx,
   auto numel = x.numel();
   auto x_data = x.data<T>();
   auto y_data = y.data<T>();
+
+  PADDLE_ENFORCE_LE(
+      numel,
+      y.numel(),
+      phi::errors::InvalidArgument("The count (%d) of elements of X shall not "
+                                   "greater than count (%d) of elements of Y.",
+                                   numel,
+                                   y.numel()));
 
   auto* out_data = ctx.template Alloc<typename Atan2Out<T>::type>(
       out, size_t(x.numel() * sizeof(typename Atan2Out<T>::type)));

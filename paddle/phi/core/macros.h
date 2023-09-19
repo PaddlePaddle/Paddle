@@ -17,14 +17,13 @@ limitations under the License. */
 namespace phi {
 
 // Disable the copy and assignment operator for a class.
-#ifndef DISABLE_COPY_AND_ASSIGN
+
 #define DISABLE_COPY_AND_ASSIGN(classname)         \
  private:                                          \
   classname(const classname&) = delete;            \
   classname(classname&&) = delete;                 \
   classname& operator=(const classname&) = delete; \
   classname& operator=(classname&&) = delete
-#endif
 
 #define PD_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg) \
   _PD_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)
@@ -52,5 +51,17 @@ namespace phi {
 #define PD_CONCATENATE1(arg1, arg2) PD_CONCATENATE2(arg1, arg2)
 #define PD_CONCATENATE2(arg1, arg2) arg1##arg2
 #define PD_EXPAND(x) x
+
+#if defined(__NVCC__) || defined(__HIPCC__)
+#define PADDLE_RESTRICT __restrict__
+#else
+#define PADDLE_RESTRICT
+#endif
+
+#ifndef PADDLE_WITH_MUSL
+#if defined(__FLT_MAX__)
+#define FLT_MAX __FLT_MAX__
+#endif  // __FLT_MAX__
+#endif  // PADDLE_WITH_MUSL
 
 }  // namespace phi

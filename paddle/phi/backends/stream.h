@@ -44,7 +44,7 @@ class Stream {
   using Callback = std::function<void()>;
 
   Stream() = default;
-  // For compatiable
+  // For compatible
   Stream(const Place& place, stream_t stream);
   ~Stream();
   const stream_t& raw_stream() const;
@@ -65,6 +65,8 @@ class Stream {
   bool Query() const;
   void Synchronize() const;
   const Place& GetPlace() const;
+
+  static void ReleaseAll();
 
  private:
   DISABLE_COPY_AND_ASSIGN(Stream);

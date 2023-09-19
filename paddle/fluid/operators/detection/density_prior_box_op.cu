@@ -23,11 +23,22 @@ static __device__ inline T Clip(T in) {
 }
 
 template <typename T>
-static __global__ void GenDensityPriorBox(
-    const int height, const int width, const int im_height, const int im_width,
-    const T offset, const T step_width, const T step_height,
-    const int num_priors, const T* ratios_shift, bool is_clip, const T var_xmin,
-    const T var_ymin, const T var_xmax, const T var_ymax, T* out, T* var) {
+static __global__ void GenDensityPriorBox(const int height,
+                                          const int width,
+                                          const int im_height,
+                                          const int im_width,
+                                          const T offset,
+                                          const T step_width,
+                                          const T step_height,
+                                          const int num_priors,
+                                          const T* ratios_shift,
+                                          bool is_clip,
+                                          const T var_xmin,
+                                          const T var_ymin,
+                                          const T var_xmax,
+                                          const T var_ymax,
+                                          T* out,
+                                          T* var) {
   int gidx = blockIdx.x * blockDim.x + threadIdx.x;
   int gidy = blockIdx.y * blockDim.y + threadIdx.y;
   int step_x = blockDim.x * gridDim.x;
@@ -72,14 +83,14 @@ static __global__ void GenDensityPriorBox(
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class DensityPriorBoxOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<paddle::framework::Tensor>("Input");
-    auto* image = ctx.Input<paddle::framework::Tensor>("Image");
-    auto* boxes = ctx.Output<paddle::framework::Tensor>("Boxes");
-    auto* vars = ctx.Output<paddle::framework::Tensor>("Variances");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* image = ctx.Input<phi::DenseTensor>("Image");
+    auto* boxes = ctx.Output<phi::DenseTensor>("Boxes");
+    auto* vars = ctx.Output<phi::DenseTensor>("Variances");
 
     auto variances = ctx.Attr<std::vector<float>>("variances");
     auto is_clip = ctx.Attr<bool>("clip");
@@ -113,7 +124,7 @@ class DensityPriorBoxOpCUDAKernel : public framework::OpKernel<T> {
     }
     int step_average = static_cast<int>((step_width + step_height) * 0.5);
 
-    framework::Tensor h_temp;
+    phi::DenseTensor h_temp;
     T* tdata = h_temp.mutable_data<T>({num_priors * 4}, platform::CPUPlace());
     int idx = 0;
     for (size_t s = 0; s < fixed_sizes.size(); ++s) {
@@ -141,7 +152,7 @@ class DensityPriorBoxOpCUDAKernel : public framework::OpKernel<T> {
     boxes->mutable_data<T>(ctx.GetPlace());
     vars->mutable_data<T>(ctx.GetPlace());
 
-    framework::Tensor d_temp;
+    phi::DenseTensor d_temp;
     framework::TensorCopy(h_temp, ctx.GetPlace(), &d_temp);
 
     // At least use 32 threads, at most 512 threads.
@@ -153,13 +164,23 @@ class DensityPriorBoxOpCUDAKernel : public framework::OpKernel<T> {
     dim3 threads(blockx, 1);
     dim3 grids(gridx, feature_height);
 
-    auto stream =
-        ctx.template device_context<platform::CUDADeviceContext>().stream();
-    GenDensityPriorBox<T><<<grids, threads, 0, stream>>>(
-        feature_height, feature_width, img_height, img_width, offset,
-        step_width, step_height, num_priors, d_temp.data<T>(), is_clip,
-        variances[0], variances[1], variances[2], variances[3],
-        boxes->data<T>(), vars->data<T>());
+    auto stream = ctx.template device_context<phi::GPUContext>().stream();
+    GenDensityPriorBox<T><<<grids, threads, 0, stream>>>(feature_height,
+                                                         feature_width,
+                                                         img_height,
+                                                         img_width,
+                                                         offset,
+                                                         step_width,
+                                                         step_height,
+                                                         num_priors,
+                                                         d_temp.data<T>(),
+                                                         is_clip,
+                                                         variances[0],
+                                                         variances[1],
+                                                         variances[2],
+                                                         variances[3],
+                                                         boxes->data<T>(),
+                                                         vars->data<T>());
   }
 };  // namespace operators
 
@@ -167,6 +188,10 @@ class DensityPriorBoxOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(density_prior_box,
-                        ops::DensityPriorBoxOpCUDAKernel<float>,
-                        ops::DensityPriorBoxOpCUDAKernel<double>);
+
+PD_REGISTER_STRUCT_KERNEL(density_prior_box,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::DensityPriorBoxOpCUDAKernel,
+                          float,
+                          double) {}

@@ -17,6 +17,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/unique_op.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -24,16 +25,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class UniqueWithCountsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto data_type = static_cast<framework::proto::VarType::Type>(
         context.Attr<int>("dtype"));
-    auto* x = context.Input<framework::Tensor>("X");
-    auto* out = context.Output<framework::Tensor>("Out");
-    auto* index = context.Output<framework::Tensor>("Index");
-    auto* count = context.Output<framework::Tensor>("Count");
+    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* out = context.Output<phi::DenseTensor>("Out");
+    auto* index = context.Output<phi::DenseTensor>("Index");
+    auto* count = context.Output<phi::DenseTensor>("Count");
     framework::VisitDataType(data_type,
                              UniqueOpFunctor<T>(out, index, x, count));
   }

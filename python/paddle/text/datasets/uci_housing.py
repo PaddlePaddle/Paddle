@@ -12,22 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import six
 import numpy as np
 
 import paddle
-from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 __all__ = []
 
 URL = 'http://paddlemodels.bj.bcebos.com/uci_housing/housing.data'
 MD5 = 'd4accdce7a25600298819f8e28e8d593'
 feature_names = [
-    'CRIM', 'ZN', 'INDUS', 'CHAS', 'NOX', 'RM', 'AGE', 'DIS', 'RAD', 'TAX',
-    'PTRATIO', 'B', 'LSTAT'
+    'CRIM',
+    'ZN',
+    'INDUS',
+    'CHAS',
+    'NOX',
+    'RM',
+    'AGE',
+    'DIS',
+    'RAD',
+    'TAX',
+    'PTRATIO',
+    'B',
+    'LSTAT',
 ]
 
 
@@ -47,44 +55,59 @@ class UCIHousing(Dataset):
         Dataset: instance of UCI housing dataset.
 
     Examples:
-        
+
         .. code-block:: python
 
-            import paddle
-            from paddle.text.datasets import UCIHousing
+            >>> import paddle
+            >>> from paddle.text.datasets import UCIHousing
 
-            class SimpleNet(paddle.nn.Layer):
-                def __init__(self):
-                    super(SimpleNet, self).__init__()
+            >>> class SimpleNet(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...
+            ...     def forward(self, feature, target):
+            ...         return paddle.sum(feature), target
 
-                def forward(self, feature, target):
-                    return paddle.sum(feature), target
+            >>> paddle.disable_static()
 
-            paddle.disable_static()
+            >>> uci_housing = UCIHousing(mode='train')
 
-            uci_housing = UCIHousing(mode='train')
-
-            for i in range(10):
-                feature, target = uci_housing[i]
-                feature = paddle.to_tensor(feature)
-                target = paddle.to_tensor(target)
-
-                model = SimpleNet()
-                feature, target = model(feature, target)
-                print(feature.numpy().shape, target.numpy())
+            >>> for i in range(10):
+            ...     feature, target = uci_housing[i]
+            ...     feature = paddle.to_tensor(feature)
+            ...     target = paddle.to_tensor(target)
+            ...
+            ...     model = SimpleNet()
+            ...     feature, target = model(feature, target)
+            ...     print(feature.shape, target.numpy())
+            [] [24.]
+            [] [21.6]
+            [] [34.7]
+            [] [33.4]
+            [] [36.2]
+            [] [28.7]
+            [] [22.9]
+            [] [27.1]
+            [] [16.5]
+            [] [18.9]
 
     """
 
     def __init__(self, data_file=None, mode='train', download=True):
-        assert mode.lower() in ['train', 'test'], \
-                "mode should be 'train' or 'test', but got {}".format(mode)
+        assert mode.lower() in [
+            'train',
+            'test',
+        ], f"mode should be 'train' or 'test', but got {mode}"
         self.mode = mode.lower()
 
         self.data_file = data_file
         if self.data_file is None:
-            assert download, "data_file is not set and downloading automatically is disabled"
-            self.data_file = _check_exists_and_download(data_file, URL, MD5,
-                                                        'uci_housing', download)
+            assert (
+                download
+            ), "data_file is not set and downloading automatically is disabled"
+            self.data_file = _check_exists_and_download(
+                data_file, URL, MD5, 'uci_housing', download
+            )
 
         # read dataset into memory
         self._load_data()
@@ -94,9 +117,12 @@ class UCIHousing(Dataset):
     def _load_data(self, feature_num=14, ratio=0.8):
         data = np.fromfile(self.data_file, sep=' ')
         data = data.reshape(data.shape[0] // feature_num, feature_num)
-        maximums, minimums, avgs = data.max(axis=0), data.min(axis=0), data.sum(
-            axis=0) / data.shape[0]
-        for i in six.moves.range(feature_num - 1):
+        maximums, minimums, avgs = (
+            data.max(axis=0),
+            data.min(axis=0),
+            data.sum(axis=0) / data.shape[0],
+        )
+        for i in range(feature_num - 1):
             data[:, i] = (data[:, i] - avgs[i]) / (maximums[i] - minimums[i])
         offset = int(data.shape[0] * ratio)
         if self.mode == 'train':
@@ -106,8 +132,9 @@ class UCIHousing(Dataset):
 
     def __getitem__(self, idx):
         data = self.data[idx]
-        return np.array(data[:-1]).astype(self.dtype), \
-                np.array(data[-1:]).astype(self.dtype)
+        return np.array(data[:-1]).astype(self.dtype), np.array(
+            data[-1:]
+        ).astype(self.dtype)
 
     def __len__(self):
         return len(self.data)

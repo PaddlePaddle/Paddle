@@ -14,13 +14,13 @@
 
 #include "paddle/phi/kernels/auc_kernel.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 __global__ void ClearObsoleteDataKernel(int64_t *pos,
                                         int64_t *neg,
@@ -74,9 +74,9 @@ __global__ void AddDataKernel(const int64_t *label_data,
                    "The predict data must gather or equal 0.");
     uint32_t binIdx = static_cast<uint32_t>(predict_data * num_thresholds);
     if (label_data[i]) {
-      paddle::platform::CudaAtomicAdd(pos + cur_step_begin + binIdx, 1);
+      phi::CudaAtomicAdd(pos + cur_step_begin + binIdx, 1);
     } else {
-      paddle::platform::CudaAtomicAdd(neg + cur_step_begin + binIdx, 1);
+      phi::CudaAtomicAdd(neg + cur_step_begin + binIdx, 1);
     }
   }
 }
@@ -123,7 +123,8 @@ void statAuc(const Context &dev_ctx,
              const int num_thresholds,
              const int slide_steps,
              int64_t *origin_stat_pos,
-             int64_t *origin_stat_neg) {
+             int64_t *origin_stat_neg,
+             const bool is_fake_data) {
   size_t batch_size = predict.dims()[0];
   size_t inference_width = predict.dims()[1];
   const T *inference_data = predict.data<T>();
@@ -172,12 +173,14 @@ void statAuc(const Context &dev_ctx,
                                       origin_stat_neg,
                                       batch_size,
                                       slide_steps);
-  UpdateSumDataKernel<<<(bucket_length + PADDLE_CUDA_NUM_THREADS - 1) /
-                            PADDLE_CUDA_NUM_THREADS,
-                        PADDLE_CUDA_NUM_THREADS,
-                        0,
-                        dev_ctx.stream()>>>(
-      origin_stat_pos, origin_stat_neg, bucket_length, slide_steps);
+  if (!is_fake_data) {
+    UpdateSumDataKernel<<<(bucket_length + PADDLE_CUDA_NUM_THREADS - 1) /
+                              PADDLE_CUDA_NUM_THREADS,
+                          PADDLE_CUDA_NUM_THREADS,
+                          0,
+                          dev_ctx.stream()>>>(
+        origin_stat_pos, origin_stat_neg, bucket_length, slide_steps);
+  }
 }
 
 template <typename T, typename Context>
@@ -186,6 +189,7 @@ void AucKernel(const Context &dev_ctx,
                const DenseTensor &label,
                const DenseTensor &stat_pos,
                const DenseTensor &stat_neg,
+               const paddle::optional<DenseTensor> &ins_tag_weight,
                const std::string &curve,
                int num_thresholds,
                int slide_steps,
@@ -202,6 +206,14 @@ void AucKernel(const Context &dev_ctx,
   auto *stat_neg_in_tensor = &stat_neg;
   auto *pos_in_data = stat_pos.data<int64_t>();
   auto *neg_in_data = stat_neg.data<int64_t>();
+  bool is_fake_data = false;
+  if (ins_tag_weight.get_ptr() != nullptr) {
+    const auto *ins_tag_weight_data = ins_tag_weight->data<float>();
+    if (ins_tag_weight_data[0] == 0) {
+      is_fake_data = true;
+    }
+  }
+
 #ifdef PADDLE_WITH_CUDA
   if (stat_pos_in_tensor != stat_pos_out) {
     cudaMemcpy(
@@ -238,13 +250,19 @@ void AucKernel(const Context &dev_ctx,
   }
 #endif
 
+  // when calculate global_auc && is fake data, just do nothing
+  if (slide_steps == 0 && is_fake_data) {
+    return;
+  }
+
   statAuc<T, Context>(dev_ctx,
                       label,
                       input,
                       num_thresholds,
                       slide_steps,
                       origin_stat_pos,
-                      origin_stat_neg);
+                      origin_stat_neg,
+                      is_fake_data);
   int sum_offset = slide_steps * (num_thresholds + 1);
   CalcAucKernel<<<1, 1, 0, dev_ctx.stream()>>>(origin_stat_pos + sum_offset,
                                                origin_stat_neg + sum_offset,
@@ -255,4 +273,8 @@ void AucKernel(const Context &dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(auc, GPU, ALL_LAYOUT, phi::AucKernel, float) {}
+PD_REGISTER_KERNEL(auc, GPU, ALL_LAYOUT, phi::AucKernel, float) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT64);
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT64);
+}

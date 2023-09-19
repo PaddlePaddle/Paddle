@@ -13,4 +13,58 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/phi/core/compat/type_defs.h"
+
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+
+namespace egr {
+class EagerVariable;
+}
+namespace paddle {
+namespace imperative {
+
+class VariableWrapper;
+class SavedVariableWrapperList;
+class VarBase;
+class OpBase;
+class GradOpNode;
+class Tracer;
+
+using WeakNameVarBaseMap =
+    std::map<std::string, std::vector<std::weak_ptr<VarBase>>>;
+
+namespace details {
+template <typename T>
+struct NameVarMapTrait {};
+
+template <>
+struct NameVarMapTrait<VarBase> {
+  using Type = std::map<std::string, std::vector<std::shared_ptr<VarBase>>>;
+};
+
+template <>
+struct NameVarMapTrait<VariableWrapper> {
+  using Type = std::map<std::string, SavedVariableWrapperList>;
+};
+
+template <>
+struct NameVarMapTrait<egr::EagerVariable> {
+  using Type =
+      std::map<std::string, std::vector<std::shared_ptr<egr::EagerVariable>>>;
+};
+
+}  // namespace details
+
+template <typename T>
+using NameVarMap = typename details::NameVarMapTrait<T>::Type;
+
+using NameVarBaseMap = NameVarMap<VarBase>;
+using NameVariableWrapperMap = NameVarMap<VariableWrapper>;
+using NameTensorMap = NameVarMap<egr::EagerVariable>;
+
+using VariableWrapperList = std::vector<std::shared_ptr<VariableWrapper>>;
+
+}  // namespace imperative
+}  // namespace paddle

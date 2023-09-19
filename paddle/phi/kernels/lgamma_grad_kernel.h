@@ -21,7 +21,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void LgammaGradKernel(const Context& dev_ctx,
-                      const DenseTensor& d_out,
                       const DenseTensor& x,
+                      const DenseTensor& d_out,
                       DenseTensor* d_x);
 }  // namespace phi

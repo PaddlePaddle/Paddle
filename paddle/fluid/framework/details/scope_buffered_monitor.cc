@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/scope_buffered_monitor.h"
+
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/flags.h"
 
 namespace paddle {
 namespace framework {
@@ -21,18 +23,19 @@ class Variable;
 }  // namespace framework
 }  // namespace paddle
 
-DECLARE_double(local_exe_sub_scope_limit);
+PHI_DECLARE_double(local_exe_sub_scope_limit);
 
 namespace paddle {
 namespace framework {
 namespace details {
 
-static constexpr double kMB = 1 / (1024 * 1024);
+static constexpr double kMB = 1.0 / (1024.0 * 1024.0);
 
 static void GetTensors(Variable *var,
-                       std::unordered_set<Tensor *> *tensor_set) {
-  if (var->IsType<LoDTensor>() && var->Get<LoDTensor>().IsInitialized()) {
-    tensor_set->insert(var->GetMutable<LoDTensor>());
+                       std::unordered_set<phi::DenseTensor *> *tensor_set) {
+  if (var->IsType<phi::DenseTensor>() &&
+      var->Get<phi::DenseTensor>().IsInitialized()) {
+    tensor_set->insert(var->GetMutable<phi::DenseTensor>());
   } else if (var->IsType<phi::SelectedRows>() &&
              var->Get<phi::SelectedRows>().value().IsInitialized()) {
     tensor_set->insert(var->GetMutable<phi::SelectedRows>()->mutable_value());
@@ -46,7 +49,8 @@ static void GetTensors(Variable *var,
   }
 }
 
-static void GetTensors(Scope *scope, std::unordered_set<Tensor *> *tensor_set) {
+static void GetTensors(Scope *scope,
+                       std::unordered_set<phi::DenseTensor *> *tensor_set) {
   for (auto &var_name : scope->LocalVarNames()) {
     GetTensors(scope->FindVar(var_name), tensor_set);
   }
@@ -57,7 +61,7 @@ static void GetTensors(Scope *scope, std::unordered_set<Tensor *> *tensor_set) {
 }
 
 static size_t GetTensorMemorySize(Scope *scope, bool clear_cpu_tensor) {
-  std::unordered_set<Tensor *> tensor_set;
+  std::unordered_set<phi::DenseTensor *> tensor_set;
   GetTensors(scope, &tensor_set);
   size_t memory_size = 0;
   std::unordered_set<memory::Allocation *> allocation_set;
@@ -92,7 +96,8 @@ void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
   std::unique_ptr<platform::RecordEvent> pre_local_exec_scopes_event(
       new platform::RecordEvent(
           "ScopeBufferedMonitor::pre_local_exec_scopes_process",
-          platform::TracerEventType::UserDefined, 2));
+          platform::TracerEventType::UserDefined,
+          2));
   for (size_t scope_id = 0; scope_id < local_exec_scopes_.size(); ++scope_id) {
     pre_local_exec_scopes_.at(scope_id).clear();
     auto scopes = local_exec_scopes_.at(scope_id)->kids();
@@ -107,7 +112,8 @@ void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
   std::unique_ptr<platform::RecordEvent> post_local_exec_scopes_event(
       new platform::RecordEvent(
           "ScopeBufferedMonitor::post_local_exec_scopes_process",
-          platform::TracerEventType::UserDefined, 2));
+          platform::TracerEventType::UserDefined,
+          2));
   for (size_t scope_id = 0; scope_id < local_exec_scopes_.size(); ++scope_id) {
     post_local_exec_scopes_.at(scope_id).clear();
     auto scopes = local_exec_scopes_.at(scope_id)->kids();
@@ -127,7 +133,7 @@ void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
     }
 
     if (VLOG_IS_ON(10)) {
-      if (incr_local_exec_scopes.at(scope_id).size() &&
+      if (!incr_local_exec_scopes.at(scope_id).empty() &&
           FLAGS_local_exe_sub_scope_limit > 0) {
         VLOG(10)
             << "FLAGS_local_exe_sub_scope_limit is "
@@ -163,14 +169,15 @@ void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
   if (VLOG_IS_ON(8)) {
     for (size_t idx = 0; idx < gpu_memory_size_per_gpu.size(); ++idx) {
       VLOG(8) << "history local exec scopes contains "
-              << string::HumanReadableSize(gpu_memory_size_per_gpu.at(idx))
+              << string::HumanReadableSize(
+                     gpu_memory_size_per_gpu.at(idx))  // NOLINT
               << " in " << places_.at(idx);
     }
   }
 
   if (FLAGS_local_exe_sub_scope_limit > 0) {
     for (size_t idx = 0; idx < gpu_memory_size_per_gpu.size(); ++idx) {
-      if (gpu_memory_size_per_gpu.at(idx) / kMB >=
+      if (gpu_memory_size_per_gpu.at(idx) / kMB >=  // NOLINT
           FLAGS_local_exe_sub_scope_limit) {
         platform::DeviceContextPool::Instance().Get(places_.at(idx))->Wait();
         local_exec_scopes_.at(idx)->DropKids();

@@ -12,22 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/histogram_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/math_cuda_utils.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
 using IndexType = int64_t;
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 inline int GET_BLOCKS(const int N) {
   return (N + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
@@ -48,8 +45,8 @@ template <typename T, typename IndexType>
 __global__ void KernelHistogram(const T* input,
                                 const int total_elements,
                                 const int64_t nbins,
-                                const T min_value,
-                                const T max_value,
+                                const T* min_value,
+                                const T* max_value,
                                 int64_t* output) {
   extern __shared__ int64_t buf_hist[];
   for (int i = threadIdx.x; i < nbins; i += blockDim.x) {
@@ -60,16 +57,70 @@ __global__ void KernelHistogram(const T* input,
   CUDA_KERNEL_LOOP(input_index, total_elements) {
     // const IndexType input_index = threadIdx.x + blockIdx.x * blockDim.x;
     const auto input_value = input[input_index];
-    if (input_value >= min_value && input_value <= max_value) {
+    if (input_value >= *min_value && input_value <= *max_value) {
       const IndexType output_index =
-          GetBin<T, IndexType>(input_value, min_value, max_value, nbins);
-      paddle::platform::CudaAtomicAdd(&buf_hist[output_index], 1);
+          GetBin<T, IndexType>(input_value, *min_value, *max_value, nbins);
+      phi::CudaAtomicAdd(&buf_hist[output_index], 1);
     }
   }
   __syncthreads();
 
   for (int i = threadIdx.x; i < nbins; i += blockDim.x) {
-    paddle::platform::CudaAtomicAdd(&output[i], buf_hist[i]);
+    phi::CudaAtomicAdd(&output[i], buf_hist[i]);
+  }
+}
+
+template <typename T>
+__global__ void KernelMinMax(const T* input,
+                             const int numel,
+                             const int block_num,
+                             T* min_ptr,
+                             T* max_ptr) {
+  int64_t index = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t i = index;
+  T min_value = static_cast<T>(i < numel ? input[i] : input[0]);
+  T max_value = static_cast<T>(i < numel ? input[i] : input[0]);
+
+  for (; i < numel; i += blockDim.x * gridDim.x) {
+    T value = static_cast<T>(input[i]);
+    min_value = value < min_value ? value : min_value;
+    max_value = value > max_value ? value : max_value;
+  }
+  if (max_ptr && min_ptr) {
+    __syncthreads();
+    T block_min_value = phi::funcs::BlockReduceMin<T>(min_value, FINAL_MASK);
+    T block_max_value = phi::funcs::BlockReduceMax<T>(max_value, FINAL_MASK);
+
+    if (threadIdx.x == 0) {
+      min_ptr[blockIdx.x] = block_min_value;
+      max_ptr[blockIdx.x] = block_max_value;
+    }
+  }
+  __syncthreads();
+  if (index == 0) {
+    if (min_ptr && max_ptr) {
+      min_value = min_ptr[0];
+      max_value = max_ptr[0];
+      for (int64_t i = 1; i < block_num; i++) {
+        min_ptr[0] = min_ptr[i] < min_value ? min_ptr[i] : min_value;
+        max_ptr[0] = max_ptr[i] > max_value ? max_ptr[i] : max_value;
+      }
+      if (min_ptr[0] == max_ptr[0]) {
+        min_ptr[0] = min_ptr[0] - 1;
+        max_ptr[0] = max_ptr[0] + 1;
+      }
+    }
+  }
+}
+
+template <typename T>
+__global__ void KernelMinMax(const T min_value,
+                             const T max_value,
+                             T* min_ptr,
+                             T* max_ptr) {
+  if (threadIdx.x == 0 && blockIdx.x == 0) {
+    min_ptr[0] = min_value;
+    max_ptr[0] = max_value;
   }
 }
 
@@ -87,7 +138,7 @@ void HistogramKernel(const Context& dev_ctx,
   const T* input_data = input.data<T>();
   const int input_numel = input.numel();
 
-  int64_t* out_data = output->mutable_data<int64_t>(dev_ctx.GetPlace());
+  int64_t* out_data = dev_ctx.template Alloc<int64_t>(output);
   phi::funcs::SetConstant<Context, int64_t>()(
       dev_ctx, output, static_cast<int64_t>(0));
 
@@ -95,32 +146,20 @@ void HistogramKernel(const Context& dev_ctx,
 
   T output_min = static_cast<T>(minval);
   T output_max = static_cast<T>(maxval);
-
+  DenseTensor min_max;
+  int block_num = GET_BLOCKS(input_numel);
+  min_max.Resize({2 * block_num});
+  auto* min_block_ptr = dev_ctx.template Alloc<T>(&min_max);
+  auto* max_block_ptr = min_block_ptr + block_num;
   if (output_min == output_max) {
-    auto input_x = phi::EigenVector<T>::Flatten(input);
-
-    DenseTensor input_min_t, input_max_t;
-    auto* input_min_data = input_min_t.mutable_data<T>({1}, dev_ctx.GetPlace());
-    auto* input_max_data = input_max_t.mutable_data<T>({1}, dev_ctx.GetPlace());
-    auto input_min_scala = phi::EigenScalar<T>::From(input_min_t);
-    auto input_max_scala = phi::EigenScalar<T>::From(input_max_t);
-
-    auto* place = dev_ctx.eigen_device();
-    input_min_scala.device(*place) = input_x.minimum();
-    input_max_scala.device(*place) = input_x.maximum();
-
-    DenseTensor input_min_cpu, input_max_cpu;
-    paddle::framework::TensorCopySync(
-        input_min_t, phi::CPUPlace(), &input_min_cpu);
-    paddle::framework::TensorCopySync(
-        input_max_t, phi::CPUPlace(), &input_max_cpu);
-
-    output_min = input_min_cpu.data<T>()[0];
-    output_max = input_max_cpu.data<T>()[0];
-  }
-  if (output_min == output_max) {
-    output_min = output_min - 1;
-    output_max = output_max + 1;
+    KernelMinMax<T><<<GET_BLOCKS(input_numel),
+                      PADDLE_CUDA_NUM_THREADS,
+                      0,
+                      dev_ctx.stream()>>>(
+        input_data, input_numel, block_num, min_block_ptr, max_block_ptr);
+  } else {
+    KernelMinMax<T><<<1, 1, 0, dev_ctx.stream()>>>(
+        output_min, output_max, min_block_ptr, max_block_ptr);
   }
 
   PADDLE_ENFORCE_EQ((std::isinf(static_cast<float>(output_min)) ||
@@ -144,7 +183,7 @@ void HistogramKernel(const Context& dev_ctx,
                                   PADDLE_CUDA_NUM_THREADS,
                                   nbins * sizeof(int64_t),
                                   stream>>>(
-      input_data, input_numel, nbins, output_min, output_max, out_data);
+      input_data, input_numel, nbins, min_block_ptr, max_block_ptr, out_data);
 }
 
 }  // namespace phi
@@ -156,4 +195,6 @@ PD_REGISTER_KERNEL(histogram,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(0).SetDataType(paddle::DataType::INT64);
+}

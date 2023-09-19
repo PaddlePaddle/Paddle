@@ -12,12 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/digamma_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/digamma_kernel.h"
 #include "paddle/phi/kernels/impl/digamma_kernel_impl.h"
 
-PD_REGISTER_KERNEL(
-    digamma, GPU, ALL_LAYOUT, phi::DigammaKernel, float, double) {}
+PD_REGISTER_KERNEL(digamma,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::DigammaKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

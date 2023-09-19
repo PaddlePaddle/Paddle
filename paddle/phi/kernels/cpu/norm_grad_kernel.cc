@@ -13,15 +13,13 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/norm_grad_kernel.h"
-#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-
-#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/phi/kernels/funcs/common_shape.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -30,8 +28,8 @@ void NormGradKernel(const Context& ctx,
                     const DenseTensor& norm,
                     const DenseTensor& out_grad,
                     int axis,
-                    float epsilon,
-                    bool is_test,
+                    float epsilon UNUSED,
+                    bool is_test UNUSED,
                     DenseTensor* x_grad) {
   auto* in_x = &x;
   auto* in_dy = &out_grad;
@@ -47,10 +45,10 @@ void NormGradKernel(const Context& ctx,
 
   auto* place = ctx.eigen_device();
 
-  auto x_e = paddle::framework::EigenVector<T>::Flatten(*in_x);
-  auto dy_e = paddle::framework::EigenVector<T>::Flatten(*in_dy);
-  auto norm_e = paddle::framework::EigenVector<T>::Flatten(*in_norm);
-  auto dx_e = paddle::framework::EigenVector<T>::Flatten(*out_dx);
+  auto x_e = phi::EigenVector<T>::Flatten(*in_x);
+  auto dy_e = phi::EigenVector<T>::Flatten(*in_dy);
+  auto norm_e = phi::EigenVector<T>::Flatten(*in_norm);
+  auto dx_e = phi::EigenVector<T>::Flatten(*out_dx);
 
   Eigen::DSizes<int, 3> shape(pre, n, post);
   Eigen::DSizes<int, 3> rshape(pre, 1, post);
@@ -62,7 +60,7 @@ void NormGradKernel(const Context& ctx,
   DenseTensor rsum;
   rsum.Resize({pre, post});
   ctx.template Alloc<T>(&rsum);
-  auto sum = paddle::framework::EigenTensor<T, 2>::From(rsum);
+  auto sum = phi::EigenTensor<T, 2>::From(rsum);
 
   Eigen::DSizes<int, 1> rdim(1);
   Eigen::DSizes<int, 3> bcast(1, n, 1);

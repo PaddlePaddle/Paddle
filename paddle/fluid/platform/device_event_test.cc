@@ -13,15 +13,16 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/device_event.h"
+
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/platform/place.h"
 
-using ::paddle::platform::kCUDA;
 using ::paddle::platform::kCPU;
+using ::paddle::platform::kCUDA;
 
-using paddle::platform::DeviceEvent;
 using paddle::platform::DeviceContextPool;
+using paddle::platform::DeviceEvent;
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
@@ -32,8 +33,56 @@ TEST(DeviceEvent, CUDA) {
 
   auto& pool = DeviceContextPool::Instance();
   auto place = CUDAPlace(0);
-  auto* context =
-      static_cast<paddle::platform::CUDADeviceContext*>(pool.Get(place));
+  auto* context = static_cast<phi::GPUContext*>(pool.Get(place));
+
+  ASSERT_NE(context, nullptr);
+  // case 1. test for event_creator
+  DeviceEvent event(place);
+  ASSERT_NE(event.GetEvent().get(), nullptr);
+  bool status = event.Query();
+  ASSERT_EQ(status, true);
+  // case 2. test for event_recorder
+  event.Record(context);
+  // case 3. test for event_finisher
+  event.Finish();
+  status = event.Query();
+  ASSERT_EQ(status, true);
+
+  // case 4. test for event_waiter
+  float *src_fp32, *dst_fp32;
+  int size = 1000000 * sizeof(float);
+  cudaMallocHost(reinterpret_cast<void**>(&src_fp32), size);
+  cudaMalloc(reinterpret_cast<void**>(&dst_fp32), size);
+  cudaMemcpyAsync(
+      dst_fp32, src_fp32, size, cudaMemcpyHostToDevice, context->stream());
+  event.Record(context);  // step 1. record it
+  status = event.Query();
+  ASSERT_EQ(status, false);
+
+  event.Wait(kCUDA, context);  // step 2. add streamWaitEvent
+  status = event.Query();
+  ASSERT_EQ(status, false);  // async
+
+  event.Wait(kCPU, context);  // step 3. EventSynchornize
+  status = event.Query();
+  ASSERT_EQ(status, true);  // sync
+
+  // release resource
+  cudaFree(dst_fp32);
+  cudaFreeHost(src_fp32);
+}
+#endif
+
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+
+TEST(DeviceEvent, CUDA) {
+  VLOG(1) << "In Test";
+  using paddle::platform::CUDAPlace;
+
+  auto& pool = DeviceContextPool::Instance();
+  auto place = CUDAPlace(0);
+  auto* context = static_cast<phi::GPUContext*>(pool.Get(place));
 
   ASSERT_NE(context, nullptr);
   // case 1. test for event_creator
@@ -53,10 +102,10 @@ TEST(DeviceEvent, CUDA) {
   // case 4. test for event_waiter
   float *src_fp32, *dst_fp32;
   int size = 1000000 * sizeof(float);
-  cudaMallocHost(reinterpret_cast<void**>(&src_fp32), size);
-  cudaMalloc(reinterpret_cast<void**>(&dst_fp32), size);
-  cudaMemcpyAsync(dst_fp32, src_fp32, size, cudaMemcpyHostToDevice,
-                  context->stream());
+  hipMallocHost(reinterpret_cast<void**>(&src_fp32), size);
+  hipMalloc(reinterpret_cast<void**>(&dst_fp32), size);
+  hipMemcpyAsync(
+      dst_fp32, src_fp32, size, hipMemcpyHostToDevice, context->stream());
   event.Record(context);  // step 1. record it
   status = event.Query();
   ASSERT_EQ(status, false);
@@ -70,8 +119,8 @@ TEST(DeviceEvent, CUDA) {
   ASSERT_EQ(status, true);  // sync
 
   // release resource
-  cudaFree(dst_fp32);
-  cudaFreeHost(src_fp32);
+  hipFree(dst_fp32);
+  hipFreeHost(src_fp32);
 }
 #endif
 

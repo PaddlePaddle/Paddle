@@ -18,19 +18,19 @@ limitations under the License. */
 #include <cstring>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class SimilarityFocusKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    Tensor* out = context.Output<Tensor>("Out");
-    const Tensor* x = context.Input<Tensor>("X");
+    phi::DenseTensor* out = context.Output<phi::DenseTensor>("Out");
+    const phi::DenseTensor* x = context.Input<phi::DenseTensor>("X");
     T* out_data = out->mutable_data<T>(context.GetPlace());
     const T* x_data = x->data<T>();
 
@@ -44,18 +44,21 @@ class SimilarityFocusKernel : public framework::OpKernel<T> {
     }
 
     PADDLE_ENFORCE_GT(
-        indexes.size(), 0,
+        indexes.size(),
+        0,
         platform::errors::InvalidArgument("The size of Attr(indexes) must be "
                                           "greater than 0, but received %d.",
                                           indexes.size()));
 
     for (size_t i = 0; i < indexes.size(); i++) {
       PADDLE_ENFORCE_GT(
-          dim[axis], indexes[i],
+          dim[axis],
+          indexes[i],
           platform::errors::InvalidArgument(
               "Each value of Attr(indexes) must be less than X.dim[axis], "
               "but indexes[%d] received %d.",
-              i, indexes[i]));
+              i,
+              indexes[i]));
     }
 
     int64_t array_size = 1;
@@ -67,24 +70,26 @@ class SimilarityFocusKernel : public framework::OpKernel<T> {
 
     std::vector<std::pair<T, int64_t>> array(array_size);
 
-    bool (*cmp)(std::pair<T, int64_t>, std::pair<T, int64_t>) = [](
-        std::pair<T, int64_t> x, std::pair<T, int64_t> y) {
-      return x.first > y.first;
-    };
+    bool (*cmp)(std::pair<T, int64_t>, std::pair<T, int64_t>) =
+        [](std::pair<T, int64_t> x, std::pair<T, int64_t> y) {
+          return x.first > y.first;
+        };
 
-    int64_t (*compute_index)(int64_t*, int, int, int, int) = [](
-        int64_t* dim, int d1, int d2, int d3, int d4) {
-      return d1 * dim[1] * dim[2] * dim[3] + d2 * dim[2] * dim[3] +
-             d3 * dim[3] + d4;
-    };
+    int64_t (*compute_index)(int64_t*, int, int, int, int) =
+        [](int64_t* dim, int d1, int d2, int d3, int d4) {
+          return d1 * dim[1] * dim[2] * dim[3] + d2 * dim[2] * dim[3] +
+                 d3 * dim[3] + d4;
+        };
 
     PADDLE_ENFORCE_GT(
-        axis, 0,
+        axis,
+        0,
         platform::errors::InvalidArgument(
             "The value of Attr(axis) must be 1 or 2 or 3, but received %d.",
             axis));
     PADDLE_ENFORCE_LT(
-        axis, 4,
+        axis,
+        4,
         platform::errors::InvalidArgument(
             "The value of Attr(axis) must be 1 or 2 or 3, but received %d.",
             axis));

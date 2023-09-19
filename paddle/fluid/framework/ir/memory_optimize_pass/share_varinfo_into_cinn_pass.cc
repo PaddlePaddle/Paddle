@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <algorithm>
+
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/eager_deletion_op_handle.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
@@ -66,22 +67,27 @@ static void ShareVarInfoToCinnLaunch(
           << paddle::string::join_strings(vars_to_delete, ',');
 
   const Graph& subgraph = paddle2cinn::CinnCompiler::GetInstance()->FindGraph(
-      cinn_launch_op->GetOp()->Attr<std::string>(operators::kCompilationKey));
+      cinn_launch_op->GetOp()->Attr<int64_t>(operators::kCompilationKey));
   auto& dst_varinfo_map =
       subgraph.Get<Name2VarInfoMap>(paddle2cinn::kMemOptVarInfoFromMainGraph);
   const Name2VarInfoMap& src_varinfo_map =
       varinfo_maps.at(cinn_launch_op->GetScopeIdx());
 
   // collect all MemOptVarInfos of external variables
-  // that would be eager deleted after the cinn_launch subgraph executed,
-  // and store them as attribute of the subgraph
+  // that were eager deleted after the cinn_launch subgraph executed,
+  // and we will delete them in advance among eager_deletion_ops
+  // inside cinn_launch subgraph, so store them as attribute of the subgraph
+  // to pass to the inner eager_deletion_ops.
   for (const auto& var_name : vars_to_delete) {
     auto it = src_varinfo_map.find(var_name);
-    PADDLE_ENFORCE_NE(it, src_varinfo_map.end(),
+    PADDLE_ENFORCE_NE(it,
+                      src_varinfo_map.end(),
                       platform::errors::NotFound(
                           "MemOptVarInfo of var[%s] not found", var_name));
     dst_varinfo_map.emplace(var_name, it->second);
   }
+  // skip running of the followed eager_deletion_op
+  followed_eager_deletion_op->SetSkipRunning(true);
 }
 
 static void TakeVarInfoFromMainGraph(
@@ -92,7 +98,8 @@ static void TakeVarInfoFromMainGraph(
       varinfo_maps.at(eager_deletion_op->GetScopeIdx());
   for (auto&& var_name : eager_deletion_op->VarsToDelete()) {
     auto dst_it = dst_varinfo_map.find(var_name);
-    PADDLE_ENFORCE_NE(dst_it, dst_varinfo_map.end(),
+    PADDLE_ENFORCE_NE(dst_it,
+                      dst_varinfo_map.end(),
                       platform::errors::NotFound(
                           "MemOptVarInfo of var[%s] not found", var_name));
     auto src_it = src_varinfo_map.find(var_name);
@@ -132,8 +139,8 @@ class ShareMemOptInfoToSubGraphPass : public ir::Pass {
         auto eager_deletion_op =
             dynamic_cast<details::EagerDeletionOpHandle*>(op);
         if (eager_deletion_op) {
-          TakeVarInfoFromMainGraph(parent_varinfo_map, varinfo_maps,
-                                   eager_deletion_op);
+          TakeVarInfoFromMainGraph(
+              parent_varinfo_map, varinfo_maps, eager_deletion_op);
         }
       }
     }

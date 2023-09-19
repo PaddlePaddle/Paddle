@@ -13,13 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/prroi_pool_op.h"
+
 #include <memory>
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
 
 class PRROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -32,9 +30,9 @@ class PRROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "H is the height of the input feature map, and "
              "W is the width.");
     AddInput("ROIs",
-             "(LoDTensor), "
+             "(phi::DenseTensor), "
              "ROIs (Regions of Interest) to pool over. "
-             "should be a 2-D LoDTensor of shape (num_rois, 4) "
+             "should be a 2-D phi::DenseTensor of shape (num_rois, 4) "
              "given as [(x1, y1, x2, y2), ...]. "
              "where (x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates. "
@@ -86,30 +84,36 @@ class PRROIPoolOp : public framework::OperatorWithKernel {
     auto input_dims = ctx->GetInputDim("X");
     auto rois_dims = ctx->GetInputDim("ROIs");
 
-    PADDLE_ENFORCE_EQ(input_dims.size(), 4,
+    PADDLE_ENFORCE_EQ(input_dims.size(),
+                      4,
                       platform::errors::InvalidArgument(
                           "The format of input tensor is NCHW"));
     PADDLE_ENFORCE_EQ(
-        rois_dims.size(), 2,
+        rois_dims.size(),
+        2,
         platform::errors::InvalidArgument(
-            "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+            "ROIs should be a 2-D phi::DenseTensor of shape (num_rois, 4) "
             "given as [(x1, y1, x2, y2), ...]"));
     PADDLE_ENFORCE_EQ(
-        rois_dims[1], 4,
+        rois_dims[1],
+        4,
         platform::errors::InvalidArgument(
-            "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+            "ROIs should be a 2-D phi::DenseTensor of shape (num_rois, 4) "
             "given as [(x1, y1, x2, y2), ...]"));
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
     int pooled_width = ctx->Attrs().Get<int>("pooled_width");
     float spatial_scale = ctx->Attrs().Get<float>("spatial_scale");
 
-    PADDLE_ENFORCE_GT(pooled_height, 0,
+    PADDLE_ENFORCE_GT(pooled_height,
+                      0,
                       platform::errors::InvalidArgument(
                           "The pooled output height must be greater than 0"));
-    PADDLE_ENFORCE_GT(pooled_width, 0,
+    PADDLE_ENFORCE_GT(pooled_width,
+                      0,
                       platform::errors::InvalidArgument(
                           "The pooled output width must be greater than 0"));
-    PADDLE_ENFORCE_GT(spatial_scale, 0.0f,
+    PADDLE_ENFORCE_GT(spatial_scale,
+                      0.0f,
                       platform::errors::InvalidArgument(
                           "The spatial scale must greater than 0."));
 
@@ -121,7 +125,8 @@ class PRROIPoolOp : public framework::OperatorWithKernel {
 
     if (ctx->HasInput("BatchRoINums")) {
       auto rois_batch_index = ctx->GetInputDim("BatchRoINums");
-      PADDLE_ENFORCE_EQ(rois_batch_index[0], input_dims[0],
+      PADDLE_ENFORCE_EQ(rois_batch_index[0],
+                        input_dims[0],
                         platform::errors::InvalidArgument(
                             "The length of BatchRoINums should equal to  "
                             "first dim of inputs(X)"));
@@ -130,11 +135,10 @@ class PRROIPoolOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -143,20 +147,23 @@ class PRROIPoolGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "prroi_pool");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   framework::GradVarName("X"), "prroi_pool");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "prroi_pool");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   framework::GradVarName("X"),
+                   "prroi_pool");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
     ctx->SetOutputDim(framework::GradVarName("ROIs"), ctx->GetInputDim("ROIs"));
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -182,19 +189,26 @@ class PRROIPoolGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(prroi_pool, ops::PRROIPoolOp, ops::PRROIPoolOpMaker,
+REGISTER_OPERATOR(prroi_pool,
+                  ops::PRROIPoolOp,
+                  ops::PRROIPoolOpMaker,
                   ops::PRROIPoolGradMaker<paddle::framework::OpDesc>,
                   ops::PRROIPoolGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(prroi_pool_grad, ops::PRROIPoolGradOp);
-REGISTER_OP_CPU_KERNEL(
-    prroi_pool,
-    ops::CPUPRROIPoolOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUPRROIPoolOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::CPUPRROIPoolOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::CPUPRROIPoolOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    prroi_pool_grad,
-    ops::CPUPRROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUPRROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::CPUPRROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::CPUPRROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+
+PD_REGISTER_STRUCT_KERNEL(prroi_pool,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CPUPRROIPoolOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(prroi_pool_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CPUPRROIPoolGradOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

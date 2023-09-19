@@ -12,18 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "gtest/gtest.h"
-
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_graph_symbolization.h"
+
+#include "gtest/gtest.h"
+#include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
 namespace framework {
 namespace paddle2cinn {
 
+using ::cinn::frontend::NetBuilder;
 using ir::Graph;
 using ir::Node;
-using ::cinn::frontend::NetBuilder;
 using CinnTensor = ::cinn::hlir::framework::Tensor;
 using OpMapperContext = CinnGraphSymbolization::OpMapperContext;
 using CinnOpDesc = CinnGraphSymbolization::CinnOpDesc;
@@ -47,7 +47,8 @@ class CinnGraphSymbolizationForTest {
   OpMapperContext CreateNewContext(NetBuilder* builder,
                                    const FeedInfoMap& feed_map) {
     return OpMapperContext(*cinn_symbol_->CreateCinnScope(feed_map),
-                           cinn_symbol_->target_, builder,
+                           cinn_symbol_->target_,
+                           builder,
                            &cinn_symbol_->var_map_,
                            &cinn_symbol_->var_model_to_program_map_,
                            &cinn_symbol_->fetch_var_names_);
@@ -77,8 +78,8 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
     target_ = CreateDefaultTarget();
     feed_tensors_ = CreateFeedTensors();
     feed_targets_ = ConvertFeedType(feed_tensors_);
-    symbol_ = std::make_unique<CinnGraphSymbolization>(graph_id, *graph_,
-                                                       target_, feed_targets_);
+    symbol_ = std::make_unique<CinnGraphSymbolization>(
+        graph_id, *graph_, target_, feed_targets_);
     builder_ = std::make_unique<NetBuilder>("NetBuilder_of_graph_" +
                                             std::to_string(graph_id));
     test_ = std::make_unique<CinnGraphSymbolizationForTest>(symbol_.get());
@@ -87,7 +88,7 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
 
   std::unique_ptr<CinnGraphSymbolization> symbol_;
   std::unique_ptr<CinnGraphSymbolizationForTest> test_;
-  std::map<std::string, const LoDTensor*> feed_targets_;
+  std::map<std::string, const phi::DenseTensor*> feed_targets_;
 
   OpMapperContext CreateNewContext() {
     return test_->CreateNewContext(builder_.get(), feed_map_);
@@ -100,7 +101,7 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
  private:
   std::unique_ptr<Graph> graph_;
   ::cinn::common::Target target_;
-  std::map<std::string, LoDTensor> feed_tensors_;
+  std::map<std::string, phi::DenseTensor> feed_tensors_;
   std::unique_ptr<NetBuilder> builder_;
   FeedInfoMap feed_map_;
 
@@ -200,11 +201,11 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
     return ::cinn::common::DefaultHostTarget();
   }
 
-  std::map<std::string, LoDTensor> CreateFeedTensors() {
-    std::map<std::string, LoDTensor> feed_targets;
+  std::map<std::string, phi::DenseTensor> CreateFeedTensors() {
+    std::map<std::string, phi::DenseTensor> feed_targets;
 
     auto create_tensor = []() {
-      LoDTensor tensor;
+      phi::DenseTensor tensor;
       DDim dims = {256, 1024};
       tensor.Resize(dims);
       tensor.mutable_data(
@@ -226,9 +227,9 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
     return feed_targets;
   }
 
-  std::map<std::string, const LoDTensor*> ConvertFeedType(
-      const std::map<std::string, LoDTensor>& feed_targets) {
-    std::map<std::string, const LoDTensor*> res;
+  std::map<std::string, const phi::DenseTensor*> ConvertFeedType(
+      const std::map<std::string, phi::DenseTensor>& feed_targets) {
+    std::map<std::string, const phi::DenseTensor*> res;
     for (auto& feed_pair : feed_targets) {
       res[feed_pair.first] = &feed_pair.second;
     }

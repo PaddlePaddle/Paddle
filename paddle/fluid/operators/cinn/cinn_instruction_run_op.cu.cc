@@ -13,14 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/cinn/cinn_instruction_run_op.h"
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace ops = paddle::operators;
-using CUDADeviceContext = paddle::platform::CUDADeviceContext;
-REGISTER_OP_CUDA_KERNEL(
-    cinn_instruction_run,
-    ops::CinnInstructionRunOpKernel<CUDADeviceContext, bool>,
-    ops::CinnInstructionRunOpKernel<CUDADeviceContext, int>,
-    ops::CinnInstructionRunOpKernel<CUDADeviceContext, int64_t>,
-    ops::CinnInstructionRunOpKernel<CUDADeviceContext, float>,
-    ops::CinnInstructionRunOpKernel<CUDADeviceContext, double>);
+/* see [Why use single type kernel] */
+PD_REGISTER_STRUCT_KERNEL(cinn_instruction_run,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::CinnInstructionRunOpKernel,
+                          float) {}

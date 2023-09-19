@@ -13,15 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sign_kernel.h"
-#include "paddle/phi/kernels/impl/sign_kernel_impl.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/sign_kernel_impl.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/amp_type_traits.h"
 
-using float16 = phi::dtype::float16;
-
-PD_REGISTER_KERNEL(
-    sign, GPU, ALL_LAYOUT, phi::SignKernel, float, double, float16) {}
+PD_REGISTER_KERNEL(sign,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SignKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

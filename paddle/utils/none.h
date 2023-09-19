@@ -21,7 +21,7 @@ namespace paddle {
 
 namespace detail {
 struct none_helper {};
-}
+}  // namespace detail
 
 typedef int detail::none_helper::*none_t;
 

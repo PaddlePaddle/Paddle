@@ -1,0 +1,129 @@
+{% import "common.j2" as common %}
+// Auto Generated, DO NOT EDIT!
+
+#include "paddle/fluid/primitive/backend/generated/generated_backend.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
+#include "paddle/fluid/primitive/primitive/primitive.h"
+#include "paddle/fluid/primitive/type/lazy_tensor.h"
+
+namespace paddle {
+namespace primitive {
+namespace backend {
+
+using LazyTensor = paddle::primitive::LazyTensor;
+
+{%- macro sig(name, inputs, outputs, attrs, mutable_attribute_as_inputs=False) -%}
+template <>
+{{common.ret(outputs)}} {{name}}<LazyTensor>({{common.params(inputs, attrs, mutable_attribute_as_inputs, False)}})
+{%- endmacro -%}
+
+{%- macro prepare_ir_api_inputs(inputs)-%}
+  {%- for input in inputs -%}
+    {% if input.typename=='Tensor[]' and not input.optional %}
+std::vector<pir::Value> {{input.name}}_res({{input.name}}.size());
+std::transform({{input.name}}.begin(), {{input.name}}.end(), {{input.name}}_res.begin(), [](const Tensor& t) {
+  return std::static_pointer_cast<LazyTensor>(t.impl())->value();
+});
+    {% elif input.typename=='Tensor[]' and input.optional %}
+std::vector<pir::Value> {{input.name}}_res({{input.name}}.size());
+if({{input.name}}) {
+  std::transform({{input.name}}.get().begin(), {{input.name}}.get().end(), {{input.name}}_res.begin(), [](const Tensor& t) {
+    return std::static_pointer_cast<LazyTensor>(t.impl())->value();
+  });
+}
+    {% elif input.typename=='Tensor' and not input.optional %}
+pir::Value {{input.name}}_res = std::static_pointer_cast<LazyTensor>({{input.name}}.impl())->value();
+    {% else %}
+pir::Value {{input.name}}_res;
+if({{input.name}}) {
+  {{input.name}}_res = std::static_pointer_cast<LazyTensor>({{input.name}}.get().impl())->value();
+}
+    {% endif %}
+  {% endfor %}
+{%- endmacro -%}
+
+{%- macro get_static_backend_outputs(outputs)-%}
+  {%- if outputs|length == 1 -%}
+    {%- if outputs[0].typename == 'Tensor' -%}
+Tensor {{outputs[0].name}}(std::make_shared<LazyTensor>(op_res));
+return {{outputs[0].name}};
+    {%- elif outputs[0].typename == 'Tensor[]' -%}
+std::vector<Tensor> {{outputs[0].name}}(op_res.size());
+std::transform(op_res.begin(), op_res.end(), {{outputs[0].name}}.begin(), [](const pir::OpResult& res) {
+return Tensor(std::make_shared<LazyTensor>(res));
+  });
+return {{outputs[0].name}};
+    {%- else -%} {#- render nothing -#}
+    {%- endif -%}
+  {%- elif outputs|length > 1 -%}
+    {%- for i in range(outputs|length) %}
+auto op_res_{{i}} = std::get<{{i}}>(op_res);
+      {% if outputs[i].typename == 'Tensor' %}
+Tensor {{outputs[i].name}}(std::make_shared<LazyTensor>(op_res_{{i}}));
+      {% elif outputs[i].typename == 'Tensor[]' %}
+std::vector<Tensor> {{outputs[i].name}}(op_res_{{i}}.size());
+std::transform(op_res_{{i}}.begin(), op_res_{{i}}.end(), {{outputs[i].name}}.begin(), [](const pir::OpResult& res) {
+return Tensor(std::make_shared<LazyTensor>(res));
+  });
+      {% else %} {#- render nothing -#}
+      {% endif %}
+    {% endfor -%}
+return std::make_tuple({%- for i in range(outputs|length) -%}{{outputs[i].name}}{%- if i!=outputs|length - 1 -%}, {% endif -%}{%- endfor -%});
+  {%- else -%} {#- render nothing -#}
+  {%- endif -%}
+{%- endmacro -%}
+
+{% macro body(name, inputs, outputs, attrs, mutable_attribute_as_inputs=False) %}
+  {%- set output_names = [] -%}
+  {%- for o in outputs -%} {%- do output_names.append(o.name) -%} {%-endfor-%}
+{{prepare_ir_api_inputs(inputs)}}
+  {%- for attr in attrs %}
+    {% if mutable_attribute_as_inputs and attr is mutable_attribute %}
+pir::OpResult {{attr.name}}_res = std::static_pointer_cast<LazyTensor>({{attr.name~'_'}}.impl())->value().dyn_cast<pir::OpResult>();
+    {% endif %}
+  {% endfor %}
+  {%- set input_names = [] -%}
+  {%- for i in inputs -%} 
+    {%- do input_names.append(i.name~'_res') -%} 
+  {%- endfor -%}
+  {%- if mutable_attribute_as_inputs -%}
+    {%- for i in attrs -%} 
+      {%- if i is mutable_attribute -%}
+        {%- do input_names.append(i.name~'_res') -%} 
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endif -%}
+  {%- set attr_names = [] -%}
+  {%- for i in attrs -%} 
+    {%- if  not mutable_attribute_as_inputs or mutable_attribute_as_inputs and i is not mutable_attribute -%}{#- do nothing -#}
+      {%- do attr_names.append(common.phi2ir_attr(i)) -%} 
+    {%- endif -%}
+  {% endfor %}
+auto op_res = paddle::dialect::{{name}}({{common.args(input_names, attr_names)}});
+{{get_static_backend_outputs(outputs)}}
+{%- endmacro %}
+
+
+{% for api in apis %}
+{% if api.name in backend_white_list %}
+  {% set api_outputs = api.outputs | trip_intermediate %}
+{{sig(api.name, api.inputs, api_outputs, api.attrs)}} {
+  {% filter indent(2, True) %}
+{{body(api.name, api.inputs, api_outputs, api.attrs)}} 
+  {% endfilter %}
+}
+
+  {% if api.attrs is exist_mutable_attribute %}
+{{sig(api.name, api.inputs, api_outputs, api.attrs, True)}} {
+  {% filter indent(2, True) %}
+{{body(api.name, api.inputs, api_outputs, api.attrs, True)}} 
+  {% endfilter %}
+}
+
+  {% endif %}
+{% endif %}
+{% endfor %}
+
+}  // namespace backend
+}  // namespace primitive
+}  // namespace paddle

@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,552 +13,829 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <cuda_fp16.h>
+
 #include <cub/cub.cuh>
+
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/fluid/operators/fused/fused_attention_utils.h"
 
-#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/functors.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
+#include "paddle/phi/kernels/funcs/transpose_function.cu.h"
+#include "paddle/phi/kernels/fusion/gpu/attention_layer.norm.h"
+#include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
+#include "paddle/phi/kernels/fusion/gpu/fmha_ref.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
 
-#include "paddle/fluid/operators/fused/attention_layer_norm.h"
-#include "paddle/fluid/operators/fused/attn_gemm.h"
-#include "paddle/fluid/operators/fused/fmha_ref.h"
-#include "paddle/fluid/operators/fused/fused_dropout_helper.h"
+namespace phi {
+namespace fusion {
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
-#endif
+template <typename T, typename Context>
+void FusedAttentionKernel(const Context &dev_ctx,
+                          const DenseTensor &x,
+                          const paddle::optional<DenseTensor> &ln_scale,
+                          const paddle::optional<DenseTensor> &ln_bias,
+                          const DenseTensor &qkv_weight,
+                          const paddle::optional<DenseTensor> &qkv_bias,
+                          const paddle::optional<DenseTensor> &cache_kv,
+                          const paddle::optional<DenseTensor> &src_mask,
+                          const DenseTensor &out_linear_weight,
+                          const paddle::optional<DenseTensor> &out_linear_bias,
+                          const paddle::optional<DenseTensor> &ln_scale_2,
+                          const paddle::optional<DenseTensor> &ln_bias_2,
+                          int num_heads,
+                          bool transpose_qkv_wb,
+                          bool pre_layer_norm,
+                          float epsilon,
+                          float attn_dropout_rate,
+                          bool is_test,
+                          bool attn_dropout_fix_seed,
+                          int attn_dropout_seed,
+                          const std::string &attn_dropout_implementation,
+                          float dropout_rate,
+                          bool dropout_fix_seed,
+                          int dropout_seed,
+                          const std::string &dropout_implementation,
+                          float ln_epsilon,
+                          bool add_residual,
+                          int ring_id,
+                          DenseTensor *ln_mean,
+                          DenseTensor *ln_var,
+                          DenseTensor *ln_out,
+                          DenseTensor *qkv_out,
+                          DenseTensor *qkv_bias_out,
+                          DenseTensor *transpose_out_2,
+                          DenseTensor *qk_out,
+                          DenseTensor *qktv_out,
+                          DenseTensor *softmax_out,
+                          DenseTensor *attn_dropout_mask_out,
+                          DenseTensor *attn_dropout_out,
+                          DenseTensor *src_mask_out,
+                          DenseTensor *fmha_out,
+                          DenseTensor *out_linear_out,
+                          DenseTensor *dropout_mask_out,
+                          DenseTensor *ln_mean_2,
+                          DenseTensor *ln_var_2,
+                          DenseTensor *bias_dropout_residual_out,
+                          DenseTensor *cache_kv_out,
+                          DenseTensor *out) {
+  using U = phi::funcs::LayerNormParamType<T>;
 
-namespace paddle {
-namespace operators {
+  // x: qkv's input [batch_size, seq_len, dim_embed]
+  // if transpose_qkv_wb is False
+  // y: qkv's weight: [3, num_head, dim_head, dim_embed]
+  // if transpose_qkv_wb is True
+  // y: qkv's weight: [dim_embed, 3 * dim_embed]
 
-using Tensor = framework::Tensor;
+  auto *x_p = &x;
+  auto *ln_scale_p = ln_scale.get_ptr();
+  auto *ln_bias_p = ln_bias.get_ptr();
 
-template <typename T>
-static void AllReduce(framework::Tensor &tensor,  // NOLINT
-                      const int ring_id,
-                      const platform::CUDADeviceContext &ctx) {
-  if (ring_id == -1) return;
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  auto dtype =
-      platform::ToNCCLDataType(framework::TransToProtoVarType(tensor.dtype()));
-  int64_t numel = tensor.numel();
-  const void *sendbuff = tensor.data<T>();
-  auto place = ctx.GetPlace();
-  void *recvbuff = tensor.mutable_data<T>(place);
-  auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
-  auto stream = ctx.stream();
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-      sendbuff, recvbuff, numel, dtype, ncclSum, comm->comm(), stream));
-#else
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "PaddlePaddle should compile with NCCL or RCCL when used tensor model "
-      "parallel op."));
-#endif
+  auto *qkv_weight_p = &qkv_weight;
+  auto *qkv_bias_p = qkv_bias.get_ptr();
+  auto *cache_kv_p = cache_kv.get_ptr();
+
+  auto *src_mask_p = src_mask.get_ptr();
+  auto *out_linear_weight_p = &out_linear_weight;
+
+  auto *out_linear_bias_p = out_linear_bias.get_ptr();
+
+  auto *ln_scale_2_p = ln_scale_2.get_ptr();
+  auto *ln_bias_2_p = ln_bias_2.get_ptr();
+
+  const bool has_attn_dropout = (attn_dropout_rate != 0.0f);
+
+  const bool is_upscale_in_train =
+      (dropout_implementation == "upscale_in_train");
+  phi::fusion::DropoutParam dropout_param2(dropout_fix_seed,
+                                           0,
+                                           is_test,
+                                           is_upscale_in_train,
+                                           dropout_rate,
+                                           nullptr,
+                                           dropout_seed);
+
+  const bool has_dropout = (dropout_param2.dropout_prob != 0.0f);
+
+  bool is_upscale_in_train_1 =
+      (attn_dropout_implementation == "upscale_in_train");
+  phi::DenseTensor *seed_1 = nullptr;
+
+  // get data ptr for qkv part.
+  const auto input_x_dims = x_p->dims();
+  const auto qkv_w_dims = qkv_weight_p->dims();
+
+  auto *x_data = x_p->data<T>();
+  auto *qkv_weight_data = qkv_weight_p->data<T>();
+  auto *qkv_bias_data =
+      (qkv_bias_p == nullptr) ? nullptr : qkv_bias_p->data<T>();
+  auto *qkv_out_data =
+      dev_ctx.template Alloc<T>(qkv_out, qkv_out->numel() * sizeof(T));
+  auto *qkv_bias_out_data =
+      (qkv_bias_p == nullptr)
+          ? nullptr
+          : dev_ctx.template Alloc<T>(qkv_bias_out,
+                                      qkv_bias_out->numel() * sizeof(T));
+
+  // get data ptr for FMHA.
+  auto *transpose_out_2_data = dev_ctx.template Alloc<T>(
+      transpose_out_2, transpose_out_2->numel() * sizeof(T));
+  auto *cache_kv_out_data =
+      (cache_kv_out == nullptr)
+          ? nullptr
+          : dev_ctx.template Alloc<T>(cache_kv_out,
+                                      cache_kv_out->numel() * sizeof(T));
+  auto *qk_out_data =
+      dev_ctx.template Alloc<T>(qk_out, qk_out->numel() * sizeof(T));
+  auto *qktv_out_data =
+      dev_ctx.template Alloc<T>(qktv_out, qktv_out->numel() * sizeof(T));
+  auto *src_mask_out_data =
+      (src_mask_p == nullptr)
+          ? nullptr
+          : dev_ctx.template Alloc<T>(src_mask_out,
+                                      src_mask_out->numel() * sizeof(T));
+  auto *softmax_out_data =
+      dev_ctx.template Alloc<T>(softmax_out, softmax_out->numel() * sizeof(T));
+  auto *attn_dropout_mask_out_data =
+      has_attn_dropout ? dev_ctx.template Alloc<uint8_t>(
+                             attn_dropout_mask_out,
+                             attn_dropout_mask_out->numel() * sizeof(uint8_t))
+                       : nullptr;
+  auto *attn_dropout_out_data =
+      has_attn_dropout
+          ? dev_ctx.template Alloc<T>(attn_dropout_out,
+                                      attn_dropout_out->numel() * sizeof(T))
+          : nullptr;
+  auto *fmha_out_data =
+      dev_ctx.template Alloc<T>(fmha_out, fmha_out->numel() * sizeof(T));
+
+  // get data ptr for out_linear.
+  auto *out_linear_weight_data = out_linear_weight_p->data<T>();
+  auto *out_linear_bias_data =
+      (out_linear_bias_p == nullptr) ? nullptr : out_linear_bias_p->data<T>();
+  auto *out_linear_out_data = dev_ctx.template Alloc<T>(
+      out_linear_out, out_linear_out->numel() * sizeof(T));
+
+  // get data ptr for bias+dropout+residual+layernorm
+  auto *dropout_mask_out_data =
+      has_dropout
+          ? dev_ctx.template Alloc<uint8_t>(
+                dropout_mask_out, dropout_mask_out->numel() * sizeof(uint8_t))
+          : nullptr;
+  auto *final_out_data =
+      dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
+
+  int batch_size = input_x_dims[0];
+  int max_seq_len = input_x_dims[1];
+  int dim_embed = input_x_dims[2];
+
+  int num_head;
+  int dim_head;
+  int nranks = 1;
+  // get num_head and dim_head in two different ways
+  if (!transpose_qkv_wb) {
+    num_head = qkv_w_dims[1];
+    dim_head = qkv_w_dims[2];
+  } else {
+    nranks = (qkv_w_dims[0] * 3) / qkv_w_dims[1];
+    num_head = num_heads;
+    dim_head = dim_embed / (num_head * nranks);
+  }
+
+  int bsz_seq = batch_size * max_seq_len;
+  int hidden_size = num_head * dim_head;
+  int output_size = 3 * hidden_size;
+  int input_size = dim_embed;
+
+  auto layer_norm_compute =
+      phi::fusion::AttnLayerNorm<T>(dev_ctx, epsilon, bsz_seq, dim_embed);
+
+  bool compute_bias = true;
+  if (qkv_bias_p == nullptr) {
+    compute_bias = false;
+  }
+  // (transA, transB, compute_bias) = (false, true, true)
+  bool transB = transpose_qkv_wb ? false : true;
+  auto qkv_compute = phi::fusion::AttnMatMul<T>(
+      dev_ctx, false, transB, bsz_seq, output_size, input_size, compute_bias);
+
+  phi::fusion::AttnDropoutParam attn_dropout_param(is_test,
+                                                   attn_dropout_implementation,
+                                                   attn_dropout_rate,
+                                                   is_upscale_in_train_1,
+                                                   attn_dropout_fix_seed,
+                                                   attn_dropout_seed,
+                                                   seed_1);
+  auto fmha_ref_compute = phi::fusion::FMHARef<T>(
+      dev_ctx, batch_size, max_seq_len, num_head, dim_head, attn_dropout_param);
+
+  output_size = hidden_size;
+  // (transA, transB, compute_bias) = (false, false, false)
+  // NOTE(Yuang Liu): For general input size == output size, change the
+  // position won't have effects. For mp, the output size is mp_head * dkey
+  // which is actually the input size. While the input size is hidden size,
+  // which is actually the output size. So for out linear, switch the
+  // input size and output size.
+  auto out_linear_compute = phi::fusion::AttnMatMul<T>(
+      dev_ctx, false, false, bsz_seq, input_size, output_size, false);
+  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>
+      fused_dropout_layernorm_helper(
+          dev_ctx, bsz_seq, dim_embed, dropout_param2, ln_epsilon);
+
+  if (pre_layer_norm) {
+    auto *ln_scale_data =
+        (ln_scale_p == nullptr ? nullptr : ln_scale_p->data<U>());
+    auto *ln_bias_data =
+        (ln_bias_p == nullptr ? nullptr : ln_bias_p->data<U>());
+    auto *ln_mean_data =
+        dev_ctx.template Alloc<U>(ln_mean, ln_mean->numel() * sizeof(U));
+    auto *ln_var_data =
+        dev_ctx.template Alloc<U>(ln_var, ln_var->numel() * sizeof(U));
+    auto *ln_out_data =
+        dev_ctx.template Alloc<T>(ln_out, ln_out->numel() * sizeof(T));
+
+    layer_norm_compute.ComputeForward(x_data,
+                                      ln_scale_data,
+                                      ln_bias_data,
+                                      ln_out_data,
+                                      ln_mean_data,
+                                      ln_var_data);
+    qkv_compute.ComputeForward(
+        qkv_weight_p, ln_out, qkv_bias_p, qkv_out, qkv_bias_out);
+  } else {
+    qkv_compute.ComputeForward(
+        qkv_weight_p, x_p, qkv_bias_p, qkv_out, qkv_bias_out);
+  }
+
+  if (transpose_qkv_wb) {
+    // resize the output for fmha compute
+    qkv_out->Resize({batch_size, max_seq_len, 3, num_head, dim_head});
+    qkv_bias_out->Resize({batch_size, max_seq_len, 3, num_head, dim_head});
+  }
+
+  if (qkv_bias_p == nullptr) {
+    fmha_ref_compute.ComputeForward(*qkv_out,
+                                    cache_kv_p,
+                                    src_mask_p,
+                                    transpose_out_2,
+                                    cache_kv_out,
+                                    qk_out,
+                                    src_mask_out,
+                                    softmax_out,
+                                    attn_dropout_mask_out,
+                                    attn_dropout_out,
+                                    qktv_out,
+                                    fmha_out);
+  } else {
+    fmha_ref_compute.ComputeForward(*qkv_bias_out,
+                                    cache_kv_p,
+                                    src_mask_p,
+                                    transpose_out_2,
+                                    cache_kv_out,
+                                    qk_out,
+                                    src_mask_out,
+                                    softmax_out,
+                                    attn_dropout_mask_out,
+                                    attn_dropout_out,
+                                    qktv_out,
+                                    fmha_out);
+  }
+
+  if (transpose_qkv_wb) {
+    // resize the output back to make the shape compatible with infer shape
+    qkv_out->Resize({batch_size, max_seq_len, 3 * hidden_size});
+    qkv_bias_out->Resize({batch_size, max_seq_len, 3 * hidden_size});
+  }
+
+  // fmha_out: [batch_size, seq_len, num_head, head_dim]
+  // weight:   [embed_dim, embed_dim]
+  // out_linear_out: [batch_size, seq_len, embed_dim]
+  out_linear_compute.ComputeForward(
+      out_linear_weight_p, fmha_out, nullptr, out_linear_out, nullptr);
+  // tensor model parallel
+  phi::fusion::AllReduce<T>(*out_linear_out, ring_id, dev_ctx);
+
+  const T *residual_ptr = add_residual ? x_data : nullptr;
+  if (pre_layer_norm) {
+    // output = (residual + dropout(input + bias))
+    fused_dropout_layernorm_helper.ResidualDropoutBias(dev_ctx,
+                                                       out_linear_out_data,
+                                                       residual_ptr,
+                                                       out_linear_bias_data,
+                                                       final_out_data,
+                                                       dropout_mask_out_data);
+  } else {
+    // TODO(Xreki): support post layer_norm case when add_residual is false.
+    PADDLE_ENFORCE_EQ(
+        add_residual,
+        true,
+        errors::InvalidArgument("Attribute add_residual is expected to be true "
+                                "when pre_layer_norm is false."));
+
+    const U *ln_scale_2_ptr = ln_scale_2_p ? ln_scale_2_p->data<U>() : nullptr;
+    const U *ln_bias_2_ptr = ln_bias_2_p ? ln_bias_2_p->data<U>() : nullptr;
+    T *bias_dropout_residual_out_ptr = dev_ctx.template Alloc<T>(
+        bias_dropout_residual_out,
+        bias_dropout_residual_out->numel() * sizeof(T));
+    U *ln_mean_2_ptr =
+        dev_ctx.template Alloc<U>(ln_mean_2, ln_mean_2->numel() * sizeof(U));
+    U *ln_var_2_ptr =
+        dev_ctx.template Alloc<U>(ln_var_2, ln_var_2->numel() * sizeof(U));
+    // output = layernorm(residual + dropout(input + bias))
+    fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
+        dev_ctx,
+        out_linear_out_data,
+        residual_ptr,
+        out_linear_bias_data,
+        ln_scale_2_ptr,
+        ln_bias_2_ptr,
+        bias_dropout_residual_out_ptr,
+        dropout_mask_out_data,
+        final_out_data,
+        ln_mean_2_ptr,
+        ln_var_2_ptr);
+  }
 }
 
-template <typename T>
-class FusedAttentionOpKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    using U = LayerNormParamType<T>;
-    auto *input_x = ctx.Input<Tensor>("X");
+template <typename T, typename Context>
+void FusedAttentionGradKernel(
+    const Context &dev_ctx,
+    const DenseTensor &out_grad,
+    const DenseTensor &x,
+    const DenseTensor &qkv_weight,
+    const paddle::optional<DenseTensor> &qkv_bias,
+    const paddle::optional<DenseTensor> &qkv_bias_out,
+    const paddle::optional<DenseTensor> &src_mask,
+    const paddle::optional<DenseTensor> &src_mask_out,
+    const DenseTensor &out_linear_weight,
+    const paddle::optional<DenseTensor> &out_linear_bias,
+    const paddle::optional<DenseTensor> &ln_scale,
+    const paddle::optional<DenseTensor> &ln_bias,
+    const paddle::optional<DenseTensor> &ln_scale_2,
+    const paddle::optional<DenseTensor> &ln_bias_2,
+    const paddle::optional<DenseTensor> &ln_out,
+    const paddle::optional<DenseTensor> &ln_mean,
+    const paddle::optional<DenseTensor> &ln_var,
+    const paddle::optional<DenseTensor> &ln_mean_2,
+    const paddle::optional<DenseTensor> &ln_var_2,
+    const paddle::optional<DenseTensor> &bias_dropout_residual_out,
+    const DenseTensor &qkv_out,
+    const DenseTensor &transpose_out_2,
+    const DenseTensor &qk_out,
+    const DenseTensor &qktv_out,
+    const DenseTensor &softmax_out,
+    const DenseTensor &attn_dropout_mask_out,
+    const DenseTensor &attn_dropout_out,
+    const DenseTensor &fmha_out,
+    const DenseTensor &out_linear_out,
+    const DenseTensor &dropout_mask_out,
+    int num_heads,
+    bool transpose_qkv_wb,
+    bool pre_layer_norm,
+    float epsilon,
+    float attn_dropout_rate,
+    bool is_test,
+    bool attn_dropout_fix_seed,
+    int attn_dropout_seed,
+    const std::string &attn_dropout_implementation,
+    float dropout_rate,
+    bool dropout_fix_seed,
+    int dropout_seed,
+    const std::string &dropout_implementation,
+    float ln_epsilon,
+    bool add_residual,
+    int ring_id,
+    DenseTensor *qkv_bias_grad,
+    DenseTensor *qkv_bias_out_grad,
+    DenseTensor *src_mask_out_grad,
+    DenseTensor *out_linear_bias_grad,
+    DenseTensor *ln_scale_grad,
+    DenseTensor *ln_bias_grad,
+    DenseTensor *ln_scale_2_grad,
+    DenseTensor *ln_bias_2_grad,
+    DenseTensor *x_grad,
+    DenseTensor *qkv_weight_grad,
+    DenseTensor *out_linear_weight_grad,
+    DenseTensor *ln_out_grad,
+    DenseTensor *bias_dropout_residual_out_grad,
+    DenseTensor *qkv_out_grad,
+    DenseTensor *qktv_out_grad,
+    DenseTensor *transpose_out_2_grad,
+    DenseTensor *qk_out_grad,
+    DenseTensor *softmax_out_grad,
+    DenseTensor *attn_dropout_out_grad,
+    DenseTensor *fmha_out_grad,
+    DenseTensor *out_linear_out_grad) {
+  using U = phi::fusion::LayerNormParamType<T>;
 
-    const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
-    const float epsilon = ctx.Attr<float>("epsilon");
-    auto *ln_scale = ctx.Input<Tensor>("LnScale");
-    auto *ln_bias = ctx.Input<Tensor>("LnBias");
-    auto *ln_mean = ctx.Output<Tensor>("LnMean");
-    auto *ln_var = ctx.Output<Tensor>("LnVariance");
-    auto *ln_out = ctx.Output<Tensor>("LnOut");
+  const bool has_attn_dropout = (attn_dropout_rate != 0.0f);
 
-    // x: qkv's input [batch_size, seq_len, dim_embed]
-    // y: qkv's weight: [3, num_head, dim_head, dim_embed]
-    auto *qkv_weight = ctx.Input<Tensor>("QKVW");
-    auto *qkv_bias = ctx.Input<Tensor>("QKVBias");
-    auto *qkv_out = ctx.Output<Tensor>("QKVOut");
-    auto *qkv_bias_out = ctx.Output<Tensor>("QKVBiasOut");
+  const bool is_upscale_in_train =
+      (dropout_implementation == "upscale_in_train");
+  phi::fusion::DropoutParam dropout_param2(dropout_fix_seed,
+                                           0,
+                                           is_test,
+                                           is_upscale_in_train,
+                                           dropout_rate,
+                                           nullptr,
+                                           dropout_seed);
+  const bool has_dropout = (dropout_param2.dropout_prob != 0.0f);
 
-    auto *src_mask = ctx.Input<Tensor>("SrcMask");
-    auto *transpose_out_2 = ctx.Output<Tensor>("TransposeOut2");
-    auto *cache_kv = ctx.Input<Tensor>("CacheKV");
-    auto *cache_kv_out = ctx.Output<Tensor>("CacheKVOut");
-    auto *qk_out = ctx.Output<Tensor>("QKOut");
-    auto *qktv_out = ctx.Output<Tensor>("QKTVOut");
-    auto *softmax_out = ctx.Output<Tensor>("SoftmaxOut");
-    auto *attn_dropout_mask_out = ctx.Output<Tensor>("AttnDropoutMaskOut");
-    auto *attn_dropout_out = ctx.Output<Tensor>("AttnDropoutOut");
-    auto *src_mask_out = ctx.Output<Tensor>("SrcMaskOut");
-    auto *fmha_out = ctx.Output<Tensor>("FMHAOut");
+  bool is_upscale_in_train_1 =
+      (attn_dropout_implementation == "upscale_in_train");
+  phi::DenseTensor *seed_1 = nullptr;
 
-    auto *out_linear_weight = ctx.Input<Tensor>("OutLinearW");
-    auto *out_linear_bias = ctx.Input<Tensor>("OutLinearBias");
-    auto *out_linear_out = ctx.Output<Tensor>("OutLinearOut");
+  // get inputs.
+  auto *d_y = &out_grad;
+  auto *d_y_data = d_y->data<T>();
 
-    auto *ln_scale_2 = ctx.Input<Tensor>("Ln2Scale");
-    auto *ln_bias_2 = ctx.Input<Tensor>("Ln2Bias");
-    auto *dropout_mask_out = ctx.Output<Tensor>("DropoutMaskOut");
-    auto *bias_dropout_residual_out =
-        ctx.Output<Tensor>("BiasDropoutResidualOut");
-    auto *ln_mean_2 = ctx.Output<Tensor>("Ln2Mean");
-    auto *ln_var_2 = ctx.Output<Tensor>("Ln2Variance");
-    const float ln_epsilon = ctx.Attr<float>("ln_epsilon");
+  // fw input
+  auto *input_x = &x;
+  auto *ln_scale_p = ln_scale.get_ptr();
+  auto *ln_scale_2_p = ln_scale_2.get_ptr();
+  auto *x_data = input_x->data<T>();
+  auto *ln_scale_data =
+      (ln_scale_p == nullptr ? nullptr : ln_scale_p->data<U>());
+  auto *ln_2_scale_data =
+      (ln_scale_2_p == nullptr ? nullptr : ln_scale_2_p->data<U>());
+  // fw parameters.
+  auto *src_mask_p = src_mask.get_ptr();
+  auto *qkv_weight_p = &qkv_weight;
+  auto *qkv_bias_p = qkv_bias.get_ptr();
+  auto *out_linear_weight_p = &out_linear_weight;
+  auto *out_linear_bias_p = out_linear_bias.get_ptr();
+  auto *qkv_weight_data = qkv_weight_p->data<T>();
+  auto *qkv_bias_data =
+      (qkv_bias_p == nullptr) ? nullptr : qkv_bias_p->data<T>();
+  auto *out_linear_weight_data = out_linear_weight_p->data<T>();
+  auto *out_linear_bias_data =
+      (out_linear_bias_p == nullptr) ? nullptr : out_linear_bias_p->data<T>();
 
-    float attn_dropout_rate = ctx.Attr<float>("attn_dropout_rate");
-    bool is_test_1 = ctx.Attr<bool>("attn_dropout_is_test");
-    auto &dropout_implementation_1 =
-        ctx.Attr<std::string>("attn_dropout_implementation");
-    bool is_upscale_in_train_1 =
-        (dropout_implementation_1 == "upscale_in_train");
-    auto *seed_1 = ctx.HasInput("Seed1") ? ctx.Input<Tensor>("Seed1") : nullptr;
-    bool is_fix_seed_1 = ctx.Attr<bool>("attn_dropout_fix_seed");
-    int seed_val_1 = ctx.Attr<int>("attn_dropout_seed");
-    int ring_id = ctx.Attr<int>("ring_id");
+  // fw output
+  auto *fmha_out_p = &fmha_out;
+  auto *transpose_out_2_p = &transpose_out_2;
+  auto *qk_out_p = &qk_out;
+  auto *softmax_out_p = &softmax_out;
+  auto *attn_dropout_mask_out_p = &attn_dropout_mask_out;
+  auto *attn_dropout_out_p = &attn_dropout_out;
+  auto *src_mask_out_p = src_mask_out.get_ptr();
+  auto *ln_mean_2_p = ln_mean_2.get_ptr();
+  auto *ln_var_2_p = ln_var_2.get_ptr();
+  auto *dropout_mask_out_p = &dropout_mask_out;
+  auto *bias_dropout_residual_out_p = bias_dropout_residual_out.get_ptr();
+  auto *fmha_out_data = fmha_out_p->data<T>();
+  auto *transpose_out_2_data = transpose_out_2_p->data<T>();
+  auto *softmax_out_data = softmax_out_p->data<T>();
+  auto *src_mask_out_data =
+      (src_mask_p == nullptr) ? nullptr : src_mask_out_p->data<T>();
+  auto *dropout_mask_out_data =
+      has_dropout ? dropout_mask_out_p->data<uint8_t>() : nullptr;
 
-    // final output.
-    auto *out = ctx.Output<Tensor>("Y");
+  auto *d_x_data =
+      dev_ctx.template Alloc<T>(x_grad, x_grad->numel() * sizeof(T));
+  // when qkv_bias_p is not nullptr, qkv_out_grad is equals to
+  // qkv_bias_out_grad, the space can be reused.
+  auto *d_qkv_out_data =
+      (qkv_bias_out_grad != nullptr)
+          ? nullptr
+          : dev_ctx.template Alloc<T>(qkv_out_grad,
+                                      qkv_out_grad->numel() * sizeof(T));
+  auto *d_qkv_bias_out_data =
+      (qkv_bias_out_grad == nullptr)
+          ? nullptr
+          : dev_ctx.template Alloc<T>(qkv_bias_out_grad,
+                                      qkv_bias_out_grad->numel() * sizeof(T));
+  auto *d_qktv_out_data = dev_ctx.template Alloc<T>(
+      qktv_out_grad, qktv_out_grad->numel() * sizeof(T));
+  auto *d_transpose_out_2_data = dev_ctx.template Alloc<T>(
+      transpose_out_2_grad, transpose_out_2_grad->numel() * sizeof(T));
+  auto *d_qk_out_data =
+      dev_ctx.template Alloc<T>(qk_out_grad, qk_out_grad->numel() * sizeof(T));
+  auto *d_softmax_out_data = dev_ctx.template Alloc<T>(
+      softmax_out_grad, softmax_out_grad->numel() * sizeof(T));
+  auto *d_attn_dropout_out_data =
+      has_attn_dropout ? dev_ctx.template Alloc<T>(
+                             attn_dropout_out_grad,
+                             attn_dropout_out_grad->numel() * sizeof(T))
+                       : nullptr;
+  auto *d_src_mask_out_data =
+      (src_mask_p == nullptr)
+          ? nullptr
+          : dev_ctx.template Alloc<T>(src_mask_out_grad,
+                                      src_mask_out_grad->numel() * sizeof(T));
+  auto *d_fmha_out_data = dev_ctx.template Alloc<T>(
+      fmha_out_grad, fmha_out_grad->numel() * sizeof(T));
+  auto *d_out_linear_out_data = dev_ctx.template Alloc<T>(
+      out_linear_out_grad, out_linear_out_grad->numel() * sizeof(T));
 
-    // get data ptr for qkv part.
-    const auto input_x_dims = input_x->dims();
-    const auto qkv_w_dims = qkv_weight->dims();
+  // parameter grad
+  auto *d_qkv_weight_data =
+      (qkv_weight_grad == nullptr)
+          ? nullptr
+          : dev_ctx.template Alloc<T>(qkv_weight_grad,
+                                      qkv_weight_grad->numel() * sizeof(T));
 
-    auto *x_data = input_x->data<T>();
-    auto *qkv_weight_data = qkv_weight->data<T>();
-    auto *qkv_bias_data = (qkv_bias == nullptr) ? nullptr : qkv_bias->data<T>();
-    auto *qkv_out_data = qkv_out->mutable_data<T>(ctx.GetPlace());
-    auto *qkv_bias_out_data =
-        (qkv_bias == nullptr) ? nullptr
-                              : qkv_bias_out->mutable_data<T>(ctx.GetPlace());
+  auto *d_qkv_bias_data =
+      (qkv_bias_grad == nullptr)
+          ? nullptr
+          : dev_ctx.template Alloc<T>(qkv_bias_grad,
+                                      qkv_bias_grad->numel() * sizeof(T));
+  auto *d_out_linear_weight_data =
+      (out_linear_weight_grad == nullptr)
+          ? nullptr
+          : dev_ctx.template Alloc<T>(
+                out_linear_weight_grad,
+                out_linear_weight_grad->numel() * sizeof(T));
 
-    // get data ptr for FMHA.
-    auto *transpose_out_2_data =
-        transpose_out_2->mutable_data<T>(ctx.GetPlace());
-    auto *cache_kv_out_data =
-        (cache_kv_out == nullptr)
-            ? nullptr
-            : cache_kv_out->mutable_data<T>(ctx.GetPlace());
-    auto *qk_out_data = qk_out->mutable_data<T>(ctx.GetPlace());
-    auto *qktv_out_data = qktv_out->mutable_data<T>(ctx.GetPlace());
-    auto *src_mask_out_data =
-        (src_mask == nullptr) ? nullptr
-                              : src_mask_out->mutable_data<T>(ctx.GetPlace());
-    auto *softmax_out_data = softmax_out->mutable_data<T>(ctx.GetPlace());
-    auto *attn_dropout_mask_out_data =
-        attn_dropout_mask_out->mutable_data<uint8_t>(ctx.GetPlace());
-    auto *attn_dropout_out_data =
-        attn_dropout_out->mutable_data<T>(ctx.GetPlace());
-    auto *fmha_out_data = fmha_out->mutable_data<T>(ctx.GetPlace());
+  auto *d_out_linear_bias_data =
+      (out_linear_bias_grad == nullptr)
+          ? nullptr
+          : dev_ctx.template Alloc<T>(
+                out_linear_bias_grad,
+                out_linear_bias_grad->numel() * sizeof(T));
 
-    // get data ptr for out_linear.
-    auto *out_linear_weight_data = out_linear_weight->data<T>();
-    auto *out_linear_bias_data =
-        (out_linear_bias == nullptr) ? nullptr : out_linear_bias->data<T>();
-    auto *out_linear_out_data = out_linear_out->mutable_data<T>(ctx.GetPlace());
+  const auto input_x_dims = input_x->dims();
+  const auto qkv_w_dims = qkv_weight_p->dims();
 
-    // get data ptr for bias+dropout+residual+layernorm
-    auto *dropout_mask_out_data =
-        dropout_mask_out->mutable_data<uint8_t>(ctx.GetPlace());
-    auto *final_out_data = out->mutable_data<T>(ctx.GetPlace());
-
-    int batch_size = input_x_dims[0];
-    int max_seq_len = input_x_dims[1];
-    int dim_embed = input_x_dims[2];
-
-    int num_head = qkv_w_dims[1];
-    int dim_head = qkv_w_dims[2];
-
-    int bsz_seq = batch_size * max_seq_len;
-    int hidden_size = num_head * dim_head;
-    int output_size = 3 * hidden_size;
-    int input_size = dim_embed;
-
-    auto layer_norm_compute = AttnLayerNorm<T>(ctx.cuda_device_context(),
-                                               epsilon, bsz_seq, dim_embed);
-
-    bool compute_bias = true;
-    if (qkv_bias == nullptr) {
-      compute_bias = false;
-    }
-    // (transA, transB, compute_bias) = (false, true, true)
-    auto qkv_compute =
-        AttnMatMul<T>(ctx.cuda_device_context(), false, true, bsz_seq,
-                      output_size, input_size, compute_bias);
-
-    AttnDropoutParam attn_dropout_param(
-        is_test_1, dropout_implementation_1, attn_dropout_rate,
-        is_upscale_in_train_1, is_fix_seed_1, seed_val_1, seed_1);
-    auto fmha_ref_compute =
-        FMHARef<T>(ctx.cuda_device_context(), batch_size, max_seq_len, num_head,
-                   dim_head, attn_dropout_param);
-
-    output_size = hidden_size;
-    // (transA, transB, compute_bias) = (false, false, false)
-    // NOTE(Yuang Liu): For general input size == output size, change the
-    // position won't have effects. For mp, the output size is mp_head * dkey
-    // which is actually the input size. While the input size is hidden size,
-    // which is actually the output size. So for out linear, switch the
-    // input size and output size.
-    auto out_linear_compute =
-        AttnMatMul<T>(ctx.cuda_device_context(), false, false, bsz_seq,
-                      input_size, output_size, false);
-    DropoutParam dropout_param2(ctx, 0);
-    FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
-        ctx.cuda_device_context(), bsz_seq, dim_embed, dropout_param2,
-        ln_epsilon);
-
-    if (pre_layer_norm) {
-      auto *ln_scale_data =
-          (ln_scale == nullptr ? nullptr : ln_scale->data<U>());
-      auto *ln_bias_data = (ln_bias == nullptr ? nullptr : ln_bias->data<U>());
-      auto *ln_mean_data = ln_mean->mutable_data<U>(ctx.GetPlace());
-      auto *ln_var_data = ln_var->mutable_data<U>(ctx.GetPlace());
-      auto *ln_out_data = ln_out->mutable_data<T>(ctx.GetPlace());
-
-      layer_norm_compute.ComputeForward(x_data, ln_scale_data, ln_bias_data,
-                                        ln_out_data, ln_mean_data, ln_var_data);
-      qkv_compute.ComputeForward(qkv_weight, ln_out, qkv_bias, qkv_out,
-                                 qkv_bias_out);
-    } else {
-      qkv_compute.ComputeForward(qkv_weight, input_x, qkv_bias, qkv_out,
-                                 qkv_bias_out);
-    }
-    if (qkv_bias == nullptr) {
-      fmha_ref_compute.ComputeForward(
-          *qkv_out, cache_kv, src_mask, transpose_out_2, cache_kv_out, qk_out,
-          src_mask_out, softmax_out, attn_dropout_mask_out, attn_dropout_out,
-          qktv_out, fmha_out);
-    } else {
-      fmha_ref_compute.ComputeForward(
-          *qkv_bias_out, cache_kv, src_mask, transpose_out_2, cache_kv_out,
-          qk_out, src_mask_out, softmax_out, attn_dropout_mask_out,
-          attn_dropout_out, qktv_out, fmha_out);
-    }
-
-    // fmha_out: [batch_size, seq_len, num_head, head_dim]
-    // weight:   [embed_dim, embed_dim]
-    // out_linear_out: [batch_size, seq_len, embed_dim]
-    out_linear_compute.ComputeForward(out_linear_weight, fmha_out, nullptr,
-                                      out_linear_out, nullptr);
-    // tensor model parallel
-    AllReduce<T>(*out_linear_out, ring_id, ctx.cuda_device_context());
-
-    if (pre_layer_norm) {
-      // output = (residual + dropout(input + bias))
-      fused_dropout_layernorm_helper.ResidualDropoutBias(
-          ctx.cuda_device_context(), out_linear_out_data, x_data,
-          out_linear_bias_data, final_out_data, dropout_mask_out_data);
-    } else {
-      auto *ln_scale_2_data =
-          (ln_scale_2 == nullptr ? nullptr : ln_scale_2->data<U>());
-      auto *ln_bias_2_data =
-          (ln_bias_2 == nullptr ? nullptr : ln_bias_2->data<U>());
-      auto *bias_dropout_residual_out_data =
-          bias_dropout_residual_out->mutable_data<T>(ctx.GetPlace());
-      auto *ln_mean_2_data = ln_mean_2->mutable_data<U>(ctx.GetPlace());
-      auto *ln_var_2_data = ln_var_2->mutable_data<U>(ctx.GetPlace());
-      // output = layernorm(residual + dropout(input + bias))
-      fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
-          ctx.cuda_device_context(), out_linear_out_data, x_data,
-          out_linear_bias_data, ln_scale_2_data, ln_bias_2_data,
-          bias_dropout_residual_out_data, dropout_mask_out_data, final_out_data,
-          ln_mean_2_data, ln_var_2_data);
-    }
+  int batch_size = input_x_dims[0];
+  int max_seq_len = input_x_dims[1];
+  int dim_embed = input_x_dims[2];
+  int num_head;
+  int dim_head;
+  int nranks = 1;
+  if (!transpose_qkv_wb) {
+    num_head = qkv_w_dims[1];
+    dim_head = qkv_w_dims[2];
+  } else {
+    nranks = (qkv_w_dims[0] * 3) / qkv_w_dims[1];
+    num_head = num_heads;
+    dim_head = dim_embed / (num_head * nranks);
   }
-};
 
-template <typename T>
-class FusedAttentionGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    using U = LayerNormParamType<T>;
-    const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
-    const float epsilon = ctx.Attr<float>("epsilon");
-    const float ln2epsilon = ctx.Attr<float>("ln_epsilon");
+  int bsz_seq = batch_size * max_seq_len;
+  int hidden_size = num_head * dim_head;
+  int output_size = 3 * hidden_size;
+  int input_size = dim_embed;
 
-    float attn_dropout_prob = ctx.Attr<float>("attn_dropout_rate");
-    bool is_test_1 = ctx.Attr<bool>("attn_dropout_is_test");
-    auto &dropout_implementation_1 =
-        ctx.Attr<std::string>("attn_dropout_implementation");
-    bool is_upscale_in_train_1 =
-        (dropout_implementation_1 == "upscale_in_train");
-    auto *seed_1 = ctx.HasInput("Seed1") ? ctx.Input<Tensor>("Seed1") : nullptr;
-    bool is_fix_seed_1 = ctx.Attr<bool>("attn_dropout_fix_seed");
-    int seed_val_1 = ctx.Attr<int>("attn_dropout_seed");
-    int ring_id = ctx.Attr<int>("ring_id");
-
-    // get inputs.
-    auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    auto *d_y_data = d_y->data<T>();
-
-    // fw input
-    auto *input_x = ctx.Input<Tensor>("X");
-    auto *ln_scale = ctx.Input<Tensor>("LnScale");
-    auto *ln_2_scale = ctx.Input<Tensor>("Ln2Scale");
-    auto *x_data = input_x->data<T>();
-    auto *ln_scale_data = (ln_scale == nullptr ? nullptr : ln_scale->data<U>());
-    auto *ln_2_scale_data =
-        (ln_2_scale == nullptr ? nullptr : ln_2_scale->data<U>());
-    // fw parameters.
-    auto *src_mask = ctx.Input<Tensor>("SrcMask");
-    auto *qkv_weight = ctx.Input<Tensor>("QKVW");
-    auto *qkv_bias = ctx.Input<Tensor>("QKVBias");
-    auto *out_linear_weight = ctx.Input<Tensor>("OutLinearW");
-    auto *out_linear_bias = ctx.Input<Tensor>("OutLinearBias");
-    auto *src_mask_data = (src_mask == nullptr ? nullptr : src_mask->data<T>());
-    auto *qkv_weight_data = qkv_weight->data<T>();
-    auto *qkv_bias_data = (qkv_bias == nullptr) ? nullptr : qkv_bias->data<T>();
-    auto *out_linear_weight_data = out_linear_weight->data<T>();
-    auto *out_linear_bias_data =
-        (out_linear_bias == nullptr) ? nullptr : out_linear_bias->data<T>();
-
-    // fw output
-    auto *fmha_out = ctx.Input<Tensor>("FMHAOut");
-    auto *transpose_out_2 = ctx.Input<Tensor>("TransposeOut2");
-    auto *qk_out = ctx.Input<Tensor>("QKOut");
-    auto *qktv_out = ctx.Input<Tensor>("QKTVOut");
-    auto *softmax_out = ctx.Input<Tensor>("SoftmaxOut");
-    auto *attn_dropout_mask_out = ctx.Input<Tensor>("AttnDropoutMaskOut");
-    auto *attn_dropout_out = ctx.Input<Tensor>("AttnDropoutOut");
-    auto *src_mask_out = ctx.Input<Tensor>("SrcMaskOut");
-    auto *out_linear_out = ctx.Input<Tensor>("OutLinearOut");
-    auto *ln_2_mean = ctx.Input<Tensor>("Ln2Mean");
-    auto *ln_2_var = ctx.Input<Tensor>("Ln2Variance");
-    auto *dropout_mask_out = ctx.Input<Tensor>("DropoutMaskOut");
-    auto *bias_dropout_residual_out =
-        ctx.Input<Tensor>("BiasDropoutResidualOut");
-    auto *fmha_out_data = fmha_out->data<T>();
-    auto *transpose_out_2_data = transpose_out_2->data<T>();
-    auto *qk_out_data = qk_out->data<T>();
-    auto *qktv_out_data = qktv_out->data<T>();
-    auto *softmax_out_data = softmax_out->data<T>();
-    auto *src_mask_out_data =
-        (src_mask == nullptr) ? nullptr : src_mask_out->data<T>();
-    auto *out_linear_out_data = out_linear_out->data<T>();
-    auto *dropout_mask_out_data = dropout_mask_out->data<uint8_t>();
-
-    // output's grad
-    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *d_qkv_out = ctx.Output<Tensor>(framework::GradVarName("QKVOut"));
-    auto *d_qkv_bias_out =
-        ctx.Output<Tensor>(framework::GradVarName("QKVBiasOut"));
-    auto *d_qktv_out = ctx.Output<Tensor>(framework::GradVarName("QKTVOut"));
-    auto *d_transpose_out_2 =
-        ctx.Output<Tensor>(framework::GradVarName("TransposeOut2"));
-    auto *d_qk_out = ctx.Output<Tensor>(framework::GradVarName("QKOut"));
-    auto *d_softmax_out =
-        ctx.Output<Tensor>(framework::GradVarName("SoftmaxOut"));
-    auto *d_attn_dropout_out =
-        ctx.Output<Tensor>(framework::GradVarName("AttnDropoutOut"));
-    auto *d_src_mask_out =
-        ctx.Output<Tensor>(framework::GradVarName("SrcMaskOut"));
-    auto *d_fmha_out = ctx.Output<Tensor>(framework::GradVarName("FMHAOut"));
-    auto *d_out_linear_out =
-        ctx.Output<Tensor>(framework::GradVarName("OutLinearOut"));
-    auto *d_bias_dropout_residual_out =
-        ctx.Output<Tensor>(framework::GradVarName("BiasDropoutResidualOut"));
-    auto *d_x_data = d_x->mutable_data<T>(ctx.GetPlace());
-    // when qkv_bias is not nullptr, d_qkv_out is equals to d_qkv_bias_out, the
-    // space can be reused.
-    auto *d_qkv_out_data = (d_qkv_bias_out != nullptr)
-                               ? nullptr
-                               : d_qkv_out->mutable_data<T>(ctx.GetPlace());
-    auto *d_qkv_bias_out_data =
-        (d_qkv_bias_out == nullptr)
-            ? nullptr
-            : d_qkv_bias_out->mutable_data<T>(ctx.GetPlace());
-    auto *d_qktv_out_data = d_qktv_out->mutable_data<T>(ctx.GetPlace());
-    auto *d_transpose_out_2_data =
-        d_transpose_out_2->mutable_data<T>(ctx.GetPlace());
-    auto *d_qk_out_data = d_qk_out->mutable_data<T>(ctx.GetPlace());
-    auto *d_softmax_out_data = d_softmax_out->mutable_data<T>(ctx.GetPlace());
-    auto *d_attn_dropout_out_data =
-        d_attn_dropout_out->mutable_data<T>(ctx.GetPlace());
-    auto *d_src_mask_out_data =
-        (src_mask == nullptr) ? nullptr
-                              : d_src_mask_out->mutable_data<T>(ctx.GetPlace());
-    auto *d_fmha_out_data = d_fmha_out->mutable_data<T>(ctx.GetPlace());
-    auto *d_out_linear_out_data =
-        d_out_linear_out->mutable_data<T>(ctx.GetPlace());
-
-    // parameter grad
-    auto *d_qkv_weight = ctx.Output<Tensor>(framework::GradVarName("QKVW"));
-    auto *d_qkv_bias = ctx.Output<Tensor>(framework::GradVarName("QKVBias"));
-    auto *d_out_linear_weight =
-        ctx.Output<Tensor>(framework::GradVarName("OutLinearW"));
-    auto *d_out_linear_bias =
-        ctx.Output<Tensor>(framework::GradVarName("OutLinearBias"));
-    auto *d_ln_2_scale = ctx.Output<Tensor>(framework::GradVarName("Ln2Scale"));
-    auto *d_ln_2_bias = ctx.Output<Tensor>(framework::GradVarName("Ln2Bias"));
-
-    auto *d_qkv_weight_data = d_qkv_weight->mutable_data<T>(ctx.GetPlace());
-    auto *d_qkv_bias_data = (d_qkv_bias == nullptr)
-                                ? nullptr
-                                : d_qkv_bias->mutable_data<T>(ctx.GetPlace());
-    auto *d_out_linear_weight_data =
-        d_out_linear_weight->mutable_data<T>(ctx.GetPlace());
-    auto *d_out_linear_bias_data =
-        (d_out_linear_bias == nullptr)
-            ? nullptr
-            : d_out_linear_bias->mutable_data<T>(ctx.GetPlace());
-
-    const auto input_x_dims = input_x->dims();
-    const auto qkv_w_dims = qkv_weight->dims();
-
-    int batch_size = input_x_dims[0];
-    int max_seq_len = input_x_dims[1];
-    int dim_embed = input_x_dims[2];
-    int num_head = qkv_w_dims[1];
-    int dim_head = qkv_w_dims[2];
-
-    int bsz_seq = batch_size * max_seq_len;
-    int hidden_size = num_head * dim_head;
-    int output_size = 3 * hidden_size;
-    int input_size = dim_embed;
-
-    Tensor d_residual;
+  phi::DenseTensor d_residual;
+  T *d_residual_data = nullptr;
+  if (add_residual) {
     d_residual.Resize(input_x_dims);
-    T *d_residual_data = d_residual.mutable_data<T>(ctx.GetPlace());
-
-    bool transA = false;
-    bool transB = true;
-    bool compute_qkv_bias = true;
-    if (qkv_bias == nullptr) {
-      compute_qkv_bias = false;
-    }
-    auto layer_norm_compute = AttnLayerNorm<T>(ctx.cuda_device_context(),
-                                               epsilon, bsz_seq, dim_embed);
-    auto qkv_compute =
-        AttnMatMul<T>(ctx.cuda_device_context(), transA, transB, bsz_seq,
-                      output_size, input_size, compute_qkv_bias);
-    AttnDropoutParam attn_dropout_param(
-        is_test_1, dropout_implementation_1, attn_dropout_prob,
-        is_upscale_in_train_1, is_fix_seed_1, seed_val_1, seed_1);
-    auto fmha_ref_compute =
-        FMHARef<T>(ctx.cuda_device_context(), batch_size, max_seq_len, num_head,
-                   dim_head, attn_dropout_param);
-    output_size = hidden_size;
-    transA = false;
-    transB = false;
-    bool compute_bias = false;
-    // (b*s, num_head * dim_head) * (num_head * dim_head, dim_embed)
-    auto out_linear_compute =
-        AttnMatMul<T>(ctx.cuda_device_context(), transA, transB, bsz_seq,
-                      input_size, output_size, compute_bias);
-    DropoutParam dropout_param2(ctx, 0);
-    FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
-        ctx.cuda_device_context(), bsz_seq, dim_embed, dropout_param2,
-        ln2epsilon);
-
-    if (pre_layer_norm) {
-      fused_dropout_layernorm_helper.ResidualDropoutBiasGrad(
-          ctx.cuda_device_context(), d_y_data, dropout_mask_out_data,
-          d_out_linear_out_data, d_residual_data, d_out_linear_bias_data);
-    } else {
-      auto *ln_2_mean_data = ln_2_mean->data<U>();
-      auto *ln_2_var_data = ln_2_var->data<U>();
-      auto *bias_dropout_residual_out_data =
-          bias_dropout_residual_out->data<T>();
-      auto *d_ln_2_scale_data =
-          (d_ln_2_scale == nullptr ? nullptr : d_ln_2_scale->mutable_data<U>(
-                                                   ctx.GetPlace()));
-      auto *d_ln_2_bias_data =
-          (d_ln_2_bias == nullptr ? nullptr : d_ln_2_bias->mutable_data<U>(
-                                                  ctx.GetPlace()));
-      auto *d_bias_dropout_residual_out_data =
-          d_bias_dropout_residual_out->mutable_data<T>(ctx.GetPlace());
-
-      fused_dropout_layernorm_helper.LayernormResidualDropoutBiasGrad(
-          ctx.cuda_device_context(), d_y_data, bias_dropout_residual_out_data,
-          dropout_mask_out_data, ln_2_scale_data, ln_2_mean_data, ln_2_var_data,
-          d_bias_dropout_residual_out_data, d_ln_2_scale_data, d_ln_2_bias_data,
-          d_out_linear_out_data, d_out_linear_bias_data, d_residual_data);
-    }
-
-    out_linear_compute.ComputeBackward(fmha_out, out_linear_weight,
-                                       d_out_linear_out, d_fmha_out,
-                                       d_out_linear_weight, nullptr);
-
-    if (qkv_bias != nullptr) {
-      fmha_ref_compute.ComputeBackward(
-          *transpose_out_2, src_mask, *softmax_out, *attn_dropout_mask_out,
-          *attn_dropout_out, *qk_out, *src_mask_out, *d_fmha_out, d_qktv_out,
-          d_attn_dropout_out, d_softmax_out, d_src_mask_out, d_qk_out,
-          d_transpose_out_2, nullptr, d_qkv_bias_out);
-    } else {
-      fmha_ref_compute.ComputeBackward(
-          *transpose_out_2, src_mask, *softmax_out, *attn_dropout_mask_out,
-          *attn_dropout_out, *qk_out, *src_mask_out, *d_fmha_out, d_qktv_out,
-          d_attn_dropout_out, d_softmax_out, d_src_mask_out, d_qk_out,
-          d_transpose_out_2, nullptr, d_qkv_out);
-    }
-
-    if (pre_layer_norm) {
-      auto *ln_mean = ctx.Input<Tensor>("LnMean");
-      auto *ln_var = ctx.Input<Tensor>("LnVariance");
-      auto *ln_out = ctx.Input<Tensor>("LnOut");
-      auto *ln_mean_data = ln_mean->data<U>();
-      auto *ln_var_data = ln_var->data<U>();
-      auto *ln_out_data = ln_out->data<T>();
-
-      auto *d_ln_out = ctx.Output<Tensor>(framework::GradVarName("LnOut"));
-      auto *d_ln_scale = ctx.Output<Tensor>(framework::GradVarName("LnScale"));
-      auto *d_ln_bias = ctx.Output<Tensor>(framework::GradVarName("LnBias"));
-      auto *d_ln_out_data = d_ln_out->mutable_data<T>(ctx.GetPlace());
-      auto *d_ln_scale_data =
-          (d_ln_scale == nullptr ? nullptr
-                                 : d_ln_scale->mutable_data<U>(ctx.GetPlace()));
-      auto *d_ln_bias_data =
-          (d_ln_bias == nullptr ? nullptr
-                                : d_ln_bias->mutable_data<U>(ctx.GetPlace()));
-      if (qkv_bias != nullptr) {
-        qkv_compute.ComputeBackward(ln_out, qkv_weight, d_qkv_bias_out,
-                                    d_ln_out, d_qkv_weight, d_qkv_bias);
-      } else {
-        qkv_compute.ComputeBackward(ln_out, qkv_weight, d_qkv_out, d_ln_out,
-                                    d_qkv_weight, d_qkv_bias);
-      }
-      // tensor model parallel
-      AllReduce<T>(*d_ln_out, ring_id, ctx.cuda_device_context());
-      layer_norm_compute.ComputeBackward(x_data, d_ln_out_data, ln_scale_data,
-                                         ln_mean_data, ln_var_data, d_x_data,
-                                         d_ln_scale_data, d_ln_bias_data);
-    } else {
-      if (qkv_bias != nullptr) {
-        qkv_compute.ComputeBackward(input_x, qkv_weight, d_qkv_bias_out, d_x,
-                                    d_qkv_weight, d_qkv_bias);
-      } else {
-        qkv_compute.ComputeBackward(input_x, qkv_weight, d_qkv_out, d_x,
-                                    d_qkv_weight, d_qkv_bias);
-      }
-      // tensor model parallel
-      AllReduce<T>(*d_x, ring_id, ctx.cuda_device_context());
-    }
-    // gradient accumulation
-    std::vector<const Tensor *> ins;
-    std::vector<Tensor *> outs;
-    ins.emplace_back(&d_residual);
-    ins.emplace_back(d_x);
-    outs.emplace_back(d_x);
-    int elewise_add_axis = -1;
-    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T,
-                                                   T>(
-        ctx.cuda_device_context(), ins, &outs, elewise_add_axis,
-        AddFunctor<T>());
+    d_residual_data =
+        dev_ctx.template Alloc<T>(&d_residual, d_residual.numel() * sizeof(T));
   }
-};
 
-}  // namespace operators
-}  // namespace paddle
+  bool transA = false;
+  bool transB = transpose_qkv_wb ? false : true;
+  bool compute_qkv_bias = qkv_bias_p ? true : false;
+  auto layer_norm_compute =
+      phi::fusion::AttnLayerNorm<T>(dev_ctx, epsilon, bsz_seq, dim_embed);
+  auto qkv_compute = phi::fusion::AttnMatMul<T>(dev_ctx,
+                                                transA,
+                                                transB,
+                                                bsz_seq,
+                                                output_size,
+                                                input_size,
+                                                compute_qkv_bias);
+  phi::fusion::AttnDropoutParam attn_dropout_param(is_test,
+                                                   attn_dropout_implementation,
+                                                   attn_dropout_rate,
+                                                   is_upscale_in_train_1,
+                                                   attn_dropout_fix_seed,
+                                                   attn_dropout_seed,
+                                                   seed_1);
+  auto fmha_ref_compute = phi::fusion::FMHARef<T>(
+      dev_ctx, batch_size, max_seq_len, num_head, dim_head, attn_dropout_param);
+  output_size = hidden_size;
+  transA = false;
+  transB = false;
+  bool compute_bias = false;
+  // (b*s, num_head * dim_head) * (num_head * dim_head, dim_embed)
+  auto out_linear_compute = phi::fusion::AttnMatMul<T>(
+      dev_ctx, transA, transB, bsz_seq, input_size, output_size, compute_bias);
+  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>
+      fused_dropout_layernorm_helper(
+          dev_ctx, bsz_seq, dim_embed, dropout_param2, ln_epsilon);
 
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(fused_attention, ops::FusedAttentionOpKernel<float>,
-                        ops::FusedAttentionOpKernel<double>,
-                        ops::FusedAttentionOpKernel<plat::float16>);
-REGISTER_OP_CUDA_KERNEL(fused_attention_grad,
-                        ops::FusedAttentionGradKernel<float>,
-                        ops::FusedAttentionGradKernel<double>,
-                        ops::FusedAttentionGradKernel<plat::float16>);
+  if (pre_layer_norm) {
+    fused_dropout_layernorm_helper.ResidualDropoutBiasGrad(
+        dev_ctx,
+        d_y_data,
+        dropout_mask_out_data,
+        d_out_linear_out_data,
+        d_residual_data,
+        d_out_linear_bias_data);
+  } else {
+    auto *ln_mean_2_data = ln_mean_2_p->data<U>();
+    auto *ln_var_2_data = ln_var_2_p->data<U>();
+    auto *bias_dropout_residual_out_data =
+        bias_dropout_residual_out_p->data<T>();
+    auto *d_ln_2_scale_data =
+        (ln_scale_2_grad == nullptr
+             ? nullptr
+             : dev_ctx.template Alloc<U>(ln_scale_2_grad,
+                                         ln_scale_2_grad->numel() * sizeof(U)));
+    auto *d_ln_bias_2_data =
+        (ln_bias_2_grad == nullptr
+             ? nullptr
+             : dev_ctx.template Alloc<U>(ln_bias_2_grad,
+                                         ln_bias_2_grad->numel() * sizeof(U)));
+    auto *d_bias_dropout_residual_out_data = dev_ctx.template Alloc<T>(
+        bias_dropout_residual_out_grad,
+        bias_dropout_residual_out_grad->numel() * sizeof(T));
+
+    fused_dropout_layernorm_helper.LayernormResidualDropoutBiasGrad(
+        dev_ctx,
+        d_y_data,
+        bias_dropout_residual_out_data,
+        dropout_mask_out_data,
+        ln_2_scale_data,
+        ln_mean_2_data,
+        ln_var_2_data,
+        d_bias_dropout_residual_out_data,
+        d_ln_2_scale_data,
+        d_ln_bias_2_data,
+        d_out_linear_out_data,
+        d_out_linear_bias_data,
+        d_residual_data);
+  }
+
+  out_linear_compute.ComputeBackward(fmha_out_p,
+                                     out_linear_weight_p,
+                                     out_linear_out_grad,
+                                     fmha_out_grad,
+                                     out_linear_weight_grad,
+                                     nullptr);
+
+  if (transpose_qkv_wb) {
+    if (compute_qkv_bias) {
+      qkv_bias_out_grad->Resize(
+          {batch_size, max_seq_len, 3, num_head, dim_head});
+    } else {
+      qkv_out_grad->Resize({batch_size, max_seq_len, 3, num_head, dim_head});
+    }
+  }
+
+  if (qkv_bias_p != nullptr) {
+    fmha_ref_compute.ComputeBackward(*transpose_out_2_p,
+                                     has_attn_dropout ? src_mask_p : nullptr,
+                                     *softmax_out_p,
+                                     *attn_dropout_mask_out_p,
+                                     *attn_dropout_out_p,
+                                     *qk_out_p,
+                                     *src_mask_out_p,
+                                     *fmha_out_grad,
+                                     qktv_out_grad,
+                                     attn_dropout_out_grad,
+                                     softmax_out_grad,
+                                     src_mask_out_grad,
+                                     qk_out_grad,
+                                     transpose_out_2_grad,
+                                     nullptr,
+                                     qkv_bias_out_grad);
+  } else {
+    fmha_ref_compute.ComputeBackward(*transpose_out_2_p,
+                                     has_attn_dropout ? src_mask_p : nullptr,
+                                     *softmax_out_p,
+                                     *attn_dropout_mask_out_p,
+                                     *attn_dropout_out_p,
+                                     *qk_out_p,
+                                     *src_mask_out_p,
+                                     *fmha_out_grad,
+                                     qktv_out_grad,
+                                     attn_dropout_out_grad,
+                                     softmax_out_grad,
+                                     src_mask_out_grad,
+                                     qk_out_grad,
+                                     transpose_out_2_grad,
+                                     nullptr,
+                                     qkv_out_grad);
+  }
+
+  if (transpose_qkv_wb) {
+    if (compute_qkv_bias) {
+      qkv_bias_out_grad->Resize({batch_size, max_seq_len, 3 * hidden_size});
+    } else {
+      qkv_out_grad->Resize({batch_size, max_seq_len, 3 * hidden_size});
+    }
+  }
+
+  if (pre_layer_norm) {
+    auto *ln_mean_p = ln_mean.get_ptr();
+    auto *ln_var_p = ln_var.get_ptr();
+    auto *ln_out_p = ln_out.get_ptr();
+    auto *ln_mean_data = ln_mean_p->data<U>();
+    auto *ln_var_data = ln_var_p->data<U>();
+    auto *ln_out_data = ln_out_p->data<T>();
+
+    auto *d_ln_out_data = dev_ctx.template Alloc<T>(
+        ln_out_grad, ln_out_grad->numel() * sizeof(T));
+    auto *d_ln_scale_data =
+        (ln_scale_grad == nullptr
+             ? nullptr
+             : dev_ctx.template Alloc<U>(ln_scale_grad,
+                                         ln_scale_grad->numel() * sizeof(U)));
+    auto *d_ln_bias_data =
+        (ln_bias_grad == nullptr
+             ? nullptr
+             : dev_ctx.template Alloc<U>(ln_bias_grad,
+                                         ln_bias_grad->numel() * sizeof(U)));
+    if (qkv_bias_p != nullptr) {
+      qkv_compute.ComputeBackward(ln_out_p,
+                                  qkv_weight_p,
+                                  qkv_bias_out_grad,
+                                  ln_out_grad,
+                                  qkv_weight_grad,
+                                  qkv_bias_grad);
+    } else {
+      qkv_compute.ComputeBackward(ln_out_p,
+                                  qkv_weight_p,
+                                  qkv_out_grad,
+                                  ln_out_grad,
+                                  qkv_weight_grad,
+                                  qkv_bias_grad);
+    }
+    // tensor model parallel
+    phi::fusion::AllReduce<T>(*ln_out_grad, ring_id, dev_ctx);
+    layer_norm_compute.ComputeBackward(x_data,
+                                       d_ln_out_data,
+                                       ln_scale_data,
+                                       ln_mean_data,
+                                       ln_var_data,
+                                       d_x_data,
+                                       d_ln_scale_data,
+                                       d_ln_bias_data);
+  } else {
+    if (qkv_bias_p != nullptr) {
+      qkv_compute.ComputeBackward(input_x,
+                                  qkv_weight_p,
+                                  qkv_bias_out_grad,
+                                  x_grad,
+                                  qkv_weight_grad,
+                                  qkv_bias_grad);
+    } else {
+      qkv_compute.ComputeBackward(input_x,
+                                  qkv_weight_p,
+                                  qkv_out_grad,
+                                  x_grad,
+                                  qkv_weight_grad,
+                                  qkv_bias_grad);
+    }
+    // tensor model parallel
+    phi::fusion::AllReduce<T>(*x_grad, ring_id, dev_ctx);
+  }
+
+  if (add_residual) {
+    // gradient accumulation
+    std::vector<const phi::DenseTensor *> ins = {&d_residual, x_grad};
+    std::vector<phi::DenseTensor *> outs = {x_grad};
+    phi::funcs::ElementwiseKernel<T>(
+        dev_ctx, ins, &outs, phi::funcs::AddFunctor<T>());
+  }
+}
+
+}  // namespace fusion
+}  // namespace phi
+
+PD_REGISTER_KERNEL(fused_attention,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::fusion::FusedAttentionKernel,
+                   phi::dtype::float16,
+                   double,
+                   float) {
+  kernel->OutputAt(9).SetDataType(phi::DataType::UINT8);
+  kernel->OutputAt(14).SetDataType(phi::DataType::UINT8);
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(15).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(16).SetDataType(phi::DataType::FLOAT32);
+  }
+}
+
+PD_REGISTER_KERNEL(fused_attention_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::fusion::FusedAttentionGradKernel,
+                   phi::dtype::float16,
+                   double,
+                   float) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(6).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(7).SetDataType(phi::DataType::FLOAT32);
+  }
+}

@@ -20,7 +20,6 @@
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/hostdevice.h"
-
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace Eigen {

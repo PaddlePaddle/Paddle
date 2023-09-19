@@ -17,11 +17,10 @@
 
 namespace phi {
 
-KernelSignature PadGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("pad_grad",
-                         {GradVarName("Out")},
-                         {"paddings", "pad_value"},
-                         {GradVarName("X")});
+KernelSignature PadGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
+  return KernelSignature(
+      "pad_grad", {"Out@GRAD"}, {"paddings", "pad_value"}, {"X@GRAD"});
 }
 
 }  // namespace phi

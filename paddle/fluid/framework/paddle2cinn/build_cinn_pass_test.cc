@@ -19,7 +19,6 @@ limitations under the License. */
 #include <string>
 
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
@@ -48,16 +47,17 @@ inline bool CheckNodeExisted(const std::unordered_set<Node*>& nodes,
 inline int CountNode(const std::unordered_set<Node*>& nodes,
                      const std::string& op_name) {
   return std::count_if(
-      nodes.begin(), nodes.end(),
-      [&op_name](const Node* node) { return node->Name() == op_name; });
+      nodes.begin(), nodes.end(), [&op_name](const Node* node) {
+        return node->Name() == op_name;
+      });
 }
 
 inline Node* GetNode(const std::unordered_set<Node*>& nodes,
                      const std::string& op_name) {
-  return *std::find_if(nodes.begin(), nodes.end(),
-                       [&op_name](const Node* node) {
-                         return node->Name().find(op_name) != std::string::npos;
-                       });
+  return *std::find_if(
+      nodes.begin(), nodes.end(), [&op_name](const Node* node) {
+        return node->Name().find(op_name) != std::string::npos;
+      });
 }
 
 inline bool CheckGraphIndependence(const std::unordered_set<Node*>& nodes) {
@@ -90,12 +90,12 @@ inline bool CheckGraphIndependence(const std::unordered_set<Node*>& nodes) {
 }
 
 // Get compilation_key values
-std::vector<std::string> GetCompilationKeys(const Graph& graph) {
-  std::vector<std::string> compilation_keys;
+std::vector<int64_t> GetCompilationKeys(const Graph& graph) {
+  std::vector<int64_t> compilation_keys;
   for (auto& node : graph.Nodes()) {
     if (node->IsOp() && node->Name() == kCinnLaunchOp) {
-      compilation_keys.emplace_back(BOOST_GET_CONST(
-          std::string, node->Op()->GetAttr(operators::kCompilationKey)));
+      compilation_keys.emplace_back(PADDLE_GET_CONST(
+          int64_t, node->Op()->GetAttr(operators::kCompilationKey)));
     }
   }
   return compilation_keys;
@@ -277,13 +277,13 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
   const auto& subgraph = cinn_compiler->FindGraph(compilation_keys[0]);
 
   const auto& subnodes = subgraph.Nodes();
-  ASSERT_EQ(subnodes.size(), static_cast<size_t>(12));
+  ASSERT_EQ(subnodes.size(), static_cast<size_t>(13));
   ASSERT_TRUE(CheckGraphIndependence(subnodes));
 
   ASSERT_TRUE(CheckNodeExisted(subnodes, "mul"));
   ASSERT_TRUE(CheckNodeExisted(subnodes, "elementwise_add"));
   ASSERT_TRUE(CheckNodeExisted(subnodes, "relu"));
-  ASSERT_EQ(CountNode(subnodes, "feed"), 2);
+  ASSERT_EQ(CountNode(subnodes, "feed"), 3);
   ASSERT_EQ(CountNode(subnodes, "fetch"), 1);
 
   // No-parameter input should has feed op
@@ -293,9 +293,10 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
   ASSERT_EQ(new_v1->inputs[0]->Name(), "feed");
   ASSERT_EQ(new_v1->outputs[0]->Name(), "mul");
 
-  // Parameter input should not has feed op
+  // Parameter input should also have the feed op
   auto new_v2 = GetNode(subnodes, "var2");
-  ASSERT_TRUE(new_v2->inputs.empty());
+  ASSERT_EQ(new_v2->inputs.size(), static_cast<size_t>(1));
+  ASSERT_EQ(new_v2->inputs[0]->Name(), "feed");
   ASSERT_EQ(new_v2->outputs.size(), static_cast<size_t>(1));
   ASSERT_EQ(new_v2->outputs[0]->Name(), "mul");
 
@@ -400,12 +401,12 @@ TEST(BuildCinnPassTest, OneCinnSubgraph) {
   const auto& subgraph = cinn_compiler->FindGraph(compilation_keys[0]);
 
   const auto& subnodes = subgraph.Nodes();
-  ASSERT_EQ(subnodes.size(), static_cast<size_t>(8));
+  ASSERT_EQ(subnodes.size(), static_cast<size_t>(9));
   ASSERT_TRUE(CheckGraphIndependence(subnodes));
 
   ASSERT_TRUE(CheckNodeExisted(subnodes, "mul"));
   ASSERT_TRUE(CheckNodeExisted(subnodes, "relu"));
-  ASSERT_EQ(CountNode(subnodes, "feed"), 1);
+  ASSERT_EQ(CountNode(subnodes, "feed"), 2);
   ASSERT_EQ(CountNode(subnodes, "fetch"), 1);
 }
 
@@ -526,10 +527,10 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
 
   if (CheckNodeExisted(subnodes1, "relu")) {
     ASSERT_EQ(subnodes1.size(), static_cast<size_t>(5));
-    ASSERT_EQ(subnodes2.size(), static_cast<size_t>(6));
+    ASSERT_EQ(subnodes2.size(), static_cast<size_t>(7));
   } else {
     ASSERT_EQ(subnodes2.size(), static_cast<size_t>(5));
-    ASSERT_EQ(subnodes1.size(), static_cast<size_t>(6));
+    ASSERT_EQ(subnodes1.size(), static_cast<size_t>(7));
   }
 }
 
@@ -669,12 +670,53 @@ TEST(BuildCinnPassTest, NoNeedBufferInput) {
       std::unordered_set<std::string>({"var5", "var6"}));
 }
 
+TEST(BuildCinnPassTest, TestSkipGcVars) {
+  auto g = BuildGraphWithOneCinnSubgraph();
+
+  std::unordered_set<std::string> all_skip_gc_vars = {"var1", "var3"};
+  g->SetNotOwned(kSkipGcVarNames, &all_skip_gc_vars);
+
+  auto pass =
+      paddle::framework::ir::PassRegistry::Instance().Get("build_cinn_pass");
+  pass->Apply(g.get());
+
+  // After search, the graph should as following
+  // fake1 --> v1 --
+  //                | --> kCinnLaunchOp --> v4 --> fake2
+  //           v2 --
+  const auto& nodes = g->Nodes();
+  ASSERT_EQ(nodes.size(), static_cast<size_t>(7));
+  ASSERT_TRUE(CheckGraphIndependence(nodes));
+
+  // A new op named kCinnLaunchOp should be added
+  ASSERT_TRUE(CheckNodeExisted(nodes, kCinnLaunchOp));
+
+  // After search, there should has just one cinn subgraph
+  // Note v3 has fetched because of v3 in kSkipGcVarNames
+  // And v1 is a feed var so v1 no need fetched though it in kSkipGcVarNames
+  // feed --> v1 --
+  //               | --> mul --> v3 --> relu --> v4 --> fetch
+  // feed --> v2 --                 --> fetch
+  auto compilation_keys = GetCompilationKeys(*g);
+  ASSERT_EQ(compilation_keys.size(), static_cast<size_t>(1));
+  auto* cinn_compiler = CinnCompiler::GetInstance();
+  const auto& subgraph = cinn_compiler->FindGraph(compilation_keys[0]);
+
+  const auto& subnodes = subgraph.Nodes();
+  ASSERT_EQ(subnodes.size(), static_cast<size_t>(10));
+  ASSERT_TRUE(CheckGraphIndependence(subnodes));
+
+  ASSERT_EQ(CountNode(subnodes, "feed"), 2);
+  // var3 and var4 should has fetch op
+  ASSERT_EQ(CountNode(subnodes, "fetch"), 2);
+}
+
 }  // namespace paddle2cinn
 }  // namespace framework
 }  // namespace paddle
 
 USE_PASS(build_cinn_pass);
-USE_OP(mul);
+USE_OP_ITSELF(mul);
 USE_OP_ITSELF(relu);
 USE_OP_ITSELF(elementwise_add);
 USE_OP_ITSELF(relu_grad);

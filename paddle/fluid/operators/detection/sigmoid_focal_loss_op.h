@@ -14,22 +14,22 @@ limitations under the License. */
 
 #pragma once
 #include <algorithm>
+#include <cfloat>
 #include <limits>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SigmoidFocalLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const Tensor *X = context.Input<Tensor>("X");
-    const Tensor *Labels = context.Input<Tensor>("Label");
-    const Tensor *FgNum = context.Input<Tensor>("FgNum");
-    Tensor *Out = context.Output<Tensor>("Out");
+    const phi::DenseTensor *X = context.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor *Labels = context.Input<phi::DenseTensor>("Label");
+    const phi::DenseTensor *FgNum = context.Input<phi::DenseTensor>("FgNum");
+    phi::DenseTensor *Out = context.Output<phi::DenseTensor>("Out");
     T gamma = static_cast<T>(context.Attr<float>("gamma"));
     T alpha = static_cast<T>(context.Attr<float>("alpha"));
     auto out_data = Out->mutable_data<T>(context.GetPlace());
@@ -73,15 +73,17 @@ class SigmoidFocalLossKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SigmoidFocalLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const Tensor *X = context.Input<Tensor>("X");
-    const Tensor *Labels = context.Input<Tensor>("Label");
-    const Tensor *FgNum = context.Input<Tensor>("FgNum");
-    const Tensor *dOut = context.Input<Tensor>(framework::GradVarName("Out"));
-    Tensor *dX = context.Output<Tensor>(framework::GradVarName("X"));
+    const phi::DenseTensor *X = context.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor *Labels = context.Input<phi::DenseTensor>("Label");
+    const phi::DenseTensor *FgNum = context.Input<phi::DenseTensor>("FgNum");
+    const phi::DenseTensor *dOut =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    phi::DenseTensor *dX =
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto dx_data = dX->mutable_data<T>(context.GetPlace());
     T gamma = static_cast<T>(context.Attr<float>("gamma"));
     T alpha = static_cast<T>(context.Attr<float>("alpha"));

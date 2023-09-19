@@ -24,24 +24,26 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_GLOO)
 #include <gloo/scatter.h>
+
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CScatterOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_GLOO)
-    auto in = ctx.Input<framework::Tensor>("X");
-    auto out = ctx.Output<framework::Tensor>("Out");
+    auto in = ctx.Input<phi::DenseTensor>("X");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
     auto root_id = ctx.Attr<int>("root");
 
     auto gloo = paddle::framework::GlooWrapper::GetInstance();
     PADDLE_ENFORCE_EQ(
-        gloo->IsInitialized(), true,
+        gloo->IsInitialized(),
+        true,
         platform::errors::PreconditionNotMet(
             "You must initialize the gloo environment first to use it."));
 

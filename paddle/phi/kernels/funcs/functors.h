@@ -14,31 +14,26 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/math.h"
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/kernels/funcs/math.h"
 
 namespace phi {
 namespace funcs {
 template <typename T>
 struct MulGradFunctor {
-  inline HOSTDEVICE T Dx(T x, T y) { return y; }
-  inline HOSTDEVICE T Dy(T x, T y) { return x; }
-};
-
-template <typename T>
-struct MaxFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a < b ? b : a; }
+  inline HOSTDEVICE T Dx(T x UNUSED, T y) { return y; }
+  inline HOSTDEVICE T Dy(T x, T y UNUSED) { return x; }
 };
 
 template <typename T>
 struct AddGradFunctor {
-  inline HOSTDEVICE T Dx(T x, T y) { return static_cast<T>(1.); }
-  inline HOSTDEVICE T Dy(T x, T y) { return static_cast<T>(1.); }
+  inline HOSTDEVICE T Dx(T x UNUSED, T y UNUSED) { return static_cast<T>(1.); }
+  inline HOSTDEVICE T Dy(T x UNUSED, T y UNUSED) { return static_cast<T>(1.); }
 };
 
 template <typename T>
 struct ScaleFunctor {
-  using MT = typename paddle::operators::details::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   explicit ScaleFunctor(const MT coeff) : coeff_(coeff) {}
 
   inline HOSTDEVICE T operator()(T ele) {
@@ -53,9 +48,9 @@ template <typename T>
 struct ScaleGradFunctor {
   explicit ScaleGradFunctor(T coeff) : coeff_(coeff) {}
 
-  inline HOSTDEVICE T UseX(T x) { return coeff_; }
-  inline HOSTDEVICE T UseOut(T out) { return coeff_; }
-  inline HOSTDEVICE T UseXAndOut(T x, T out) { return coeff_; }
+  inline HOSTDEVICE T UseX(T x UNUSED) { return coeff_; }
+  inline HOSTDEVICE T UseOut(T out UNUSED) { return coeff_; }
+  inline HOSTDEVICE T UseXAndOut(T x UNUSED, T out UNUSED) { return coeff_; }
 
  private:
   T coeff_;
@@ -76,7 +71,7 @@ struct ReluGradFunctor {
   inline HOSTDEVICE T UseOut(T out) {
     return out > static_cast<T>(0) ? static_cast<T>(1) : static_cast<T>(0);
   }
-  inline HOSTDEVICE T UseXAndOut(T x, T out) {
+  inline HOSTDEVICE T UseXAndOut(T x UNUSED, T out) {
     return out > static_cast<T>(0) ? static_cast<T>(1) : static_cast<T>(0);
   }
 };
@@ -89,8 +84,7 @@ struct TanhFunctor {
     // y = 2 / (1 + e^-2x) - 1
     T t0 = static_cast<T>(2) * x;
     T t1 = (t0 < kMin) ? kMin : ((t0 > kMax) ? kMax : t0);
-    return static_cast<T>(2) /
-               (static_cast<T>(1) + paddle::operators::real_exp(-t1)) -
+    return static_cast<T>(2) / (static_cast<T>(1) + phi::funcs::real_exp(-t1)) -
            static_cast<T>(1);
   }
 };
@@ -99,7 +93,7 @@ template <typename T>
 struct TanhGradFunctor {
   inline HOSTDEVICE T UseX(T x) { return static_cast<T>(1) - x * x; }
   inline HOSTDEVICE T UseOut(T out) { return static_cast<T>(1) - out * out; }
-  inline HOSTDEVICE T UseXAndOut(T x, T out) {
+  inline HOSTDEVICE T UseXAndOut(T x UNUSED, T out) {
     return static_cast<T>(1) - out * out;
   }
 };
@@ -111,8 +105,7 @@ struct SigmoidFunctor {
   inline HOSTDEVICE T operator()(T x) {
     // y = 1 / (1 + e^-x)
     T tmp = (x < kMin) ? kMin : ((x > kMax) ? kMax : x);
-    return static_cast<T>(1) /
-           (static_cast<T>(1) + paddle::operators::real_exp(-tmp));
+    return static_cast<T>(1) / (static_cast<T>(1) + phi::funcs::real_exp(-tmp));
   }
 };
 
@@ -120,14 +113,14 @@ template <typename T>
 struct SigmoidGradFunctor {
   inline HOSTDEVICE T UseX(T x) { return x * (static_cast<T>(1) - x); }
   inline HOSTDEVICE T UseOut(T out) { return out * (static_cast<T>(1) - out); }
-  inline HOSTDEVICE T UseXAndOut(T x, T out) {
+  inline HOSTDEVICE T UseXAndOut(T x UNUSED, T out) {
     return out * (static_cast<T>(1) - out);
   }
 };
 
 template <typename T>
 struct GeluFunctor {
-  using MT = typename paddle::operators::details::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(T x) {
     // this function is tanh approximation of gelu
     // actual gelu is:
@@ -143,7 +136,7 @@ struct GeluFunctor {
 
 template <typename T>
 struct GeluGradFunctor {
-  using MT = typename paddle::operators::details::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   inline HOSTDEVICE T UseX(T x) {
     MT mx = static_cast<MT>(x);
     MT tanh_out =
@@ -168,7 +161,7 @@ struct GeluGradFunctor {
              static_cast<MT>(0.5) * (static_cast<MT>(1) + tanh_out);
     return static_cast<T>(ans);
   }
-  inline HOSTDEVICE T UseXAndOut(T x, T out) {
+  inline HOSTDEVICE T UseXAndOut(T x, T out UNUSED) {
     MT mx = static_cast<MT>(x);
     MT tanh_out =
         tanh(static_cast<MT>(0.79788456) * mx *

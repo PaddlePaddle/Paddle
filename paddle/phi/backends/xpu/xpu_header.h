@@ -19,13 +19,14 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
-
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"
 #include "xpu/xdnn.h"
+#ifdef PADDLE_WITH_XPU_PLUGIN
+#include "xpu/plugin.h"
+#endif
 
 namespace xpu = baidu::xpu::api;
 
@@ -51,6 +52,24 @@ template <>
 class XPUTypeTrait<phi::dtype::bfloat16> {
  public:
   using Type = bfloat16;
+};
+
+template <typename T>
+class XPUTypeToPhiType {
+ public:
+  using Type = T;
+};
+
+template <>
+class XPUTypeToPhiType<float16> {
+ public:
+  using Type = phi::dtype::float16;
+};
+
+template <>
+class XPUTypeToPhiType<bfloat16> {
+ public:
+  using Type = phi::dtype::bfloat16;
 };
 
 #endif

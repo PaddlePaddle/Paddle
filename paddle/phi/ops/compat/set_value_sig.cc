@@ -19,9 +19,9 @@ namespace phi {
 
 KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("Input")) {
-    if (ctx.HasInput("StartsTensorList")) {
-      if (ctx.HasInput("EndsTensorList")) {
-        if (ctx.HasInput("StepsTensorList")) {
+    if (ctx.InputSize("StartsTensorList") > 0) {
+      if (ctx.InputSize("EndsTensorList") > 0) {
+        if (ctx.InputSize("StepsTensorList") > 0) {
           if (ctx.HasInput("ValueTensor")) {
             return KernelSignature("set_value_with_tensor",
                                    {"Input", "ValueTensor"},
@@ -32,10 +32,7 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp32_values") &&
-                     !paddle::any_cast<std::vector<float>>(
-                          ctx.Attr("fp32_values"))
-                          .empty()) {
+          } else {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -45,67 +42,7 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes",
                                     "shape",
-                                    "fp32_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("fp64_values") &&
-                     !paddle::any_cast<std::vector<double>>(
-                          ctx.Attr("fp64_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"StartsTensorList",
-                                    "EndsTensorList",
-                                    "StepsTensorList",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "fp64_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("int32_values") &&
-                     !paddle::any_cast<std::vector<int>>(
-                          ctx.Attr("int32_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"StartsTensorList",
-                                    "EndsTensorList",
-                                    "StepsTensorList",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "int32_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("int64_values") &&
-                     !paddle::any_cast<std::vector<int64_t>>(
-                          ctx.Attr("int64_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"StartsTensorList",
-                                    "EndsTensorList",
-                                    "StepsTensorList",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "int64_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("bool_values") &&
-                     !paddle::any_cast<std::vector<int>>(
-                          ctx.Attr("bool_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"StartsTensorList",
-                                    "EndsTensorList",
-                                    "StepsTensorList",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "bool_values"},
+                                    "values"},
                                    {"Out"});
           }
         } else {
@@ -119,10 +56,7 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp32_values") &&
-                     !paddle::any_cast<std::vector<float>>(
-                          ctx.Attr("fp32_values"))
-                          .empty()) {
+          } else {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -132,72 +66,12 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes",
                                     "shape",
-                                    "fp32_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("fp64_values") &&
-                     !paddle::any_cast<std::vector<double>>(
-                          ctx.Attr("fp64_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"StartsTensorList",
-                                    "EndsTensorList",
-                                    "steps",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "fp64_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("int32_values") &&
-                     !paddle::any_cast<std::vector<int>>(
-                          ctx.Attr("int32_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"StartsTensorList",
-                                    "EndsTensorList",
-                                    "steps",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "int32_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("int64_values") &&
-                     !paddle::any_cast<std::vector<int64_t>>(
-                          ctx.Attr("int64_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"StartsTensorList",
-                                    "EndsTensorList",
-                                    "steps",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "int64_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("bool_values") &&
-                     !paddle::any_cast<std::vector<int>>(
-                          ctx.Attr("bool_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"StartsTensorList",
-                                    "EndsTensorList",
-                                    "steps",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "bool_values"},
+                                    "values"},
                                    {"Out"});
           }
         }
       } else {
-        if (ctx.HasInput("StepsTensorList")) {
+        if (ctx.InputSize("StepsTensorList") > 0) {
           if (ctx.HasInput("ValueTensor")) {
             return KernelSignature("set_value_with_tensor",
                                    {"Input", "ValueTensor"},
@@ -208,10 +82,7 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp32_values") &&
-                     !paddle::any_cast<std::vector<float>>(
-                          ctx.Attr("fp32_values"))
-                          .empty()) {
+          } else {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -221,67 +92,7 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes",
                                     "shape",
-                                    "fp32_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("fp64_values") &&
-                     !paddle::any_cast<std::vector<double>>(
-                          ctx.Attr("fp64_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"StartsTensorList",
-                                    "ends",
-                                    "StepsTensorList",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "fp64_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("int32_values") &&
-                     !paddle::any_cast<std::vector<int>>(
-                          ctx.Attr("int32_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"StartsTensorList",
-                                    "ends",
-                                    "StepsTensorList",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "int32_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("int64_values") &&
-                     !paddle::any_cast<std::vector<int64_t>>(
-                          ctx.Attr("int64_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"StartsTensorList",
-                                    "ends",
-                                    "StepsTensorList",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "int64_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("bool_values") &&
-                     !paddle::any_cast<std::vector<int>>(
-                          ctx.Attr("bool_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"StartsTensorList",
-                                    "ends",
-                                    "StepsTensorList",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "bool_values"},
+                                    "values"},
                                    {"Out"});
           }
         } else {
@@ -295,10 +106,7 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp32_values") &&
-                     !paddle::any_cast<std::vector<float>>(
-                          ctx.Attr("fp32_values"))
-                          .empty()) {
+          } else {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -308,74 +116,14 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes",
                                     "shape",
-                                    "fp32_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("fp64_values") &&
-                     !paddle::any_cast<std::vector<double>>(
-                          ctx.Attr("fp64_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"StartsTensorList",
-                                    "ends",
-                                    "steps",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "fp64_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("int32_values") &&
-                     !paddle::any_cast<std::vector<int>>(
-                          ctx.Attr("int32_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"StartsTensorList",
-                                    "ends",
-                                    "steps",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "int32_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("int64_values") &&
-                     !paddle::any_cast<std::vector<int64_t>>(
-                          ctx.Attr("int64_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"StartsTensorList",
-                                    "ends",
-                                    "steps",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "int64_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("bool_values") &&
-                     !paddle::any_cast<std::vector<int>>(
-                          ctx.Attr("bool_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"StartsTensorList",
-                                    "ends",
-                                    "steps",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "bool_values"},
+                                    "values"},
                                    {"Out"});
           }
         }
       }
     } else {
-      if (ctx.HasInput("EndsTensorList")) {
-        if (ctx.HasInput("StepsTensorList")) {
+      if (ctx.InputSize("EndsTensorList") > 0) {
+        if (ctx.InputSize("StepsTensorList") > 0) {
           if (ctx.HasInput("ValueTensor")) {
             return KernelSignature("set_value_with_tensor",
                                    {"Input", "ValueTensor"},
@@ -386,10 +134,7 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp32_values") &&
-                     !paddle::any_cast<std::vector<float>>(
-                          ctx.Attr("fp32_values"))
-                          .empty()) {
+          } else {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
@@ -399,67 +144,7 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes",
                                     "shape",
-                                    "fp32_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("fp64_values") &&
-                     !paddle::any_cast<std::vector<double>>(
-                          ctx.Attr("fp64_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"starts",
-                                    "EndsTensorList",
-                                    "StepsTensorList",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "fp64_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("int32_values") &&
-                     !paddle::any_cast<std::vector<int>>(
-                          ctx.Attr("int32_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"starts",
-                                    "EndsTensorList",
-                                    "StepsTensorList",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "int32_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("int64_values") &&
-                     !paddle::any_cast<std::vector<int64_t>>(
-                          ctx.Attr("int64_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"starts",
-                                    "EndsTensorList",
-                                    "StepsTensorList",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "int64_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("bool_values") &&
-                     !paddle::any_cast<std::vector<int>>(
-                          ctx.Attr("bool_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"starts",
-                                    "EndsTensorList",
-                                    "StepsTensorList",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "bool_values"},
+                                    "values"},
                                    {"Out"});
           }
         } else {
@@ -473,10 +158,7 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp32_values") &&
-                     !paddle::any_cast<std::vector<float>>(
-                          ctx.Attr("fp32_values"))
-                          .empty()) {
+          } else {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
@@ -486,72 +168,12 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes",
                                     "shape",
-                                    "fp32_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("fp64_values") &&
-                     !paddle::any_cast<std::vector<double>>(
-                          ctx.Attr("fp64_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"starts",
-                                    "EndsTensorList",
-                                    "steps",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "fp64_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("int32_values") &&
-                     !paddle::any_cast<std::vector<int>>(
-                          ctx.Attr("int32_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"starts",
-                                    "EndsTensorList",
-                                    "steps",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "int32_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("int64_values") &&
-                     !paddle::any_cast<std::vector<int64_t>>(
-                          ctx.Attr("int64_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"starts",
-                                    "EndsTensorList",
-                                    "steps",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "int64_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("bool_values") &&
-                     !paddle::any_cast<std::vector<int>>(
-                          ctx.Attr("bool_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"starts",
-                                    "EndsTensorList",
-                                    "steps",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "bool_values"},
+                                    "values"},
                                    {"Out"});
           }
         }
       } else {
-        if (ctx.HasInput("StepsTensorList")) {
+        if (ctx.InputSize("StepsTensorList") > 0) {
           if (ctx.HasInput("ValueTensor")) {
             return KernelSignature("set_value_with_tensor",
                                    {"Input", "ValueTensor"},
@@ -562,10 +184,7 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp32_values") &&
-                     !paddle::any_cast<std::vector<float>>(
-                          ctx.Attr("fp32_values"))
-                          .empty()) {
+          } else {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
@@ -575,67 +194,7 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes",
                                     "shape",
-                                    "fp32_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("fp64_values") &&
-                     !paddle::any_cast<std::vector<double>>(
-                          ctx.Attr("fp64_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"starts",
-                                    "ends",
-                                    "StepsTensorList",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "fp64_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("int32_values") &&
-                     !paddle::any_cast<std::vector<int>>(
-                          ctx.Attr("int32_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"starts",
-                                    "ends",
-                                    "StepsTensorList",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "int32_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("int64_values") &&
-                     !paddle::any_cast<std::vector<int64_t>>(
-                          ctx.Attr("int64_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"starts",
-                                    "ends",
-                                    "StepsTensorList",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "int64_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("bool_values") &&
-                     !paddle::any_cast<std::vector<int>>(
-                          ctx.Attr("bool_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"starts",
-                                    "ends",
-                                    "StepsTensorList",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "bool_values"},
+                                    "values"},
                                    {"Out"});
           }
         } else {
@@ -649,10 +208,7 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp32_values") &&
-                     !paddle::any_cast<std::vector<float>>(
-                          ctx.Attr("fp32_values"))
-                          .empty()) {
+          } else {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
@@ -662,67 +218,7 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes",
                                     "shape",
-                                    "fp32_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("fp64_values") &&
-                     !paddle::any_cast<std::vector<double>>(
-                          ctx.Attr("fp64_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"starts",
-                                    "ends",
-                                    "steps",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "fp64_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("int32_values") &&
-                     !paddle::any_cast<std::vector<int>>(
-                          ctx.Attr("int32_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"starts",
-                                    "ends",
-                                    "steps",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "int32_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("int64_values") &&
-                     !paddle::any_cast<std::vector<int64_t>>(
-                          ctx.Attr("int64_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"starts",
-                                    "ends",
-                                    "steps",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "int64_values"},
-                                   {"Out"});
-          } else if (ctx.HasAttr("bool_values") &&
-                     !paddle::any_cast<std::vector<int>>(
-                          ctx.Attr("bool_values"))
-                          .empty()) {
-            return KernelSignature("set_value",
-                                   {"Input"},
-                                   {"starts",
-                                    "ends",
-                                    "steps",
-                                    "axes",
-                                    "decrease_axes",
-                                    "none_axes",
-                                    "shape",
-                                    "bool_values"},
+                                    "values"},
                                    {"Out"});
           }
         }
@@ -734,99 +230,92 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature SetValueGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  if (ctx.HasInput("StartsTensorList")) {
-    if (ctx.HasInput("EndsTensorList")) {
-      if (ctx.HasInput("StepsTensorList")) {
-        return KernelSignature(
-            "set_value_grad",
-            {GradVarName("Out")},
-            {"StartsTensorList",
-             "EndsTensorList",
-             "StepsTensorList",
-             "axes",
-             "decrease_axes",
-             "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+  if (ctx.InputSize("StartsTensorList") > 0) {
+    if (ctx.InputSize("EndsTensorList") > 0) {
+      if (ctx.InputSize("StepsTensorList") > 0) {
+        return KernelSignature("set_value_grad",
+                               {"Out@GRAD"},
+                               {"StartsTensorList",
+                                "EndsTensorList",
+                                "StepsTensorList",
+                                "axes",
+                                "decrease_axes",
+                                "none_axes"},
+                               {"Input@GRAD", "ValueTensor@GRAD"});
       } else {
-        return KernelSignature(
-            "set_value_grad",
-            {GradVarName("Out")},
-            {"StartsTensorList",
-             "EndsTensorList",
-             "steps",
-             "axes",
-             "decrease_axes",
-             "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+        return KernelSignature("set_value_grad",
+                               {"Out@GRAD"},
+                               {"StartsTensorList",
+                                "EndsTensorList",
+                                "steps",
+                                "axes",
+                                "decrease_axes",
+                                "none_axes"},
+                               {"Input@GRAD", "ValueTensor@GRAD"});
       }
     } else {
-      if (ctx.HasInput("StepsTensorList")) {
-        return KernelSignature(
-            "set_value_grad",
-            {GradVarName("Out")},
-            {"StartsTensorList",
-             "ends",
-             "StepsTensorList",
-             "axes",
-             "decrease_axes",
-             "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+      if (ctx.InputSize("StepsTensorList") > 0) {
+        return KernelSignature("set_value_grad",
+                               {"Out@GRAD"},
+                               {"StartsTensorList",
+                                "ends",
+                                "StepsTensorList",
+                                "axes",
+                                "decrease_axes",
+                                "none_axes"},
+                               {"Input@GRAD", "ValueTensor@GRAD"});
       } else {
-        return KernelSignature(
-            "set_value_grad",
-            {GradVarName("Out")},
-            {"StartsTensorList",
-             "ends",
-             "steps",
-             "axes",
-             "decrease_axes",
-             "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+        return KernelSignature("set_value_grad",
+                               {"Out@GRAD"},
+                               {"StartsTensorList",
+                                "ends",
+                                "steps",
+                                "axes",
+                                "decrease_axes",
+                                "none_axes"},
+                               {"Input@GRAD", "ValueTensor@GRAD"});
       }
     }
   } else {
-    if (ctx.HasInput("EndsTensorList")) {
-      if (ctx.HasInput("StepsTensorList")) {
-        return KernelSignature(
-            "set_value_grad",
-            {GradVarName("Out")},
-            {"starts",
-             "EndsTensorList",
-             "StepsTensorList",
-             "axes",
-             "decrease_axes",
-             "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+    if (ctx.InputSize("EndsTensorList") > 0) {
+      if (ctx.InputSize("StepsTensorList") > 0) {
+        return KernelSignature("set_value_grad",
+                               {"Out@GRAD"},
+                               {"starts",
+                                "EndsTensorList",
+                                "StepsTensorList",
+                                "axes",
+                                "decrease_axes",
+                                "none_axes"},
+                               {"Input@GRAD", "ValueTensor@GRAD"});
       } else {
-        return KernelSignature(
-            "set_value_grad",
-            {GradVarName("Out")},
-            {"starts",
-             "EndsTensorList",
-             "steps",
-             "axes",
-             "decrease_axes",
-             "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+        return KernelSignature("set_value_grad",
+                               {"Out@GRAD"},
+                               {"starts",
+                                "EndsTensorList",
+                                "steps",
+                                "axes",
+                                "decrease_axes",
+                                "none_axes"},
+                               {"Input@GRAD", "ValueTensor@GRAD"});
       }
     } else {
-      if (ctx.HasInput("StepsTensorList")) {
-        return KernelSignature(
-            "set_value_grad",
-            {GradVarName("Out")},
-            {"starts",
-             "ends",
-             "StepsTensorList",
-             "axes",
-             "decrease_axes",
-             "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+      if (ctx.InputSize("StepsTensorList") > 0) {
+        return KernelSignature("set_value_grad",
+                               {"Out@GRAD"},
+                               {"starts",
+                                "ends",
+                                "StepsTensorList",
+                                "axes",
+                                "decrease_axes",
+                                "none_axes"},
+                               {"Input@GRAD", "ValueTensor@GRAD"});
       } else {
         return KernelSignature(
             "set_value_grad",
-            {GradVarName("Out")},
+            {"Out@GRAD"},
             {"starts", "ends", "steps", "axes", "decrease_axes", "none_axes"},
-            {GradVarName("Input"), GradVarName("ValueTensor")});
+            {"Input@GRAD", "ValueTensor@GRAD"});
       }
     }
   }

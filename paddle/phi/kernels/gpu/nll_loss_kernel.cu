@@ -24,7 +24,7 @@ template <typename T, typename Context>
 void NllLossRawKernel(const Context& dev_ctx,
                       const DenseTensor& input,
                       const DenseTensor& label,
-                      paddle::optional<const DenseTensor&> weight,
+                      const paddle::optional<DenseTensor>& weight,
                       int64_t ignore_index,
                       const std::string& reduction,
                       DenseTensor* out,
@@ -49,25 +49,25 @@ void NllLossRawKernel(const Context& dev_ctx,
     int blocks = NumBlocks(batch_size);
     int threads = kNumCUDAThreads;
     if (reduction == "none") {
-      GPUNLLLossForward1D_no_reduce<
-          T><<<blocks, threads, 0, dev_ctx.stream()>>>(out_data,
-                                                       x_data,
-                                                       label_data,
-                                                       weight_data,
-                                                       batch_size,
-                                                       n_classes,
-                                                       ignore_index);
+      GPUNLLLossForward1D_no_reduce<T>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(out_data,
+                                                     x_data,
+                                                     label_data,
+                                                     weight_data,
+                                                     batch_size,
+                                                     n_classes,
+                                                     ignore_index);
     } else {
-      GPUNLLLossForward1D_with_reduce<T><<<1, NTHREADS, 0, dev_ctx.stream()>>>(
-          out_data,
-          total_weight_data,
-          x_data,
-          label_data,
-          weight_data,
-          batch_size,
-          n_classes,
-          size_average,
-          ignore_index);
+      GPUNLLLossForward1D_with_reduce<T>
+          <<<1, NTHREADS, 0, dev_ctx.stream()>>>(out_data,
+                                                 total_weight_data,
+                                                 x_data,
+                                                 label_data,
+                                                 weight_data,
+                                                 batch_size,
+                                                 n_classes,
+                                                 size_average,
+                                                 ignore_index);
     }
   } else if (x_dims.size() == 4) {
     const auto in_dim2 = x_dims[2];
@@ -77,34 +77,34 @@ void NllLossRawKernel(const Context& dev_ctx,
     int blocks = NumBlocks(out_numel);
     int threads = kNumCUDAThreads;
     if (reduction == "none") {
-      GPUNLLLossForward2D_no_reduce<
-          T><<<blocks, threads, 0, dev_ctx.stream()>>>(out_data,
-                                                       x_data,
-                                                       label_data,
-                                                       weight_data,
-                                                       batch_size,
-                                                       n_classes,
-                                                       in_dim2,
-                                                       in_dim3,
-                                                       ignore_index);
+      GPUNLLLossForward2D_no_reduce<T>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(out_data,
+                                                     x_data,
+                                                     label_data,
+                                                     weight_data,
+                                                     batch_size,
+                                                     n_classes,
+                                                     in_dim2,
+                                                     in_dim3,
+                                                     ignore_index);
     } else {
       int blocks_per_sample = NumBlocks(map_size) / 128;
       blocks_per_sample = (blocks_per_sample == 0) ? 1 : blocks_per_sample;
       int total_blocks = blocks_per_sample * batch_size;
-      GPUNLLLossForward2D_with_reduce<
-          T><<<total_blocks, threads, 0, dev_ctx.stream()>>>(out_data,
-                                                             total_weight_data,
-                                                             x_data,
-                                                             label_data,
-                                                             weight_data,
-                                                             batch_size,
-                                                             n_classes,
-                                                             map_size,
-                                                             blocks_per_sample,
-                                                             ignore_index);
+      GPUNLLLossForward2D_with_reduce<T>
+          <<<total_blocks, threads, 0, dev_ctx.stream()>>>(out_data,
+                                                           total_weight_data,
+                                                           x_data,
+                                                           label_data,
+                                                           weight_data,
+                                                           batch_size,
+                                                           n_classes,
+                                                           map_size,
+                                                           blocks_per_sample,
+                                                           ignore_index);
       if (size_average) {
-        GPUNLLLossForward2D_size_average<T><<<1, 1, 0, dev_ctx.stream()>>>(
-            out_data, total_weight_data);
+        GPUNLLLossForward2D_size_average<T>
+            <<<1, 1, 0, dev_ctx.stream()>>>(out_data, total_weight_data);
       }
     }
   }

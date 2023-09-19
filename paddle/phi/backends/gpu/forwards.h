@@ -77,10 +77,8 @@ using ncclComm_t = struct ncclComm *;
 
 using hipDevice_t = int;
 using hipCtx_t = struct ihipCtx_t *;
-using hipModule_t = struct ihipModule_t *;
 using hipStream_t = struct ihipStream_t *;
 using hipEvent_t = struct ihipEvent_t *;
-using hipFunction_t = struct ihipModuleSymbol_t *;
 
 // Forward declaration of MIOpen types.
 using miopenHandle_t = struct miopenHandle *;

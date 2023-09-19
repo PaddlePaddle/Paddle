@@ -13,18 +13,92 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/elementwise_grad_kernel.h"
+#include "paddle/phi/kernels/elementwise_add_grad_kernel.h"
+#include "paddle/phi/kernels/elementwise_divide_grad_kernel.h"
+#include "paddle/phi/kernels/elementwise_multiply_grad_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/gpu/elementwise_grad.h"
 #include "paddle/phi/kernels/impl/elementwise_grad_kernel_impl.h"
 
 namespace phi {
+
+template <typename T, typename Context>
+void SubtractGradKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        const DenseTensor& dout,
+                        int axis,
+                        DenseTensor* dx,
+                        DenseTensor* dy) {
+  // skip out
+  auto* out = &dout;
+  if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
+    elementwise_sub_grad<T>(dev_ctx, x, y, *out, dout, dx, dy);
+  } else {
+    default_elementwise_sub_grad<T>(dev_ctx, x, y, *out, dout, dx, dy, axis);
+  }
+}
+
+template <typename T, typename Context>
+void SubtractDoubleGradKernel(const Context& dev_ctx,
+                              const DenseTensor& y,
+                              const DenseTensor& dout,
+                              const paddle::optional<DenseTensor>& ddx,
+                              const paddle::optional<DenseTensor>& ddy,
+                              int axis,
+                              DenseTensor* ddout) {
+  phi::SubtractDoubleGradImpl<T>(dev_ctx, y, ddx, ddy, dout, axis, ddout);
+}
+
+template <typename T, typename Context>
+void MultiplyGradKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        const DenseTensor& dout,
+                        int axis,
+                        DenseTensor* dx,
+                        DenseTensor* dy) {
+  funcs::ElementwiseGradPreProcess(dout, dx);
+  ElementwiseMulGrad<T>(dev_ctx, x, y, dout, dx, dy, axis);
+}
+
+template <typename T, typename Context>
+void DivideGradKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      const DenseTensor& out,
+                      const DenseTensor& dout,
+                      int axis,
+                      DenseTensor* dx,
+                      DenseTensor* dy) {
+  const auto place = dev_ctx.GetPlace();
+  if (dx != nullptr && dy != nullptr) {
+    std::vector<const DenseTensor*> ins = {&dout, &x, &y};
+    GetGradXAndYOut<T>(dev_ctx,
+                       place,
+                       axis,
+                       ins,
+                       dout,
+                       dx,
+                       dy,
+                       funcs::DivGradXYFunctor<T, T>());
+  } else if (dx != nullptr && dy == nullptr) {
+    std::vector<const DenseTensor*> ins = {&dout, &y};
+    GetGradXOrYOut<T>(
+        dev_ctx, place, axis, ins, dout, dx, funcs::DivGradXFunctor<T>());
+  } else if (dy != nullptr && dx == nullptr) {
+    std::vector<const DenseTensor*> ins = {&dout, &x, &y};
+    GetGradXOrYOut<T>(
+        dev_ctx, place, axis, ins, dout, dy, funcs::DivGradYFunctor<T>());
+  }
+}
 
 template <typename T>
 void AddGradFunc(const GPUContext& dev_ctx,
@@ -56,9 +130,9 @@ void AddGradKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void AddDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& y,
-                         paddle::optional<const DenseTensor&> ddx,
-                         paddle::optional<const DenseTensor&> ddy,
                          const DenseTensor& dout,
+                         const paddle::optional<DenseTensor>& ddx,
+                         const paddle::optional<DenseTensor>& ddy,
                          int axis,
                          DenseTensor* ddout) {
   phi::AddDoubleGradImpl<T>(dev_ctx, y, ddx, ddy, dout, axis, ddout);
@@ -77,78 +151,131 @@ void AddTripleGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void SubtractGradKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        const DenseTensor& y,
-                        const DenseTensor& dout,
-                        int axis,
-                        DenseTensor* dx,
-                        DenseTensor* dy) {
-  // skip out
-  auto* out = &dout;
-  if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
-    elementwise_sub_grad<T>(dev_ctx, x, y, *out, dout, dx, dy);
-  } else {
-    default_elementwise_sub_grad<T>(dev_ctx, x, y, *out, dout, dx, dy, axis);
-  }
-}
-
-template <typename T, typename Context>
-void SubtractDoubleGradKernel(const Context& dev_ctx,
-                              const DenseTensor& y,
-                              paddle::optional<const DenseTensor&> ddx,
-                              paddle::optional<const DenseTensor&> ddy,
-                              const DenseTensor& dout,
-                              int axis,
-                              DenseTensor* ddout) {
-  phi::SubtractDoubleGradImpl<T>(dev_ctx, y, ddx, ddy, dout, axis, ddout);
-}
-
-template <typename T, typename Context>
-void DivideGradKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& y,
-                      const DenseTensor& out,
-                      const DenseTensor& dout,
-                      int axis,
-                      DenseTensor* dx,
-                      DenseTensor* dy) {
+void MaximumGradKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       const DenseTensor& dout,
+                       DenseTensor* dx,
+                       DenseTensor* dy) {
   const auto place = dev_ctx.GetPlace();
+  int axis = -1;
   if (dx != nullptr && dy != nullptr) {
-    std::vector<const DenseTensor*> ins = {&dout, &out, &y};
-    GetGradXAndYOut<ElementwiseType::kTernary, T>(
-        dev_ctx,
-        place,
-        axis,
-        ins,
-        dout,
-        dx,
-        dy,
-        funcs::DivGradXYFunctor<T, T>());
+    std::vector<const DenseTensor*> ins = {&x, &y, &dout};
+    GetGradXAndYOut<T>(dev_ctx,
+                       place,
+                       axis,
+                       ins,
+                       dout,
+                       dx,
+                       dy,
+                       funcs::MaxGradXYFunctor<T, T>());
   } else if (dx != nullptr && dy == nullptr) {
-    std::vector<const DenseTensor*> ins = {&dout, &y};
-    GetGradXOrYOut<ElementwiseType::kBinary, T>(
-        dev_ctx, place, axis, ins, dout, dx, funcs::DivGradXFunctor<T>());
+    std::vector<const DenseTensor*> ins = {&x, &y, &dout};
+    GetGradXOrYOut<T>(
+        dev_ctx, place, axis, ins, dout, dx, funcs::MaxGradXFunctor<T>());
   } else if (dy != nullptr && dx == nullptr) {
-    std::vector<const DenseTensor*> ins = {&dout, &out, &y};
-    GetGradXOrYOut<ElementwiseType::kTernary, T>(
-        dev_ctx, place, axis, ins, dout, dy, funcs::DivGradYFunctor<T>());
+    std::vector<const DenseTensor*> ins = {&x, &y, &dout};
+    GetGradXOrYOut<T>(
+        dev_ctx, place, axis, ins, dout, dy, funcs::MaxGradYFunctor<T>());
   }
 }
 
 template <typename T, typename Context>
-void MultiplyGradKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        const DenseTensor& y,
-                        const DenseTensor& dout,
-                        int axis,
-                        DenseTensor* dx,
-                        DenseTensor* dy) {
-  funcs::ElementwiseGradPreProcess(dout, dx);
-  ElementwiseMulGrad<T>(dev_ctx, x, y, dout, dx, dy, axis);
+void MinimumGradKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       const DenseTensor& dout,
+                       DenseTensor* dx,
+                       DenseTensor* dy) {
+  const auto place = dev_ctx.GetPlace();
+  int axis = -1;
+  if (dx != nullptr && dy != nullptr) {
+    std::vector<const DenseTensor*> ins = {&x, &y, &dout};
+    GetGradXAndYOut<T>(dev_ctx,
+                       place,
+                       axis,
+                       ins,
+                       dout,
+                       dx,
+                       dy,
+                       funcs::MinGradXYFunctor<T, T>());
+  } else if (dx != nullptr && dy == nullptr) {
+    std::vector<const DenseTensor*> ins = {&x, &y, &dout};
+    GetGradXOrYOut<T>(
+        dev_ctx, place, axis, ins, dout, dx, funcs::MinGradXFunctor<T>());
+  } else if (dy != nullptr && dx == nullptr) {
+    std::vector<const DenseTensor*> ins = {&x, &y, &dout};
+    GetGradXOrYOut<T>(
+        dev_ctx, place, axis, ins, dout, dy, funcs::MinGradYFunctor<T>());
+  }
 }
-
 }  // namespace phi
+
+PD_REGISTER_KERNEL(fmax_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ElementwiseFMaxGradKernel,
+                   float,
+                   double,
+                   int,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(fmin_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ElementwiseFMinGradKernel,
+                   float,
+                   double,
+                   int,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(maximum_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MaximumGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(minimum_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MinimumGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(heaviside_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::HeavisideGradKernel,
+                   float,
+                   double,
+                   int,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(elementwise_pow_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ElementwisePowGradKernel,
+                   float,
+                   double,
+                   int,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   int64_t) {}
 
 PD_REGISTER_KERNEL(add_grad,
                    GPU,
@@ -180,32 +307,6 @@ PD_REGISTER_KERNEL(add_triple_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::AddTripleGradKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
-
-PD_REGISTER_KERNEL(subtract_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::SubtractGradKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
-
-PD_REGISTER_KERNEL(subtract_double_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::SubtractDoubleGradKernel,
                    float,
                    double,
                    int,
@@ -282,20 +383,29 @@ PD_REGISTER_KERNEL(multiply_triple_grad,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
-PD_REGISTER_KERNEL(elementwise_fmax_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::ElementwiseFMaxGradKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
 
-PD_REGISTER_KERNEL(elementwise_fmin_grad,
+PD_REGISTER_KERNEL(subtract_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::ElementwiseFMinGradKernel,
+                   phi::SubtractGradKernel,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(subtract_double_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SubtractDoubleGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

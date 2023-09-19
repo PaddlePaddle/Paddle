@@ -23,26 +23,33 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SigmoidCrossEntropyWithLogitsKernel(const Context& dev_ctx,
-                                         const DenseTensor& x,
-                                         const DenseTensor& label,
-                                         bool normalize,
-                                         int ignore_index,
-                                         DenseTensor* out) {
+void SigmoidCrossEntropyWithLogitsKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& label,
+    const paddle::optional<DenseTensor>& pos_weight,
+    bool normalize,
+    int ignore_index,
+    DenseTensor* out) {
   auto out_data = dev_ctx.template Alloc<T>(out);
-  int limit = out->numel();
+  int limit = static_cast<int>(out->numel());
   auto x_data = x.data<T>();
   auto label_data = label.data<T>();
+  auto pos_weight_data =
+      (pos_weight.get_ptr() == nullptr ? nullptr
+                                       : pos_weight.get_ptr()->data<T>());
+
   for (int idx = 0; idx < limit; ++idx) {
     T x = x_data[idx];
     T label = label_data[idx];
     if (static_cast<int>(label) == ignore_index) {
       out_data[idx] = static_cast<T>(0.);
     } else {
+      T pos_weight_idx = pos_weight_data == nullptr ? 1 : pos_weight_data[idx];
       T term1 = (x > 0) ? x : 0;
       T term2 = x * label;
       T term3 = std::log(static_cast<T>(1) + std::exp(-std::abs(x)));
-      out_data[idx] = term1 - term2 + term3;
+      out_data[idx] = term1 - term2 + term3 * pos_weight_idx;
     }
   }
 

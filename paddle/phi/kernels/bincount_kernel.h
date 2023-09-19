@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -21,8 +22,8 @@ namespace phi {
 template <typename T, typename Context>
 void BincountKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    const paddle::optional<const DenseTensor&> weights,
-                    int minlength,
+                    const paddle::optional<DenseTensor>& weights,
+                    const Scalar& minlength,
                     DenseTensor* out);
 
 }  // namespace phi

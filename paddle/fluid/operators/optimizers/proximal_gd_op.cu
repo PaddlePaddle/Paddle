@@ -13,6 +13,5 @@ specific language governing permissions and limitations under the License. */
 #include "paddle/fluid/operators/optimizers/proximal_gd_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    proximal_gd,
-    ops::ProximalGDOpKernel<paddle::platform::CUDADeviceContext, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    proximal_gd, GPU, ALL_LAYOUT, ops::ProximalGDOpKernel, float) {}

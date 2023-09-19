@@ -13,25 +13,29 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/device_event_base.h"
+
 #include "paddle/fluid/platform/device_event_cpu.h"
 #include "paddle/fluid/platform/event.h"
 
 namespace paddle {
 namespace platform {
 
-EventCreateFunction DeviceEvent::event_creator_[MaxDeviceTypes];
-EventRecordFunction DeviceEvent::event_recorder_[MaxDeviceTypes];
-EventQueryFunction DeviceEvent::event_querier_[MaxDeviceTypes];
-EventFinishFunction DeviceEvent::event_finisher_[MaxDeviceTypes];
-EventSetFinishedFunction DeviceEvent::event_finished_setter_[MaxDeviceTypes];
-EventWaitFunction DeviceEvent::event_waiter_[MaxDeviceTypes][MaxDeviceTypes];
-EventResetFunction DeviceEvent::event_resetter_[MaxDeviceTypes];
+EventCreateFunction DeviceEvent::event_creator_[MaxDeviceTypes];   // NOLINT
+EventRecordFunction DeviceEvent::event_recorder_[MaxDeviceTypes];  // NOLINT
+EventQueryFunction DeviceEvent::event_querier_[MaxDeviceTypes];    // NOLINT
+EventFinishFunction DeviceEvent::event_finisher_[MaxDeviceTypes];  // NOLINT
+EventSetFinishedFunction                                           // NOLINT
+    DeviceEvent::event_finished_setter_[MaxDeviceTypes];
+EventWaitFunction DeviceEvent::event_waiter_[MaxDeviceTypes]  // NOLINT
+                                            [MaxDeviceTypes];
+EventResetFunction DeviceEvent::event_resetter_[MaxDeviceTypes];  // NOLINT
 
 /*
  * Generate flag used to create event on all sorts of equipment.
  * NOTE: Support CPU/CUDA/ROCM currently.
  */
-unsigned int GenerateDeviceEventFlag(bool enable_timing, bool blocking,
+unsigned int GenerateDeviceEventFlag(bool enable_timing,
+                                     bool blocking,
                                      bool interprocess) {
 #ifdef PADDLE_WITH_CUDA
   unsigned int flags =
@@ -52,7 +56,8 @@ unsigned int GenerateDeviceEventFlag(bool enable_timing, bool blocking,
   return 0;
 }
 
-void DeviceEventCreateCPU(DeviceEvent* event, const platform::Place& place,
+void DeviceEventCreateCPU(DeviceEvent* event,
+                          const platform::Place& place,
                           unsigned int flag) {
   event->InitEvent(std::make_shared<CPUDeviceEventWrapper>(place, flag));
 }
@@ -71,7 +76,8 @@ void DeviceEventRecordCPU(DeviceEvent* event, const DeviceContext* context) {
   }
 
   PADDLE_ENFORCE_LT(
-      wrapper->status_.load(), EventStatus::SCHEDULED,
+      wrapper->status_.load(),
+      EventStatus::SCHEDULED,
       platform::errors::PreconditionNotMet(
           "EventStatus shall be not SCHEDULED before Record(), but received %s",
           wrapper->status_.load()));
@@ -83,8 +89,9 @@ void DeviceEventRecordCPU(DeviceEvent* event, const DeviceContext* context) {
 bool DeviceEventQueryCPU(const DeviceEvent* event) {
   auto* wrapper = static_cast<CPUDeviceEventWrapper*>(event->GetEvent().get());
   PADDLE_ENFORCE_NOT_NULL(
-      wrapper, platform::errors::PreconditionNotMet(
-                   "Failed to dynamic_cast event into CPUDeviceEventWrapper."));
+      wrapper,
+      platform::errors::PreconditionNotMet(
+          "Failed to dynamic_cast event into CPUDeviceEventWrapper."));
 
   return wrapper->status_ == EventStatus::SUCCESS;
 }
@@ -108,7 +115,8 @@ void EventSetFinishedCPU(const DeviceEvent* event) {
   auto* wrapper = static_cast<CPUDeviceEventWrapper*>(event->GetEvent().get());
   std::unique_lock<std::mutex> lock(wrapper->mutex_);
 
-  PADDLE_ENFORCE_LE(wrapper->status_.load(), EventStatus::SCHEDULED,
+  PADDLE_ENFORCE_LE(wrapper->status_.load(),
+                    EventStatus::SCHEDULED,
                     platform::errors::PreconditionNotMet(
                         "EventStatus shall be  INITIALIZED | SCHEDULED before "
                         "EventSetFinishedCPU()"));
@@ -132,6 +140,7 @@ REGISTER_EVENT_QUERY_FUNCTION(kCPU, paddle::platform::DeviceEventQueryCPU)
 REGISTER_EVENT_FINISH_FUNCTION(kCPU, paddle::platform::DeviceEventFinishCPU)
 REGISTER_EVENT_SET_FINISHED_FUNCTION(kCPU,
                                      paddle::platform::EventSetFinishedCPU)
-REGISTER_EVENT_WAIT_FUNCTION(kCPU, kCPU,
+REGISTER_EVENT_WAIT_FUNCTION(kCPU,
+                             kCPU,
                              paddle::platform::DeviceEventCPUWaitCPU)
 REGISTER_EVENT_RESET_FUNCTION(kCPU, paddle::platform::EventResetCPU)

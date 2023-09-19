@@ -13,15 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <memory>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/complex.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
-
-using framework::Tensor;
 
 class PadOp : public framework::OperatorWithKernel {
  public:
@@ -30,6 +32,13 @@ class PadOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Pad");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Pad");
+  }
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -53,11 +62,12 @@ class PadOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("pad_value",
                    "(float, default 0.0) "
                    "The value to fill the padded areas.")
-        .SetDefault(0.0f);
+        .SetDefault(0.0f)
+        .SupportTensor();
     AddComment(R"DOC(
 Pad Operator.
 
-Pad input into output, as specified by paddings and pad_value. 
+Pad input into output, as specified by paddings and pad_value.
 The input should be a k-D tensor(k > 0 and k < 7). As an example:
 
 Given:
@@ -98,6 +108,14 @@ class PadOpGrad : public framework::OperatorWithKernel {
       ctx->SetOutputDim(x_grad_name, dout_dims);
     }
   }
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
+  }
 };
 
 template <typename T>
@@ -111,6 +129,27 @@ class PadOpGradMaker : public framework::SingleGradOpMaker<T> {
     bind->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     bind->SetAttrMap(this->Attrs());
     bind->SetType("pad_grad");
+  }
+};
+
+class PadCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor x_grad = this->GetSingleInputGrad("X");
+    auto* dx_ptr = this->GetOutputPtr(&x_grad);
+    std::string dx_name = this->GetOutputName(x_grad);
+
+    std::vector<int> paddings =
+        static_cast<std::vector<int>>(this->Attr<std::vector<int>>("paddings"));
+    float pad_value = static_cast<float>(this->Attr<float>("pad_value"));
+    VLOG(6) << "Runing add_grad composite func";
+
+    prim::pad_grad<prim::DescTensor>(x, out_grad, paddings, pad_value, dx_ptr);
+    this->RecoverOutputName(x_grad, dx_name);
   }
 };
 
@@ -131,13 +170,18 @@ class PadOpDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(pad, PadInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(pad,
+                            PadInferShapeFunctor,
                             PD_INFER_META(phi::PadInferMeta));
 
-REGISTER_OPERATOR(pad, ops::PadOp, ops::PadOpMaker,
+REGISTER_OPERATOR(pad,
+                  ops::PadOp,
+                  ops::PadOpMaker,
                   ops::PadOpGradMaker<paddle::framework::OpDesc>,
                   ops::PadOpGradMaker<paddle::imperative::OpBase>,
+                  ops::PadCompositeGradOpMaker,
                   PadInferShapeFunctor);
-REGISTER_OPERATOR(pad_grad, ops::PadOpGrad,
+REGISTER_OPERATOR(pad_grad,
+                  ops::PadOpGrad,
                   ops::PadOpDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::PadOpDoubleGradMaker<paddle::imperative::OpBase>);

@@ -11,6 +11,7 @@ limitations under the License. */
 
 #pragma once
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -18,21 +19,18 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class BoxClipKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* input_box = context.Input<LoDTensor>("Input");
-    auto* im_info = context.Input<LoDTensor>("ImInfo");
-    auto* output_box = context.Output<LoDTensor>("Output");
-    auto& dev_ctx =
-        context.template device_context<platform::CPUDeviceContext>();
+    auto* input_box = context.Input<phi::DenseTensor>("Input");
+    auto* im_info = context.Input<phi::DenseTensor>("ImInfo");
+    auto* output_box = context.Output<phi::DenseTensor>("Output");
+    auto& dev_ctx = context.template device_context<phi::CPUContext>();
     output_box->mutable_data<T>(context.GetPlace());
     if (input_box->lod().size()) {
-      PADDLE_ENFORCE_EQ(input_box->lod().size(), 1UL,
+      PADDLE_ENFORCE_EQ(input_box->lod().size(),
+                        1UL,
                         platform::errors::InvalidArgument(
                             "Input(Input) of BoxClip only supports 1 level "
                             "of LoD. But received the "
@@ -42,9 +40,10 @@ class BoxClipKernel : public framework::OpKernel<T> {
     auto box_lod = input_box->lod().back();
     int64_t n = static_cast<int64_t>(box_lod.size() - 1);
     for (int i = 0; i < n; ++i) {
-      Tensor im_info_slice = im_info->Slice(i, i + 1);
-      Tensor box_slice = input_box->Slice(box_lod[i], box_lod[i + 1]);
-      Tensor output_slice = output_box->Slice(box_lod[i], box_lod[i + 1]);
+      phi::DenseTensor im_info_slice = im_info->Slice(i, i + 1);
+      phi::DenseTensor box_slice = input_box->Slice(box_lod[i], box_lod[i + 1]);
+      phi::DenseTensor output_slice =
+          output_box->Slice(box_lod[i], box_lod[i + 1]);
       ClipTiledBoxes<T>(dev_ctx, im_info_slice, box_slice, &output_slice);
     }
   }

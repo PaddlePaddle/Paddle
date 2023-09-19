@@ -14,12 +14,12 @@
 
 #include "paddle/phi/kernels/cumprod_kernel.h"
 
-#include "paddle/fluid/operators/math/inclusive_scan.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/cumprod.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/inclusive_scan.h"
 
 namespace phi {
 
@@ -32,18 +32,22 @@ void CumprodKernel(const Context &dev_ctx,
   auto *y = out;
   size_t outer_dim, mid_dim, inner_dim;
   GetCumprodDimInfo(x->dims(), dim, &outer_dim, &mid_dim, &inner_dim);
+  if (x->dims().size() == 0) {
+    phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, out);
+    return;
+  }
 
   const auto *x_data = x->data<T>();
   auto *y_data = dev_ctx.template Alloc<T>(y);
-  paddle::operators::math::InclusiveScan(x_data,
-                                         y_data,
-                                         outer_dim,
-                                         mid_dim,
-                                         inner_dim,
-                                         static_cast<T>(1),
-                                         funcs::MultiplyFunctor<T>(),
-                                         /*reverse=*/false,
-                                         dev_ctx);
+  phi::funcs::InclusiveScan(x_data,
+                            y_data,
+                            outer_dim,
+                            mid_dim,
+                            inner_dim,
+                            static_cast<T>(1),
+                            funcs::MultiplyFunctor<T>(),
+                            /*reverse=*/false,
+                            dev_ctx);
 }
 
 }  // namespace phi
@@ -56,5 +60,7 @@ PD_REGISTER_KERNEL(cumprod,
                    double,
                    int,
                    int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}

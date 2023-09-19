@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import shutil
 import tempfile
-from paddle.distributed.fleet import launch_utils
-from paddle.distributed.fleet import cloud_utils
-from paddle.distributed.fleet import ascend_utils
 
-from paddle.distributed.fleet.launch_utils import *
-
+import paddle
 from paddle.distributed.fleet.elastic.manager import LauncherInterface
+from paddle.distributed.fleet.launch_utils import (
+    logger,
+    pull_worker_log,
+    start_local_trainers,
+)
 
 
 class CollectiveLauncher(LauncherInterface):
@@ -33,7 +36,8 @@ class CollectiveLauncher(LauncherInterface):
         self.tmp_dir = tempfile.mkdtemp()
         cluster, pod = paddle.distributed.fleet.launch.get_cluster_info(args)
         global_envs = paddle.distributed.fleet.launch.get_global_envs(
-            args, self.tmp_dir)
+            args, self.tmp_dir
+        )
 
         self.procs = start_local_trainers(
             cluster,
@@ -41,10 +45,11 @@ class CollectiveLauncher(LauncherInterface):
             training_script=args.training_script,
             training_script_args=args.training_script_args,
             log_dir=args.log_dir,
-            envs=global_envs)
+            envs=global_envs,
+        )
 
         for idx, proc in enumerate(self.procs):
-            logger.info("launch proc_id:{} idx:{}".format(proc.proc.pid, idx))
+            logger.info(f"launch proc_id:{proc.proc.pid} idx:{idx}")
 
     def stop(self):
         logger.info("collective lauchner stop ...")

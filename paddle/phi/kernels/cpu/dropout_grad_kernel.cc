@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/dropout_grad_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -20,19 +21,21 @@
 namespace phi {
 
 template <typename T, typename Context>
-void DropoutGradRawKernel(const Context& dev_ctx,
-                          const DenseTensor& mask,
-                          const DenseTensor& out_grad,
-                          float p,
-                          bool is_test,
-                          const std::string& mode,
-                          DenseTensor* x_grad) {
+void DropoutNdGradKernel(const Context& dev_ctx,
+                         const DenseTensor& mask,
+                         const DenseTensor& out_grad,
+                         const Scalar& p,
+                         bool is_test,
+                         const std::string& mode,
+                         const std::vector<int>& axis,
+                         DenseTensor* x_grad) {
   auto* grad_x = x_grad;
   auto* grad_y = &out_grad;
-  grad_x->mutable_data<T>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<T>(grad_x);
 
   auto dX = EigenVector<T>::Flatten(*grad_x);
   auto dY = EigenVector<T>::Flatten(*grad_y);
+  float prob = p.to<float>();
 
   auto& place = *dev_ctx.eigen_device();
   auto& dropout_implementation = mode;
@@ -40,20 +43,42 @@ void DropoutGradRawKernel(const Context& dev_ctx,
     if (dropout_implementation == "upscale_in_train") {
       dX.device(place) = static_cast<T>(1) * dY;
     } else {
-      dX.device(place) = dY * static_cast<T>(1.0f - p);
+      dX.device(place) = dY * static_cast<T>(1.0f - prob);
     }
   } else {
+    std::vector<int64_t> out_dims = phi::vectorize(out_grad.dims());
     auto M = EigenVector<uint8_t>::Flatten(mask);
     if (dropout_implementation == "upscale_in_train") {
-      if (p == 1.0f) {
+      if (prob == 1.0f) {
         dX.device(place) = static_cast<T>(0) * dY;
       } else {
-        dX.device(place) = dY * M.cast<T>() / static_cast<T>(1.0f - p);
+        if (axis.empty()) {
+          dX.device(place) = dY * M.cast<T>() / static_cast<T>(1.0f - prob);
+        } else {
+          dX.device(place) = dY * M.broadcast(out_dims).cast<T>() /
+                             static_cast<T>(1.0f - prob);
+        }
       }
     } else {
-      dX.device(place) = dY * M.cast<T>();
+      if (axis.empty()) {
+        dX.device(place) = dY * M.cast<T>();
+      } else {
+        dX.device(place) = dY * M.broadcast(out_dims).cast<T>();
+      }
     }
   }
+}
+
+template <typename T, typename Context>
+void DropoutGradRawKernel(const Context& dev_ctx,
+                          const DenseTensor& mask,
+                          const DenseTensor& out_grad,
+                          const Scalar& p,
+                          bool is_test,
+                          const std::string& mode,
+                          DenseTensor* x_grad) {
+  DropoutNdGradKernel<T, Context>(
+      dev_ctx, mask, out_grad, p.to<float>(), is_test, mode, {}, x_grad);
 }
 
 }  // namespace phi
@@ -65,3 +90,7 @@ PD_REGISTER_KERNEL(dropout_grad,
                    float,
                    double,
                    phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(
+    dropout_nd_grad, CPU, ALL_LAYOUT, phi::DropoutNdGradKernel, float, double) {
+}

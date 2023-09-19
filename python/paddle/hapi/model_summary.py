@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import warnings
-import numpy as np
 import numbers
+import warnings
+from collections import OrderedDict
+
+import numpy as np
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
+from paddle.autograd import no_grad
 from paddle.static import InputSpec
-
-from collections import OrderedDict
 
 __all__ = []
 
@@ -29,108 +30,200 @@ def summary(net, input_size=None, dtypes=None, input=None):
     """Prints a string summary of the network.
 
     Args:
-        net (Layer): the network which must be a subinstance of Layer.
-        input_size (tuple|InputSpec|list[tuple|InputSpec]): size of input tensor. if model only 
+        net (Layer): The network which must be a subinstance of Layer.
+        input_size (tuple|InputSpec|list[tuple|InputSpec], optional): Size of input tensor. if model only
                     have one input, input_size can be tuple or InputSpec. if model
-                    have multiple input, input_size must be a list which contain 
+                    have multiple input, input_size must be a list which contain
                     every input's shape. Note that input_size only dim of
-                    batch_size can be None or -1. Default: None. Note that 
+                    batch_size can be None or -1. Default: None. Note that
                     input_size and input cannot be None at the same time.
-        dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
-        input: the input tensor. if input is given, input_size and dtype will be ignored, Default: None.
+        dtypes (str, optional): If dtypes is None, 'float32' will be used, Default: None.
+        input (Tensor, optional): If input is given, input_size and dtype will be ignored, Default: None.
 
     Returns:
-        Dict: a summary of the network including total params and total trainable params.
+        Dict: A summary of the network including total params and total trainable params.
 
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> paddle.seed(2023)
+            >>> class LeNet(nn.Layer):
+            ...     def __init__(self, num_classes=10):
+            ...         super().__init__()
+            ...         self.num_classes = num_classes
+            ...         self.features = nn.Sequential(
+            ...             nn.Conv2D(1, 6, 3, stride=1, padding=1),
+            ...             nn.ReLU(),
+            ...             nn.MaxPool2D(2, 2),
+            ...             nn.Conv2D(6, 16, 5, stride=1, padding=0),
+            ...             nn.ReLU(),
+            ...             nn.MaxPool2D(2, 2))
+            ...
+            ...         if num_classes > 0:
+            ...             self.fc = nn.Sequential(
+            ...                 nn.Linear(400, 120),
+            ...                 nn.Linear(120, 84),
+            ...                 nn.Linear(84, 10))
+            ...
+            ...     def forward(self, inputs):
+            ...         x = self.features(inputs)
+            ...
+            ...         if self.num_classes > 0:
+            ...             x = paddle.flatten(x, 1)
+            ...             x = self.fc(x)
+            ...         return x
+            ...
+            >>> lenet = LeNet()
 
-            class LeNet(nn.Layer):
-                def __init__(self, num_classes=10):
-                    super(LeNet, self).__init__()
-                    self.num_classes = num_classes
-                    self.features = nn.Sequential(
-                        nn.Conv2D(
-                            1, 6, 3, stride=1, padding=1),
-                        nn.ReLU(),
-                        nn.MaxPool2D(2, 2),
-                        nn.Conv2D(
-                            6, 16, 5, stride=1, padding=0),
-                        nn.ReLU(),
-                        nn.MaxPool2D(2, 2))
+            >>> params_info = paddle.summary(lenet, (1, 1, 28, 28))
+            >>> # doctest: +SKIP
+            >>> print(params_info)
+            ---------------------------------------------------------------------------
+            Layer (type)       Input Shape          Output Shape         Param #
+            ===========================================================================
+              Conv2D-1       [[1, 1, 28, 28]]      [1, 6, 28, 28]          60
+                ReLU-1        [[1, 6, 28, 28]]      [1, 6, 28, 28]           0
+              MaxPool2D-1     [[1, 6, 28, 28]]      [1, 6, 14, 14]           0
+              Conv2D-2       [[1, 6, 14, 14]]     [1, 16, 10, 10]         2,416
+                ReLU-2       [[1, 16, 10, 10]]     [1, 16, 10, 10]           0
+              MaxPool2D-2    [[1, 16, 10, 10]]      [1, 16, 5, 5]            0
+              Linear-1          [[1, 400]]            [1, 120]           48,120
+              Linear-2          [[1, 120]]            [1, 84]            10,164
+              Linear-3          [[1, 84]]             [1, 10]              850
+            ===========================================================================
+            Total params: 61,610
+            Trainable params: 61,610
+            Non-trainable params: 0
+            ---------------------------------------------------------------------------
+            Input size (MB): 0.00
+            Forward/backward pass size (MB): 0.11
+            Params size (MB): 0.24
+            Estimated Total Size (MB): 0.35
+            ---------------------------------------------------------------------------
+            {'total_params': 61610, 'trainable_params': 61610}
+            >>> # doctest: -SKIP
+            >>> # multi input demo
+            >>> class LeNetMultiInput(LeNet):
+            ...     def forward(self, inputs, y):
+            ...         x = self.features(inputs)
+            ...
+            ...         if self.num_classes > 0:
+            ...             x = paddle.flatten(x, 1)
+            ...             x = self.fc(x + y)
+            ...         return x
+            ...
+            >>> lenet_multi_input = LeNetMultiInput()
 
-                    if num_classes > 0:
-                        self.fc = nn.Sequential(
-                            nn.Linear(400, 120),
-                            nn.Linear(120, 84),
-                            nn.Linear(
-                                84, 10))
-
-                def forward(self, inputs):
-                    x = self.features(inputs)
-
-                    if self.num_classes > 0:
-                        x = paddle.flatten(x, 1)
-                        x = self.fc(x)
-                    return x
-
-            lenet = LeNet()
-
-            params_info = paddle.summary(lenet, (1, 1, 28, 28))
-            print(params_info)
-
-            # multi input demo
-            class LeNetMultiInput(LeNet):
-
-                def forward(self, inputs, y):
-                    x = self.features(inputs)
-
-                    if self.num_classes > 0:
-                        x = paddle.flatten(x, 1)
-                        x = self.fc(x + y)
-                    return x
-            
-            lenet_multi_input = LeNetMultiInput()
-
-            params_info = paddle.summary(lenet_multi_input, [(1, 1, 28, 28), (1, 400)], 
-                                        dtypes=['float32', 'float32'])
-            print(params_info)
-
-            # list input demo
-            class LeNetListInput(LeNet):
-
-                def forward(self, inputs):
-                    x = self.features(inputs[0])
-
-                    if self.num_classes > 0:
-                        x = paddle.flatten(x, 1)
-                        x = self.fc(x + inputs[1])
-                    return x
-            
-            lenet_list_input = LeNetListInput()
-            input_data = [paddle.rand([1, 1, 28, 28]), paddle.rand([1, 400])]
-            params_info = paddle.summary(lenet_list_input, input=input_data)
-            print(params_info)
-
-            # dict input demo
-            class LeNetDictInput(LeNet):
-
-                def forward(self, inputs):
-                    x = self.features(inputs['x1'])
-
-                    if self.num_classes > 0:
-                        x = paddle.flatten(x, 1)
-                        x = self.fc(x + inputs['x2'])
-                    return x
-
-            lenet_dict_input = LeNetDictInput()
-            input_data = {'x1': paddle.rand([1, 1, 28, 28]),
-                          'x2': paddle.rand([1, 400])}
-            params_info = paddle.summary(lenet_dict_input, input=input_data)
-            print(params_info)
+            >>> params_info = paddle.summary(lenet_multi_input,
+            ...                              [(1, 1, 28, 28), (1, 400)],
+            ...                              dtypes=['float32', 'float32'])
+            >>> # doctest: +SKIP
+            >>> print(params_info)
+            ---------------------------------------------------------------------------
+            Layer (type)       Input Shape          Output Shape         Param #
+            ===========================================================================
+              Conv2D-3       [[1, 1, 28, 28]]      [1, 6, 28, 28]          60
+                ReLU-3        [[1, 6, 28, 28]]      [1, 6, 28, 28]           0
+              MaxPool2D-3     [[1, 6, 28, 28]]      [1, 6, 14, 14]           0
+              Conv2D-4       [[1, 6, 14, 14]]     [1, 16, 10, 10]         2,416
+                ReLU-4       [[1, 16, 10, 10]]     [1, 16, 10, 10]           0
+              MaxPool2D-4    [[1, 16, 10, 10]]      [1, 16, 5, 5]            0
+              Linear-4          [[1, 400]]            [1, 120]           48,120
+              Linear-5          [[1, 120]]            [1, 84]            10,164
+              Linear-6          [[1, 84]]             [1, 10]              850
+            ===========================================================================
+            Total params: 61,610
+            Trainable params: 61,610
+            Non-trainable params: 0
+            ---------------------------------------------------------------------------
+            Input size (MB): 0.00
+            Forward/backward pass size (MB): 0.11
+            Params size (MB): 0.24
+            Estimated Total Size (MB): 0.35
+            ---------------------------------------------------------------------------
+            {'total_params': 61610, 'trainable_params': 61610}
+            >>> # doctest: -SKIP
+            >>> # list input demo
+            >>> class LeNetListInput(LeNet):
+            ...     def forward(self, inputs):
+            ...         x = self.features(inputs[0])
+            ...
+            ...         if self.num_classes > 0:
+            ...             x = paddle.flatten(x, 1)
+            ...             x = self.fc(x + inputs[1])
+            ...         return x
+            ...
+            >>> lenet_list_input = LeNetListInput()
+            >>> input_data = [paddle.rand([1, 1, 28, 28]), paddle.rand([1, 400])]
+            >>> params_info = paddle.summary(lenet_list_input, input=input_data)
+            >>> # doctest: +SKIP
+            >>> print(params_info)
+            ---------------------------------------------------------------------------
+            Layer (type)       Input Shape          Output Shape         Param #
+            ===========================================================================
+              Conv2D-5       [[1, 1, 28, 28]]      [1, 6, 28, 28]          60
+                ReLU-5        [[1, 6, 28, 28]]      [1, 6, 28, 28]           0
+              MaxPool2D-5     [[1, 6, 28, 28]]      [1, 6, 14, 14]           0
+              Conv2D-6       [[1, 6, 14, 14]]     [1, 16, 10, 10]         2,416
+                ReLU-6       [[1, 16, 10, 10]]     [1, 16, 10, 10]           0
+              MaxPool2D-6    [[1, 16, 10, 10]]      [1, 16, 5, 5]            0
+              Linear-7          [[1, 400]]            [1, 120]           48,120
+              Linear-8          [[1, 120]]            [1, 84]            10,164
+              Linear-9          [[1, 84]]             [1, 10]              850
+            ===========================================================================
+            Total params: 61,610
+            Trainable params: 61,610
+            Non-trainable params: 0
+            ---------------------------------------------------------------------------
+            Input size (MB): 0.00
+            Forward/backward pass size (MB): 0.11
+            Params size (MB): 0.24
+            Estimated Total Size (MB): 0.35
+            ---------------------------------------------------------------------------
+            {'total_params': 61610, 'trainable_params': 61610}
+            >>> # doctest: -SKIP
+            >>> # dict input demo
+            >>> class LeNetDictInput(LeNet):
+            ...     def forward(self, inputs):
+            ...         x = self.features(inputs['x1'])
+            ...
+            ...         if self.num_classes > 0:
+            ...             x = paddle.flatten(x, 1)
+            ...             x = self.fc(x + inputs['x2'])
+            ...         return x
+            ...
+            >>> lenet_dict_input = LeNetDictInput()
+            >>> input_data = {'x1': paddle.rand([1, 1, 28, 28]),
+            ...               'x2': paddle.rand([1, 400])}
+            >>> params_info = paddle.summary(lenet_dict_input, input=input_data)
+            >>> # doctest: +SKIP
+            >>> print(params_info)
+            ---------------------------------------------------------------------------
+            Layer (type)       Input Shape          Output Shape         Param #
+            ===========================================================================
+              Conv2D-7       [[1, 1, 28, 28]]      [1, 6, 28, 28]          60
+                ReLU-7        [[1, 6, 28, 28]]      [1, 6, 28, 28]           0
+              MaxPool2D-7     [[1, 6, 28, 28]]      [1, 6, 14, 14]           0
+              Conv2D-8       [[1, 6, 14, 14]]     [1, 16, 10, 10]         2,416
+                ReLU-8       [[1, 16, 10, 10]]     [1, 16, 10, 10]           0
+              MaxPool2D-8    [[1, 16, 10, 10]]      [1, 16, 5, 5]            0
+              Linear-10         [[1, 400]]            [1, 120]           48,120
+              Linear-11         [[1, 120]]            [1, 84]            10,164
+              Linear-12         [[1, 84]]             [1, 10]              850
+            ===========================================================================
+            Total params: 61,610
+            Trainable params: 61,610
+            Non-trainable params: 0
+            ---------------------------------------------------------------------------
+            Input size (MB): 0.00
+            Forward/backward pass size (MB): 0.11
+            Params size (MB): 0.24
+            Estimated Total Size (MB): 0.35
+            ---------------------------------------------------------------------------
+            {'total_params': 61610, 'trainable_params': 61610}
+            >>> # doctest: -SKIP
 
     """
     if input_size is None and input is None:
@@ -147,7 +240,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
             input_size = []
             for key in input.keys():
                 input_size.append(tuple(input[key].shape))
-        elif isinstance(input, paddle.fluid.framework.Variable):
+        elif isinstance(input, paddle.base.framework.Variable):
             input_size = tuple(input.shape)
         else:
             raise ValueError(
@@ -160,24 +253,26 @@ def summary(net, input_size=None, dtypes=None, input=None):
         _input_size = []
         for item in input_size:
             if isinstance(item, int):
-                item = (item, )
-            assert isinstance(item,
-                              (tuple, InputSpec)), 'When input_size is list, \
+                item = (item,)
+            assert isinstance(
+                item, (tuple, InputSpec)
+            ), 'When input_size is list, \
             expect item in input_size is a tuple or InputSpec, but got {}'.format(
-                                  type(item))
+                type(item)
+            )
 
             if isinstance(item, InputSpec):
                 _input_size.append(tuple(item.shape))
             else:
                 _input_size.append(item)
     elif isinstance(input_size, int):
-        _input_size = (input_size, )
+        _input_size = (input_size,)
     else:
         _input_size = input_size
 
     if not paddle.in_dynamic_mode():
         warnings.warn(
-            "Your model was created in static mode, this may not get correct summary information!"
+            "Your model was created in static graph mode, this may not get correct summary information!"
         )
         in_train_mode = False
     else:
@@ -207,8 +302,10 @@ def summary(net, input_size=None, dtypes=None, input=None):
             elif isinstance(item, numbers.Number):
                 if item <= 0:
                     raise ValueError(
-                        "Expected element in input size greater than zero, but got {}".
-                        format(item))
+                        "Expected element in input size greater than zero, but got {}".format(
+                            item
+                        )
+                    )
             new_shape.append(item)
         return tuple(new_shape)
 
@@ -229,7 +326,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
     return params_info
 
 
-@paddle.no_grad()
+@no_grad()
 def summary_string(model, input_size=None, dtypes=None, input=None):
     def _all_is_numper(items):
         for item in items:
@@ -256,7 +353,7 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
     depth = len(list(model.sublayers()))
 
     def _get_shape_from_tensor(x):
-        if isinstance(x, (paddle.fluid.Variable, paddle.fluid.core.VarBase)):
+        if isinstance(x, (paddle.base.Variable, paddle.base.core.eager.Tensor)):
             return list(x.shape)
         elif isinstance(x, (list, tuple)):
             return [_get_shape_from_tensor(xx) for xx in x]
@@ -301,24 +398,30 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
             else:
                 layer_state_dict = layer.state_dict()
 
+            summary[m_key]["trainable_params"] = 0
+            trainable_flag = False
             for k, v in layer_state_dict.items():
                 params += np.prod(v.shape)
 
                 try:
-                    if (getattr(getattr(layer, k), 'trainable')) and (
-                            not getattr(getattr(layer, k), 'stop_gradient')):
+                    if (getattr(layer, k).trainable) and (
+                        not getattr(layer, k).stop_gradient
+                    ):
+                        summary[m_key]["trainable_params"] += np.prod(v.shape)
                         summary[m_key]["trainable"] = True
-                    else:
+                        trainable_flag = True
+                    elif not trainable_flag:
                         summary[m_key]["trainable"] = False
                 except:
                     summary[m_key]["trainable"] = True
 
             summary[m_key]["nb_params"] = params
 
-        if (not isinstance(layer, nn.Sequential) and
-                not isinstance(layer, nn.LayerList) and
-            (not (layer == model) or depth < 1)):
-
+        if (
+            not isinstance(layer, nn.Sequential)
+            and not isinstance(layer, nn.LayerList)
+            and (not (layer == model) or depth < 1)
+        ):
             hooks.append(layer.register_forward_post_hook(hook))
         # For rnn, gru and lstm layer
         elif hasattr(layer, 'could_use_cudnn') and layer.could_use_cudnn:
@@ -362,24 +465,30 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
             'input_shape_width': 20,
             'output_shape_width': 20,
             'params_width': 15,
-            'table_width': 75
+            'table_width': 75,
         }
 
         for layer in summary:
             if head_length['output_shape_width'] < len(
-                    str(summary[layer]["output_shape"])):
+                str(summary[layer]["output_shape"])
+            ):
                 head_length['output_shape_width'] = len(
-                    str(summary[layer]["output_shape"]))
+                    str(summary[layer]["output_shape"])
+                )
             if head_length['input_shape_width'] < len(
-                    str(summary[layer]["input_shape"])):
+                str(summary[layer]["input_shape"])
+            ):
                 head_length['input_shape_width'] = len(
-                    str(summary[layer]["input_shape"]))
+                    str(summary[layer]["input_shape"])
+                )
             if head_length['layer_width'] < len(str(layer)):
                 head_length['layer_width'] = len(str(layer))
             if head_length['params_width'] < len(
-                    str(summary[layer]["nb_params"])):
+                str(summary[layer]["nb_params"])
+            ):
                 head_length['params_width'] = len(
-                    str(summary[layer]["nb_params"]))
+                    str(summary[layer]["nb_params"])
+                )
 
         _temp_width = 0
         for k, v in head_length.items():
@@ -395,10 +504,15 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
 
     summary_str += "-" * table_width['table_width'] + "\n"
     line_new = "{:^{}} {:^{}} {:^{}} {:^{}}".format(
-        "Layer (type)", table_width['layer_width'], "Input Shape",
-        table_width['input_shape_width'], "Output Shape",
-        table_width['output_shape_width'], "Param #",
-        table_width['params_width'])
+        "Layer (type)",
+        table_width['layer_width'],
+        "Input Shape",
+        table_width['input_shape_width'],
+        "Output Shape",
+        table_width['output_shape_width'],
+        "Param #",
+        table_width['params_width'],
+    )
     summary_str += line_new + "\n"
     summary_str += "=" * table_width['table_width'] + "\n"
     total_params = 0
@@ -408,50 +522,56 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
     for layer in summary:
         # input_shape, output_shape, trainable, nb_params
         line_new = "{:^{}} {:^{}} {:^{}} {:^{}}".format(
-            layer, table_width['layer_width'],
+            layer,
+            table_width['layer_width'],
             str(summary[layer]["input_shape"]),
             table_width['input_shape_width'],
             str(summary[layer]["output_shape"]),
             table_width['output_shape_width'],
-            "{0:,}".format(summary[layer]["nb_params"]),
-            table_width['params_width'])
+            "{:,}".format(summary[layer]["nb_params"]),
+            table_width['params_width'],
+        )
         total_params += summary[layer]["nb_params"]
 
         try:
             total_output += np.sum(
-                np.prod(
-                    summary[layer]["output_shape"], axis=-1))
+                np.prod(summary[layer]["output_shape"], axis=-1)
+            )
         except:
             for output_shape in summary[layer]["output_shape"]:
                 total_output += np.sum(np.prod(output_shape, axis=-1))
 
         if "trainable" in summary[layer]:
-            if summary[layer]["trainable"] == True:
-                trainable_params += summary[layer]["nb_params"]
+            if summary[layer]["trainable"]:
+                trainable_params += summary[layer]["trainable_params"]
         summary_str += line_new + "\n"
 
     def _get_input_size(input_size, size):
         if isinstance(input_size, (list, tuple)) and _all_is_numper(input_size):
-            size = abs(np.prod(input_size) * 4. / (1024**2.))
+            size = abs(np.prod(input_size) * 4.0 / (1024**2.0))
         else:
             size = sum([_get_input_size(i, size) for i in input_size])
         return size
 
     total_input_size = _get_input_size(input_size, 0)
 
-    total_output_size = abs(2. * total_output * 4. /
-                            (1024**2.))  # x2 for gradients
-    total_params_size = abs(total_params * 4. / (1024**2.))
+    total_output_size = abs(
+        2.0 * total_output * 4.0 / (1024**2.0)
+    )  # x2 for gradients
+    total_params_size = abs(total_params * 4.0 / (1024**2.0))
     total_size = total_params_size + total_output_size + total_input_size
 
     summary_str += "=" * table_width['table_width'] + "\n"
-    summary_str += "Total params: {0:,}".format(total_params) + "\n"
-    summary_str += "Trainable params: {0:,}".format(trainable_params) + "\n"
-    summary_str += "Non-trainable params: {0:,}".format(total_params -
-                                                        trainable_params) + "\n"
+    summary_str += f"Total params: {total_params:,}" + "\n"
+    summary_str += f"Trainable params: {trainable_params:,}" + "\n"
+    summary_str += (
+        f"Non-trainable params: {total_params - trainable_params:,}" + "\n"
+    )
     summary_str += "-" * table_width['table_width'] + "\n"
     summary_str += "Input size (MB): %0.2f" % total_input_size + "\n"
-    summary_str += "Forward/backward pass size (MB): %0.2f" % total_output_size + "\n"
+    summary_str += (
+        "Forward/backward pass size (MB): %0.2f" % total_output_size + "\n"
+    )
     summary_str += "Params size (MB): %0.2f" % total_params_size + "\n"
     summary_str += "Estimated Total Size (MB): %0.2f" % total_size + "\n"
     summary_str += "-" * table_width['table_width'] + "\n"
@@ -459,5 +579,5 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
     # return summary
     return summary_str, {
         'total_params': total_params,
-        'trainable_params': trainable_params
+        'trainable_params': trainable_params,
     }

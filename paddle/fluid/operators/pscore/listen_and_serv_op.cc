@@ -52,7 +52,7 @@ class ListenAndServOp : public framework::OperatorBase {
 
 class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) Variables that server recv.").AsDuplicable();
     AddComment(R"DOC(" + "ListenAndServ operator" + "\n" + "This operator" +
 " will start a RPC server which can receive variables from send_op and send" +
@@ -112,7 +112,9 @@ class ListenAndServOpShapeInference : public framework::InferShapeBase {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    listen_and_serv, ops::ListenAndServOp,
+    listen_and_serv,
+    ops::ListenAndServOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    ops::ListenAndServOpMaker, ops::ListenAndServOpShapeInference);
+    ops::ListenAndServOpMaker,
+    ops::ListenAndServOpShapeInference);

@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <sstream>
 #include <string>
+
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
 
 namespace paddle {
@@ -33,12 +34,12 @@ static T StringTo(const std::string& str) {
 
 static std::string ExpandMultivariateTemplate(const std::string& rhs,
                                               const size_t input_size) {
-  int start_pos = rhs.find("[", 0);
-  int end_pos = rhs.find("]", 0);
+  int start_pos = rhs.find('[', 0);
+  int end_pos = rhs.find(']', 0);
   std::string sum_rhs = rhs.substr(0, start_pos);
   std::string repeated_component =
       rhs.substr(start_pos + 1, (end_pos - start_pos - 1));
-  int replace_pos = repeated_component.find("?", 0);
+  int replace_pos = repeated_component.find('?', 0);
 
   for (size_t i = 1; i < input_size; i++) {
     std::string append_str = repeated_component;
@@ -63,9 +64,9 @@ static std::string RefineTemplateWithAttr(const std::string& op_type,
     // Get attr with different type, Now we only support the simple attr
     // condition
     std::string attr_name, default_value;
-    if (exp_definition.find("=") != std::string::npos) {
-      attr_name = exp_definition.substr(0, exp_definition.find("="));
-      default_value = exp_definition.substr(exp_definition.rfind("=") + 1,
+    if (exp_definition.find('=') != std::string::npos) {
+      attr_name = exp_definition.substr(0, exp_definition.find('='));
+      default_value = exp_definition.substr(exp_definition.rfind('=') + 1,
                                             exp_definition.length() - 1);
       ret = default_value;
     } else {
@@ -77,28 +78,28 @@ static std::string RefineTemplateWithAttr(const std::string& op_type,
     }
     Attribute attr = it->second;
     proto::AttrType attr_type =
-        static_cast<proto::AttrType>(it->second.which() - 1);
+        static_cast<proto::AttrType>(it->second.index() - 1);
     if (attr_type == proto::AttrType::BOOLEAN) {
-      bool result = BOOST_GET(bool, attr);
+      bool result = PADDLE_GET(bool, attr);
       if (result) {
         ret = "true";
       } else {
         ret = "false";
       }
     } else if (attr_type == proto::AttrType::INT) {
-      int result = BOOST_GET(int, attr);
+      int result = PADDLE_GET(int, attr);
       str_cvt << result;
       ret = str_cvt.str();
     } else if (attr_type == proto::AttrType::LONG) {
-      int64_t result = BOOST_GET(int64_t, attr);
+      int64_t result = PADDLE_GET(int64_t, attr);
       str_cvt << result;
       ret = str_cvt.str();
     } else if (attr_type == proto::AttrType::FLOAT) {
-      float result = BOOST_GET(float, attr);
+      float result = PADDLE_GET(float, attr);
       str_cvt << result;
       ret = str_cvt.str();
     } else if (attr_type == proto::AttrType::STRING) {
-      std::string result = BOOST_GET(std::string, attr);
+      std::string result = PADDLE_GET(std::string, attr);
       ret = result;
     }
   } else {
@@ -135,16 +136,22 @@ std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
       std::string var_name;
       if (index_str == refine_str) {
         int index = StringTo<int>(index_str);
-        PADDLE_ENFORCE_LT(index, input_ids_.size(),
+        PADDLE_ENFORCE_LT(index,
+                          input_ids_.size(),
                           platform::errors::InvalidArgument(
                               "Only %d inputs are provided, but need %d for "
                               "operation < %s >.",
-                              input_ids_.size(), index + 1, op_type_));
-        PADDLE_ENFORCE_GE(input_ids_[index], 0,
+                              input_ids_.size(),
+                              index + 1,
+                              op_type_));
+        PADDLE_ENFORCE_GE(input_ids_[index],
+                          0,
                           platform::errors::InvalidArgument(
                               "Expected %d-th input id > 0 for operation < %s "
                               ">. Received %d.",
-                              index, op_type_, input_ids_[index]));
+                              index,
+                              op_type_,
+                              input_ids_[index]));
         var_name = TmpName(input_ids_[index]);
         rhs.replace(pos, length + 3, var_name);
         used->insert(input_ids_[index]);

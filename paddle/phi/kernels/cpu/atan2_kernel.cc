@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/impl/atan2_kernel_impl.h"
-
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/atan2_kernel_impl.h"
 
 PD_REGISTER_KERNEL(atan2,
                    CPU,
@@ -25,4 +24,6 @@ PD_REGISTER_KERNEL(atan2,
                    double,
                    phi::dtype::float16,
                    int,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}

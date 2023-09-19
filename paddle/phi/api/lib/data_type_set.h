@@ -30,7 +30,7 @@ class DataTypeSet final {
                     ? 0
                     : 1ULL << (static_cast<uint8_t>(dtype) - 1)) {}
 
-  uint64_t bitset() const { return bitset_; }
+  inline uint64_t bitset() const { return bitset_; }
 
   bool inline Has(DataType dtype) const {
     PD_CHECK(dtype != DataType::UNDEFINED,

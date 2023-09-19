@@ -13,132 +13,184 @@
 // limitations under the License.
 
 #pragma once
-#include "heter_comm.h"
+#include <thrust/host_vector.h>
+
+#include <chrono>
+
+#include "paddle/fluid/distributed/ps/table/common_graph_table.h"
+#include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
+#include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
+#include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/flags.h"
 #ifdef PADDLE_WITH_HETERPS
+
+PHI_DECLARE_double(gpugraph_hbm_table_load_factor);
+
 namespace paddle {
 namespace framework {
-struct GpuPsGraphNode {
-  int64_t node_id;
-  int neighbor_size, neighbor_offset;
-  // this node's neighbor is stored on [neighbor_offset,neighbor_offset +
-  // neighbor_size) of int64_t *neighbor_list;
-};
 
-struct GpuPsCommGraph {
-  int64_t *neighbor_list;
-  GpuPsGraphNode *node_list;
-  int neighbor_size, node_size;
-  // the size of neighbor array and graph_node_list array
-  GpuPsCommGraph()
-      : neighbor_list(NULL), node_list(NULL), neighbor_size(0), node_size(0) {}
-  GpuPsCommGraph(int64_t *neighbor_list_, GpuPsGraphNode *node_list_,
-                 int neighbor_size_, int node_size_)
-      : neighbor_list(neighbor_list_),
-        node_list(node_list_),
-        neighbor_size(neighbor_size_),
-        node_size(node_size_) {}
-};
+typedef paddle::distributed::GraphTableType GraphTableType;
 
-/*
-suppose we have a graph like this
-
-0----3-----5----7
- \   |\         |\
- 17  8 9        1 2
-
-we save the nodes in arbitrary order,
-in this example,the order is
-[0,5,1,2,7,3,8,9,17]
-let us name this array u_id;
-we record each node's neighbors:
-0:3,17
-5:3,7
-1:7
-2:7
-7:1,2,5
-3:0,5,8,9
-8:3
-9:3
-17:0
-
-by concatenating each node's neighbor_list in the order we save the node id.
-we get [3,17,3,7,7,7,1,2,5,0,5,8,9,3,3,0]
-this is the neighbor_list of GpuPsCommGraph
-given this neighbor_list and the order to save node id,
-we know,
-node 0's neighbors are in the range [0,1] of neighbor_list
-node 5's neighbors are in the range [2,3] of neighbor_list
-node 1's neighbors are in the range [4,4] of neighbor_list
-node 2:[5,5]
-node 7:[6,6]
-node 3:[9,12]
-node 8:[13,13]
-node 9:[14,14]
-node 17:[15,15]
-...
-by the above information,
-we generate a node_list:GpuPsGraphNode *graph_node_list in GpuPsCommGraph
-of size 9,
-where node_list[i].id = u_id[i]
-then we have:
-node_list[0]-> node_id:0, neighbor_size:2, neighbor_offset:0
-node_list[1]-> node_id:5, neighbor_size:2, neighbor_offset:2
-node_list[2]-> node_id:1, neighbor_size:1, neighbor_offset:4
-node_list[3]-> node_id:2, neighbor_size:1, neighbor_offset:5
-node_list[4]-> node_id:7, neighbor_size:3, neighbor_offset:6
-node_list[5]-> node_id:3, neighbor_size:4, neighbor_offset:9
-node_list[6]-> node_id:8, neighbor_size:1, neighbor_offset:13
-node_list[7]-> node_id:9, neighbor_size:1, neighbor_offset:14
-node_list[8]-> node_id:17, neighbor_size:1, neighbor_offset:15
-*/
-struct NeighborSampleResult {
-  int64_t *val;
-  int *actual_sample_size, sample_size, key_size;
-  NeighborSampleResult(int _sample_size, int _key_size)
-      : sample_size(_sample_size), key_size(_key_size) {
-    actual_sample_size = NULL;
-    val = NULL;
-  };
-  ~NeighborSampleResult() {
-    if (val != NULL) cudaFree(val);
-    if (actual_sample_size != NULL) cudaFree(actual_sample_size);
-  }
-};
-
-struct NodeQueryResult {
-  int64_t *val;
-  int actual_sample_size;
-  NodeQueryResult() {
-    val = NULL;
-    actual_sample_size = 0;
-  };
-  ~NodeQueryResult() {
-    if (val != NULL) cudaFree(val);
-  }
-};
-class GpuPsGraphTable : public HeterComm<int64_t, int, int> {
+class GpuPsGraphTable
+    : public HeterComm<uint64_t, uint64_t, int, CommonFeatureValueAccessor> {
  public:
-  GpuPsGraphTable(std::shared_ptr<HeterPsResource> resource)
-      : HeterComm<int64_t, int, int>(1, resource) {
-    load_factor_ = 0.25;
+  inline int get_table_offset(int gpu_id, GraphTableType type, int idx) const {
+    int type_id = type;
+    return gpu_id * (graph_table_num_ + feature_table_num_) +
+           type_id * graph_table_num_ + idx;
   }
-  void build_graph_from_cpu(std::vector<GpuPsCommGraph> &cpu_node_list);
-  NodeQueryResult *graph_node_sample(int gpu_id, int sample_size);
-  NeighborSampleResult *graph_neighbor_sample(int gpu_id, int64_t *key,
-                                              int sample_size, int len);
-  NodeQueryResult *query_node_list(int gpu_id, int start, int query_size);
-  void clear_graph_info();
-  void move_neighbor_sample_result_to_source_gpu(int gpu_id, int gpu_num,
-                                                 int sample_size, int *h_left,
-                                                 int *h_right,
-                                                 int64_t *src_sample_res,
-                                                 int *actual_sample_size);
+  inline int get_graph_list_offset(int gpu_id, int edge_idx) const {
+    return gpu_id * graph_table_num_ + edge_idx;
+  }
+  inline int get_graph_fea_list_offset(int gpu_id) const {
+    return gpu_id * feature_table_num_;
+  }
 
- private:
-  std::vector<GpuPsCommGraph> gpu_graph_list;
+  GpuPsGraphTable(std::shared_ptr<HeterPsResource> resource,
+                  int graph_table_num)
+      : HeterComm<uint64_t, uint64_t, int, CommonFeatureValueAccessor>(
+            0, resource) {
+    load_factor_ = FLAGS_gpugraph_hbm_table_load_factor;
+    VLOG(0) << "load_factor = " << load_factor_
+            << ", graph_table_num = " << graph_table_num;
+
+    rw_lock.reset(new pthread_rwlock_t());
+    this->graph_table_num_ = graph_table_num;
+    this->feature_table_num_ = 1;
+    gpu_num = resource_->total_device();
+    memset(global_device_map, -1, sizeof(global_device_map));
+
+    tables_ = std::vector<Table *>(
+        gpu_num * (graph_table_num_ + feature_table_num_), NULL);
+    for (int i = 0; i < gpu_num; i++) {
+      global_device_map[resource_->dev_id(i)] = i;
+      for (int j = 0; j < graph_table_num_; j++) {
+        gpu_graph_list_.push_back(GpuPsCommGraph());
+      }
+      for (int j = 0; j < feature_table_num_; j++) {
+        gpu_graph_fea_list_.push_back(GpuPsCommGraphFea());
+      }
+    }
+    cpu_table_status = -1;
+    device_mutex_.resize(gpu_num);
+    for (int i = 0; i < gpu_num; i++) {
+      device_mutex_[i] = new std::mutex();
+    }
+  }
+  ~GpuPsGraphTable() {
+    for (size_t i = 0; i < device_mutex_.size(); ++i) {
+      delete device_mutex_[i];
+    }
+    device_mutex_.clear();
+  }
+  void build_graph_on_single_gpu(const GpuPsCommGraph &g, int gpu_id, int idx);
+  void build_graph_fea_on_single_gpu(const GpuPsCommGraphFea &g, int gpu_id);
+  void clear_graph_info(int gpu_id, int index);
+  void clear_graph_info(int index);
+  void reset_feature_info(int gpu_id, size_t capacity, size_t feature_size);
+  void clear_feature_info(int gpu_id, int index);
+  void clear_feature_info(int index);
+  void build_graph_from_cpu(const std::vector<GpuPsCommGraph> &cpu_node_list,
+                            int idx);
+  NodeQueryResult graph_node_sample(int gpu_id, int sample_size);
+  NeighborSampleResult graph_neighbor_sample_v3(NeighborSampleQuery q,
+                                                bool cpu_switch,
+                                                bool compress);
+  NeighborSampleResult graph_neighbor_sample(int gpu_id,
+                                             uint64_t *key,
+                                             int sample_size,
+                                             int len);
+  NeighborSampleResult graph_neighbor_sample_v2(int gpu_id,
+                                                int idx,
+                                                uint64_t *key,
+                                                int sample_size,
+                                                int len,
+                                                bool cpu_query_switch,
+                                                bool compress);
+  NeighborSampleResultV2 graph_neighbor_sample_all_edge_type(
+      int gpu_id,
+      int edge_type_len,
+      uint64_t *key,
+      int sample_size,
+      int len,
+      std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs);
+  std::vector<std::shared_ptr<phi::Allocation>> get_edge_type_graph(
+      int gpu_id, int edge_type_len);
+  void get_node_degree(int gpu_id,
+                       int edge_idx,
+                       uint64_t *key,
+                       int len,
+                       std::shared_ptr<phi::Allocation> node_degree);
+  int get_feature_of_nodes(int gpu_id,
+                           uint64_t *d_walk,
+                           uint64_t *d_offset,
+                           int size,
+                           int slot_num,
+                           int *d_slot_feature_num_map,
+                           int fea_num_per_node);
+  int get_feature_info_of_nodes(
+      int gpu_id,
+      uint64_t *d_nodes,
+      int node_num,
+      uint32_t *size_list,
+      uint32_t *size_list_prefix_sum,
+      std::shared_ptr<phi::Allocation> &feature_list,  // NOLINT
+      std::shared_ptr<phi::Allocation> &slot_list);    // NOLINT
+
+  NodeQueryResult query_node_list(int gpu_id,
+                                  int idx,
+                                  int start,
+                                  int query_size);
+  void display_sample_res(void *key, void *val, int len, int sample_len);
+  void move_result_to_source_gpu(int gpu_id,
+                                 int gpu_num,
+                                 int sample_size,
+                                 int *h_left,
+                                 int *h_right,
+                                 uint64_t *src_sample_res,
+                                 int *actual_sample_size);
+  void move_result_to_source_gpu(int start_index,
+                                 int gpu_num,
+                                 int *h_left,
+                                 int *h_right,
+                                 int *fea_left,
+                                 uint32_t *fea_num_list,
+                                 uint32_t *actual_feature_size,
+                                 uint64_t *feature_list,
+                                 uint8_t *slot_list);
+  void move_degree_to_source_gpu(
+      int gpu_id, int gpu_num, int *h_left, int *h_right, int *node_degree);
+  void move_result_to_source_gpu_all_edge_type(int gpu_id,
+                                               int gpu_num,
+                                               int sample_size,
+                                               int *h_left,
+                                               int *h_right,
+                                               uint64_t *src_sample_res,
+                                               int *actual_sample_size,
+                                               int edge_type_len,
+                                               int len);
+  int init_cpu_table(const paddle::distributed::GraphParameter &graph,
+                     int gpu_num = 8);
+  gpuStream_t get_local_stream(int gpu_id) {
+    return resource_->local_stream(gpu_id, 0);
+  }
+
+  int gpu_num;
+  int graph_table_num_, feature_table_num_;
+  std::vector<GpuPsCommGraph> gpu_graph_list_;
+  std::vector<GpuPsCommGraphFea> gpu_graph_fea_list_;
+  int global_device_map[32];
+  const int parallel_sample_size = 1;
+  const int dim_y = 256;
+  std::shared_ptr<paddle::distributed::GraphTable> cpu_graph_table_;
+  std::shared_ptr<pthread_rwlock_t> rw_lock;
+  mutable std::mutex mutex_;
+  std::vector<std::mutex *> device_mutex_;
+  std::condition_variable cv_;
+  int cpu_table_status;
 };
-}
-};
-#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table_inl.h"
+
+};  // namespace framework
+};  // namespace paddle
 #endif

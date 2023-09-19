@@ -18,6 +18,7 @@ limitations under the License. */
 #include <cuda.h>
 #include <cuda_occupancy.h>
 #include <cupti.h>
+
 #include <mutex>  // NOLINT
 
 #include "paddle/phi/backends/dynload/cupti.h"

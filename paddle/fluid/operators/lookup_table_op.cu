@@ -12,19 +12,26 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/lookup_table_op.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/lookup_table_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename T, int BlockDimX, int BlockDimY, int GridDimX,
+template <typename T,
+          int BlockDimX,
+          int BlockDimY,
+          int GridDimX,
           bool PaddingFlag>
-__global__ void LookupTable(T *output, const T *table, const int64_t *ids,
-                            const int64_t N, const int64_t K, const int64_t D,
+__global__ void LookupTable(T *output,
+                            const T *table,
+                            const int64_t *ids,
+                            const int64_t N,
+                            const int64_t K,
+                            const int64_t D,
                             const int64_t padding_idx) {
   int idx = threadIdx.x;
   int idy = blockIdx.x + threadIdx.y * GridDimX;
@@ -35,12 +42,14 @@ __global__ void LookupTable(T *output, const T *table, const int64_t *ids,
         id >= 0,
         "Variable value (input) of OP(fluid.layers.embedding) "
         "expected >= 0 and < %ld, but got %ld. Please check input value.",
-        N, id);
+        N,
+        id);
     PADDLE_ENFORCE(
         id < N,
         "Variable value (input) of OP(fluid.layers.embedding) "
         "expected >= 0 and < %ld, but got %ld. Please check input value.",
-        N, id);
+        N,
+        id);
     T *out = output + idy * D;
     const T *tab = table + id * D;
     for (int i = idx; i < D; i += BlockDimX) {
@@ -58,8 +67,11 @@ __global__ void LookupTable(T *output, const T *table, const int64_t *ids,
 }
 
 template <typename T, int BlockDimX, int BlockDimY, int GridDimX>
-__global__ void LookupTableGrad(T *table, const T *output, const int64_t *ids,
-                                const int64_t N, const int64_t K,
+__global__ void LookupTableGrad(T *table,
+                                const T *output,
+                                const int64_t *ids,
+                                const int64_t N,
+                                const int64_t K,
                                 const int64_t D) {
   int idx = threadIdx.x;
   int idy = blockIdx.x + threadIdx.y * GridDimX;
@@ -70,16 +82,18 @@ __global__ void LookupTableGrad(T *table, const T *output, const int64_t *ids,
         id >= 0,
         "Variable value (input) of OP(fluid.layers.embedding) "
         "expected >= 0 and < %ld, but got %ld. Please check input value.",
-        N, id);
+        N,
+        id);
     PADDLE_ENFORCE(
         id < N,
         "Variable value (input) of OP(fluid.layers.embedding) "
         "expected >= 0 and < %ld, but got %ld. Please check input value.",
-        N, id);
+        N,
+        id);
     const T *out = output + idy * D;
     T *tab = table + id * D;
     for (int i = idx; i < D; i += BlockDimX) {
-      paddle::platform::CudaAtomicAdd(&tab[i], out[i]);
+      phi::CudaAtomicAdd(&tab[i], out[i]);
     }
     idy += BlockDimY * GridDimX;
   }
@@ -89,9 +103,9 @@ template <typename T>
 class LookupTableCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *table_t = context.Input<LoDTensor>("W");
-    auto *ids_t = context.Input<LoDTensor>("Ids");
-    auto *output_t = context.Output<LoDTensor>("Out");
+    auto *table_t = context.Input<phi::DenseTensor>("W");
+    auto *ids_t = context.Input<phi::DenseTensor>("Ids");
+    auto *output_t = context.Output<phi::DenseTensor>("Out");
     int64_t padding_idx = context.Attr<int64_t>("padding_idx");
 
     auto id_name = context.InputNames("Ids").front();
@@ -113,26 +127,22 @@ class LookupTableCUDAKernel : public framework::OpKernel<T> {
     dim3 grids(8, 1);
 #ifdef PADDLE_WITH_HIP
     if (padding_idx == -1)
-      LookupTable<
-          T, 64, 4, 8,
-          false><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
-          output, table, ids, N, K, D, padding_idx);
+      LookupTable<T, 64, 4, 8, false>
+          <<<grids, threads, 0, context.cuda_device_context().stream()>>>(
+              output, table, ids, N, K, D, padding_idx);
     else
-      LookupTable<
-          T, 64, 4, 8,
-          true><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
-          output, table, ids, N, K, D, padding_idx);
+      LookupTable<T, 64, 4, 8, true>
+          <<<grids, threads, 0, context.cuda_device_context().stream()>>>(
+              output, table, ids, N, K, D, padding_idx);
 #else
     if (padding_idx == -1)
-      LookupTable<
-          T, 128, 8, 8,
-          false><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
-          output, table, ids, N, K, D, padding_idx);
+      LookupTable<T, 128, 8, 8, false>
+          <<<grids, threads, 0, context.cuda_device_context().stream()>>>(
+              output, table, ids, N, K, D, padding_idx);
     else
-      LookupTable<
-          T, 128, 8, 8,
-          true><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
-          output, table, ids, N, K, D, padding_idx);
+      LookupTable<T, 128, 8, 8, true>
+          <<<grids, threads, 0, context.cuda_device_context().stream()>>>(
+              output, table, ids, N, K, D, padding_idx);
 #endif  // PADDLE_WITH_HIP
   }
 };
@@ -141,16 +151,16 @@ template <typename T>
 class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto &dev_ctx =
-        context.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = context.template device_context<phi::GPUContext>();
     bool is_sparse = context.Attr<bool>("is_sparse");
 
     // Since paddings are not trainable and fixed in forward, the gradient of
     // paddings makes no sense and we don't deal with it in backward.
     if (is_sparse) {
-      auto *ids = context.Input<LoDTensor>("Ids");
-      auto *table = context.Input<LoDTensor>("W");
-      auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
+      auto *ids = context.Input<phi::DenseTensor>("Ids");
+      auto *table = context.Input<phi::DenseTensor>("W");
+      auto *d_output =
+          context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
       auto *d_table =
           context.Output<phi::SelectedRows>(framework::GradVarName("W"));
 
@@ -159,14 +169,18 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
 
       auto stream = dev_ctx.stream();
       // copy GPU memory to CPU pinned memory
-      framework::Vector<int64_t> new_rows;
+      phi::Vector<int64_t> new_rows;
       new_rows.resize(ids_num);
       auto gpu_place = context.GetPlace();
 
       // TODO(yuyang18): Strange code here.
-      paddle::framework::MixVector<int64_t> mixv_new_rows(&new_rows);
-      memory::Copy(gpu_place, mixv_new_rows.CUDAMutableData(context.GetPlace()),
-                   gpu_place, ids_data, ids_num * sizeof(int64_t), stream);
+      phi::MixVector<int64_t> mixv_new_rows(&new_rows);
+      memory::Copy(gpu_place,
+                   mixv_new_rows.CUDAMutableData(context.GetPlace()),
+                   gpu_place,
+                   ids_data,
+                   ids_num * sizeof(int64_t),
+                   stream);
       mixv_new_rows.CopyToCPU();
       d_table->set_rows(new_rows);
 
@@ -179,20 +193,28 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       auto d_output_dims = d_output->dims();
       auto d_output_dims_2d =
           phi::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
-      PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output_dims_2d,
+      PADDLE_ENFORCE_EQ(d_table_value->dims(),
+                        d_output_dims_2d,
                         platform::errors::InvalidArgument(
                             "ShapeError: The shape of lookup_table@Grad and "
                             "output@Grad should be same. "
                             "But received lookup_table@Grad's shape = [%s], "
                             "output@Grad's shape = [%s].",
-                            d_table_value->dims(), d_output_dims_2d));
-      memory::Copy(gpu_place, d_table_data, gpu_place, d_output_data,
-                   d_output->numel() * sizeof(T), stream);
+                            d_table_value->dims(),
+                            d_output_dims_2d));
+      memory::Copy(gpu_place,
+                   d_table_data,
+                   gpu_place,
+                   d_output_data,
+                   d_output->numel() * sizeof(T),
+                   stream);
 
     } else {
-      auto ids_t = context.Input<LoDTensor>("Ids");
-      auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
-      auto d_table_t = context.Output<LoDTensor>(framework::GradVarName("W"));
+      auto ids_t = context.Input<phi::DenseTensor>("Ids");
+      auto d_output_t =
+          context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+      auto d_table_t =
+          context.Output<phi::DenseTensor>(framework::GradVarName("W"));
 
       int N = d_table_t->dims()[0];
       int D = d_table_t->dims()[1];
@@ -227,7 +249,8 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(lookup_table, ops::LookupTableCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(lookup_table,
+                        ops::LookupTableCUDAKernel<float>,
                         ops::LookupTableCUDAKernel<double>,
                         ops::LookupTableCUDAKernel<plat::float16>,
                         ops::LookupTableCUDAKernel<int8_t>,

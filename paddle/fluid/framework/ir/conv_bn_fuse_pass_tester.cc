@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/conv_bn_fuse_pass.h"
-
 #include <gtest/gtest.h>
+
+#include "paddle/fluid/framework/ir/conv_bn_fuse_pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
@@ -27,11 +27,16 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void AddVarToScope(Scope* param_scope, const std::string& name,
+void AddVarToScope(Scope* param_scope,
+                   const std::string& name,
                    const DDim& dims) {
-  auto* tensor = param_scope->Var(name)->GetMutable<LoDTensor>();
+  auto* tensor = param_scope->Var(name)->GetMutable<phi::DenseTensor>();
   tensor->Resize(dims);
-  tensor->mutable_data<float>(platform::CPUPlace());
+  auto* data = tensor->mutable_data<float>(platform::CPUPlace());
+  int64_t numel = tensor->numel();
+  for (int64_t i = 0; i < numel; ++i) {
+    data[i] = 0;
+  }
 }
 
 Scope* CreateParamScope() {
@@ -49,7 +54,7 @@ void TestMain(const std::string& conv_type) {
   // ------------------------------------------------------------------
   // (in, filters, bias_0)            conv           ->   conv_out
   // (conv_out, scale,
-  //  bias_1, mean, varaince)         batch_norm     ->   (...)
+  //  bias_1, mean, variance)         batch_norm     ->   (...)
   Layers layers;
   auto* in = layers.data("in", {1, 3, 20, 20});
   auto* filters = layers.data("filters", {3, 3, 2, 2}, true);
@@ -78,12 +83,14 @@ void TestMain(const std::string& conv_type) {
   VLOG(3) << DebugString(graph);
 
   PADDLE_ENFORCE_EQ(
-      num_bn_nodes_before, 1,
+      num_bn_nodes_before,
+      1,
       platform::errors::InvalidArgument(
           "Before conv_bn_fuse_pass, number of batch norm op(%d) must be 1.",
           num_bn_nodes_before));
   PADDLE_ENFORCE_EQ(
-      num_bn_nodes_after, 0,
+      num_bn_nodes_after,
+      0,
       platform::errors::InvalidArgument(
           "After conv_bn_fuse_pass, number of batch norm op(%d) must be 0.",
           num_bn_nodes_after));

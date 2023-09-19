@@ -44,11 +44,11 @@ static void GetConcatNodes(ir::Graph* graph, std::vector<Node*>* concat_nodes) {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
   auto concat_op_node = BuildCVMConcatPattern(pattern);
-  GraphPatternDetector::handle_t handler = [&](
-      const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
-    Node* concat_op = subgraph.at(concat_op_node);
-    concat_nodes->push_back(concat_op);
-  };
+  GraphPatternDetector::handle_t handler =
+      [&](const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
+        Node* concat_op = subgraph.at(concat_op_node);
+        concat_nodes->push_back(concat_op);
+      };
   gpd(graph, handler);
 }
 }  // anonymous namespace
@@ -148,19 +148,23 @@ void SeqPoolCVMConcatFusePass::ApplyImpl(ir::Graph* graph) const {
     Node* cvm_input_of_cvm;
     Node* concat_out_var = concat_node->outputs[0];
 
-    GraphPatternDetector::handle_t handler = [&](
-        const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
-      Node* seqpool_in_var = subgraph.at(seqpool_in_var_node);
-      Node* seqpool_op = subgraph.at(seqpool_op_node);
-      Node* seqpool_out_var = subgraph.at(seqpool_out_var_node);
-      Node* seqpool_idx_out_var = subgraph.at(seqpool_idx_out_var_node);
-      Node* cvm_op = subgraph.at(cvm_op_node);
-      Node* cvm_out_var = subgraph.at(cvm_out_var_node);
-      cvm_input_of_cvm = subgraph.at(cvm_cvm_in_var_node);
-      marked_nodes.insert({seqpool_op, seqpool_out_var, seqpool_idx_out_var,
-                           cvm_op, cvm_out_var, concat_node});
-      ins_to_concat[cvm_out_var->Name()] = seqpool_in_var;
-    };
+    GraphPatternDetector::handle_t handler =
+        [&](const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
+          Node* seqpool_in_var = subgraph.at(seqpool_in_var_node);
+          Node* seqpool_op = subgraph.at(seqpool_op_node);
+          Node* seqpool_out_var = subgraph.at(seqpool_out_var_node);
+          Node* seqpool_idx_out_var = subgraph.at(seqpool_idx_out_var_node);
+          Node* cvm_op = subgraph.at(cvm_op_node);
+          Node* cvm_out_var = subgraph.at(cvm_out_var_node);
+          cvm_input_of_cvm = subgraph.at(cvm_cvm_in_var_node);
+          marked_nodes.insert({seqpool_op,
+                               seqpool_out_var,
+                               seqpool_idx_out_var,
+                               cvm_op,
+                               cvm_out_var,
+                               concat_node});
+          ins_to_concat[cvm_out_var->Name()] = seqpool_in_var;
+        };
     gpd(graph, handler);
 
     if (!ins_to_concat.empty()) {
@@ -180,8 +184,8 @@ void SeqPoolCVMConcatFusePass::ApplyImpl(ir::Graph* graph) const {
       op_desc.SetOutput("Out", {concat_out_var->Name()});
       auto* op = graph->CreateOpNode(&op_desc);
 
-      for (size_t i = 0; i < subgraph_ins.size(); ++i) {
-        IR_NODE_LINK_TO(subgraph_ins[i], op);
+      for (auto& item : subgraph_ins) {
+        IR_NODE_LINK_TO(item, op);
       }
       IR_NODE_LINK_TO(cvm_input_of_cvm, op);
       IR_NODE_LINK_TO(op, concat_out_var);

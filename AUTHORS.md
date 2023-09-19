@@ -1,3 +1,6 @@
+This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddle/Paddle/) codebase, to see a full list, please use the source control tool git. PaddlePaddle community encourages every Paddle codebase author include his/her GitHub account and fullname here.
+
+
 | Github account | name |
 |---|---|
 | abhinavarora | Abhinav Arora |
@@ -9,6 +12,7 @@
 | beckett1124 | Bin Qi |
 | ChengduoZH | Cheng-Duo Zhao|
 | chengxiaohua1105 | Xiao-Hua Cheng |
+| chenwhql | Wei-Hang Chen |
 | cxwangyi, yiwangbaidu, wangkuiyi | Yi Wang |
 | cxysteven | Xing-Yi Cheng |
 | ddokupil | Dariusz Dokupil |
@@ -16,6 +20,7 @@
 | dragonwarrior | Long Wang |
 | dyning | Yuning Du |
 | emailweixu | Wei Xu |
+| engineer1109 | Jia-Liang Wang |
 | gangliao | Gang Liao |
 | gongweibao | Wei-Bao Gong |
 | guru4elephant | Daxiang Dong |
@@ -24,9 +29,13 @@
 | Haichao-Zhang | Hai-Chao Zhang |
 | hedaoyuan | Dao-Yuan He |
 | helinwang | He-Lin Wang |
+| heliqi | Li-Qi He |
+| houj04 | HOU Jue |
+| HulekJakub | Jakub Hulek |
 | jacquesqiao | Long-Fei Qiao |
 | [jakpiase](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Jakub Piasecki |
 | [jczaja](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Jacek Czaja |
+| jiahy0825 | Hongyu Jia |
 | JiayiFeng | Jia-Yi Feng |
 | kbinias | Krzysztof Binias |
 | kexinzhao | Ke-Xin Zhao |
@@ -57,6 +66,7 @@
 | reyoung | Yang Yu |
 | [Sand3r-](https://raw.githubusercontent.com/jczaja/Paddle/paddle-poland-team/doc/images/paddle_poland_team.jpg)| Michal Gallus |
 | [sfraczek](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg)| Sylwester Fraczek |
+| Silv3S | Slawomir Siwek |
 | sneaxiy | Jin-Le Zeng |
 | Superjom | Chun-Wei Yan |
 | tensor-tang | Jian Tang |
@@ -78,9 +88,39 @@
 | xushaoyong | Shao-Yong Xu |
 | Yancey1989 | Xu Yan |
 | zhaopu7 | Pu Zhao |
+| zhiqiu | Qiu-Liang Chen |
 | zhouxiao-coder | Xiao Zhou |
 | Zrachel | Rui-Qing Zhang |
 | jeng1220 | Bai-Cheng(Ryan) Jeng (NVIDIA) |
 | mingxu1067 | Ming Huang (NVIDIA) |
 | zlsh80826 | Reese Wang (NVIDIA) |
 | leo0519 | Leo Chen (NVIDIA) |
+| jzhang533 | Jun Zhang |
+| Ligoml | Meng-Liu Li |
+| jeff41404 | Xiang Gao |
+| zh794390558 | Hui Zhang |
+| limin2021 | Min Li |
+| zhouwei25 | Wei Zhou |
+| littletomatodonkey | Ruo-Yu Guo |
+| zhupengyang | Zhu Pengyang |
+| DesmonDay | Siming Dai |
+| thisjiang | jiangcheng |
+| yghstill | Guanghua Yu |
+| CtfGo | Tefeng Chen |
+| ZHUI | Hui Zhong|
+| LemonNoel | Huijuan Wang |
+| wawltor | Zeyang Fang |
+| FrostML | Zheng-Xi Liu |
+| jiangjiajun | jiangjiajun |
+| dingjiaweiww | dingjiawei |
+| gglin001 | Allen Guo (Graphcore) |
+| yaozhixin | Zhixin Yao (Graphcore) |
+| XBWGC | Xiaobing Wang (Graphcore) |
+| jianghaicheng | Haicheng Jiang (Graphcore) |
+| czr-gc | Zhaorui Chen (Graphcore) |
+| zhao-han | Han Zhao (Graphcore) |
+| yiakwy, yiakwy-xpu-ml-framework-team | Yi Wang (Graphcore) |
+| [Yulv-git](https://github.com/Yulv-git) | Shuangchi He |
+| [zrr1999](https://github.com/zrr1999) | Rongrui Zhan |
+| [will-jl944](https://github.com/will-jl944) | Jiafeng Lu |
+| [gouzil](https://github.com/gouzil) | Chuan Tian |

@@ -17,7 +17,7 @@
 namespace paddle {
 namespace distributed {
 
-int32_t BarrierTable::initialize() {
+int32_t BarrierTable::Initialize() {
   auto trainers = _config.common().trainer_num();
   trigger_.store(trainers);
 
@@ -29,7 +29,7 @@ int32_t BarrierTable::initialize() {
 }
 
 // 0: send_barrier 1: recv_barrier 2: complete
-int32_t BarrierTable::barrier(const uint32_t trainer_id,
+int32_t BarrierTable::Barrier(const uint32_t trainer_id,
                               const std::string barrier_type) {
   std::unique_lock<std::mutex> lock(mutex_);
 
@@ -42,21 +42,23 @@ int32_t BarrierTable::barrier(const uint32_t trainer_id,
             << " add trainer id: " << trainer_id;
   }
 
-  if (trainer_ids_.size() < trigger_.load()) {
+  if (static_cast<int>(trainer_ids_.size()) < trigger_.load()) {
     std::vector<uint32_t> diffs(trainer_all_.size());
-    auto iter = std::set_difference(trainer_all_.begin(), trainer_all_.end(),
-                                    trainer_ids_.begin(), trainer_ids_.end(),
+    auto iter = std::set_difference(trainer_all_.begin(),
+                                    trainer_all_.end(),
+                                    trainer_ids_.begin(),
+                                    trainer_ids_.end(),
                                     diffs.begin());
     diffs.resize(iter - diffs.begin());
 
     auto diff = to_string<uint32_t>(diffs);
     VLOG(1) << "still need trainers: " << diff;
-    trainer_wait_.wait(lock, [&] { return trainer_ids_.size() == 0; });
+    trainer_wait_.wait(lock, [&] { return trainer_ids_.empty(); });
   } else {
     VLOG(1) << "barrier table optimize begin";
     for (auto& x : *table_map_) {
       auto table = x.second;
-      table->pour();
+      table->Pour();
     }
     VLOG(1) << "barrier table optimize done";
 
@@ -66,7 +68,7 @@ int32_t BarrierTable::barrier(const uint32_t trainer_id,
   return 0;
 }
 
-int32_t BarrierTable::set_table_map(
+int32_t BarrierTable::SetTableMap(
     std::unordered_map<uint32_t, std::shared_ptr<Table>>* table_map) {
   table_map_ = table_map;
   return 0;

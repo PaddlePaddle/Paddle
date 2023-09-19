@@ -30,6 +30,7 @@ namespace cub = hipcub;
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
@@ -39,6 +40,19 @@ namespace detail {
 template <>
 struct radix_key_codec_base<phi::dtype::float16>
     : radix_key_codec_integral<phi::dtype::float16, uint16_t> {};
+
+template <>
+struct radix_key_codec_base<phi::dtype::bfloat16>
+    : radix_key_codec_integral<phi::dtype::bfloat16, uint16_t> {};
+
+#if HIP_VERSION >= 50400000
+template <>
+struct float_bit_mask<phi::dtype::float16> : float_bit_mask<rocprim::half> {};
+
+template <>
+struct float_bit_mask<phi::dtype::bfloat16>
+    : float_bit_mask<rocprim::bfloat16> {};
+#endif
 }  // namespace detail
 }  // namespace rocprim
 #else
@@ -47,7 +61,13 @@ namespace cub {
 template <>
 struct NumericTraits<phi::dtype::float16>
     : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::dtype::float16> {};
+
+template <>
+struct NumericTraits<phi::dtype::bfloat16>
+    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::dtype::bfloat16> {
+};
 }  // namespace cub
+
 #endif
 
 namespace phi {
@@ -213,11 +233,18 @@ void ArgsortKernel(const Context& dev_ctx,
                    DenseTensor* output,
                    DenseTensor* indices) {
   auto in_dims = input.dims();
+  auto rank = in_dims.size();
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
   const T* in_data = input.data<T>();
   auto size = input.numel();
   T* out_data = dev_ctx.template Alloc<T>(output);
   int64_t* ids_data = dev_ctx.template Alloc<int64_t>(indices);
+
+  if (rank == 0) {
+    phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+    phi::funcs::set_constant(dev_ctx, indices, 0);
+    return;
+  }
 
   // Use thrust for parallel acceleration when the input size is equal to the
   // length of the ‘axis’ dimension.
@@ -307,4 +334,7 @@ PD_REGISTER_KERNEL(argsort,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+}

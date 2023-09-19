@@ -23,7 +23,7 @@ namespace phi {
 template <typename T, typename Context>
 void LabelSmoothKernel(const Context& ctx,
                        const DenseTensor& label,
-                       paddle::optional<const DenseTensor&> prior_dist,
+                       const paddle::optional<DenseTensor>& prior_dist,
                        float epsilon,
                        DenseTensor* out);
 

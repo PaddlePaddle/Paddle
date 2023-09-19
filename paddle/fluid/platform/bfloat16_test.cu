@@ -17,7 +17,9 @@ limitations under the License. */
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
 #include <iostream>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 
 #if defined(PADDLE_CUDA_BF16)
@@ -37,7 +39,7 @@ TEST(bfloat16, convert_float32_to_bfloat16_on_gpu) {
 TEST(bfloat16, assignment_operator_on_gpu) {
   // Assignment operator
   bfloat16 v_assign;
-  v_assign = nv_bfloat16(bfloat16(1.0f));
+  v_assign = bfloat16(1.0f).to_nv_bfloat16();
   EXPECT_EQ(v_assign.x, 0x3f80);
   v_assign = 0.33333;
   EXPECT_EQ(v_assign.x, 0x3eab);
@@ -52,20 +54,20 @@ TEST(bfloat16, convert_bfloat16_to_float32_on_gpu) {
 }
 
 TEST(bfloat16, lod_tensor_on_gpu) {
-  framework::LoDTensor src_tensor;
-  framework::LoDTensor gpu_tensor;
-  framework::LoDTensor dst_tensor;
+  phi::DenseTensor src_tensor;
+  phi::DenseTensor gpu_tensor;
+  phi::DenseTensor dst_tensor;
 
   bfloat16 *src_ptr =
       src_tensor.mutable_data<bfloat16>(phi::make_ddim({2, 2}), CPUPlace());
 
-  bfloat16 arr[4] = {bfloat16(1.0f), bfloat16(0.5f), bfloat16(0.33333f),
-                     bfloat16(0.0f)};
+  bfloat16 arr[4] = {
+      bfloat16(1.0f), bfloat16(0.5f), bfloat16(0.33333f), bfloat16(0.0f)};
   memcpy(src_ptr, arr, 4 * sizeof(bfloat16));
 
   // CPU LoDTensor to GPU LoDTensor
   CUDAPlace gpu_place(0);
-  CUDADeviceContext gpu_ctx(gpu_place);
+  phi::GPUContext gpu_ctx(gpu_place);
   gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, gpu_ctx.stream())
                            .get());

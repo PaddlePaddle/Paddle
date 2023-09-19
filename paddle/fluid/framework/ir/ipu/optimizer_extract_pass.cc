@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/ipu/optimizer_extract_pass.h"
 
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
@@ -25,14 +26,15 @@ std::set<std::string> ignored_ops = {
     "sum",
     "clip",
     "clip_by_norm",
-    "square",
     "reduce_sum",
     "sqrt",
     "elementwise_max",
     "elementwise_div",
     "elementwise_mul",
-    "scale",   // adamax
-    "assign",  // adamw
+    "scale",            // adamax
+    "assign",           // adamw
+    "squared_l2_norm",  // gradient_clip_norm
+    "cast",             // mix-precision support
 };
 
 const bool startswith(const std::string& str, const std::string& pre) {
@@ -62,25 +64,38 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
   new_op.SetAttr("with_lr_sched", false);
 
   std::set<std::string> set_ops{};
+  // save the weight decay tensor_name and weight_decay_value for Lamb
+  std::vector<std::string> weight_decay_vars{};
+  std::vector<float> weight_decay_values{};
+
   // use map store <op_type, op_ptr> ?
-  for (auto* node : graph->Nodes()) {
+  for (auto* node : TopologySortOperations(*graph)) {
     if (!node->IsOp()) {
       continue;
     }
 
     auto op = node->Op();
     auto op_type = op->Type();
-    int op_role_ = BOOST_GET_CONST(
+    int op_role_ = PADDLE_GET_CONST(
         int, op->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
     auto op_role = static_cast<OpRole>(op_role_);
 
     if (op_role == OpRole::kOptimize) {
+      // save weight decay value from every lamb optimizer op
+      if (op_type == "lamb" && op->HasAttr("weight_decay")) {
+        auto weight_decay_value =
+            PADDLE_GET_CONST(float, op->GetAttr("weight_decay"));
+        auto params = op->Output("ParamOut");
+        weight_decay_vars.push_back(params[0]);
+        weight_decay_values.push_back(weight_decay_value);
+      }
+
       if (set_ops.count(op_type)) {
         continue;
       }
 
       auto op_namescope =
-          BOOST_GET_CONST(std::string, op->GetAttr("op_namescope"));
+          PADDLE_GET_CONST(std::string, op->GetAttr("op_namescope"));
       bool is_grad_clip = is_grad_clip_op(op_namescope);
       // bool is_optimizer = is_optimizer_op(op_namescope);
       bool is_regularization = is_regularization_op(op_namescope);
@@ -99,28 +114,33 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
       } else if (op_type == "momentum") {
         auto type = std::string{"sgd"};
         // auto LearningRate = op->Input("LearningRate");
-        auto use_nesterov = BOOST_GET_CONST(bool, op->GetAttr("use_nesterov"));
-        PADDLE_ENFORCE_EQ(use_nesterov, false,
+        auto use_nesterov = PADDLE_GET_CONST(bool, op->GetAttr("use_nesterov"));
+        PADDLE_ENFORCE_EQ(use_nesterov,
+                          false,
                           platform::errors::Unimplemented(
                               "ipu does not support nesterov mode."));
         auto regularization_method =
-            BOOST_GET_CONST(std::string, op->GetAttr("regularization_method"));
-        PADDLE_ENFORCE_NE(regularization_method, "l1_decay",
+            PADDLE_GET_CONST(std::string, op->GetAttr("regularization_method"));
+        PADDLE_ENFORCE_NE(regularization_method,
+                          "l1_decay",
                           platform::errors::Unimplemented(
                               "ipu does not support l1_decay mode."));
         auto multi_precision =
-            BOOST_GET_CONST(bool, op->GetAttr("multi_precision"));
-        PADDLE_ENFORCE_EQ(multi_precision, false,
+            PADDLE_GET_CONST(bool, op->GetAttr("multi_precision"));
+        PADDLE_ENFORCE_EQ(multi_precision,
+                          false,
                           platform::errors::Unimplemented(
                               "ipu does not support multi_precision mode."));
-        auto rescale_grad = BOOST_GET_CONST(float, op->GetAttr("rescale_grad"));
-        PADDLE_ENFORCE_EQ(rescale_grad, 1.0,
+        auto rescale_grad =
+            PADDLE_GET_CONST(float, op->GetAttr("rescale_grad"));
+        PADDLE_ENFORCE_EQ(rescale_grad,
+                          1.0,
                           platform::errors::Unimplemented(
                               "ipu does not support rescale_grad mode."));
         auto regularization_coeff =
-            BOOST_GET_CONST(float, op->GetAttr("regularization_coeff"));
+            PADDLE_GET_CONST(float, op->GetAttr("regularization_coeff"));
         auto lr_var = op->Input("LearningRate").front();
-        auto momentum = BOOST_GET_CONST(float, op->GetAttr("mu"));
+        auto momentum = PADDLE_GET_CONST(float, op->GetAttr("mu"));
         new_op.SetAttr("type", type);
         new_op.SetAttr("lr_var", lr_var);
         new_op.SetAttr("momentum", momentum);
@@ -129,16 +149,18 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
       } else if (op_type == "adam" || op_type == "adamw") {
         auto type = std::string{"adam"};
         auto lr_var = op->Input("LearningRate").front();
-        auto beta1 = BOOST_GET_CONST(float, op->GetAttr("beta1"));
-        auto beta2 = BOOST_GET_CONST(float, op->GetAttr("beta2"));
-        auto epsilon = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
-        auto lazy_mode = BOOST_GET_CONST(bool, op->GetAttr("lazy_mode"));
+        auto beta1 = PADDLE_GET_CONST(float, op->GetAttr("beta1"));
+        auto beta2 = PADDLE_GET_CONST(float, op->GetAttr("beta2"));
+        auto epsilon = PADDLE_GET_CONST(float, op->GetAttr("epsilon"));
+        auto lazy_mode = PADDLE_GET_CONST(bool, op->GetAttr("lazy_mode"));
         auto multi_precision =
-            BOOST_GET_CONST(bool, op->GetAttr("multi_precision"));
-        PADDLE_ENFORCE_EQ(lazy_mode, false,
+            PADDLE_GET_CONST(bool, op->GetAttr("multi_precision"));
+        PADDLE_ENFORCE_EQ(lazy_mode,
+                          false,
                           platform::errors::Unimplemented(
                               "ipu does not support lazy_mode mode."));
-        PADDLE_ENFORCE_EQ(multi_precision, false,
+        PADDLE_ENFORCE_EQ(multi_precision,
+                          false,
                           platform::errors::Unimplemented(
                               "ipu does not support multi_precision mode."));
         new_op.SetAttr("type", type);
@@ -159,9 +181,9 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
       } else if (op_type == "adamax") {
         auto type = std::string{"adam"};
         auto lr_var = op->Input("LearningRate").front();
-        auto beta1 = BOOST_GET_CONST(float, op->GetAttr("beta1"));
-        auto beta2 = BOOST_GET_CONST(float, op->GetAttr("beta2"));
-        auto epsilon = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
+        auto beta1 = PADDLE_GET_CONST(float, op->GetAttr("beta1"));
+        auto beta2 = PADDLE_GET_CONST(float, op->GetAttr("beta2"));
+        auto epsilon = PADDLE_GET_CONST(float, op->GetAttr("epsilon"));
         new_op.SetAttr("type", type);
         new_op.SetAttr("lr_var", lr_var);
         new_op.SetAttr("weight_decay", 0.0f);
@@ -175,10 +197,11 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
         // use decay mode
         auto type = std::string{"adam"};
         auto lr_var = op->Input("LearningRate").front();
-        auto weight_decay = BOOST_GET_CONST(float, op->GetAttr("weight_decay"));
-        auto beta1 = BOOST_GET_CONST(float, op->GetAttr("beta1"));
-        auto beta2 = BOOST_GET_CONST(float, op->GetAttr("beta2"));
-        auto epsilon = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
+        auto weight_decay =
+            PADDLE_GET_CONST(float, op->GetAttr("weight_decay"));
+        auto beta1 = PADDLE_GET_CONST(float, op->GetAttr("beta1"));
+        auto beta2 = PADDLE_GET_CONST(float, op->GetAttr("beta2"));
+        auto epsilon = PADDLE_GET_CONST(float, op->GetAttr("epsilon"));
         new_op.SetAttr("type", type);
         new_op.SetAttr("lr_var", lr_var);
         new_op.SetAttr("weight_decay", weight_decay);
@@ -191,8 +214,8 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
       } else if (op_type == "adadelta") {
         // NO LearningRate
         auto type = std::string{"adaptive"};
-        auto rho = BOOST_GET_CONST(float, op->GetAttr("rho"));
-        auto epsilon = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
+        auto rho = PADDLE_GET_CONST(float, op->GetAttr("rho"));
+        auto epsilon = PADDLE_GET_CONST(float, op->GetAttr("epsilon"));
         new_op.SetAttr("type", type);
         new_op.SetAttr("weight_decay", 0.0f);
         new_op.SetAttr("alpha", rho);
@@ -204,7 +227,7 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
       } else if (op_type == "adagrad") {
         auto type = std::string{"adaptive"};
         auto lr_var = op->Input("LearningRate").front();
-        auto epsilon = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
+        auto epsilon = PADDLE_GET_CONST(float, op->GetAttr("epsilon"));
         new_op.SetAttr("type", type);
         new_op.SetAttr("lr_var", lr_var);
         new_op.SetAttr("weight_decay", 0.0f);
@@ -218,10 +241,10 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
       } else if (op_type == "rmsprop") {
         auto type = std::string{"adaptive"};
         auto lr_var = op->Input("LearningRate").front();
-        auto epsilon = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
-        auto decay = BOOST_GET_CONST(float, op->GetAttr("decay"));
-        auto momentum = BOOST_GET_CONST(float, op->GetAttr("momentum"));
-        auto centered = BOOST_GET_CONST(bool, op->GetAttr("centered"));
+        auto epsilon = PADDLE_GET_CONST(float, op->GetAttr("epsilon"));
+        auto decay = PADDLE_GET_CONST(float, op->GetAttr("decay"));
+        auto momentum = PADDLE_GET_CONST(float, op->GetAttr("momentum"));
+        auto centered = PADDLE_GET_CONST(bool, op->GetAttr("centered"));
         new_op.SetAttr("type", type);
         new_op.SetAttr("weight_decay", 0.0f);
         new_op.SetAttr("alpha", decay);
@@ -237,11 +260,11 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
         }
       } else if (is_regularization && op_type == "scale") {
         // set weight_decay for L2Decay
-        auto scale = BOOST_GET_CONST(float, op->GetAttr("scale"));
+        auto scale = PADDLE_GET_CONST(float, op->GetAttr("scale"));
         new_op.SetAttr("weight_decay", scale);
       } else if (is_grad_clip && op_type == "fill_constant") {
         // set clip_norm for ClipGradByGlobalNorm
-        auto value = BOOST_GET_CONST(float, op->GetAttr("value"));
+        auto value = PADDLE_GET_CONST(float, op->GetAttr("value"));
         new_op.SetAttr("clip_norm", value);
       } else if (ignored_ops.count(op_type)) {
         VLOG(10) << "Ignore optimizer releated op: " << op_type;
@@ -253,11 +276,13 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
       VLOG(10) << "found loss op type: " << op->Type();
       auto outputs = op->Outputs();
       PADDLE_ENFORCE_EQ(
-          outputs.size(), 1,
+          outputs.size(),
+          1,
           platform::errors::InvalidArgument("Can only support one loss key"));
       auto losses = outputs.begin()->second;
       PADDLE_ENFORCE_EQ(
-          losses.size(), 1,
+          losses.size(),
+          1,
           platform::errors::InvalidArgument("Can only support one loss name"));
       auto loss_var = losses.front();
       new_op.SetAttr("loss_var", loss_var);
@@ -270,7 +295,10 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
   // seems with_lr_sched is always true
   new_op.SetAttr("with_lr_sched", true);
 
-  // setup weight deacy
+  // setup weight decay for Lamb
+  new_op.SetAttr("weight_decay_vars", weight_decay_vars);
+  new_op.SetAttr("weight_decay_values", weight_decay_values);
+
   // weight_decay/coeff is "scale" attr of scale_op
   if (set_ops.count("scale") && set_ops.count("sum")) {
     if (set_ops.count("sign")) {

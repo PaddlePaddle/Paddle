@@ -28,4 +28,22 @@ void ImagGradKernel(const Context& dev_ctx,
                     const DenseTensor& dout,
                     DenseTensor* dx);
 
+template <typename T, typename Context>
+void ComplexGradKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       const DenseTensor& dout,
+                       DenseTensor* dx,
+                       DenseTensor* dy);
+
+template <typename T, typename Context>
+void RealGradStridedKernel(const Context& dev_ctx,
+                           const DenseTensor& dout,
+                           DenseTensor* dx);
+
+template <typename T, typename Context>
+void ImagGradStridedKernel(const Context& dev_ctx,
+                           const DenseTensor& dout,
+                           DenseTensor* dx);
+
 }  // namespace phi

@@ -14,7 +14,7 @@
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/reduce_ops/logsumexp_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -25,15 +25,15 @@ template <typename DeviceContext, typename T>
 class XPULogsumexpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* input = context.Input<Tensor>("X");
-    auto* output = context.Output<Tensor>("Out");
+    auto* input = context.Input<phi::DenseTensor>("X");
+    auto* output = context.Output<phi::DenseTensor>("Out");
 
     auto axis = context.Attr<std::vector<int>>("axis");
     auto reduce_all = context.Attr<bool>("reduce_all");
 
     const auto& input_dim_size = input->dims().size();
     // The dims has full dim, set the reduce_all is True
-    reduce_all |= (static_cast<const int>(axis.size()) == input_dim_size);
+    reduce_all |= (static_cast<int>(axis.size()) == input_dim_size);
 
     const T* input_data = input->data<T>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
@@ -55,11 +55,13 @@ class XPULogsumexpKernel : public framework::OpKernel<T> {
     }
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    int r = xpu::logsumexp<T>(dev_ctx.x_context(), input_data, output_data,
-                              xdims, axis_shape);
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+    int r = xpu::logsumexp<T>(
+        dev_ctx.x_context(), input_data, output_data, xdims, axis_shape);
+    PADDLE_ENFORCE_EQ(r,
+                      xpu::Error_t::SUCCESS,
                       platform::errors::External(
-                          "XPU logsumexp kernel error! error value[%d %]", r,
+                          "XPU logsumexp kernel error! error value[%d %]",
+                          r,
                           XPUAPIErrorMsg[r]));
   }
 };
@@ -68,6 +70,10 @@ class XPULogsumexpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+// This kernel can not be registered in phi, because op logsumexp should run
+// phi::LogsumexpKernel rather than XPULogsumexpKernel here. And if register
+// xpu logsumexp kernel in phi, op logsumexp will run XPULogsumexpKernel here
+// and raise error.
 REGISTER_OP_XPU_KERNEL(
     logsumexp,
     ops::XPULogsumexpKernel<paddle::platform::XPUDeviceContext, float>);

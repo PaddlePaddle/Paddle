@@ -17,6 +17,7 @@
 #include <array>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -26,7 +27,9 @@ namespace math {
 class TreeNode {
  public:
   size_t node;
-  explicit TreeNode(size_t node = 0, size_t index = 0, size_t pclen = 0,
+  explicit TreeNode(size_t node = 0,
+                    size_t index = 0,
+                    size_t pclen = 0,
                     size_t depth = 0)
       : node(node), index(index), pclen(pclen), depth(depth) {}
   template <typename T>
@@ -62,7 +65,7 @@ class Tree2ColUtil {
   static std::vector<TreeNode> construct_patch(
       size_t root, int max_depth, const std::vector<std::vector<int>> &tr);
 
-  static void construct_tree(const framework::Tensor &EdgeSet,
+  static void construct_tree(const phi::DenseTensor &EdgeSet,
                              std::vector<std::vector<int>> *tr,
                              size_t *node_count);
 };
@@ -71,16 +74,18 @@ template <typename DeviceContext, typename T>
 class Tree2ColFunctor {
  public:
   void operator()(const DeviceContext &context,
-                  const framework::Tensor &EdgeSet,
-                  const framework::Tensor &node_features,
-                  framework::Tensor *patch, int max_depth);
+                  const phi::DenseTensor &EdgeSet,
+                  const phi::DenseTensor &node_features,
+                  phi::DenseTensor *patch,
+                  int max_depth);
 };
 template <typename DeviceContext, typename T>
 class Col2TreeFunctor {
  public:
   void operator()(const DeviceContext &context,
-                  const framework::Tensor &EdgeSet,
-                  const framework::Tensor &out_grad, framework::Tensor *in_grad,
+                  const phi::DenseTensor &EdgeSet,
+                  const phi::DenseTensor &out_grad,
+                  phi::DenseTensor *in_grad,
                   int max_depth);
 };
 }  // namespace math

@@ -24,24 +24,27 @@ TEST(FcGruFusePass, basic) {
   auto pass = PassRegistry::Instance().Get("fc_gru_fuse_pass");
   pass->Set("use_gpu", new bool(true));
   graph->Set("__param_scope__", CreateParamScope());
-  int num_nodes_before = graph->Nodes().size();
+  int num_nodes_before = static_cast<int>(graph->Nodes().size());
   int num_gru_nodes_before = GetNumOpNodes(graph, "gru");
   VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
-  int num_nodes_after = graph->Nodes().size();
+  int num_nodes_after = static_cast<int>(graph->Nodes().size());
   int num_fuse_gru_nodes_after = GetNumOpNodes(graph, "fusion_gru");
   VLOG(3) << DebugString(graph);
 
-  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 6,
+  PADDLE_ENFORCE_EQ(num_nodes_before,
+                    num_nodes_after + 6,
                     platform::errors::PreconditionNotMet(
                         "The number of nodes before and after "
                         "the fuse does not meet expectations"));
   PADDLE_ENFORCE_EQ(
-      num_fuse_gru_nodes_after, 2,
+      num_fuse_gru_nodes_after,
+      2,
       platform::errors::PreconditionNotMet("The number of gru nodes before the "
                                            "fuse does not meet expectations"));
-  PADDLE_ENFORCE_EQ(num_gru_nodes_before, num_fuse_gru_nodes_after,
+  PADDLE_ENFORCE_EQ(num_gru_nodes_before,
+                    num_fuse_gru_nodes_after,
                     platform::errors::PreconditionNotMet(
                         "The number of fusion_gru nodes does not meet "
                         "expectations after fuse"));

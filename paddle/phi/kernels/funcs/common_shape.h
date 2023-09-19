@@ -45,12 +45,14 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
       phi::errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
-  PADDLE_ENFORCE_LT(axis,
-                    max_dim,
-                    phi::errors::InvalidArgument(
-                        "Axis should be less than %d, but received axis is %d.",
-                        max_dim,
-                        axis));
+  PADDLE_ENFORCE_LE(
+      axis,
+      max_dim,
+      phi::errors::InvalidArgument(
+          "Axis should be less than or equal to %d, but received axis is %d.",
+          max_dim,
+          axis));
+
   if (x_dims.size() > y_dims.size()) {
     std::fill(y_dims_array, y_dims_array + axis, 1);
     if (axis + y_dims.size() < max_dim) {
@@ -67,7 +69,7 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
     std::copy(y_dims.Get(), y_dims.Get() + y_dims.size(), y_dims_array);
   }
 
-  for (int i = 0; i < max_dim; i++) {
+  for (int i = 0; i < max_dim; ++i) {
     PADDLE_ENFORCE_EQ(
         x_dims_array[i] == y_dims_array[i] || x_dims_array[i] <= 1 ||
             y_dims_array[i] <= 1,
@@ -229,6 +231,17 @@ inline DDim GetOutputDims(const DDim &s_dims, const DDim &l_dims) {
     }
   }
   return phi::make_ddim(shapes);
+}
+
+inline int64_t CalStride(phi::DDim dim) {
+  int rank = dim.size();
+  int64_t dimsum = 1;
+  int64_t strides = 0;
+  for (int i = rank - 1; i >= 0; i--) {
+    strides += dimsum;
+    dimsum *= dim[i];
+  }
+  return strides;
 }
 
 }  // namespace funcs

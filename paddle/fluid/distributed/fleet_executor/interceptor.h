@@ -24,21 +24,29 @@
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message.pb.h"
 #include "paddle/fluid/framework/blocking_queue.h"
+#include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
 
 namespace paddle {
 namespace framework {
 class Scope;
 class GarbageCollector;
-}
+}  // namespace framework
 namespace distributed {
 
 class TaskNode;
 class Carrier;
 class TaskLoop;
+
+using InterpreterCore = framework::InterpreterCore;
+
+constexpr int64_t SOURCE_ID = -1;
+constexpr int64_t SINK_ID = -2;
 
 class Interceptor {
  public:
@@ -72,6 +80,10 @@ class Interceptor {
   void SetMicroBatchScope(const std::vector<framework::Scope*>& scopes) {
     microbatch_scopes_ = scopes;
   }
+  void SetInterpreterCore(
+      const std::vector<std::shared_ptr<InterpreterCore>> cores) {
+    cores_ = cores;
+  }
   void SetGC(const std::shared_ptr<framework::GarbageCollector>& gc) {
     gc_ = gc;
   }
@@ -90,7 +102,6 @@ class Interceptor {
   TaskNode* node_;
 
   // for stop
-  bool stop_{false};
   void StopCarrier();
 
   // for runtime
@@ -98,6 +109,7 @@ class Interceptor {
   framework::Scope* root_scope_{nullptr};
   framework::Scope* minibatch_scope_{nullptr};
   std::vector<framework::Scope*> microbatch_scopes_{};
+  std::vector<std::shared_ptr<InterpreterCore>> cores_{};
   std::shared_ptr<framework::GarbageCollector> gc_{nullptr};
 
   Carrier* carrier_;
@@ -111,9 +123,6 @@ class Interceptor {
 
   std::mutex mutex_;
   std::deque<InterceptorMessage> messages_;
-
-  int64_t already_run_times_{0};
-  int64_t used_slot_nums_{0};
 };
 
 class InterceptorFactory {
@@ -126,7 +135,8 @@ class InterceptorFactory {
   static void Register(const std::string& type, CreateInterceptorFunc func);
 
   static std::unique_ptr<Interceptor> Create(const std::string& type,
-                                             int64_t id, TaskNode* node);
+                                             int64_t id,
+                                             TaskNode* node);
 };
 
 template <typename InterceptorClass>

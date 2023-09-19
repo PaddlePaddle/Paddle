@@ -13,15 +13,18 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/multi_gru_seq_fuse_pass.h"
+
 #include <limits>
 #include <sstream>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/platform/errors.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/phi/core/errors.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -32,7 +35,8 @@ using string::PrettyLogDetail;
 
 namespace {
 
-std::vector<std::string> JoinInputs(Node* op1, Node* op2,
+std::vector<std::string> JoinInputs(Node* op1,
+                                    Node* op2,
                                     std::string input_name) {
   auto in1 = op1->Op()->Input(input_name);
   auto& in2 = op2->Op()->Input(input_name);
@@ -45,11 +49,11 @@ std::vector<std::string> JoinInputs(Node* op1, Node* op2,
 void MultiGruSeqFusePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Fusing two consecutive multi_gru ops.";
   PADDLE_ENFORCE_NOT_NULL(graph,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "Pointer to graph argument cannot be NULL."));
   FusePassBase::Init(name_scope_, graph);
-  PADDLE_ENFORCE_NOT_NULL(param_scope(), platform::errors::InvalidArgument(
-                                             "Scope cannot be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      param_scope(), phi::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   patterns::MultiGruSeq pattern{gpd.mutable_pattern(), name_scope_};
@@ -58,6 +62,11 @@ void MultiGruSeqFusePass::ApplyImpl(ir::Graph* graph) const {
   int fused_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
+
     GET_IR_NODE_FROM_SUBGRAPH(x, x, pattern);
     GET_IR_NODE_FROM_SUBGRAPH(gru1, gru1, pattern);
     GET_IR_NODE_FROM_SUBGRAPH(wx11, wx11, pattern);
@@ -99,8 +108,8 @@ void MultiGruSeqFusePass::ApplyImpl(ir::Graph* graph) const {
       multi_gru_desc.SetAttr(attr.first, attr.second);
     }
 
-    auto layers = BOOST_GET_CONST(int, gru1->Op()->GetAttr("layers")) +
-                  BOOST_GET_CONST(int, gru2->Op()->GetAttr("layers"));
+    auto layers = PADDLE_GET_CONST(int, gru1->Op()->GetAttr("layers")) +
+                  PADDLE_GET_CONST(int, gru2->Op()->GetAttr("layers"));
     multi_gru_desc.SetAttr("layers", layers);
 
     auto multi_gru =
@@ -131,9 +140,57 @@ void MultiGruSeqFusePass::ApplyImpl(ir::Graph* graph) const {
                     fused_count);
 }
 
+MultiGruSeqFusePass::MultiGruSeqFusePass() {
+  AddOpCompat(OpCompat("multi_gru"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("WeightX")
+      .End()
+      .AddInput("WeightH")
+      .End()
+      .AddInput("Bias")
+      .IsOptional()
+      .End()
+      .AddInput("Scale_weights")
+      .IsOptional()
+      .End()
+      .AddOutput("Hidden")
+      .IsTensor()
+      .End()
+      .AddAttr("activation")
+      .IsType<std::string>()
+      .End()
+      .AddAttr("gate_activation")
+      .IsType<std::string>()
+      .End()
+      .AddAttr("layers")
+      .IsType<int>()
+      .End()
+      .AddAttr("origin_mode")
+      .IsType<bool>()
+      .End()
+      .AddAttr("mkldnn_data_type")
+      .IsType<std::string>()
+      .End()
+      .AddAttr("Scale_data")
+      .IsType<float>()
+      .End()
+      .AddAttr("Shift_data")
+      .IsType<float>()
+      .End()
+      .AddAttr("force_fp32_output")
+      .IsType<bool>()
+      .End();
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
 REGISTER_PASS(multi_gru_seq_fuse_pass,
               paddle::framework::ir::MultiGruSeqFusePass);
+REGISTER_PASS_CAPABILITY(multi_gru_seq_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
+            "multi_gru", 0));
