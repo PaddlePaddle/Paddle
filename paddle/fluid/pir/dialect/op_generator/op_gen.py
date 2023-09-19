@@ -586,7 +586,7 @@ class OpInfoParser:
     def parse_input_type_dict(self):
         type_dict = {}
 
-        if self.kernel_map is None or len(self.kernel_map['func']) == 1:
+        if self.kernel_map is None:
             input_types_map = {
                 'Tensor': 'paddle::dialect::DenseTensorType',
                 'Tensor[]': 'pir::VectorType<paddle::dialect::DenseTensorType>',
@@ -663,7 +663,7 @@ class OpInfoParser:
     def parse_output_type_dict(self):
         type_dict = {}
 
-        if self.kernel_map is None or len(self.kernel_map['func']) == 1:
+        if self.kernel_map is None:
             output_type_map = {
                 'Tensor': 'paddle::dialect::DenseTensorType',
                 'Tensor[]': 'pir::VectorType<paddle::dialect::DenseTensorType>',
@@ -1499,7 +1499,10 @@ def OpGenerator(
 
     head_file_str = ""
     head_file_str += "".join(ops_declare_list)  # Add op class
-    legacy_op_to_pd_ops_map = LEGACY_OP_TO_PD_OPS_MAP_H
+    if dialect_name == "pd_op":
+        legacy_op_to_pd_ops_map = LEGACY_OP_TO_PD_OPS_MAP_H
+    else:
+        legacy_op_to_pd_ops_map = ""
     for name in reversed(namespaces):
         head_file_str = NAMESPACE_GARD_TEMPLATE.format(
             namespace=name, input=head_file_str
@@ -1522,9 +1525,12 @@ def OpGenerator(
     for op in ops_name_with_namespace_list:
         define_type_id_str += DEFINE_OP_TYPE_ID.format(op_name=op)
 
-    legacy_op_to_pd_ops_map_str = LEGACY_OP_TO_PD_OPS_MAPS.format(
-        maps=", \r".join(legacy_op_to_pd_ops_list)
-    )
+    if dialect_name == "pd_op":
+        legacy_op_to_pd_ops_map_str = LEGACY_OP_TO_PD_OPS_MAPS.format(
+            maps=", \r".join(legacy_op_to_pd_ops_list)
+        )
+    else:
+        legacy_op_to_pd_ops_map_str = ""
 
     source_file_str = CC_FILE_TEMPLATE.format(
         legacy_op_to_pd_ops_map=legacy_op_to_pd_ops_map_str,
