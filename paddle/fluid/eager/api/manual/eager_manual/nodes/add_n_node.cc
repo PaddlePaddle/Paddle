@@ -92,10 +92,8 @@ AddNGradNodeFinal::operator()(
         TENSOR_OUTPUT_TEMPLATE, egr::EagerUtils::TensorStr(returns[0][0]));
     output_str += output_returns_str;
 
-    VLOG(4) << paddle::string::Sprintf(
-        INPUT_PRINT_TEMPLATE, input_str, output_str);
     VLOG(6) << "gradnode_ptr = " << this;
-    VLOG(6) << paddle::string::Sprintf(
+    VLOG(4) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
 

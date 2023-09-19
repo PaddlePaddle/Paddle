@@ -192,10 +192,8 @@ Conv2dGradNodeFinal::operator()(
         TENSOR_GRAD_FILTER_TEMPLATE, egr::EagerUtils::TensorStr(grad_filter));
     output_str += output_grad_filter_str;
 
-    VLOG(4) << paddle::string::Sprintf(
-        INPUT_PRINT_TEMPLATE, input_str, output_str);
     VLOG(6) << "gradnode_ptr = " << this;
-    VLOG(6) << paddle::string::Sprintf(
+    VLOG(4) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
 
@@ -370,10 +368,8 @@ Conv2dDoubleGradNodeFinal::operator()(
                                 egr::EagerUtils::TensorStr(grad_out_grad));
     output_str += output_grad_out_grad_str;
 
-    VLOG(4) << paddle::string::Sprintf(
-        INPUT_PRINT_TEMPLATE, input_str, output_str);
     VLOG(6) << "gradnode_ptr = " << this;
-    VLOG(6) << paddle::string::Sprintf(
+    VLOG(4) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
 
