@@ -388,7 +388,6 @@ class ClipGradByValue(ClipGradBase):
         .. code-block:: python
 
             >>> import paddle
-            >>> paddle.disable_static()
             >>> x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
             >>> linear = paddle.nn.Linear(in_features=10, out_features=10,
             ...                           weight_attr=paddle.ParamAttr(need_clip=True),
@@ -494,7 +493,6 @@ class ClipGradByNorm(ClipGradBase):
         .. code-block:: python
 
             >>> import paddle
-            >>> paddle.disable_static()
             >>> x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
             >>> linear = paddle.nn.Linear(in_features=10, out_features=10,
             ...                           weight_attr=paddle.ParamAttr(need_clip=True),
@@ -622,7 +620,6 @@ class ClipGradByGlobalNorm(ClipGradBase):
         .. code-block:: python
 
             >>> import paddle
-            >>> paddle.disable_static()
             >>> x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
             >>> linear = paddle.nn.Linear(in_features=10, out_features=10,
             ...                           weight_attr=paddle.ParamAttr(need_clip=True),
