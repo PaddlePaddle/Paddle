@@ -59,8 +59,6 @@ class IR_API Value {
 
   void set_type(Type type);
 
-  Operation *GetDefiningOp() const;
-
   std::string PrintUdChain();
 
   ///

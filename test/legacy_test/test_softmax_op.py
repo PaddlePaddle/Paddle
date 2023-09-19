@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+from utils import static_guard
 
 import paddle
 import paddle.nn.functional as F
@@ -468,7 +469,7 @@ class TestSoftmaxAPI(unittest.TestCase):
         self.softmax = F.softmax
 
     def test_static_check(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.x_np.shape, 'float32')
                 out1 = self.softmax(x)
@@ -512,7 +513,7 @@ class TestSoftmaxAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_error(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, self.softmax, 1)
@@ -546,7 +547,7 @@ class TestSoftmaxAPI_ZeroDim(unittest.TestCase):
         paddle.enable_static()
 
     def test_static(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             main_prog = base.Program()
             with base.program_guard(main_prog, base.Program()):
                 x = paddle.rand([])

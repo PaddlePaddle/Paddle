@@ -103,6 +103,11 @@ class TestPybind(unittest.TestCase):
         )
         # test value == opresult
         self.assertEqual(add_op.operands_source()[0], matmul_op.results()[0])
+        # test opresult print
+        self.assertEqual(
+            add_op.operands_source()[0].__str__(),
+            "Value(name=%0, dtype=pd_op.tensor<4x4xf32>)",
+        )
         # test opresult == value
         self.assertEqual(
             add_op.operands()[0].source(), add_op.operands_source()[0]
@@ -110,10 +115,14 @@ class TestPybind(unittest.TestCase):
         # test opresult == opresult
         self.assertEqual(add_op.operands()[0].source(), matmul_op.results()[0])
 
+        # test opresult print
         self.assertEqual(
             tanh_op.operands()[0].source().get_defining_op().name(), "pd_op.add"
         )
-
+        self.assertEqual(
+            tanh_op.operands()[0].source().__str__(),
+            "OpResult(name=%0, dtype=pd_op.tensor<4x4xf32>, stop_gradient=True)",
+        )
         add_op.replace_all_uses_with(matmul_op.results())
         self.assertEqual(
             tanh_op.operands()[0].source().get_defining_op().name(),
