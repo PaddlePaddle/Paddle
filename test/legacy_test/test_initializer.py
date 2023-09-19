@@ -1198,7 +1198,7 @@ class TestKaimingUniform(unittest.TestCase):
         )
 
 
-class TestTruncatedNormalInitializerDygraph:
+class TestTruncatedNormalInitializerDygraph(unittest.TestCase):
     def _trunc_normal_numpy(self, tensor, mean=0.0, std=1.0, a=-2.0, b=2.0):
         # Method based on https://people.sc.fsu.edu/~jburkardt/presentations/truncated_normal.pdf
         def norm_cdf(x):
@@ -1327,7 +1327,7 @@ class TestTruncatedNormalInitializerDygraph:
         paddle.enable_static()
 
 
-class TestAssignInitializerDygraph:
+class TestAssignInitializerDygraph(unittest.TestCase):
     def test_assign_initializer_cpu_fp32(self):
         """
         In dygraph mode, we can use initializer directly to initialize a tensor.
