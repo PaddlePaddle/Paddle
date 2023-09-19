@@ -35,7 +35,6 @@ from ..framework import (
     dygraph_only,
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
-    in_pir_mode,
 )
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
@@ -971,8 +970,10 @@ def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
         if i != dim1 and i != dim2:
             predshape.append(inshape[i])
     diaglen = min(
-        min(inshape[dim1], inshape[dim1] + offset),
-        min(inshape[dim2], inshape[dim2] - offset),
+        inshape[dim1],
+        inshape[dim1] + offset,
+        inshape[dim2],
+        inshape[dim2] - offset,
     )
     predshape.append(diaglen)
     assert tuple(predshape) == tuple(
@@ -1127,14 +1128,10 @@ def concat(x, axis=0, name=None):
             #  [14 15 16]]
     """
     input = x
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(axis, Variable):
             axis = axis.item(0)
-        if not isinstance(input, Variable):
-            input = [t for t in input if t.shape.count(0) == 0]
-        return _C_ops.concat(input, axis)
-    elif in_pir_mode():
-        if not isinstance(input, paddle.ir.Value):
+        if not isinstance(input, (Variable, paddle.ir.Value)):
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
     else:
@@ -1969,35 +1966,31 @@ def split(x, num_or_sections, axis=0, name=None):
     """
     input = x
     dim = axis
-    if in_dynamic_mode():
-        if isinstance(dim, Variable):
-            dim = dim.item(0)
-        assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
-        dim = (len(input.shape) + dim) if dim < 0 else dim
+    if in_dynamic_or_pir_mode():
+        if in_dynamic_mode():
+            if isinstance(dim, Variable):
+                dim = dim.item(0)
+            assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
+            dim = (len(input.shape) + dim) if dim < 0 else dim
 
-        if isinstance(num_or_sections, (list, tuple)):
-            if paddle.utils._contain_var(num_or_sections):
-                for index, item in enumerate(num_or_sections):
-                    if isinstance(item, Variable):
-                        num_or_sections[index] = num_or_sections[index].item()
-        elif not isinstance(num_or_sections, int):
-            raise TypeError(
-                "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
-                "received %s." % (type(num_or_sections))
-            )
+            if isinstance(num_or_sections, (list, tuple)):
+                if paddle.utils._contain_var(num_or_sections):
+                    for index, item in enumerate(num_or_sections):
+                        if isinstance(item, Variable):
+                            num_or_sections[index] = num_or_sections[
+                                index
+                            ].item()
+            elif not isinstance(num_or_sections, int):
+                raise TypeError(
+                    "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
+                    "received %s." % (type(num_or_sections))
+                )
+
         if isinstance(num_or_sections, int):
             return _C_ops.split_with_num(input, num_or_sections, dim)
         else:
             return _C_ops.split(input, num_or_sections, dim)
     else:
-        if paddle.ir.core._use_new_ir_api():
-            if not isinstance(num_or_sections, int):
-                return paddle._ir_ops.split(input, num_or_sections, dim)
-            else:
-                raise NotImplementedError(
-                    "_ir_ops.split_with_num is not implemented, please change sections as list"
-                )
-
         check_variable_and_dtype(
             input,
             'input',
@@ -3465,7 +3458,7 @@ def expand(x, shape, name=None):
             print(out)
             # [[1, 2, 3], [1, 2, 3]]
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
@@ -3614,9 +3607,7 @@ def reshape(x, shape, name=None):
                 out = x
             else:
                 out = _C_ops.reshape(x, new_shape)
-        elif isinstance(shape, core.eager.Tensor) or isinstance(
-            shape, paddle.ir.OpResult
-        ):
+        elif isinstance(shape, (core.eager.Tensor, paddle.ir.OpResult)):
             shape.stop_gradient = True
             out = _C_ops.reshape(x, shape)
         else:

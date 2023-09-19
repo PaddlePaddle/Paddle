@@ -159,6 +159,7 @@ TEST(lower, temp_buffer_collects) {
 }
 
 TEST(lower_to_ast, basic) {
+  Context::Global().ResetNameId();
   auto M = Expr(100);
   auto N = Expr(15);
 
@@ -169,11 +170,12 @@ TEST(lower_to_ast, basic) {
 
   ast_gen_ius::TensorGroup tensor_group({B});
 
-  auto lower_funcs = LowerToAst("cal_B", {A, B}, &tensor_group);
+  ir::LoweredFunc lower_func = LowerToAst("cal_B", {A, B}, &tensor_group);
 
-  LOG(INFO) << "lower_func " << lower_funcs;
+  LOG(INFO) << "lower_func " << lower_func;
 
   auto out = R"ROC(
+function cal_B (_A, _B)
 {
   serial for (i, 0, 100)
   {
@@ -184,7 +186,81 @@ TEST(lower_to_ast, basic) {
   }
 }
 )ROC";
-  TEST_SOUTPUT(lower_funcs->body, out);
+  TEST_SOUTPUT(lower_func, out);
+}
+
+TEST(lower_to_ast, three_dim) {
+  Context::Global().ResetNameId();
+  Expr M(100);
+  Expr N(15);
+  Expr K(200);
+
+  Placeholder<float> A("A", {Expr(M), Expr(N)});
+  Placeholder<float> B("B", {Expr(N), Expr(K)});
+
+  auto C = Compute(
+      {M, N, K},
+      [=](Var i, Var j, Var k) -> Expr { return A(i, j) * B(j, k); },
+      "C");
+
+  ast_gen_ius::TensorGroup tensor_group({C});
+
+  ir::LoweredFunc lower_func = LowerToAst("cal_C", {A, B, C}, &tensor_group);
+
+  LOG(INFO) << "func:\n" << lower_func << std::endl;
+
+  auto out = R"ROC(
+function cal_C (_A, _B, _C)
+{
+  serial for (i, 0, 100)
+  {
+    serial for (j, 0, 15)
+    {
+      serial for (k, 0, 200)
+      {
+        C[i, j, k] = (A[i, j] * B[j, k])
+      }
+    }
+  }
+}
+)ROC";
+  TEST_SOUTPUT(lower_func, out);
+}
+
+TEST(lower_to_ast, matmul_with_reduce_sum) {
+  Context::Global().ResetNameId();
+  Placeholder<float> A("A", {Expr(100), Expr(20)});
+  Placeholder<float> B("B", {Expr(20), Expr(50)});
+
+  Target target{};
+  // C = A * B
+  Var k(20, "k0");
+  Tensor C = Compute(
+      {Expr(100), Expr(50)},
+      [&](Var i, Var j) { return lang::ReduceSum(A(i, k) * B(k, j), {k}); },
+      "C");
+
+  ast_gen_ius::TensorGroup tensor_group({C});
+  ir::LoweredFunc lower_func = LowerToAst("matmul", {A, B, C}, &tensor_group);
+  LOG(INFO) << "func:\n" << lower_func << std::endl;
+
+  auto out = R"ROC(
+function matmul (_A, _B, _C)
+{
+  serial for (i, 0, 100)
+  {
+    serial for (j, 0, 50)
+    {
+      C__reduce_init[i, j] = 0.00000000f
+      serial for (k0, 0, 20)
+      {
+        C[i, j] = (C[i, j] + (A[i, k0] * B[k0, j]))
+      }
+    }
+  }
+}
+)ROC";
+  TEST_SOUTPUT(lower_func, out);
 }
 
 }  // namespace lang

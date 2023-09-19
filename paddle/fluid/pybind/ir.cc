@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/ir.h"
-
 #include <Python.h>
 #include <algorithm>
 #include <memory>
@@ -23,6 +22,7 @@
 #include <utility>
 
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
+#include "paddle/pir/core/builtin_op.h"
 
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
@@ -236,10 +236,7 @@ void BindOperation(py::module *m) {
   )DOC");
   op.def("name", &Operation::name)
       .def("get_parent_block",
-           py::overload_cast<>(&Operation::GetParent),
-           return_value_policy::reference)
-      .def("get_parent_block",
-           py::overload_cast<>(&Operation::GetParent, py::const_),
+           &Operation::GetParent,
            return_value_policy::reference)
       .def("num_operands", &Operation::num_operands)
       .def("num_results", &Operation::num_results)
@@ -326,9 +323,12 @@ void BindValue(py::module *m) {
 
   )DOC");
   value
-      .def("get_defining_op",
-           &Value::GetDefiningOp,
-           return_value_policy::reference)
+      .def(
+          "get_defining_op",
+          [](const Value &self) {
+            return self.dyn_cast<pir::OpResult>().owner();
+          },
+          return_value_policy::reference)
       .def("first_use", &Value::first_use, return_value_policy::reference)
       .def("has_one_use", &Value::HasOneUse)
       .def("use_empty", &Value::use_empty)
@@ -368,7 +368,7 @@ bool GetOpResultBoolAttr(const OpResult &self, const std::string &attr_name) {
     auto attrs = defining_op->attribute(attr_name)
                      .dyn_cast<pir::ArrayAttribute>()
                      .AsVector();
-    return attrs[self.GetResultIndex()].dyn_cast<pir::BoolAttribute>().data();
+    return attrs[self.index()].dyn_cast<pir::BoolAttribute>().data();
   } else {
     return true;
   }
@@ -389,7 +389,7 @@ void SetOpResultBoolAttr(const OpResult &self,
         defining_op->num_results(),
         pir::BoolAttribute::get(pir::IrContext::Instance(), default_value));
   }
-  attrs[self.GetResultIndex()] =
+  attrs[self.index()] =
       pir::BoolAttribute::get(pir::IrContext::Instance(), value);
   defining_op->set_attribute(
       attr_name, pir::ArrayAttribute::get(pir::IrContext::Instance(), attrs));
@@ -447,22 +447,19 @@ void BindOpResult(py::module *m) {
            })
       .def("__hash__",
            [](OpResult &self) { return std::hash<pir::Value>{}(self); })
-      .def("get_defining_op",
-           &OpResult::GetDefiningOp,
-           return_value_policy::reference)
+      .def("get_defining_op", &OpResult::owner, return_value_policy::reference)
       .def_property_readonly(
           "block",
-          [](OpResult &self) { return self.GetDefiningOp()->GetParent(); },
+          [](OpResult &self) { return self.owner()->GetParent(); },
           return_value_policy::reference)
       .def_property_readonly(
           "name",
           [](OpResult &self) {
-            if (self.GetDefiningOp()->name() == "builtin.get_parameter") {
-              auto param_name = self.GetDefiningOp()
-                                    ->attributes()
-                                    .at("parameter_name")
-                                    .dyn_cast<pir::StrAttribute>()
-                                    .AsString();
+            if (self.owner()->isa<::pir::GetParameterOp>()) {
+              auto param_name =
+                  self.owner()
+                      ->attribute<pir::StrAttribute>("parameter_name")
+                      .AsString();
               return param_name;
             } else {
               PADDLE_THROW(phi::errors::InvalidArgument(

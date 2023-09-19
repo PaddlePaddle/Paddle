@@ -119,7 +119,7 @@ WorkQueueGroupImpl::WorkQueueGroupImpl(
       tracker_(nullptr) {
   size_t num_queues = queues_options_.size();
   queues_.resize(num_queues);
-  void* buffer = malloc(sizeof(NonblockingThreadPool) * num_queues);
+  void* buffer = malloc(sizeof(NonblockingThreadPool) * num_queues);  // NOLINT
   queues_storage_ = reinterpret_cast<NonblockingThreadPool*>(buffer);
 
   for (size_t idx = 0; idx < num_queues; ++idx) {
@@ -157,7 +157,7 @@ WorkQueueGroupImpl::~WorkQueueGroupImpl() {
     tracker_->~TaskTracker();
     AlignedFree(tracker_);
   }
-  free(queues_storage_);
+  free(queues_storage_);  // NOLINT
   if (destruct_notifier_) {
     destruct_notifier_->NotifyEvent();
   }

@@ -19,7 +19,7 @@
 namespace pir {
 
 namespace details {
-class IR_API InterfaceValue {
+class InterfaceValue {
  public:
   template <typename ConcreteT, typename T>
   static InterfaceValue get() {
