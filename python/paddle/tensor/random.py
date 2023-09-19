@@ -392,14 +392,14 @@ def gaussian_(x, mean=0.0, std=1.0, seed=0, name=None):
     Examples:
         .. code-block:: python
 
-            >>>import paddle
-            # example:
-            >>>x = paddle.ones(shape=[3, 4])
-            >>>x.gaussian_()
-            >>>print(x)
-            # [[ 0.84524226,  0.6921872,   0.56528175,  0.71690357], # random
-            #  [-0.34646994, -0.45116323, -0.09902662, -0.11397249], # random
-            #  [ 0.433519,    0.39483607, -0.8660099,   0.83664286]] # random
+            >>> import paddle
+            >>> x = paddle.randn([3, 4])
+            >>> paddle.tensor.random.gaussian_(x)
+            >>> print(x)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [[ 0.86384124,  0.67328387,  0.21874231, -0.12615913],
+                [ 0.69844258,  0.42084831, -0.42476156, -0.00072985],
+                [ 1.72819555,  1.87785017,  0.48915744,  0.09235018]])
     """
     return _C_ops.gaussian_inplace_(x, float(mean), float(std), int(seed))
 
@@ -626,14 +626,16 @@ def normal_(x, mean=0.0, std=1.0, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            # example:
-            x = paddle.ones(shape=[3, 4])
-            x.normal_()
-            print(x)
-            # [[ 0.84524226,  0.6921872,   0.56528175,  0.71690357], # random
-            #  [-0.34646994, -0.45116323, -0.09902662, -0.11397249], # random
-            #  [ 0.433519,    0.39483607, -0.8660099,   0.83664286]] # random
+
+            >>> import paddle
+            >>> x = paddle.randn([3, 4])
+            >>> x.normal_()
+            >>> print(x)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [[ 0.12059668,  0.56952161,  0.18628767, -1.30914187],
+                [ 1.66127622, -0.09351987,  0.46843046, -1.29227293],
+                [ 0.54782867, -0.83025306, -0.23135018,  0.29596999]])
+
     """
     return gaussian_(x, mean=mean, std=std)
 

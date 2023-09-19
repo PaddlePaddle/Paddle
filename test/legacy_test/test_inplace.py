@@ -1496,27 +1496,5 @@ class TestDygrapInplaceTranspose(TestDygraphInplaceWithContinuous):
             self.assertEqual(var.inplace_version, 2)
 
 
-class TestDygrapInplaceCauchy(unittest.TestCase):
-    def setUp(self):
-        self.init_data()
-
-    def init_data(self):
-        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
-        self.dtype = "float32"
-
-    def inplace_api_processing(self, var):
-        return paddle.cauchy_(var)
-
-    def test_creation(self):
-        var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
-        var_c = self.inplace_api_processing(var)
-        self.assertEqual(var.shape, var_c.shape)
-
-
-class TestDygrapInplaceGeometric(TestDygrapInplaceCauchy):
-    def inplace_api_processing(self, var):
-        return paddle.geometric_(var, 0.3)
-
-
 if __name__ == '__main__':
     unittest.main()
