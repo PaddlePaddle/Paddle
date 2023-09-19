@@ -16,7 +16,7 @@ import copy
 import logging
 import os
 
-from paddle.core import (  # noqa: F401
+from paddle.base.core import (  # noqa: F401
     contains_spmd_rule,
     get_phi_spmd_rule,
     get_spmd_rule,
@@ -122,7 +122,7 @@ def _validate_dims_mapping(dims_mapping, process_mesh):
 
 
 def _can_apply_infer_spmd_rule(dist_op):
-    enable = os.getenv("FLAGS_infer_spmd_enable", False)
+    enable = os.getenv("FLAGS_infer_spmd_enable", True)
     if isinstance(enable, str):
         enable = enable.lower()
         enable = True if enable == 'true' else False
@@ -130,22 +130,88 @@ def _can_apply_infer_spmd_rule(dist_op):
 
     if not enable:
         return False
-
+    # TODO remove me, ops to be adapted: lookup_table_v2, layer_norm, reshape2, split, transpose2,  reduce_sum,
+    if dist_op.serial_op.type in [
+        "matmul_v2",
+        "elementwise_div",
+        "gelu",
+        "fused_softmax_mask_upper_triangle",
+        "elementwise_add",
+        "elementwise_mul",
+        "scale",
+        "dropout",
+    ]:
+        return True
+    else:
+        return False
     op_name = format_op_name(dist_op.serial_op.type)
     return contains_spmd_rule(op_name)
 
 
 def _update_op_dims_mapping_and_distoperatorimpl(
-    dist_op, original_op_dist_attr
+    dist_op, original_op_dist_attr, changed
 ):
-    changed = False
     dist_op_container = find_distributed_operator_impl_container(dist_op)
-    changed = dist_op_container.update_dims_mapping(dist_op)
+    print(dist_op.serial_op.type, dist_op_container.type)
+    updated = dist_op_container.update_dims_mapping(dist_op)
+    changed = updated or changed
     # TODO(ljz) remove the below code once we introduce general reshard to replace specifc distopimpls
-    dist_op_container.mapping_to_dist_operator_impl(
+    reverted = dist_op_container.mapping_to_dist_operator_impl(
         dist_op, original_op_dist_attr
     )
-    return changed
+    print(
+        "Op [{}] use dist op impl [{}] idx [{}].".format(
+            dist_op.serial_op.type,
+            dist_op.dist_attr.impl_type,
+            dist_op.dist_attr.impl_idx,
+        )
+    )
+    return changed and not (reverted)
+
+
+def format_dict(dict, name):
+    lines = "############" * 2 + name + "############" * 2 + "\n"
+    for k in sorted(dict.keys()):
+        lines += "{}: [{}] {}\n".format(k, str(len(dict[k])), dict[k])
+    return lines
+
+
+def log_distopimpl(dist_context):
+    op_to_impls = {}
+    impl_to_ops = {}
+    lines = ""
+    for op in dist_context.serial_main_program.global_block().ops:
+        dist_op = dist_context.get_dist_op_for_program(op)
+        impl_ = (
+            str(dist_op.dist_attr.impl_type)
+            + "_"
+            + str(dist_op.dist_attr.impl_idx)
+        )
+        lines += str(op.type) + "    " + impl_ + "\n"
+        if str(op.type) not in op_to_impls:
+            op_to_impls[str(op.type)] = set()
+        op_to_impls[str(op.type)].add(impl_)
+        if str(dist_op.dist_attr.impl_type) not in impl_to_ops:
+            impl_to_ops[str(dist_op.dist_attr.impl_type)] = set()
+        impl_to_ops[str(dist_op.dist_attr.impl_type)].add(op.type)
+    with open("./DistOpImpl.txt", "w") as f:
+        f.write(format_dict(op_to_impls, "op_to_impls") + "\n")
+        f.write(format_dict(impl_to_ops, "impl_to_ops") + "\n")
+        f.write(lines)
+
+
+def log_program(dist_context, name=""):
+    import paddle
+
+    if paddle.distributed.get_rank() == 0:
+        if name in ["before_update", "after_update", "final"]:
+            from .dist_context import set_default_distributed_context
+
+            set_default_distributed_context(dist_context)
+        with open("./main_program_{}.txt".format(name), "w+") as f:
+            f.write(str(dist_context.serial_main_program))
+        with open("./startup_program_{}.txt".format(name), "w+") as f:
+            f.write(str(dist_context.serial_startup_program))
 
 
 class Completer:
@@ -949,12 +1015,14 @@ class Completer:
             self._dist_context._serial_main_program = serial_main_program
 
         if not is_naive_data_parallel(self._dist_context):
+            log_program(self._dist_context, "user_annotaion")
             self._dist_context.initialize(with_graph=True)
             self._prepare()
             self._update_process_mesh()
             self._update_dims_mapping()
             # Copy the corresponding distributed attribute from graph to serial_main_program
             self._dist_context.copy_dist_attr_from_graph_to_program()
+            log_program(self._dist_context, "after_update")
         else:
             self._logger.info("Default distributed attributed will be set.")
             self._dist_context.initialize(with_graph=False)
@@ -966,6 +1034,8 @@ class Completer:
         # Do the validation check and amend some completion
         self._dist_context.amend_dist_attr_for_program()
         self._dist_context.validate_dist_attr_for_program()
+        log_program(self._dist_context, "final")
+        log_distopimpl(self._dist_context)
         return serial_main_program
 
     def _update_dist_attr_for_dp(self):
