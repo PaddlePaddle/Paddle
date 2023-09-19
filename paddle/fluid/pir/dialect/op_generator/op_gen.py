@@ -1483,12 +1483,9 @@ def OpGenerator(
     for op in ops_name_with_namespace_list:
         define_type_id_str += DEFINE_OP_TYPE_ID.format(op_name=op)
 
-    if dialect_name == "pd":
-        legacy_op_to_pd_ops_map_str = LEGACY_OP_TO_PD_OPS_MAPS.format(
-            maps=", \r".join(legacy_op_to_pd_ops_list)
-        )
-    else:
-        legacy_op_to_pd_ops_map_str = ""
+    legacy_op_to_pd_ops_map_str = LEGACY_OP_TO_PD_OPS_MAPS.format(
+        maps=", \r".join(legacy_op_to_pd_ops_list)
+    )
 
     source_file_str = CC_FILE_TEMPLATE.format(
         legacy_op_to_pd_ops_map=legacy_op_to_pd_ops_map_str,
