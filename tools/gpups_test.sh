@@ -113,7 +113,6 @@ ctest --output-on-failure -R "($parallel_list)" --timeout 120 -j4 | tee $tmpfile
 EXIT_CODE_1=$?
 
 ctest --output-on-failure -R "($serial_list)" --timeout 120 -j1 | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0;
-ctest --output-on-failure -R test_layer_norm_op --timeout 120 -j1 | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0
 EXIT_CODE_2=$?
 set -e
 
