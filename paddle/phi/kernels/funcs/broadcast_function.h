@@ -518,7 +518,7 @@ HOSTDEVICE static int64_t ConvertSrcIdxToDstIdx(
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1> &dst_strides,
     int rank) {
   int64_t dst_idx = 0;
-  int64_t old_src_idx = src_idx;
+  int64_t origin_src_idx = src_idx;
   for (int k = 0; k < rank; ++k) {
     auto local_idx = src_idx / src_strides[k + 1];
     src_idx -= local_idx * src_strides[k + 1];
@@ -925,14 +925,14 @@ void BroadcastKernelApply(const KPDevice &ctx,
           ins, outs, dims_simplifier, "GPU Broadcast");
     }
 
-    std::vector<int64_t> old_out_strides;
+    std::vector<int64_t> origin_out_strides;
     int all_rank = dims_simplifier.rank;
-    auto old_in_dims = dims_simplifier.in_dims;
-    auto old_out_dims = dims_simplifier.out_dims;
-    auto old_in_strides = dims_simplifier.in_dims;
+    auto origin_in_dims = dims_simplifier.in_dims;
+    auto origin_out_dims = dims_simplifier.out_dims;
+    auto origin_in_strides = dims_simplifier.in_dims;
 
-    old_out_strides.resize(all_rank);
-    old_out_strides[0] = 1;
+    origin_out_strides.resize(all_rank);
+    origin_out_strides[0] = 1;
     // for split
     std::vector<int64_t> loop_num_out;
     std::vector<int64_t> loop_num_out_stride;
@@ -951,7 +951,7 @@ void BroadcastKernelApply(const KPDevice &ctx,
       ins_offset[k] = 0;
       ins_scale_for_dim[k] = ins[k]->dims().size() == 0 ? 0 : 1;
       if (ins_scale_for_dim[k]) {
-        old_in_strides[k][0] = 1;
+        origin_in_strides[k][0] = 1;
       }
     }
 
@@ -959,28 +959,29 @@ void BroadcastKernelApply(const KPDevice &ctx,
     for (int i = 1; i < all_rank; i++) {
       loop_num_out[i] = 1;
       loop_num_out_stride[i] = 1;
-      old_out_strides[i] = old_out_strides[i - 1] * old_out_dims[i - 1];
+      origin_out_strides[i] =
+          origin_out_strides[i - 1] * origin_out_dims[i - 1];
       for (int k = 0; k < kArity; k++) {
         if (ins_scale_for_dim[k]) {
-          old_in_strides[k][i] =
-              old_in_strides[k][i - 1] * old_in_dims[k][i - 1];
+          origin_in_strides[k][i] =
+              origin_in_strides[k][i - 1] * origin_in_dims[k][i - 1];
         }
       }
     }
 
-    // reverse old_in_dim and old_in_stride if in's dim_size > 0
+    // reverse origin_in_dim and origin_in_stride if in's dim_size > 0
     for (int k = 0; k < kArity; k++) {
       if (ins_scale_for_dim[k]) {
-        std::reverse(old_in_dims[k].begin(), old_in_dims[k].end());
-        std::reverse(old_in_strides[k].begin(), old_in_strides[k].end());
+        std::reverse(origin_in_dims[k].begin(), origin_in_dims[k].end());
+        std::reverse(origin_in_strides[k].begin(), origin_in_strides[k].end());
       }
     }
-    std::reverse(old_out_dims.begin(), old_out_dims.end());
-    std::reverse(old_out_strides.begin(), old_out_strides.end());
+    std::reverse(origin_out_dims.begin(), origin_out_dims.end());
+    std::reverse(origin_out_strides.begin(), origin_out_strides.end());
 
     // init out_split_dim and in_split_dims
-    auto out_split_dim = old_out_dims;
-    auto in_split_dims = old_in_dims;
+    auto out_split_dim = origin_out_dims;
+    auto in_split_dims = origin_in_dims;
 
     // init
     int64_t loop_num = 1;
@@ -988,19 +989,20 @@ void BroadcastKernelApply(const KPDevice &ctx,
 
     for (int r = 0; r < all_rank; r++) {
       // compute the split_dims
-      int64_t split_size = compute_size / old_out_strides[r];
+      int64_t split_size = compute_size / origin_out_strides[r];
       // if the compute_size was too small the split_size must be 0, but the
       // dim_num must ge 1
       out_split_dim[r] = std::max(split_size, static_cast<int64_t>(1));
       // get the split num of current dim
       loop_num_out[r] =
-          (old_out_dims[r] + out_split_dim[r] - 1) / out_split_dim[r];
+          (origin_out_dims[r] + out_split_dim[r] - 1) / out_split_dim[r];
       loop_num *= loop_num_out[r];
 
       for (int k = 0; k < kArity; k++) {
         // compute the split_dim of input if in's dim_size > 0
         if (ins_scale_for_dim[k]) {
-          in_split_dims[k][r] = std::min(old_in_dims[k][r], out_split_dim[r]);
+          in_split_dims[k][r] =
+              std::min(origin_in_dims[k][r], out_split_dim[r]);
         }
       }
 
@@ -1030,20 +1032,20 @@ void BroadcastKernelApply(const KPDevice &ctx,
       // compute the offset before  last split dim
       for (int i = 0; i < split_idx; i++) {
         auto repeat_times = tmp_size / loop_num_out_stride[i];
-        out_offset += repeat_times * old_out_strides[i];
+        out_offset += repeat_times * origin_out_strides[i];
         for (int k = 0; k < kArity; k++) {
           if (ins_scale_for_dim[k]) {
             ins_offset[k] +=
-                (repeat_times % old_in_dims[k][i]) * old_in_strides[k][i];
+                (repeat_times % origin_in_dims[k][i]) * origin_in_strides[k][i];
           }
         }
         tmp_size = tmp_size % loop_num_out_stride[i];
       }
       // tmp_size is the last split_dims's repeat idx
       auto pre_deal_size = tmp_size * out_split_dim[split_idx];
-      out_offset += pre_deal_size * old_out_strides[split_idx];
+      out_offset += pre_deal_size * origin_out_strides[split_idx];
       // compute_size
-      auto remainder_size = old_out_dims[split_idx] - pre_deal_size;
+      auto remainder_size = origin_out_dims[split_idx] - pre_deal_size;
 
       // get current compute size
       auto out_compute_dims = out_split_dim;
@@ -1055,10 +1057,11 @@ void BroadcastKernelApply(const KPDevice &ctx,
       for (int k = 0; k < kArity; k++) {
         if (ins_scale_for_dim[k]) {
           auto split_repeat =
-              old_in_dims[k][split_idx] == old_out_dims[split_idx] ? tmp_size
-                                                                   : 0;
+              origin_in_dims[k][split_idx] == origin_out_dims[split_idx]
+                  ? tmp_size
+                  : 0;
           ins_offset[k] += split_repeat * in_split_dims[k][split_idx] *
-                           old_in_strides[k][split_idx];
+                           origin_in_strides[k][split_idx];
           in_compute_dims[k][split_idx] = std::min(in_split_dims[k][split_idx],
                                                    out_compute_dims[split_idx]);
         }
