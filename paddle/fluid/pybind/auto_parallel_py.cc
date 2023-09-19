@@ -35,12 +35,16 @@
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
+#include "paddle/phi/api/lib/data_transform.h"
+#include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/p_to_r_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/r_to_p_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/r_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/s_to_r_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/s_to_s_reshard_function.h"
+#include "paddle/phi/core/enforce.h"
 
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
@@ -541,6 +545,40 @@ void BindAutoParallel(py::module *m) {
       [](const std::string op_type) {
         return phi::distributed::SpmdRuleFactory::Instance().GetSpmdRule(
             op_type);
+      },
+      py::return_value_policy::reference);
+
+  m->def(
+      "reshard",
+      [](py::handle py_tensor, const TensorDistAttr &dist_attr) {
+        auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+        auto dev_ctx = phi::DeviceContextPool::Instance().Get(tensor.place());
+        std::shared_ptr<phi::distributed::DistTensor> dist_out_ptr = nullptr;
+        if (phi::distributed::DistTensor::classof(tensor.impl().get())) {
+          auto tensor_in = tensor.impl();
+          if (tensor_in) {
+            phi::distributed::DistTensor *dist_tensor =
+                static_cast<phi::distributed::DistTensor *>(tensor_in.get());
+            if (dist_tensor->dist_attr() != dist_attr) {
+              VLOG(6) << "reshard func, reshard tensor from "
+                      << dist_tensor->dist_attr() << " to " << dist_attr;
+              auto *func = phi::distributed::ChooseProperReshardFunction(
+                  *dist_tensor, dist_attr);
+              dist_out_ptr = func->Eval(dev_ctx, *dist_tensor, dist_attr);
+            } else {
+              dist_out_ptr =
+                  std::static_pointer_cast<phi::distributed::DistTensor>(
+                      tensor_in);
+            }
+          }
+          return paddle::Tensor(dist_out_ptr);
+        } else {
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "The input tensor of shard function should be "
+              "``phi::distributed::DistTensor``. "
+              "However it's %s",
+              typeid(tensor.impl().get()).name()));
+        }
       },
       py::return_value_policy::reference);
 
