@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.incubate
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 np.random.seed(0)
@@ -49,7 +49,7 @@ class TestFuseResNetUnit(unittest.TestCase):
                 out = batch_norm(conv2d(x))
         graph = core.Graph(program.desc)
         core.get_pass("fuse_resnet_unit").apply(graph)
-        after_program = paddle.fluid.framework.IrGraph(graph).to_program()
+        after_program = paddle.base.framework.IrGraph(graph).to_program()
         params = paddle.static.amp.cast_model_to_fp16(program)
         after_params = paddle.static.amp.cast_model_to_fp16(after_program)
         exe = paddle.static.Executor(place)

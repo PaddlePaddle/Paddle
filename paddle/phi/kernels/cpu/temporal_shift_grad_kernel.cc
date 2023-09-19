@@ -94,21 +94,24 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
   int t = seg_num;
   const DataLayout data_layout = phi::StringToDataLayout(data_format_str);
 
-  const int nt = output_grad->dims()[0];
-  const int c = (data_layout == DataLayout::kNCHW ? output_grad->dims()[1]
-                                                  : output_grad->dims()[3]);
-  const int h = (data_layout == DataLayout::kNCHW ? output_grad->dims()[2]
-                                                  : output_grad->dims()[1]);
-  const int w = (data_layout == DataLayout::kNCHW ? output_grad->dims()[3]
-                                                  : output_grad->dims()[2]);
+  const int nt = static_cast<int>(output_grad->dims()[0]);
+  const int c = static_cast<int>(data_layout == DataLayout::kNCHW
+                                     ? output_grad->dims()[1]
+                                     : output_grad->dims()[3]);
+  const int h = static_cast<int>(data_layout == DataLayout::kNCHW
+                                     ? output_grad->dims()[2]
+                                     : output_grad->dims()[1]);
+  const int w = static_cast<int>(data_layout == DataLayout::kNCHW
+                                     ? output_grad->dims()[3]
+                                     : output_grad->dims()[2]);
 
   const int hw = h * w;
   const int chw = c * hw;
   const int tchw = t * chw;
   const int ntchw = nt * chw;
 
-  const int c1 = static_cast<int>(c * shift_ratio);
-  const int c2 = static_cast<int>(c * 2 * shift_ratio);
+  const int c1 = static_cast<int>(static_cast<float>(c) * shift_ratio);
+  const int c2 = static_cast<int>(static_cast<float>(c) * 2.f * shift_ratio);
 
   DDim in_grad_dims =
       (data_layout == DataLayout::kNCHW ? phi::make_ddim({nt, c, h, w})

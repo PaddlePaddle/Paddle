@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import copy
+import logging
 import multiprocessing
 import sys
 import time
 import warnings
 
 import paddle
-from paddle.fluid.framework import logging
 
-from ..fluid.framework import (
+from ..base.framework import (
     _current_expected_place,
     _get_paddle_place,
     _get_paddle_place_list,

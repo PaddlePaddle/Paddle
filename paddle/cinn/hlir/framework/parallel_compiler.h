@@ -21,11 +21,14 @@
 #include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/instruction.h"
-#include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
 #endif
+#include "paddle/cinn/utils/error.h"
+
+PD_DECLARE_int32(cinn_error_message_level);
+
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -69,6 +72,8 @@ class ParallelCompiler {
   std::vector<Task> tasks_;
   CompilationContext* context_;
   CompilationResult result_;
+  utils::ErrorMessageLevel err_msg_level_ =
+      static_cast<utils::ErrorMessageLevel>(FLAGS_cinn_error_message_level);
 };
 
 }  // namespace framework

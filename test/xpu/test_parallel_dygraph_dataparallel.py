@@ -19,7 +19,7 @@ import time
 import unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed.utils.launch_utils import (
     TrainerProc,
     find_free_ports,
@@ -109,8 +109,8 @@ def start_local_trainers(
 class TestMultipleXpus(unittest.TestCase):
     def run_mnist_2xpu(self, target_file_name, eager_mode=True):
         if (
-            not fluid.core.is_compiled_with_xpu()
-            or fluid.core.get_xpu_device_count() == 0
+            not base.core.is_compiled_with_xpu()
+            or base.core.get_xpu_device_count() == 0
         ):
             return
 

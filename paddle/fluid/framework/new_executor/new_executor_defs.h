@@ -20,7 +20,7 @@
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/interface/infermeta.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/phi/core/utils/rw_lock.h"
@@ -167,6 +167,9 @@ struct OpFuncNode {
   // TODO(zhiqiu): Better make it unique_ptr
   std::shared_ptr<OperatorBase> operator_base_{nullptr};
   std::string execution_stream_{kDefaultStream};
+  bool force_record_event_{false};
+  std::vector<std::string> events_to_wait_;
+  std::string event_to_record_{"default"};
 
   OpFuncType type_;
   OpKernelComputeFunc kernel_func_;
@@ -212,8 +215,16 @@ class Instruction {
     events_to_wait_.emplace_back(instr_id, event, waiter_type);
   }
 
+  void AddEventToWait(const EventInter* event_inter) {
+    events_to_wait_.push_back(*event_inter);
+  }
+
   const std::vector<EventInter>& EventsToWait() const {
     return events_to_wait_;
+  }
+
+  const std::shared_ptr<EventInter>& EventToRecord() const {
+    return event_to_record_;
   }
 
   void AddNextInstrInDifferentThread(size_t id) {

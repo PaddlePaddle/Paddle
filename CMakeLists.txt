@@ -310,6 +310,9 @@ option(WITH_CUDNN_FRONTEND
 option(WITH_CUDNN_DSO "Compile PaddlePaddle with cuDNN dynamic-link libraries"
        OFF)
 option(WITH_SHARED_IR "Compile PaddlePaddle with SHARED LIB of IR" ON)
+option(WITH_NVCC_LAZY
+       "Compile PaddlePaddle with nvcc lazy mode, used for CI-Inference only."
+       ON)
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
@@ -605,10 +608,14 @@ if(WITH_CINN)
   add_definitions(-DPADDLE_WITH_CINN)
 
   if(CINN_ONLY)
+    add_definitions(-DCINN_WITH_ONLY)
     if(WITH_PYTHON)
       add_subdirectory(python)
     endif()
     add_subdirectory(test)
+    if(NOT WITH_GFLAGS)
+      add_subdirectory(paddle/utils)
+    endif()
     return()
   endif()
 endif()

@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestTF32Switch(unittest.TestCase):

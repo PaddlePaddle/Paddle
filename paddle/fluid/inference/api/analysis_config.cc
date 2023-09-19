@@ -477,9 +477,11 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(collect_shape_range_info_);
   CP_MEMBER(shape_range_info_path_);
   CP_MEMBER(trt_use_inspector_);
+  CP_MEMBER(trt_inspector_serialize_);
   CP_MEMBER(trt_use_explicit_quantization_);
   CP_MEMBER(trt_engine_memory_sharing_);
   CP_MEMBER(trt_engine_memory_sharing_identifier_);
+  CP_MEMBER(trt_optimization_level_);
   // Dlnne related
   CP_MEMBER(use_dlnne_);
   CP_MEMBER(dlnne_min_subgraph_size_);
@@ -838,7 +840,10 @@ void AnalysisConfig::EnableTensorRtDLA(int dla_core) {
   trt_dla_core_ = dla_core;
 }
 
-void AnalysisConfig::EnableTensorRtInspector() { trt_use_inspector_ = true; }
+void AnalysisConfig::EnableTensorRtInspector(bool inspector_serialize) {
+  trt_use_inspector_ = true;
+  trt_inspector_serialize_ = inspector_serialize;
+}
 
 void AnalysisConfig::EnableTensorRtExplicitQuantization() {
   trt_use_explicit_quantization_ = true;
@@ -851,6 +856,17 @@ void AnalysisConfig::Exp_DisableTensorRtOPs(
 }
 
 void AnalysisConfig::EnableVarseqlen() { trt_use_varseqlen_ = true; }
+
+void AnalysisConfig::SetTensorRtOptimizationLevel(int level) {
+  PADDLE_ENFORCE(
+      level >= 0 && level <= 5,
+      platform::errors::InvalidArgument(
+          "The input level in SetTRTOptimizationLevel is invalid. The "
+          "level must be in range [0, 5], but received level = %d (default "
+          "level is 3).",
+          level));
+  trt_optimization_level_ = level;
+}
 
 // TODO(Superjomn) refactor this, buggy.
 void AnalysisConfig::Update() {

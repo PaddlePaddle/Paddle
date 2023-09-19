@@ -18,7 +18,18 @@ namespace phi {
 namespace distributed {
 
 void InferSpmdContext::EmplaceBackInput(DistMetaTensor input) {
+  int index = static_cast<int>(inputs_.size());
   inputs_.emplace_back(std::move(input));
+  input_range_.emplace_back(std::pair<int, int>(index, index + 1));
+}
+
+void InferSpmdContext::EmplaceBackInputs(
+    paddle::small_vector<DistMetaTensor, phi::kInputSmallVectorSize> inputs) {
+  int index = static_cast<int>(inputs_.size());
+  input_range_.emplace_back(std::pair<int, int>(index, index + inputs.size()));
+  inputs_.insert(inputs_.end(),
+                 std::make_move_iterator(inputs.begin()),
+                 std::make_move_iterator(inputs.end()));
 }
 
 void InferSpmdContext::EmplaceBackAttr(Attribute attr) {
@@ -63,6 +74,23 @@ const Attribute& InferSpmdContext::AttrAt(size_t idx) const {
   return attrs_.at(idx);
 }
 
+const std::pair<int, int>& InferSpmdContext::InputRangeAt(size_t idx) const {
+  return input_range_.at(idx);
+}
+
+const std::vector<const DistMetaTensor*> InferSpmdContext::InputsBetween(
+    size_t start, size_t end) const {
+  std::vector<const DistMetaTensor*> result;
+  result.reserve(end - start);
+  for (size_t i = start; i < end; ++i) {
+    auto& in = inputs_.at(i);
+    result.emplace_back(&in);
+    // result.emplace_back(in.initialized() ? &in : nullptr);
+  }
+
+  return result;
+}
+
 SpmdRuleFactory& SpmdRuleFactory::Instance() {
   static SpmdRuleFactory g_spmd_rule_map;
   return g_spmd_rule_map;
@@ -73,11 +101,6 @@ bool SpmdRuleFactory::ContainsSpmdRule(const std::string& kernel_name) const {
 }
 
 int SpmdRuleFactory::InsertSpmdRule(std::string kernel_name, SpmdRule rule) {
-  PADDLE_ENFORCE_NE(
-      ContainsSpmdRule(kernel_name),
-      true,
-      phi::errors::AlreadyExists(
-          "`%s` Kernel's Spmd rules has been registered.", kernel_name));
   spmd_rule_map_.insert({std::move(kernel_name), std::move(rule)});
   return 0;
 }

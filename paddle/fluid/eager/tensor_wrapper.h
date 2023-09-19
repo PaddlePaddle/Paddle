@@ -32,6 +32,8 @@
 #ifndef PADDLE_NO_PYTHON
 #include "paddle/fluid/eager/hooks.h"
 #endif
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
 namespace egr {
 class TensorWrapper {
@@ -66,6 +68,16 @@ class TensorWrapper {
         intermidiate_tensor_.set_impl(std::make_shared<phi::DenseTensor>(
             std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
             dense_tensor->meta()));
+      } else if (phi::distributed::DistTensor::classof(tensor.impl().get())) {
+        // Only Copy Meta
+        phi::distributed::DistTensor* dist_tensor =
+            static_cast<phi::distributed::DistTensor*>(tensor.impl().get());
+        intermidiate_tensor_.set_impl(
+            std::make_shared<phi::distributed::DistTensor>(
+                phi::DenseTensor(std::make_shared<phi::Allocation>(
+                                     nullptr, 0, tensor.place()),
+                                 dist_tensor->value().meta()),
+                dist_tensor->dist_attr()));
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(
             "Unrecognized tensor type for no_need_buffer feature"));

@@ -101,8 +101,8 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
           break;
         }
         if (match_indices[j] == -1 && row_indices[i] == -1 && dist > 0) {
-          match_indices[j] = i;
-          row_indices[i] = j;
+          match_indices[j] = static_cast<int>(i);
+          row_indices[i] = static_cast<int>(j);
           match_dist[j] = dist;
           idx += 1;
         }
@@ -127,7 +127,7 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
               continue;
             }
             if (dist_data[m * col + j] > max_dist) {
-              max_idx = j;
+              max_idx = static_cast<int>(j);
               max_row_idx = m;
               max_dist = dist_data[m * col + j];
             }
@@ -231,7 +231,8 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
       auto lod = dist_mat->lod().back();
       for (size_t i = 0; i < lod.size() - 1; ++i) {
         if (lod[i + 1] > lod[i]) {
-          phi::DenseTensor one_ins = dist_mat->Slice(lod[i], lod[i + 1]);
+          phi::DenseTensor one_ins = dist_mat->Slice(
+              static_cast<int64_t>(lod[i]), static_cast<int64_t>(lod[i + 1]));
           BipartiteMatch(one_ins, indices + i * col, dist + i * col);
           if (type == "per_prediction") {
             ArgMaxMatch(one_ins, indices + i * col, dist + i * col, threshold);

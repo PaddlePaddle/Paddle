@@ -73,7 +73,7 @@ class OpWrapper:
 
 class GraphWrapper:
     """
-    It is a wrapper of paddle.fluid.framework.IrGraph with some special functions
+    It is a wrapper of paddle.base.framework.IrGraph with some special functions
     for paddle slim framework.
 
     Args:
@@ -124,21 +124,21 @@ class GraphWrapper:
 
 def count_convNd(op):
     filter_shape = op.inputs("Filter")[0].shape()
-    filter_ops = np.product(filter_shape[1:])
+    filter_ops = np.prod(filter_shape[1:])
     bias_ops = 1 if len(op.inputs("Bias")) > 0 else 0
-    output_numel = np.product(op.outputs("Output")[0].shape()[1:])
+    output_numel = np.prod(op.outputs("Output")[0].shape()[1:])
     total_ops = output_numel * (filter_ops + bias_ops)
     total_ops = abs(total_ops)
     return total_ops
 
 
 def count_leaky_relu(op):
-    total_ops = np.product(op.outputs("Output")[0].shape()[1:])
+    total_ops = np.prod(op.outputs("Output")[0].shape()[1:])
     return total_ops
 
 
 def count_bn(op):
-    output_numel = np.product(op.outputs("Y")[0].shape()[1:])
+    output_numel = np.prod(op.outputs("Y")[0].shape()[1:])
     total_ops = 2 * output_numel
     total_ops = abs(total_ops)
     return total_ops
@@ -146,7 +146,7 @@ def count_bn(op):
 
 def count_linear(op):
     total_mul = op.inputs("Y")[0].shape()[0]
-    numel = np.product(op.outputs("Out")[0].shape()[1:])
+    numel = np.prod(op.outputs("Out")[0].shape()[1:])
     total_ops = total_mul * numel
     total_ops = abs(total_ops)
     return total_ops
@@ -156,10 +156,10 @@ def count_pool2d(op):
     input_shape = op.inputs("X")[0].shape()
     output_shape = op.outputs('Out')[0].shape()
     kernel = np.array(input_shape[2:]) // np.array(output_shape[2:])
-    total_add = np.product(kernel)
+    total_add = np.prod(kernel)
     total_div = 1
     kernel_ops = total_add + total_div
-    num_elements = np.product(output_shape[1:])
+    num_elements = np.prod(output_shape[1:])
     total_ops = kernel_ops * num_elements
     total_ops = abs(total_ops)
     return total_ops
@@ -167,7 +167,7 @@ def count_pool2d(op):
 
 def count_element_op(op):
     input_shape = op.inputs("X")[0].shape()
-    total_ops = np.product(input_shape[1:])
+    total_ops = np.prod(input_shape[1:])
     total_ops = abs(total_ops)
     return total_ops
 
