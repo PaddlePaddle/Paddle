@@ -64,3 +64,7 @@ pd_op.tensor<256xf32>
 //CHECK type
 vec[bf16,f64,b,i8,u8,i16,c64,c128]
 //END
+
+//CHECK attribute
+(Array)["\"","\\"","\\\"","\t\n\r",""]
+//END
