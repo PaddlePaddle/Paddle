@@ -80,6 +80,8 @@ class Context:
 
     def get_logger(self, level=logging.INFO):
         logger = logging.getLogger("LAUNCH")
+        # forbid the child logger pass on to its parent
+        logger.propagate = False
         logger.setLevel(self.args.log_level.upper() or level)
         formatter = logging.Formatter(
             fmt='%(name)s %(levelname)s %(asctime)s %(message)s'
