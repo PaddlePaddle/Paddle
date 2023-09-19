@@ -205,7 +205,7 @@ def test_stage2_bf16():
     for i in range(len(o1_losses)):
         o1_32_loss = paddle.cast(o1_losses[i], dtype='float32').detach()
         o2_32_loss = paddle.cast(o2_losses[i], dtype='float32').detach()
-        np.testing.array_equal(o1_32_loss, o2_32_loss)
+        np.testing.assert_array_equal(o1_32_loss, o2_32_loss)
 
     # stage2 scaler test
     mlp3 = MLP()
@@ -233,7 +233,7 @@ def test_stage2_bf16():
             o2_losses_no_storage[i], dtype='float32'
         ).detach()
         o2_32_loss = paddle.cast(o2_losses[i], dtype='float32').detach()
-        np.testing.array_equal(o2_loss_no_storage, o2_32_loss)
+        np.testing.assert_array_equal(o2_loss_no_storage, o2_32_loss)
 
     return
 
