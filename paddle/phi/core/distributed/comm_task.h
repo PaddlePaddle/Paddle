@@ -87,20 +87,10 @@ class CommTask {
     return;
   }
 
-  virtual void SetException(std::exception_ptr exception) {
+  virtual std::string GetCommErrors() {
     PADDLE_THROW(
         phi::errors::Unimplemented("%s is not implemented.", __func__));
-    return;
-  }
-  virtual void CheckAndSetException() {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("%s is not implemented.", __func__));
-    return;
-  }
-  virtual std::exception_ptr CheckCommErrors() {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("%s is not implemented.", __func__));
-    return nullptr;
+    return "";
   }
   virtual bool IsStarted() {
     PADDLE_THROW(
@@ -116,16 +106,6 @@ class CommTask {
     PADDLE_THROW(
         phi::errors::Unimplemented("%s is not implemented.", __func__));
     return false;
-  }
-  virtual bool IsSuccess() {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("%s is not implemented.", __func__));
-    return false;
-  }
-  virtual std::exception_ptr GetException() {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("%s is not implemented.", __func__));
-    return nullptr;
   }
   virtual void AbortComm() {
     PADDLE_THROW(

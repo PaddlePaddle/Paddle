@@ -63,8 +63,6 @@ class CommTaskManager {
   bool store_error_{false};
 
   int comm_seq_;
-  // timeout count, only check first timeout task
-  static int check_timeout_count;
 };
 
 }  // namespace distributed

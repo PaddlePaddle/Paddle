@@ -32,13 +32,10 @@
 #include "paddle/phi/core/distributed/store/store.h"
 #include "paddle/phi/core/distributed/trace_utils.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/flags.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
-
-PHI_DECLARE_int32(async_trace_count);
 
 namespace phi {
 namespace distributed {
@@ -50,13 +47,11 @@ std::atomic<bool> CommTaskManager::terminated_;
 std::mutex CommTaskManager::comm_task_list_mutex_;
 std::condition_variable CommTaskManager::comm_task_list_cv_;
 std::list<std::unique_ptr<CommTask>> CommTaskManager::comm_task_list_;
-int CommTaskManager::check_timeout_count = 0;
 
 CommTaskManager::CommTaskManager() {
   terminated_.store(false);
   comm_task_loop_thread_ = std::thread(&CommTaskManager::CommTaskLoop, this);
-  LOG(INFO) << "CommTaskManager init success. FLAGS_async_trace_count: "
-            << FLAGS_async_trace_count;
+  LOG(INFO) << "CommTaskManager init success";
 }
 CommTaskManager::~CommTaskManager() {
   terminated_.store(true);
@@ -82,61 +77,19 @@ void CommTaskManager::CommTaskLoop() {
     comm_task_list_cv_.wait_for(
         lock,
         std::chrono::milliseconds(loop_thread_sleep_millis),
-        [&]() -> bool {
-          return terminated_.load() &&
-                 check_timeout_count <= FLAGS_async_trace_count;
-        });
+        [&]() -> bool { return terminated_.load(); });
     for (auto task = comm_task_list_.begin(); task != comm_task_list_.end();) {
-      (*task)->CheckAndSetException();
       if ((*task)->IsTimeout()) {
-        std::string exception_msg = (*task)->GetTraceMsg();
-        exception_msg += GenerateTraceMsg((*task)->GetStore(),
-                                          (*task)->GetBackend(),
-                                          (*task)->GetRank(),
-                                          (*task)->GetGid(),
-                                          (*task)->GetSize());
-        LOG(ERROR) << exception_msg;
-        std::exception_ptr exception_ptr =
-            std::make_exception_ptr(std::runtime_error(exception_msg));
-        (*task)->SetException(exception_ptr);
-        (*task)->AbortComm();
+        LOG(WARNING) << "Detected timeout process_group: " << (*task)->GetGid();
+        std::string error_msg = (*task)->GetTraceMsg();
+        LOG(ERROR) << error_msg;
 
-        ++check_timeout_count;
+        error_msg = (*task)->GetCommErrors();
+        if (!error_msg.empty()) {
+          LOG(ERROR) << error_msg;
+        }
       }
-
-      if (!(*task)->GetTraceUpdated() && (*task)->IsStarted() &&
-          !terminated_.load() && !store_error_) {
-        std::string trace_key = GetTraceStartKey(
-            (*task)->GetBackend(), (*task)->GetRank(), (*task)->GetGid());
-        store_error_ =
-            !UpdateTraceMsg((*task)->GetStore(),
-                            trace_key,
-                            (*task)->GetSeq(),
-                            CommTypeToString((*task)->GetCommType()));
-        (*task)->SetTraceUpdated();
-      }
-
       if ((*task)->IsCompleted()) {
-        if (!(*task)->GetTraceUpdated() && !terminated_.load() &&
-            !store_error_) {
-          std::string trace_key = GetTraceStartKey(
-              (*task)->GetBackend(), (*task)->GetRank(), (*task)->GetGid());
-          store_error_ =
-              !UpdateTraceMsg((*task)->GetStore(),
-                              trace_key,
-                              (*task)->GetSeq(),
-                              CommTypeToString((*task)->GetCommType()));
-          (*task)->SetTraceUpdated();
-        }
-        if (!terminated_.load() && !store_error_) {
-          std::string trace_key = GetTraceEndKey(
-              (*task)->GetBackend(), (*task)->GetRank(), (*task)->GetGid());
-          store_error_ =
-              !UpdateTraceMsg((*task)->GetStore(),
-                              trace_key,
-                              (*task)->GetSeq(),
-                              CommTypeToString((*task)->GetCommType()));
-        }
         task = comm_task_list_.erase(task);
       } else {
         ++task;
@@ -144,7 +97,6 @@ void CommTaskManager::CommTaskLoop() {
     }
     if (comm_task_list_.empty()) {
       done = true;
-      check_timeout_count = 0;
     }
   }
 }
