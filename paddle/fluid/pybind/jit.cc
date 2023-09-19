@@ -60,23 +60,23 @@ typedef _PyInterpreterFrame FrameObject;
 // clang-format off
 // Define a proxy PyObject to access _PyInterpreterFrame's properties.
 // It will be passed as an argument to the eval frame's callback.
-typedef struct Paddle_PyInterpreterFrameProxy {
+typedef struct PyInterpreterFrameProxy {
   PyObject_HEAD
   _PyInterpreterFrame *frame;
-} Paddle_PyInterpreterFrameProxy;
+} PyInterpreterFrameProxy;
 // clang-format on
 
-#define DECLARE_PROXY_PROPERTY(name)                               \
-  static PyObject *Paddle_PyInterpreterFrameProxy_property_##name( \
-      Paddle_PyInterpreterFrameProxy *self, void *closure) {       \
-    Py_XINCREF(self->frame->name);                                 \
-    return reinterpret_cast<PyObject *>(self->frame->name);        \
+#define DECLARE_PROXY_PROPERTY(name)                        \
+  static PyObject *PyInterpreterFrameProxy_property_##name( \
+      PyInterpreterFrameProxy *self, void *closure) {       \
+    Py_XINCREF(self->frame->name);                          \
+    return reinterpret_cast<PyObject *>(self->frame->name); \
   }
 
-#define REGISTER_PROXY_PROPERTY(name)                                       \
-  {                                                                         \
-#name, (getter)Paddle_PyInterpreterFrameProxy_property_##name, nullptr, \
-        nullptr, nullptr                                                    \
+#define REGISTER_PROXY_PROPERTY(name)                                         \
+  {                                                                           \
+#name, (getter)PyInterpreterFrameProxy_property_##name, nullptr, nullptr, \
+        nullptr                                                               \
   }
 
 DECLARE_PROXY_PROPERTY(f_code)
@@ -84,7 +84,7 @@ DECLARE_PROXY_PROPERTY(f_locals)
 DECLARE_PROXY_PROPERTY(f_globals)
 DECLARE_PROXY_PROPERTY(f_builtins)
 
-static PyGetSetDef Paddle_PyInterpreterFrameProxy_properties[] = {
+static PyGetSetDef PyInterpreterFrameProxy_properties[] = {
     REGISTER_PROXY_PROPERTY(f_code),
     REGISTER_PROXY_PROPERTY(f_locals),
     REGISTER_PROXY_PROPERTY(f_globals),
@@ -93,26 +93,25 @@ static PyGetSetDef Paddle_PyInterpreterFrameProxy_properties[] = {
 };
 
 // clang-format off
-static PyTypeObject Paddle_PyInterpreterFrameProxyType = {
+static PyTypeObject PyInterpreterFrameProxyType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "paddle.framework.core._PyInterpreterFrameProxy",
     .tp_doc = PyDoc_STR("A proxy object for _PyInterpreterFrame, "
                         "it's only define all properties we need."),
-    .tp_basicsize = sizeof(Paddle_PyInterpreterFrameProxy),
+    .tp_basicsize = sizeof(PyInterpreterFrameProxy),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
-    .tp_getset = Paddle_PyInterpreterFrameProxy_properties,
+    .tp_getset = PyInterpreterFrameProxy_properties,
 };
 // clang-format on
 
-Paddle_PyInterpreterFrameProxy *Paddle_PyInterpreterFrameProxy_New(
+PyInterpreterFrameProxy *PyInterpreterFrameProxy_New(
     _PyInterpreterFrame *frame) {
-  PyTypeObject *type = &Paddle_PyInterpreterFrameProxyType;
-  Paddle_PyInterpreterFrameProxy *self =
-      reinterpret_cast<Paddle_PyInterpreterFrameProxy *>(
-          type->tp_alloc(type, 0));
+  PyTypeObject *type = &PyInterpreterFrameProxyType;
+  PyInterpreterFrameProxy *self =
+      reinterpret_cast<PyInterpreterFrameProxy *>(type->tp_alloc(type, 0));
   if (!self) {
-    VLOG(7) << "Failed to allocate Paddle_PyInterpreterFrameProxy";
+    VLOG(7) << "Failed to allocate PyInterpreterFrameProxy";
     return nullptr;
   }
   self->frame = frame;
@@ -360,8 +359,7 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   eval_frame_callback_set(Py_None);
 
 #if PY_VERSION_HEX >= 0x030b0000
-  PyObject *args =
-      Py_BuildValue("(O)", Paddle_PyInterpreterFrameProxy_New(frame));
+  PyObject *args = Py_BuildValue("(O)", PyInterpreterFrameProxy_New(frame));
 #else
   PyObject *args = Py_BuildValue("(O)", frame);
 #endif
@@ -540,10 +538,10 @@ void BindEvalFrame(pybind11::module *m) {
       },
       py::arg("callback"));
 #if PY_VERSION_HEX >= 0x030b0000
-  if (PyType_Ready(&Paddle_PyInterpreterFrameProxyType) < 0) {
-    VLOG(7) << "Paddle_PyInterpreterFrameProxyType has not been ready!";
+  if (PyType_Ready(&PyInterpreterFrameProxyType) < 0) {
+    VLOG(7) << "PyInterpreterFrameProxyType has not been ready!";
   }
-  Py_INCREF(&Paddle_PyInterpreterFrameProxyType);
+  Py_INCREF(&PyInterpreterFrameProxyType);
 #endif
 }
 
