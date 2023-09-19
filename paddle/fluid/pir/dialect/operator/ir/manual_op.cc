@@ -100,10 +100,9 @@ void AddNOp::Verify() {
 
 void AddNOp::Build(pir::Builder &builder,             // NOLINT
                    pir::OperationArgument &argument,  // NOLINT
-                   pir::OpResult inputs) {
+                   pir::Value inputs) {
   VLOG(4) << "Builder construction inputs";
-  std::vector<pir::OpResult> argument_inputs = {inputs};
-  argument.AddInputs(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInput(inputs);
 
   VLOG(4) << "Builder construction attributes";
 
@@ -176,10 +175,9 @@ OpInfoTuple AddN_Op::GetOpInfo() {
 
 void AddN_Op::Build(pir::Builder &builder,
                     pir::OperationArgument &argument,
-                    pir::OpResult inputs_) {
+                    pir::Value inputs_) {
   VLOG(4) << "Builder construction inputs";
-  std::vector<pir::OpResult> argument_inputs = {inputs_};
-  argument.AddInputs(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInput(inputs_);
 
   VLOG(4) << "Builder construction attributes";
 
@@ -304,10 +302,9 @@ OpInfoTuple AddNWithKernelOp::GetOpInfo() {
 
 void AddNWithKernelOp::Build(pir::Builder &builder,
                              pir::OperationArgument &argument,
-                             pir::OpResult inputs_) {
+                             pir::Value inputs_) {
   VLOG(4) << "Builder construction inputs";
-  std::vector<pir::OpResult> argument_inputs = {inputs_};
-  argument.AddInputs(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInput(inputs_);
 
   VLOG(4) << "Builder construction attributes";
 
@@ -452,9 +449,9 @@ OpInfoTuple FusedGemmEpilogueOp::GetOpInfo() {
 
 void FusedGemmEpilogueOp::Build(pir::Builder &builder,
                                 pir::OperationArgument &argument,
-                                pir::OpResult x_,
-                                pir::OpResult y_,
-                                pir::OpResult bias_,
+                                pir::Value x_,
+                                pir::Value y_,
+                                pir::Value bias_,
                                 pir::AttributeMap attributes) {
   PADDLE_ENFORCE(
       attributes.find("trans_x") != attributes.end(),
@@ -476,8 +473,7 @@ void FusedGemmEpilogueOp::Build(pir::Builder &builder,
       attributes.at("activation").dyn_cast<pir::StrAttribute>().AsString();
 
   VLOG(4) << "Builder construction inputs";
-  std::vector<pir::OpResult> argument_inputs = {x_, y_, bias_};
-  argument.AddInputs(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInputs({x_, y_, bias_});
 
   VLOG(4) << "Builder construction attributes";
   pir::Attribute attr_trans_x =
@@ -705,10 +701,10 @@ OpInfoTuple FusedGemmEpilogueGradOp::GetOpInfo() {
 
 void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
                                     pir::OperationArgument &argument,
-                                    pir::OpResult x_,
-                                    pir::OpResult y_,
-                                    pir::OpResult reserve_space_,
-                                    pir::OpResult out_grad_,
+                                    pir::Value x_,
+                                    pir::Value y_,
+                                    pir::Value reserve_space_,
+                                    pir::Value out_grad_,
                                     pir::AttributeMap attributes) {
   PADDLE_ENFORCE(
       attributes.find("trans_x") != attributes.end(),
@@ -730,9 +726,7 @@ void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
       attributes.at("activation_grad").dyn_cast<pir::StrAttribute>().AsString();
 
   VLOG(4) << "Builder construction inputs";
-  std::vector<pir::OpResult> argument_inputs = {
-      x_, y_, reserve_space_, out_grad_};
-  argument.AddInputs(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInputs({x_, y_, reserve_space_, out_grad_});
 
   VLOG(4) << "Builder construction attributes";
   pir::Attribute attr_trans_x =
@@ -907,7 +901,7 @@ OpInfoTuple SplitGradOp::GetOpInfo() {
 
 void SplitGradOp::Build(pir::Builder &builder,
                         pir::OperationArgument &argument,
-                        pir::OpResult out_grad_,
+                        pir::Value out_grad_,
                         float axis) {
   // Generate scalar mutable attribute: axis
   paddle::dialect::FullOp full_axis_op = builder.Build<paddle::dialect::FullOp>(
@@ -915,8 +909,7 @@ void SplitGradOp::Build(pir::Builder &builder,
   pir::OpResult axis_ = full_axis_op->result(0);
 
   VLOG(4) << "Builder construction inputs";
-  std::vector<pir::OpResult> argument_inputs = {out_grad_, axis_};
-  argument.AddInputs(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInputs({out_grad_, axis_});
 
   VLOG(4) << "Builder construction attributes";
 
@@ -970,21 +963,19 @@ void SplitGradOp::Build(pir::Builder &builder,
 
 void SplitGradOp::Build(pir::Builder &builder,
                         pir::OperationArgument &argument,
-                        pir::OpResult out_grad_,
-                        pir::OpResult axis_) {
+                        pir::Value out_grad_,
+                        pir::Value axis_) {
   VLOG(4) << "Builder construction inputs";
-  std::vector<pir::OpResult> argument_inputs = {out_grad_, axis_};
-  argument.AddInputs(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInputs({out_grad_, axis_});
 
   VLOG(4) << "Builder construction attributes";
 
   VLOG(4) << "Builder construction outputs";
   pir::VectorType out_grad = out_grad_.type().dyn_cast<pir::VectorType>();
-  int axis = axis_.owner()
+  int axis = axis_.dyn_cast<pir::OpResult>()
+                 .owner()
                  ->dyn_cast<paddle::dialect::FullOp>()
-                 .attributes()
-                 .at("value")
-                 .dyn_cast<paddle::dialect::ScalarAttribute>()
+                 .attribute<paddle::dialect::ScalarAttribute>("value")
                  .data()
                  .to<int>();
 
@@ -1092,7 +1083,7 @@ void SplitGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 void IfOp::Build(pir::Builder &builder,             // NOLINT
                  pir::OperationArgument &argument,  // NOLINT
-                 pir::OpResult cond,
+                 pir::Value cond,
                  std::vector<pir::Type> &&output_types) {
   argument.num_regions = 2;
   argument.AddInput(cond);
