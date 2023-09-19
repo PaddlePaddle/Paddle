@@ -850,12 +850,11 @@ class TestDygraphInplaceHypot(TestDygraphInplace):
 
     def non_inplace_api_processing(self, var):
         return paddle.hypot(var, self.y)
-    
-    def test_errors(self):
-        a1 = 3.0
-        self.assertRaises(TypeError, paddle.hypot_, a1, self.y)
-        self.assertRaises(TypeError, paddle.hypot_, self.y, a1)
 
+    def test_errors(self):
+        x = 3.0
+        self.assertRaises(TypeError, paddle.hypot_, x, self.y)
+        self.assertRaises(TypeError, paddle.hypot_, self.y, x)
 
     def test_forward_version(self):
         with paddle.base.dygraph.guard():
