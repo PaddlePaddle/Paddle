@@ -84,14 +84,8 @@ cc_test_old(
   pd_op_dialect
   pir)
 
-cc_test_old(
-  add_dialect_parser_test
-  SRCS
-  add_dialect_parser_test.cc
-  DEPS
-  gtest
-  pd_op_dialect
-  pir)
+cc_test_old(add_dialect_parser_test SRCS add_dialect_parser_test.cc DEPS gtest
+            pir)
 
 cc_test(
   ir_parser_test

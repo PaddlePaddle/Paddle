@@ -63,6 +63,17 @@ class CharAttribute : public pir::Attribute {
   }
 };
 
+class IR_API TestOp : public pir::Op<TestOp> {
+ public:
+  using Op::Op;
+  static const char* name() { return "tp.test"; }
+  static constexpr uint32_t attributes_num = 2;
+  static const char* attributes_name[attributes_num];
+};
+
+const char* TestOp::attributes_name[attributes_num] = {"parameter_name",
+                                                       "test"};
+
 IR_DECLARE_EXPLICIT_TYPE_ID(CharAttribute);
 
 IR_DEFINE_EXPLICIT_TYPE_ID(CharAttribute);
@@ -94,20 +105,18 @@ pir::Attribute TestParserDialect::ParseAttribute(
 
 TEST(IrParserTest, AddAttribute) {
   pir::IrContext* ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<OperatorDialect>();
   ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
   ctx->GetOrRegisterDialect<TestParserDialect>();
 
   std::string op_str =
-      " (%0) = \"builtin.get_parameter\" () "
+      " (%0) = \"tp.test\" () "
       "{parameter_name:(String)conv2d_0.w_0,test:(tp.char)a} : () -> "
       "pd_op.tensor<64x3x7x7xf32>";
   std::stringstream ss;
   ss << op_str;
-  pir::IrParser* parser = new pir::IrParser(ctx, ss);
-  pir::Operation* op = parser->ParseOperation();
+  pir::IrParser parser(ctx, ss);
+  pir::Operation* op = parser.ParseOperation();
   std::stringstream ssp;
   op->Print(ssp);
-  delete parser;
   EXPECT_TRUE(ssp.str() == ss.str());
 }

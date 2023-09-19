@@ -78,7 +78,7 @@ void KernelDialect::PrintAttribute(pir::Attribute attr,
 void KernelDialect::PrintOperation(pir::Operation *op,
                                    pir::IrPrinter &printer) const {
   if (op->dyn_cast<PhiKernelOp>() || op->dyn_cast<LegacyKernelOp>()) {
-    auto &os = printer.os_;
+    auto &os = printer.stream();
     printer.PrintOpResult(op);
     os << " =";
     if (auto phi_kernel_op = op->dyn_cast<PhiKernelOp>()) {

@@ -43,6 +43,7 @@ struct OperationArgument {
 
  public:
   OperationArgument(IrContext* ir_context, const std::string& name);
+  OperationArgument(OperationArgument&& other) = default;
   explicit OperationArgument(OpInfo info) : info(info) {}
   OperationArgument(const std::vector<Value>& inputs,
                     const AttributeMap& attributes,

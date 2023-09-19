@@ -53,7 +53,9 @@ class BasicIrPrinter {
 
   void PrintAttribute(Attribute attr);
 
- public:
+  std::ostream& stream() { return os_; }
+
+ protected:
   std::ostream& os_;
   PrinterOptions options_;
 };

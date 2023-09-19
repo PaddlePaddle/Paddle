@@ -159,9 +159,9 @@ class TestDialect : public pir::Dialect {
   void PrintOperation(pir::Operation *op,
                       pir::IrPrinter &printer) const override {
     printer.PrintOpResult(op);
-    printer.os_ << " =";
+    printer.stream() << " =";
 
-    printer.os_ << " \"" << op->name() << "\"";
+    printer.stream() << " \"" << op->name() << "\"";
     printer.PrintOpOperands(op);
   }
 
