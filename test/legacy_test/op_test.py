@@ -1322,7 +1322,6 @@ class OpTest(unittest.TestCase):
                     feed,
                 ) = self.get_ir_input_attr_dict_and_feed(stop_gradient=True)
                 # prepare args
-                print("attrs: ", attrs)
                 args = OpTestUtils.prepare_python_api_arguments(
                     self.python_api,
                     static_inputs,
@@ -1330,11 +1329,9 @@ class OpTest(unittest.TestCase):
                     kernel_sig,
                 )
                 inputs_sig, attrs_sig, outputs_sig = kernel_sig
-                print("args: ",args)
                 args = OpTestUtils.assumption_assert_and_transform(
                     args, len(inputs_sig)
                 )
-                print("args: ",args)
                 ret_tuple = self.python_api(*args)
                 fetch_list = getattr(self, "fetch_list", [])
                 # if the fetch_list is customized by user, we use it directly.
@@ -1627,9 +1624,7 @@ class OpTest(unittest.TestCase):
             if fwd_var_name is None:
                 fwd_var_name = arg
             fwd_var = fwd_program.global_block().vars.get(fwd_var_name)
-            assert fwd_var is not None, "{} cannot be found".format(
-                fwd_var_name
-            )
+            assert fwd_var is not None, f"{fwd_var_name} cannot be found"
             grad_var = grad_block.create_var(
                 name=arg,
                 dtype=fwd_var.dtype,
