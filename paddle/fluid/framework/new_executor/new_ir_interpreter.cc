@@ -1353,6 +1353,16 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     VLOG(5) << "begin to run op " << instr_node->Name();
     if (!instr_node->IsArtificial()) {
       instr_node->Run();
+
+      if (FLAGS_benchmark) {
+        instr_node->DeviceContext().Wait();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
+        VLOG(4) << "Operator(" << instr_node->Name()  // NOLINT
+                << "): context wait and get last error";
+#endif
+      }
+
       VLOG(4) << "done instruction node run";
       CheckGC(instr_node);
       VLOG(4) << "done CheckGC";
