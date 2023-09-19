@@ -1675,7 +1675,7 @@ class Variable(metaclass=VariableMetaClass):
         param_grad_list = append_backward(self)
         for param, param_grad in param_grad_list:
             # set grad to simulate dygraph loss.backward() in static mode.
-            setattr(param, "grad", param_grad)
+            param.grad = param_grad
 
     @fake_interface_only
     def gradient(self):
@@ -7235,18 +7235,16 @@ class Program:
                     vars_dict[name].set_value(value, scope)
                 except ValueError as err:
                     warnings.warn(
-                        ("Skip loading for '{}'. ".format(name) + str(err))
+                        "Skip loading for '{}'. ".format(name) + str(err)
                     )
                 except TypeError as err:
                     warnings.warn(
-                        ("Skip loading for '{}'. ".format(name) + str(err))
+                        "Skip loading for '{}'. ".format(name) + str(err)
                     )
             else:
                 warnings.warn(
-                    (
-                        "Skip loading for '{0}'. Because '{0}' not in the program.".format(
-                            name
-                        )
+                    "Skip loading for '{0}'. Because '{0}' not in the program.".format(
+                        name
                     )
                 )
 
