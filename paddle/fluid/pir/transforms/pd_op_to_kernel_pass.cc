@@ -731,7 +731,7 @@ void HandleForSpecialOp(
     pir::IrContext* ctx,
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
     std::unordered_map<pir::Value, pir::OpResult>* map_value_pair) {
-  if (op_item->name() == "pd_op.if") {
+  if (op_item->isa<>(paddle::dialect::IfOp)) {
     HandleForIfOp(place, op_item, block, ctx, map_op_pair, map_value_pair);
     return;
   }
@@ -1300,11 +1300,11 @@ std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
   ProcessBlock(
       place, block, program->block(), ctx, &map_op_pair, &map_value_pair);
 
-  // if (VLOG_IS_ON(2)) {
-  //   std::stringstream ss1;
-  //   program->Print(ss1);
-  //   VLOG(2) << "Program after lowering to kernel pass : " << ss1.str();
-  // }
+  if (VLOG_IS_ON(2)) {
+    std::stringstream ss1;
+    program->Print(ss1);
+    VLOG(2) << "Program after lowering to kernel pass : " << ss1.str();
+  }
   return program;
 }
 }  // namespace dialect
