@@ -212,10 +212,10 @@ def shard_layer(
         shard_fn (Callable): The function to shard layer parameters across
             the `process_mesh`. If not specified, by default we replicate
             all parameters of the layer across the `process_mesh`.
-        input_fn (Callable): Specify how the input of the layer is shard.
+        input_fn (Callable): Specify how the input of the layer is sharded.
             The `input_fn` will be installed for the Layer as a `forward pre-hook`.
             By default we do not shard the input.
-        ouput_fn (Callable): Specify how the output of the layer is shard or
+        ouput_fn (Callable): Specify how the output of the layer is sharded or
             convert it back to `paddle.Tensor` with DenseTensor.
             The `output_fn` will be installed for the Layer as `forward post-hook`.
             By default we do not shard or convert the output.
@@ -273,7 +273,7 @@ def shard_layer(
                     shard_tensor(param, dist_attr=replicated_dist_attr),
                 )
             else:
-                # do nothing, the dist params has already been shard by shard_fn
+                # do nothing, the dist parameters has already been shard by shard_fn
                 pass
         for key, buffer in layer._buffers.items():
             if param is not None and not param.is_dist():
@@ -291,23 +291,27 @@ def shard_layer(
 
     if shard_fn is None:
         # if shard_fn not specified, by default replicate
-        # all layer's params and buffers
+        # all layer's parameters and buffers
         for name, sublayers in layer.named_sublayers(include_self=True):
             replicate_layer_params_and_buffers(sublayers, process_mesh)
     else:
         # apply shard_fn to sublayers, contains self
         for name, sublayers in layer.named_sublayers(include_self=True):
             shard_fn(name, sublayers, process_mesh)
-            # shard_fn may not deal with all params and buffers,
-            # the params and buffers that are not shard by shard_fn
+            # shard_fn may not deal with all parameters and buffers,
+            # the parameters and buffers that are not shard by shard_fn
             # still need to be shard to replicated
             replicate_layer_params_and_buffers(sublayers, process_mesh)
 
     # register input_fn as layer's forward pre hook
     if input_fn is not None:
-        layer.register_forward_pre_hook(input_fn)
+        layer.register_forward_pre_hook(
+            lambda _, inputs: input_fn(inputs, process_mesh)
+        )
     # register output_fn as layer's forward post hook
     if output_fn is not None:
-        layer.register_forward_post_hook(output_fn)
+        layer.register_forward_post_hook(
+            lambda _, inputs, outputs: output_fn(outputs, process_mesh)
+        )
 
     return layer
