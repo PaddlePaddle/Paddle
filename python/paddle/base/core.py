@@ -507,7 +507,6 @@ def _set_prim_forward_blacklist(*args):
             raise TypeError("ops set in forward_blacklist must belong to str")
         else:
             prim_config["forward_blacklist"].add(item)
-    return
 
 
 def _set_prim_backward_blacklist(*args):
@@ -516,7 +515,6 @@ def _set_prim_backward_blacklist(*args):
         if not isinstance(item, str):
             raise TypeError("all items in set must belong to string")
     _set_bwd_prim_blacklist(ops)
-    return
 
 
 def _set_prim_backward_enabled(value):

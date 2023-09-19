@@ -1688,7 +1688,6 @@ class Optimizer:
         )
         params_grads = [(param, param.grad) for param in parameters]
         optimize_ops = self.apply_gradients(params_grads)
-        return
 
     @imperative_base.no_grad()
     @framework.non_static_only
