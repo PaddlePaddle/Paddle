@@ -1675,7 +1675,7 @@ class Variable(metaclass=VariableMetaClass):
         param_grad_list = append_backward(self)
         for param, param_grad in param_grad_list:
             # set grad to simulate dygraph loss.backward() in static mode.
-            setattr(param, "grad", param_grad)
+            param.grad = param_grad
 
     @fake_interface_only
     def gradient(self):
