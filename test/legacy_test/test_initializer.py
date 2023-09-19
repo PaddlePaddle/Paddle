@@ -816,16 +816,13 @@ class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
         )
 
         def run_dynamic_graph():
-            paddle.disable_static()
             paddle.seed(SEED)
             linear = paddle.nn.Linear(
                 1, 1, weight_attr=weight_attr, bias_attr=bias_attr
             )
             return linear.weight.numpy(), linear.bias.numpy()
-            paddle.enable_static()
 
         def run_static_graph():
-            paddle.enable_static()
             exe = paddle.static.Executor(paddle.CPUPlace())
             paddle.seed(SEED)
             linear = paddle.nn.Linear(
@@ -837,7 +834,9 @@ class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
             )
             return res[0], res[1]
 
+        paddle.disable_static()
         dynamic_res = run_dynamic_graph()
+        paddle.enable_static()
         static_res = run_static_graph()
 
         np.testing.assert_array_equal(dynamic_res[0], static_res[0])
@@ -1230,14 +1229,13 @@ class TestTruncatedNormalInitializerDygraph(unittest.TestCase):
         _tensor = np.clip(_tensor, a_min=a, a_max=b)
         return _tensor
 
-    def test_truncated_normal_initializer_cpu_fp32(self):
+    def test_truncated_normal_initializer_fp32(self):
         """
         In dygraph mode, we can use initializer directly to initialize a tensor.
         """
         paddle.disable_static()
         paddle.seed(42)
         paddle.set_default_dtype("float32")
-        paddle.set_device("cpu")
 
         tensor = paddle.zeros([1024, 1024, 8])
         tensor.stop_gradient = False
@@ -1254,62 +1252,13 @@ class TestTruncatedNormalInitializerDygraph(unittest.TestCase):
         )
         paddle.enable_static()
 
-    def test_truncated_normal_initializer_cpu_fp64(self):
+    def test_truncated_normal_initializer_fp64(self):
         """
         In dygraph mode, we can use initializer directly to initialize a tensor.
         """
         paddle.disable_static()
         paddle.seed(42)
         paddle.set_default_dtype("float64")
-        paddle.set_device("cpu")
-
-        tensor = paddle.zeros([1024, 1024, 8])
-        tensor.stop_gradient = False
-
-        truncated_normal_ = paddle.nn.initializer.TruncatedNormal()
-        truncated_normal_(tensor)
-
-        array = self._trunc_normal_numpy(tensor)
-        np.testing.assert_allclose(
-            array.mean(), tensor.mean().item(), rtol=0.01, atol=0.01
-        )
-        np.testing.assert_allclose(
-            array.std(), tensor.std().item(), rtol=0.01, atol=0.01
-        )
-        paddle.enable_static()
-
-    def test_truncated_normal_initializer_gpu_fp32(self):
-        """
-        In dygraph mode, we can use initializer directly to initialize a tensor.
-        """
-        paddle.disable_static()
-        paddle.seed(42)
-        paddle.set_default_dtype("float32")
-        paddle.set_device("gpu")
-
-        tensor = paddle.zeros([1024, 1024, 8])
-        tensor.stop_gradient = False
-
-        truncated_normal_ = paddle.nn.initializer.TruncatedNormal()
-        truncated_normal_(tensor)
-
-        array = self._trunc_normal_numpy(tensor)
-        np.testing.assert_allclose(
-            array.mean(), tensor.mean().item(), rtol=0.01, atol=0.01
-        )
-        np.testing.assert_allclose(
-            array.std(), tensor.std().item(), rtol=0.01, atol=0.01
-        )
-        paddle.enable_static()
-
-    def test_truncated_normal_initializer_gpu_fp64(self):
-        """
-        In dygraph mode, we can use initializer directly to initialize a tensor.
-        """
-        paddle.disable_static()
-        paddle.seed(42)
-        paddle.set_default_dtype("float64")
-        paddle.set_device("gpu")
 
         tensor = paddle.zeros([1024, 1024, 8])
         tensor.stop_gradient = False
@@ -1328,12 +1277,11 @@ class TestTruncatedNormalInitializerDygraph(unittest.TestCase):
 
 
 class TestAssignInitializerDygraph(unittest.TestCase):
-    def test_assign_initializer_cpu_fp32(self):
+    def test_assign_initializer_fp32(self):
         """
         In dygraph mode, we can use initializer directly to initialize a tensor.
         """
         paddle.disable_static()
-        paddle.set_device("cpu")
         paddle.set_default_dtype("float32")
 
         tensor = paddle.zeros([1024, 1024, 8], dtype=paddle.get_default_dtype())
@@ -1348,52 +1296,11 @@ class TestAssignInitializerDygraph(unittest.TestCase):
         np.testing.assert_allclose(array, tensor, rtol=1e-6, atol=1e-6)
         paddle.enable_static()
 
-    def test_assign_initializer_cpu_fp64(self):
+    def test_assign_initializer_fp64(self):
         """
         In dygraph mode, we can use initializer directly to initialize a tensor.
         """
         paddle.disable_static()
-        paddle.set_device("cpu")
-        paddle.set_default_dtype("float64")
-
-        tensor = paddle.zeros([1024, 1024, 8], dtype=paddle.get_default_dtype())
-        tensor.stop_gradient = False
-        array = np.random.randn(*tensor.shape).astype(
-            paddle.get_default_dtype()
-        )
-
-        assign_ = paddle.nn.initializer.Assign(array)
-        assign_(tensor)
-
-        np.testing.assert_allclose(array, tensor, rtol=1e-6, atol=1e-6)
-        paddle.enable_static()
-
-    def test_assign_initializer_gpu_fp32(self):
-        """
-        In dygraph mode, we can use initializer directly to initialize a tensor.
-        """
-        paddle.disable_static()
-        paddle.set_device("gpu")
-        paddle.set_default_dtype("float32")
-
-        tensor = paddle.zeros([1024, 1024, 8], dtype=paddle.get_default_dtype())
-        tensor.stop_gradient = False
-        array = np.random.randn(*tensor.shape).astype(
-            paddle.get_default_dtype()
-        )
-
-        assign_ = paddle.nn.initializer.Assign(array)
-        assign_(tensor)
-
-        np.testing.assert_allclose(array, tensor, rtol=1e-6, atol=1e-6)
-        paddle.enable_static()
-
-    def test_assign_initializer_gpu_fp64(self):
-        """
-        In dygraph mode, we can use initializer directly to initialize a tensor.
-        """
-        paddle.disable_static()
-        paddle.set_device("gpu")
         paddle.set_default_dtype("float64")
 
         tensor = paddle.zeros([1024, 1024, 8], dtype=paddle.get_default_dtype())
