@@ -55,8 +55,8 @@ class SequenceTopkAvgPoolingOp : public framework::OperatorWithKernel {
     auto row_shape_0 = row_dim[0];
 
     std::vector<int> vec_out_shape;
-    vec_out_shape.push_back(row_shape_0);
-    vec_out_shape.push_back(channel_num * num_k);
+    vec_out_shape.push_back(row_shape_0);          // NOLINT
+    vec_out_shape.push_back(channel_num * num_k);  // NOLINT
 
     ctx->SetOutputDim("Out", phi::make_ddim(vec_out_shape));
     ctx->ShareLoD("ROW", "Out");

@@ -356,6 +356,11 @@ class TestSigmoid(TestActivation):
         self.if_enable_cinn()
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
         out = 1 / (1 + np.exp(-x))
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -373,6 +378,34 @@ class TestSigmoid(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.01, check_prim=True)
+
+
+class TestSigmoid_Complex64(TestSigmoid):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    def test_check_output(self):
+        self.check_output(check_prim=False)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            max_relative_error=0.006,
+            check_prim=False,
+        )
+
+
+class TestSigmoid_Complex128(TestSigmoid_Complex64):
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=False,
+        )
 
 
 class TestSigmoid_ZeroDim(TestSigmoid):
@@ -464,7 +497,7 @@ class TestSilu(TestActivation):
     def test_check_grad(self):
         # TODO(BeingGod): set `check_prim=True` when `fill_constant` supports `complex` dtype
         if self.dtype == np.complex64 or self.dtype == np.complex128:
-            self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
+            self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=False)
         else:
             self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
@@ -651,14 +684,17 @@ class TestTanh(TestActivation, TestParameter):
         self.outputs = {'Out': out}
         self.convert_input_output()
 
+    def test_check_output(self):
+        self.check_output(check_new_ir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         # TODO(ScottWong98): set `check_prim=False` when `fill_any_like` supports `complex` dtype
         if self.dtype == np.complex64 or self.dtype == np.complex128:
-            self.check_grad(['X'], 'Out', check_prim=False)
+            self.check_grad(['X'], 'Out', check_prim=False, check_new_ir=True)
         else:
-            self.check_grad(['X'], 'Out', check_prim=True)
+            self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
     def init_dtype(self):
         # TODO If dtype is float64, the output (Out) has diff at CPUPlace
@@ -1578,7 +1614,7 @@ class TestRsqrt(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_new_ir=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -1588,6 +1624,7 @@ class TestRsqrt(TestActivation):
             'Out',
             max_relative_error=0.0005,
             check_prim=True,
+            check_new_ir=True,
         )
 
 
@@ -2442,12 +2479,12 @@ class TestGeluApproximate(TestActivation):
         self.cinn_atol = 1e-8
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_new_ir=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
 
 class TestGelu(TestActivation):
@@ -2480,12 +2517,12 @@ class TestGelu(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_new_ir=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
 
 class TestGelu_ZeroDim(TestGelu):
@@ -3537,12 +3574,12 @@ class TestPow(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_new_ir=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
 
 
 class TestPow_ZeroDim(TestPow):
@@ -4466,6 +4503,7 @@ create_test_act_fp16_class(TestRelu, check_prim=True, enable_cinn=True)
 create_test_act_fp16_class(
     TestGelu,
     check_prim=True,
+    check_new_ir=True,
     enable_cinn=True,
     rev_comp_rtol=1e-3,
     rev_comp_atol=1e-3,
@@ -4507,7 +4545,9 @@ create_test_act_fp16_class(
     TestLeakyReluAlpha3, check_prim=True, enable_cinn=True
 )
 create_test_act_fp16_class(TestLeakyRelu_ZeroDim, check_prim=True)
-create_test_act_fp16_class(TestRsqrt, check_prim=True, enable_cinn=True)
+create_test_act_fp16_class(
+    TestRsqrt, check_prim=True, enable_cinn=True, check_new_ir=True
+)
 
 
 def create_test_act_bf16_class(
@@ -4595,6 +4635,7 @@ create_test_act_bf16_class(TestRelu, check_prim=True)
 create_test_act_bf16_class(
     TestGelu,
     check_prim=True,
+    check_new_ir=True,
     rev_comp_rtol=1e-2,
     rev_comp_atol=1e-2,
     cinn_rtol=1e-2,
@@ -4629,7 +4670,7 @@ create_test_act_bf16_class(TestLeakyReluAlpha1, check_prim=True)
 create_test_act_bf16_class(TestLeakyReluAlpha2, check_prim=True)
 create_test_act_bf16_class(TestLeakyReluAlpha3, check_prim=True)
 create_test_act_bf16_class(TestLeakyRelu_ZeroDim, check_prim=True)
-create_test_act_bf16_class(TestRsqrt, check_prim=True)
+create_test_act_bf16_class(TestRsqrt, check_prim=True, check_new_ir=True)
 
 if __name__ == "__main__":
     unittest.main()

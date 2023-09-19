@@ -1439,3 +1439,16 @@ py_test_modules(test_stride MODULES test_stride ENVS
                 FLAGS_use_stride_kernel=true)
 
 set_tests_properties(test_slice_op_with_stride PROPERTIES TIMEOUT 300)
+
+if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
+  # These UTs are specially designed for FleetExecutor
+  set_tests_properties(
+    test_fleet_executor PROPERTIES ENVIRONMENT
+                                   "FLAGS_new_executor_micro_batching=False")
+  set_tests_properties(
+    test_fleet_executor_origin_scheduler
+    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
+  set_tests_properties(
+    test_fleet_executor_with_task_nodes
+    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
+endif()
