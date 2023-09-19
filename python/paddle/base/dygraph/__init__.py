@@ -16,6 +16,7 @@ from . import base
 from .base import *  # noqa: F403
 
 from . import tracer
+from .tracer import *  # noqa: F403
 
 
 __all__ = []
