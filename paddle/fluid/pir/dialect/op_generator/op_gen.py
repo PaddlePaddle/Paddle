@@ -586,7 +586,10 @@ class OpInfoParser:
     def parse_input_type_dict(self):
         type_dict = {}
 
-        if self.kernel_map is None:
+        if (
+            self.kernel_map is None
+            or self.kernel_map['dispatch'][self.kernel_map['func'][0]] is None
+        ):
             input_types_map = {
                 'Tensor': 'paddle::dialect::DenseTensorType',
                 'Tensor[]': 'pir::VectorType<paddle::dialect::DenseTensorType>',
@@ -663,7 +666,10 @@ class OpInfoParser:
     def parse_output_type_dict(self):
         type_dict = {}
 
-        if self.kernel_map is None:
+        if (
+            self.kernel_map is None
+            or self.kernel_map['dispatch'][self.kernel_map['func'][0]] is None
+        ):
             output_type_map = {
                 'Tensor': 'paddle::dialect::DenseTensorType',
                 'Tensor[]': 'pir::VectorType<paddle::dialect::DenseTensorType>',
