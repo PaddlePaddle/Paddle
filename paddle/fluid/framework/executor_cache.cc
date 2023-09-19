@@ -465,7 +465,8 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
     const std::vector<paddle::Tensor> &out_grad,
     const std::vector<paddle::Tensor *> &x_grad,
     const std::vector<paddle::Tensor *> &params_grad,
-    const paddle::framework::Scope *scope) {
+    const paddle::framework::Scope *scope,
+    const phi::Place &place) {
   auto ir_ctx = ::pir::IrContext::Instance();
   auto program = std::make_unique<::pir::Program>(ir_ctx);
 
@@ -486,9 +487,9 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
   for (auto &var_name : set_parameter_names) {
     if (scope->FindVar(var_name)) {
       auto tensor = scope->FindVar(var_name)->Get<phi::DenseTensor>();
-      phi::AllocationType place(phi::AllocationType::UNDEFINED);
+      phi::AllocationType p = place.GetType();
       if (tensor.initialized()) {
-        place = tensor.place().GetType();
+        p = tensor.place().GetType();
       }
 
       if (var_name == "@EMPTY@") {
@@ -499,7 +500,7 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
       op_desc->SetAttr("shape", std::vector<int64_t>());
       // TODO(phlrain) : using tensor dtype
       op_desc->SetAttr("dtype", 0);
-      op_desc->SetAttr("place", static_cast<int>(place));
+      op_desc->SetAttr("place", static_cast<int>(p));
       op_desc->SetAttr("name", var_name);
       op_desc->SetOutput("out", {var_name});
     }
@@ -528,7 +529,7 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
                                                            program.get());
   program_translator.Translate();
 
-  auto res = paddle::dialect::PdOpLowerToKernelPass(program.get());
+  auto res = paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
   if (FLAGS_new_ir_apply_inplace_pass) {
     ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
