@@ -140,6 +140,7 @@ def _can_apply_infer_spmd_rule(dist_op):
         "elementwise_mul",
         "scale",
         "dropout",
+        "reduce_sum",
     ]:
         return True
     else:
