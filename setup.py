@@ -483,7 +483,7 @@ def show():
 
             >>> # Case 1: paddle is tagged with 2.2.0
             >>> paddle.version.show()
-            # doctest: +SKIP('Different environments yield different output.')
+            >>> # doctest: +SKIP('Different environments yield different output.')
             full_version: 2.2.0
             major: 2
             minor: 2
@@ -494,18 +494,18 @@ def show():
             xpu: '20230114'
             xpu_xccl: '1.0.7'
             cinn: False
-            # doctest: -SKIP
+            >>> # doctest: -SKIP
 
             >>> # Case 2: paddle is not tagged
             >>> paddle.version.show()
-            # doctest: +SKIP('Different environments yield different output.')
+            >>> # doctest: +SKIP('Different environments yield different output.')
             commit: cfa357e984bfd2ffa16820e354020529df434f7d
             cuda: '10.2'
             cudnn: '7.6.5'
             xpu: '20230114'
             xpu_xccl: '1.0.7'
             cinn: False
-            # doctest: -SKIP
+            >>> # doctest: -SKIP
     """
     if istaged:
         print('full_version:', full_version)
@@ -536,7 +536,7 @@ def cuda():
             >>> import paddle
 
             >>> paddle.version.cuda()
-            # doctest: +SKIP('Different environments yield different output.')
+            >>> # doctest: +SKIP('Different environments yield different output.')
             '10.2'
 
     """
@@ -554,7 +554,7 @@ def cudnn():
             >>> import paddle
 
             >>> paddle.version.cudnn()
-            # doctest: +SKIP('Different environments yield different output.')
+            >>> # doctest: +SKIP('Different environments yield different output.')
             '7.6.5'
 
     """
@@ -572,7 +572,7 @@ def xpu():
             >>> import paddle
 
             >>> paddle.version.xpu()
-            # doctest: +SKIP('Different environments yield different output.')
+            >>> # doctest: +SKIP('Different environments yield different output.')
             '20230114'
 
     """
@@ -590,7 +590,7 @@ def xpu_xccl():
             >>> import paddle
 
             >>> paddle.version.xpu_xccl()
-            # doctest: +SKIP('Different environments yield different output.')
+            >>> # doctest: +SKIP('Different environments yield different output.')
             '1.0.7'
 
     """
@@ -608,7 +608,7 @@ def cinn():
             >>> import paddle
 
             >>> paddle.version.cinn()
-            # doctest: +SKIP('Different environments yield different output.')
+            >>> # doctest: +SKIP('Different environments yield different output.')
             False
 
     """
