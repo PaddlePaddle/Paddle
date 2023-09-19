@@ -225,7 +225,7 @@ class TestFakeQuantizeRangeAbsMaxOp(OpTest):
 class TestMovingAverageAbsMaxScaleOp(OpTest):
     def setUp(self):
         self.op_type = 'moving_average_abs_max_scale'
-        self.attrs = {'moving_rate': float(0.9), 'is_test': False}
+        self.attrs = {'moving_rate': 0.9, 'is_test': False}
 
     def _moving_average_abs_max_scale(self, dtype, input_shape, distribution):
         input_data = distribution(input_shape).astype(dtype)

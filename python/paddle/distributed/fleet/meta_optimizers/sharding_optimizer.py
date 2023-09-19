@@ -1834,7 +1834,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         zero_var = create_global_var(
             name="gradient_merge_zero",
             shape=[1],
-            value=int(0),
+            value=0,
             dtype='int32',
             persistable=True,
             force_cpu=True,
@@ -1844,7 +1844,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         current_step_var = create_global_var(
             name="gradient_merge_current_step",
             shape=[1],
-            value=int(0),
+            value=0,
             dtype='int32',
             persistable=True,
             force_cpu=True,

@@ -176,7 +176,7 @@ def count_adap_avgpool(m, x, y):
 
 
 def count_zero_ops(m, x, y):
-    m.total_ops += int(0)
+    m.total_ops += 0
 
 
 def count_parameters(m, x, y):
