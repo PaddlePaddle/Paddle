@@ -105,8 +105,10 @@ def merge_selected_rows(x, name=None):
 
         .. code-block:: python
 
+            >>> import paddle
             >>> import paddle.base as base
-            >>> b = base.default_main_program().global_block()
+
+            >>> b = paddle.static.default_main_program().global_block()
             >>> var = b.create_var(
             ...     name="X", dtype="float32", persistable=True,
             ...     type=base.core.VarDesc.VarType.SELECTED_ROWS)
@@ -162,7 +164,7 @@ def get_tensor_from_selected_rows(x, name=None):
             >>> from paddle.base import core
             >>> paddle.enable_static()
             >>> scope = core.Scope()
-            >>> block = base.default_main_program().global_block()
+            >>> block = paddle.static.default_main_program().global_block()
             >>> x_rows = [0, 5, 5, 4, 19]
             >>> height = 20
             >>> x = scope.var('X').get_selected_rows()
@@ -268,13 +270,13 @@ class ErrorClipByValue(BaseErrorClipAttr):
         .. code-block:: python
 
             >>> import paddle
-            >>> import paddle.base as base
+
             >>> paddle.enable_static()
             >>> BATCH_SIZE = 128
             >>> CLIP_MAX = 2e-6
             >>> CLIP_MIN = -1e-6
-            >>> prog = base.framework.Program()
-            >>> with base.program_guard(main_program=prog):
+            >>> prog = paddle.static.Program()
+            >>> with paddle.static.program_guard(main_program=prog):
             ...     image = paddle.static.data(name='x', shape=[None, 784], dtype='float32')
             ...     hidden1 = paddle.static.nn.fc(image, size=128, activation='relu')
             ...     hidden2 = paddle.static.nn.fc(hidden1, size=64, activation='relu')
@@ -972,23 +974,22 @@ def set_gradient_clip(clip, param_list=None, program=None):
         .. code-block:: python
 
             >>> import paddle
-            >>> import paddle.base as base
 
             >>> paddle.enable_static()
 
             >>> def network():
             ...     image = paddle.static.data(name='image', shape=[
             ...                        None, 28], dtype='float32')
-            ...     param_attr1 = base.ParamAttr("fc1_param")
+            ...     param_attr1 = paddle.ParamAttr("fc1_param")
             ...     fc1 = paddle.static.nn.fc(image, size=10, weight_attr=param_attr1)
-            ...     param_attr2 = base.ParamAttr("fc2_param")
+            ...     param_attr2 = paddle.ParamAttr("fc2_param")
             ...     fc2 = paddle.static.nn.fc(fc1, size=10, weight_attr=param_attr2)
             ...     loss = paddle.mean(fc2)
             ...     return loss
 
 
             >>> # network 1: clip all parameter gradient
-            >>> with base.program_guard(base.Program(), base.Program()):
+            >>> with paddle.static.program_guard(paddle.static.Program(), paddle.static.Program()):
             ...     loss = network()
             ...     paddle.nn.clip.set_gradient_clip(
             ...         paddle.nn.ClipGradByGlobalNorm(clip_norm=2.0))
@@ -996,7 +997,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
             ...     sgd.minimize(loss)
 
             >>> # network 2: clip parameter gradient by name
-            >>> with base.program_guard(base.Program(), base.Program()):
+            >>> with paddle.static.program_guard(base.Program(), paddle.static.Program()):
             ...     loss = network()
             ...     paddle.nn.clip.set_gradient_clip(
             ...         paddle.nn.ClipGradByValue(min=-1.0, max=1.0),
@@ -1005,10 +1006,10 @@ def set_gradient_clip(clip, param_list=None, program=None):
             ...     sgd.minimize(loss)
 
             >>> # network 3: clip parameter gradient by value
-            >>> with base.program_guard(base.Program(), base.Program()):
+            >>> with paddle.static.program_guard(base.Program(), paddle.static.Program()):
             ...     loss = network()
-            ...     param_var1 = base.default_main_program().global_block().var("fc1_param")
-            ...     param_var2 = base.default_main_program().global_block().var("fc2_param")
+            ...     param_var1 = paddle.static.default_main_program().global_block().var("fc1_param")
+            ...     param_var2 = paddle.static.default_main_program().global_block().var("fc2_param")
             ...     paddle.nn.clip.set_gradient_clip(
             ...         paddle.nn.ClipGradByValue(min=-1.0, max=1.0),
             ...         param_list=[param_var1, param_var2])
@@ -1016,7 +1017,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
             ...     sgd.minimize(loss)
 
             >>> # network 4: use 'set_gradient_clip' and 'optimize(grad_clip=clip)' together
-            >>> with base.program_guard(base.Program(), base.Program()):
+            >>> with paddle.static.program_guard(base.Program(), paddle.static.Program()):
             ...     loss = network()
             ...     clip1 = paddle.nn.ClipGradByValue(min=-1.0, max=1.0)
             ...     clip2 = paddle.nn.ClipGradByNorm(clip_norm=1.0)
