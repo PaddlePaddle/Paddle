@@ -914,7 +914,8 @@ def OpGenerator(
         if op_info.infer_meta_func:
             op_interfaces += ["paddle::dialect::InferMetaInterface"]
         elif op_invoke_map and op_invoke_map['func'] in op_info_items:
-            op_interfaces += ["paddle::dialect::InferMetaInterface"]
+            if op_info_items[op_invoke_map['func']].infer_meta_func:
+                op_interfaces += ["paddle::dialect::InferMetaInterface"]
 
         if (
             op_info.backward_name
