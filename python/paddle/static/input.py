@@ -98,6 +98,17 @@ def data(name, shape, dtype=None, lod_level=0):
                     [2.]]], dtype=float32)]
 
     """
+
+    def _reset_data_op_insertion_point():
+        default_main_program = paddle.ir.core.default_main_program()
+        ops = default_main_program.global_block().ops
+        if len(ops) == 0:
+            return
+        for op in ops:
+            if op.name() != 'pd_op.data':
+                paddle.ir.set_insertion_point(op)
+                return
+
     helper = LayerHelper('data', **locals())
     check_type(name, 'name', (bytes, str), 'data')
     check_type(shape, 'shape', (list, tuple), 'data')
@@ -112,7 +123,10 @@ def data(name, shape, dtype=None, lod_level=0):
 
     if paddle.ir.core._use_new_ir_api():
         ir_dtype = paddle.ir.core.convert_np_dtype_to_dtype_(dtype)
-        return paddle._ir_ops.data(name, shape, ir_dtype, core.Place())
+        _reset_data_op_insertion_point()
+        data_op = paddle._ir_ops.data(name, shape, ir_dtype, core.Place())
+        paddle.ir.reset_insertion_point_to_end()
+        return data_op
 
     out = helper.create_global_variable(
         name=name,
