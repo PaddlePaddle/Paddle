@@ -174,7 +174,6 @@ class TestStaticPyLayerInputOutput(unittest.TestCase):
 
         def forward_fn(x):
             y = 3 * x
-            return None
 
         main_program = Program()
         start_program = Program()

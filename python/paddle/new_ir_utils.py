@@ -18,6 +18,7 @@ import paddle
 
 class IrGuard:
     def __init__(self):
+        self.in_dygraph_outside = False
         old_flag = paddle.base.framework.get_flags("FLAGS_enable_new_ir_api")
         paddle.base.framework.set_flags({"FLAGS_enable_new_ir_api": False})
         paddle.base.framework.global_var._use_pir_api_ = False
@@ -32,7 +33,7 @@ class IrGuard:
             )
         else:
             raise RuntimeError(
-                "IrChange only init when paddle.framework.in_pir_mode(): is false, \
+                "IrGuard only init when paddle.framework.in_pir_mode(): is false, \
                 please set FLAGS_enable_new_ir_api = false"
             )
         paddle.base.framework.set_flags(old_flag)
@@ -41,7 +42,9 @@ class IrGuard:
         ]
 
     def __enter__(self):
-        paddle.enable_static()
+        self.in_dygraph_outside = paddle.base.framework.in_dygraph_mode()
+        if self.in_dygraph_outside:
+            paddle.enable_static()
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
         paddle.base.framework.global_var._use_pir_api_ = True
         self._switch_to_pir()
@@ -50,7 +53,8 @@ class IrGuard:
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
         paddle.base.framework.global_var._use_pir_api_ = False
         self._switch_to_old_ir()
-        paddle.disable_static()
+        if self.in_dygraph_outside:
+            paddle.disable_static()
 
     def _switch_to_pir(self):
         if paddle.base.framework.get_flags("FLAGS_enable_new_ir_api")[
@@ -88,6 +92,6 @@ class IrGuard:
             )
         else:
             raise RuntimeError(
-                "IrChange._switch_to_old_ir only work when paddle.framework.in_pir_mode() is false, \
+                "IrGuard._switch_to_old_ir only work when paddle.framework.in_pir_mode() is false, \
                 please set FLAGS_enable_new_ir_api = false"
             )

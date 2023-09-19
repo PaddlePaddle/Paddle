@@ -18,6 +18,7 @@ import unittest
 
 import gym
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
 import paddle.nn.functional as F
@@ -210,6 +211,7 @@ class TestDeclarative(unittest.TestCase):
         )
         self.args = Args()
 
+    @test_and_compare_with_new_ir(False)
     def test_train(self):
         st_out = train(self.args, self.place, to_static=True)
         dy_out = train(self.args, self.place, to_static=False)
