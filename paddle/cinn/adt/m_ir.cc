@@ -162,7 +162,7 @@ bool LocalEquationsSolvable(const GraphView& graph_view,
 
 std::vector<Index> GenerateWriteBroadcastTensorIndexs(
     config::NaiveOpEquationContext* ctx) {
-  const auto& graph_view = Graph{ctx->equations()}.GetGraphView();
+  const auto& graph_view = Graph::New(ctx->equations())->GetGraphView();
   std::vector<Index> ret{};
   const auto& fake_op_placeholder = ctx->fake_op_placeholder();
   ctx->VisitEachOutputTensorIndex([&](const auto& out_index) {

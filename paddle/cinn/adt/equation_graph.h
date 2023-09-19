@@ -36,14 +36,8 @@ class Graph final : public std::enable_shared_from_this<Graph> {
   using V2Fs = std::unordered_map<Variable, std::vector<const Function*>>;
   using F2Vs = std::unordered_map<const Function*, std::vector<Variable>>;
 
-  explicit Graph(const Functions& equations)
-      : functions_(equations),
-        variable2next_functions_(std::make_shared<V2Fs>()),
-        function2in_variables_(std::make_shared<F2Vs>()),
-        function2out_variables_(std::make_shared<F2Vs>()) {
-    for (const Function& function : *functions_) {
-      CollectVariablesAndEdges(function);
-    }
+  static std::shared_ptr<Graph> New(const Functions& equations) {
+    return std::shared_ptr<Graph>{new Graph{equations}};
   }
 
   using VariableVisitorT = std::function<void(const Variable)>;
@@ -137,6 +131,16 @@ class Graph final : public std::enable_shared_from_this<Graph> {
   const Equations& GetEquations() const { return functions_; }
 
  private:
+  explicit Graph(const Functions& equations)
+      : functions_(equations),
+        variable2next_functions_(std::make_shared<V2Fs>()),
+        function2in_variables_(std::make_shared<F2Vs>()),
+        function2out_variables_(std::make_shared<F2Vs>()) {
+    for (const Function& function : *functions_) {
+      CollectVariablesAndEdges(function);
+    }
+  }
+
   void CollectVariablesAndEdges(const Function& function) {
     std::unordered_set<Variable> in_variables;
     std::unordered_set<Variable> out_variables;

@@ -149,8 +149,7 @@ Equations MakeSdEquations(const std::shared_ptr<IGroup>& igroup,
 GraphView GenerateSdEquationGraphView(const std::shared_ptr<IGroup>& igroup,
                                       const ScheduleDescriptor& sd) {
   Equations equations = MakeSdEquations(igroup, sd);
-
-  return Graph(equations).GetGraphView();
+  return Graph::New(equations)->GetGraphView();
 }
 
 GraphView MakeEquationGraphView(const std::shared_ptr<IGroup>& igroup,
@@ -442,6 +441,7 @@ void TryGenerateMapExprFromGraph(
   for (const auto& fusion_group : graph->fusion_groups) {
     const auto& map_expr = GenerateMapExpr(fusion_group);
     PrintMapExpr(map_expr);
+    LOG(FATAL) << "Pause";
   }
 }
 

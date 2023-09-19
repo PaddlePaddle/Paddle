@@ -113,7 +113,7 @@ GraphView MakeOpsGraphViewForPartition(
     equations->emplace_back(equation);
   });
 
-  return std::make_shared<Graph>(equations)->GetGraphView();
+  return Graph::New(equations)->GetGraphView();
 }
 
 template <typename DoEachT>
@@ -261,7 +261,7 @@ GraphView MakeParametersGraphViewForPartition(
   VisitProducerConsumerTensorIndexPair(
       op_stmts, EquationCtx4OpStmt, AsOutput4Index, CollectEquation);
 
-  return std::make_shared<Graph>(equations)->GetGraphView();
+  return Graph::New(equations)->GetGraphView();
 }
 
 GraphView MakeGlobalEquationGraphViewForPartition(
