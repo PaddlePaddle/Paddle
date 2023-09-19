@@ -34,7 +34,7 @@ void {op_name}::Build({build_args}) {{
 }}
 """
 
-OP_INFO_TEMPLATE = "  VLOG(4) << Start build {op_name};"
+OP_INFO_TEMPLATE = '  VLOG(4) << "Start build {op_name}";\n'
 
 
 def GenBuildInputArgsStr(
