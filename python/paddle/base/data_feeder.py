@@ -24,7 +24,10 @@ from .framework import (
     _cuda_ids,
     default_main_program,
     in_dygraph_mode,
+    in_pir_mode,
 )
+
+from ..ir import OpResult
 
 __all__ = ['DataFeeder']
 
@@ -145,12 +148,8 @@ def convert_dtype(dtype):
 def check_variable_and_dtype(
     input, input_name, expected_dtype, op_name, extra_message=''
 ):
-    import paddle
-
-    if paddle.ir.core._use_new_ir_api():
-        check_type(
-            input, input_name, paddle.ir.OpResult, op_name, extra_message
-        )
+    if in_pir_mode():
+        check_type(input, input_name, OpResult, op_name, extra_message)
     else:
         check_type(input, input_name, Variable, op_name, extra_message)
     check_dtype(input.dtype, input_name, expected_dtype, op_name, extra_message)

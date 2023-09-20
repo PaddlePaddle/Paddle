@@ -1024,7 +1024,7 @@ def monkey_patch_tensor():
                 # for example, paddle.base.core.VarDesc.VarType.LOD_TENSOR
                 return origin(dtype)
 
-        setattr(core.VarDesc.VarType, "__str__", dtype_str)
+        core.VarDesc.VarType.__str__ = dtype_str
         _already_patch_repr = True
 
     # patch math methods for tensor

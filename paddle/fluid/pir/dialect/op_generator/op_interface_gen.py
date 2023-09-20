@@ -27,7 +27,7 @@ OP_VJP_FORWARD_INPUT_OR_OUTPUT_TEMPLATE = """
 
 OP_VJP_FORWARD_MULTI_INPUT_TEMPLATE = """
     pir::CombineOp combine_op_obj =
-      op_obj.{input_name}().GetDefiningOp()->dyn_cast<pir::CombineOp>();
+      op_obj.{input_name}().dyn_cast<pir::OpResult>().owner()->dyn_cast<pir::CombineOp>();
     std::vector<Tensor> {input_name};
     for (size_t idx = 0; idx < combine_op_obj.inputs().size(); idx++) {{
         {input_name}.emplace_back(
